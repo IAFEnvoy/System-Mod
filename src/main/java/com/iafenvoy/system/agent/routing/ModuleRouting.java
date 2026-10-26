@@ -1,12 +1,15 @@
 package com.iafenvoy.system.agent.routing;
 
 import com.iafenvoy.system.agent.AgentCommand;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/** One declaration supplies commands, local intent matching, model visibility and clarification actions. */
+/**
+ * One declaration supplies commands, local intent matching, model visibility and clarification actions.
+ */
 public record ModuleRouting<I>(List<AgentCommand<I>> commands, Optional<RoutingProfile<I>> semantic,
                                Optional<Shortcut<I>> shortcut, boolean modelSelectable) {
     public ModuleRouting {

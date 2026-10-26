@@ -18,4 +18,4 @@
 | [编译与验收](testing.md) | 本次已执行检查、尚未执行的验收和可选开发依赖 |
 | [原始设计稿](agent-design.md) | 完整目标架构；其中未落地的部分以开发文档中的实现范围为准 |
 
-默认未绑定，管理员先用 `/system grant [玩家]` 授予，再用 `/system`、`/system simple` 或 `/system full` 打开界面；`/system revoke [玩家]` 撤销并清空该玩家业务记录，累计 AI / TTS / ASR 用量保留，可用 `/system usage` 查看。服务端首次初始化会创建 `config/system/system-agent.json`；默认使用 DeepSeek，设置环境变量 `SYSTEM_DEEPSEEK_API_KEY` 后启动服务端即可使用模型路由和 AI 签到，也可配置其他 OpenAI 兼容服务。新配置默认启用轻量本地路由，无需额外模型；已有关闭配置保留。高把握只读请求可直接处理。结构化玩家、物品、任务查询不需要模型密钥。
+默认未绑定，管理员先用 `/system grant [玩家]` 授予，再用 `/system`、`/system simple` 或 `/system full` 打开界面；`/system revoke [玩家]` 撤销并清空该玩家业务记录，累计 AI / TTS / ASR 用量保留，可用 `/system usage` 查看。服务端首次初始化会分别创建执行预算、模型连接、语义路由和成就规则配置；模型连接位于 `config/system/system-model.json`。默认使用 DeepSeek，设置环境变量 `SYSTEM_DEEPSEEK_API_KEY` 后启动服务端即可使用模型路由和 AI 签到，也可配置其他 OpenAI 兼容服务。新配置默认启用轻量本地路由，无需额外模型；已有关闭配置保留。高把握只读请求可直接处理。结构化玩家、物品、任务查询不需要模型密钥。

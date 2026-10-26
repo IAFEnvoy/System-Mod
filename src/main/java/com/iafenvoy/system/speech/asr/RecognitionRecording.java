@@ -1,10 +1,13 @@
 package com.iafenvoy.system.speech.asr;
 
 import com.iafenvoy.system.speech.SpeechException;
+
 import java.util.Arrays;
 import java.util.concurrent.*;
 
-/** Capture starts before the network handshake; at most 60 seconds of PCM may wait in memory. */
+/**
+ * Capture starts before the network handshake; at most 60 seconds of PCM may wait in memory.
+ */
 final class RecognitionRecording implements AsrProvider.AudioSource, AutoCloseable {
     private static final ThreadPoolExecutor RECORDER = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS,
             new ArrayBlockingQueue<>(1), runnable -> {

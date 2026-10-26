@@ -1,23 +1,21 @@
 package com.iafenvoy.system.agent.builtin;
 
-import com.iafenvoy.system.agent.AgentCommand;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+
 import java.util.List;
 
-/** Reads the current player snapshot through the registered game adapter. */
+/**
+ * Reads the current player snapshot through the registered game adapter.
+ */
 public final class PlayerQueryModule extends BuiltinModule<EmptyInput> {
     public PlayerQueryModule(ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player) {
         super(ResultTypes.PLAYER_ACTION, "Read my current health, experience and dimension; public online player names only.",
-            EmptyInput.CODEC, List.of(player), true, false, ExecutionPolicy.quick(2, 0));
+                EmptyInput.CODEC, List.of(player), true, false, ExecutionPolicy.quick(2, 0));
     }
 
     @Override

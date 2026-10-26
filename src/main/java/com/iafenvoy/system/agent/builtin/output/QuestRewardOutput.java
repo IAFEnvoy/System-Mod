@@ -2,12 +2,16 @@ package com.iafenvoy.system.agent.builtin.output;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+
 import java.util.List;
 import java.util.Optional;
 
-/** Built-in result data and its serialization codec. */
-public record QuestRewardOutput(String id, String title, boolean claimable, String state, Optional<List<String>> choices,
-                          int choiceOffset, boolean hasMoreChoices, Optional<String> claimRef) {
+/**
+ * Built-in result data and its serialization codec.
+ */
+public record QuestRewardOutput(String id, String title, boolean claimable, String state,
+                                Optional<List<String>> choices,
+                                int choiceOffset, boolean hasMoreChoices, Optional<String> claimRef) {
     public static final Codec<QuestRewardOutput> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("id").forGetter(QuestRewardOutput::id),
             Codec.STRING.fieldOf("title").forGetter(QuestRewardOutput::title),

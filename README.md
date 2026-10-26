@@ -33,12 +33,12 @@ The local router uses domain aliases, sparse TF-IDF and per-player exact intent 
 
 Install the dependencies required by your chosen mod versions as well. FTB features are registered only when FTB Quests is present; the other assistant features work without it. See the [development guide](docs/development.md) for build dependencies.
 
-The network protocol is **2**. Update the client and server together; result cards and actions now use typed Codec dispatch. Development saves use the current codecs directly, without legacy migration.
+The network protocol is **3**. Update the client and server together; requests, responses, result cards and actions use registered Codec dispatch. Packets carry typed objects instead of JSON strings or special request IDs. Development saves use the current codecs directly, without legacy migration.
 
 ## Quick Start
 
 1. Install System on both sides and ApricityUI on the client. Add FTB Quests and its dependencies if you want quest integration.
-2. Start the server, or open a single-player world, once to generate `config/system/system-agent.json`.
+2. Start the server, or open a single-player world, once to generate the server configuration files under `config/system/`.
 3. To enable AI, set `SYSTEM_DEEPSEEK_API_KEY` in the environment of the server process, then restart it. For single-player, the Minecraft process must inherit the variable. Configuration stores the environment-variable name, not the key.
 4. An administrator grants access with `/system grant <player>`. Players are unbound by default.
 5. Run `/system`, `/system full` or `/system simple`, then use the controls or type a request.
@@ -53,7 +53,7 @@ Explicit queries, shop browsing and item exchanges do not require a model key. A
 
 ### Model Configuration
 
-The generated configuration defaults to these model fields. Edit the existing file; this is only a fragment of the full configuration. Restart the server after changes.
+Model connection settings live in `config/system/system-model.json`. The default fields are shown below; restart the server after changes.
 
 ```json
 {
@@ -90,11 +90,12 @@ The following commands run in Minecraft chat:
 | `/system shop [query]` | Browse shop offers |
 | `/system buy <offer-id>` | Preview an exchange; payment still requires confirmation |
 | `/system usage` / `/system usage all` | View your usage, or all players' usage as an administrator |
-| `/system grant [player]` / `/system revoke [player]` | Administrator binding and reset operations |
+| `/system grant [player]` / `/system revoke [player]` | Administrator binding and clearing operations |
+| `/system reset [player]` | Clear old-format System records and binding; usage is retained, then grant again |
 | `/system routing` | Administrator routing diagnostics |
 | `/system help` | Show available actions |
 
-`grant` and `revoke` target yourself when the player argument is omitted. From the console, specify an online player. **`revoke` deletes the player's System business records**, including conversations, check-in records, inbox rewards and orders. Cumulative AI/TTS/ASR usage is retained. Items already delivered, FTB progress and external payments are not rolled back.
+`grant`, `revoke` and `reset` target yourself when the player argument is omitted. From the console, specify an online player. **`revoke` and `reset` delete the player's System business records**, including conversations, check-in records, inbox rewards and orders. Cumulative AI/TTS/ASR usage is retained. `reset` is intended for an old-format file that the current Codec cannot read; run `grant` again after it completes. Items already delivered, FTB progress and external payments are not rolled back.
 
 Inside the **assistant's input box**, you can also use:
 
@@ -118,6 +119,8 @@ Open **Settings → Speech output** in the full workspace or type `/tts` in the 
 2. Choose a model, voice, language and volume. Defaults are `qwen3-tts-flash`, `Cherry` and the game language.
 3. Preview, enable automatic speech and save. Custom voice IDs must match the model they were created for.
 
+After editing `config/system/system-speech.json`, click **Reload settings** to refresh speech settings and discard unsaved changes in this tab. Merge exported voice parameters into that file while preserving credentials and local preferences.
+
 SSE audio is played incrementally, using Minecraft's Voice sound category first and direct OpenAL as a fallback. Session cancellation stops the request, buffered PCM and playback; late callbacks cannot restart the old audio. Known usage remains recorded.
 
 The Python 3.10+ utility [`tools/voice_design.py`](tools/voice_design.py) supports voice design, cloning, synthesis and temporary upload. It uses the standard library; consult [the speech guide](docs/tts.md) for model compatibility and optional audio preprocessing.
@@ -128,14 +131,14 @@ python tools/voice_design.py --lang en --help
 
 ## Content and Extensions
 
-Check-in rewards and shop offers can be supplied by data packs:
+Check-in rewards and shop offers are defined entirely by data packs, including the bundled defaults:
 
 ```text
 data/<namespace>/system/signin_rewards/<path>.json
 data/<namespace>/system/shop_offers/<path>.json
 ```
 
-Copy the [example commerce pack](examples/commerce-pack) into the world's `datapacks/` directory and load it through the normal data-pack flow. Each nonempty resource category replaces that category's configuration defaults. Reloading content invalidates old shop quotes, while rewards already credited retain their original contents.
+Copy the [example commerce pack](examples/commerce-pack) into the world's `datapacks/` directory and load it through the normal data-pack flow. Entries with new IDs are added; matching resource paths override bundled entries. Use `enabled: false` to disable an entry. Reloading content invalidates old shop quotes, while rewards already credited retain their original contents.
 
 Agent code lives under `com.iafenvoy.system.agent`. The root package contains execution, contracts, registries, commands and request/result types; `builtin`, `routing`, `model`, `store`, `commerce` and `prompt` group related interfaces, data and implementations. Built-in inputs and outputs remain standalone types in `agent.builtin.input` and `agent.builtin.output`. Shared Codec, Schema and JSON utilities live in `com.iafenvoy.system.util`, and configuration stays in `com.iafenvoy.system.config`. Trusted Java extensions register each module once through `AssistantRegistrationEvent`; its tool list and `ModuleRouting` declaration supply commands, semantic profiles, model visibility and shortcuts. Command execution, help and completion share the same registry. See [Agent runtime](docs/agent-runtime.md). Each module has independent model-call, tool-call, write-step, token and time limits. FTB integration calls typed local Java tools directly; it does not require stdio or HTTP MCP transport.
 
@@ -143,24 +146,26 @@ See [data packs and advancement rules](docs/datapacks.md) and [architecture and 
 
 ## Data and Privacy
 
-All mod configuration files live in `config/system/` within their respective server or client instance. Configuration files are loaded directly from this directory.
+All mod configuration files live in `config/system/` within their respective server or client instance. Missing configuration files are copied from bundled `defaults/<filename>.json` resources before decoding; existing files are preserved.
 
 | Location | Purpose |
 | --- | --- |
-| Server `config/system/system-agent.json` | Model, budgets, fallback content and advancement rules |
+| Server `config/system/system-agent.json` | Execution budgets, concurrency, daily model limits and time zone |
+| Server `config/system/system-model.json` | Model connection and provider options |
+| Server `config/system/system-semantic.json` | Local intent routing, thresholds, examples and cache |
+| Server `config/system/system-advancements.json` | Trusted advancement rules |
 | Server `config/system/system-speech-pricing.json` | TTS rates; copied from bundled defaults if missing, loaded on server startup |
 | `<world>/system-agent/<UUID>.json` | Binding, conversations, preferences, rewards, orders and workflow records |
 | `<world>/data/system/token_usage.dat` | Persistent per-player AI/TTS/ASR usage; survives revoke and memory cleanup |
 | Client `config/system/system-client.json` | View preference |
 | Client `config/system/system-speech.json` | Local speech settings and any key entered in the UI |
 | Client `config/system/system-asr.json` | Local ASR switch, NLS AppKey, temporary Token and region |
-| Client `config/system/system-voice.json` | Optional voice profile imported into speech settings |
 
 Player identity comes from the authenticated connection. Server checks, tool allowlists and bounded modules govern actions; model output cannot authorize arbitrary commands or prices. Conversations use bounded recent history and deterministic compaction, without an additional summarization-model call.
 
 Server model keys stay on the server. Client speech keys stay on the client; keys entered in the UI are stored in plaintext in the local settings file. Necessary context is sent to the configured model service, and spoken text is sent to the speech provider. Clearing local history does not delete provider-side records.
 
-AI usage comes from server-side API responses. TTS usage is reported by the client and is informational, not a trusted basis for payments or rewards. Fees use server-configured rates; editing rates takes effect after a restart and does not recalculate past totals. Provider billing is authoritative. Reward delivery and payment involve separate game and ledger writes, so ambiguous crash states require manual reconciliation rather than automatic reissue. See [usage accounting](docs/token-usage.md) and [reward/payment behavior](docs/usage.md).
+AI usage comes from server-side API responses. TTS usage is reported by the client and is informational, not a trusted basis for payments or rewards. Fees use server-configured rates; editing rates takes effect after a server `/reload` or restart and does not recalculate past totals. Provider billing is authoritative. Reward delivery and payment involve separate game and ledger writes, so ambiguous crash states require manual reconciliation rather than automatic reissue. See [usage accounting](docs/token-usage.md) and [reward/payment behavior](docs/usage.md).
 
 ## Build
 

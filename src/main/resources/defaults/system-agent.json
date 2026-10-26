@@ -1,0 +1,17 @@
+{
+  "timeZone": "Asia/Shanghai",
+  "modelCallsPerPlayerDay": 100,
+  "concurrentModels": 4,
+  "routingPolicy": {
+    "modelCalls": 1,
+    "toolCalls": 0,
+    "steps": 4,
+    "writeSteps": 0,
+    "inputBytes": 16384,
+    "outputTokens": 512,
+    "totalTokens": 32768,
+    "ttlMillis": 14500,
+    "modelTimeoutMillis": 4000
+  },
+  "policies": {}
+}

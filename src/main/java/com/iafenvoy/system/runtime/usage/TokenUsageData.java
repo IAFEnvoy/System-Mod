@@ -9,11 +9,12 @@ import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import java.util.*;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
+
+import java.util.*;
 
 /**
  * World-wide accounting, independent of player attachments and revocable agent records.

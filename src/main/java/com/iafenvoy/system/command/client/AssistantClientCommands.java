@@ -5,17 +5,16 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.runtime.client.AssistantClient;
 import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 
-/** Client navigation stays local; both execution and completion use these exact registered aliases. */
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * Client navigation stays local; both execution and completion use these exact registered aliases.
+ */
 public final class AssistantClientCommands {
     private static final Pattern SELECT = Pattern.compile("^(?:/?select\\s+|/?选择\\s*)?([0-9]{1,4})$", Pattern.CASE_INSENSITIVE);
     private static final Map<String, Runnable> COMMANDS = new LinkedHashMap<>();
@@ -34,6 +33,7 @@ public final class AssistantClientCommands {
         register(() -> preferences(AssistantClient.saveHistory(), false), "ai off");
         register(() -> AssistantClient.command("grant"), "grant");
         register(() -> AssistantClient.command("revoke"), "revoke");
+        register(() -> AssistantClient.command("reset"), "reset");
         register(() -> AssistantClient.command("usage"), "usage", "token统计", "token 统计", "用量统计");
         register(() -> AssistantClient.command("usage all"), "usage all");
         register(() -> settings(AssistantSettingsScreen.Tab.GENERAL), "settings", "设置", "系统设置");
@@ -53,7 +53,8 @@ public final class AssistantClientCommands {
 
     private static void register(Runnable handler, String... aliases) {
         for (String alias : aliases)
-            if (COMMANDS.putIfAbsent(alias, handler) != null) throw new IllegalArgumentException("Duplicate client command " + alias);
+            if (COMMANDS.putIfAbsent(alias, handler) != null)
+                throw new IllegalArgumentException("Duplicate client command " + alias);
     }
 
     public static List<String> suggestions() {

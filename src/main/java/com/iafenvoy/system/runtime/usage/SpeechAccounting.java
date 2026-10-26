@@ -2,11 +2,17 @@ package com.iafenvoy.system.runtime.usage;
 
 import com.iafenvoy.system.network.payload.RecognitionUsageReportC2SPayload;
 import com.iafenvoy.system.network.payload.SpeechUsageReportC2SPayload;
-import java.util.*;
-import java.util.concurrent.TimeUnit;
 import net.minecraft.server.level.ServerPlayer;
 
-/** Main-thread, bounded reports from the current connection; these are informational, not billing authority. */
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Main-thread, bounded reports from the current connection; these are informational, not billing authority.
+ */
 public final class SpeechAccounting {
     private final TokenUsageData ledger;
     private final Map<UUID, Session> sessions = new HashMap<>();

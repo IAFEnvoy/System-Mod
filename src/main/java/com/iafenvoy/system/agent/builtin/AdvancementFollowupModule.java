@@ -1,11 +1,6 @@
 package com.iafenvoy.system.agent.builtin;
 
-import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.input.AdvancementInput;
 import com.iafenvoy.system.agent.builtin.input.FeatureInput;
 import com.iafenvoy.system.agent.builtin.input.RewardCreditInput;
@@ -13,13 +8,16 @@ import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
 import com.iafenvoy.system.agent.builtin.output.FeatureOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.store.PlayerData;
+
 import java.util.List;
 
-/** Runs trusted advancement unlocks and reward credits through event-only tools. */
+/**
+ * Runs trusted advancement unlocks and reward credits through event-only tools.
+ */
 public final class AdvancementFollowupModule extends BuiltinModule<AdvancementInput> {
     public AdvancementFollowupModule(ToolRegistry.Tool<FeatureInput, FeatureOutput> unlock, ToolRegistry.Tool<RewardCreditInput, CreditReceiptOutput> credit) {
         super(ResultTypes.ADVANCEMENT_ACTION, "Trusted advancement workflow; event entry only.",
-            AdvancementInput.CODEC, List.of(unlock, credit), false, true, ExecutionPolicy.event());
+                AdvancementInput.CODEC, List.of(unlock, credit), false, true, ExecutionPolicy.event());
     }
 
     @Override

@@ -2,13 +2,16 @@ package com.iafenvoy.system.agent;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
 
-/** Each tool performs one typed operation; modules register their complete tool lists together. */
+/**
+ * Each tool performs one typed operation; modules register their complete tool lists together.
+ */
 public final class ToolRegistry {
     private final Map<String, Tool<?, ?>> tools = new HashMap<>();
     private boolean frozen;
@@ -56,7 +59,8 @@ public final class ToolRegistry {
         }
     }
 
-    public record Tool<I, O>(Type<I, O> type, boolean write, boolean idempotent, boolean allowEvent, Handler<I, O> handler) {
+    public record Tool<I, O>(Type<I, O> type, boolean write, boolean idempotent, boolean allowEvent,
+                             Handler<I, O> handler) {
         public Tool {
             Objects.requireNonNull(type);
             Objects.requireNonNull(handler);

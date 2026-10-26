@@ -5,8 +5,10 @@ import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.runtime.client.AssistantClient;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
+
 import java.util.ArrayList;
 import java.util.List;
+
 import static com.iafenvoy.system.screen.gui.AssistantView.*;
 
 /**

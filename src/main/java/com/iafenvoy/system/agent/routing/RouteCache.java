@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.routing;
 
-import com.iafenvoy.system.config.SemanticSettings;
+import com.iafenvoy.system.config.file.SemanticConfig;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -28,10 +29,10 @@ final class RouteCache {
     private final long ttlNanos;
     private boolean closed;
 
-    RouteCache(SemanticSettings settings) {
-        this.maximum = settings.cacheEntries;
-        this.perPlayer = settings.entriesPerPlayer;
-        this.ttlNanos = settings.cacheSeconds * 1_000_000_000L;
+    RouteCache(SemanticConfig settings) {
+        this.maximum = settings.cacheEntries();
+        this.perPlayer = settings.entriesPerPlayer();
+        this.ttlNanos = settings.cacheSeconds() * 1_000_000_000L;
     }
 
     synchronized Scope scope(UUID player, long incarnation, long epoch) {

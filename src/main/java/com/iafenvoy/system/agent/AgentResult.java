@@ -2,10 +2,11 @@ package com.iafenvoy.system.agent;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.resources.Identifier;
+
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import net.minecraft.resources.Identifier;
 
 public record AgentResult(String status, String messageKey, String text, List<Card> cards) {
     public static final Codec<AgentResult> CODEC = RecordCodecBuilder.create(i -> i.group(

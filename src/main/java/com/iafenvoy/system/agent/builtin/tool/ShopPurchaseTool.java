@@ -11,17 +11,18 @@ import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.commerce.ShopQuotes;
 import com.iafenvoy.system.agent.commerce.SystemCoinPayment;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.runtime.reload.CatalogReloadListener;
+import com.iafenvoy.system.data.CatalogReloadListener;
 import com.iafenvoy.system.runtime.server.MinecraftTools;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStack;
 
 /**
  * Payment touches inventory on the game thread; durable order and inbox writes run off it.
@@ -146,18 +147,18 @@ public final class ShopPurchaseTool implements ToolRegistry.Handler<ShopPurchase
     }
 
     private static void debitItems(ServerPlayer player, List<PlayerData.Item> costs, ExecutionContext context, AtomicBoolean touched) {
-        Map<String, Integer> required = new LinkedHashMap<>();
-        costs.forEach(item -> required.merge(item.id(), item.count(), Integer::sum));
+        Map<String, Long> required = new LinkedHashMap<>();
+        costs.forEach(item -> required.merge(item.id(), (long) item.count(), Long::sum));
         List<Removal> plan = new ArrayList<>();
-        for (Map.Entry<String, Integer> entry : required.entrySet()) {
+        for (Map.Entry<String, Long> entry : required.entrySet()) {
             Identifier id = Identifier.tryParse(entry.getKey());
             if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) throw new AgentException("INVALID_REWARD");
             ItemStack template = new ItemStack(BuiltInRegistries.ITEM.getValue(id));
-            int remaining = entry.getValue();
+            long remaining = entry.getValue();
             for (int slot = 0; slot < 36 && remaining > 0; slot++) {
                 ItemStack stack = player.getInventory().getItem(slot);
                 if (stack.isEmpty() || !ItemStack.isSameItemSameComponents(stack, template)) continue;
-                int count = Math.min(remaining, stack.getCount());
+                int count = (int) Math.min(remaining, stack.getCount());
                 plan.add(new Removal(stack, count));
                 remaining -= count;
             }

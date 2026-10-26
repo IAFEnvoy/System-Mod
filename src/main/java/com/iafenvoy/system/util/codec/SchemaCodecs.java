@@ -1,4 +1,4 @@
-package com.iafenvoy.system.util;
+package com.iafenvoy.system.util.codec;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -9,14 +9,20 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.util.ExtraCodecs;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-/** One field declaration builds both the actual codec and its routing schema; no reflection or sample decoding. */
+/**
+ * One field declaration builds both the actual codec and its routing schema; no reflection or sample decoding.
+ */
 public final class SchemaCodecs {
+    public static final Value<String> STRING = new Value<>(Codec.STRING, jsonObject("type", "string"));
+    public static final Value<Integer> NON_NEGATIVE_INT = new Value<>(ExtraCodecs.NON_NEGATIVE_INT, jsonObject("type", "integer", "minimum", 0));
     public static final Value<Boolean> BOOL = new Value<>(Codec.BOOL, jsonObject("type", "boolean"));
 
     // JSON Schema is deliberately dynamic metadata; runtime values always use their declared codecs.
@@ -49,8 +55,15 @@ public final class SchemaCodecs {
                 ? DataResult.success(value) : DataResult.error(() -> "String does not match pattern")), schema);
     }
 
+    public static Value<String> matching(String pattern) {
+        JsonObject schema = STRING.schema();
+        schema.addProperty("pattern", pattern);
+        return new Value<>(Codec.STRING.validate(value -> value.matches(pattern)
+                ? DataResult.success(value) : DataResult.error(() -> "String does not match pattern")), schema);
+    }
+
     public static Value<Integer> intRange(int min, int max) {
-        return new Value<>(AgentCodecs.intRange(min, max), jsonObject("type", "integer", "minimum", min, "maximum", max));
+        return new Value<>(Codec.intRange(min, max), jsonObject("type", "integer", "minimum", min, "maximum", max));
     }
 
     public static <A> Value<A> object(SchemaMapCodec<A> codec) {
@@ -58,13 +71,12 @@ public final class SchemaCodecs {
     }
 
     public static <A> SchemaMapCodec<A> unit(A value) {
-        return new SchemaMapCodec<>(AgentCodecs.strict(MapCodec.unit(value)), new Fields().schema());
+        return new SchemaMapCodec<>(MapCodec.unit(value), new Fields().schema());
     }
 
     public static <A> SchemaMapCodec<A> record(BiFunction<RecordCodecBuilder.Instance<A>, Fields, ? extends App<RecordCodecBuilder.Mu<A>, A>> builder) {
         Fields fields = new Fields();
-        MapCodec<A> codec = RecordCodecBuilder.mapCodec(instance -> builder.apply(instance, fields));
-        return new SchemaMapCodec<>(AgentCodecs.strict(codec), fields.schema());
+        return new SchemaMapCodec<>(RecordCodecBuilder.mapCodec(instance -> builder.apply(instance, fields)), fields.schema());
     }
 
     // Foreign codecs need an explicit schema: vanilla codecs do not expose a general structural visitor.

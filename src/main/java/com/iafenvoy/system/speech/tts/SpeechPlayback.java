@@ -1,14 +1,17 @@
 package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.SystemMod;
-import java.util.concurrent.TimeUnit;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.sounds.SoundEngine;
 import net.minecraft.sounds.SoundSource;
 
-/** One PCM producer: prefer native playback, then consume the same stream through raw OpenAL. */
+import java.util.concurrent.TimeUnit;
+
+/**
+ * One PCM producer: prefer native playback, then consume the same stream through raw OpenAL.
+ */
 final class SpeechPlayback implements AutoCloseable {
-    enum State { STARTING, NATIVE, OPENAL, FINISHED, MUTED, FAILED }
+    enum State {STARTING, NATIVE, OPENAL, FINISHED, MUTED, FAILED}
 
     private final SpeechSound sound;
     private final int volume;

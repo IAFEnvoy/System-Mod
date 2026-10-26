@@ -1,22 +1,21 @@
 package com.iafenvoy.system.agent.builtin;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.input.EntitlementInput;
 import com.iafenvoy.system.agent.builtin.output.StateOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+
 import java.util.List;
 
-/** Delivers one existing entitlement through the game adapter. */
+/**
+ * Delivers one existing entitlement through the game adapter.
+ */
 public final class DeliverModule extends BuiltinModule<EntitlementInput> {
     public DeliverModule(ToolRegistry.Tool<EntitlementInput, StateOutput> deliver) {
         super(ResultTypes.DELIVER_ACTION, "Deliver an existing reward entitlement obtained from the inbox; never invent entitlement IDs.",
-            EntitlementInput.CODEC, List.of(deliver), true, false, ExecutionPolicy.quick(1, 1));
+                EntitlementInput.CODEC, List.of(deliver), true, false, ExecutionPolicy.quick(1, 1));
     }
 
     @Override

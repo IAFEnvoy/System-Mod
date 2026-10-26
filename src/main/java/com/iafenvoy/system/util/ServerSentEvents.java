@@ -6,7 +6,9 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
-/** Incremental UTF-8 SSE framing, including CR/LF boundaries, comments and multiline data fields. */
+/**
+ * Incremental UTF-8 SSE framing, including CR/LF boundaries, comments and multiline data fields.
+ */
 public final class ServerSentEvents {
     private final int limit;
     private final Listener listener;

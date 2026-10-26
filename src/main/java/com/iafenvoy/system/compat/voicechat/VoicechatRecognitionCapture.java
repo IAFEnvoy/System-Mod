@@ -9,9 +9,12 @@ import de.maxhenkel.voicechat.voice.client.microphone.ALMicrophone;
 import de.maxhenkel.voicechat.voice.client.microphone.JavaxMicrophone;
 import de.maxhenkel.voicechat.voice.client.microphone.Microphone;
 import de.maxhenkel.voicechat.voice.client.microphone.MicrophoneManager;
+
 import java.util.concurrent.TimeUnit;
 
-/** Version-sensitive SVC internals stay here; a separate device never enters its Opus/send pipeline. */
+/**
+ * Version-sensitive SVC internals stay here; a separate device never enters its Opus/send pipeline.
+ */
 public final class VoicechatRecognitionCapture implements RecognitionCapture {
     private static final int FRAME_SAMPLES = 320;
     private static volatile boolean recording;

@@ -1,0 +1,6 @@
+{
+  "label": "Building supplies",
+  "items": [
+    { "id": "minecraft:oak_log", "count": 12 }
+  ]
+}

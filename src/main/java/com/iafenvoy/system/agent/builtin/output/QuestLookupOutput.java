@@ -1,10 +1,25 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.util.codec.DispatchRegistry;
 import com.mojang.serialization.Codec;
+import net.minecraft.resources.Identifier;
 
-/** Built-in result data and its serialization codec. */
-public sealed interface QuestLookupOutput permits QuestPageOutput, QuestDetailOutput {
-    // The detail flag selects the quest lookup subtype.
-    Codec<QuestLookupOutput> CODEC = Codec.BOOL.dispatch("detail", value -> value instanceof QuestDetailOutput,
-            detail -> detail ? QuestDetailOutput.CODEC : QuestPageOutput.CODEC);
+/**
+ * Built-in result data and its serialization codec.
+ */
+public interface QuestLookupOutput {
+    Codec<QuestLookupOutput> CODEC = Types.REGISTRY.codec();
+
+    DispatchRegistry.Type<? extends QuestLookupOutput> type();
+
+    final class Types {
+        public static final DispatchRegistry<QuestLookupOutput> REGISTRY = new DispatchRegistry<>("type", QuestLookupOutput::type);
+        public static final DispatchRegistry.Type<QuestPageOutput> PAGE = REGISTRY.register(
+                Identifier.fromNamespaceAndPath("system", "quest_page"), QuestPageOutput.CODEC);
+        public static final DispatchRegistry.Type<QuestDetailOutput> DETAIL = REGISTRY.register(
+                Identifier.fromNamespaceAndPath("system", "quest_detail"), QuestDetailOutput.CODEC);
+
+        private Types() {
+        }
+    }
 }

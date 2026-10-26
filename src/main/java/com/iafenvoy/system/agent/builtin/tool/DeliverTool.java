@@ -8,15 +8,18 @@ import com.iafenvoy.system.agent.builtin.input.EntitlementInput;
 import com.iafenvoy.system.agent.builtin.output.StateOutput;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.runtime.server.MinecraftTools;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
-/** Delivers a credited entitlement; inventory mutation and durable finalization keep their original threads. */
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Delivers a credited entitlement; inventory mutation and durable finalization keep their original threads.
+ */
 public final class DeliverTool implements ToolRegistry.Handler<EntitlementInput, StateOutput> {
     private final AgentEngine engine;
     private final MinecraftTools game;

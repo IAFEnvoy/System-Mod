@@ -5,36 +5,38 @@ import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.store.ConversationMemory;
-import com.iafenvoy.system.util.AgentCodecs;
-import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.util.ExtraCodecs;
+
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import net.minecraft.resources.Identifier;
 
-/** The model selects the same registered input type used by buttons and exact commands. */
+/**
+ * The model selects the same registered input type used by buttons and exact commands.
+ */
 public record ModelRoute(TypedPayload<?> call) {
-    public static Codec<ModelRoute> codec(Function<Identifier, TypedPayload.Type<?>> resolver) {
-        Codec<String> ids = Codec.STRING.validate(id -> {
-            Identifier parsed = Identifier.tryParse(id);
-            return id.equals("clarify") || parsed != null && resolver.apply(parsed) != null
-                    ? DataResult.success(id) : DataResult.error(() -> "Unavailable model capability " + id);
-        });
+    public static Codec<ModelRoute> codec(Collection<TypedPayload.Type<?>> capabilities) {
+        Map<String, MapCodec<? extends ModelRoute>> types = new LinkedHashMap<>();
+        types.put("clarify", EmptyInput.CODEC.codec().fieldOf("input")
+                .xmap(_ -> new ModelRoute(null), _ -> EmptyInput.INSTANCE));
+        for (TypedPayload.Type<?> type : capabilities)
+            types.put(type.id().toString(), ResultTypes.ACTIONS.valueCodec(type.id(), "input").xmap(ModelRoute::new, ModelRoute::call));
+        Codec<String> ids = Codec.STRING.validate(id -> types.containsKey(id)
+                ? DataResult.success(id) : DataResult.error(() -> "Unavailable model capability " + id));
         return ids.dispatch("capabilityId",
-            value -> value.call == null ? "clarify" : value.call.type().id().toString(),
-            id -> id.equals("clarify")
-                    ? AgentCodecs.strict(EmptyInput.CODEC.codec().fieldOf("input").xmap(_ -> new ModelRoute(null), _ -> EmptyInput.INSTANCE), "capabilityId")
-                    : AgentCodecs.strict(ResultTypes.ACTIONS.valueCodec(Identifier.parse(id), "input").xmap(ModelRoute::new, ModelRoute::call), "capabilityId"));
+                value -> value.call == null ? "clarify" : value.call.type().id().toString(),
+                types::get);
     }
 
     public record Capability(String description, JsonElement input) {
         public static final Codec<Capability> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("description").forGetter(Capability::description),
-                CodecIO.JSON.fieldOf("input").forGetter(Capability::input)
+                ExtraCodecs.JSON.fieldOf("input").forGetter(Capability::input)
         ).apply(i, Capability::new));
         public static final Codec<Map<String, Capability>> CATALOGUE = Codec.unboundedMap(Codec.STRING, CODEC);
     }

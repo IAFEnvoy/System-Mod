@@ -6,9 +6,11 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Plain-text substitution only: no expressions, recursive expansion or executable template language. */
+/**
+ * Plain-text substitution only: no expressions, recursive expansion or executable template language.
+ */
 final class PromptTemplate {
-    private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{([a-z][a-z0-9_]{0,63})}}");
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{([a-z][a-z0-9_]*)}}");
     private final String text;
     private final Set<String> placeholders;
 

@@ -1,11 +1,15 @@
 package com.iafenvoy.system.speech.aliyun;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.iafenvoy.system.data.speech.AliyunTtsMessage;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.tts.TtsProvider;
-import com.iafenvoy.system.util.CodecIO;
 import com.iafenvoy.system.util.HttpTransport;
 import com.iafenvoy.system.util.ServerSentEvents;
+import com.iafenvoy.system.util.codec.CodecIO;
+import com.mojang.serialization.JsonOps;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -17,12 +21,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
-/** DashScope WAV and SSE/PCM adapters, without an SDK, native runtime or distributed model. */
+/**
+ * DashScope WAV and SSE/PCM adapters, without an SDK, native runtime or distributed model.
+ */
 public final class AliyunTtsProvider implements TtsProvider {
     public static final int MAX_AUDIO_BYTES = 8 * 1024 * 1024;
-    public static final Set<String> LANGUAGES = Set.of("Auto", "Chinese", "English", "German", "Italian", "Portuguese",
-            "Spanish", "Japanese", "Korean", "French", "Russian");
+    public static final Set<String> LANGUAGES = Set.of("Auto", "Chinese", "English", "German", "Italian", "Portuguese", "Spanish", "Japanese", "Korean", "French", "Russian");
+    public static final Set<String> MODELS = Set.of("qwen-audio-3.1-tts-flash", "qwen-audio-3.1-tts-plus", "qwen-audio-3.0-tts-flash", "qwen-audio-3.0-tts-plus");
     private final HttpTransport transport = new HttpTransport();
 
     @Override
@@ -74,10 +81,10 @@ public final class AliyunTtsProvider implements TtsProvider {
 
         private void event(String event, String data) throws Exception {
             if (data.equals("[DONE]")) return;
-            CodecIO.Document json = CodecIO.document(data, 2 * 1024 * 1024);
+            JsonElement json = JsonParser.parseString(data);
             Usage usage = readUsage(json, this.model);
             if (usage.reported()) this.observer.accept(usage);
-            AliyunTtsMessage.Response response = json.read(AliyunTtsMessage.Response.CODEC);
+            AliyunTtsMessage.Response response = AliyunTtsMessage.Response.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
             if (event.equals("error") || !response.code().isEmpty()) throw new SpeechException("response");
             if (response.statusCode().isPresent()) checkStatus(response.statusCode().get());
             AliyunTtsMessage.Output output = response.output().orElseThrow(() -> new SpeechException("response"));
@@ -104,7 +111,8 @@ public final class AliyunTtsProvider implements TtsProvider {
 
     @Override
     public byte[] synthesize(Request request) throws Exception {
-        return this.synthesize(request, ignored -> { });
+        return this.synthesize(request, ignored -> {
+        });
     }
 
     @Override
@@ -112,16 +120,13 @@ public final class AliyunTtsProvider implements TtsProvider {
         this.validate(request);
         boolean custom = request.model().startsWith("qwen-audio-");
         String body = CodecIO.write(AliyunTtsMessage.Request.CODEC, AliyunTtsMessage.Request.of(request, "wav"));
-        String path = custom ? "/api/v1/services/audio/tts/SpeechSynthesizer"
-                : "/api/v1/services/aigc/multimodal-generation/generation";
-        HttpResponse<byte[]> response = this.transport.postJson(URI.create(baseUrl(request) + path),
-                body,
-                Map.of("Authorization", "Bearer " + request.apiKey()), Duration.ofSeconds(45), 12 * 1024 * 1024);
+        String path = custom ? "/api/v1/services/audio/tts/SpeechSynthesizer" : "/api/v1/services/aigc/multimodal-generation/generation";
+        HttpResponse<byte[]> response = this.transport.postJson(URI.create(baseUrl(request) + path), body, Map.of("Authorization", "Bearer " + request.apiKey()), Duration.ofSeconds(45), 12 * 1024 * 1024);
         checkStatus(response.statusCode());
-        CodecIO.Document json = CodecIO.document(new String(response.body(), StandardCharsets.UTF_8), 12 * 1024 * 1024);
+        JsonElement json = JsonParser.parseString(new String(response.body(), StandardCharsets.UTF_8));
         // Billing survives an expired audio URL, cancelled download or later WAV/playback failure.
         observer.accept(readUsage(json, request.model()));
-        AliyunTtsMessage.Response result = json.read(AliyunTtsMessage.Response.CODEC);
+        AliyunTtsMessage.Response result = AliyunTtsMessage.Response.CODEC.parse(JsonOps.INSTANCE, json).getOrThrow();
         if (!result.code().isEmpty()) throw new SpeechException("response");
         AliyunTtsMessage.Audio audio = result.output().flatMap(AliyunTtsMessage.Output::audio).orElseThrow(() -> new SpeechException("response"));
         String url = audio.url();
@@ -142,9 +147,9 @@ public final class AliyunTtsProvider implements TtsProvider {
         }
     }
 
-    private static Usage readUsage(CodecIO.Document response, String model) {
+    private static Usage readUsage(JsonElement response, String model) {
         try {
-            return response.read(AliyunTtsMessage.Billing.ENVELOPE).map(value -> value.counted(model)).orElse(Usage.UNKNOWN);
+            return AliyunTtsMessage.Billing.ENVELOPE.parse(JsonOps.INSTANCE, response).result().flatMap(Function.identity()).map(value -> value.counted(model)).orElse(Usage.UNKNOWN);
         } catch (RuntimeException invalidUsage) {
             return Usage.UNKNOWN;
         }
@@ -158,8 +163,7 @@ public final class AliyunTtsProvider implements TtsProvider {
         if (!Set.of("beijing", "singapore").contains(request.region())) throw new SpeechException("settings");
         if (!request.workspace().isEmpty() && !request.workspace().matches("[A-Za-z0-9-]{1,80}"))
             throw new SpeechException("settings");
-        boolean custom = Set.of("qwen-audio-3.1-tts-flash", "qwen-audio-3.1-tts-plus",
-                "qwen-audio-3.0-tts-flash", "qwen-audio-3.0-tts-plus").contains(request.model());
+        boolean custom = MODELS.contains(request.model());
         if (!custom && !request.model().matches("qwen3-tts-flash(?:-[0-9-]+)?")) throw new SpeechException("model");
         if (!request.voice().matches("[A-Za-z0-9_.-]{1,200}")) throw new SpeechException("voice");
         if (!custom && (request.voice().contains("-vd-") || request.voice().contains("-vc-")))

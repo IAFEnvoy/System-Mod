@@ -1,33 +1,19 @@
 package com.iafenvoy.system.agent;
 
-import com.iafenvoy.system.agent.builtin.input.AdvancementInput;
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
-import com.iafenvoy.system.agent.builtin.input.EntitlementInput;
-import com.iafenvoy.system.agent.builtin.input.ItemQueryInput;
-import com.iafenvoy.system.agent.builtin.input.QuestClaimInput;
-import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
-import com.iafenvoy.system.agent.builtin.input.QuestQueryInput;
-import com.iafenvoy.system.agent.builtin.input.ShopPurchaseInput;
-import com.iafenvoy.system.agent.builtin.input.ShopQueryInput;
-import com.iafenvoy.system.agent.builtin.input.ShopQuoteInput;
-import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
-import com.iafenvoy.system.agent.builtin.output.ItemPageOutput;
-import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
-import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestClaimOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestOutput;
-import com.iafenvoy.system.agent.builtin.output.RewardOutput;
-import com.iafenvoy.system.agent.builtin.output.StateOutput;
+import com.iafenvoy.system.agent.builtin.input.*;
+import com.iafenvoy.system.agent.builtin.output.*;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import java.util.List;
-import java.util.Optional;
 import net.minecraft.resources.Identifier;
 
-/** Shared codecs contain no optional-mod classes, so saved FTB cards also decode without FTB installed. */
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Shared codecs contain no optional-mod classes, so saved FTB cards also decode without FTB installed.
+ */
 public final class ResultTypes {
     public static final PayloadRegistry CARDS = new PayloadRegistry("type", "value");
     public static final PayloadRegistry ACTIONS = new PayloadRegistry("moduleId", "input");
@@ -82,7 +68,8 @@ public final class ResultTypes {
         ).apply(i, Preferences::new));
     }
 
-    public record ClientState(boolean historySaved, boolean externalModel, boolean questAvailable, List<String> commands) {
+    public record ClientState(boolean historySaved, boolean externalModel, boolean questAvailable,
+                              List<String> commands) {
         public static final Codec<ClientState> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.BOOL.fieldOf("historySaved").forGetter(ClientState::historySaved),
                 Codec.BOOL.fieldOf("externalModel").forGetter(ClientState::externalModel),
@@ -104,7 +91,8 @@ public final class ResultTypes {
         }
     }
 
-    public record SignInStatus(String date, boolean signedIn, List<PlayerData.Reward> candidates, boolean historySaved, boolean externalModel) {
+    public record SignInStatus(String date, boolean signedIn, List<PlayerData.Reward> candidates, boolean historySaved,
+                               boolean externalModel) {
         public static final Codec<SignInStatus> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("date").forGetter(SignInStatus::date),
                 Codec.BOOL.fieldOf("signedIn").forGetter(SignInStatus::signedIn),
@@ -118,7 +106,8 @@ public final class ResultTypes {
         }
     }
 
-    public record ShopOffer(Optional<String> id, String label, List<PlayerData.Item> items, CommerceCatalog.Price price, Optional<Boolean> paymentAvailable) {
+    public record ShopOffer(Optional<String> id, String label, List<PlayerData.Item> items, CommerceCatalog.Price price,
+                            Optional<Boolean> paymentAvailable) {
         public static final Codec<ShopOffer> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.optionalFieldOf("id").forGetter(ShopOffer::id),
                 Codec.STRING.fieldOf("label").forGetter(ShopOffer::label),

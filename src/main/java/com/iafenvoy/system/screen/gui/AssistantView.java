@@ -9,34 +9,53 @@ import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestRewardOutput;
+import com.iafenvoy.system.util.TypeDispatch;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
+import net.minecraft.network.chat.Component;
+
 import java.util.*;
 import java.util.function.Consumer;
-import net.minecraft.network.chat.Component;
 
 /**
  * Shared plain-text formatting for both layouts.
  */
 public final class AssistantView {
+    private static final TypeDispatch<AgentResult.Action, String> ACTION_LABELS = new TypeDispatch<AgentResult.Action, String>((action, _) -> tr(action.labelKey()))
+            .register(ResultTypes.QuestList.class, AssistantView::questRowLabel)
+            .register(QuestOutput.class, AssistantView::rewardLabel);
+    private static final TypeDispatch<AgentResult.Card, String> CARD_FORMATTERS = new TypeDispatch<AgentResult.Card, String>((card, _) -> format(card.data().json(), 0))
+            .register(ResultTypes.QuestList.class, (_, _) -> tr("system.ui.quest_list_hint"))
+            .register(QuestOutput.class, (card, _) -> formatQuest(card));
+
     private AssistantView() {
     }
 
     public static String actionLabel(AgentResult.Card card, AgentResult.Action action) {
+        return ACTION_LABELS.apply(action, card.data().value());
+    }
+
+    private static String questRowLabel(AgentResult.Action action, ResultTypes.QuestList list) {
         String label = tr(action.labelKey());
-        if (card.data().value() instanceof ResultTypes.QuestList(List<QuestBriefOutput> quests) && action.call().value() instanceof QuestDetailInput detail) {
-            for (QuestBriefOutput quest : quests)
+        if (action.call().value() instanceof QuestDetailInput detail) {
+            for (QuestBriefOutput quest : list.quests())
                 if (quest.id().equals(detail.questId()))
                     return quest.number() + ". " + quest.title() + " · " + quest.chapter() + " · " + (int) quest.progress() + "%";
         }
-        if (card.data().value() instanceof QuestOutput quest && action.call().value() instanceof QuestClaimInput(
+        return label;
+    }
+
+    private static String rewardLabel(AgentResult.Action action, QuestOutput quest) {
+        String label = tr(action.labelKey());
+        if (action.call().value() instanceof QuestClaimInput(
                 String claimRef, Optional<Integer> choice1
         )) {
             for (QuestRewardOutput reward : quest.rewards()) {
                 if (reward.claimRef().isEmpty() || !reward.claimRef().get().equals(claimRef)) continue;
                 if (choice1.isPresent() && reward.choices().isPresent()) {
                     int choice = choice1.get() - reward.choiceOffset();
-                    if (choice >= 0 && choice < reward.choices().get().size()) return label + " · " + reward.choices().get().get(choice);
+                    if (choice >= 0 && choice < reward.choices().get().size())
+                        return label + " · " + reward.choices().get().get(choice);
                 }
                 return label + " · " + reward.title();
             }
@@ -46,14 +65,15 @@ public final class AssistantView {
 
     public static String formatCard(AgentResult.Card card) {
         // Summary rows are numbered detail actions; never dump quest IDs or nested objectives here.
-        if (card.data().value() instanceof ResultTypes.QuestList) return tr("system.ui.quest_list_hint");
-        if (card.data().value() instanceof QuestOutput) {
-            JsonObject visible = card.data().json().getAsJsonObject();
-            for (String field : List.of("rewardOffset", "nextRewardOffset", "hasMoreRewards", "taskOffset", "nextTaskOffset", "hasMoreTasks",
-                    "descriptionOffset", "nextDescriptionOffset", "hasMoreDescription")) visible.remove(field);
-            return format(visible, 0);
-        }
-        return format(card.data().json(), 0);
+        return CARD_FORMATTERS.apply(card, card.data().value());
+    }
+
+    private static String formatQuest(AgentResult.Card card) {
+        JsonObject visible = card.data().json().getAsJsonObject();
+        for (String field : List.of("rewardOffset", "nextRewardOffset", "hasMoreRewards", "taskOffset", "nextTaskOffset", "hasMoreTasks",
+                "descriptionOffset", "nextDescriptionOffset", "hasMoreDescription"))
+            visible.remove(field);
+        return format(visible, 0);
     }
 
     public static String format(JsonElement value, int depth) {
@@ -95,7 +115,9 @@ public final class AssistantView {
         document.getElementById(id).addEventListener("click", event -> action.run());
     }
 
-    /** Button-backed switches use one state attribute for appearance, accessibility and form reads. */
+    /**
+     * Button-backed switches use one state attribute for appearance, accessibility and form reads.
+     */
     public static void bindSwitch(Document document, String id, Consumer<Boolean> changed) {
         Element control = document.getElementById(id);
         control.addEventListener("click", event -> {

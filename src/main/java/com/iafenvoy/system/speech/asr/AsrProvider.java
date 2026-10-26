@@ -1,10 +1,13 @@
 package com.iafenvoy.system.speech.asr;
 
 import com.iafenvoy.system.speech.SpeechException;
-import java.util.function.Consumer;
 import org.jspecify.annotations.NonNull;
 
-/** Streaming recognition protocol; microphone ownership and Minecraft UI stay with the caller. */
+import java.util.function.Consumer;
+
+/**
+ * Streaming recognition protocol; microphone ownership and Minecraft UI stay with the caller.
+ */
 public interface AsrProvider extends AutoCloseable {
     void validate(Request request) throws SpeechException;
 
@@ -13,7 +16,9 @@ public interface AsrProvider extends AutoCloseable {
     interface AudioSource {
         void start() throws Exception;
 
-        /** Return signed 16-bit little-endian mono PCM at 16 kHz, or -1 after recording stops. */
+        /**
+         * Return signed 16-bit little-endian mono PCM at 16 kHz, or -1 after recording stops.
+         */
         int read(byte[] buffer) throws Exception;
     }
 

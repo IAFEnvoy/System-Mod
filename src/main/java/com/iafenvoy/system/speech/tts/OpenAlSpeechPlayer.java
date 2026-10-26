@@ -1,14 +1,17 @@
 package com.iafenvoy.system.speech.tts;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import org.lwjgl.openal.AL10;
+import org.lwjgl.openal.ALC10;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
-import org.lwjgl.openal.AL10;
-import org.lwjgl.openal.ALC10;
 
-/** Bounded OpenAL buffer queue in MC's context; starvation resumes from the same PCM cursor. */
+/**
+ * Bounded OpenAL buffer queue in MC's context; starvation resumes from the same PCM cursor.
+ */
 final class OpenAlSpeechPlayer implements AutoCloseable {
     private final long context;
     private final SpeechSound sound;

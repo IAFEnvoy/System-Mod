@@ -35,7 +35,7 @@
 
 阿里云现在默认使用 SSE 流式输出。`qwen3-tts-flash` 与 Qwen-Audio-TTS 都发送 `X-DashScope-SSE: enable`，后者指定 `format=pcm`、`sample_rate=24000`；两种协议均消费 `output.audio.data` 的 Base64 PCM（24 kHz、16-bit、小端、单声道）。完整文本仍只提交一次，不拆句多次调用；收到音频后逐块追加，不等待整段合成或下载最终 OSS URL。参考 [Qwen3-TTS API](https://help.aliyun.com/zh/model-studio/qwen-tts-api) 和 [Qwen-Audio-TTS HTTP API](https://help.aliyun.com/zh/model-studio/qwen-audio-tts-http-api)。
 
-`SpeechAudio` 以限长分段内存保存 PCM，累计约 **200ms 音频**即可开始播放；这是待播放音频长度，不是固定等待 200ms，短句完成时即使不足阈值也立即开始。云端首包与网络耗时仍然存在，不能保证从文字显示到声音出现的固定延迟。原版路径通过 `SoundManager.play` 和 NeoForge `SoundInstance.getStream`，每次读取至多约 50ms 的可用 PCM；网络暂时无数据时给一小段静音保活，结束标记后才返回 EOF，声音线程不等待网络。最多保存 8MiB / 180 秒 PCM，跨 SSE 片段的半帧留待下个片段补齐，结束时必须帧对齐。
+`SpeechAudio` 以限长分段内存保存 PCM，累计约 **200ms 音频**即可开始播放；这是待播放音频长度，不是固定等待 200ms，短句完成时即使不足阈值也立即开始。云端首包与网络耗时仍然存在，不能保证从文字显示到声音出现的固定延迟。原版路径通过 `SoundManager.play` 和 NeoForge `SoundInstance.getStream`，每次读取至多约 50ms 的可用 PCM；网络暂时无数据时给一小段静音保活，结束标记或取消后才返回 EOF。Minecraft 当前 `Channel.pumpBuffers` 会显式跳过 `null`，因此 `null` 是流结束信号，不是传给 OpenAL 的音频数据；所有结束判断统一由 `SpeechAudio.Cursor` 处理，声音线程不等待网络。最多保存 8MiB / 180 秒 PCM，跨 SSE 片段的半帧留待下个片段补齐，结束时必须帧对齐。
 
 `TtsProvider.supportsStreaming()` 默认 false。新供应商可实现 `synthesizeStreaming(Request, AudioSink, Consumer<Usage>)`，通过 AudioSink 提供采样率、声道及 16-bit 小端 PCM，并报告累计 usage。未实现流式的旧供应商沿用完整 WAV 合成，在工作线程解码后进入同一播放管线；阿里云流式失败不会自动重发非流式请求，避免重复消费。
 
@@ -55,7 +55,7 @@
 
 本次额外接入 Qwen-Audio-TTS 的[非实时 HTTP 接口](https://help.aliyun.com/zh/model-studio/qwen-audio-tts-http-api)，支持 `qwen-audio-3.1-tts-flash`、`qwen-audio-3.1-tts-plus`、`qwen-audio-3.0-tts-flash`、`qwen-audio-3.0-tts-plus`。可使用业务空间专属域名，也可在 Workspace ID 留空时使用兼容域名。默认 `qwen3-tts-flash` 不变。CosyVoice 合成不在本次实现范围内。
 
-工具导出的 `system-voice.json` 包含 provider、region、workspace、model、voice、language，**不包含密钥**。复制到客户端 `config/system/system-voice.json`，在语音设置中点击“导入音色配置”，试听后保存。导入只改变表单中的音色配置，保留当前密钥、音量、自动朗读及音频缓存开关，不自动保存、不自动调用 API。也可手工填写同一组参数。音色创建后可能处于审核中；用工具 `query` 查看状态，`OK` 后才能正常使用。
+工具导出的 `system-voice.json` 包含 provider、region、workspace、model、voice、language，**不包含密钥**。将这六项合并到客户端现有 `config/system/system-speech.json`，保留其中的 apiKey、enabled、volume 和 cacheEnabled，再在语音设置中点击“重新加载配置”。重载会停止当前试听、重读语音配置并替换本页未保存的表单，不发起合成请求；按钮无需先填写密钥即可使用。也可手工填写同一组参数后试听、保存。模组不再单独读取 `config/system/system-voice.json`；客户端资源重载也会重读语音配置，已打开页面可通过按钮刷新表单。音色创建后可能处于审核中；用工具 `query` 查看状态，`OK` 后才能正常使用。
 
 ## CosyVoice 与当前模型价格对比
 
@@ -109,7 +109,7 @@ python tools/voice_design.py --lang zh --config run-test-client/config/system/sy
 
 `--config` 只读取指定客户端配置中的密钥、地域和 Workspace ID，不输出密钥；没有配置文件也可继续使用环境变量。默认目标模型为 `qwen-audio-3.1-tts-flash`。
 
-阿里云自动生成音色 ID，不能自定义为 `system-test1`。`--id` 保留本地别名，写入 `voice-output/system-test1/system-voice.json`，其中 `voice` 为真实云端 ID。云端前缀仅支持 10 位以内英文字母数字；未显式指定 `--prefix` 时从本地 ID 生成，`system-test1` 对应 `systemtes1`。配置可继续导入模组。
+阿里云自动生成音色 ID，不能自定义为 `system-test1`。`--id` 保留本地别名，写入 `voice-output/system-test1/system-voice.json`，其中 `voice` 为真实云端 ID。云端前缀仅支持 10 位以内英文字母数字；未显式指定 `--prefix` 时从本地 ID 生成，`system-test1` 对应 `systemtes1`。将导出的音色参数合并到模组语音配置后重新加载。
 
 提交前落盘 `submission.json`，保留本地 ID、前缀、目标模型、音频摘要及提交状态，不保存密钥或 Base64 音频。若网络失败导致结果不明，会保留记录，重复使用该 ID 会拒绝再次提交；先按前缀 `list` 查询，避免重复收费。返回音色 ID 后用 `query` 确认状态为 `OK`。不会为验证自动请求额外收费的语音合成。
 
@@ -142,7 +142,7 @@ python tools/voice_design.py --lang zh upload reference.wav --model voice-enroll
 - `AssistantSpeech.Session` 由界面和当前通知持有；全局只保留当前朗读及一个待启动项，新朗读替换旧项，文字队列由 `AssistantMessages` 管理。关闭 session 同时取消在途 Future、PCM 和播放，已关闭的 session 不能重新提交。单个合成工作线程及单个工作等待槽保持有界；请求、SSE 解析及旧供应商 WAV 解码不占 MC 线程，旧代次结果不得重新开始播放。
 - `SpeechAudio` 保存有界的 16-bit 小端、单/双声道 PCM；`SpeechSound` 提供原版非阻塞读取，`SpeechPlayback` 管理原版优先/单次后备，`OpenAlSpeechPlayer` 按游标向循环 buffer 队列补充音频。仅有客户端声音生命周期 mixin，不需要资源包、外部播放器或音频库。
 - 没有新增 Java 依赖、模型文件或原生运行库。TTS 继续由客户端独立调用，响应 usage 经限长的开始/完成报告合入存档中的玩家用量账本；不上传密钥、正文或音色 ID。`/system usage` 同页展示 AI / TTS 用量，按模型区分字符计费和 Token 计费并显示 TTS 费用估算，revoke 不清除。报告可信度、断线边界与官方单价见 [AI / TTS 用量统计](token-usage.md)。
-- 收费标准使用服务端 `config/system/system-speech-pricing.json`；缺失时复制 JAR 内 `defaults/system-speech-pricing.json` 后加载，保留已有配置。修改后重启生效，历史累计费用不重算；详细字段见[收费标准配置](token-usage.md#收费标准配置)。
+- 收费标准使用服务端 `config/system/system-speech-pricing.json`；缺失时复制 JAR 内 `defaults/system-speech-pricing.json` 后加载，保留已有配置。修改后通过服务端 `/reload` 或重启生效，历史累计费用不重算；详细字段见[收费标准配置](token-usage.md#收费标准配置)。
 
 ## 验证范围
 

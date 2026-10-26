@@ -4,7 +4,9 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.speech.SpeechException;
 import net.neoforged.fml.ModList;
 
-/** Local PCM16/16 kHz capture boundary; optional microphone backends never leak into ASR providers. */
+/**
+ * Local PCM16/16 kHz capture boundary; optional microphone backends never leak into ASR providers.
+ */
 public interface RecognitionCapture extends AsrProvider.AudioSource, AutoCloseable {
     void open() throws SpeechException;
 

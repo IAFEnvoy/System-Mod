@@ -58,7 +58,7 @@ Token 计费模型可能同时返回 `characters`，字符计费模型也可能�
 
 服务端初始化时读取 `config/system/system-speech-pricing.json`。文件不存在时，先从 JAR 内的 `defaults/system-speech-pricing.json` 原样复制，再读取生成的配置；源码默认文件位于 `src/main/resources/defaults/system-speech-pricing.json`。已有配置不会被覆盖，升级 JAR 不会重置管理员修改的价格；删除配置后，下次启动会重新复制默认文件。
 
-修改后正常重启服务端，单人游戏可退出并重新进入世界；不跟随 `/reload` 热加载。价格只在服务端计算，客户端无需同步配置。下面是一份只给一个模型配置价格的完整示例：
+修改后执行服务端 `/reload` 或正常重启，单人游戏也可退出并重新进入世界。价格只在服务端计算，客户端无需同步配置；历史费用不重算。下面是一份只给一个模型配置价格的完整示例：
 
 ```json
 {
@@ -79,13 +79,13 @@ Token 计费模型可能同时返回 `characters`，字符计费模型也可能�
 }
 ```
 
-- `version` 固定为 `1`，`currency` 固定为 `CNY`；`asOf` 是管理员记录的价格日期，格式为 `YYYY-MM-DD`，不触发联网更新。
+- `version` 默认为 `1`，`currency` 固定为 `CNY`；`asOf` 是管理员记录的价格日期，建议格式为 `YYYY-MM-DD`，不触发联网更新。
 - `provider`、`model`、`region` 与请求元数据精确匹配，同一组合不得重复。
 - `unit` 为 `CHARACTERS`、`TOKENS` 或 ASR 的 `CALLS`；`units` 表示价格对应的单位数量，例如字符价格通常为 `10000`，Token 价格通常为 `1000000`，ASR 默认 `1000`。
-- `input` / `output` 是每 `units` 的输入 / 输出人民币价格，使用非负 JSON 数字，最多 9 位小数。字符或次数计费使用 `input`，`output` 必须为 `0`；Token 计费分别乘实际输入和输出 Token。
-- `rates: []` 可以关闭新请求的费用估算，仍记录实际用量。配置最大 128KiB、最多 512 条；配置字段使用 `lenientOptionalFieldOf`，错误头字段回退默认值、未知字段忽略。无效金额、单位或缺少关键价格信息的条目跳过并保留其他有效条目，重复项保留第一条，不将缺失或无效金额当成免费。无效的整个 `rates` 字段回退为空表。
+- `input` / `output` 是每 `units` 的输入 / 输出人民币价格，使用非负金额，内部使用 `BigDecimal`；计算后按每次调用舍入到十亿分之一元。字符或次数计费使用 `input`，`output` 必须为 `0`；Token 计费分别乘实际输入和输出 Token。
+- `rates: []` 可以关闭新请求的费用估算，仍记录实际用量。配置大小和价格条目数量不设额外硬上限；配置字段使用 `lenientOptionalFieldOf`，错误头字段回退默认值、未知字段忽略。无效金额、单位或缺少关键价格信息的条目跳过并保留其他有效条目，重复项保留第一条，不将缺失或无效金额当成免费。无效的整个 `rates` 字段回退为空表。
 
-配置缺失但无法复制、文件不可读、JSON 语法损坏或超出大小限制时，保留原文件并记录警告，新请求记为“未估价”，不会静默套用 JAR 单价，也不会因此停用助手、TTS 或用量统计。历史累计金额保持不变。
+配置缺失但无法复制、文件不可读或 JSON 语法损坏时，保留原文件并记录日志，新请求记为“未估价”，不会静默套用 JAR 单价，也不会因此停用助手、TTS 或用量统计。历史累计金额保持不变。
 
 ## 客户端报告边界
 
@@ -109,7 +109,7 @@ Token 计费模型可能同时返回 `characters`，字符计费模型也可能�
 
 账本内部的 `PlayerUsage` 为可变类，名称和调用计数直接更新；四项 AI Token 计数封装在不可变的 `data/usage/TokenUsage` record 中，TTS 统计封装在不可变的 `data/usage/SpeechUsage` 中，合并时替换该值。全服汇总使用独立累加对象，存档 Codec 继续展开原有 AI 字段，与必需的 speech、recognition 字段一起编码，不提供旧账本字段回退。
 
-`snapshot()` 返回不可变的 `data/usage/TokenUsageSnapshot` 对象，包含分页信息、AI / TTS / ASR 汇总和玩家明细，列表复制且不暴露可变账本。`TokenUsageResponseS2C` 通过专用 `StreamCodec` 编码快照对象及错误状态，客户端直接读取类型字段；用量链路不再包装 `AgentResult` 或序列化 JSON。网络协议升级为 **v7**，客户端与服务端需使用相同协议版本；每包最多 8 位玩家，名字、错误键和请求 ID 都有限长。
+`snapshot()` 返回不可变的 `data/usage/TokenUsageSnapshot` 对象，包含分页信息、AI / TTS / ASR 汇总和玩家明细，列表复制且不暴露可变账本。`TokenUsageResponseS2C` 通过专用 `StreamCodec` 编码快照对象、错误状态及打开页面的 `open` 标志，客户端直接读取类型字段；用量链路不再包装 `AgentResult` 或序列化 JSON，也不使用特殊请求 ID 打开界面。当前网络协议为 **3**，客户端与服务端需使用相同协议版本；每包最多 8 位玩家，名字、错误键和请求 ID 都有限长。
 
 `revoke`、`forget`、关闭记忆与重新 `grant` 均不删除累计统计。`revoke` 仍会重置玩家业务文件中的每日模型调用额度；该额度与长期用量账本是独立记录。当前没有清空统计的游戏命令。
 

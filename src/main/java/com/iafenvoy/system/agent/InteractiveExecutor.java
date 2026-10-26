@@ -3,14 +3,21 @@ package com.iafenvoy.system.agent;
 import com.iafenvoy.system.agent.routing.RouteDecision;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.util.CodecIO;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.*;
-import java.util.concurrent.*;
+import com.iafenvoy.system.util.codec.CodecIO;
 import net.minecraft.resources.Identifier;
 
-/** Interactive scheduling, cancellation and request replay; workflows execute through the engine. */
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Interactive scheduling, cancellation and request replay; workflows execute through the engine.
+ */
 final class InteractiveExecutor implements AutoCloseable {
     private final AgentEngine engine;
     private final TaskExecutor interactive = new TaskExecutor("agent-chat", 4, 32);
@@ -39,10 +46,10 @@ final class InteractiveExecutor implements AutoCloseable {
         long incarnation = this.engine.incarnation(player);
         AgentStore playerStore = this.engine.playerStore(player, incarnation);
         return this.interactive.submit(() -> {
-            if (System.currentTimeMillis() - received > 500) throw new AgentException("BUSY");
-            this.checkGeneration(player, generation);
-            return this.runInteractive(player, requestId, input, text, received, playerStore, incarnation, generation);
-        }).handle((result, error) -> error == null ? result : AgentResult.error(AgentEngine.errorCode(error)))
+                    if (System.currentTimeMillis() - received > 500) throw new AgentException("BUSY");
+                    this.checkGeneration(player, generation);
+                    return this.runInteractive(player, requestId, input, text, received, playerStore, incarnation, generation);
+                }).handle((result, error) -> error == null ? result : AgentResult.error(AgentEngine.errorCode(error)))
                 .whenComplete((result, error) -> {
                     this.active.remove(player);
                     this.owners.remove(player, requestId);
@@ -61,20 +68,20 @@ final class InteractiveExecutor implements AutoCloseable {
         AgentResult previous = store.read(player, data -> {
             this.checkGeneration(player, generation);
             if (!data.bound) throw new AgentException("NOT_BOUND");
-            if (data.requestInputs.containsKey(id) && !fingerprint.equals(data.requestInputs.get(id)))
+            if (data.conversation.requestInputs.containsKey(id) && !fingerprint.equals(data.conversation.requestInputs.get(id)))
                 throw new AgentException("INVALID_INPUT");
-            return data.requests.get(id);
+            return data.conversation.requests.get(id);
         });
         if (previous != null) return previous;
         long epoch = store.update(player, data -> {
             this.checkGeneration(player, generation);
-            data.requestInputs.put(id, fingerprint);
+            data.conversation.requestInputs.put(id, fingerprint);
             if (data.saveHistory && !text.isBlank())
-                data.history.add(new PlayerData.Message(id, "user", received, text));
-            return data.memoryEpoch;
+                data.conversation.history.add(new PlayerData.Message(id, "user", received, text));
+            return data.conversation.memoryEpoch;
         });
         AgentModule<?> direct = this.engine.modules().get(Identifier.tryParse(moduleId));
-        ExecutionPolicy initial = moduleId.isBlank() || direct == null ? this.engine.settings().routingPolicy : this.engine.policy(direct);
+        ExecutionPolicy initial = moduleId.isBlank() || direct == null ? this.engine.settings().routingPolicy() : this.engine.policy(direct);
         ExecutionContext context = new ExecutionContext(this.engine, player, id, null, received, epoch, initial, store, incarnation);
         this.active.put(player, context);
         AgentResult result;
@@ -97,10 +104,10 @@ final class InteractiveExecutor implements AutoCloseable {
         AgentResult completed = result;
         store.update(player, data -> {
             if (generation != this.generations.getOrDefault(player, 0L)) return null;
-            if (data.saveHistory && data.memoryEpoch == epoch) {
-                data.requests.put(id, completed);
-                data.history.add(new PlayerData.Message(id, "assistant", System.currentTimeMillis(), CodecIO.write(AgentResult.CODEC, completed)));
-            } else data.requestInputs.remove(id);
+            if (data.saveHistory && data.conversation.memoryEpoch == epoch) {
+                data.conversation.requests.put(id, completed);
+                data.conversation.history.add(new PlayerData.Message(id, "assistant", System.currentTimeMillis(), CodecIO.write(AgentResult.CODEC, completed)));
+            } else data.conversation.requestInputs.remove(id);
             return null;
         });
         return completed;

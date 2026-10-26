@@ -1,20 +1,19 @@
 package com.iafenvoy.system.agent.builtin;
 
-import com.iafenvoy.system.agent.AgentCommand;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+
 import java.util.List;
 
-/** Returns the supported command summary without invoking a tool. */
+/**
+ * Returns the supported command summary without invoking a tool.
+ */
 public final class HelpModule extends BuiltinModule<EmptyInput> {
     public HelpModule() {
         super(ResultTypes.HELP_ACTION, "Show supported commands and usage.",
-            EmptyInput.CODEC, List.of(), true, false, ExecutionPolicy.quick(1, 0));
+                EmptyInput.CODEC, List.of(), true, false, ExecutionPolicy.quick(1, 0));
     }
 
     @Override

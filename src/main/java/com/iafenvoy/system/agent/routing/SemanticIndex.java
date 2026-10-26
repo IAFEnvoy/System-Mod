@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.routing;
 
-import com.iafenvoy.system.config.SemanticSettings;
+import com.iafenvoy.system.config.file.SemanticConfig;
+
 import java.io.IOException;
 import java.util.*;
 
@@ -35,22 +36,21 @@ final class SemanticIndex {
     private final Map<String, Map<String, Double>> idf;
     private final Map<String, Double> unknownIdf;
 
-    SemanticIndex(Collection<RoutingProfile.Bound> profiles, SemanticSettings settings) throws IOException {
+    SemanticIndex(Collection<RoutingProfile.Bound> profiles, SemanticConfig settings) throws IOException {
         this.encoder = new LexicalEncoder();
         List<Document> documents = new ArrayList<>();
         for (RoutingProfile.Bound profile : profiles) {
             Map<String, List<String>> texts = new LinkedHashMap<>(profile.examples());
-            settings.examples.getOrDefault(profile.moduleId().toString(), Map.of()).forEach((language, extra) -> {
+            settings.examples().getOrDefault(profile.moduleId().toString(), Map.of()).forEach((language, extra) -> {
                 List<String> combined = new ArrayList<>(texts.getOrDefault(language, List.of()));
                 combined.addAll(extra);
                 texts.put(language, combined);
             });
             for (Map.Entry<String, List<String>> language : texts.entrySet())
-                if (settings.languages.contains(language.getKey()))
+                if (settings.languages().contains(language.getKey()))
                     for (String text : new LinkedHashSet<>(language.getValue()))
                         documents.add(new Document(profile, language.getKey(), this.encoder.encode(text, language.getKey())));
         }
-        if (documents.size() > 8192) throw new IOException("Routing example limit exceeded");
         Map<String, Map<String, Integer>> frequencies = new HashMap<>();
         Map<String, Integer> counts = new HashMap<>();
         for (Document document : documents) {
@@ -96,7 +96,8 @@ final class SemanticIndex {
             Match match = new Match(example.profile(), score, query.mass() == 0 ? 0 : Math.min(1, covered / query.mass()),
                     example.topics().containsAll(queryFeatures.topics()));
             Match previous = modules.get(example.profile().moduleId().toString());
-            if (previous == null || previous.score() < score) modules.put(example.profile().moduleId().toString(), match);
+            if (previous == null || previous.score() < score)
+                modules.put(example.profile().moduleId().toString(), match);
         }
         return new Ranking(modules.values().stream().sorted(Comparator.comparingDouble(Match::score).reversed()
                 .thenComparing(match -> match.profile().moduleId().toString())).limit(5).toList(), !queryFeatures.topics().isEmpty(),

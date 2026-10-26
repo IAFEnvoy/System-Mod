@@ -11,19 +11,21 @@ import com.iafenvoy.system.agent.routing.RouteSource;
 import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.config.AgentSettings;
+import com.iafenvoy.system.config.file.AgentConfig;
+import com.iafenvoy.system.config.file.SemanticConfig;
+import net.minecraft.resources.Identifier;
+
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import net.minecraft.resources.Identifier;
 
 /**
  * Agent execution engine; persistence, inference and workflow waits run off the game thread.
  */
 public final class AgentEngine implements AutoCloseable {
-    private final AgentSettings settings;
+    private final AgentConfig settings;
     private final AgentStore store;
     private final ModelGateway model;
     private final ToolRegistry tools = new ToolRegistry();
@@ -46,17 +48,16 @@ public final class AgentEngine implements AutoCloseable {
     private final List<Consumer<UUID>> revokeListeners = new CopyOnWriteArrayList<>();
     private final ConversationService conversations = new ConversationService(this);
 
-    public AgentEngine(AgentSettings settings, AgentStore store, ModelClient model) {
-        settings.validate();
+    public AgentEngine(AgentConfig settings, SemanticConfig semantic, CommerceCatalog catalog, AgentStore store, ModelClient model) {
         this.settings = settings;
         this.store = store;
         this.model = new ModelGateway(model);
-        this.catalog = CommerceCatalog.create(settings.rewards, settings.shopOffers);
-        this.modelSlots = new Semaphore(settings.concurrentModels, true);
-        this.router = new HybridRouter(this);
+        this.catalog = Objects.requireNonNull(catalog);
+        this.modelSlots = new Semaphore(settings.concurrentModels(), true);
+        this.router = new HybridRouter(this, semantic);
     }
 
-    public AgentSettings settings() {
+    public AgentConfig settings() {
         return this.settings;
     }
 
@@ -81,11 +82,9 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     public void start() {
-        for (String id : this.settings.policies.keySet())
-            if (this.modules.get(Identifier.tryParse(id)) == null) throw new IllegalArgumentException("Unknown policy module " + id);
-        for (AgentSettings.EventRule rule : this.settings.advancementRules)
-            if (!this.modules.call(rule.call()).module().descriptor().event())
-                throw new IllegalArgumentException("Unknown event module " + rule.moduleId());
+        for (String id : this.settings.policies().keySet())
+            if (this.modules.get(Identifier.tryParse(id)) == null)
+                throw new IllegalArgumentException("Unknown policy module " + id);
         this.router.start();
     }
 
@@ -129,7 +128,8 @@ public final class AgentEngine implements AutoCloseable {
     AgentStore playerStore(UUID player, long incarnation) {
         return new AgentStore() {
             private void check(UUID requested) {
-                if (!player.equals(requested) || !AgentEngine.this.current(player, incarnation)) throw new AgentException("CANCELLED");
+                if (!player.equals(requested) || !AgentEngine.this.current(player, incarnation))
+                    throw new AgentException("CANCELLED");
             }
 
             @Override
@@ -191,6 +191,15 @@ public final class AgentEngine implements AutoCloseable {
         });
     }
 
+    /**
+     * Deletes the current player file without attempting to decode it, then reports a reset result.
+     * This is intentionally separate from migration: malformed files are discarded explicitly by an administrator.
+     */
+    public CompletionStage<AgentResult> reset(UUID player) {
+        return this.revoke(player).thenApply(result ->
+                "SUCCEEDED".equals(result.status()) ? AgentResult.ok("system.result.reset") : result);
+    }
+
     public ModelGateway model() {
         return this.model;
     }
@@ -240,7 +249,7 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     ExecutionPolicy policy(AgentModule<?> module) {
-        return this.settings.policies.getOrDefault(module.descriptor().id().toString(), module.descriptor().policy());
+        return this.settings.policies().getOrDefault(module.descriptor().id().toString(), module.descriptor().policy());
     }
 
     public CompletionStage<AgentResult> submit(UUID player, String requestId, TypedPayload<?> input, String text) {

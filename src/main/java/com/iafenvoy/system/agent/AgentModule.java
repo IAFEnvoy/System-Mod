@@ -2,10 +2,11 @@ package com.iafenvoy.system.agent;
 
 import com.google.gson.JsonObject;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
+import net.minecraft.resources.Identifier;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import net.minecraft.resources.Identifier;
 
 /**
  * Modules are trusted Java extensions. This interface is not a sandbox.

@@ -1,16 +1,18 @@
 package com.iafenvoy.system.speech.asr;
 
-import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.config.RecognitionSettings;
+import com.iafenvoy.system.config.file.RecognitionConfig;
+import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.speech.AsrProviders;
 import com.iafenvoy.system.speech.SpeechException;
-import com.iafenvoy.system.screen.gui.AssistantInputScreen;
-import java.util.concurrent.*;
-import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 
-/** Each input screen owns one microphone/request session; callbacks cannot escape that screen or connection. */
+import java.util.concurrent.*;
+import java.util.function.Consumer;
+
+/**
+ * Each input screen owns one microphone/request session; callbacks cannot escape that screen or connection.
+ */
 public final class AssistantRecognition {
     private static final ThreadPoolExecutor WORKER = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS,
             new ArrayBlockingQueue<>(1), runnable -> {
@@ -18,7 +20,6 @@ public final class AssistantRecognition {
         thread.setDaemon(true);
         return thread;
     });
-    private static RecognitionSettings settings;
 
     static {
         WORKER.allowCoreThreadTimeOut(true);
@@ -27,27 +28,18 @@ public final class AssistantRecognition {
     private AssistantRecognition() {
     }
 
-    public static RecognitionSettings settings() {
-        if (settings == null) {
-            try {
-                settings = RecognitionSettings.load();
-            } catch (Exception error) {
-                settings = RecognitionSettings.defaults();
-                SystemMod.LOGGER.warn("Unable to load local recognition configuration");
-            }
-        }
-        return settings;
+    public static RecognitionConfig settings() {
+        return RecognitionConfig.INSTANCE.get();
     }
 
-    public static void configure(RecognitionSettings next) throws Exception {
-        if (!RecognitionSettings.REGIONS.contains(next.region())) throw new SpeechException("region");
+    public static void configure(RecognitionConfig next) throws Exception {
+        if (!RecognitionConfig.REGIONS.contains(next.region())) throw new SpeechException("region");
         if (next.enabled()) {
             try (AsrProvider provider = AsrProviders.create(next.provider())) {
                 provider.validate(next.request());
             }
         }
-        next.save();
-        settings = next;
+        RecognitionConfig.INSTANCE.set(next);
     }
 
     public static final class Session implements AutoCloseable {
@@ -69,7 +61,7 @@ public final class AssistantRecognition {
         }
 
         public void start() {
-            RecognitionSettings current = settings();
+            RecognitionConfig current = settings();
             WORKER.purge();
             this.pending = WORKER.submit(() -> {
                 RecognitionUsageTracker accounting = new RecognitionUsageTracker(current);
@@ -113,7 +105,8 @@ public final class AssistantRecognition {
 
         private void update(Runnable action) {
             this.minecraft.execute(() -> {
-                if (!this.closed && this.minecraft.screen == this.owner && this.minecraft.getConnection() == this.connection) action.run();
+                if (!this.closed && this.minecraft.screen == this.owner && this.minecraft.getConnection() == this.connection)
+                    action.run();
             });
         }
 

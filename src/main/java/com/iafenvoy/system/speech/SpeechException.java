@@ -1,6 +1,8 @@
 package com.iafenvoy.system.speech;
 
-/** A safe local status code; upstream response bodies and signed URLs never reach UI or logs. */
+/**
+ * A safe local status code; upstream response bodies and signed URLs never reach UI or logs.
+ */
 public final class SpeechException extends Exception {
     private final String code;
 

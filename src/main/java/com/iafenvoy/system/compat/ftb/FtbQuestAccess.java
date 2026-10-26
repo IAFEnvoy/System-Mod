@@ -4,25 +4,23 @@ import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
-import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestPageOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestRewardOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestTaskOutput;
-import com.iafenvoy.system.agent.builtin.output.SectionPageOutput;
+import com.iafenvoy.system.agent.builtin.output.*;
 import com.iafenvoy.system.runtime.server.MinecraftTools;
-import com.iafenvoy.system.util.Json;
+import com.iafenvoy.system.util.MiscUtil;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.quest.loot.WeightedReward;
 import dev.ftb.mods.ftbquests.quest.reward.ChoiceReward;
 import dev.ftb.mods.ftbquests.quest.reward.Reward;
 import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.server.level.ServerPlayer;
 
-/** Shared quest pages and reward references; operations are separate single-purpose tools. */
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Shared quest pages and reward references; operations are separate single-purpose tools.
+ */
 final class FtbQuestAccess {
     static final int PAGE_SIZE = 8;
     final MinecraftTools game;
@@ -56,8 +54,8 @@ final class FtbQuestAccess {
         List<Quest> selected = matches.stream().skip(offset).limit(PAGE_SIZE).toList();
         List<QuestBriefOutput> quests = new ArrayList<>();
         for (Quest quest : selected)
-            quests.add(new QuestBriefOutput(quests.size() + 1, hex(quest.getId()), Json.clip(quest.getTitle().getString(), 256),
-                    Json.clip(quest.getChapter().getTitle().getString(), 128), team.getRelativeProgress(quest)));
+            quests.add(new QuestBriefOutput(quests.size() + 1, hex(quest.getId()), MiscUtil.clip(quest.getTitle().getString(), 256),
+                    MiscUtil.clip(quest.getChapter().getTitle().getString(), 128), team.getRelativeProgress(quest)));
         long now = System.currentTimeMillis();
         pages.values().removeIf(value -> value.expires < now);
         if (!pages.containsKey(context.player()) && pages.size() >= 4096) throw new AgentException("BUSY");
@@ -84,7 +82,7 @@ final class FtbQuestAccess {
             boolean hasMoreChoices = false;
             if (reward instanceof ChoiceReward choice && choice.getTable() != null) {
                 choices = Optional.of(choice.getTable().getWeightedRewards().stream().skip(choiceOffset).limit(8)
-                        .map(candidate -> Json.clip(candidate.getReward().getTitle().getString(), 256)).toList());
+                        .map(candidate -> MiscUtil.clip(candidate.getReward().getTitle().getString(), 256)).toList());
                 hasMoreChoices = choice.getTable().getWeightedRewards().size() > choiceOffset + choices.get().size();
             }
             Optional<String> claimRef = Optional.empty();
@@ -96,16 +94,16 @@ final class FtbQuestAccess {
                 claimRef = Optional.of(reference);
                 owned++;
             } else if (claimable) claimable = false;
-            rewards.add(new QuestRewardOutput(hex(reward.getId()), Json.clip(reward.getTitle().getString(), 256), claimable,
+            rewards.add(new QuestRewardOutput(hex(reward.getId()), MiscUtil.clip(reward.getTitle().getString(), 256), claimable,
                     team.getClaimType(player.getUUID(), reward).name(), choices, choices.isPresent() ? choiceOffset : 0, hasMoreChoices, claimRef));
         }
         List<QuestTaskOutput> tasks = quest.getTasksAsList().stream().skip(taskOffset).limit(12)
-                .map(task -> new QuestTaskOutput(Json.clip(task.getTitle().getString(), 256), team.getProgress(task), task.getMaxProgress())).toList();
+                .map(task -> new QuestTaskOutput(MiscUtil.clip(task.getTitle().getString(), 256), team.getProgress(task), task.getMaxProgress())).toList();
         String description = String.join("\n", quest.getRawDescription());
         int start = Math.min(descriptionOffset, description.length());
         int end = start + Math.min(2048, description.length() - start);
-        return new QuestOutput(hex(quest.getId()), Json.clip(quest.getTitle().getString(), 256),
-                Json.clip(quest.getChapter().getTitle().getString(), 128), description.substring(start, end),
+        return new QuestOutput(hex(quest.getId()), MiscUtil.clip(quest.getTitle().getString(), 256),
+                MiscUtil.clip(quest.getChapter().getTitle().getString(), 128), description.substring(start, end),
                 team.getRelativeProgress(quest), team.isCompleted(quest), tasks, rewards,
                 new SectionPageOutput(rewardOffset, rewardOffset + rewards.size(), visibleRewards > rewardOffset + rewards.size()),
                 new SectionPageOutput(taskOffset, taskOffset + tasks.size(), quest.getTasksAsList().size() > taskOffset + tasks.size()),
@@ -120,7 +118,7 @@ final class FtbQuestAccess {
     }
 
     record RewardReference(UUID player, UUID team, long quest, long reward, long completedAt,
-                                   Quest questVersion, Reward rewardVersion, int choiceVersion, long expires) {
+                           Quest questVersion, Reward rewardVersion, int choiceVersion, long expires) {
     }
 
     static int choiceVersion(Reward reward) {

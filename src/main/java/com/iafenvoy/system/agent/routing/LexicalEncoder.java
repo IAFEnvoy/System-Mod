@@ -1,7 +1,8 @@
 package com.iafenvoy.system.agent.routing;
 
-import com.iafenvoy.system.util.CodecIO;
+import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.serialization.Codec;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -30,7 +31,7 @@ final class LexicalEncoder {
                     Codec.unboundedMap(Codec.STRING, Codec.STRING.listOf()));
             byte[] bytes = stream.readNBytes(131073);
             if (bytes.length > 131072) throw new IOException("Routing lexicon exceeds byte limit");
-            Map<String, Map<String, List<String>>> root = CodecIO.parse(codec, new String(bytes, StandardCharsets.UTF_8), 131072);
+            Map<String, Map<String, List<String>>> root = CodecIO.parse(codec, new String(bytes, StandardCharsets.UTF_8));
             Map<String, List<Alias>> languages = new HashMap<>();
             for (Map.Entry<String, Map<String, List<String>>> language : root.entrySet()) {
                 List<Alias> words = new ArrayList<>();

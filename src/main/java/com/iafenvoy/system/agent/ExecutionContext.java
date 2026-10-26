@@ -9,23 +9,19 @@ import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.routing.RouteSource;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.config.AgentSettings;
-import com.iafenvoy.system.util.CodecIO;
+import com.iafenvoy.system.config.file.AgentConfig;
+import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -85,7 +81,8 @@ public final class ExecutionContext {
         this.policy = value;
         // Routing time remains charged, but selecting a slow module may use its own deadline.
         this.expires = this.started + value.ttlMillis();
-        if (this.models > value.modelCalls() || this.tokens > value.totalTokens()) throw new AgentException("BUDGET_EXCEEDED");
+        if (this.models > value.modelCalls() || this.tokens > value.totalTokens())
+            throw new AgentException("BUDGET_EXCEEDED");
     }
 
     public UUID player() {
@@ -143,7 +140,7 @@ public final class ExecutionContext {
         return this.store;
     }
 
-    public AgentSettings settings() {
+    public AgentConfig settings() {
         return this.engine.settings();
     }
 
@@ -201,26 +198,29 @@ public final class ExecutionContext {
     public <I, O> O model(String instruction, MapCodec<I> inputCodec, I input, Codec<O> outputCodec) throws Exception {
         // Enforce consent, quotas and concurrency here; the gateway owns HTTP and actual usage accounting.
         this.check();
-        if (++this.steps > this.policy.steps() || this.models >= this.policy.modelCalls()) throw new AgentException("BUDGET_EXCEEDED");
+        if (++this.steps > this.policy.steps() || this.models >= this.policy.modelCalls())
+            throw new AgentException("BUDGET_EXCEEDED");
         String content = CodecIO.write(ModelInput.codec(inputCodec), new ModelInput<>(input, new RequestContext(this.language)));
         // Reserve input bytes conservatively as tokens; this execution budget is separate from billed usage.
-        int estimated = instruction.getBytes(StandardCharsets.UTF_8).length + content.getBytes(StandardCharsets.UTF_8).length;
-        if (estimated > this.policy.inputBytes() || this.tokens + estimated + this.policy.outputTokens() > this.policy.totalTokens())
+        long inputBytes = (long) instruction.getBytes(StandardCharsets.UTF_8).length + content.getBytes(StandardCharsets.UTF_8).length;
+        if (inputBytes > this.policy.inputBytes() || this.tokens + inputBytes + this.policy.outputTokens() > this.policy.totalTokens())
             throw new AgentException("BUDGET_EXCEEDED");
+        int estimated = (int) inputBytes;
         long wait = Math.min(this.policy.modelTimeoutMillis(), this.remainingMillis());
         if (!this.engine.modelSlots().tryAcquire(wait, TimeUnit.MILLISECONDS)) throw new AgentException("BUSY");
         try {
             this.check();
             this.store().update(this.player, data -> {
-                if (!data.externalModel || (!this.isEvent() && data.memoryEpoch != this.memoryEpoch))
+                if (!data.externalModel || (!this.isEvent() && data.conversation.memoryEpoch != this.memoryEpoch))
                     throw new AgentException("MODEL_DISABLED");
-                String day = LocalDate.now(ZoneId.of(this.settings().timeZone)).toString();
-                if (!day.equals(data.usageDate)) {
-                    data.usageDate = day;
-                    data.usedModelCalls = 0;
+                String day = LocalDate.now(ZoneId.of(this.settings().timeZone())).toString();
+                if (!day.equals(data.modelQuota.usageDate)) {
+                    data.modelQuota.usageDate = day;
+                    data.modelQuota.usedModelCalls = 0;
                 }
-                if (data.usedModelCalls >= this.settings().modelCallsPerPlayerDay) throw new AgentException("RATE_LIMITED");
-                data.usedModelCalls++;
+                if (data.modelQuota.usedModelCalls >= this.settings().modelCallsPerPlayerDay())
+                    throw new AgentException("RATE_LIMITED");
+                data.modelQuota.usedModelCalls++;
                 return null;
             });
             this.models++;
@@ -234,7 +234,7 @@ public final class ExecutionContext {
             this.check();
             if (this.tokens > this.policy.totalTokens()) throw new AgentException("BUDGET_EXCEEDED");
             try {
-                return CodecIO.parse(outputCodec, reply.value(), 16384);
+                return CodecIO.parse(outputCodec, reply.value());
             } catch (RuntimeException error) {
                 throw new AgentException("MODEL_INVALID");
             }
@@ -260,7 +260,7 @@ public final class ExecutionContext {
     public <I, O> O tool(ToolRegistry.Type<I, O> type, String stepId, I input) throws Exception {
         this.check();
         this.ensureMemoryCurrent();
-        if (stepId == null || !stepId.matches("[a-zA-Z0-9_./-]{1,80}")) throw new AgentException("INVALID_INPUT");
+        if (!stepId.matches("[a-zA-Z0-9_./-]+")) throw new AgentException("INVALID_INPUT");
         String id = type.id();
         if (this.module == null || !this.module.tools().contains(id)) throw new AgentException("NOT_AUTHORIZED");
         ToolRegistry.Tool<I, O> tool = this.engine.tools().require(type);
@@ -320,7 +320,7 @@ public final class ExecutionContext {
 
     public void ensureMemoryCurrent() {
         this.check();
-        if (!this.isEvent() && this.store().read(this.player, data -> data.memoryEpoch) != this.memoryEpoch)
+        if (!this.isEvent() && this.store().read(this.player, data -> data.conversation.memoryEpoch) != this.memoryEpoch)
             throw new AgentException("CANCELLED");
     }
 

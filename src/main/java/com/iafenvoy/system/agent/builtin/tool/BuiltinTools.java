@@ -1,29 +1,14 @@
 package com.iafenvoy.system.agent.builtin.tool;
 
 import com.iafenvoy.system.agent.ToolRegistry;
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
-import com.iafenvoy.system.agent.builtin.input.EntitlementInput;
-import com.iafenvoy.system.agent.builtin.input.FeatureInput;
-import com.iafenvoy.system.agent.builtin.input.ItemQueryInput;
-import com.iafenvoy.system.agent.builtin.input.QuestClaimInput;
-import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
-import com.iafenvoy.system.agent.builtin.input.QuestQueryInput;
-import com.iafenvoy.system.agent.builtin.input.RewardCreditInput;
-import com.iafenvoy.system.agent.builtin.input.ShopPurchaseInput;
-import com.iafenvoy.system.agent.builtin.input.SignInCreditInput;
-import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
-import com.iafenvoy.system.agent.builtin.output.FeatureOutput;
-import com.iafenvoy.system.agent.builtin.output.ItemPageOutput;
-import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
-import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestClaimOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestLookupOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestPageOutput;
-import com.iafenvoy.system.agent.builtin.output.RewardOutput;
-import com.iafenvoy.system.agent.builtin.output.StateOutput;
+import com.iafenvoy.system.agent.builtin.input.*;
+import com.iafenvoy.system.agent.builtin.output.*;
+
 import java.util.List;
 
-/** Stable typed keys shared by workflows and platform implementations; no game classes are referenced. */
+/**
+ * Stable typed keys shared by workflows and platform implementations; no game classes are referenced.
+ */
 public final class BuiltinTools {
     public static final ToolRegistry.Type<EmptyInput, PlayerSnapshotOutput> PLAYER =
             new ToolRegistry.Type<>("game.player", EmptyInput.CODEC, PlayerSnapshotOutput.CODEC);

@@ -3,11 +3,7 @@ package com.iafenvoy.system.util;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.net.http.WebSocket;
-import java.net.http.WebSocketHandshakeException;
+import java.net.http.*;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -27,11 +23,12 @@ public final class HttpTransport implements AutoCloseable {
     }
 
     public HttpTransport(Duration connectTimeout) {
-        this.client = HttpClient.newBuilder().connectTimeout(connectTimeout)
-                .followRedirects(HttpClient.Redirect.NEVER).build();
+        this.client = HttpClient.newBuilder().connectTimeout(connectTimeout).followRedirects(HttpClient.Redirect.NEVER).build();
     }
 
-    /** Use the same client lifecycle and interruptible deadline for streaming speech protocols. */
+    /**
+     * Use the same client lifecycle and interruptible deadline for streaming speech protocols.
+     */
     public WebSocket webSocket(URI endpoint, Map<String, String> headers, Duration timeout, WebSocket.Listener listener)
             throws IOException, InterruptedException, TimeoutException {
         WebSocket.Builder builder = this.client.newWebSocketBuilder().connectTimeout(timeout);
@@ -50,10 +47,8 @@ public final class HttpTransport implements AutoCloseable {
         }
     }
 
-    public HttpResponse<byte[]> postJson(URI endpoint, String json, Map<String, String> headers,
-                                         Duration timeout, int maxResponseBytes) throws IOException, InterruptedException, TimeoutException {
-        HttpRequest.Builder builder = HttpRequest.newBuilder(endpoint).timeout(timeout)
-                .header("Content-Type", "application/json");
+    public HttpResponse<byte[]> postJson(URI endpoint, String json, Map<String, String> headers, Duration timeout, int maxResponseBytes) throws IOException, InterruptedException, TimeoutException {
+        HttpRequest.Builder builder = HttpRequest.newBuilder(endpoint).timeout(timeout).header("Content-Type", "application/json");
         headers.forEach(builder::setHeader);
         return this.send(builder.POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8)).build(), maxResponseBytes);
     }
@@ -69,7 +64,9 @@ public final class HttpTransport implements AutoCloseable {
         return await(future, timeout);
     }
 
-    /** Delivers bounded chunks serially on an HTTP worker; the deadline still covers the entire stream. */
+    /**
+     * Delivers bounded chunks serially on an HTTP worker; the deadline still covers the entire stream.
+     */
     public HttpResponse<Void> stream(HttpRequest request, int maxResponseBytes, StreamConsumer consumer) throws IOException, InterruptedException, TimeoutException {
         Objects.requireNonNull(request);
         Objects.requireNonNull(consumer);

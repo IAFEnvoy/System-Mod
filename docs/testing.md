@@ -1,5 +1,55 @@
 # 编译与验收
 
+## 2026-10-26 成就规则使用 Identifier
+
+执行 `compileJava testModClasses --console=plain`，主源码和开发源集编译通过；没有运行测试或启动 Minecraft。阅读代码确认：`AdvancementRule` 的规则 ID 与成就 ID 改为 `Identifier`，使用原版 Codec 解析，移除手写正则；登录完成状态、待处理成就事件和已启用基线缓存使用该类型，查询成就不再重复解析。持久化键、事件任务入口与模块参数按原有文本格式转换，配置 JSON 结构不变；缺失或无效的 ID 不生成默认规则，仍由外层 `rules` 的 lenient 字段回退。游戏内事件触发与配置容错未作运行验收。
+
+## 2026-10-26 移除任意上限与重复校验
+
+执行 `compileJava testModClasses jar --console=plain`，主源码、开发源集编译及打包通过；`testModClasses` 只编译开发源集。发布 JAR 为 805,695 字节。静态检查确认中英文各 376 个语言键且集合一致，`git diff --check` 通过。
+
+阅读代码确认：模块、语义 profile、指令别名、成就规则、例句、提示词和收费表不再受 128/256 等任意数量上限约束；移除对应的资源大小及元数据长度限制。执行策略只检查非负次数、正数预算和超时关系，具体预算由模块或管理员决定；缓存仍按配置容量和 TTL 淘汰。查询输入使用通用字符串与非负分页偏移，不在指令解析器、模块和工具中重复限制查询长度。配置错误通过 Codec 返回，字段继续使用 `lenientOptionalFieldOf`；引擎与平台启动不再重复校验同一份配置。
+
+商城取消包数量、包内条目数量、标签长度和固定 64 数量上限，产出在资源加载时按物品自身的堆叠上限校验；付款材料支持跨堆扣除，重复材料使用 `long` 合并数量。重复 ID、类型身份、权限、玩家隔离、支付状态、实际执行预算、网络长度和分页边界继续保留。未运行测试、启动 Minecraft、创建存档或调用外部 API；大规模目录、配置容错及游戏内交付未作运行验收。
+
+## 2026-10-26 请求分派与网络编码统一
+
+执行 `compileJava testModClasses jar --console=plain`，主源码、开发源集构建及打包通过；`testModClasses` 只构建开发源集。静态检查确认：请求和响应通过 `DispatchRegistry` 的 `Codec.dispatch` 编解码，网络 `StreamCodec` 直接携带对象；已删除 `AgentRequest.decode`、`mode/encodedInput` 和拆开的 C2S 字符串字段。通知、绑定变更和导航不再使用特殊请求 ID，用量响应使用独立 `open` 标志。网络协议更新为 3。
+
+阅读调用链确认：请求执行、结果投影、卡片展示与口播改用类型处理 Map；模型候选只从可选模块建立 Codec Map，任务查询结果使用命名类型。限流、绑定检查、异步连接代次检查、结果长度限制继续共用入口；打开界面响应关联并完成原请求，导航不占用随后状态刷新的限流间隔。NLS 事件和错误码使用 Map，仍校验 task ID、namespace 与文本长度。
+
+静态检查确认中英文各 376 个语言键且集合一致，Java 包路径及文档本地链接有效，`git diff --check` 通过。发布 JAR 为 811,210 字节，包含新的请求、响应及分派类型，不含开发数据包资源。未运行测试、启动 Minecraft、创建存档或调用外部 API；实际网络往返、类型静态初始化、界面交互及语音行为尚未作运行验收。
+
+## 2026-10-26 配置重载与目录入口收拢
+
+执行 `compileJava testModClasses jar --console=plain`，主源码、开发源集编译与打包通过；`testModClasses` 只编译开发源集。静态检查确认：语音页使用 `SpeechConfig.INSTANCE.load()` 重读 `system-speech.json` 并刷新本页草稿；重载按钮不依赖 API Key。TTS 缓存固定使用 `ConfigInstance.getConfigFolder().resolve("tts-cache")`，已移除 `SystemConfig` 和独立音色导入逻辑。
+
+中英文各 376 个语言键且集合一致，Python 工具语法检查和 `git diff --check` 通过。发布 JAR 包含新的重载按钮及双语文案，不含 `SystemConfig`、`SpeechConfig$VoiceProfile` 或开发数据包资源，大小为 784,463 字节。未运行测试、启动 Minecraft 或调用外部 API；配置重载和界面交互尚未作游戏内验收。
+
+## 2026-10-26 PlayerData 与 RecordCodecBuilder
+
+执行 `compileJava testModClasses jar --console=plain`，主源码、开发源集编译与打包通过；`testModClasses` 只编译开发源集。阅读代码确认：对话状态及回放缓存归入 `Conversation`，每日模型调用额度归入 `ModelQuota`；顶层构建参数从 17 项缩减为 13 项，两个内联 MapCodec 使用原有字段名。交付、事件、步骤回执和订单同步改用 `RecordCodecBuilder`，已移除无调用的 `ObjectCodec`。静态检查确认中英文各 377 个语言键且集合一致，`git diff --check` 通过；发布 JAR 包含两个新分组，不含 `ObjectCodec` 或开发数据包资源。
+
+解码时为列表、映射、基线集合和解锁集合创建独立可变容器；清空对话和关闭历史复用 `Conversation.clear()` 推进记忆代次。相关读取、写入、保留策略、在途代次检查和每日额度判断已同步。这里只作静态检查与编译，没有运行测试、启动 Minecraft、创建存档或调用外部 API；存档读写与游戏内行为未作运行验收。
+
+## 2026-10-26 ConfigInstance 与变更标记统一
+
+执行 `compileJava testModClasses jar --console=plain`，最新主源码、开发源集编译与打包通过；`testModClasses` 只编译开发源集。
+
+静态检查确认八种配置均采用 `AdvancementSettings` 的 `ConfigInstance<T> INSTANCE` 写法，读取统一使用 `get()`，界面模式、TTS、ASR 的已提交修改调用 `set(next)` 并自动 `markDirty()`；旧独立加载、保存入口已移除。中英文各 377 个语言键且集合一致，`git diff --check` 通过。
+
+阅读代码确认：资源重载更新已注册容器，tick 与关闭事件保存待写配置；检查标记与保存共用实例锁，失败恢复标记，重载先保存未落盘的改动。客户端事件放在独立客户端订阅类中。服务端引擎、模型连接和成就事件仍持有启动时快照，需要重启完整应用修改。
+
+本轮未运行测试、未启动 Minecraft、未调用模型或语音 API；默认文件复制、重载和延迟保存的实际运行行为尚未验收。下文为此前版本的历史检查记录。
+
+## 2026-10-26 数据包目录与配置拆分
+
+执行 `compileJava testModClasses jar --console=plain`，主源码、开发源集编译与打包通过；`testModClasses` 只编译开发源集。静态检查确认：`AgentSettings` 仅含执行预算、限额、并发和时区；模型连接、语义路由与成就规则分别使用独立配置文件。配置使用 `RecordCodecBuilder`、record getter 与 `lenientOptionalFieldOf`，各配置类管理 `INSTANCE`，统一通过 `ConfigLoader.load(path, codec)` 复制缺失的默认文件并解析。客户端服务不再保存重复的设置对象，收费表也复用同一加载入口。
+
+奖励和商品仅从数据包加载，三个默认签到奖励和一个默认商品均为内置 JSON；没有配置列表兜底。默认资源、示例 JSON 和文档本地链接静态检查通过；发布 JAR 包含八份配置默认文件和四个商品/奖励条目，不含开发源集资源及旧 `AgentSettings.EventRule` 类。中英文语言键未改动。
+
+本轮未运行测试、未启动 Minecraft、未调用模型或语音 API；配置容错、默认文件复制及数据包热重载的实际运行行为尚未验收。
+
 ## 2026-10-26 Agent 分包简化
 
 执行 `compileJava testModClasses jar --console=plain`，主源码与开发源集编译、打包通过。静态检查确认：Agent 根包集中执行与注册职责，领域接口、数据和实现合并到同一包；内置输入输出仍为独立类型。七个 Codec/Schema/JSON 工具移至 `com.iafenvoy.system.util`，包名与目录一致，源码与发布 JAR 均无旧 `api/data/registry/runtime/util/command` Agent 子包引用或类。发布 JAR 为 790,191 字节，低于 10 MB。指令注册修改方法保留包内访问权限。

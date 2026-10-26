@@ -5,9 +5,12 @@ import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
 import com.iafenvoy.system.runtime.server.MinecraftTools;
+
 import java.util.concurrent.CompletionStage;
 
-/** Reads one current player snapshot on the bounded game-thread queue. */
+/**
+ * Reads one current player snapshot on the bounded game-thread queue.
+ */
 public record PlayerQueryTool(MinecraftTools game) implements ToolRegistry.Handler<EmptyInput, PlayerSnapshotOutput> {
     public ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.PLAYER, false, true, true, this);

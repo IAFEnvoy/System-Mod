@@ -2,11 +2,11 @@ package com.iafenvoy.system.event.client;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.runtime.client.AssistantClient;
-import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
 import com.iafenvoy.system.screen.gui.AssistantSimpleScreen;
+import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -20,7 +20,9 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.lwjgl.glfw.GLFW;
 
-/** A remappable hold key owns one existing screen session; release finishes, navigation cancels. */
+/**
+ * A remappable hold key owns one existing screen session; release finishes, navigation cancels.
+ */
 @EventBusSubscriber(Dist.CLIENT)
 public final class AssistantRecognitionKeys {
     private static final KeyMapping.Category CATEGORY = new KeyMapping.Category(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "assistant"));
@@ -87,7 +89,8 @@ public final class AssistantRecognitionKeys {
             }
             AssistantClient.open(AssistantClient.simpleMode(), "");
         }
-        if (!(minecraft.screen instanceof AssistantScreen || minecraft.screen instanceof AssistantSimpleScreen)) return false;
+        if (!(minecraft.screen instanceof AssistantScreen || minecraft.screen instanceof AssistantSimpleScreen))
+            return false;
         AssistantInputScreen screen = (AssistantInputScreen) minecraft.screen;
         if (!screen.startRecognition()) return false;
         owner = screen;

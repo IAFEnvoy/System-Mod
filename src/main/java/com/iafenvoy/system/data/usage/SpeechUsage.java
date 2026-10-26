@@ -1,17 +1,21 @@
 package com.iafenvoy.system.data.usage;
 
+import com.iafenvoy.system.config.file.SpeechPricingConfig;
 import com.iafenvoy.system.speech.tts.TtsProvider;
-import com.iafenvoy.system.config.AliyunSpeechPricing;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.netty.buffer.ByteBuf;
-import java.util.Objects;
-import java.util.OptionalLong;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+
+import java.util.Objects;
+import java.util.OptionalLong;
+
 import static com.iafenvoy.system.data.usage.TokenUsage.add;
 
-/** Immutable client-reported TTS totals, stored beside server-observed AI tokens in the world ledger. */
+/**
+ * Immutable client-reported TTS totals, stored beside server-observed AI tokens in the world ledger.
+ */
 public record SpeechUsage(long characters, TokenUsage tokens, long calls, long failedCalls,
                           long unreportedCalls, long estimatedNanoYuan, long unpricedCalls) {
     public static final SpeechUsage EMPTY = new SpeechUsage(0, TokenUsage.EMPTY, 0, 0, 0, 0, 0);
@@ -46,7 +50,7 @@ public record SpeechUsage(long characters, TokenUsage tokens, long calls, long f
     }
 
     public SpeechUsage complete(String provider, String model, String region, TtsProvider.Usage usage, boolean successful) {
-        OptionalLong price = AliyunSpeechPricing.estimate(provider, model, region, usage);
+        OptionalLong price = SpeechPricingConfig.estimate(provider, model, region, usage);
         TokenUsage tokens = new TokenUsage(usage.inputTokens(), usage.outputTokens(), usage.totalTokens(), 0);
         return new SpeechUsage(add(this.characters, usage.characters()), this.tokens.merge(tokens), this.calls,
                 add(this.failedCalls, successful ? 0 : 1), this.unreportedCalls - (usage.reported() ? 1 : 0),

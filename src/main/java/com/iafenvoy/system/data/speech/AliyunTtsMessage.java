@@ -1,15 +1,18 @@
 package com.iafenvoy.system.data.speech;
 
 import com.iafenvoy.system.speech.tts.TtsProvider;
-import com.iafenvoy.system.util.AgentCodecs;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.util.ExtraCodecs;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/** DashScope wire DTOs; optional fields preserve Qwen3 and Qwen-Audio request differences. */
+/**
+ * DashScope wire DTOs; optional fields preserve Qwen3 and Qwen-Audio request differences.
+ */
 public final class AliyunTtsMessage {
     private static final Map<String, String> HINTS = Map.of("Chinese", "zh", "English", "en", "German", "de",
             "Italian", "it", "Portuguese", "pt", "Spanish", "es", "Japanese", "ja", "Korean", "ko", "French", "fr", "Russian", "ru");
@@ -66,8 +69,9 @@ public final class AliyunTtsMessage {
         ).apply(i, Response::new));
     }
 
-    public record Billing(Optional<Long> characters, Optional<Long> input, Optional<Long> output, Optional<Long> total) {
-        private static final Codec<Long> COUNT = AgentCodecs.NON_NEGATIVE_LONG.validate(v -> v <= 1_000_000
+    public record Billing(Optional<Long> characters, Optional<Long> input, Optional<Long> output,
+                          Optional<Long> total) {
+        private static final Codec<Long> COUNT = ExtraCodecs.NON_NEGATIVE_LONG.validate(v -> v <= 1_000_000
                 ? DataResult.success(v) : DataResult.error(() -> "Oversized billing count"));
         public static final Codec<Billing> CODEC = RecordCodecBuilder.create(i -> i.group(
                 COUNT.optionalFieldOf("characters").forGetter(Billing::characters),

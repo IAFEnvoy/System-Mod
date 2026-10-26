@@ -5,7 +5,8 @@ import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
 import com.iafenvoy.system.runtime.client.AssistantClient;
 import com.iafenvoy.system.screen.gui.AssistantView;
-import com.iafenvoy.system.util.Json;
+import com.iafenvoy.system.util.MiscUtil;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -39,7 +40,7 @@ public final class AssistantCommandSuggestions {
             int index = 1;
             for (AgentResult.Card card : result.cards()) {
                 for (AgentResult.Action action : card.actions()) {
-                    String hint = Json.clip(AssistantView.actionLabel(card, action), 96);
+                    String hint = MiscUtil.clip(AssistantView.actionLabel(card, action), 96);
                     add(candidates, input, prefix + "select " + index, hint);
                     add(candidates, input, prefix + "选择 " + index++, hint);
                 }
@@ -58,7 +59,7 @@ public final class AssistantCommandSuggestions {
 
     private static void add(Map<String, Suggestion> candidates, String input, String value, String hint) {
         value = value.replace('\r', ' ').replace('\n', ' ');
-        hint = Json.clip(hint.replace('\r', ' ').replace('\n', ' '), 96);
+        hint = MiscUtil.clip(hint.replace('\r', ' ').replace('\n', ' '), 96);
         if (!value.equals(input) && value.toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
             candidates.putIfAbsent(value, new Suggestion(value, hint));
     }

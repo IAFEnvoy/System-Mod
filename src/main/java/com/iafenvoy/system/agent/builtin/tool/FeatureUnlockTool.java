@@ -5,10 +5,13 @@ import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.FeatureInput;
 import com.iafenvoy.system.agent.builtin.output.FeatureOutput;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-/** Unlocks a validated feature ID for a trusted event workflow. */
+/**
+ * Unlocks a validated feature ID for a trusted event workflow.
+ */
 public final class FeatureUnlockTool implements ToolRegistry.Handler<FeatureInput, FeatureOutput> {
     public ToolRegistry.Tool<FeatureInput, FeatureOutput> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.FEATURE_UNLOCK, true, true, true, this);

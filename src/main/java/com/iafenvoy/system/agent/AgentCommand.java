@@ -5,15 +5,17 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Function;
 
-/** A module-local command declaration; the registry binds its typed arguments to the owning module. */
+/**
+ * A module-local command declaration; the registry binds its typed arguments to the owning module.
+ */
 public record AgentCommand<I>(List<String> names, String arguments, Function<String, I> parser) {
     public AgentCommand {
         names = List.copyOf(names);
-        if (names.isEmpty() || names.stream().anyMatch(name -> name.isBlank() || name.length() > 48 || name.equals("system") || name.contains("/")
+        if (names.isEmpty() || names.stream().anyMatch(name -> name.isBlank() || name.equals("system") || name.contains("/")
                 || name.chars().anyMatch(Character::isWhitespace) || !name.equals(name.toLowerCase(Locale.ROOT))))
             throw new IllegalArgumentException("Invalid command names");
         Objects.requireNonNull(arguments);
-        if (arguments.length() > 128 || arguments.contains("\n") || arguments.contains("\r"))
+        if (arguments.contains("\n") || arguments.contains("\r"))
             throw new IllegalArgumentException("Invalid command usage");
         Objects.requireNonNull(parser);
     }

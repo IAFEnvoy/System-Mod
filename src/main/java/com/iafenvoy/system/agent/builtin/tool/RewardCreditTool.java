@@ -6,10 +6,13 @@ import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.RewardCreditInput;
 import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
 import com.iafenvoy.system.agent.store.PlayerData;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-/** Credits a trusted event entitlement without overwriting an existing delivery. */
+/**
+ * Credits a trusted event entitlement without overwriting an existing delivery.
+ */
 public final class RewardCreditTool implements ToolRegistry.Handler<RewardCreditInput, CreditReceiptOutput> {
     public ToolRegistry.Tool<RewardCreditInput, CreditReceiptOutput> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.REWARD_CREDIT, true, true, true, this);

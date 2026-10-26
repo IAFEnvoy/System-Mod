@@ -4,7 +4,9 @@ import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Bounded scheduling and shutdown are shared by chat, durable events and store maintenance. */
+/**
+ * Bounded scheduling and shutdown are shared by chat, durable events and store maintenance.
+ */
 final class TaskExecutor implements AutoCloseable {
     private final ExecutorService workers;
     private final Set<CompletableFuture<?>> pending = ConcurrentHashMap.newKeySet();

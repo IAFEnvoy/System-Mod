@@ -3,10 +3,13 @@ package com.iafenvoy.system.agent;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
-import java.util.Objects;
 import net.minecraft.resources.Identifier;
 
-/** A type key binds a Java value to its codec without passing JSON between workflows. */
+import java.util.Objects;
+
+/**
+ * A type key binds a Java value to its codec without passing JSON between workflows.
+ */
 public record TypedPayload<T>(Type<T> type, T value) {
     public TypedPayload {
         Objects.requireNonNull(type);

@@ -5,22 +5,19 @@ import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.runtime.server.AssistantServer;
-import com.iafenvoy.system.util.Json;
+import com.iafenvoy.system.util.MiscUtil;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressEventData;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressType;
 import dev.ftb.mods.ftbquests.api.event.progress.QuestProgressEvent;
 import dev.ftb.mods.ftbquests.api.neoforge.FTBQuestsEvent;
-import dev.ftb.mods.ftbquests.quest.Chapter;
-import dev.ftb.mods.ftbquests.quest.Quest;
-import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
-import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
-import dev.ftb.mods.ftbquests.quest.TeamData;
-import java.util.*;
+import dev.ftb.mods.ftbquests.quest.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+
+import java.util.*;
 
 /**
  * Optional, server-thread FTB event bridge. Progress changes produce system messages without inference or rewards.
@@ -76,7 +73,8 @@ final class FtbQuestNotifications {
         List<Recipient> recipients = new ArrayList<>();
         for (ServerPlayer player : data.onlineMembers()) {
             Recipient previous = state.recipients.get(player.getUUID());
-            if (previous != null && previous.valid(runtime, this.file, state.team.getTeamId())) recipients.add(previous);
+            if (previous != null && previous.valid(runtime, this.file, state.team.getTeamId()))
+                recipients.add(previous);
         }
         if (recipients.isEmpty() || state.completed.size() >= MAX_COMPLETIONS_PER_TICK) return;
         state.completed.putIfAbsent(quest.getId(), new Completion(notification(quest, true), List.copyOf(recipients)));
@@ -128,14 +126,16 @@ final class FtbQuestNotifications {
                 Map<Long, Quest> available = this.available(team);
                 for (Completion completion : state.completed.values())
                     for (Recipient recipient : completion.recipients())
-                        if (recipient.valid(runtime, this.file, id)) runtime.notifyEvent(recipient.player(), completion.result());
+                        if (recipient.valid(runtime, this.file, id))
+                            runtime.notifyEvent(recipient.player(), completion.result());
                 if (!state.silent && state.locked == team.isLocked())
                     for (Map.Entry<Long, Quest> quest : available.entrySet()) {
                         if (state.available.contains(quest.getKey()) || team.isCompleted(quest.getValue())) continue;
                         AgentResult result = notification(quest.getValue(), false);
                         for (Recipient recipient : current.values()) {
                             if (!recipient.equals(state.recipients.get(recipient.player().getUUID()))) continue;
-                            if (recipient.valid(runtime, this.file, id)) runtime.notifyEvent(recipient.player(), result);
+                            if (recipient.valid(runtime, this.file, id))
+                                runtime.notifyEvent(recipient.player(), result);
                         }
                     }
                 state.available = Set.copyOf(available.keySet());
@@ -168,8 +168,8 @@ final class FtbQuestNotifications {
         String key = completed ? "system.result.quest_completed" : "system.result.quest_unlocked";
         String id = String.format(Locale.ROOT, "%016x", quest.getId());
         return new AgentResult("SUCCEEDED", key, "", List.of(new AgentResult.Card(key,
-                ResultTypes.QUEST_NOTICE.of(new ResultTypes.QuestNotice(Json.clip(quest.getTitle().getString(), 256),
-                        Json.clip(quest.getChapter().getTitle().getString(), 128))), List.of(
+                ResultTypes.QUEST_NOTICE.of(new ResultTypes.QuestNotice(MiscUtil.clip(quest.getTitle().getString(), 256),
+                        MiscUtil.clip(quest.getChapter().getTitle().getString(), 128))), List.of(
                 new AgentResult.Action("system.action.quest_detail", ResultTypes.QUEST_ACTION, QuestDetailInput.byId(id))))));
     }
 

@@ -4,6 +4,8 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力只需要声明�
 
 根包集中引擎、执行器、上下文、Module/Tool 契约、注册表、指令与请求结果。路由、模型、存储、商城和提示词分别归入 `routing`、`model`、`store`、`commerce`、`prompt`，各包同时包含自身的接口、数据与实现。内置 Module 位于 `builtin`，单行为工具及输入输出分别位于 `builtin.tool`、`builtin.input`、`builtin.output`。共用 Codec、Schema 和 JSON 工具直接位于外层 `com.iafenvoy.system.util`，配置位于 `com.iafenvoy.system.config`。
 
+执行配置、模型连接、语义路由与成就绑定分别由 `AgentSettings`、`ModelSettings`、`SemanticSettings`、`AdvancementSettings` 管理，各配置类保存 `ConfigInstance<T> INSTANCE`。容器统一复制缺失的默认文件并解析，读取使用 `INSTANCE.get()`，提交使用 `INSTANCE.set(next)` 并自动 `markDirty()`，由 tick 或关闭事件保存。资源重载会更新容器；引擎、模型客户端与 MC 事件桥接仍持有启动时快照，完整应用其变化需要重启。引擎接收执行配置、语义配置和已经过数据包校验的 `CommerceCatalog`；模型客户端只接收 `ModelSettings`，不再通过 `AgentSettings` 访问业务定义。
+
 ## 一次注册，多种入口
 
 `ModuleRegistry` 是当前服务器能力的来源。`engine.registerModule(module)` 同时处理：
@@ -46,7 +48,7 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力只需要声明�
 public ModuleRouting<ItemQueryInput> routing() {
     return ModuleRouting.<ItemQueryInput>defaults()
             .command(AgentCommand.argument("<query>", text ->
-                    new ItemQueryInput(CommandArguments.query(text, 128, true), 0),
+                    new ItemQueryInput(text, 0),
                     "item", "物品"))
             .semantic(RoutingProfile.read(text -> {
                 String id = CommandArguments.singleItemId(text);
@@ -88,4 +90,23 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 
 游戏聊天的 `/system <instruction>` 使用通用参数节点转发给同一 Agent 指令解析器，补全实时读取注册表。因此扩展不需要再改 Brigadier 指令树。平台仍单独负责 `grant`、`revoke`、`usage`、`routing`、`ask`、`simple` 和 `full`；扩展指令应避开这些名字及客户端本地控制别名。
 
-控制请求 `state/history/forget/preferences/open` 是界面与生命周期协议，保留有限的请求类型分派；新增业务能力通过 Module 注册，不往控制请求中继续添加业务分支。
+## 请求、响应与类型分派
+
+`AgentRequest.CODEC` 与 `AgentResponse.CODEC` 使用 `util.codec.DispatchRegistry`：注册 `Identifier` 和 `MapCodec<T>` 后取得类型键，实例的 `type()` 返回同一个键。编码和解码共用原版 `Codec.dispatch`；重复 ID、未知 ID 或伪造的同名类型键会被拒绝。注册在两端公共初始化阶段完成，定义中不能引用可选模组的类。
+
+以下 JSON 仅示意 Codec 结构；网络实际通过 `ByteBufCodecs.fromCodecWithRegistries` 编码类型对象：
+
+```jsonl
+{"type":"system:chat","text":"查看我的背包"}
+{"type":"system:invoke","call":{"moduleId":"system:player_query","input":{}}}
+{"type":"system:control","action":"STATE"}
+{"type":"system:preferences","history":true,"external":true}
+```
+
+响应类型为 `system:reply`、`system:notice`、`system:open` 和 `system:binding`。回复关联请求 UUID，通知直接进入消息队列；导航携带 `CURRENT/SIMPLE/FULL`，绑定变更携带 `BOUND/REVOKED/INVALIDATED`。请求 ID 只作关联，不再传递 `bound/open/event/revoked` 等操作字符串。网络协议为 3，两端需一起更新。
+
+服务端请求执行、客户端响应处理、卡片状态更新、任务列表来源、摘要投影、展示和口播使用 `util.TypeDispatch` 的类型处理 Map；控制动作、消息文案和 NLS 事件使用显式 Map。它们负责运行行为，不承担编解码。未注册的请求处理器报 `UNSUPPORTED`；通用卡片展示沿用默认格式，摘要和口播标题提取只读取已登记的数据。UI 动画、按键和播放状态机继续使用自身状态判断。
+
+任务查询的 `QuestLookupOutput` 按 `system:quest_page` / `system:quest_detail` 分派，不再用 `detail` 布尔值推断子类型。模型路由仍保留对外的 `capabilityId` 字段，解码 Map 只包含当前可选择的 Module 与 `clarify`，不会因共享输入类型存在就开放未安装模块。
+
+新增业务能力继续通过 Module 注册。若要新增协议请求，增加请求类型及其 `MapCodec` 注册，再在 `AssistantServer.registerRequests()` 登记执行处理器；新增响应时同步登记类型 Codec 和客户端处理器，不再增加字符串判断或类型 switch。类型实现保持无默认方法的接口，Codec 注册集中于嵌套 `Types`，避免子类静态初始化时递归读取尚未赋值的 Codec。

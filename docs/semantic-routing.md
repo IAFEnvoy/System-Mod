@@ -32,7 +32,7 @@
 
 ## 配置与升级
 
-首次生成的 `config/system/system-agent.json` 默认 `semantic.mode=ENFORCE`，直接使用内置小词表和例句，不需要额外部署步骤。完整示例见 [system-agent.json](../examples/agent/system-agent.json)。修改配置需要正常重启。
+首次生成的 `config/system/system-semantic.json` 默认 `mode=ENFORCE`，直接使用内置小词表和例句，不需要额外部署步骤。完整示例见 [system-semantic.json](../examples/agent/system-semantic.json)。修改配置需要正常重启。
 
 ```json
 {
@@ -49,7 +49,7 @@
 }
 ```
 
-上述是主配置中的 `semantic` 对象，不是整个配置文件。模块/语言的覆盖项可用 `lexicalThresholds["system:shop@zh"]={"score":0.95,"margin":0.2}`；语言级键优先于模块级键，未覆盖时使用 `defaultThreshold`。分数/分差范围 0..1，覆盖率范围 0.5..1。降低门槛会增加误路由，先用实际表达评估。
+上述是独立的 `system-semantic.json` 文件。模块/语言的覆盖项可用 `lexicalThresholds["system:shop@zh"]={"score":0.95,"margin":0.2}`；语言级键优先于模块级键，未覆盖时使用 `defaultThreshold`。分数/分差范围 0..1，覆盖率范围 0.5..1。降低门槛会增加误路由，先用实际表达评估。
 
 | 模式 | 行为 |
 | --- | --- |
@@ -73,9 +73,9 @@
 
 ## 扩展与诊断
 
-扩展在模块的 `routing()` 中声明 `ModuleRouting<I>`，然后在 `AssistantRegistrationEvent` 只注册一次模块。指令、语义 profile、模型目录和只读快捷入口由 `ModuleRegistry` 统一建立，不再有独立的内置 profile 安装列表。一个模块一个 profile，最多 128 个，每种语言最多 24 条内置例句；通过 `semantic.examples` 再追加每模块/语言最多 24 条、全配置最多 1024 条。索引总量最多 8192 条。额外例句只对已注册 profile 生效；可选 FTB 模块不存在时不生成其可执行 profile。
+扩展在模块的 `routing()` 中声明 `ModuleRouting<I>`，然后在 `AssistantRegistrationEvent` 只注册一次模块。指令、语义 profile、模型目录和只读快捷入口由 `ModuleRegistry` 统一建立，不再有独立的内置 profile 安装列表。一个模块一个 profile，可通过 `system-semantic.json` 的 `examples` 追加例句；模块、语言和例句数量不设额外硬上限。额外例句只对已注册 profile 生效；可选 FTB 模块不存在时不生成其可执行 profile。匹配文本长度、缓存容量、每玩家容量和 TTL 由配置决定，配置解析只要求这些数值为正数；相似度、分差和覆盖率在 0..1 范围内。
 
-例如在 `semantic.examples` 中增加 `{"system:shop":{"zh":["逛逛系统商铺"]}}`。不必为了补一句常见表达更换推理引擎或修改路由业务分支；新模块也可以用自己的原词例句匹配。词表只是少量领域别名，额外例句可使用未出现在词表中的词，未知词保留在特征中。
+例如在 `system-semantic.json` 的 `examples` 中增加 `{"system:shop":{"zh":["逛逛系统商铺"]}}`。不必为了补一句常见表达更换推理引擎或修改路由业务分支；新模块也可以用自己的原词例句匹配。词表只是少量领域别名，额外例句可使用未出现在词表中的词，未知词保留在特征中。
 
 ```java
 @Override

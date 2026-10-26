@@ -2,22 +2,39 @@ package com.iafenvoy.system.agent.store;
 
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
-import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
-import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestClaimOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestOutput;
-import com.iafenvoy.system.agent.builtin.output.RewardOutput;
-import com.iafenvoy.system.agent.builtin.output.StateOutput;
-import com.iafenvoy.system.util.CodecIO;
-import com.iafenvoy.system.util.Json;
+import com.iafenvoy.system.agent.builtin.output.*;
+import com.iafenvoy.system.util.MiscUtil;
+import com.iafenvoy.system.util.TypeDispatch;
+import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
 
-/** Deterministic, bounded projections; history never grants permissions or invents facts. */
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * Deterministic, bounded projections; history never grants permissions or invents facts.
+ */
 public final class ConversationMemory {
+    private static final TypeDispatch<Void, Fact> FACTS = new TypeDispatch<Void, Fact>((_, _) -> null)
+            .register(PlayerSnapshotOutput.class, (_, v) -> fact("player", "", v.name(), ""))
+            .register(StateOutput.class, (_, v) -> fact("state", "", "", v.state()))
+            .register(QuestClaimOutput.class, (_, v) -> fact("quest_claim", "", "", v.state()))
+            .register(RewardOutput.class, (_, v) -> reward("", "", v.reward()))
+            .register(CreditReceiptOutput.class, (_, v) -> reward(v.entitlementId(), v.state(), v.reward()))
+            .register(PurchaseReceiptOutput.class, (_, v) -> reward(v.entitlementId(), v.state(), v.reward()))
+            .register(ResultTypes.SignInStatus.class, (_, v) -> fact("sign_in", "", "", Boolean.toString(v.signedIn())))
+            .register(ResultTypes.ShopOrder.class, (_, v) -> fact("order", "", "", v.state()))
+            .register(ResultTypes.ShopOffer.class, (_, v) -> fact("offer", v.id().orElse(""), "", ""))
+            .register(ResultTypes.QuestNotice.class, (_, v) -> fact("quest_notice", "", v.title(), ""))
+            .register(QuestOutput.class, (_, v) -> new Fact("quest", v.id(), MiscUtil.clip(v.title(), 96), "",
+                    v.rewards().stream().filter(r -> r.claimRef().isPresent()).limit(2).map(r -> new Reference(
+                            r.id(), MiscUtil.clip(r.title(), 64), r.claimRef().orElseThrow(),
+                            r.choices().orElse(List.of()).stream().limit(3).map(c -> MiscUtil.clip(c, 48)).toList(), r.choiceOffset())).toList()));
+
     private ConversationMemory() {
     }
 
@@ -53,14 +70,14 @@ public final class ConversationMemory {
     public static List<Entry> recent(PlayerData data, String currentRequest, int byteBudget) {
         List<Entry> selected = new ArrayList<>();
         int bytes = 2;
-        for (int i = data.history.size() - 1; i >= 0 && selected.size() < 6; i--) {
-            PlayerData.Message message = data.history.get(i);
+        for (int i = data.conversation.history.size() - 1; i >= 0 && selected.size() < 6; i--) {
+            PlayerData.Message message = data.conversation.history.get(i);
             if (message.requestId().equals(currentRequest)) continue;
             Entry entry;
             if (message.role().equals("user")) entry = new Entry("USER_STATEMENT", message.text(), "", List.of());
             else {
                 try {
-                    AgentResult result = CodecIO.parse(AgentResult.CODEC, message.text(), 1_048_576);
+                    AgentResult result = CodecIO.parse(AgentResult.CODEC, message.text());
                     List<Fact> facts = new ArrayList<>(result.cards().stream().limit(2).map(ConversationMemory::fields).filter(Objects::nonNull).toList());
                     entry = new Entry("HISTORICAL_RESULT_REQUIRES_REVALIDATION", "", result.messageKey(), List.copyOf(facts));
                     while (!facts.isEmpty() && size(entry) > byteBudget * 3 / 4) {
@@ -85,31 +102,15 @@ public final class ConversationMemory {
     }
 
     private static Fact fields(AgentResult.Card card) {
-        return switch (card.data().value()) {
-            case PlayerSnapshotOutput v -> fact("player", "", v.name(), "");
-            case StateOutput v -> fact("state", "", "", v.state());
-            case QuestClaimOutput v -> fact("quest_claim", "", "", v.state());
-            case RewardOutput v -> reward("", "", v.reward());
-            case CreditReceiptOutput v -> reward(v.entitlementId(), v.state(), v.reward());
-            case PurchaseReceiptOutput v -> reward(v.entitlementId(), v.state(), v.reward());
-            case ResultTypes.SignInStatus v -> fact("sign_in", "", "", Boolean.toString(v.signedIn()));
-            case ResultTypes.ShopOrder v -> fact("order", "", "", v.state());
-            case ResultTypes.ShopOffer v -> fact("offer", v.id().orElse(""), "", "");
-            case ResultTypes.QuestNotice v -> fact("quest_notice", "", v.title(), "");
-            case QuestOutput v -> new Fact("quest", v.id(), Json.clip(v.title(), 96), "",
-                    v.rewards().stream().filter(r -> r.claimRef().isPresent()).limit(2).map(r -> new Reference(
-                            r.id(), Json.clip(r.title(), 64), r.claimRef().orElseThrow(),
-                            r.choices().orElse(List.of()).stream().limit(3).map(c -> Json.clip(c, 48)).toList(), r.choiceOffset())).toList());
-            default -> null;
-        };
+        return FACTS.apply(null, card.data().value());
     }
 
     private static Fact fact(String kind, String id, String label, String state) {
-        return new Fact(kind, Json.clip(id, 96), Json.clip(label, 96), Json.clip(state, 96), List.of());
+        return new Fact(kind, MiscUtil.clip(id, 96), MiscUtil.clip(label, 96), MiscUtil.clip(state, 96), List.of());
     }
 
     private static Fact reward(String entitlementId, String state, PlayerData.Reward reward) {
-        return new Fact("reward", Json.clip(entitlementId, 96), "", Json.clip(state, 96),
-                List.of(new Reference(reward.id(), Json.clip(reward.label(), 96), "", List.of(), 0)));
+        return new Fact("reward", MiscUtil.clip(entitlementId, 96), "", MiscUtil.clip(state, 96),
+                List.of(new Reference(reward.id(), MiscUtil.clip(reward.label(), 96), "", List.of(), 0)));
     }
 }

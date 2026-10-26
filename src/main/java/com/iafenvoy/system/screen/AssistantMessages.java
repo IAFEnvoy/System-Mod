@@ -9,11 +9,6 @@ import com.sighs.apricityui.event.MouseEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import com.sighs.apricityui.style.Transition;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-import java.util.Objects;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.network.chat.Component;
@@ -22,6 +17,9 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
+
+import java.util.*;
+
 import static com.iafenvoy.system.screen.gui.AssistantView.*;
 
 /**
@@ -84,7 +82,8 @@ public final class AssistantMessages {
 
     private static void post(Message message, boolean speak) {
         Objects.requireNonNull(message);
-        if (sameContent(message, current) || QUEUE.stream().anyMatch(queued -> sameContent(message, queued.message()))) return;
+        if (sameContent(message, current) || QUEUE.stream().anyMatch(queued -> sameContent(message, queued.message())))
+            return;
         if (QUEUE.size() >= MAX_PENDING) QUEUE.removeFirst();
         QUEUE.addLast(new Pending(message, speak));
     }
@@ -227,7 +226,8 @@ public final class AssistantMessages {
                 if (!Transition.isActive(document.getElementById("workspace"))) animate(Phase.FADING_IN, chatting);
             }
             case FADING_IN -> {
-                if (!Transition.isActive(document.getElementById("notification_content"))) animate(Phase.VISIBLE, chatting);
+                if (!Transition.isActive(document.getElementById("notification_content")))
+                    animate(Phase.VISIBLE, chatting);
             }
             case VISIBLE -> {
                 if (remainingTicks <= 0) dismiss(current);
@@ -364,10 +364,12 @@ public final class AssistantMessages {
 
     private static boolean sameContent(Message first, Message second) {
         if (second == null || !first.title().equals(second.title()) || !first.text().equals(second.text()) || !first.speechText().equals(second.speechText())
-                || first.durationTicks() != second.durationTicks() || first.buttons().size() != second.buttons().size()) return false;
+                || first.durationTicks() != second.durationTicks() || first.buttons().size() != second.buttons().size())
+            return false;
         for (int index = 0; index < first.buttons().size(); index++) {
             Button left = first.buttons().get(index), right = second.buttons().get(index);
-            if (!left.id().equals(right.id()) || !left.label().equals(right.label()) || left.requiresIdle() != right.requiresIdle()) return false;
+            if (!left.id().equals(right.id()) || !left.label().equals(right.label()) || left.requiresIdle() != right.requiresIdle())
+                return false;
         }
         return true;
     }

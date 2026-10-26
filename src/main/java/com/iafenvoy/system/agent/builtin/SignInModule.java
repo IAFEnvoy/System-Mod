@@ -1,12 +1,6 @@
 package com.iafenvoy.system.agent.builtin;
 
-import com.iafenvoy.system.agent.AgentCommand;
-import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.input.EntitlementInput;
 import com.iafenvoy.system.agent.builtin.input.SignInCreditInput;
@@ -18,16 +12,19 @@ import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.util.Json;
+import com.iafenvoy.system.util.MiscUtil;
+
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 
-/** Selects an existing daily reward and credits it through the validated write tool. */
+/**
+ * Selects an existing daily reward and credits it through the validated write tool.
+ */
 public final class SignInModule extends BuiltinModule<EmptyInput> {
     public SignInModule(ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player, ToolRegistry.Tool<SignInCreditInput, RewardOutput> credit) {
         super(ResultTypes.SIGN_IN_ACTION, "Perform today's AI sign-in ONLY when explicitly requested. For status/reward questions use system:inbox.",
-            EmptyInput.CODEC, List.of(player, credit), true, false, ExecutionPolicy.quick(2, 1));
+                EmptyInput.CODEC, List.of(player, credit), true, false, ExecutionPolicy.quick(2, 1));
     }
 
     @Override
@@ -42,17 +39,18 @@ public final class SignInModule extends BuiltinModule<EmptyInput> {
     @Override
     public AgentResult execute(ExecutionContext context, EmptyInput input) throws Exception {
         // AI selects an existing reward ID; the server owns quantities and commits the daily entitlement.
-        ZoneId zone = ZoneId.of(context.settings().timeZone);
+        ZoneId zone = ZoneId.of(context.settings().timeZone());
         String day = LocalDate.now(zone).toString();
         PlayerData.Reward existing = context.store().read(context.player(), data -> data.signIns.get(day));
-        if (existing != null) return AgentResult.data("system.result.already", ResultTypes.REWARD.of(new RewardOutput(existing)));
+        if (existing != null)
+            return AgentResult.data("system.result.already", ResultTypes.REWARD.of(new RewardOutput(existing)));
         CommerceCatalog catalog = context.catalog();
         if (catalog.rewards().isEmpty()) throw new AgentException("CAPABILITY_UNAVAILABLE");
         SignInDecision.Player state = SignInDecision.Player.of(context.tool(BuiltinTools.PLAYER, "snapshot", input));
         SignInDecision decision = context.model(context.prompt(SystemPrompts.SIGN_IN), SignInDecision.Input.CODEC,
                 new SignInDecision.Input(state, catalog.rewards(), day), SignInDecision.CODEC);
         String selectedId = decision.rewardId();
-        String reason = Json.clip(decision.reason(), 240);
+        String reason = MiscUtil.clip(decision.reason(), 240);
         PlayerData.Reward reward = catalog.rewards().stream().filter(value -> value.id().equals(selectedId)).findFirst()
                 .orElseThrow(() -> new AgentException("MODEL_INVALID"));
         // Recheck date, player and catalog after inference; a successful reply alone does not grant a reward.

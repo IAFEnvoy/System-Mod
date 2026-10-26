@@ -10,10 +10,13 @@ import com.iafenvoy.system.agent.builtin.tool.FeatureUnlockTool;
 import com.iafenvoy.system.agent.builtin.tool.RewardCreditTool;
 import com.iafenvoy.system.agent.builtin.tool.SignInCreditTool;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import java.util.List;
 import net.minecraft.resources.Identifier;
 
-/** Modules own their operation lists; shared operations reuse the same registered instance. */
+import java.util.List;
+
+/**
+ * Modules own their operation lists; shared operations reuse the same registered instance.
+ */
 public final class BuiltinModules {
     private BuiltinModules() {
     }

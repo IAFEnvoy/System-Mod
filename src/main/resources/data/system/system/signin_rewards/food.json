@@ -1,0 +1,6 @@
+{
+  "label": "Food supplies",
+  "items": [
+    { "id": "minecraft:bread", "count": 6 }
+  ]
+}

@@ -2,11 +2,14 @@ package com.iafenvoy.system.agent.builtin.output;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+
 import java.util.List;
 
-/** Built-in result data and its serialization codec. */
+/**
+ * Built-in result data and its serialization codec.
+ */
 public record PlayerSnapshotOutput(String name, float health, float maxHealth, int experienceLevel,
-                             String dimension, List<String> onlinePlayers, String language) {
+                                   String dimension, List<String> onlinePlayers, String language) {
     public static final Codec<PlayerSnapshotOutput> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("name").forGetter(PlayerSnapshotOutput::name),
             Codec.FLOAT.fieldOf("health").forGetter(PlayerSnapshotOutput::health),

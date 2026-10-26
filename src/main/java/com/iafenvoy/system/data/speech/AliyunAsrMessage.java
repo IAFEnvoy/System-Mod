@@ -1,11 +1,14 @@
 package com.iafenvoy.system.data.speech;
 
-import com.iafenvoy.system.util.AgentCodecs;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.util.ExtraCodecs;
+
 import java.util.Optional;
 
-/** Typed NLS headers and payloads; credentials remain confined to the outgoing header. */
+/**
+ * Typed NLS headers and payloads; credentials remain confined to the outgoing header.
+ */
 public final class AliyunAsrMessage {
     private AliyunAsrMessage() {
     }
@@ -20,7 +23,8 @@ public final class AliyunAsrMessage {
         ).apply(i, Header::new));
     }
 
-    public record Parameters(String format, int sampleRate, boolean intermediate, boolean punctuation, boolean normalization) {
+    public record Parameters(String format, int sampleRate, boolean intermediate, boolean punctuation,
+                             boolean normalization) {
         public static final Parameters DEFAULT = new Parameters("pcm", 16000, true, true, true);
         public static final Codec<Parameters> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("format").forGetter(Parameters::format),
@@ -40,7 +44,7 @@ public final class AliyunAsrMessage {
 
     public record ResultHeader(int status, String namespace, String name, String taskId) {
         public static final Codec<ResultHeader> CODEC = RecordCodecBuilder.create(i -> i.group(
-                AgentCodecs.intRange(0, Integer.MAX_VALUE).fieldOf("status").forGetter(ResultHeader::status),
+                ExtraCodecs.NON_NEGATIVE_INT.fieldOf("status").forGetter(ResultHeader::status),
                 Codec.STRING.fieldOf("namespace").forGetter(ResultHeader::namespace),
                 Codec.STRING.fieldOf("name").forGetter(ResultHeader::name),
                 Codec.STRING.fieldOf("task_id").forGetter(ResultHeader::taskId)

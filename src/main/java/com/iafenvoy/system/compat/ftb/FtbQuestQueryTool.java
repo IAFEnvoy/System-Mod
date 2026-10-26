@@ -10,11 +10,17 @@ import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletionStage;
+
 import static com.iafenvoy.system.compat.ftb.FtbQuestAccess.*;
 
-/** One FTB operation, loaded only after the optional dependency check. */
+/**
+ * One FTB operation, loaded only after the optional dependency check.
+ */
 final class FtbQuestQueryTool implements ToolRegistry.Handler<QuestQueryInput, QuestPageOutput> {
     private final FtbQuestAccess access;
 
@@ -45,9 +51,9 @@ final class FtbQuestQueryTool implements ToolRegistry.Handler<QuestQueryInput, Q
                         continue;
                     if (!matches(quest, query)) continue;
                     matches.add(quest);
-                    if (matches.size() > offset + PAGE_SIZE) break;
+                    if (matches.size() - offset > PAGE_SIZE) break;
                 }
-                if (matches.size() > offset + PAGE_SIZE) break;
+                if (matches.size() - offset > PAGE_SIZE) break;
             }
             return page(context, team, matches, offset, this.access.pages);
         });

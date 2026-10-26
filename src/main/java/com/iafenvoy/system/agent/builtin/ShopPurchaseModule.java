@@ -1,19 +1,18 @@
 package com.iafenvoy.system.agent.builtin;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.input.EntitlementInput;
 import com.iafenvoy.system.agent.builtin.input.ShopPurchaseInput;
 import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+
 import java.util.List;
 
-/** Executes only an explicitly confirmed shop purchase. */
+/**
+ * Executes only an explicitly confirmed shop purchase.
+ */
 public final class ShopPurchaseModule extends BuiltinModule<ShopPurchaseInput> {
     public ShopPurchaseModule(ToolRegistry.Tool<ShopPurchaseInput, PurchaseReceiptOutput> purchase) {
         super(ResultTypes.PURCHASE_ACTION, "Explicit action confirmation only; never select from natural language. Use system:shop_quote to preview.",

@@ -1,22 +1,21 @@
 package com.iafenvoy.system.agent.builtin;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.input.QuestClaimInput;
 import com.iafenvoy.system.agent.builtin.output.QuestClaimOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+
 import java.util.List;
 
-/** Claims one known quest reward reference and an optional selected choice. */
+/**
+ * Claims one known quest reward reference and an optional selected choice.
+ */
 public final class QuestClaimModule extends BuiltinModule<QuestClaimInput> {
     public QuestClaimModule(ToolRegistry.Tool<QuestClaimInput, QuestClaimOutput> claim) {
         super(ResultTypes.CLAIM_ACTION, "Claim exactly one known FTB reward using a previously returned claimRef. Without a ref, list claimable quests then open system:quest_detail; never invent references.",
-            QuestClaimInput.CODEC, List.of(claim), true, false, ExecutionPolicy.quick(1, 1));
+                QuestClaimInput.CODEC, List.of(claim), true, false, ExecutionPolicy.quick(1, 1));
     }
 
     @Override

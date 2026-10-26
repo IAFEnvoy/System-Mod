@@ -6,7 +6,9 @@ import de.maxhenkel.voicechat.api.VoicechatPlugin;
 import de.maxhenkel.voicechat.api.events.EventRegistration;
 import net.neoforged.fml.loading.FMLEnvironment;
 
-/** SVC discovers this optional plugin; assistant recording must not also be sent to nearby players. */
+/**
+ * SVC discovers this optional plugin; assistant recording must not also be sent to nearby players.
+ */
 @ForgeVoicechatPlugin
 public final class VoicechatRecognitionPlugin implements VoicechatPlugin {
     @Override

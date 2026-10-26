@@ -1,16 +1,13 @@
 package com.iafenvoy.system.agent.builtin;
 
-import com.iafenvoy.system.agent.AgentCommand;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.input.EntitlementInput;
 import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.store.PlayerData;
+
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -37,7 +34,7 @@ public final class InboxModule extends BuiltinModule<EmptyInput> {
 
     @Override
     public AgentResult execute(ExecutionContext context, EmptyInput input) {
-        String day = LocalDate.now(ZoneId.of(context.settings().timeZone)).toString();
+        String day = LocalDate.now(ZoneId.of(context.settings().timeZone())).toString();
         return context.store().read(context.player(), data -> {
             List<AgentResult.Card> cards = new ArrayList<>();
             for (PlayerData.Delivery delivery : data.inbox.values().stream().filter(value -> !"DELIVERED".equals(value.state)).limit(32).toList()) {

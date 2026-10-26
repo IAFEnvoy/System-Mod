@@ -3,8 +3,9 @@ package com.iafenvoy.system.speech.aliyun;
 import com.iafenvoy.system.data.speech.AliyunAsrMessage;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AsrProvider;
-import com.iafenvoy.system.util.CodecIO;
 import com.iafenvoy.system.util.HttpTransport;
+import com.iafenvoy.system.util.codec.CodecIO;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.WebSocket;
@@ -18,8 +19,13 @@ import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
-/** NLS one-sentence WebSocket protocol; never retries a potentially billable recognition task. */
+/**
+ * NLS one-sentence WebSocket protocol; never retries a potentially billable recognition task.
+ */
 public final class AliyunAsrProvider implements AsrProvider {
+    private static final Map<Integer, String> ERRORS = Map.of(
+            40000001, "token", 403, "token", 40020105, "appkey", 40020106, "appkey", 41000003, "appkey",
+            40000005, "rate_limit", 40000010, "quota", 40270002, "empty", 41010105, "empty");
     private final HttpTransport transport = new HttpTransport();
     private volatile WebSocket socket;
 
@@ -97,10 +103,29 @@ public final class AliyunAsrProvider implements AsrProvider {
         private final StringBuilder fragment = new StringBuilder();
         private final CompletableFuture<Void> started = new CompletableFuture<>();
         private final CompletableFuture<String> completed = new CompletableFuture<>();
+        private final Map<String, EventHandler> handlers;
+
+        @FunctionalInterface
+        private interface EventHandler {
+            void handle(AliyunAsrMessage.Response response) throws SpeechException;
+        }
 
         private Events(String task, Consumer<String> intermediate) {
             this.task = task;
             this.intermediate = intermediate;
+            this.handlers = Map.of(
+                    "RecognitionStarted", _ -> this.started.complete(null),
+                    "RecognitionCompleted", message -> this.completed.complete(text(message).strip()),
+                    "RecognitionResultChanged", message -> this.intermediate.accept(text(message)),
+                    "TaskFailed", _ -> {
+                        throw new SpeechException("response");
+                    });
+        }
+
+        private static String text(AliyunAsrMessage.Response message) throws SpeechException {
+            String text = message.payload().orElseThrow(() -> new SpeechException("response")).result();
+            if (text.codePointCount(0, text.length()) > 2000) throw new SpeechException("length");
+            return text;
         }
 
         @Override
@@ -109,31 +134,15 @@ public final class AliyunAsrProvider implements AsrProvider {
                 if (data.length() > 65536 - this.fragment.length()) throw new SpeechException("response");
                 this.fragment.append(data);
                 if (last) {
-                    AliyunAsrMessage.Response message = CodecIO.parse(AliyunAsrMessage.Response.CODEC, this.fragment.toString(), 65536);
+                    AliyunAsrMessage.Response message = CodecIO.parse(AliyunAsrMessage.Response.CODEC, this.fragment.toString());
                     this.fragment.setLength(0);
                     AliyunAsrMessage.ResultHeader header = message.header();
                     int status = header.status();
-                    if (status != 20000000) throw new SpeechException(switch (status) {
-                        case 40000001, 403 -> "token";
-                        case 40020105, 40020106, 41000003 -> "appkey";
-                        case 40000005 -> "rate_limit";
-                        case 40000010 -> "quota";
-                        case 40270002, 41010105 -> "empty";
-                        default -> "response";
-                    });
+                    if (status != 20000000) throw new SpeechException(ERRORS.getOrDefault(status, "response"));
                     if (!this.task.equals(header.taskId())
                             || !header.namespace().equals("SpeechRecognizer")) throw new SpeechException("response");
-                    String name = header.name();
-                    switch (name) {
-                        case "RecognitionStarted" -> this.started.complete(null);
-                        case "RecognitionCompleted", "RecognitionResultChanged" -> {
-                            String text = message.payload().orElseThrow(() -> new SpeechException("response")).result();
-                            if (text.codePointCount(0, text.length()) > 2000) throw new SpeechException("length");
-                            if (name.equals("RecognitionCompleted")) this.completed.complete(text.strip());
-                            else this.intermediate.accept(text);
-                        }
-                        case "TaskFailed" -> throw new SpeechException("response");
-                    }
+                    EventHandler handler = this.handlers.get(header.name());
+                    if (handler != null) handler.handle(message);
                 }
             } catch (Exception error) {
                 this.fail(error instanceof SpeechException speech ? speech : new SpeechException("response"));

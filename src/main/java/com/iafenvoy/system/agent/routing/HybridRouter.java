@@ -1,27 +1,27 @@
 package com.iafenvoy.system.agent.routing;
 
-import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ModuleRegistry;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.TypedPayload;
+import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.store.ConversationMemory;
-import com.iafenvoy.system.util.CodecIO;
-import java.util.*;
+import com.iafenvoy.system.config.file.SemanticConfig;
+import com.iafenvoy.system.util.codec.CodecIO;
 import net.minecraft.resources.Identifier;
 
-/** Selects an entry point only; registered modules own syntax, examples and workflow execution. */
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Selects an entry point only; registered modules own syntax, examples and workflow execution.
+ */
 public final class HybridRouter implements AutoCloseable {
     private final ModuleRegistry modules;
     private final SemanticRouter semantic;
 
-    public HybridRouter(AgentEngine engine) {
+    public HybridRouter(AgentEngine engine, SemanticConfig settings) {
         this.modules = engine.modules();
-        this.semantic = new SemanticRouter(engine.settings().semantic);
+        this.semantic = new SemanticRouter(settings);
     }
 
     public void start() {

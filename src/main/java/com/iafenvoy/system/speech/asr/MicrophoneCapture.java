@@ -1,10 +1,13 @@
 package com.iafenvoy.system.speech.asr;
 
 import com.iafenvoy.system.speech.SpeechException;
-import java.util.concurrent.TimeUnit;
-import javax.sound.sampled.*;
 
-/** Bounded in-memory capture; device creation and reads run exclusively on the recognition worker. */
+import javax.sound.sampled.*;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Bounded in-memory capture; device creation and reads run exclusively on the recognition worker.
+ */
 final class MicrophoneCapture implements RecognitionCapture {
     private static final AudioFormat FORMAT = new AudioFormat(16000, 16, 1, true, false);
     private TargetDataLine line;

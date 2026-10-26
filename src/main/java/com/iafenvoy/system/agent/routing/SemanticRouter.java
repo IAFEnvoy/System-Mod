@@ -2,13 +2,11 @@ package com.iafenvoy.system.agent.routing;
 
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.TypedPayload;
-import com.iafenvoy.system.config.SemanticSettings;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import com.iafenvoy.system.config.file.SemanticConfig;
+import com.mojang.logging.LogUtils;
+import org.slf4j.Logger;
+
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,7 +18,7 @@ import java.util.regex.Pattern;
  * A lightweight optional accelerator; uncertain requests keep the single-call LLM fallback.
  */
 public final class SemanticRouter implements AutoCloseable {
-    private static final System.Logger LOGGER = System.getLogger(SemanticRouter.class.getName());
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final Pattern COMPLEX = Pattern.compile(
             "不|别|没|取消|如果|假如|是否|能否|怎么|如何|为什么|顺便|然后|并且|同时|那个|这个|上一个|第二个|全部|所有奖励|多少钱|"
                     + "[0-9]+\\s*(?:个|份|组)|[;；\\r\\n]|\\b(?:not|no|never|don't|do not|cannot|can't|isn't|without|except|instead|but|if|unless|while|then|also|and|or|that|this|it|them|those|these|previous|second|all rewards|why)\\b",
@@ -32,7 +30,7 @@ public final class SemanticRouter implements AutoCloseable {
         }
     }
 
-    private final SemanticSettings settings;
+    private final SemanticConfig settings;
     private final RouteCache cache;
     private final Map<String, LongAdder> counters = new ConcurrentHashMap<>();
     private final AtomicBoolean started = new AtomicBoolean(), closed = new AtomicBoolean();
@@ -43,7 +41,7 @@ public final class SemanticRouter implements AutoCloseable {
     private volatile SemanticIndex index;
     private Map<String, RoutingProfile.Bound> profiles = Map.of();
 
-    public SemanticRouter(SemanticSettings settings) {
+    public SemanticRouter(SemanticConfig settings) {
         this.settings = settings;
         this.cache = new RouteCache(settings);
     }
@@ -51,7 +49,7 @@ public final class SemanticRouter implements AutoCloseable {
     public synchronized void start(Collection<RoutingProfile.Bound> registrations) {
         if (!this.started.compareAndSet(false, true)) throw new IllegalStateException("Routing already started");
         if (this.closed.get()) return;
-        if (this.settings.mode == SemanticSettings.Mode.OFF) {
+        if (this.settings.mode() == SemanticConfig.Mode.OFF) {
             this.state = "OFF";
             return;
         }
@@ -62,11 +60,11 @@ public final class SemanticRouter implements AutoCloseable {
             this.profiles = Map.copyOf(registered);
             this.index = new SemanticIndex(this.profiles.values(), this.settings);
             this.state = "READY";
-            LOGGER.log(System.Logger.Level.INFO, "Lexical routing ready: {0} examples, mode {1}", this.index.size(), this.settings.mode);
+            LOGGER.info("Lexical routing ready: {} examples, mode {}", this.index.size(), this.settings.mode());
         } catch (Exception error) {
             this.state = "UNAVAILABLE";
             this.index = null;
-            LOGGER.log(System.Logger.Level.WARNING, "Lexical routing unavailable; retaining LLM fallback", error);
+            LOGGER.warn("Lexical routing unavailable; retaining LLM fallback", error);
         }
     }
 
@@ -86,7 +84,7 @@ public final class SemanticRouter implements AutoCloseable {
 
     private Attempt attempt(ExecutionContext context, String raw) throws Exception {
         context.ensureMemoryCurrent();
-        if (this.settings.mode == SemanticSettings.Mode.OFF) return Attempt.fallback("OFF");
+        if (this.settings.mode() == SemanticConfig.Mode.OFF) return Attempt.fallback("OFF");
         SemanticIndex current = this.index;
         if (current == null || this.closed.get()) return Attempt.fallback("NOT_READY");
         String language = context.language().split("_", 2)[0], text = LexicalEncoder.normalize(raw);
@@ -94,7 +92,7 @@ public final class SemanticRouter implements AutoCloseable {
         if (rejected != null) return Attempt.fallback(rejected);
         RouteCache.Key key = this.key(context, language, text);
         String cached = key == null ? null : this.cache.get(key);
-        if (cached != null && this.settings.mode == SemanticSettings.Mode.ENFORCE) {
+        if (cached != null && this.settings.mode() == SemanticConfig.Mode.ENFORCE) {
             RoutingProfile.Bound profile = this.profiles.get(cached);
             TypedPayload<?> input = profile == null || !profile.direct() ? null : profile.arguments().parse(text);
             if (input != null)
@@ -106,7 +104,7 @@ public final class SemanticRouter implements AutoCloseable {
         if (best == null) return Attempt.fallback("NO_CANDIDATE");
         List<ModelRoute.Candidate> hints = ranking.matches().stream().limit(3)
                 .map(match -> new ModelRoute.Candidate(match.profile().moduleId().toString(), match.score())).toList();
-        SemanticSettings.Threshold threshold = this.settings.threshold(best.profile().moduleId().toString(), language);
+        SemanticConfig.Threshold threshold = this.settings.threshold(best.profile().moduleId().toString(), language);
         String reason;
         TypedPayload<?> input = null;
         // Similarity is not a calibrated probability; direct routing requires every safety/coverage gate.
@@ -114,7 +112,7 @@ public final class SemanticRouter implements AutoCloseable {
         else if (!ranking.hasTopic()) reason = "NO_TOPIC";
         else if (!best.profile().direct()) reason = "NO_DIRECT_PERMISSION";
         else if (!best.topicsCovered()) reason = "UNMATCHED_TOPIC";
-        else if (best.coverage() + 1e-9 < this.settings.minCoverage) reason = "LOW_COVERAGE";
+        else if (best.coverage() + 1e-9 < this.settings.minCoverage()) reason = "LOW_COVERAGE";
         else if (best.score() + 1e-9 < threshold.score()) reason = "LOW_SCORE";
         else if (ranking.margin() + 1e-9 < threshold.margin()) reason = "SMALL_MARGIN";
         else {
@@ -122,7 +120,7 @@ public final class SemanticRouter implements AutoCloseable {
             reason = input == null ? "MISSING_ARGUMENTS" : "DIRECT";
         }
         this.lastMatch = new RoutingDiagnostics.Match(best.profile().moduleId().toString(), language, best.score(), ranking.margin(), best.coverage(), reason);
-        if (this.settings.mode == SemanticSettings.Mode.SHADOW) {
+        if (this.settings.mode() == SemanticConfig.Mode.SHADOW) {
             // Shadow mode records local decisions without changing routing or supplying candidate hints.
             this.counters.computeIfAbsent("SHADOW_" + reason, ignored -> new LongAdder()).increment();
             return Attempt.fallback("SHADOW");
@@ -134,7 +132,7 @@ public final class SemanticRouter implements AutoCloseable {
      * Remember only a validated successful, independently parsed read intent, never model parameters.
      */
     void remember(ExecutionContext context, RouteDecision decision, String raw) throws Exception {
-        if (this.settings.mode != SemanticSettings.Mode.ENFORCE || this.closed.get() || this.index == null || decision.source() != RouteSource.LLM)
+        if (this.settings.mode() != SemanticConfig.Mode.ENFORCE || this.closed.get() || this.index == null || decision.source() != RouteSource.LLM)
             return;
         RoutingProfile.Bound profile = this.profiles.get(decision.moduleId());
         if (profile == null || !profile.direct()) return;
@@ -145,7 +143,7 @@ public final class SemanticRouter implements AutoCloseable {
         // Unknown or unmatched topic content must not be turned into an exact intent shortcut.
         SemanticIndex.Ranking ranking = this.index.search(text, language);
         if (ranking.writeRequest() || !ranking.hasTopic() || ranking.matches().stream().noneMatch(match -> match.profile().moduleId().toString().equals(decision.moduleId())
-                && match.topicsCovered() && match.coverage() + 1e-9 >= this.settings.minCoverage)) return;
+                && match.topicsCovered() && match.coverage() + 1e-9 >= this.settings.minCoverage())) return;
         RouteCache.Key key = this.key(context, language, text);
         if (key != null) context.store().read(context.player(), data -> {
             context.ensureMemoryCurrent();
@@ -164,8 +162,9 @@ public final class SemanticRouter implements AutoCloseable {
     }
 
     private String guard(String text, String language) {
-        if (text.isBlank() || text.codePointCount(0, text.length()) > this.settings.maxCharacters) return "TEXT_LIMIT";
-        if (!this.settings.languages.contains(language) || !supportedText(text, language)) return "LANGUAGE";
+        if (text.isBlank() || text.codePointCount(0, text.length()) > this.settings.maxCharacters())
+            return "TEXT_LIMIT";
+        if (!this.settings.languages().contains(language) || !supportedText(text, language)) return "LANGUAGE";
         return COMPLEX.matcher(text).find() ? "COMPLEX_REQUEST" : null;
     }
 
@@ -186,7 +185,7 @@ public final class SemanticRouter implements AutoCloseable {
     public RoutingDiagnostics diagnostics() {
         Map<String, Long> counts = new LinkedHashMap<>();
         this.counters.forEach((key, count) -> counts.put(key, count.sum()));
-        return new RoutingDiagnostics(SemanticSettings.ALGORITHM, this.settings.mode.name(), this.state,
+        return new RoutingDiagnostics(SemanticConfig.ALGORITHM, this.settings.mode().name(), this.state,
                 this.index == null ? 0 : this.index.size(), this.cache.size(), Map.copyOf(counts),
                 Optional.ofNullable(this.lastMatch), this.lastMicros, this.totalMicros.get(), this.maxMicros.get());
     }

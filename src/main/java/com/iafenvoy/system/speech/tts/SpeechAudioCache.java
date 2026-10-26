@@ -1,7 +1,9 @@
 package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.util.SystemConfig;
+import com.iafenvoy.system.config.ConfigInstance;
+import org.jspecify.annotations.Nullable;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -11,14 +13,11 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HexFormat;
-import java.util.List;
-import org.jspecify.annotations.Nullable;
+import java.util.*;
 
-/** Opt-in, worker-only whole-utterance cache. Failures are misses and never trigger an extra API retry. */
+/**
+ * Opt-in, worker-only whole-utterance cache. Failures are misses and never trigger an extra API retry.
+ */
 final class SpeechAudioCache {
     private static final int MAGIC = 0x53504331;
     private static final int HEADER_BYTES = 48;
@@ -109,7 +108,8 @@ final class SpeechAudioCache {
             for (Path path : paths) {
                 if (!path.getFileName().toString().matches("[0-9a-f]{64}[.]pcm")) continue;
                 BasicFileAttributes attributes = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-                if (attributes.isRegularFile()) entries.add(new Entry(path, attributes.size(), attributes.lastModifiedTime().toMillis()));
+                if (attributes.isRegularFile())
+                    entries.add(new Entry(path, attributes.size(), attributes.lastModifiedTime().toMillis()));
             }
         }
         entries.sort(Comparator.comparingLong(Entry::used));
@@ -123,8 +123,8 @@ final class SpeechAudioCache {
         }
     }
 
-    private static Path directory() throws IOException {
-        return SystemConfig.file("system-speech.json").getParent().resolve("tts-cache");
+    private static Path directory() {
+        return ConfigInstance.getConfigFolder().resolve("tts-cache");
     }
 
     private static MessageDigest digest() {

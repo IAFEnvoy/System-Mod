@@ -3,7 +3,6 @@ package com.iafenvoy.system.network.payload;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import io.netty.buffer.ByteBuf;
-import java.util.UUID;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -12,7 +11,11 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NonNull;
 
-/** Client accounting only: no credentials, spoken text, voice ID or client-selected player identity. */
+import java.util.UUID;
+
+/**
+ * Client accounting only: no credentials, spoken text, voice ID or client-selected player identity.
+ */
 public record SpeechUsageReportC2SPayload(UUID id, boolean complete, String provider, String model, String region,
                                           TtsProvider.Usage usage, boolean successful) implements CustomPacketPayload {
     public static final Type<SpeechUsageReportC2SPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "speech_usage_report_c2s"));

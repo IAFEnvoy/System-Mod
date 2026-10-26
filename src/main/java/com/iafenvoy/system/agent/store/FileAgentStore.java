@@ -1,7 +1,11 @@
 package com.iafenvoy.system.agent.store;
 
+import com.google.gson.JsonParser;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.util.CodecIO;
+import com.iafenvoy.system.util.codec.CodecIO;
+import com.mojang.serialization.JsonOps;
+
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -52,12 +56,9 @@ public final class FileAgentStore implements AgentStore {
         Path path = this.root.resolve(player + ".json");
         if (!Files.exists(path)) return new PlayerData();
         if (Files.size(path) > MAX_BYTES) throw new AgentException("STORAGE_FULL");
-        PlayerData data = CodecIO.read(PlayerData.CODEC, path, MAX_BYTES);
-        if (data == null || data.version != 1 || data.history == null || data.tasks == null || data.inbox == null
-                || data.requests == null || data.requestInputs == null || data.signIns == null || data.operations == null
-                || data.baselines == null || data.unlocked == null || data.usageDate == null || data.purchases == null)
-            throw new IOException("Invalid agent store version or structure");
-        prune(data);
+        PlayerData data = PlayerData.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseReader(new FileReader(path.toFile()))).getOrThrow(message -> new IOException("Invalid structured file: " + path.getFileName() + ": " + message));
+        if (data.version != 1) throw new IOException("Invalid agent store version");
+        prune(data.conversation);
         return data;
     }
 
@@ -88,7 +89,7 @@ public final class FileAgentStore implements AgentStore {
             try {
                 PlayerData data = this.load(player);
                 T result = transaction.apply(data);
-                prune(data);
+                prune(data.conversation);
                 byte[] bytes = CodecIO.write(PlayerData.CODEC, data).getBytes(StandardCharsets.UTF_8);
                 if (bytes.length > MAX_BYTES) throw new AgentException("STORAGE_FULL");
                 try (FileChannel file = FileChannel.open(temp, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
@@ -110,19 +111,19 @@ public final class FileAgentStore implements AgentStore {
         }
     }
 
-    private static void prune(PlayerData data) {
+    private static void prune(PlayerData.Conversation conversation) {
         // Chat retention prunes replay caches only; reward, order and event records keep their own lifetimes.
         long cutoff = System.currentTimeMillis() - 30L * 86400000L;
-        data.history.removeIf(message -> message.time() < cutoff);
-        while (data.history.size() > 256) data.history.removeFirst();
+        conversation.history.removeIf(message -> message.time() < cutoff);
+        while (conversation.history.size() > 256) conversation.history.removeFirst();
         Set<String> retainedRequests = new HashSet<>();
-        data.history.forEach(message -> retainedRequests.add(message.requestId()));
-        data.requests.keySet().removeIf(key -> !retainedRequests.contains(key));
-        data.requestInputs.keySet().removeIf(key -> !retainedRequests.contains(key));
-        while (data.requests.size() > 128) {
-            String key = data.requests.keySet().iterator().next();
-            data.requests.remove(key);
-            data.requestInputs.remove(key);
+        conversation.history.forEach(message -> retainedRequests.add(message.requestId()));
+        conversation.requests.keySet().removeIf(key -> !retainedRequests.contains(key));
+        conversation.requestInputs.keySet().removeIf(key -> !retainedRequests.contains(key));
+        while (conversation.requests.size() > 128) {
+            String key = conversation.requests.keySet().iterator().next();
+            conversation.requests.remove(key);
+            conversation.requestInputs.remove(key);
         }
     }
 

@@ -6,16 +6,19 @@ import com.iafenvoy.system.agent.builtin.input.ItemQueryInput;
 import com.iafenvoy.system.agent.builtin.output.ItemInfoOutput;
 import com.iafenvoy.system.agent.builtin.output.ItemPageOutput;
 import com.iafenvoy.system.runtime.server.MinecraftTools;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.concurrent.CompletionStage;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-/** Searches registry entries and produces a bounded page without exposing game objects. */
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.CompletionStage;
+
+/**
+ * Searches registry entries and produces a bounded page without exposing game objects.
+ */
 public record ItemQueryTool(MinecraftTools game) implements ToolRegistry.Handler<ItemQueryInput, ItemPageOutput> {
     public ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.ITEMS, false, true, false, this);

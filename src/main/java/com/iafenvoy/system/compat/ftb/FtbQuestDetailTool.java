@@ -11,11 +11,17 @@ import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletionStage;
+
 import static com.iafenvoy.system.compat.ftb.FtbQuestAccess.*;
 
-/** One FTB operation, loaded only after the optional dependency check. */
+/**
+ * One FTB operation, loaded only after the optional dependency check.
+ */
 final class FtbQuestDetailTool implements ToolRegistry.Handler<QuestDetailInput, QuestLookupOutput> {
     private final FtbQuestAccess access;
 
@@ -33,9 +39,6 @@ final class FtbQuestDetailTool implements ToolRegistry.Handler<QuestDetailInput,
         String questId = input.questId();
         int index = input.index().orElse(0);
         int offset = input.offset();
-        int selectors = (query.isBlank() ? 0 : 1) + (questId.isBlank() ? 0 : 1) + (index == 0 ? 0 : 1);
-        if (selectors != 1 || !questId.isBlank() && !questId.matches("[0-9a-fA-F]{16}"))
-            throw new AgentException("INVALID_INPUT");
         return this.access.game.onPlayer(context, player -> {
             if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
             ServerQuestFile file = ServerQuestFile.getInstance();
@@ -58,9 +61,8 @@ final class FtbQuestDetailTool implements ToolRegistry.Handler<QuestDetailInput,
                     for (Quest quest : chapter.getQuests()) {
                         if (!quest.isVisible(team)) continue;
                         if (quest.getTitle().getString().equalsIgnoreCase(query) || hex(quest.getId()).equalsIgnoreCase(query)) {
-                            if (exact.size() <= offset + PAGE_SIZE) exact.add(quest);
-                        }
-                        else if (matches(quest, query) && partial.size() <= offset + PAGE_SIZE) partial.add(quest);
+                            if (exact.size() - offset <= PAGE_SIZE) exact.add(quest);
+                        } else if (matches(quest, query) && partial.size() - offset <= PAGE_SIZE) partial.add(quest);
                     }
                 }
                 List<Quest> matches = exact.isEmpty() ? partial : exact;

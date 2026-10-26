@@ -1,11 +1,6 @@
 package com.iafenvoy.system.network;
 
-import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
-import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
-import com.iafenvoy.system.network.payload.RecognitionUsageReportC2SPayload;
-import com.iafenvoy.system.network.payload.SpeechUsageReportC2SPayload;
-import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
-import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
+import com.iafenvoy.system.network.payload.*;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -20,7 +15,7 @@ import net.neoforged.neoforge.network.handling.MainThreadPayloadHandler;
 public final class NetworkManager {
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
-        event.registrar("2")
+        event.registrar("3")
                 .playToServer(AssistantRequestC2SPayload.TYPE, AssistantRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleAssistantRequest))
                 .playToServer(TokenUsageRequestC2SPayload.TYPE, TokenUsageRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleTokenUsageRequest))
                 .playToServer(SpeechUsageReportC2SPayload.TYPE, SpeechUsageReportC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleSpeechUsageReport))

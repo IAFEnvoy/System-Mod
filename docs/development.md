@@ -2,7 +2,7 @@
 
 ## 当前版本
 
-ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充，`RecognitionUsage` 与 AI / TTS 共用 SavedData；网络协议 2。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
+ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充，`RecognitionUsage` 与 AI / TTS 共用 SavedData；网络协议 3。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
 
 语音供应商接口及客户端录音和播放分别位于 `speech.asr` 与 `speech.tts`，注册表位于 `registry.speech`，协议实现位于 `speech.aliyun`；配置集中在 `config`。阿里云默认使用 `qwen3-tts-flash`，额外兼容设计音色绑定的 Qwen-Audio-TTS HTTP 协议；复用 `HttpTransport`，没有新增依赖或模型文件。详见 [语音合成与音色设计](tts.md)。
 
@@ -44,25 +44,33 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | `agent/commerce、agent/prompt` | 商城目录、报价和系统币接口；提示词快照与占位符模板 |
 | `config` | Agent/路由配置，以及模组客户端、语音和计费配置 |
 | `command/client、command/server` | 两端命令注册、分派与补全，调用 Agent 根包中的类型化指令声明与解析 |
-| `util` | Codec/Schema/JSON 工具、共享 HTTP/SSE 与统一 config/system 路径 |
+| `util、util/codec` | 类型处理 Map、Codec/Schema 工具、共享 HTTP/SSE；配置目录由 ConfigInstance 提供 |
 | `runtime/server、runtime/reload` | 服务端生命周期、主线程队列、提示词和商品数据包重载 |
 | `runtime/usage、data/usage` | 独立 SavedData、AI/TTS/ASR 归并与不可变快照，不随 revoke 删除 |
 | `runtime/client、screen/gui、screen` | 客户端对话、助手界面、设置、用量与通知队列 |
 | `speech/aliyun、speech/tts、speech/asr、registry/speech、data/speech` | 语音接口及供应商协议、工厂注册、报文、流式播放会话、缓存与可取消录音 |
 | `compat/ftb、compat/voicechat` | 可选 FTB 工具/事件和 SVC 收音，检测后才加载相关实现 |
-| `event、network、network/payload` | 扩展/按键事件、协议 2 注册、Handler 与有界载荷 |
+| `event、network、network/payload` | 扩展/按键事件、协议 3 注册、Handler 与有界载荷 |
 
 上表路径均相对于 `src/main/java/com/iafenvoy/system/`。Agent 与游戏接入代码处于同一主项目；模块、工具和服务接口仍保留职责划分，工具使用稳定逻辑 ID，方便后续扩展业务。
 
 ## Codec 边界
 
-`CodecIO` 统一限长 JSON 解析、Codec 编解码及配置文件原子写入；HTTP 响应可通过 `Document` 一次解析后分别解码用量与正文，保证正文无效仍记录已计费用量。`ObjectCodec.of` 为存档和恢复日志保持严格字段解析；配置使用 `ObjectCodec.lenientOf(factory, validator)`，按字段以 `lenientOptionalFieldOf` 读取，并在独立默认对象上校验该设置。缺失、null、类型错误、无效枚举、越界值或嵌套 Codec 构造异常只回退该字段，其他有效配置保留，默认可变集合由构造器重新创建；玩家文件仍使用 FileAgentStore 的原有 force/原子替换事务。
+配置类各自声明 `FILE_NAME`、`CODEC` 和 `ConfigInstance<T> INSTANCE = ConfigInstance.of(...)`。容器首次初始化时从 `/defaults/<文件名>` 复制缺失的默认文件，再通过 Codec 读取；已有文件不覆盖，加载失败时记录错误并在内存中使用默认值。读取使用 `INSTANCE.get()`，提交不可变新值使用 `INSTANCE.set(next)`，实际变化由容器自动调用 `markDirty()`。若未来使用可变配置并原地修改，则必须显式调用 `INSTANCE.markDirty()`，不能绕过变更标记。
 
-`AgentRequest` 表达聊天、模块调用、控制请求和偏好；C2S 的原字段在网络边界转换。模型路由返回值按 capabilityId 分派输入 Codec，签到仅接收 SignInDecision，发送的玩家投影不包含其他在线玩家。ConversationMemory 使用有界、允许字段组成的对象投影。
+`ConfigReloader` 在资源重载时调用 `reloadAll()`，客户端/服务端 tick 与关闭事件调用 `saveAll()`，只保存有标记的配置。检查标记、保存及加载使用同一实例锁；保存失败恢复标记以便重试，重载前先保存已提交的改动。设置表单仍为未提交草稿，试听不会自动保存；语音页的重新加载按钮调用 `SpeechConfig.INSTANCE.load()` 并替换本页草稿，音色直接写入该配置，不再额外导入文件。客户端语音、界面设置与收费表直接读取容器；服务端引擎、模型客户端和成就事件仍持有启动时快照，完整应用其配置变化需要重启。
+
+`ConfigInstance.getConfigFolder()` 提供所有配置共用的根目录，配置实例和 TTS 缓存分别在其下拼接文件名及固定 `tts-cache` 子目录，不再维护额外的 `SystemConfig` 路径工具。
+
+`AgentSettings` 只保留执行预算、并发、每日模型限额和时区；`ModelSettings` 管模型连接和提供商参数，`SemanticSettings` 管本地路由，`AdvancementSettings` 管成就绑定。对应文件为 `system-agent.json`、`system-model.json`、`system-semantic.json`、`system-advancements.json`，均位于 `config/system/`。奖励和商品完全由数据包定义，不参与配置解析，不提供旧聚合配置自动迁移。
+
+`CodecIO` 统一限长 JSON 解析及 Codec 编解码；HTTP 响应可通过 `Document` 一次解析后分别解码用量与正文，保证正文无效仍记录已计费用量。存档和恢复日志使用 `RecordCodecBuilder`，可选字段通过严格的 `optionalFieldOf` 读取；配置使用不可变 record、`RecordCodecBuilder` 和 record getter，按字段以 `lenientOptionalFieldOf` 读取。范围与字段语义在子 Codec 校验，枚举及嵌套构造异常通过 `ConfigCodecs` 转为解析错误。配置中缺失、null、类型错误、无效枚举、越界值或嵌套 Codec 构造异常只回退该字段，其他有效配置保留；配置集合返回不可变快照，玩家文件仍使用 FileAgentStore 的原有 force/原子替换事务。
+
+`AgentRequest` 表达聊天、模块调用、控制请求和偏好，通过 `Types.REGISTRY` 注册的 `MapCodec` 按 `type` 分派；已删除 `mode/encodedInput/decode` 的字符串转换。`AgentResponse` 同样分派回复、通知、打开界面和绑定变更。两端载荷通过原版 `ByteBufCodecs.fromCodecWithRegistries` 复用 Codec，直接传递类型对象；JSON 只用于文本边界。模型路由返回值按 `capabilityId` 从本次可选模块的 Codec Map 分派，签到仅接收 SignInDecision，发送的玩家投影不包含其他在线玩家。ConversationMemory 使用有界、允许字段组成的对象投影。
 
 固定业务数据、配置、存档、模型与语音报文使用 Codec。JSON 只保留在动态 JSON Schema 与通用界面格式化边界；工具写入回执使用原版 Dynamic/PASSTHROUGH 保存暂不解释的结果，回放时由对应工具结果 Codec 解码，不在业务中按键取值。
 
-配置容错只适用于已经解析成对象的合法 JSON，语法损坏、重复键、超出文件大小限制或文件不可读仍报错。列表、映射及严格业务参数中的错误可使所属配置字段整体回退，其他顶层设置继续保留；不为奖励、事件和付款引用编造 ID。收费表无法确定单价的条目跳过并标为未估价，其余有效条目继续使用；配置读取不会覆盖用户文件。
+配置容错只适用于已经解析成对象的合法 JSON；语法损坏、重复键、超出文件大小限制或文件不可读时记录错误，容器在内存中回退该配置的默认值，不自动覆盖坏文件。列表、映射及严格业务参数中的错误可使所属配置字段整体回退，其他顶层设置继续保留；不为奖励、事件和付款引用编造 ID。收费表无法确定单价的条目跳过并标为未估价，其余有效条目继续使用；整个收费表加载失败时使用空表，继续记用量但不估价。
 
 ## 网络约定
 
@@ -77,7 +85,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | `SpeechUsageReportC2S` | `system:speech_usage_report_c2s` |
 | `RecognitionUsageReportC2S` | `system:recognition_usage_report_c2s` |
 
-当前协议版本为 **2**，结果卡片和动作使用类型分派的新结构，客户端与服务端需一起更新；C2S 请求字段保持原样；当前项目未发布，存档只读取当前 Codec 结构。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
+当前协议版本为 **3**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航和绑定变更，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的 Codec 在网络解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
 
 ## 扩展模块
 
@@ -116,13 +124,13 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 ```java
 public record Search(String query, int offset) {
     public static final SchemaMapCodec<Search> CODEC = SchemaCodecs.record((i, f) -> i.group(
-            f.required("query", SchemaCodecs.string(1, 128)).forGetter(Search::query),
-            f.optional("offset", SchemaCodecs.intRange(0, 100000), 0).forGetter(Search::offset)
+            f.required("query", SchemaCodecs.STRING).forGetter(Search::query),
+            f.optional("offset", SchemaCodecs.NON_NEGATIVE_INT, 0).forGetter(Search::offset)
     ).apply(i, Search::new));
 }
 ```
 
-`Search.CODEC.schema()` 返回包含 `type`、`properties`、`required`、`default`、字符串长度、整数范围和 `additionalProperties: false` 的 schema。`SchemaCodecs.BOOL` 支持布尔字段，`matching` 同时提供正则校验与 `pattern`，`object` 和 `Value.listOf()` 支持嵌套对象与数组，`described` 为字段或对象补充说明。空参数使用 `SchemaCodecs.unit`。schema 只在定义时组装，不增加网络调用或依赖；路由器沿用模块描述入口读取生成结果，模块构造函数不再接收手写 schema。
+`Search.CODEC.schema()` 返回包含 `type`、`properties`、`required`、`default`、非负数约束和 `additionalProperties: false` 的 schema。`SchemaCodecs.STRING`、`NON_NEGATIVE_INT`、`BOOL` 提供常用类型；确有业务依据时可用 `string(min, max)`、`intRange(min, max)` 指定范围。`matching` 同时提供正则校验与 `pattern`，`object` 和 `Value.listOf()` 支持嵌套对象与数组，`described` 为字段或对象补充说明。空参数使用 `SchemaCodecs.unit`。schema 只在定义时组装，不增加网络调用或依赖；路由器沿用模块描述入口读取生成结果，模块构造函数不再接收手写 schema。
 
 这不是对任意原版 Codec 的反射反编译：原版没有通用结构访问接口，`xmap` 和 `validate` 也可能包含任意 Java 逻辑。`SchemaMapCodec` 的 `xmap`、`flatXmap`、`validate` 和生命周期包装保留已有结构元数据，但不会自动翻译额外谓词。例如任务选择器三选一仍在 Codec 中校验，并通过 `described` 向模型说明。接入外部 Codec 时可显式构造 `SchemaCodecs.Value(codec, schema)`，或用 `SchemaMapCodec(codec, schema)` 包装外部对象 Codec；该显式 schema 的准确性由扩展负责。生成结果用于提示模型，执行时仍以 Codec 和业务授权为准，不启用新的模型侧 structured-output 协议。
 
@@ -136,7 +144,7 @@ AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", Res
         new EntitlementInput(entitlementId));
 ```
 
-卡片数据编码为 `{"type":"system:player","value":{...}}`；动作编码为 `{"labelKey":"system.action.deliver","call":{"moduleId":"system:deliver","input":{"entitlementId":"..."}}}`。新业务直接创建输入/结果对象，不再为卡片或按钮手工拼接 `JsonObject`。客户端任务行、奖励选项、指令补全、设置状态和口播通过类型访问数据；通用文本格式化及 C2S 发送才调用 `TypedPayload.json()`，作为展示和网络边界。历史压缩继续只提取允许字段及有限领奖引用，不把整个卡片序列化后塞进模型上下文。
+卡片数据编码为 `{"type":"system:player","value":{...}}`；动作编码为 `{"labelKey":"system.action.deliver","call":{"moduleId":"system:deliver","input":{"entitlementId":"..."}}}`。新业务直接创建输入/结果对象，不再为卡片或按钮手工拼接 `JsonObject`。客户端任务行、奖励选项、指令补全、设置状态和口播通过类型访问数据；`TypedPayload.json()` 只用于展示、输入预算和指纹等需要文本的边界，C2S 直接传对象。历史压缩继续只提取允许字段及有限领奖引用，不把整个卡片序列化后塞进模型上下文。
 
 新增结果类型在公共初始化阶段调用 `ResultTypes.CARDS.register(identifier, codec)`，返回的类型键用 `.of(value)` 创建数据。新增模块按钮参数同样注册 `ResultTypes.ACTIONS`，复用模块输入 Codec。注册必须在两端、处理结果之前完成，类型 ID 唯一，未知 ID 或未注册的同名类型键在编解码时拒绝。共享结果定义不得引用可选模组类；FTB 的普通输入/结果 Codec 即使未安装 FTB 也能读取历史卡片，实际模块仍只在检测到 FTB 后注册，点击动作仍由服务端模块权限及引用校验约束。
 
@@ -148,19 +156,21 @@ AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", Res
 
 ## 独立策略
 
-`AgentSettings.policies` 按模块 ID 覆盖整个 `ExecutionPolicy` 对象。路由单独用 `routingPolicy`，已消耗的模型调用与 tokens 转入被选模块；模块总期限从最初收到请求计时。
+`AgentSettings.policies()` 按模块 ID 覆盖整个 `ExecutionPolicy` 对象。路由单独用 `routingPolicy`，已消耗的模型调用与 tokens 转入被选模块；模块总期限从最初收到请求计时。
 
-| 字段 | 含义 / 安全范围 |
+| 字段 | 含义 / 有效值 |
 | --- | --- |
-| `modelCalls` | 实际模型尝试数，0..16 |
-| `toolCalls` | 工具尝试数，0..64 |
-| `steps` | 模型/工具总步骤尝试，1..128 |
-| `writeSteps` | 写工具尝试，0..16 |
-| `inputBytes` | 每次提示词+输入的 UTF-8 字节上限，1024..32768 |
-| `outputTokens` | 每次最大输出，128..4096 |
-| `totalTokens` | 全任务保守输入字节估计+输出预留及实际用量差额，1024..131072 |
-| `ttlMillis` | 从接受时起的任务期限，1000..600000 |
-| `modelTimeoutMillis` | 单次模型期限，不超过任务期限 |
+| `modelCalls` | 实际模型尝试数，非负整数 |
+| `toolCalls` | 工具尝试数，非负整数 |
+| `steps` | 模型/工具总步骤尝试，正整数 |
+| `writeSteps` | 写工具尝试，非负整数 |
+| `inputBytes` | 每次提示词+输入的 UTF-8 字节上限，正整数 |
+| `outputTokens` | 每次最大输出，正整数 |
+| `totalTokens` | 全任务保守输入字节估计+输出预留及实际用量差额，正整数 |
+| `ttlMillis` | 从接受时起的任务期限，正整数 |
+| `modelTimeoutMillis` | 单次模型期限，正整数且不超过任务期限 |
+
+预算由模块默认策略或管理员配置决定，不再给预算值另设任意硬上限。配置在 Codec 边界检查有效值，引擎和平台启动时不重复遍历校验相同字段；权限、重复 ID、业务引用、付款状态和执行预算仍在相应边界检查。配置字段继续使用 `lenientOptionalFieldOf`，错误字段回退默认值。
 
 首批快速模块通常 0..2 次模型调用、14.5 秒，成就模块默认 5 分钟且确定性路径不调用模型。自定义模块可在自己的执行逻辑中做更多有界决策，不会改变快速模块策略。配置示例见 [examples/agent](../examples/agent)。
 
@@ -170,9 +180,11 @@ AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", Res
 
 存储位于 `<存档>/system-agent/<UUID>.json`。不同世界使用各自目录，原型只支持单进程本地文件系统：写临时文件、`force(true)` 后原子替换。文件上限 4MiB；文件系统不支持原子替换时拒绝写，不退化为不安全覆盖。没有 SQLite 或多服务器共享写入。
 
-长期 AI / TTS / ASR 用量独立使用服务器全局 SavedData，保存在 `<存档>/data/system/token_usage.dat`，不进入上述业务文件或玩家附件，也不随 revoke 清理。所有 AI 请求统一经过 `ModelGateway`，按 API 实际 usage 累计；客户端 TTS 报告经 `SpeechAccounting` 归并，字符和 Token 分开累计，协议 2。详情见 [AI / TTS / ASR 用量统计](token-usage.md)。
+长期 AI / TTS / ASR 用量独立使用服务器全局 SavedData，保存在 `<存档>/data/system/token_usage.dat`，不进入上述业务文件或玩家附件，也不随 revoke 清理。所有 AI 请求统一经过 `ModelGateway`，按 API 实际 usage 累计；客户端 TTS 报告经 `SpeechAccounting` 归并，字符和 Token 分开累计，协议 3。详情见 [AI / TTS / ASR 用量统计](token-usage.md)。
 
 每玩家数据包含对话、独立每日唯一标记、收件箱、业务操作、事件任务及触发基线。对话清理不清除业务唯一标记。配置不进入玩家文件；密钥始终来自服务端环境变量。请用宿主机权限保护存档、临时文件和备份。
+
+`PlayerData` 将记忆代次、聊天历史和请求回放缓存组合为 `Conversation`，每日模型额度组合为 `ModelQuota`，顶层 `RecordCodecBuilder` 只接收 13 项。两组使用内联 `MapCodec` 组合，字段仍在存档同一层，不增加旧格式迁移逻辑。所有玩家集合在构造时复制为独立可变容器；`Conversation.clear()` 统一清理历史和回放并推进记忆代次，额度与奖励账本有各自生命周期。内部交付、事件、步骤回执和订单也使用 `RecordCodecBuilder`，已移除无调用的 `ObjectCodec`。
 
 事件参数按 moduleId/input 分派，事件授权只使用任务自身保存的 ruleId。结果、语音统计和 ASR 统计按当前 Codec 结构读取，不从旧记录猜测或回退字段。
 
@@ -186,7 +198,7 @@ AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", Res
 
 服务器同时更换该玩家的回包代次，丢弃旧交互回复；事件通知和登录初始化另检查运行代次，重复初始化使用独立标记。删除失败时原运行任务仍被取消，客户端解除旧请求等待，但不声称清理成功。撤销不回滚已经发生的 MC 背包变化、FTB 进度或外部扣款；在途外部支付也可能晚于本地撤销结束，需由管理员确认后再使用这一测试重置操作。
 
-`grant/revoke [玩家]` 只允许 `COMMANDS_GAMEMASTER`；省略目标时使用执行者本人，显式目标必须为单个在线玩家。网络包和模型不能调用这两个管理操作。玩家数据格式仍为 1，新增布尔字段按默认值补齐。
+`grant/revoke/reset [玩家]` 只允许 `COMMANDS_GAMEMASTER`；省略目标时使用执行者本人，显式目标必须为单个在线玩家。网络包和模型不能调用这些管理操作。`reset` 与 `revoke` 一样直接删除玩家文件，不尝试迁移无法解析的旧格式；它额外给出旧格式提示，完成后需要再次 `grant`。玩家数据格式仍为 1，新增布尔字段按默认值补齐。
 
 交互任务不在崩溃后自动续推理，重新请求会校验业务回执。事件任务保存输入、模块版本、策略、累计预算和每个写步骤的稳定回执；重登后恢复 `QUEUED/RUNNING/WAITING`，原期限不刷新。删除或禁用规则后不会授权其旧任务。当前没有通用动态步骤图、租约多工作者协调、自动补偿或独立通知 outbox；恢复通过模块入口与写步骤回执实现。
 
@@ -196,7 +208,7 @@ AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", Res
 
 ## 商城与目录扩展
 
-`agent/commerce/CommerceCatalog` 是奖励与商品目录的不可变快照；默认使用主配置的 `rewards` / `shopOffers`，通过 `engine.catalog(snapshot)` 发布替代目录。MC 使用已核对依赖源码的 `AddServerReloadListenersEvent.addRetainedListener` 注册加载器；只在成功切换服务器资源后发布新快照，不使用全局跨世界目录。两个数据包目录独立覆盖，格式见 [扩展配置](datapacks.md)。
+`agent/commerce/CommerceCatalog` 是奖励与商品目录的不可变快照，只从数据包生成；默认内容也放在 JAR 内 `data/system/system/signin_rewards/` 与 `shop_offers/`。初始目录随配置快照注入引擎，重载后通过 `engine.catalog(snapshot)` 发布新目录。MC 使用已核对依赖源码的 `AddServerReloadListenersEvent.addRetainedListener` 注册加载器；只在成功切换服务器资源后发布新快照，不使用全局跨世界目录。资源同路径按数据包优先级覆盖，不同 ID 汇总，格式见 [扩展配置](datapacks.md)。
 
 `system:shop` 分页浏览、`system:shop_quote` 生成预览、`system:shop_purchase` 处理独立确认，后者拒绝模型路由直接进入。支付内容只来自服务端签发的报价，绑定玩家与目录版本；订单按报价 ID 持久化，清空对话不删除订单。`ShopPurchaseTool` 用异步文件事务预留订单与锁定的收件箱权益，先验证存储容量，再进入受限主线程队列检查并扣除材料，最后在同一玩家事务中完成订单并解锁权益。扣款失败与结果未知分别记录；未知订单不自动重试，权益保持锁定。现有玩家文件通过字段默认初始化补上空 `purchases`，存储格式版本仍为 1。
 

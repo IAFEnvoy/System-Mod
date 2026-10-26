@@ -1,10 +1,10 @@
 # 模型接口与 DeepSeek 兼容
 
-默认仍使用 `https://api.deepseek.com`、`deepseek-chat` 与环境变量 `SYSTEM_DEEPSEEK_API_KEY`。旧配置继续有效，新字段缺省时沿用默认值。模型协议适配器为 `OpenAiCompatibleClient`，按 OpenAI Chat Completions 格式发送非流式请求，底层 HTTP 由独立的 `com.iafenvoy.system.util.HttpTransport` 处理。所有路由、签到与扩展模块仍统一经过 `ModelGateway`，实际 token 用量继续按玩家累计。
+默认仍使用 `https://api.deepseek.com`、`deepseek-chat` 与环境变量 `SYSTEM_DEEPSEEK_API_KEY`。模型配置独立于执行预算，不提供旧聚合配置迁移。模型协议适配器为 `OpenAiCompatibleClient`，按 OpenAI Chat Completions 格式发送非流式请求，底层 HTTP 由独立的 `com.iafenvoy.system.util.HttpTransport` 处理。所有路由、签到与扩展模块仍统一经过 `ModelGateway`，实际 token 用量继续按玩家累计。
 
 ## 配置
 
-服务端模型配置仍在 `config/system/system-agent.json`，修改后正常重启。下面是默认配置中的模型字段：
+服务端模型配置在 `config/system/system-model.json`，修改后正常重启。下面是默认配置中的模型字段：
 
 ```json
 {
@@ -36,7 +36,7 @@
 
 切换普通兼容服务时修改 `baseUrl`、`model` 和 `apiKeyEnvironment`，可显式设 `providerType=openai`。若服务使用新的输出限制字段，再设 `outputTokenParameter=max_completion_tokens`。某些模型不支持 JSON 模式，可关闭 `jsonMode`，但仍需遵守现有提示词并直接返回 JSON。
 
-示例片段用于合并到现有主配置，而非运行时读取的额外配置文件：
+以下片段用于合并到 `system-model.json`；完整默认示例见 [system-model.json](../examples/agent/system-model.json)：
 
 - [普通兼容服务](../examples/agent/model-openai-compatible.json)：将示例域名与模型 ID 替换为实际值。
 - [本地服务](../examples/agent/model-local.json)：示例端口为 11434，需填写已部署的实际模型 ID。
@@ -58,7 +58,7 @@
 
 `HttpTransport` 仅依赖 JDK，不依赖 Minecraft、Agent 配置、Gson 或模型错误码。每个实例复用一个 `HttpClient`，默认连接超时 5 秒，也可在构造时指定；所有请求禁止重定向，不自动重试，由拥有者关闭实例。`postJson(endpoint, json, headers, timeout, maxResponseBytes)` 发送 UTF-8 JSON；`send(HttpRequest, maxResponseBytes)` 接受任意方法、请求头和 JDK `BodyPublisher`，可用于后续音频字节、文件或 multipart 请求。返回标准 `HttpResponse<byte[]>`，保留状态码、响应头与原始字节，文本由协议调用方解码。
 
-每次必须指定正数响应字节上限和请求超时；响应在接收 chunk 时限长，等待期限覆盖完整响应体，超时或线程中断取消在途请求，中断保留线程标记。工具同步等待结果，必须在工作线程调用。状态码判断、JSON 解码、认证密钥来源和出站目标校验由具体 API 接入负责；模型接入仍使用原有 `AgentSettings` 固定端点校验、64KiB 响应限制与 Token 统计。JDK 请求超时和完整响应等待超时均映射为 `MODEL_TIMEOUT`，其他 I/O 失败映射为 `MODEL_UNAVAILABLE`。
+每次必须指定正数响应字节上限和请求超时；响应在接收 chunk 时限长，等待期限覆盖完整响应体，超时或线程中断取消在途请求，中断保留线程标记。工具同步等待结果，必须在工作线程调用。状态码判断、JSON 解码、认证密钥来源和出站目标校验由具体 API 接入负责；模型接入仍使用`ModelSettings` 固定端点校验、64KiB 响应限制与 Token 统计。JDK 请求超时和完整响应等待超时均映射为 `MODEL_TIMEOUT`，其他 I/O 失败映射为 `MODEL_UNAVAILABLE`。
 
 `stream(HttpRequest, maxResponseBytes, StreamConsumer)` 以串行回调交付响应信息和 byte[] 数据块，返回 `HttpResponse<Void>`；总字节上限和等待期限仍覆盖整个流。回调在 HTTP 工作线程执行，不能访问 MC 主线程状态或阻塞等待播放。调用方可用独立的 `ServerSentEvents` 解析 SSE，限长缓冲 UTF-8 行和事件，支持跨 chunk、多行 data 及 CR/LF。阿里云 TTS 已使用该链路边接收 PCM 边播放，原有 JSON/WAV 完整响应接口继续保留。详见 [语音合成与音色设计](tts.md)。
 

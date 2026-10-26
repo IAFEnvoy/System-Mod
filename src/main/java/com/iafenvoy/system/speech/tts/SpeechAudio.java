@@ -1,19 +1,22 @@
 package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.speech.SpeechException;
+import org.jspecify.annotations.Nullable;
+
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.UnsupportedAudioFileException;
-import org.jspecify.annotations.Nullable;
 
-/** Bounded append-only PCM shared by HTTP, native audio and a fresh fallback cursor. No reader waits on I/O. */
+/**
+ * Bounded append-only PCM shared by HTTP, native audio and a fresh fallback cursor. No reader waits on I/O.
+ */
 final class SpeechAudio {
     private static final int MAX_BYTES = 8 * 1024 * 1024;
     private static final int SLAB_BYTES = 16384;
@@ -105,9 +108,10 @@ final class SpeechAudio {
         private int position;
         private boolean closed;
 
-        ByteBuffer read(int expectedSize, boolean keepAlive) {
+        @Nullable ByteBuffer read(int expectedSize, boolean keepAlive) {
             synchronized (SpeechAudio.this) {
                 if (this.closed || SpeechAudio.this.cancelled) return null;
+                if (expectedSize <= 0) return null;
                 int frame = SpeechAudio.this.format.getFrameSize();
                 int limit = Math.min(expectedSize, (int) (SpeechAudio.this.format.getSampleRate() / 20) * frame);
                 int size = Math.min(limit, SpeechAudio.this.length - this.position);

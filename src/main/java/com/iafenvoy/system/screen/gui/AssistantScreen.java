@@ -8,10 +8,12 @@ import com.iafenvoy.system.agent.builtin.input.ItemQueryInput;
 import com.iafenvoy.system.agent.builtin.input.QuestQueryInput;
 import com.iafenvoy.system.agent.builtin.input.ShopQueryInput;
 import com.iafenvoy.system.runtime.client.AssistantClient;
-import com.iafenvoy.system.util.Json;
+import com.iafenvoy.system.util.MiscUtil;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
+
 import java.util.List;
+
 import static com.iafenvoy.system.screen.gui.AssistantView.*;
 
 /**
@@ -137,7 +139,7 @@ public final class AssistantScreen extends AssistantInputScreen {
                     String formatted = formatCard(card);
                     if (!formatted.isBlank())
                         cardElement.appendChild(element(document, "div", "card_body",
-                                card.titleKey().equals("system.result.quest") ? formatted : Json.clip(formatted, 6000)));
+                                card.titleKey().equals("system.result.quest") ? formatted : MiscUtil.clip(formatted, 6000)));
                     for (AgentResult.Action action : card.actions()) {
                         Element button = element(document, "button", card.data().value() instanceof ResultTypes.QuestList ? "card_action quest_row" : "card_action", actionLabel(card, action));
                         button.addEventListener("click", event -> AssistantClient.send(action, ""));

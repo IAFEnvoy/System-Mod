@@ -3,7 +3,9 @@ package com.iafenvoy.system.agent;
 import java.util.*;
 import java.util.function.Function;
 
-/** Exact parsing, help and completion share the same registered aliases and argument declarations. */
+/**
+ * Exact parsing, help and completion share the same registered aliases and argument declarations.
+ */
 public final class CommandRegistry {
     private final Map<String, Function<String, TypedPayload<?>>> commands = new LinkedHashMap<>();
     private final List<String> suggestions = new ArrayList<>(), usages = new ArrayList<>();
@@ -14,7 +16,6 @@ public final class CommandRegistry {
         for (AgentCommand<I> command : commands)
             for (String name : command.names())
                 if (!names.add(name)) throw new IllegalArgumentException("Duplicate command alias " + name);
-        if (names.size() > 256) throw new IllegalArgumentException("Command alias limit exceeded");
     }
 
     <I> void register(TypedPayload.Type<I> type, List<AgentCommand<I>> commands) {

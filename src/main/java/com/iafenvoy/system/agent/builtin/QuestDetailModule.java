@@ -1,32 +1,30 @@
 package com.iafenvoy.system.agent.builtin;
 
-import com.iafenvoy.system.agent.AgentCommand;
-import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.CommandArguments;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.input.QuestClaimInput;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
-import com.iafenvoy.system.agent.builtin.output.QuestDetailOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestLookupOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestPageOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestRewardOutput;
+import com.iafenvoy.system.agent.builtin.output.*;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.util.TypeDispatch;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/** Builds quest details, reward choices and independent section pagination actions. */
+/**
+ * Builds quest details, reward choices and independent section pagination actions.
+ */
 public final class QuestDetailModule extends BuiltinModule<QuestDetailInput> {
+    private static final TypeDispatch<QuestDetailInput, AgentResult> RESULTS = new TypeDispatch<QuestDetailInput, AgentResult>((_, _) -> {
+        throw new AgentException("UNSUPPORTED");
+    }).register(QuestPageOutput.class, (input, page) -> QuestQueryModule.questList(page, ResultTypes.QUEST_ACTION.of(input)))
+            .register(QuestDetailOutput.class, (_, detail) -> detail(detail.quest()));
+
     public QuestDetailModule(ToolRegistry.Tool<QuestDetailInput, QuestLookupOutput> detail) {
         super(ResultTypes.QUEST_ACTION, "View one FTB quest's description, objectives, progress and rewards. Ambiguous names return a brief candidate list. Never invent IDs or indices.",
-            QuestDetailInput.CODEC, List.of(detail), true, false, ExecutionPolicy.quick(2, 0));
+                QuestDetailInput.CODEC, List.of(detail), true, false, ExecutionPolicy.quick(2, 0));
     }
 
     @Override
@@ -39,10 +37,8 @@ public final class QuestDetailModule extends BuiltinModule<QuestDetailInput> {
     }
 
     private static QuestDetailInput commandInput(String text) {
-        CommandArguments.query(text, 256, true);
-        if (text.matches("[0-9]{1,4}")) {
+        if (text.matches("[0-9]+")) {
             int index = Integer.parseInt(text);
-            if (index < 1 || index > 8) throw new AgentException("INVALID_INPUT");
             return new QuestDetailInput("", Optional.of(index), "", 0, 0, 0, 0, 0);
         }
         return new QuestDetailInput(text, Optional.empty(), "", 0, 0, 0, 0, 0);
@@ -50,10 +46,10 @@ public final class QuestDetailModule extends BuiltinModule<QuestDetailInput> {
 
     @Override
     public AgentResult execute(ExecutionContext context, QuestDetailInput input) throws Exception {
-        QuestLookupOutput result = context.tool(BuiltinTools.QUEST_DETAIL, "detail", input);
-        if (result instanceof QuestPageOutput page)
-            return QuestQueryModule.questList(page, ResultTypes.QUEST_ACTION.of(input));
-        QuestOutput quest = ((QuestDetailOutput) result).quest();
+        return RESULTS.apply(input, context.tool(BuiltinTools.QUEST_DETAIL, "detail", input));
+    }
+
+    private static AgentResult detail(QuestOutput quest) {
         List<AgentResult.Action> actions = new ArrayList<>();
         for (QuestRewardOutput reward : quest.rewards()) {
             if (!reward.claimable() || reward.claimRef().isEmpty()) continue;

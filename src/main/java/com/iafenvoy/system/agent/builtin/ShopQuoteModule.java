@@ -1,22 +1,19 @@
 package com.iafenvoy.system.agent.builtin;
 
-import com.iafenvoy.system.agent.AgentCommand;
-import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.CommandArguments;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.input.ShopPurchaseInput;
 import com.iafenvoy.system.agent.builtin.input.ShopQuoteInput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.commerce.ShopQuotes;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+
 import java.util.List;
 import java.util.Optional;
 
-/** Keeps shop browsing and quoting separate from the confirmed payment operation. */
+/**
+ * Keeps shop browsing and quoting separate from the confirmed payment operation.
+ */
 public final class ShopQuoteModule extends BuiltinModule<ShopQuoteInput> {
     public ShopQuoteModule() {
         super(ResultTypes.QUOTE_ACTION, "Preview ONE shop purchase; player must then explicitly select the returned confirmation action.",
@@ -33,7 +30,7 @@ public final class ShopQuoteModule extends BuiltinModule<ShopQuoteInput> {
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, ShopQuoteInput input) throws Exception {
+    public AgentResult execute(ExecutionContext context, ShopQuoteInput input) {
         CommerceCatalog catalog = context.catalog();
         if (!input.catalogRevision().orElse(catalog.revision()).equals(catalog.revision()))
             throw new AgentException("STALE_QUOTE");

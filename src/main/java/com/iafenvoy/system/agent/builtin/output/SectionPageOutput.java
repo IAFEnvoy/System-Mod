@@ -4,7 +4,9 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-/** Built-in result data and its serialization codec. */
+/**
+ * Built-in result data and its serialization codec.
+ */
 public record SectionPageOutput(int offset, int nextOffset, boolean hasMore) {
     static MapCodec<SectionPageOutput> codec(String name) {
         String capitalized = Character.toUpperCase(name.charAt(0)) + name.substring(1);

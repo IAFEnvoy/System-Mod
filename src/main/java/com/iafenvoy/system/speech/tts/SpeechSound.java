@@ -2,9 +2,6 @@ package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.SystemMod;
 import com.mojang.blaze3d.audio.Channel;
-import java.nio.ByteBuffer;
-import java.util.concurrent.CompletableFuture;
-import javax.sound.sampled.AudioFormat;
 import net.minecraft.client.resources.sounds.AbstractSoundInstance;
 import net.minecraft.client.resources.sounds.Sound;
 import net.minecraft.client.sounds.AudioStream;
@@ -17,6 +14,10 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.util.valueproviders.ConstantFloat;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+
+import javax.sound.sampled.AudioFormat;
+import java.nio.ByteBuffer;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * NeoForge AudioStream hook consumes available PCM without waiting for synthesis or blocking sound updates.
@@ -84,7 +85,6 @@ final class SpeechSound extends AbstractSoundInstance {
 
             @Override
             public @Nullable ByteBuffer read(int expectedSize) {
-                if (SpeechSound.this.cancelled) return null;
                 return this.cursor.read(expectedSize, true);
             }
 

@@ -1,16 +1,21 @@
 package com.iafenvoy.system.data.usage;
 
-import com.iafenvoy.system.config.AliyunSpeechPricing;
+import com.iafenvoy.system.config.file.SpeechPricingConfig;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.netty.buffer.ByteBuf;
-import java.util.OptionalLong;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
+
+import java.util.OptionalLong;
+
 import static com.iafenvoy.system.data.usage.TokenUsage.add;
 
-/** Recognition is priced per successful call, separately from TTS characters and model tokens. */
-public record RecognitionUsage(long calls, long failedCalls, long unreportedCalls, long estimatedNanoYuan, long unpricedCalls) {
+/**
+ * Recognition is priced per successful call, separately from TTS characters and model tokens.
+ */
+public record RecognitionUsage(long calls, long failedCalls, long unreportedCalls, long estimatedNanoYuan,
+                               long unpricedCalls) {
     public static final RecognitionUsage EMPTY = new RecognitionUsage(0, 0, 0, 0, 0);
     public static final Codec<RecognitionUsage> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.LONG.fieldOf("calls").forGetter(RecognitionUsage::calls),
@@ -38,7 +43,7 @@ public record RecognitionUsage(long calls, long failedCalls, long unreportedCall
     }
 
     public RecognitionUsage complete(String provider, String region, boolean successful) {
-        OptionalLong price = successful ? AliyunSpeechPricing.estimateRecognition(provider, region) : OptionalLong.empty();
+        OptionalLong price = successful ? SpeechPricingConfig.estimateRecognition(provider, region) : OptionalLong.empty();
         return new RecognitionUsage(this.calls, add(this.failedCalls, successful ? 0 : 1), this.unreportedCalls - 1,
                 add(this.estimatedNanoYuan, price.orElse(0)), this.unpricedCalls - (price.isPresent() ? 1 : 0));
     }

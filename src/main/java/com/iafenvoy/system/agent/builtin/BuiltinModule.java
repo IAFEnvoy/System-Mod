@@ -4,7 +4,8 @@ import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.ExecutionPolicy;
 import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.TypedPayload;
-import com.iafenvoy.system.util.SchemaMapCodec;
+import com.iafenvoy.system.util.codec.SchemaMapCodec;
+
 import java.util.List;
 import java.util.stream.Collectors;
 

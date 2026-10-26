@@ -2,6 +2,7 @@ package com.iafenvoy.system.agent.model;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;

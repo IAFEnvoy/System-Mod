@@ -1,13 +1,16 @@
 package com.iafenvoy.system.agent.model;
 
-import com.iafenvoy.system.config.AgentSettings;
-import com.iafenvoy.system.util.AgentCodecs;
+import com.iafenvoy.system.config.file.ModelConfig;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.util.ExtraCodecs;
+
 import java.util.List;
 import java.util.Optional;
 
-/** Provider wire DTOs stay separate from agent decisions and workflow objects. */
+/**
+ * Provider wire DTOs stay separate from agent decisions and workflow objects.
+ */
 public final class ChatCompletion {
     private ChatCompletion() {
     }
@@ -30,29 +33,30 @@ public final class ChatCompletion {
                 Codec.STRING.optionalFieldOf("reasoning_effort").forGetter(Request::reasoningEffort)
         ).apply(i, Request::new));
 
-        public static Request of(AgentSettings settings, List<ModelClient.Message> messages, int maxOutputTokens) {
+        public static Request of(ModelConfig settings, List<ModelClient.Message> messages, int maxOutputTokens) {
             boolean deepSeek = settings.isDeepSeek();
-            return new Request(settings.model, List.copyOf(messages), false,
-                    settings.outputTokenParameter.equals("max_tokens") ? Optional.of(maxOutputTokens) : Optional.empty(),
-                    settings.outputTokenParameter.equals("max_completion_tokens") ? Optional.of(maxOutputTokens) : Optional.empty(),
-                    settings.jsonMode ? Optional.of(new Type("json_object")) : Optional.empty(),
-                    deepSeek ? Optional.of(new Type(settings.thinkingEnabled ? "enabled" : "disabled")) : Optional.empty(),
-                    deepSeek && settings.thinkingEnabled && !settings.reasoningEffort.isEmpty() ? Optional.of(settings.reasoningEffort) : Optional.empty());
+            return new Request(settings.model(), List.copyOf(messages), false,
+                    settings.outputTokenParameter().equals("max_tokens") ? Optional.of(maxOutputTokens) : Optional.empty(),
+                    settings.outputTokenParameter().equals("max_completion_tokens") ? Optional.of(maxOutputTokens) : Optional.empty(),
+                    settings.jsonMode() ? Optional.of(new Type("json_object")) : Optional.empty(),
+                    deepSeek ? Optional.of(new Type(settings.thinkingEnabled() ? "enabled" : "disabled")) : Optional.empty(),
+                    deepSeek && settings.thinkingEnabled() && !settings.reasoningEffort().isEmpty() ? Optional.of(settings.reasoningEffort()) : Optional.empty());
         }
     }
 
     public record TokenDetails(Optional<Long> cachedTokens) {
-        public static final Codec<TokenDetails> CODEC = AgentCodecs.NON_NEGATIVE_LONG.optionalFieldOf("cached_tokens")
+        public static final Codec<TokenDetails> CODEC = ExtraCodecs.NON_NEGATIVE_LONG.optionalFieldOf("cached_tokens")
                 .xmap(TokenDetails::new, TokenDetails::cachedTokens).codec();
     }
 
-    public record Usage(long prompt, long completion, long total, Optional<TokenDetails> details, Optional<Long> cacheHit) {
+    public record Usage(long prompt, long completion, long total, Optional<TokenDetails> details,
+                        Optional<Long> cacheHit) {
         public static final Codec<Usage> CODEC = RecordCodecBuilder.create(i -> i.group(
-                AgentCodecs.NON_NEGATIVE_LONG.fieldOf("prompt_tokens").forGetter(Usage::prompt),
-                AgentCodecs.NON_NEGATIVE_LONG.fieldOf("completion_tokens").forGetter(Usage::completion),
-                AgentCodecs.NON_NEGATIVE_LONG.fieldOf("total_tokens").forGetter(Usage::total),
+                ExtraCodecs.NON_NEGATIVE_LONG.fieldOf("prompt_tokens").forGetter(Usage::prompt),
+                ExtraCodecs.NON_NEGATIVE_LONG.fieldOf("completion_tokens").forGetter(Usage::completion),
+                ExtraCodecs.NON_NEGATIVE_LONG.fieldOf("total_tokens").forGetter(Usage::total),
                 TokenDetails.CODEC.optionalFieldOf("prompt_tokens_details").forGetter(Usage::details),
-                AgentCodecs.NON_NEGATIVE_LONG.optionalFieldOf("prompt_cache_hit_tokens").forGetter(Usage::cacheHit)
+                ExtraCodecs.NON_NEGATIVE_LONG.optionalFieldOf("prompt_cache_hit_tokens").forGetter(Usage::cacheHit)
         ).apply(i, Usage::new));
         public static final Codec<Optional<Usage>> ENVELOPE = CODEC.optionalFieldOf("usage").codec();
 

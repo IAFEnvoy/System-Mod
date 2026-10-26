@@ -7,12 +7,15 @@ import com.iafenvoy.system.agent.builtin.input.SignInCreditInput;
 import com.iafenvoy.system.agent.builtin.output.RewardOutput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.store.PlayerData;
+
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-/** Commits the chosen catalog reward once per day after revalidating the player and catalog. */
+/**
+ * Commits the chosen catalog reward once per day after revalidating the player and catalog.
+ */
 public final class SignInCreditTool implements ToolRegistry.Handler<SignInCreditInput, RewardOutput> {
     public ToolRegistry.Tool<SignInCreditInput, RewardOutput> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.SIGN_IN_CREDIT, true, true, false, this);
@@ -30,7 +33,7 @@ public final class SignInCreditTool implements ToolRegistry.Handler<SignInCredit
         context.ensureMemoryCurrent();
         return CompletableFuture.completedFuture(context.store().update(context.player(), data -> {
             context.check();
-            if (!day.equals(LocalDate.now(ZoneId.of(context.settings().timeZone)).toString()))
+            if (!day.equals(LocalDate.now(ZoneId.of(context.settings().timeZone())).toString()))
                 throw new AgentException("EXPIRED");
             if (!data.externalModel) throw new AgentException("MODEL_DISABLED");
             if (data.signIns.containsKey(day)) return new RewardOutput(data.signIns.get(day));

@@ -1,57 +1,86 @@
 package com.iafenvoy.system.agent;
 
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
-import com.iafenvoy.system.util.AgentCodecs;
-import com.iafenvoy.system.util.CodecIO;
+import com.iafenvoy.system.util.codec.DispatchRegistry;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;
 
-/** Typed requests inside the application; the existing packet shape is encoded only at its boundary. */
-public sealed interface AgentRequest {
-    String mode();
+import java.util.Arrays;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
-    default String text() { return ""; }
+/**
+ * Requests carry one registered type from the client through the network to the server handler.
+ */
+public interface AgentRequest {
+    Codec<AgentRequest> CODEC = Types.REGISTRY.codec();
 
-    default String encodedInput() { return "{}"; }
+    DispatchRegistry.Type<? extends AgentRequest> type();
+
+    String text();
 
     record Chat(String text) implements AgentRequest {
-        public String mode() { return ""; }
+        @Override
+        public DispatchRegistry.Type<Chat> type() {
+            return Types.CHAT;
+        }
     }
 
     record Invoke(TypedPayload<?> call, String text) implements AgentRequest {
-        public String mode() { return this.call.type().id().toString(); }
-        public String encodedInput() { return this.call.json().toString(); }
+        @Override
+        public DispatchRegistry.Type<Invoke> type() {
+            return Types.INVOKE;
+        }
     }
 
     enum Control implements AgentRequest {
-        STATE("state"), HISTORY("history"), FORGET("forget"), OPEN("open");
-        private final String mode;
-        Control(String mode) { this.mode = mode; }
-        public String mode() { return this.mode; }
+        STATE, HISTORY, FORGET, OPEN;
+        private static final Map<String, Control> VALUES = Arrays.stream(values()).collect(Collectors.toMap(Enum::name, Function.identity()));
+        public static final Codec<Control> CODEC = Codec.stringResolver(Enum::name, VALUES::get);
+
+        @Override
+        public DispatchRegistry.Type<Control> type() {
+            return Types.CONTROL;
+        }
+
+        @Override
+        public String text() {
+            return "";
+        }
     }
 
     record Preferences(boolean history, boolean external) implements AgentRequest {
-        public static final Codec<Preferences> CODEC = AgentCodecs.strict(RecordCodecBuilder.<Preferences>mapCodec(i -> i.group(
-                Codec.BOOL.fieldOf("history").forGetter(Preferences::history),
-                Codec.BOOL.fieldOf("external").forGetter(Preferences::external)
-        ).apply(i, Preferences::new))).codec();
-        public String mode() { return "preferences"; }
-        public String encodedInput() { return CodecIO.write(CODEC, this); }
+        @Override
+        public DispatchRegistry.Type<Preferences> type() {
+            return Types.PREFERENCES;
+        }
+
+        @Override
+        public String text() {
+            return "";
+        }
     }
 
-    static AgentRequest decode(String mode, String input, String text) {
-        if (mode.isEmpty()) {
-            CodecIO.parse(EmptyInput.CODEC.codec(), input, 4096);
-            return new Chat(text);
+    final class Types {
+        public static final DispatchRegistry<AgentRequest> REGISTRY = new DispatchRegistry<>("type", AgentRequest::type);
+        public static final DispatchRegistry.Type<Chat> CHAT = REGISTRY.register(id("chat"),
+                Codec.string(0, 2000).fieldOf("text").xmap(Chat::new, Chat::text));
+        public static final DispatchRegistry.Type<Invoke> INVOKE = REGISTRY.register(id("invoke"), RecordCodecBuilder.mapCodec(i -> i.group(
+                ResultTypes.ACTIONS.codec().fieldOf("call").forGetter(Invoke::call),
+                Codec.string(0, 2000).optionalFieldOf("text", "").forGetter(Invoke::text)
+        ).apply(i, Invoke::new)));
+        public static final DispatchRegistry.Type<Control> CONTROL = REGISTRY.register(id("control"), Control.CODEC.fieldOf("action"));
+        public static final DispatchRegistry.Type<Preferences> PREFERENCES = REGISTRY.register(id("preferences"), RecordCodecBuilder.mapCodec(i -> i.group(
+                Codec.BOOL.fieldOf("history").forGetter(Preferences::history),
+                Codec.BOOL.fieldOf("external").forGetter(Preferences::external)
+        ).apply(i, Preferences::new)));
+
+        private Types() {
         }
-        if (mode.equals("preferences")) return CodecIO.parse(Preferences.CODEC, input, 4096);
-        for (Control control : Control.values()) if (mode.equals(control.mode())) {
-            CodecIO.parse(EmptyInput.CODEC.codec(), input, 4096);
-            return control;
+
+        private static Identifier id(String path) {
+            return Identifier.fromNamespaceAndPath("system", path);
         }
-        Identifier id = Identifier.tryParse(mode);
-        if (id == null) throw new AgentException("INVALID_INPUT");
-        return new Invoke(ResultTypes.ACTIONS.parse(id, input, 4096), text);
     }
 }

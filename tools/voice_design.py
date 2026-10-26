@@ -57,12 +57,12 @@ MESSAGES = {
     "confirm": ("输入音色 ID 确认删除: ", "Type the voice ID to confirm deletion: "),
     "cancel": ("已取消。", "Cancelled."),
     "voice": ("音色 ID: {0}", "Voice ID: {0}"),
-    "profile": ("配置: {0}\n复制为 MC config/system/system-voice.json，然后在语音设置中导入；不包含密钥。", "Profile: {0}\nCopy to MC config/system/system-voice.json, then import in Speech settings; contains no key."),
+    "profile": ("配置: {0}\n将音色参数合并到 MC config/system/system-speech.json，保留密钥和本地偏好，再在语音设置中重新加载；此文件不包含密钥。", "Profile: {0}\nMerge its voice parameters into MC config/system/system-speech.json, preserving credentials and local preferences, then reload Speech settings; this file contains no key."),
     "audio": ("试听: {0}", "Preview: {0}"),
     "audio_failed": ("音色已创建且配置已保存，但试听数据无效；请用 query 查询音色，不要重复创建。", "Voice created and profile saved, but preview data is invalid; use query instead of creating again."),
     "upload_note": ("有效期 48 小时；模型请求需加 X-DashScope-OssResourceResolve: enable。", "Valid for 48 hours; model requests must include X-DashScope-OssResourceResolve: enable."),
     "io": ("无法读取/写入本地文件，请检查路径与权限。", "Unable to read/write local files; check paths and permissions."),
-    "model_note": ("qwen3-tts-flash 使用系统音色；设计音色绑定 Qwen-Audio-TTS，模组导入时会同步模型。", "qwen3-tts-flash uses system voices; designed voices bind Qwen-Audio-TTS. Import sets the matching model."),
+    "model_note": ("qwen3-tts-flash 使用系统音色；设计音色绑定 Qwen-Audio-TTS，请同时更新模组配置中的 model 和 voice 后重新加载。", "qwen3-tts-flash uses system voices; designed voices bind Qwen-Audio-TTS. Update both model and voice in the mod settings before reloading."),
 }
 
 

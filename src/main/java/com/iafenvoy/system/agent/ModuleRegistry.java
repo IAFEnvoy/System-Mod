@@ -4,11 +4,14 @@ import com.iafenvoy.system.agent.routing.ModelRoute;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.mojang.serialization.Codec;
-import java.util.*;
-import java.util.stream.Collectors;
 import net.minecraft.resources.Identifier;
 
-/** The startup registry is the single source of module authority and all routing entry points. */
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * The startup registry is the single source of module authority and all routing entry points.
+ */
 public final class ModuleRegistry {
     private final ToolRegistry tools;
     private final CommandRegistry commands = new CommandRegistry();
@@ -22,10 +25,10 @@ public final class ModuleRegistry {
 
     public synchronized <I> void register(AgentModule<I> module) {
         this.checkMutable();
-        if (this.modules.size() >= 128) throw new IllegalArgumentException("Module limit exceeded");
         AgentModule.Descriptor descriptor = module.descriptor();
         Identifier id = descriptor.id();
-        if (this.modules.containsKey(id) || this.profiles.containsKey(id)) throw new IllegalArgumentException("Duplicate module " + id);
+        if (this.modules.containsKey(id) || this.profiles.containsKey(id))
+            throw new IllegalArgumentException("Duplicate module " + id);
         if (!id.equals(module.inputType().id()) || !ResultTypes.ACTIONS.contains(module.inputType()))
             throw new IllegalArgumentException("Module input type must be registered under its descriptor ID");
         List<ToolRegistry.Tool<?, ?>> operations = List.copyOf(module.tools());
@@ -36,14 +39,11 @@ public final class ModuleRegistry {
             throw new IllegalArgumentException("Event-only modules cannot declare interactive entry points");
         if (!routing.modelSelectable() && !routing.commands().isEmpty())
             throw new IllegalArgumentException("Structured-only modules cannot declare commands");
-        if (routing.semantic().isPresent() && this.profiles.size() >= 128)
-            throw new IllegalArgumentException("Routing profile limit exceeded");
         this.commands.validate(routing.commands());
         boolean readOnly = descriptor.interactive() && descriptor.policy().writeSteps() == 0
                 && operations.stream().noneMatch(ToolRegistry.Tool::write);
         AgentResult.Action shortcut = routing.shortcut().map(value -> {
             TypedPayload<I> input = module.inputType().of(value.input());
-            input.json();
             if (!readOnly) throw new IllegalArgumentException("Clarification shortcuts must be read-only");
             return new AgentResult.Action(value.labelKey(), input);
         }).orElse(null);
@@ -57,7 +57,6 @@ public final class ModuleRegistry {
 
     public synchronized void reject(Identifier id, RoutingProfile<?> profile) {
         this.checkMutable();
-        if (this.profiles.size() >= 128) throw new IllegalArgumentException("Routing profile limit exceeded");
         if (profile.direct() || this.modules.containsKey(id) || this.profiles.containsKey(id))
             throw new IllegalArgumentException("Rejection examples require a unique non-callable ID");
         this.profiles.put(id, new RoutingProfile.Bound(id, profile.examples(), false, text -> null));
@@ -67,7 +66,6 @@ public final class ModuleRegistry {
         this.checkMutable();
         this.call(input);
         if (!this.readOnly(input.type().id())) throw new IllegalArgumentException("Root command must be read-only");
-        input.json();
         this.commands.root(input);
     }
 
@@ -124,20 +122,23 @@ public final class ModuleRegistry {
     }
 
     public Codec<ModelRoute> modelCodec() {
-        return ModelRoute.codec(id -> this.modelSelectable(id) ? this.get(id).inputType() : null);
+        List<TypedPayload.Type<?>> capabilities = new ArrayList<>();
+        for (Entry<?> entry : this.modules.values())
+            if (this.modelSelectable(entry.module().descriptor().id())) capabilities.add(entry.module().inputType());
+        return ModelRoute.codec(capabilities);
     }
 
     public <I> Call<I> call(TypedPayload<I> input) {
         AgentModule<?> module = this.get(input.type().id());
         if (module == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
         if (module.inputType() != input.type()) throw new AgentException("INVALID_INPUT");
-        input.json();
         // Registration ties this exact type key to I; keep the erased cast at this one boundary.
         @SuppressWarnings("unchecked") AgentModule<I> typed = (AgentModule<I>) module;
         return new Call<>(typed, input.value());
     }
 
-    private record Entry<I>(AgentModule<I> module, ModuleRouting<I> routing, boolean readOnly, AgentResult.Action shortcut) {
+    private record Entry<I>(AgentModule<I> module, ModuleRouting<I> routing, boolean readOnly,
+                            AgentResult.Action shortcut) {
     }
 
     public record Call<I>(AgentModule<I> module, I input) {

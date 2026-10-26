@@ -1,7 +1,8 @@
-package com.iafenvoy.system.util;
+package com.iafenvoy.system.util.codec;
 
 import com.google.gson.JsonObject;
 import com.mojang.serialization.*;
+
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Stream;

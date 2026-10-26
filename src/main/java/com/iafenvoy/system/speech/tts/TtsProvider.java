@@ -1,18 +1,27 @@
 package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.speech.SpeechException;
-import java.util.function.Consumer;
 import org.jspecify.annotations.NonNull;
 
-/** Provider protocol only; credentials, requests and audio have no Minecraft dependency. */
+import java.util.function.Consumer;
+
+/**
+ * Provider protocol only; credentials, requests and audio have no Minecraft dependency.
+ */
 public interface TtsProvider extends AutoCloseable {
-    /** Validate locally, without a network request or billable operation. */
+    /**
+     * Validate locally, without a network request or billable operation.
+     */
     void validate(Request request) throws SpeechException;
 
-    /** Return a complete PCM 16-bit little-endian mono/stereo WAV, without starting playback. */
+    /**
+     * Return a complete PCM 16-bit little-endian mono/stereo WAV, without starting playback.
+     */
     byte[] synthesize(Request request) throws Exception;
 
-    /** Report API usage once before downloading audio; legacy providers leave usage unknown. */
+    /**
+     * Report API usage once before downloading audio; legacy providers leave usage unknown.
+     */
     default byte[] synthesize(Request request, Consumer<Usage> observer) throws Exception {
         return this.synthesize(request);
     }
@@ -21,7 +30,9 @@ public interface TtsProvider extends AutoCloseable {
         return false;
     }
 
-    /** Stream signed 16-bit little-endian PCM; usage callbacks are cumulative snapshots, never deltas. */
+    /**
+     * Stream signed 16-bit little-endian PCM; usage callbacks are cumulative snapshots, never deltas.
+     */
     default void synthesizeStreaming(Request request, AudioSink audio, Consumer<Usage> observer) throws Exception {
         throw new UnsupportedOperationException("Streaming speech is not supported");
     }
@@ -31,9 +42,11 @@ public interface TtsProvider extends AutoCloseable {
         void accept(int sampleRate, int channels, byte[] pcm) throws Exception;
     }
 
-    enum Unit { UNKNOWN, CHARACTERS, TOKENS }
+    enum Unit {UNKNOWN, CHARACTERS, TOKENS}
 
-    /** Only provider-reported billing units; character and token totals are never interchanged. */
+    /**
+     * Only provider-reported billing units; character and token totals are never interchanged.
+     */
     record Usage(Unit unit, boolean reported, long characters, long inputTokens, long outputTokens, long totalTokens) {
         public static final Usage UNKNOWN = new Usage(Unit.UNKNOWN, false, 0, 0, 0, 0);
 
@@ -47,7 +60,8 @@ public interface TtsProvider extends AutoCloseable {
         }
     }
 
-    record Request(String text, String apiKey, String region, String workspace, String model, String voice, String language) {
+    record Request(String text, String apiKey, String region, String workspace, String model, String voice,
+                   String language) {
         @Override
         public @NonNull String toString() {
             return "TtsRequest[model=" + this.model + ", voice=" + this.voice + "]";

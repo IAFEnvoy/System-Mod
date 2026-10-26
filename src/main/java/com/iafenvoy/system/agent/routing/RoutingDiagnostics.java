@@ -2,11 +2,13 @@ package com.iafenvoy.system.agent.routing;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+
 import java.util.Map;
 import java.util.Optional;
 
 public record RoutingDiagnostics(String algorithm, String mode, String state, int examples, int cacheEntries,
-                                 Map<String, Long> counts, Optional<Match> lastMatch, long lastMicros, long totalMicros, long maxMicros) {
+                                 Map<String, Long> counts, Optional<Match> lastMatch, long lastMicros, long totalMicros,
+                                 long maxMicros) {
     public static final Codec<RoutingDiagnostics> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("algorithm").forGetter(RoutingDiagnostics::algorithm),
             Codec.STRING.fieldOf("mode").forGetter(RoutingDiagnostics::mode),

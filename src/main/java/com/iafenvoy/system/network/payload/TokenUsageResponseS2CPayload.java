@@ -2,8 +2,6 @@ package com.iafenvoy.system.network.payload;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
-import java.util.Locale;
-import java.util.Optional;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -11,10 +9,15 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NonNull;
 
-public record TokenUsageResponseS2CPayload(String id, Optional<TokenUsageSnapshot> snapshot, String errorKey) implements CustomPacketPayload {
+import java.util.Locale;
+import java.util.Optional;
+
+public record TokenUsageResponseS2CPayload(String id, boolean open, Optional<TokenUsageSnapshot> snapshot,
+                                           String errorKey) implements CustomPacketPayload {
     public static final Type<TokenUsageResponseS2CPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "token_usage_response_s2c"));
     public static final StreamCodec<RegistryFriendlyByteBuf, TokenUsageResponseS2CPayload> CODEC = StreamCodec.composite(
             ByteBufCodecs.stringUtf8(36), TokenUsageResponseS2CPayload::id,
+            ByteBufCodecs.BOOL, TokenUsageResponseS2CPayload::open,
             ByteBufCodecs.optional(TokenUsageSnapshot.STREAM_CODEC), TokenUsageResponseS2CPayload::snapshot,
             ByteBufCodecs.stringUtf8(128), TokenUsageResponseS2CPayload::errorKey,
             TokenUsageResponseS2CPayload::new);
@@ -24,12 +27,16 @@ public record TokenUsageResponseS2CPayload(String id, Optional<TokenUsageSnapsho
             throw new IllegalArgumentException("Expected a token usage snapshot or an error");
     }
 
-    public static TokenUsageResponseS2CPayload success(String id, TokenUsageSnapshot snapshot) {
-        return new TokenUsageResponseS2CPayload(id, Optional.of(snapshot), "");
+    public static TokenUsageResponseS2CPayload success(String id, TokenUsageSnapshot snapshot, boolean open) {
+        return new TokenUsageResponseS2CPayload(id, open, Optional.of(snapshot), "");
     }
 
     public static TokenUsageResponseS2CPayload failure(String id, String code) {
-        return new TokenUsageResponseS2CPayload(id, Optional.empty(), "system.error." + code.toLowerCase(Locale.ROOT));
+        return failure(id, code, false);
+    }
+
+    public static TokenUsageResponseS2CPayload failure(String id, String code, boolean open) {
+        return new TokenUsageResponseS2CPayload(id, open, Optional.empty(), "system.error." + code.toLowerCase(Locale.ROOT));
     }
 
     @Override

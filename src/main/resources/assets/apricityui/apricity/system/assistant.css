@@ -699,11 +699,16 @@ html.message_hud, .notification, .notification * {
 }
 
 .notification button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     min-width: 72px;
     max-width: 100%;
     white-space: normal;
     word-break: break-all;
     font-size: 13px;
+    line-height: 1.2;
+    text-align: center;
 }
 
 .notification button:disabled {

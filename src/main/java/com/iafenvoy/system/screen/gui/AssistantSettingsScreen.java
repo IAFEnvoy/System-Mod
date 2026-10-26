@@ -2,8 +2,8 @@ package com.iafenvoy.system.screen.gui;
 
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.config.RecognitionSettings;
-import com.iafenvoy.system.config.SpeechSettings;
+import com.iafenvoy.system.config.file.RecognitionConfig;
+import com.iafenvoy.system.config.file.SpeechConfig;
 import com.iafenvoy.system.runtime.client.AssistantClient;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
@@ -11,12 +11,16 @@ import com.iafenvoy.system.speech.asr.RecognitionCapture;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
+import net.minecraft.client.gui.screens.Screen;
+
 import java.util.List;
 import java.util.Locale;
-import net.minecraft.client.gui.screens.Screen;
+
 import static com.iafenvoy.system.screen.gui.AssistantView.*;
 
-/** One local settings document; tab changes retain all drafts and never save unrelated providers. */
+/**
+ * One local settings document; tab changes retain all drafts and never save unrelated providers.
+ */
 public final class AssistantSettingsScreen extends AssistantInputScreen {
     public enum Tab {
         GENERAL, TTS, ASR;
@@ -28,8 +32,8 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
 
     private final Screen parent;
     private Tab tab;
-    private SpeechSettings speechForm = AssistantSpeech.settings();
-    private RecognitionSettings asrForm = AssistantRecognition.settings();
+    private SpeechConfig speechForm = AssistantSpeech.settings();
+    private RecognitionConfig asrForm = AssistantRecognition.settings();
     private boolean simpleMode = AssistantClient.simpleMode();
     private boolean saveHistory = AssistantClient.saveHistory();
     private boolean externalModel = AssistantClient.externalModel();
@@ -76,13 +80,13 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
             bind(document, id, () -> this.selectTab(value));
         }
         for (String id : List.of("speech_note", "speech_key_step", "speech_voice_step", "speech_key_label", "speech_workspace_label",
-                "speech_model_label", "speech_voice_label", "speech_volume_label", "speech_hint", "speech_preview", "speech_stop", "speech_import"))
+                "speech_model_label", "speech_voice_label", "speech_volume_label", "speech_hint", "speech_preview", "speech_stop", "speech_reload"))
             text(document.getElementById(id), tr("system.tts.ui." + id));
         for (String id : List.of("asr_note", "asr_key_step", "asr_appkey_label", "asr_token_label", "asr_hint"))
             text(document.getElementById(id), tr("system.asr.ui." + id));
         document.getElementById("speech_key").setAttribute("placeholder", tr("system.tts.ui.key_placeholder"));
         Element languageSelect = document.getElementById("speech_language");
-        for (String language : SpeechSettings.LANGUAGES) {
+        for (String language : SpeechConfig.LANGUAGES) {
             Element option = document.createElement("option");
             option.setAttribute("value", language);
             option.setTextContent(tr("system.tts.language." + language));
@@ -93,20 +97,23 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         document.getElementById("asr_token").setValue(this.asrForm.token());
         text(document.getElementById("asr_backend"), tr(RecognitionCapture.voicechatInstalled()
                 ? "system.asr.ui.backend_voicechat" : "system.asr.ui.backend_java"));
-        for (Element input : document.querySelectorAll("#settings_page_tts input:not([type=checkbox])")) input.addEventListener("input", event -> {
-            this.readSpeechForm(document);
-            this.speechStatus = null;
-            this.renderControls();
-        });
-        for (Element input : document.querySelectorAll("#settings_page_asr input:not([type=checkbox])")) input.addEventListener("input", event -> {
-            this.readAsrForm(document);
-            this.asrStatus = "idle";
-        });
-        for (String mode : List.of("full", "simple")) bind(document, "settings_mode_" + mode, () -> {
-            this.simpleMode = mode.equals("simple");
-            this.generalStatus = "";
-            this.renderControls();
-        });
+        for (Element input : document.querySelectorAll("#settings_page_tts input:not([type=checkbox])"))
+            input.addEventListener("input", event -> {
+                this.readSpeechForm(document);
+                this.speechStatus = null;
+                this.renderControls();
+            });
+        for (Element input : document.querySelectorAll("#settings_page_asr input:not([type=checkbox])"))
+            input.addEventListener("input", event -> {
+                this.readAsrForm(document);
+                this.asrStatus = "idle";
+            });
+        for (String mode : List.of("full", "simple"))
+            bind(document, "settings_mode_" + mode, () -> {
+                this.simpleMode = mode.equals("simple");
+                this.generalStatus = "";
+                this.renderControls();
+            });
         bindSwitch(document, "history_toggle", checked -> {
             this.saveHistory = checked;
             this.preferencesEdited = true;
@@ -146,17 +153,13 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
             this.stopSpeech();
             this.speechStatus = null;
         });
-        bind(document, "speech_import", () -> {
-            this.readSpeechForm(document);
-            try {
-                SpeechSettings imported = this.speechForm.importVoice();
-                AssistantSpeech.validate(imported);
-                this.speechForm = imported;
-                this.fillSpeechForm(document);
-                this.speechStatus = "imported";
-            } catch (Exception error) {
-                this.speechStatus = error instanceof SpeechException speech ? speech.code() : "import";
-            }
+        bind(document, "speech_reload", () -> {
+            this.stopSpeech();
+            // Reload committed settings from disk and deliberately replace this tab's unsaved draft.
+            SpeechConfig.INSTANCE.load();
+            this.speechForm = SpeechConfig.INSTANCE.get();
+            this.fillSpeechForm(document);
+            this.speechStatus = "reloaded";
             this.renderControls();
         });
         bindSwitch(document, "asr_enabled", checked ->
@@ -164,8 +167,8 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         bindSwitch(document, "asr_auto_send", checked ->
                 this.changeAsr(this.asrForm.enabled(), this.asrForm.region(), checked));
         bind(document, "asr_region", () -> {
-            int index = RecognitionSettings.REGIONS.indexOf(this.asrForm.region());
-            this.changeAsr(this.asrForm.enabled(), RecognitionSettings.REGIONS.get((index + 1) % RecognitionSettings.REGIONS.size()), this.asrForm.autoSend());
+            int index = RecognitionConfig.REGIONS.indexOf(this.asrForm.region());
+            this.changeAsr(this.asrForm.enabled(), RecognitionConfig.REGIONS.get((index + 1) % RecognitionConfig.REGIONS.size()), this.asrForm.autoSend());
         });
         bind(document, "settings_save", this::save);
         bind(document, "settings_back", this::onClose);
@@ -189,14 +192,14 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         } catch (NumberFormatException error) {
             volume = -1;
         }
-        this.speechForm = new SpeechSettings(this.speechForm.enabled(), this.speechForm.provider(), document.getElementById("speech_key").getValue().strip(),
+        this.speechForm = new SpeechConfig(this.speechForm.enabled(), this.speechForm.provider(), document.getElementById("speech_key").getValue().strip(),
                 this.speechForm.region(), document.getElementById("speech_workspace").getValue().strip(), document.getElementById("speech_model").getValue().strip(),
                 document.getElementById("speech_voice").getValue().strip(), document.getElementById("speech_language").getValue(), volume,
                 switchChecked(document.getElementById("speech_cache")));
     }
 
     private void readAsrForm(Document document) {
-        this.asrForm = new RecognitionSettings(this.asrForm.enabled(), this.asrForm.provider(), document.getElementById("asr_appkey").getValue().strip(),
+        this.asrForm = new RecognitionConfig(this.asrForm.enabled(), this.asrForm.provider(), document.getElementById("asr_appkey").getValue().strip(),
                 document.getElementById("asr_token").getValue().strip(), this.asrForm.region(), this.asrForm.autoSend());
     }
 
@@ -204,7 +207,7 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         Document document = this.getLinkedDocument();
         if (document == null) return;
         this.readSpeechForm(document);
-        this.speechForm = new SpeechSettings(enabled, this.speechForm.provider(), this.speechForm.apiKey(), region, this.speechForm.workspace(),
+        this.speechForm = new SpeechConfig(enabled, this.speechForm.provider(), this.speechForm.apiKey(), region, this.speechForm.workspace(),
                 this.speechForm.model(), this.speechForm.voice(), language, this.speechForm.volume(), this.speechForm.cacheEnabled());
         this.speechStatus = null;
         this.renderControls();
@@ -214,7 +217,7 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         Document document = this.getLinkedDocument();
         if (document == null) return;
         this.readAsrForm(document);
-        this.asrForm = new RecognitionSettings(enabled, this.asrForm.provider(), this.asrForm.appKey(), this.asrForm.token(), region, autoSend);
+        this.asrForm = new RecognitionConfig(enabled, this.asrForm.provider(), this.asrForm.appKey(), this.asrForm.token(), region, autoSend);
         this.asrStatus = "idle";
         this.renderControls();
     }
@@ -294,9 +297,10 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         switchChecked(document.getElementById("speech_cache"), this.speechForm.cacheEnabled());
         text(document.getElementById("speech_region"), tr("system.tts.ui.region") + ": " + tr("system.tts.region." + this.speechForm.region()));
         Element languageSelect = document.getElementById("speech_language");
-        if (!languageSelect.getValue().equals(this.speechForm.language())) languageSelect.setValue(this.speechForm.language());
+        if (!languageSelect.getValue().equals(this.speechForm.language()))
+            languageSelect.setValue(this.speechForm.language());
         text(document.getElementById("speech_language_hint"), tr("system.tts.ui.language_hint"));
-        for (String id : List.of("speech_workspace", "speech_model", "speech_voice", "speech_language", "speech_volume", "speech_preview", "speech_import"))
+        for (String id : List.of("speech_workspace", "speech_model", "speech_voice", "speech_language", "speech_volume", "speech_preview"))
             document.getElementById(id).setDisabled(!this.speechForm.hasKey());
         switchChecked(document.getElementById("asr_enabled"), this.asrForm.enabled());
         text(document.getElementById("asr_region"), tr("system.asr.ui.region") + ": " + tr("system.asr.region." + this.asrForm.region()));
@@ -336,7 +340,8 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         if (save.isDisabled() != disabled) save.setDisabled(disabled);
         String status = switch (this.tab) {
             case GENERAL -> this.savingPreferences ? tr("system.ui.working") : this.generalStatus;
-            case TTS -> tr("system.tts.status." + (this.speechStatus == null ? AssistantSpeech.status() : this.speechStatus));
+            case TTS ->
+                    tr("system.tts.status." + (this.speechStatus == null ? AssistantSpeech.status() : this.speechStatus));
             case ASR -> tr("system.asr.status." + this.asrStatus);
         };
         if (!status.equals(this.displayedStatus)) {

@@ -1,17 +1,16 @@
 package com.iafenvoy.system.agent.prompt;
 
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/** Immutable per-server prompt catalog; executions retain one revision across resource reloads. */
+/**
+ * Immutable per-server prompt catalog; executions retain one revision across resource reloads.
+ */
 public final class SystemPrompts {
     public static final String ROUTING = "system:routing";
     public static final String SIGN_IN = "system:sign_in";
-    public static final int MAX_TEMPLATES = 128;
-    public static final int MAX_TEMPLATE_BYTES = 32768;
     private final Map<String, PromptTemplate> templates;
     private final String revision = UUID.randomUUID().toString();
 
@@ -24,14 +23,9 @@ public final class SystemPrompts {
     }
 
     public static SystemPrompts create(Map<String, String> definitions) {
-        if (definitions.size() > MAX_TEMPLATES) throw new IllegalArgumentException("Too many prompt templates");
         Map<String, PromptTemplate> templates = new LinkedHashMap<>();
-        int totalBytes = 0;
         for (Map.Entry<String, String> entry : definitions.entrySet()) {
             String id = entry.getKey(), text = entry.getValue();
-            int bytes = text.getBytes(StandardCharsets.UTF_8).length;
-            if (!id.matches("[a-z0-9_.-]+:[a-z0-9_./-]+") || bytes > MAX_TEMPLATE_BYTES || (totalBytes += bytes) > 1048576)
-                throw new IllegalArgumentException("Invalid or oversized prompt " + id);
             try {
                 templates.put(id, PromptTemplate.compile(text));
             } catch (IllegalArgumentException error) {

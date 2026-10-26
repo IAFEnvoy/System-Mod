@@ -1,0 +1,6 @@
+{
+  "label": "Mining supplies",
+  "items": [
+    { "id": "minecraft:torch", "count": 16 }
+  ]
+}

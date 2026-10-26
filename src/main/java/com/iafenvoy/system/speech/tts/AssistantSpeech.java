@@ -2,14 +2,10 @@ package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.config.SpeechSettings;
-import com.iafenvoy.system.speech.TtsProviders;
+import com.iafenvoy.system.config.file.SpeechConfig;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.speech.SpeechException;
-import java.net.http.HttpTimeoutException;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import com.iafenvoy.system.speech.TtsProviders;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundSource;
@@ -19,7 +15,14 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.sound.PlayStreamingSourceEvent;
 
-/** UI-owned speech sessions replace synthesis and playback together; stale results never start a sound. */
+import java.net.http.HttpTimeoutException;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+/**
+ * UI-owned speech sessions replace synthesis and playback together; stale results never start a sound.
+ */
 @EventBusSubscriber(Dist.CLIENT)
 public final class AssistantSpeech {
     private static final ThreadPoolExecutor WORKER = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS,
@@ -29,7 +32,6 @@ public final class AssistantSpeech {
         return thread;
     });
     private static Utterance queued;
-    private static SpeechSettings settings;
     private static long generation;
     private static Session owner;
     private static Future<?> pending;
@@ -40,7 +42,7 @@ public final class AssistantSpeech {
     private static long cooldownUntil;
     private static long deadline;
 
-    private record Utterance(Session source, String text, SpeechSettings settings, boolean preview) {
+    private record Utterance(Session source, String text, SpeechConfig settings, boolean preview) {
     }
 
     // A closed UI session cannot enqueue again, including after a delayed streaming callback.
@@ -57,7 +59,7 @@ public final class AssistantSpeech {
             if (!this.closed) AssistantSpeech.say(this, text);
         }
 
-        public void preview(SpeechSettings current) throws SpeechException {
+        public void preview(SpeechConfig current) throws SpeechException {
             if (this.closed) return;
             validate(current);
             stop();
@@ -78,32 +80,22 @@ public final class AssistantSpeech {
     private AssistantSpeech() {
     }
 
-    public static SpeechSettings settings() {
-        if (settings == null) {
-            try {
-                settings = SpeechSettings.load();
-            } catch (Exception e) {
-                settings = SpeechSettings.defaults();
-                status = "config";
-                SystemMod.LOGGER.warn("Unable to load local speech configuration");
-            }
-        }
-        return settings;
+    public static SpeechConfig settings() {
+        return SpeechConfig.INSTANCE.get();
     }
 
-    public static void configure(SpeechSettings next) throws Exception {
-        if (!SpeechSettings.LANGUAGES.contains(next.language()) || next.volume() < 0 || next.volume() > 100)
+    public static void configure(SpeechConfig next) throws Exception {
+        if (!SpeechConfig.LANGUAGES.contains(next.language()) || next.volume() < 0 || next.volume() > 100)
             throw new SpeechException("settings");
         if (next.enabled()) validate(next);
-        next.save();
+        SpeechConfig.INSTANCE.set(next);
         stop();
-        settings = next;
         cooldownUntil = 0;
         status = "saved";
     }
 
-    public static void validate(SpeechSettings next) throws SpeechException {
-        if (!SpeechSettings.LANGUAGES.contains(next.language()) || next.volume() < 0 || next.volume() > 100)
+    public static void validate(SpeechConfig next) throws SpeechException {
+        if (!SpeechConfig.LANGUAGES.contains(next.language()) || next.volume() < 0 || next.volume() > 100)
             throw new SpeechException("settings");
         try (TtsProvider provider = TtsProviders.create(next.provider())) {
             provider.validate(next.request("Preview", Minecraft.getInstance().options.languageCode));
@@ -113,7 +105,7 @@ public final class AssistantSpeech {
     private static void say(Session source, String text) {
         // The UI selects the current message; speech must never hold the next message behind old audio.
         stop();
-        SpeechSettings current = settings();
+        SpeechConfig current = settings();
         if (!current.enabled() || !current.hasKey() || System.nanoTime() < cooldownUntil) return;
         queued = new Utterance(source, text, current, false);
         status = "queued";
@@ -122,7 +114,7 @@ public final class AssistantSpeech {
     private static void start(Utterance utterance) {
         Session source = utterance.source();
         if (source.closed) return;
-        SpeechSettings current = utterance.settings();
+        SpeechConfig current = utterance.settings();
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.options.getSoundSourceVolume(SoundSource.MASTER) <= 0
                 || minecraft.options.getSoundSourceVolume(SoundSource.VOICE) <= 0 || current.volume() == 0) {
@@ -214,7 +206,6 @@ public final class AssistantSpeech {
     }
 
     public static String status() {
-        settings();
         return status;
     }
 

@@ -12,11 +12,16 @@ import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.quest.reward.ChoiceReward;
 import dev.ftb.mods.ftbquests.quest.reward.Reward;
 import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
-import java.util.*;
+
+import java.util.Date;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
+
 import static com.iafenvoy.system.compat.ftb.FtbQuestAccess.*;
 
-/** One FTB operation, loaded only after the optional dependency check. */
+/**
+ * One FTB operation, loaded only after the optional dependency check.
+ */
 final class FtbQuestClaimTool implements ToolRegistry.Handler<QuestClaimInput, QuestClaimOutput> {
     private final FtbQuestAccess access;
 

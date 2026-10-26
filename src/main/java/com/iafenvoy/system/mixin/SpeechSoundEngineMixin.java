@@ -7,7 +7,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Release raw speech sources while the old OpenAL context still exists. */
+/**
+ * Release raw speech sources while the old OpenAL context still exists.
+ */
 @Mixin(SoundEngine.class)
 public abstract class SpeechSoundEngineMixin {
     @Inject(method = {"stopAll", "emergencyShutdown"}, at = @At("HEAD"))

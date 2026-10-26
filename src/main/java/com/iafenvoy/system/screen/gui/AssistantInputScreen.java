@@ -1,27 +1,28 @@
 package com.iafenvoy.system.screen.gui;
 
-import com.iafenvoy.system.speech.asr.AsrProvider;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
-import com.iafenvoy.system.config.RecognitionSettings;
-import com.iafenvoy.system.speech.AsrProviders;
+import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.runtime.client.AssistantClient;
+import com.iafenvoy.system.speech.AsrProviders;
 import com.iafenvoy.system.speech.SpeechException;
+import com.iafenvoy.system.speech.asr.AsrProvider;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
-import com.iafenvoy.system.speech.tts.AssistantSpeech.Session;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
+import com.iafenvoy.system.speech.tts.AssistantSpeech.Session;
 import com.sighs.apricityui.element.AbstractText;
 import com.sighs.apricityui.event.KeyEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import com.sighs.apricityui.layout.Position;
 import com.sighs.apricityui.screen.ApricityScreen;
-import java.util.List;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.IMEPreeditOverlay;
 import net.minecraft.client.input.PreeditEvent;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
+
+import java.util.List;
 
 /**
  * Shared single-line composer, local completions and native input-method lifecycle.
@@ -46,7 +47,8 @@ public abstract class AssistantInputScreen extends ApricityScreen {
     private record InputArea(int left, int top, int right, int bottom, int guiScale) {
     }
 
-    private record SuggestionState(String value, int cursor, int selectionStart, int selectionEnd, long revision, boolean eligible) {
+    private record SuggestionState(String value, int cursor, int selectionStart, int selectionEnd, long revision,
+                                   boolean eligible) {
     }
 
     protected AssistantInputScreen(String templatePath, String draft) {
@@ -102,7 +104,8 @@ public abstract class AssistantInputScreen extends ApricityScreen {
     @Override
     public void tick() {
         super.tick();
-        if (this.recognition != null && !this.recognition.finished() && !this.minecraft.isWindowActive()) this.stopRecognition();
+        if (this.recognition != null && !this.recognition.finished() && !this.minecraft.isWindowActive())
+            this.stopRecognition();
         this.syncTextInputFocus();
         this.updateSuggestions();
         this.renderRecognition();
@@ -137,7 +140,7 @@ public abstract class AssistantInputScreen extends ApricityScreen {
         Document document = this.getLinkedDocument();
         if (document == null || document.getElementById("message") == null || this.imeOwnsKeys()
                 || AssistantClient.busy() || this.recognition != null && !this.recognition.finished()) return false;
-        RecognitionSettings settings = AssistantRecognition.settings();
+        RecognitionConfig settings = AssistantRecognition.settings();
         if (!settings.enabled()) {
             this.minecraft.setScreen(new AssistantSettingsScreen(this, AssistantSettingsScreen.Tab.ASR));
             return false;

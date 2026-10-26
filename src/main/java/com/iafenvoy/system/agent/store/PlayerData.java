@@ -5,57 +5,126 @@ import com.iafenvoy.system.agent.ExecutionPolicy;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.util.AgentCodecs;
-import com.iafenvoy.system.util.ObjectCodec;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.util.ExtraCodecs;
+
 import java.util.*;
 
 /**
  * Private server records. Never send this object as a client snapshot.
  */
 public final class PlayerData {
-    public static final Codec<PlayerData> CODEC = ObjectCodec.of(PlayerData::new)
-            .field("version", Codec.INT, v -> v.version, (v, x) -> v.version = x)
-            .field("bound", Codec.BOOL, v -> v.bound, (v, x) -> v.bound = x)
-            .field("memoryEpoch", Codec.LONG, v -> v.memoryEpoch, (v, x) -> v.memoryEpoch = x)
-            .field("saveHistory", Codec.BOOL, v -> v.saveHistory, (v, x) -> v.saveHistory = x)
-            .field("externalModel", Codec.BOOL, v -> v.externalModel, (v, x) -> v.externalModel = x)
-            .field("history", Message.CODEC.listOf().xmap(ArrayList::new, List::copyOf), v -> v.history, (v, x) -> v.history = x)
-            .field("requests", Codec.unboundedMap(Codec.STRING, Codec.lazyInitialized(() -> AgentResult.CODEC)).xmap(LinkedHashMap::new, value -> value), v -> v.requests, (v, x) -> v.requests = x)
-            .field("requestInputs", Codec.unboundedMap(Codec.STRING, Codec.STRING).xmap(LinkedHashMap::new, value -> value), v -> v.requestInputs, (v, x) -> v.requestInputs = x)
-            .field("signIns", Codec.unboundedMap(Codec.STRING, Reward.CODEC).xmap(LinkedHashMap::new, value -> value), v -> v.signIns, (v, x) -> v.signIns = x)
-            .field("inbox", Codec.unboundedMap(Codec.STRING, Delivery.CODEC).xmap(LinkedHashMap::new, value -> value), v -> v.inbox, (v, x) -> v.inbox = x)
-            .field("tasks", Codec.unboundedMap(Codec.STRING, EventTask.CODEC).xmap(LinkedHashMap::new, value -> value), v -> v.tasks, (v, x) -> v.tasks = x)
-            .field("operations", Codec.unboundedMap(Codec.STRING, Step.CODEC).xmap(LinkedHashMap::new, value -> value), v -> v.operations, (v, x) -> v.operations = x)
-            .field("purchases", Codec.unboundedMap(Codec.STRING, Purchase.CODEC).xmap(LinkedHashMap::new, value -> value), v -> v.purchases, (v, x) -> v.purchases = x)
-            .field("baselines", Codec.unboundedMap(Codec.STRING, Codec.STRING.listOf().<Set<String>>xmap(HashSet::new, List::copyOf)).xmap(LinkedHashMap::new, value -> value), v -> v.baselines, (v, x) -> v.baselines = x)
-            .field("unlocked", Codec.STRING.listOf().<Set<String>>xmap(HashSet::new, List::copyOf), v -> v.unlocked, (v, x) -> v.unlocked = x)
-            .field("usageDate", Codec.STRING, v -> v.usageDate, (v, x) -> v.usageDate = x)
-            .field("usedModelCalls", Codec.INT, v -> v.usedModelCalls, (v, x) -> v.usedModelCalls = x)
-            .codec();
-
-    public int version = 1;
-    public boolean bound;
-    public long memoryEpoch;
-    public boolean saveHistory = true;
-    public boolean externalModel = true;
-    // Disposable conversation data and request replay caches follow memory preferences and retention.
-    public List<Message> history = new ArrayList<>();
-    public Map<String, AgentResult> requests = new LinkedHashMap<>();
-    public Map<String, String> requestInputs = new LinkedHashMap<>();
+    public static final Codec<PlayerData> CODEC = RecordCodecBuilder.create(i -> i.group(
+            Codec.INT.optionalFieldOf("version", 1).forGetter((PlayerData v) -> v.version),
+            Codec.BOOL.optionalFieldOf("bound", false).forGetter(v -> v.bound),
+            Codec.BOOL.optionalFieldOf("saveHistory", true).forGetter(v -> v.saveHistory),
+            Codec.BOOL.optionalFieldOf("externalModel", true).forGetter(v -> v.externalModel),
+            Conversation.CODEC.forGetter(v -> v.conversation),
+            Codec.unboundedMap(Codec.STRING, Reward.CODEC).optionalFieldOf("signIns", Map.of()).forGetter(v -> v.signIns),
+            Codec.unboundedMap(Codec.STRING, Delivery.CODEC).optionalFieldOf("inbox", Map.of()).forGetter(v -> v.inbox),
+            Codec.unboundedMap(Codec.STRING, EventTask.CODEC).optionalFieldOf("tasks", Map.of()).forGetter(v -> v.tasks),
+            Codec.unboundedMap(Codec.STRING, Step.CODEC).optionalFieldOf("operations", Map.of()).forGetter(v -> v.operations),
+            Codec.unboundedMap(Codec.STRING, Purchase.CODEC).optionalFieldOf("purchases", Map.of()).forGetter(v -> v.purchases),
+            Codec.unboundedMap(Codec.STRING, Codec.STRING.listOf().<Set<String>>xmap(HashSet::new, List::copyOf)).optionalFieldOf("baselines", Map.of()).forGetter(v -> v.baselines),
+            Codec.STRING.listOf().optionalFieldOf("unlocked", List.of()).forGetter(v -> List.copyOf(v.unlocked)),
+            ModelQuota.CODEC.forGetter(v -> v.modelQuota)
+    ).apply(i, PlayerData::new));
+    public int version;
+    public boolean bound, saveHistory, externalModel;
+    public final Conversation conversation;
     // Business entitlements and recovery journals survive forget; revoke deletes this entire player file.
-    public Map<String, Reward> signIns = new LinkedHashMap<>();
-    public Map<String, Delivery> inbox = new LinkedHashMap<>();
-    public Map<String, EventTask> tasks = new LinkedHashMap<>();
-    public Map<String, Step> operations = new LinkedHashMap<>();
-    public Map<String, Purchase> purchases = new LinkedHashMap<>();
-    public Map<String, Set<String>> baselines = new LinkedHashMap<>();
-    public Set<String> unlocked = new HashSet<>();
-    // Daily admission quota only; cumulative billed tokens live separately in world SavedData.
-    public String usageDate = "";
-    public int usedModelCalls;
+    public final Map<String, Reward> signIns;
+    public final Map<String, Delivery> inbox;
+    public final Map<String, EventTask> tasks;
+    public final Map<String, Step> operations;
+    public final Map<String, Purchase> purchases;
+    public final Map<String, Set<String>> baselines;
+    public final Set<String> unlocked;
+    public final ModelQuota modelQuota;
+
+    public PlayerData() {
+        this(1, false, true, true, new Conversation(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Set.of(), new ModelQuota());
+    }
+
+    private PlayerData(int version, boolean bound, boolean saveHistory, boolean externalModel, Conversation conversation,
+                       Map<String, Reward> signIns, Map<String, Delivery> inbox, Map<String, EventTask> tasks,
+                       Map<String, Step> operations, Map<String, Purchase> purchases, Map<String, Set<String>> baselines,
+                       Collection<String> unlocked, ModelQuota modelQuota) {
+        this.version = version;
+        this.bound = bound;
+        this.saveHistory = saveHistory;
+        this.externalModel = externalModel;
+        this.conversation = conversation;
+        this.signIns = new LinkedHashMap<>(signIns);
+        this.inbox = new LinkedHashMap<>(inbox);
+        this.tasks = new LinkedHashMap<>(tasks);
+        this.operations = new LinkedHashMap<>(operations);
+        this.purchases = new LinkedHashMap<>(purchases);
+        this.baselines = new LinkedHashMap<>();
+        baselines.forEach((key, value) -> this.baselines.put(key, new HashSet<>(value)));
+        this.unlocked = new HashSet<>(unlocked);
+        this.modelQuota = modelQuota;
+    }
+
+    /**
+     * Disposable memory and replay caches share one lifetime; inline codecs keep their stored field names.
+     */
+    public static final class Conversation {
+        public static final MapCodec<Conversation> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+                Codec.LONG.optionalFieldOf("memoryEpoch", 0L).forGetter((Conversation v) -> v.memoryEpoch),
+                Message.CODEC.listOf().optionalFieldOf("history", List.of()).forGetter(v -> v.history),
+                Codec.unboundedMap(Codec.STRING, Codec.lazyInitialized(() -> AgentResult.CODEC))
+                        .optionalFieldOf("requests", Map.of()).forGetter(v -> v.requests),
+                Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("requestInputs", Map.of()).forGetter(v -> v.requestInputs)
+        ).apply(i, Conversation::new));
+        public long memoryEpoch;
+        public final List<Message> history;
+        public final Map<String, AgentResult> requests;
+        public final Map<String, String> requestInputs;
+
+        public Conversation() {
+            this(0, List.of(), Map.of(), Map.of());
+        }
+
+        private Conversation(long memoryEpoch, List<Message> history, Map<String, AgentResult> requests, Map<String, String> requestInputs) {
+            this.memoryEpoch = memoryEpoch;
+            // Codec defaults may be immutable; each player owns fresh mutable collections.
+            this.history = new ArrayList<>(history);
+            this.requests = new LinkedHashMap<>(requests);
+            this.requestInputs = new LinkedHashMap<>(requestInputs);
+        }
+
+        public void clear() {
+            this.memoryEpoch++;
+            this.history.clear();
+            this.requests.clear();
+            this.requestInputs.clear();
+        }
+    }
+
+    /**
+     * Daily admission counts only; cumulative billed usage remains in world SavedData.
+     */
+    public static final class ModelQuota {
+        public static final MapCodec<ModelQuota> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+                Codec.STRING.optionalFieldOf("usageDate", "").forGetter((ModelQuota v) -> v.usageDate),
+                Codec.INT.optionalFieldOf("usedModelCalls", 0).forGetter(v -> v.usedModelCalls)
+        ).apply(i, ModelQuota::new));
+        public String usageDate;
+        public int usedModelCalls;
+
+        public ModelQuota() {
+            this("", 0);
+        }
+
+        private ModelQuota(String usageDate, int usedModelCalls) {
+            this.usageDate = usageDate;
+            this.usedModelCalls = usedModelCalls;
+        }
+    }
 
     public record Message(String requestId, String role, long time, String text) {
         public static final Codec<Message> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -69,7 +138,7 @@ public final class PlayerData {
     public record Item(String id, int count) {
         public static final Codec<Item> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("id").forGetter(Item::id),
-                AgentCodecs.intRange(1, 64).optionalFieldOf("count").xmap(value -> value.orElse(1), Optional::of).forGetter(Item::count)
+                ExtraCodecs.POSITIVE_INT.optionalFieldOf("count", 1).forGetter(Item::count)
         ).apply(i, Item::new));
     }
 
@@ -79,25 +148,32 @@ public final class PlayerData {
                 Codec.STRING.fieldOf("label").forGetter(Reward::label),
                 Item.CODEC.listOf().fieldOf("items").forGetter(Reward::items)
         ).apply(i, Reward::new));
+
         public Reward {
             items = List.copyOf(items);
         }
     }
 
     public static final class Delivery {
-        public static final Codec<Delivery> CODEC = ObjectCodec.of(Delivery::new)
-                .field("id", Codec.STRING, v -> v.id, (v, x) -> v.id = x)
-                .field("reward", Reward.CODEC, v -> v.reward, (v, x) -> v.reward = x)
-                .field("state", Codec.STRING, v -> v.state, (v, x) -> v.state = x)
-                .field("created", Codec.LONG, v -> v.created, (v, x) -> v.created = x)
-                .codec();
-
+        public static final Codec<Delivery> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.STRING.optionalFieldOf("id").forGetter((Delivery v) -> Optional.ofNullable(v.id)),
+                Reward.CODEC.optionalFieldOf("reward").forGetter(v -> Optional.ofNullable(v.reward)),
+                Codec.STRING.optionalFieldOf("state", "PENDING").forGetter(v -> v.state),
+                Codec.LONG.optionalFieldOf("created", 0L).forGetter(v -> v.created)
+        ).apply(i, Delivery::new));
         public String id;
         public Reward reward;
         public String state = "PENDING";
         public long created;
 
         public Delivery() {
+        }
+
+        private Delivery(Optional<String> id, Optional<Reward> reward, String state, long created) {
+            this.id = id.orElse(null);
+            this.reward = reward.orElse(null);
+            this.state = state;
+            this.created = created;
         }
 
         public Delivery(String id, Reward reward) {
@@ -113,39 +189,54 @@ public final class PlayerData {
     }
 
     public static final class EventTask {
-        public static final Codec<EventTask> CODEC = ObjectCodec.of(EventTask::new)
-                .field("id", Codec.STRING, v -> v.id, (v, x) -> v.id = x)
-                .field("key", Codec.STRING, v -> v.key, (v, x) -> v.key = x)
-                .field("moduleVersion", Codec.INT, v -> v.moduleVersion, (v, x) -> v.moduleVersion = x)
-                .inline(ResultTypes.ACTIONS.mapCodec(), v -> v.call, (v, x) -> v.call = x)
-                .field("ruleId", Codec.STRING, v -> v.ruleId, (v, x) -> v.ruleId = x)
-                .field("policy", ExecutionPolicy.CODEC, v -> v.policy, (v, x) -> v.policy = x)
-                .field("created", Codec.LONG, v -> v.created, (v, x) -> v.created = x)
-                .field("expires", Codec.LONG, v -> v.expires, (v, x) -> v.expires = x)
-                .field("state", Codec.STRING, v -> v.state, (v, x) -> v.state = x)
-                .field("modelCalls", Codec.INT, v -> v.modelCalls, (v, x) -> v.modelCalls = x)
-                .field("toolCalls", Codec.INT, v -> v.toolCalls, (v, x) -> v.toolCalls = x)
-                .field("workflowSteps", Codec.INT, v -> v.workflowSteps, (v, x) -> v.workflowSteps = x)
-                .field("writeSteps", Codec.INT, v -> v.writeSteps, (v, x) -> v.writeSteps = x)
-                .field("tokens", Codec.INT, v -> v.tokens, (v, x) -> v.tokens = x)
-                .field("result", Codec.lazyInitialized(() -> AgentResult.CODEC), v -> v.result, (v, x) -> v.result = x)
-                .codec();
-
-        public String id;
-        public String key;
-        public String ruleId = "";
+        public static final Codec<EventTask> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.STRING.optionalFieldOf("id").forGetter((EventTask v) -> Optional.ofNullable(v.id)),
+                Codec.STRING.optionalFieldOf("key").forGetter(v -> Optional.ofNullable(v.key)),
+                Codec.INT.optionalFieldOf("moduleVersion", 0).forGetter(v -> v.moduleVersion),
+                ResultTypes.ACTIONS.mapCodec().forGetter(v -> v.call),
+                Codec.STRING.optionalFieldOf("ruleId", "").forGetter(v -> v.ruleId),
+                ExecutionPolicy.CODEC.optionalFieldOf("policy").forGetter(v -> Optional.ofNullable(v.policy)),
+                Codec.LONG.optionalFieldOf("created", 0L).forGetter(v -> v.created),
+                Codec.LONG.optionalFieldOf("expires", 0L).forGetter(v -> v.expires),
+                Codec.STRING.optionalFieldOf("state", "QUEUED").forGetter(v -> v.state),
+                Codec.INT.optionalFieldOf("modelCalls", 0).forGetter(v -> v.modelCalls),
+                Codec.INT.optionalFieldOf("toolCalls", 0).forGetter(v -> v.toolCalls),
+                Codec.INT.optionalFieldOf("workflowSteps", 0).forGetter(v -> v.workflowSteps),
+                Codec.INT.optionalFieldOf("writeSteps", 0).forGetter(v -> v.writeSteps),
+                Codec.INT.optionalFieldOf("tokens", 0).forGetter(v -> v.tokens),
+                Codec.lazyInitialized(() -> AgentResult.CODEC).optionalFieldOf("result").forGetter(v -> Optional.ofNullable(v.result))
+        ).apply(i, EventTask::new));
+        public String id, key, ruleId = "";
         public int moduleVersion;
         public TypedPayload<?> call;
         public ExecutionPolicy policy;
-        public long created;
-        public long expires;
+        public long created, expires;
         public String state = "QUEUED";
-        public int modelCalls;
-        public int toolCalls;
-        public int workflowSteps;
-        public int writeSteps;
-        public int tokens;
+        public int modelCalls, toolCalls, workflowSteps, writeSteps, tokens;
         public AgentResult result;
+
+        public EventTask() {
+        }
+
+        private EventTask(Optional<String> id, Optional<String> key, int moduleVersion, TypedPayload<?> call, String ruleId,
+                          Optional<ExecutionPolicy> policy, long created, long expires, String state, int modelCalls,
+                          int toolCalls, int workflowSteps, int writeSteps, int tokens, Optional<AgentResult> result) {
+            this.id = id.orElse(null);
+            this.key = key.orElse(null);
+            this.moduleVersion = moduleVersion;
+            this.call = call;
+            this.ruleId = ruleId;
+            this.policy = policy.orElse(null);
+            this.created = created;
+            this.expires = expires;
+            this.state = state;
+            this.modelCalls = modelCalls;
+            this.toolCalls = toolCalls;
+            this.workflowSteps = workflowSteps;
+            this.writeSteps = writeSteps;
+            this.tokens = tokens;
+            this.result = result.orElse(null);
+        }
 
         public boolean pending() {
             return Set.of("QUEUED", "RUNNING", "WAITING").contains(this.state);
@@ -158,31 +249,47 @@ public final class PlayerData {
     }
 
     public static final class Step {
-        public static final Codec<Step> CODEC = ObjectCodec.of(Step::new)
-                .field("state", Codec.STRING, v -> v.state, (v, x) -> v.state = x)
-                .field("fingerprint", Codec.STRING, v -> v.fingerprint, (v, x) -> v.fingerprint = x)
-                .field("result", Codec.PASSTHROUGH, v -> v.result, (v, x) -> v.result = x)
-                .codec();
-
-        public String state = "RUNNING";
-        public String fingerprint;
+        public static final Codec<Step> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.STRING.optionalFieldOf("state", "RUNNING").forGetter((Step v) -> v.state),
+                Codec.STRING.optionalFieldOf("fingerprint").forGetter(v -> Optional.ofNullable(v.fingerprint)),
+                Codec.PASSTHROUGH.optionalFieldOf("result").forGetter(v -> Optional.ofNullable(v.result))
+        ).apply(i, Step::new));
+        public String state = "RUNNING", fingerprint;
         public Dynamic<?> result;
+
+        public Step() {
+        }
+
+        private Step(String state, Optional<String> fingerprint, Optional<Dynamic<?>> result) {
+            this.state = state;
+            this.fingerprint = fingerprint.orElse(null);
+            this.result = result.orElse(null);
+        }
     }
 
     public static final class Purchase {
-        public static final Codec<Purchase> CODEC = ObjectCodec.of(Purchase::new)
-                .field("id", Codec.STRING, v -> v.id, (v, x) -> v.id = x)
-                .field("offer", CommerceCatalog.Offer.CODEC, v -> v.offer, (v, x) -> v.offer = x)
-                .field("state", Codec.STRING, v -> v.state, (v, x) -> v.state = x)
-                .field("error", Codec.STRING, v -> v.error, (v, x) -> v.error = x)
-                .field("created", Codec.LONG, v -> v.created, (v, x) -> v.created = x)
-                .codec();
-
+        public static final Codec<Purchase> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.STRING.optionalFieldOf("id").forGetter((Purchase v) -> Optional.ofNullable(v.id)),
+                CommerceCatalog.Offer.CODEC.optionalFieldOf("offer").forGetter(v -> Optional.ofNullable(v.offer)),
+                Codec.STRING.optionalFieldOf("state", "PREPARED").forGetter(v -> v.state),
+                Codec.STRING.optionalFieldOf("error", "").forGetter(v -> v.error),
+                Codec.LONG.optionalFieldOf("created", 0L).forGetter(v -> v.created)
+        ).apply(i, Purchase::new));
         public String id;
         public CommerceCatalog.Offer offer;
-        public String state = "PREPARED";
-        public String error = "";
+        public String state = "PREPARED", error = "";
         public long created;
+
+        public Purchase() {
+        }
+
+        private Purchase(Optional<String> id, Optional<CommerceCatalog.Offer> offer, String state, String error, long created) {
+            this.id = id.orElse(null);
+            this.offer = offer.orElse(null);
+            this.state = state;
+            this.error = error;
+            this.created = created;
+        }
     }
 }
 

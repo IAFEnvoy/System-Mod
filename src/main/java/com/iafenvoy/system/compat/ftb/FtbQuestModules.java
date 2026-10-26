@@ -6,7 +6,9 @@ import com.iafenvoy.system.agent.builtin.QuestDetailModule;
 import com.iafenvoy.system.agent.builtin.QuestQueryModule;
 import com.iafenvoy.system.runtime.server.MinecraftTools;
 
-/** Assemble the optional workflows from three independent operations sharing per-server state. */
+/**
+ * Assemble the optional workflows from three independent operations sharing per-server state.
+ */
 public final class FtbQuestModules {
     private FtbQuestModules() {
     }

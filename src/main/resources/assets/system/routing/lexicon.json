@@ -1,0 +1,272 @@
+{
+  "zh": {
+    "ignore": [
+      "查一下",
+      "查看",
+      "查询",
+      "看看",
+      "看一下",
+      "查一查",
+      "查查",
+      "看一看",
+      "检测",
+      "检索",
+      "打开",
+      "列出",
+      "显示",
+      "请",
+      "麻烦",
+      "帮我",
+      "告诉我",
+      "现在",
+      "当前",
+      "今天",
+      "系统",
+      "一下",
+      "的",
+      "吗",
+      "呢",
+      "啊",
+      "了",
+      "在",
+      "有哪些",
+      "有什么",
+      "有啥",
+      "哪些",
+      "出售",
+      "卖",
+      "可用",
+      "如何使用",
+      "怎么使用",
+      "列表",
+      "清单"
+    ],
+    "self": [
+      "我的",
+      "我",
+      "宿主",
+      "本人",
+      "自己"
+    ],
+    "status": [
+      "状态",
+      "概况",
+      "数据"
+    ],
+    "health": [
+      "血量",
+      "生命值",
+      "生命",
+      "血条"
+    ],
+    "level": [
+      "等级",
+      "经验值",
+      "经验"
+    ],
+    "location": [
+      "坐标",
+      "位置",
+      "维度"
+    ],
+    "inbox": [
+      "收件箱",
+      "奖励箱",
+      "信箱"
+    ],
+    "daily": [
+      "签到"
+    ],
+    "shop": [
+      "商城",
+      "商店",
+      "商铺",
+      "店铺"
+    ],
+    "reward": [
+      "奖励",
+      "补给",
+      "礼包"
+    ],
+    "pending": [
+      "等待领取",
+      "待领取",
+      "未领取"
+    ],
+    "help": [
+      "功能",
+      "指令手册",
+      "操作手册",
+      "使用说明"
+    ],
+    "item": [
+      "物品",
+      "道具"
+    ],
+    "quest": [
+      "任务手册",
+      "任务"
+    ],
+    "progress": [
+      "进度"
+    ],
+    "offer": [
+      "兑换商品",
+      "商品"
+    ],
+    "price": [
+      "价格"
+    ],
+    "write": [
+      "领取",
+      "发放",
+      "结算",
+      "支付",
+      "购买",
+      "兑换",
+      "扣款",
+      "扣除",
+      "签个到",
+      "建造"
+    ],
+    "registryitem": [
+      "registryitem"
+    ]
+  },
+  "en": {
+    "ignore": [
+      "look up",
+      "show",
+      "check",
+      "scan",
+      "open",
+      "browse",
+      "find",
+      "view",
+      "display",
+      "list",
+      "system",
+      "the",
+      "a",
+      "an",
+      "please",
+      "current",
+      "currently",
+      "now",
+      "today",
+      "available",
+      "for",
+      "of",
+      "what",
+      "which",
+      "do",
+      "does",
+      "can",
+      "are",
+      "am",
+      "is",
+      "in",
+      "have",
+      "has",
+      "how to use",
+      "how do i use"
+    ],
+    "self": [
+      "my",
+      "me",
+      "i",
+      "host",
+      "myself"
+    ],
+    "status": [
+      "stats",
+      "status",
+      "overview"
+    ],
+    "health": [
+      "health",
+      "hp"
+    ],
+    "level": [
+      "experience",
+      "level",
+      "xp"
+    ],
+    "location": [
+      "dimension",
+      "location",
+      "coordinates",
+      "position"
+    ],
+    "inbox": [
+      "inbox",
+      "mailbox"
+    ],
+    "daily": [
+      "daily sign-in",
+      "signed in",
+      "sign-in",
+      "check-in"
+    ],
+    "shop": [
+      "shop",
+      "store",
+      "market"
+    ],
+    "reward": [
+      "rewards",
+      "reward",
+      "supplies",
+      "supply"
+    ],
+    "pending": [
+      "pending",
+      "unclaimed",
+      "waiting"
+    ],
+    "help": [
+      "command manual",
+      "capabilities",
+      "capability",
+      "commands",
+      "help"
+    ],
+    "item": [
+      "items",
+      "item"
+    ],
+    "quest": [
+      "quests",
+      "quest"
+    ],
+    "progress": [
+      "progress"
+    ],
+    "offer": [
+      "offers",
+      "offer",
+      "products"
+    ],
+    "price": [
+      "prices",
+      "price",
+      "cost"
+    ],
+    "write": [
+      "sign me in",
+      "perform",
+      "claim",
+      "deliver",
+      "buy",
+      "purchase",
+      "pay",
+      "trade",
+      "give",
+      "settle",
+      "build"
+    ],
+    "registryitem": [
+      "registryitem"
+    ]
+  }
+}

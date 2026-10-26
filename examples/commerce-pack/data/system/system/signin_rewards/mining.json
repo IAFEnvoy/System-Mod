@@ -1,0 +1,6 @@
+{
+  "label": "采矿补给",
+  "items": [
+    { "id": "minecraft:torch", "count": 16 }
+  ]
+}

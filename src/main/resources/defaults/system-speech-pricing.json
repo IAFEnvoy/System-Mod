@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "currency": "CNY",
+  "asOf": "2026-10-25",
+  "rates": [
+    {
+      "provider": "aliyun",
+      "model": "qwen3-tts-flash",
+      "region": "beijing",
+      "unit": "CHARACTERS",
+      "units": 10000,
+      "input": 0.8,
+      "output": 0
+    },
+    {
+      "provider": "aliyun",
+      "model": "qwen3-tts-flash",
+      "region": "singapore",
+      "unit": "CHARACTERS",
+      "units": 10000,
+      "input": 0.733924,
+      "output": 0
+    },
+    {
+      "provider": "aliyun",
+      "model": "qwen-audio-3.1-tts-flash",
+      "region": "beijing",
+      "unit": "TOKENS",
+      "units": 1000000,
+      "input": 1.5,
+      "output": 12
+    },
+    {
+      "provider": "aliyun",
+      "model": "qwen-audio-3.1-tts-flash",
+      "region": "singapore",
+      "unit": "TOKENS",
+      "units": 1000000,
+      "input": 1.677,
+      "output": 13.636
+    },
+    {
+      "provider": "aliyun",
+      "model": "qwen-audio-3.1-tts-plus",
+      "region": "beijing",
+      "unit": "CHARACTERS",
+      "units": 10000,
+      "input": 1.4,
+      "output": 0
+    },
+    {
+      "provider": "aliyun",
+      "model": "qwen-audio-3.1-tts-plus",
+      "region": "singapore",
+      "unit": "CHARACTERS",
+      "units": 10000,
+      "input": 2.19,
+      "output": 0
+    },
+    {
+      "provider": "aliyun",
+      "model": "qwen-audio-3.0-tts-plus",
+      "region": "beijing",
+      "unit": "CHARACTERS",
+      "units": 10000,
+      "input": 1.4,
+      "output": 0
+    },
+    {
+      "provider": "aliyun",
+      "model": "qwen-audio-3.0-tts-plus",
+      "region": "singapore",
+      "unit": "CHARACTERS",
+      "units": 10000,
+      "input": 1.49884,
+      "output": 0
+    },
+    {
+      "provider": "aliyun",
+      "model": "qwen-audio-3.0-tts-flash",
+      "region": "beijing",
+      "unit": "CHARACTERS",
+      "units": 10000,
+      "input": 1,
+      "output": 0
+    },
+    {
+      "provider": "aliyun",
+      "model": "qwen-audio-3.0-tts-flash",
+      "region": "singapore",
+      "unit": "CHARACTERS",
+      "units": 10000,
+      "input": 1.12413,
+      "output": 0
+    },
+    {
+      "provider": "aliyun-nls",
+      "model": "sentence-recognition",
+      "region": "shanghai",
+      "unit": "CALLS",
+      "units": 1000,
+      "input": 3.5,
+      "output": 0
+    },
+    {
+      "provider": "aliyun-nls",
+      "model": "sentence-recognition",
+      "region": "beijing",
+      "unit": "CALLS",
+      "units": 1000,
+      "input": 3.5,
+      "output": 0
+    },
+    {
+      "provider": "aliyun-nls",
+      "model": "sentence-recognition",
+      "region": "shenzhen",
+      "unit": "CALLS",
+      "units": 1000,
+      "input": 3.5,
+      "output": 0
+    }
+  ]
+}

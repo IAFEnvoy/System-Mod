@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html><head><link rel="stylesheet" href="assistant.css"></head>
+<body class="settings">
+<div id="workspace">
+    <div id="topbar"><div id="identity"><span id="settings_title"></span></div><button id="settings_back"></button></div>
+    <div id="settings_tabs" role="tablist">
+        <button id="settings_tab_general" class="settings_tab" role="tab" aria-controls="settings_page_general"></button>
+        <button id="settings_tab_tts" class="settings_tab" role="tab" aria-controls="settings_page_tts"></button>
+        <button id="settings_tab_asr" class="settings_tab" role="tab" aria-controls="settings_page_asr"></button>
+    </div>
+    <div id="settings_content">
+        <div id="settings_page_general" class="settings_page" role="tabpanel">
+            <div class="result_card speech_step">
+                <h2 id="settings_view_heading"></h2>
+                <div class="settings_modes"><button id="settings_mode_full"></button><button id="settings_mode_simple"></button></div>
+            </div>
+            <div class="result_card speech_step">
+                <h2 id="privacy_heading"></h2>
+                <p id="privacy_text"></p>
+                <div class="speech_controls">
+                    <button id="history_toggle" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_history_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_history_label" class="switch_label"></span></button>
+                    <button id="model_toggle" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_model_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_model_label" class="switch_label"></span></button>
+                </div>
+            </div>
+        </div>
+        <div id="settings_page_tts" class="settings_page" role="tabpanel">
+            <p id="speech_note"></p>
+            <div class="speech_controls"><button id="speech_enabled" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_speech_enabled_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_speech_enabled_label" class="switch_label"></span></button></div>
+            <div class="result_card speech_step">
+                <h2 id="speech_key_step"></h2>
+                <label id="speech_key_label" for="speech_key"></label><input id="speech_key" type="password" maxlength="512" autocomplete="off">
+                <div class="speech_controls"><button id="speech_region"></button></div>
+            </div>
+            <div class="result_card speech_step">
+                <h2 id="speech_voice_step"></h2>
+                <label id="speech_workspace_label" for="speech_workspace"></label><input id="speech_workspace" type="text" maxlength="80">
+                <label id="speech_model_label" for="speech_model"></label><input id="speech_model" type="text" maxlength="100">
+                <label id="speech_voice_label" for="speech_voice"></label><input id="speech_voice" type="text" maxlength="200">
+                <div class="speech_controls"><label id="speech_language_label" for="speech_language"></label><select id="speech_language"></select><label id="speech_volume_label" for="speech_volume"></label><input id="speech_volume" type="text" maxlength="3"></div>
+                <p id="speech_language_hint"></p>
+                <div class="speech_controls"><button id="speech_cache" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_speech_cache_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_speech_cache_label" class="switch_label"></span></button></div>
+                <p id="speech_cache_hint"></p>
+                <p id="speech_hint"></p>
+            </div>
+        </div>
+        <div id="settings_page_asr" class="settings_page" role="tabpanel">
+            <p id="asr_note"></p>
+            <div class="speech_controls">
+                <button id="asr_enabled" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_asr_enabled_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_asr_enabled_label" class="switch_label"></span></button>
+                <button id="asr_auto_send" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_asr_auto_send_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_asr_auto_send_label" class="switch_label"></span></button>
+            </div>
+            <div class="result_card speech_step">
+                <h2 id="asr_key_step"></h2>
+                <label id="asr_appkey_label" for="asr_appkey"></label><input id="asr_appkey" type="text" maxlength="128" autocomplete="off">
+                <label id="asr_token_label" for="asr_token"></label><input id="asr_token" type="password" maxlength="2000" autocomplete="off">
+                <div class="speech_controls"><button id="asr_region"></button></div>
+                <p id="asr_backend"></p>
+                <p id="asr_hint"></p>
+            </div>
+        </div>
+    </div>
+    <div id="settings_footer">
+        <span id="settings_status"></span>
+        <div id="settings_speech_actions" class="speech_controls"><button id="speech_import"></button><button id="speech_stop"></button><button id="speech_preview"></button></div>
+        <button id="settings_save" class="primary"></button>
+    </div>
+</div>
+</body></html>

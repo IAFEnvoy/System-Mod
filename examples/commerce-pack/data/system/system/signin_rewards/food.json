@@ -1,0 +1,7 @@
+{
+  "label": "每日补给",
+  "items": [
+    { "id": "minecraft:bread", "count": 6 },
+    { "id": "minecraft:apple", "count": 2 }
+  ]
+}

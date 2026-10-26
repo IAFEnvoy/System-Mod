@@ -1,0 +1,10 @@
+{
+  "providerType": "deepseek",
+  "baseUrl": "https://api.deepseek.com",
+  "model": "deepseek-chat",
+  "apiKeyEnvironment": "SYSTEM_DEEPSEEK_API_KEY",
+  "thinkingEnabled": true,
+  "reasoningEffort": "high",
+  "jsonMode": true,
+  "outputTokenParameter": "max_tokens"
+}

@@ -1,0 +1,31 @@
+license="All Rights Reserved"
+
+[[mods]]
+modId="system_test"
+version="1.0.0-test"
+displayName="System Test Module"
+authors="IAFEnvoy"
+description='''
+Development-only test content for System.
+'''
+
+[[dependencies.system_test]]
+modId="neoforge"
+type="required"
+versionRange="[26.1.2,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.system_test]]
+modId="minecraft"
+type="required"
+versionRange="[26.1.2]"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.system_test]]
+modId="system"
+type="required"
+versionRange="[1.0.0,)"
+ordering="AFTER"
+side="BOTH"

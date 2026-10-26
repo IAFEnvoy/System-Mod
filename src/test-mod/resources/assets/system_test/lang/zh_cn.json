@@ -1,0 +1,4 @@
+{
+  "system_test.ftb_quests.name": "FTB 任务测试系统",
+  "system_test.ftb_quests.description": "仅用于开发，验证可选的 FTB Quests 集成。"
+}

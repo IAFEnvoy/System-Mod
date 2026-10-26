@@ -1,0 +1,14 @@
+{
+  "quest.09098254ACDF049A.title": "测试 A - 无条件任务",
+  "quest.09098254ACDF049A.quest_subtitle": "无前置、无奖励",
+  "quest.6630854113DBF1DF.title": "测试 B - 无条件任务（带奖励）",
+  "quest.6630854113DBF1DF.quest_subtitle": "无前置，两个奖励",
+  "quest.7D41ED39C59E31A0.title": "测试 C - 前置为 A",
+  "quest.7D41ED39C59E31A0.quest_subtitle": "A 未完成前不应出现",
+  "quest.77A86711FD4AADE9.title": "测试 D - 前置为 B，带奖励",
+  "quest.77A86711FD4AADE9.quest_subtitle": "B 未完成前不应出现",
+  "quest.37DA417E59ECDB37.title": "测试 E - 无条件任务（无奖励）",
+  "quest.37DA417E59ECDB37.quest_subtitle": "无前置、无奖励",
+  "quest.3FF79C05432AB2E2.title": "测试 F - 前置为 A 和 B",
+  "quest.3FF79C05432AB2E2.quest_subtitle": "需要 A 与 B 都完成",
+}

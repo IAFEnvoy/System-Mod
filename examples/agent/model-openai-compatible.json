@@ -1,0 +1,9 @@
+{
+  "providerType": "openai",
+  "baseUrl": "https://your-provider.example/compatible-mode/v1",
+  "model": "your-model-id",
+  "apiKeyEnvironment": "SYSTEM_MODEL_API_KEY",
+  "apiKeyRequired": true,
+  "jsonMode": true,
+  "outputTokenParameter": "max_tokens"
+}

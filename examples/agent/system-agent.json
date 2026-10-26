@@ -1,0 +1,122 @@
+{
+  "model": "deepseek-chat",
+  "baseUrl": "https://api.deepseek.com",
+  "apiKeyEnvironment": "SYSTEM_DEEPSEEK_API_KEY",
+  "providerType": "auto",
+  "thinkingEnabled": false,
+  "reasoningEffort": "high",
+  "apiKeyRequired": true,
+  "jsonMode": true,
+  "outputTokenParameter": "max_tokens",
+  "timeZone": "Asia/Shanghai",
+  "modelCallsPerPlayerDay": 100,
+  "concurrentModels": 4,
+  "routingPolicy": {
+    "modelCalls": 1,
+    "toolCalls": 0,
+    "steps": 4,
+    "writeSteps": 0,
+    "inputBytes": 16384,
+    "outputTokens": 512,
+    "totalTokens": 32768,
+    "ttlMillis": 14500,
+    "modelTimeoutMillis": 4000
+  },
+  "policies": {
+    "system:sign_in": {
+      "modelCalls": 2,
+      "toolCalls": 4,
+      "steps": 12,
+      "writeSteps": 1,
+      "inputBytes": 8192,
+      "outputTokens": 512,
+      "totalTokens": 16384,
+      "ttlMillis": 14500,
+      "modelTimeoutMillis": 4000
+    },
+    "system:advancement_followup": {
+      "modelCalls": 0,
+      "toolCalls": 8,
+      "steps": 16,
+      "writeSteps": 3,
+      "inputBytes": 8192,
+      "outputTokens": 512,
+      "totalTokens": 32768,
+      "ttlMillis": 300000,
+      "modelTimeoutMillis": 20000
+    }
+  },
+  "rewards": [
+    {
+      "id": "food",
+      "label": "Food supplies",
+      "items": [
+        {
+          "id": "minecraft:bread",
+          "count": 6
+        }
+      ]
+    },
+    {
+      "id": "mining",
+      "label": "Mining supplies",
+      "items": [
+        {
+          "id": "minecraft:torch",
+          "count": 16
+        }
+      ]
+    },
+    {
+      "id": "building",
+      "label": "Building supplies",
+      "items": [
+        {
+          "id": "minecraft:oak_log",
+          "count": 12
+        }
+      ]
+    }
+  ],
+  "shopOffers": [
+    {
+      "id": "system:torch_bundle",
+      "label": "Torch bundle",
+      "items": [
+        {
+          "id": "minecraft:torch",
+          "count": 4
+        }
+      ],
+      "price": {
+        "type": "ITEMS",
+        "items": [
+          {
+            "id": "minecraft:cobblestone",
+            "count": 16
+          }
+        ],
+        "coins": 0
+      }
+    }
+  ],
+  "advancementRules": [],
+  "semantic": {
+    "mode": "ENFORCE",
+    "maxCharacters": 240,
+    "minCoverage": 0.9,
+    "defaultThreshold": {
+      "score": 0.9,
+      "margin": 0.15
+    },
+    "languages": [
+      "zh",
+      "en"
+    ],
+    "lexicalThresholds": {},
+    "examples": {},
+    "cacheEntries": 1024,
+    "cacheSeconds": 300,
+    "entriesPerPlayer": 32
+  }
+}

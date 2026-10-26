@@ -1,0 +1,37 @@
+package com.iafenvoy.system.agent.builtin;
+
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.ExecutionContext;
+import com.iafenvoy.system.agent.ExecutionPolicy;
+import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.builtin.input.AdvancementInput;
+import com.iafenvoy.system.agent.builtin.input.FeatureInput;
+import com.iafenvoy.system.agent.builtin.input.RewardCreditInput;
+import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
+import com.iafenvoy.system.agent.builtin.output.FeatureOutput;
+import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
+import com.iafenvoy.system.agent.store.PlayerData;
+import java.util.List;
+
+/** Runs trusted advancement unlocks and reward credits through event-only tools. */
+public final class AdvancementFollowupModule extends BuiltinModule<AdvancementInput> {
+    public AdvancementFollowupModule(ToolRegistry.Tool<FeatureInput, FeatureOutput> unlock, ToolRegistry.Tool<RewardCreditInput, CreditReceiptOutput> credit) {
+        super(ResultTypes.ADVANCEMENT_ACTION, "Trusted advancement workflow; event entry only.",
+            AdvancementInput.CODEC, List.of(unlock, credit), false, true, ExecutionPolicy.event());
+    }
+
+    @Override
+    public AgentResult execute(ExecutionContext context, AdvancementInput input) throws Exception {
+        if (input.featureId().isPresent())
+            context.tool(BuiltinTools.FEATURE_UNLOCK, "unlock", new FeatureInput(input.featureId().get()));
+        if (input.rewardId().isPresent()) {
+            String rewardId = input.rewardId().get();
+            PlayerData.Reward reward = context.catalog().rewards().stream().filter(value -> value.id().equals(rewardId)).findFirst()
+                    .orElseThrow(() -> new AgentException("INVALID_INPUT"));
+            context.tool(BuiltinTools.REWARD_CREDIT, "milestone", new RewardCreditInput("event:" + context.taskId(), reward));
+        }
+        return AgentResult.ok("system.result.milestone");
+    }
+}

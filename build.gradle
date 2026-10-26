@@ -1,0 +1,174 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'net.neoforged.moddev' version '2.0.148'
+    id 'idea'
+}
+
+tasks.named('wrapper', Wrapper).configure {
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+version = mod_version
+group = mod_group_id
+
+sourceSets.main.resources {
+    srcDir('src/generated/resources')
+
+    exclude("src/generated/**/.cache")
+}
+
+def testModSourceSet = sourceSets.create('testMod') {
+    java.setSrcDirs(['src/test-mod/java'])
+    resources.setSrcDirs(['src/test-mod/resources'])
+}
+
+testModSourceSet.compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+testModSourceSet.runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+
+repositories {
+    mavenCentral()
+    maven { url = "https://cursemaven.com" }
+    maven { url = "https://maven.sighs.cc/repository/maven-public/" }
+    maven { url = 'https://maven.ftb.dev/releases' }
+}
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+
+def testClientGameDirectory = project.findProperty('systemTestClientGameDirectory') ?: 'run-test-client'
+def testClientUsername = project.findProperty('systemTestClientUsername')
+
+neoForge {
+    version = project.neo_version
+
+    runs {
+        client {
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        server {
+            server()
+            programArgument '--nogui'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        gameTestServer {
+            type = "gameTestServer"
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+
+        testClient {
+            client()
+            gameDirectory = file(testClientGameDirectory)
+            ideName = 'Test Client'
+            systemProperty 'fml.debugLoading', 'true'
+            if (testClientUsername) {
+                programArgument '--username'
+                programArgument testClientUsername
+            }
+        }
+
+        data {
+            clientData()
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+
+        configureEach {
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+
+            logLevel = org.slf4j.event.Level.DEBUG
+
+            taskBefore(tasks.named('classes'))
+            taskBefore(tasks.named(testModSourceSet.classesTaskName))
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+        "${mod_id}_test" {
+            sourceSet(testModSourceSet)
+        }
+    }
+}
+
+// Keep the development server console usable from Gradle/IDE launches.
+tasks.named('runServer').configure {
+    standardInput = System.in
+}
+
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+dependencies {
+    implementation "curse.maven:jupiter-1072905:8569832"
+    implementation "com.sighs:ApricityUI-neoforge-26.1:${apricityui_version}"
+
+    // Optional client capture backend: never bundled into System or required on the server.
+    compileOnly "curse.maven:simple-voice-chat-416089:${voicechat_file_id}"
+    localRuntime "curse.maven:simple-voice-chat-416089:${voicechat_file_id}"
+
+    // ==== FTB Quests (OPTIONAL) ====
+    // Minecraft 26.1.2 -> FTB version 26.1.2.x, from https://maven.ftb.dev/releases
+    // compileOnly: we compile against the API but do NOT require the mod. When it is missing,
+    // The isolated assistant adapter is registered only when FTB Quests is present.
+    // FTB Quests marks FTB Library / FTB Teams as runtime-only deps, so both are declared here
+    // as well to get them onto the compile classpath.
+    compileOnly "dev.ftb.mods:ftb-library-neoforge:${ftb_library_version}"
+    compileOnly "dev.ftb.mods:ftb-quests-neoforge:${ftb_quests_version}"
+    compileOnly "dev.ftb.mods:ftb-teams-neoforge:${ftb_teams_version}"
+
+    runtimeOnly "dev.ftb.mods:ftb-quests-neoforge:${ftb_quests_version}"
+    runtimeOnly "dev.ftb.mods:ftb-library-neoforge:${ftb_library_version}"
+    runtimeOnly "dev.ftb.mods:ftb-teams-neoforge:${ftb_teams_version}"
+}
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            ftb_quests_version     : ftb_quests_version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/repo"
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}

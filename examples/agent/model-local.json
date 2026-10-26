@@ -1,0 +1,9 @@
+{
+  "providerType": "openai",
+  "baseUrl": "http://127.0.0.1:11434/v1",
+  "model": "your-local-model",
+  "apiKeyEnvironment": "SYSTEM_LOCAL_MODEL_API_KEY",
+  "apiKeyRequired": false,
+  "jsonMode": false,
+  "outputTokenParameter": "max_tokens"
+}

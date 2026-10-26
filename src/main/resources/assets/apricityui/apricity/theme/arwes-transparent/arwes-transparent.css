@@ -1,0 +1,28 @@
+@import "../arwes/arwes.css";
+
+/* Use with both .arwes-theme and .arwes-transparent-theme on the root element. */
+.arwes-transparent-theme {
+    --surface: rgba(10, 28, 40, 0.38);
+    --surface-deep: rgba(6, 19, 29, 0.46);
+    --disabled-background: rgba(33, 59, 72, 0.48);
+    --panel-background: rgba(5, 24, 35, 0.38);
+    --panel-soft-background: rgba(5, 31, 43, 0.24);
+    --panel-strong-background: rgba(3, 14, 23, 0.56);
+    --button-background: rgba(8, 31, 43, 0.28);
+    --button-hover-background: rgba(23, 89, 106, 0.52);
+    --button-primary-background: rgba(19, 101, 119, 0.54);
+    --button-primary-hover-background: rgba(37, 139, 157, 0.7);
+    --button-secondary-background: rgba(4, 16, 25, 0.34);
+    --row-background: rgba(6, 43, 54, 0.28);
+    --row-hover-background: rgba(28, 103, 122, 0.24);
+    --card-hover-background: rgba(11, 54, 69, 0.42);
+    --tag-background: rgba(23, 89, 106, 0.24);
+    --menu-hover-background: rgba(23, 89, 106, 0.34);
+    --track-background: rgba(2, 13, 20, 0.36);
+    --accent-soft: rgba(97, 230, 255, 0.08);
+}
+
+.arwes-transparent-theme #panel {
+    background-image: linear-gradient(135deg, rgba(97, 230, 255, 0.04), transparent 35%, transparent 70%, rgba(97, 230, 255, 0.025));
+}
+

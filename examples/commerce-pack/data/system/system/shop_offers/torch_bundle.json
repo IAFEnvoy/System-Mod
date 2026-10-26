@@ -1,0 +1,12 @@
+{
+  "label": "火把补给",
+  "items": [
+    { "id": "minecraft:torch", "count": 4 }
+  ],
+  "price": {
+    "type": "ITEMS",
+    "items": [
+      { "id": "minecraft:cobblestone", "count": 16 }
+    ]
+  }
+}

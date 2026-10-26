@@ -1,0 +1,10 @@
+{
+  "label": "系统币补给（暂未开放）",
+  "items": [
+    { "id": "minecraft:bread", "count": 6 }
+  ],
+  "price": {
+    "type": "SYSTEM_COIN",
+    "coins": 20
+  }
+}

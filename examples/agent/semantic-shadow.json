@@ -1,0 +1,27 @@
+{
+  "mode": "SHADOW",
+  "maxCharacters": 240,
+  "minCoverage": 0.9,
+  "defaultThreshold": {
+    "score": 0.9,
+    "margin": 0.15
+  },
+  "languages": [
+    "zh",
+    "en"
+  ],
+  "lexicalThresholds": {},
+  "examples": {
+    "system:shop": {
+      "zh": [
+        "逛逛系统商铺"
+      ],
+      "en": [
+        "Browse the market"
+      ]
+    }
+  },
+  "cacheEntries": 1024,
+  "cacheSeconds": 300,
+  "entriesPerPlayer": 32
+}

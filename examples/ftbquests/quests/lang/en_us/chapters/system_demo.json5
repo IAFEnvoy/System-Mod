@@ -1,0 +1,14 @@
+{
+  "quest.09098254ACDF049A.title": "Test A - free quest",
+  "quest.09098254ACDF049A.quest_subtitle": "no dependency, no reward",
+  "quest.6630854113DBF1DF.title": "Test B - free quest with reward",
+  "quest.6630854113DBF1DF.quest_subtitle": "no dependency, 2 rewards",
+  "quest.7D41ED39C59E31A0.title": "Test C - locked behind A",
+  "quest.7D41ED39C59E31A0.quest_subtitle": "should NOT appear until A is done",
+  "quest.77A86711FD4AADE9.title": "Test D - locked behind B, reward",
+  "quest.77A86711FD4AADE9.quest_subtitle": "should NOT appear until B is done",
+  "quest.37DA417E59ECDB37.title": "Test E - free quest, no reward",
+  "quest.37DA417E59ECDB37.quest_subtitle": "no dependency, no reward",
+  "quest.3FF79C05432AB2E2.title": "Test F - locked behind A and B",
+  "quest.3FF79C05432AB2E2.quest_subtitle": "needs BOTH A and B",
+}

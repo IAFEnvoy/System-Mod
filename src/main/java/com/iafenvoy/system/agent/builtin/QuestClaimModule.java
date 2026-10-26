@@ -1,0 +1,34 @@
+package com.iafenvoy.system.agent.builtin;
+
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.ExecutionContext;
+import com.iafenvoy.system.agent.ExecutionPolicy;
+import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.builtin.input.QuestClaimInput;
+import com.iafenvoy.system.agent.builtin.output.QuestClaimOutput;
+import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
+import com.iafenvoy.system.agent.routing.ModuleRouting;
+import com.iafenvoy.system.agent.routing.RoutingProfile;
+import java.util.List;
+
+/** Claims one known quest reward reference and an optional selected choice. */
+public final class QuestClaimModule extends BuiltinModule<QuestClaimInput> {
+    public QuestClaimModule(ToolRegistry.Tool<QuestClaimInput, QuestClaimOutput> claim) {
+        super(ResultTypes.CLAIM_ACTION, "Claim exactly one known FTB reward using a previously returned claimRef. Without a ref, list claimable quests then open system:quest_detail; never invent references.",
+            QuestClaimInput.CODEC, List.of(claim), true, false, ExecutionPolicy.quick(1, 1));
+    }
+
+    @Override
+    public ModuleRouting<QuestClaimInput> routing() {
+        return ModuleRouting.<QuestClaimInput>defaults()
+                .semantic(RoutingProfile.hints(
+                        List.of("领取这个任务的奖励", "把任务奖励给我", "选第二个任务奖励", "领取全部已完成任务奖励"),
+                        List.of("Claim this quest reward", "Give me the quest rewards", "Choose the second quest reward", "Claim all completed quest rewards")));
+    }
+
+    @Override
+    public AgentResult execute(ExecutionContext context, QuestClaimInput input) throws Exception {
+        return AgentResult.data("system.result.claim", ResultTypes.CLAIM.of(context.tool(BuiltinTools.QUEST_CLAIM, "claim", input)));
+    }
+}

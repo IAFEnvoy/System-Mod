@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html><head><link rel="stylesheet" href="assistant.css"></head>
+<body>
+<div id="workspace">
+    <div id="topbar"><div id="identity"><span id="brand"></span><span id="subtitle"></span></div><span id="status"></span><button id="close"></button></div>
+    <div id="layout">
+        <div id="sidebar">
+            <div class="section_code">01 / ASSISTANT</div>
+            <button id="nav_chat" class="nav active"></button>
+            <button id="nav_player" class="nav"></button>
+            <button id="nav_items" class="nav"></button>
+            <div class="section_code">02 / PROGRESS</div>
+            <button id="nav_quests" class="nav"></button>
+            <button id="nav_signin" class="nav"></button>
+            <button id="nav_inbox" class="nav"></button>
+            <div class="section_code">03 / EXCHANGE</div>
+            <button id="nav_shop" class="nav"></button>
+            <button id="nav_usage" class="nav"></button>
+            <button id="nav_settings" class="nav"></button>
+            <div id="privacy"><div id="privacy_heading"></div><div id="privacy_text"></div></div>
+            <div class="sidebar_actions"><button id="history" class="small"></button><button id="forget" class="small"></button></div>
+        </div>
+        <div id="main">
+            <div id="page_chat" class="toolbar"></div>
+            <div id="page_items" class="toolbar"><input id="item_query" type="text" maxlength="128"><button id="item_search"></button></div>
+            <div id="page_quests" class="toolbar"><button id="quest_refresh"></button><button id="quest_claimable"></button></div>
+            <div id="page_signin" class="toolbar signin"><div><h2 id="signin_title"></h2><p id="signin_text"></p></div><button id="signin_action" class="primary"></button></div>
+            <div id="page_shop" class="toolbar shop"><div class="shop_controls"><input id="shop_query" type="text" maxlength="128"><button id="shop_search"></button><button id="shop_refresh"></button></div><p id="shop_text"></p></div>
+            <div id="welcome"><div class="signal">◇</div><h1 id="welcome_title"></h1><p id="welcome_text"></p></div>
+            <div id="conversation"></div>
+            <div id="asr_status"></div>
+            <div id="composer"><div id="message_box"><input id="message" type="text" maxlength="2000"><div id="command_suggestions"></div></div><button id="asr_toggle"></button><button id="asr_cancel"></button><button id="send" class="primary"></button></div>
+        </div>
+    </div>
+</div>
+</body></html>

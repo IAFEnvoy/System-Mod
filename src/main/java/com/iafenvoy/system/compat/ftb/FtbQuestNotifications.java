@@ -4,7 +4,7 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import com.iafenvoy.system.runtime.server.AssistantServer;
+import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.util.MiscUtil;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressEventData;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressType;
@@ -102,7 +102,7 @@ final class FtbQuestNotifications {
         Map<UUID, TeamData> onlineTeams = new LinkedHashMap<>();
         Map<UUID, Map<UUID, Recipient>> recipients = new HashMap<>();
         for (ServerPlayer player : this.file.server.getPlayerList().getPlayers()) {
-            if (!runtime.notificationsEnabled(player)) continue;
+            if (!runtime.players().notificationsEnabled(player)) continue;
             this.file.getTeamData(player).ifPresent(team -> {
                 onlineTeams.put(team.getTeamId(), team);
                 recipients.computeIfAbsent(team.getTeamId(), ignored -> new LinkedHashMap<>()).put(player.getUUID(),
@@ -127,7 +127,7 @@ final class FtbQuestNotifications {
                 for (Completion completion : state.completed.values())
                     for (Recipient recipient : completion.recipients())
                         if (recipient.valid(runtime, this.file, id))
-                            runtime.notifyEvent(recipient.player(), completion.result());
+                            runtime.players().notifyEvent(recipient.player(), completion.result());
                 if (!state.silent && state.locked == team.isLocked())
                     for (Map.Entry<Long, Quest> quest : available.entrySet()) {
                         if (state.available.contains(quest.getKey()) || team.isCompleted(quest.getValue())) continue;
@@ -135,7 +135,7 @@ final class FtbQuestNotifications {
                         for (Recipient recipient : current.values()) {
                             if (!recipient.equals(state.recipients.get(recipient.player().getUUID()))) continue;
                             if (recipient.valid(runtime, this.file, id))
-                                runtime.notifyEvent(recipient.player(), result);
+                                runtime.players().notifyEvent(recipient.player(), result);
                         }
                     }
                 state.available = Set.copyOf(available.keySet());
@@ -175,7 +175,7 @@ final class FtbQuestNotifications {
 
     private record Recipient(ServerPlayer player, UUID connection, long incarnation) {
         boolean valid(AssistantServer runtime, ServerQuestFile file, UUID team) {
-            return runtime.notificationsEnabled(this.player) && runtime.engine().current(this.player.getUUID(), this.incarnation)
+            return runtime.players().notificationsEnabled(this.player) && runtime.engine().current(this.player.getUUID(), this.incarnation)
                     && this.connection.equals(ServerNetworkHandler.connectionId(this.player))
                     && file.getTeamData(this.player).map(data -> data.getTeamId().equals(team)).orElse(false);
         }

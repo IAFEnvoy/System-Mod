@@ -2,7 +2,7 @@ package com.iafenvoy.system.screen.gui;
 
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
 import com.iafenvoy.system.config.file.RecognitionConfig;
-import com.iafenvoy.system.runtime.client.AssistantClient;
+import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.speech.AsrProviders;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AsrProvider;
@@ -139,14 +139,13 @@ public abstract class AssistantInputScreen extends ApricityScreen {
     public final boolean startRecognition() {
         Document document = this.getLinkedDocument();
         if (document == null || document.getElementById("message") == null || this.imeOwnsKeys()
-                || AssistantClient.busy() || this.recognition != null && !this.recognition.finished()) return false;
-        RecognitionConfig settings = AssistantRecognition.settings();
-        if (!settings.enabled()) {
+                || AssistantClient.state().busy() || this.recognition != null && !this.recognition.finished()) return false;
+        if (!RecognitionConfig.INSTANCE.get().enabled()) {
             this.minecraft.setScreen(new AssistantSettingsScreen(this, AssistantSettingsScreen.Tab.ASR));
             return false;
         }
-        try (AsrProvider provider = AsrProviders.create(settings.provider())) {
-            provider.validate(settings.request());
+        try (AsrProvider provider = AsrProviders.create(RecognitionConfig.INSTANCE.get().provider())) {
+            provider.validate(RecognitionConfig.INSTANCE.get().request());
         } catch (SpeechException error) {
             this.recognitionStatus = error.code();
             this.renderRecognition();
@@ -195,7 +194,7 @@ public abstract class AssistantInputScreen extends ApricityScreen {
         this.recognitionStatus = "done";
         this.updateSuggestions();
         // Reuse normal submission so commands, pending requests and IME guards keep their behavior.
-        if (AssistantRecognition.settings().autoSend() && this.minecraft.isWindowActive()) this.sendMessage();
+        if (RecognitionConfig.INSTANCE.get().autoSend() && this.minecraft.isWindowActive()) this.sendMessage();
     }
 
     public final void stopRecognition() {
@@ -214,12 +213,12 @@ public abstract class AssistantInputScreen extends ApricityScreen {
         String status = this.recognitionStatus.equals("draft_changed") || this.recognitionStatus.equals("length")
                 ? this.recognitionStatus : this.recognition == null ? this.recognitionStatus : this.recognition.status();
         String partial = this.recognition == null ? "" : this.recognition.intermediate();
-        String rendered = status + ":" + active + ":" + AssistantClient.busy() + ":" + partial;
+        String rendered = status + ":" + active + ":" + AssistantClient.state().busy() + ":" + partial;
         if (rendered.equals(this.renderedRecognition)) return;
         this.renderedRecognition = rendered;
         AssistantView.text(document.getElementById("asr_toggle"), AssistantView.tr(active && !status.equals("recognizing")
                 ? "system.asr.ui.finish" : "system.asr.ui.record"));
-        document.getElementById("asr_toggle").setDisabled(AssistantClient.busy() || active && status.equals("recognizing"));
+        document.getElementById("asr_toggle").setDisabled(AssistantClient.state().busy() || active && status.equals("recognizing"));
         Element cancel = document.getElementById("asr_cancel");
         if (cancel != null) cancel.setInlineStyleProperty("display", active ? "block" : "none");
         Element hint = document.getElementById("asr_status");
@@ -256,7 +255,8 @@ public abstract class AssistantInputScreen extends ApricityScreen {
             if (input == document.getElementById("message")) this.sendMessage();
             else {
                 String buttonId = input == document.getElementById("item_query") ? "item_search"
-                        : input == document.getElementById("shop_query") ? "shop_search" : "";
+                        : input == document.getElementById("shop_query") ? "shop_search"
+                        : input == document.getElementById("lottery_query") ? "lottery_search" : "";
                 Element button = buttonId.isEmpty() ? null : document.getElementById(buttonId);
                 if (button != null) button.click();
             }

@@ -7,10 +7,10 @@ import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.EntitlementInput;
 import com.iafenvoy.system.agent.builtin.output.StateOutput;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.runtime.server.MinecraftTools;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import com.iafenvoy.system.assistant.MinecraftTools;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -51,17 +51,14 @@ public final class DeliverTool implements ToolRegistry.Handler<EntitlementInput,
             CompletableFuture<StateOutput> future = new CompletableFuture<>();
             this.game.onPlayer(context, player -> {
                 List<ItemStack> stacks = new ArrayList<>();
-                for (PlayerData.Item item : delivery.reward.items()) {
-                    Identifier itemId = Identifier.tryParse(item.id());
-                    if (itemId == null || !BuiltInRegistries.ITEM.containsKey(itemId))
-                        throw new AgentException("INVALID_REWARD");
-                    ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.getValue(itemId), item.count());
-                    if (stack.isEmpty() || item.count() > stack.getMaxStackSize())
-                        throw new AgentException("INVALID_REWARD");
+                // create() validates bound components and the actual stack limit on the game thread.
+                for (ItemStackTemplate item : delivery.reward.items()) {
+                    ItemStack stack = item.create();
+                    if (stack.isEmpty()) throw new AgentException("INVALID_REWARD");
                     stacks.add(stack);
                 }
                 int free = 0;
-                for (int slot = 0; slot < 36; slot++) if (player.getInventory().getItem(slot).isEmpty()) free++;
+                for (int slot = 0; slot < Inventory.INVENTORY_SIZE; slot++) if (player.getInventory().getItem(slot).isEmpty()) free++;
                 if (free < stacks.size()) throw new AgentException("INVENTORY_FULL");
                 context.check();
                 for (ItemStack stack : stacks) {

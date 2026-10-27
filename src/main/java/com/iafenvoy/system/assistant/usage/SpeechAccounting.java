@@ -1,4 +1,4 @@
-package com.iafenvoy.system.runtime.usage;
+package com.iafenvoy.system.assistant.usage;
 
 import com.iafenvoy.system.network.payload.RecognitionUsageReportC2SPayload;
 import com.iafenvoy.system.network.payload.SpeechUsageReportC2SPayload;

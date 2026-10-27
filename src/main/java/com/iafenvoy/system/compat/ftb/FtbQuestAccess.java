@@ -5,7 +5,7 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.output.*;
-import com.iafenvoy.system.runtime.server.MinecraftTools;
+import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.util.MiscUtil;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.TeamData;

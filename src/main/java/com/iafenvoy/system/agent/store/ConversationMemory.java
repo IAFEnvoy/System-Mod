@@ -28,7 +28,9 @@ public final class ConversationMemory {
             .register(PurchaseReceiptOutput.class, (_, v) -> reward(v.entitlementId(), v.state(), v.reward()))
             .register(ResultTypes.SignInStatus.class, (_, v) -> fact("sign_in", "", "", Boolean.toString(v.signedIn())))
             .register(ResultTypes.ShopOrder.class, (_, v) -> fact("order", "", "", v.state()))
-            .register(ResultTypes.ShopOffer.class, (_, v) -> fact("offer", v.id().orElse(""), "", ""))
+            .register(ResultTypes.ShopOffer.class, (_, v) -> fact("offer", v.id().map(Object::toString).orElse(""), "", ""))
+            .register(LotteryPoolOutput.class, (_, v) -> fact("lottery_pool", v.id().toString(), v.label(), ""))
+            .register(LotteryPrizeOutput.class, (_, v) -> reward("", "", v.reward()))
             .register(ResultTypes.QuestNotice.class, (_, v) -> fact("quest_notice", "", v.title(), ""))
             .register(QuestOutput.class, (_, v) -> new Fact("quest", v.id(), MiscUtil.clip(v.title(), 96), "",
                     v.rewards().stream().filter(r -> r.claimRef().isPresent()).limit(2).map(r -> new Reference(
@@ -111,6 +113,6 @@ public final class ConversationMemory {
 
     private static Fact reward(String entitlementId, String state, PlayerData.Reward reward) {
         return new Fact("reward", MiscUtil.clip(entitlementId, 96), "", MiscUtil.clip(state, 96),
-                List.of(new Reference(reward.id(), MiscUtil.clip(reward.label(), 96), "", List.of(), 0)));
+                List.of(new Reference(reward.id().toString(), MiscUtil.clip(reward.label(), 96), "", List.of(), 0)));
     }
 }

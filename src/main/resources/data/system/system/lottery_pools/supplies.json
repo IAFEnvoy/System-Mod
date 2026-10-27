@@ -1,0 +1,33 @@
+{
+  "label": "补给抽奖",
+  "price": {
+    "type": "ITEMS",
+    "items": [{ "id": "minecraft:emerald", "count": 1 }]
+  },
+  "entries": [
+    {
+      "weight": 60,
+      "reward": {
+        "id": "system:lottery/torches",
+        "label": "火把补给",
+        "items": [{ "id": "minecraft:torch", "count": 16 }]
+      }
+    },
+    {
+      "weight": 30,
+      "reward": {
+        "id": "system:lottery/food",
+        "label": "食物补给",
+        "items": [{ "id": "minecraft:bread", "count": 8 }]
+      }
+    },
+    {
+      "weight": 10,
+      "reward": {
+        "id": "system:lottery/iron",
+        "label": "铁锭补给",
+        "items": [{ "id": "minecraft:iron_ingot", "count": 4 }]
+      }
+    }
+  ]
+}

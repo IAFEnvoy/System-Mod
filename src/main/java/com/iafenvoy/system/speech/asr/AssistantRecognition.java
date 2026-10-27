@@ -28,10 +28,6 @@ public final class AssistantRecognition {
     private AssistantRecognition() {
     }
 
-    public static RecognitionConfig settings() {
-        return RecognitionConfig.INSTANCE.get();
-    }
-
     public static void configure(RecognitionConfig next) throws Exception {
         if (!RecognitionConfig.REGIONS.contains(next.region())) throw new SpeechException("region");
         if (next.enabled()) {
@@ -61,17 +57,23 @@ public final class AssistantRecognition {
         }
 
         public void start() {
-            RecognitionConfig current = settings();
+            String providerId;
+            AsrProvider.Request request;
+            // Freeze this call's wire parameters, not a second copy of the shared configuration.
+            synchronized (RecognitionConfig.INSTANCE) {
+                providerId = RecognitionConfig.INSTANCE.get().provider();
+                request = RecognitionConfig.INSTANCE.get().request();
+            }
             WORKER.purge();
             this.pending = WORKER.submit(() -> {
-                RecognitionUsageTracker accounting = new RecognitionUsageTracker(current);
-                try (AsrProvider provider = AsrProviders.create(current.provider()); RecognitionRecording capture = this.microphone) {
-                    provider.validate(current.request());
+                RecognitionUsageTracker accounting = new RecognitionUsageTracker(providerId, request.region());
+                try (AsrProvider provider = AsrProviders.create(providerId); RecognitionRecording capture = this.microphone) {
+                    provider.validate(request);
                     capture.open();
                     if (this.closed || Thread.currentThread().isInterrupted()) return;
                     this.update(() -> this.status = this.stopping ? "recognizing" : "recording");
                     accounting.begin();
-                    String recognized = provider.recognize(current.request(), new AsrProvider.AudioSource() {
+                    String recognized = provider.recognize(request, new AsrProvider.AudioSource() {
                         @Override
                         public void start() throws Exception {
                             capture.start();

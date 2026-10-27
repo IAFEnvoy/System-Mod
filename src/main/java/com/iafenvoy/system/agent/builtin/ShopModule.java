@@ -5,6 +5,7 @@ import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.input.ShopQueryInput;
 import com.iafenvoy.system.agent.builtin.input.ShopQuoteInput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
+import com.iafenvoy.system.agent.commerce.PaymentType;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 
@@ -37,12 +38,12 @@ public final class ShopModule extends BuiltinModule<ShopQueryInput> {
         String query = input.query().toLowerCase(Locale.ROOT);
         int offset = input.offset();
         CommerceCatalog catalog = context.catalog();
-        List<CommerceCatalog.Offer> matches = catalog.offers().stream().filter(offer -> offer.id().contains(query)
+        List<CommerceCatalog.Offer> matches = catalog.offers().stream().filter(offer -> offer.id().toString().contains(query)
                 || offer.label().toLowerCase(Locale.ROOT).contains(query)
-                || offer.items().stream().anyMatch(item -> item.id().contains(query))).toList();
+                || offer.items().stream().anyMatch(item -> item.item().getRegisteredName().contains(query))).toList();
         List<AgentResult.Card> cards = new ArrayList<>();
         for (CommerceCatalog.Offer offer : matches.stream().skip(offset).limit(8).toList()) {
-            boolean available = !offer.price().type().equals("SYSTEM_COIN") || context.coinPayment().available();
+            boolean available = offer.price().type() != PaymentType.SYSTEM_COIN || context.coinPayment().available();
             cards.add(new AgentResult.Card("system.result.shop_offer", ResultTypes.SHOP_OFFER.of(new ResultTypes.ShopOffer(Optional.of(offer.id()), offer.label(),
                     offer.items(), offer.price(), Optional.of(available))), available ? List.of(
                     new AgentResult.Action("system.action.shop_quote", ResultTypes.QUOTE_ACTION, new ShopQuoteInput(offer.id(), Optional.of(catalog.revision())))) : List.of()));

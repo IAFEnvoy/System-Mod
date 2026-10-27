@@ -12,7 +12,8 @@ DeepSeek is the default model provider. Other OpenAI Chat Completions-compatible
 - **FTB Quests integration:** browse visible, unlocked, actionable and unfinished quests as compact lists. Open details by number or name, inspect rewards and explicitly claim them. Completion and unlock events appear as queued System notifications.
 - **AI daily check-in:** the model selects a reward from a server-approved pool. Rewards enter an inbox for manual collection; the model cannot invent items or quantities.
 - **System shop:** browse offers, review a quote and confirm an item-for-item exchange. A system-currency payment interface is reserved, with no built-in currency economy.
-- **Configurable content and workflows:** data packs define check-in rewards and shop offers; server rules can trigger bounded modules after advancements.
+- **Data-driven lottery:** browse pools, review prize weights and single-draw costs, then confirm one draw. Prizes enter the inbox; item costs, free draws and reserved system-coin payments are configured through data packs.
+- **Configurable content and workflows:** data packs define check-in rewards, shop offers and lottery pools; server rules can trigger bounded modules after advancements.
 - **Two interfaces:** a full workspace with history and action cards, or a minimal view containing the current exchange and a single-line composer. Both support local command completion and native IME input.
 - **HUD notifications and speech:** notifications do not take control away from gameplay. Optional Aliyun streaming TTS reads message bodies and stops when their view closes or their message ends or is replaced.
 - **Usage and privacy controls:** per-player AI/TTS/ASR usage, history controls, external-AI opt-out, UUID-isolated storage and bounded model/tool execution.
@@ -89,6 +90,8 @@ The following commands run in Minecraft chat:
 | `/system signin` / `/system inbox` | Check in or open the reward inbox |
 | `/system shop [query]` | Browse shop offers |
 | `/system buy <offer-id>` | Preview an exchange; payment still requires confirmation |
+| `/system lottery [query]` | Browse or search lottery pools |
+| `/system draw <pool-id>` | Preview prizes, odds and cost; a separate confirmation draws once |
 | `/system usage` / `/system usage all` | View your usage, or all players' usage as an administrator |
 | `/system grant [player]` / `/system revoke [player]` | Administrator binding and clearing operations |
 | `/system reset [player]` | Clear old-format System records and binding; usage is retained, then grant again |
@@ -131,14 +134,15 @@ python tools/voice_design.py --lang en --help
 
 ## Content and Extensions
 
-Check-in rewards and shop offers are defined entirely by data packs, including the bundled defaults:
+Check-in rewards, shop offers and lottery pools are defined entirely by data packs, including the bundled defaults:
 
 ```text
 data/<namespace>/system/signin_rewards/<path>.json
 data/<namespace>/system/shop_offers/<path>.json
+data/<namespace>/system/lottery_pools/<path>.json
 ```
 
-Copy the [example commerce pack](examples/commerce-pack) into the world's `datapacks/` directory and load it through the normal data-pack flow. Entries with new IDs are added; matching resource paths override bundled entries. Use `enabled: false` to disable an entry. Reloading content invalidates old shop quotes, while rewards already credited retain their original contents.
+Copy the [example commerce pack](examples/commerce-pack) into the world's `datapacks/` directory and load it through the normal data-pack flow. Entries with new IDs are added; matching resource paths override bundled entries. Use `enabled: false` to disable an entry. Reloading content invalidates old shop and lottery confirmations, while rewards already credited retain their original contents.
 
 Agent code lives under `com.iafenvoy.system.agent`. The root package contains execution, contracts, registries, commands and request/result types; `builtin`, `routing`, `model`, `store`, `commerce` and `prompt` group related interfaces, data and implementations. Built-in inputs and outputs remain standalone types in `agent.builtin.input` and `agent.builtin.output`. Shared Codec, Schema and JSON utilities live in `com.iafenvoy.system.util`, and configuration stays in `com.iafenvoy.system.config`. Trusted Java extensions register each module once through `AssistantRegistrationEvent`; its tool list and `ModuleRouting` declaration supply commands, semantic profiles, model visibility and shortcuts. Command execution, help and completion share the same registry. See [Agent runtime](docs/agent-runtime.md). Each module has independent model-call, tool-call, write-step, token and time limits. FTB integration calls typed local Java tools directly; it does not require stdio or HTTP MCP transport.
 
@@ -185,10 +189,10 @@ Detailed documentation is currently in Chinese. Start with the [documentation in
 
 | Guide | Topics |
 | --- | --- |
-| [Usage](docs/usage.md) | Installation, commands, interfaces, quests, shop and privacy |
+| [Usage](docs/usage.md) | Installation, commands, interfaces, quests, shop, lottery and privacy |
 | [Model API](docs/model-api.md) | Compatible providers and DeepSeek-specific handling |
 | [Local routing](docs/semantic-routing.md) | TF-IDF, thresholds, intent caching and fallback |
-| [Content configuration](docs/datapacks.md) | Reward pools, offers, event rules and execution policies |
+| [Content configuration](docs/datapacks.md) | Rewards, offers, lottery pools, event rules and execution policies |
 | [Speech](docs/tts.md) | Streaming playback, voices and Python tools |
 | [AI/TTS/ASR usage](docs/token-usage.md) | Storage, accounting and cost estimates |
 | [UI and localization](docs/ui-localization.md) | Shared styling, input, notifications and language files |

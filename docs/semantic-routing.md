@@ -32,7 +32,7 @@
 
 ## 配置与升级
 
-首次生成的 `config/system/system-semantic.json` 默认 `mode=ENFORCE`，直接使用内置小词表和例句，不需要额外部署步骤。完整示例见 [system-semantic.json](../examples/agent/system-semantic.json)。修改配置需要正常重启。
+首次生成的 `config/system/system-semantic.json` 默认 `mode=ENFORCE`，直接使用内置小词表和例句，不需要额外部署步骤。完整示例见 [system-semantic.json](../examples/agent/system-semantic.json)。模式、匹配阈值、文本限制、缓存容量和新条目 TTL 从配置实例直接读取，资源重载后使用当前值；索引仍只在启动时建立，修改例句、索引语言或从启动时的 OFF 开启本地索引需要正常重启。
 
 ```json
 {

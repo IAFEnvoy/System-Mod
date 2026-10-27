@@ -1,7 +1,7 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.runtime.server.MinecraftTools;
+import com.iafenvoy.system.assistant.MinecraftTools;
 
 /**
  * Resolve this class only after the optional FTB dependency check.

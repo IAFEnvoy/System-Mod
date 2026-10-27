@@ -2,7 +2,8 @@ package com.iafenvoy.system.screen.gui;
 
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.runtime.client.AssistantClient;
+import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.assistant.AssistantClientState;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 
@@ -48,14 +49,14 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
         Document document = this.getLinkedDocument();
         if (document == null) return;
         this.revision = AssistantClient.revision();
-        AssistantClient.ChatEntry current = AssistantClient.current();
+        AssistantClientState.ChatEntry current = AssistantClient.state().current();
         String request = current == null ? "" : current.text();
         text(document.getElementById("current_request"), request);
         document.getElementById("current_request").setInlineStyleProperty("display", request.isBlank() ? "none" : "block");
         AgentResult result = current == null ? null : current.result();
         List<String> lines = new ArrayList<>();
         if (result == null)
-            lines.add(tr(AssistantClient.busy() ? "system.ui.simple_working" : "system.ui.simple_welcome"));
+            lines.add(tr(AssistantClient.state().busy() ? "system.ui.simple_working" : "system.ui.simple_welcome"));
         else {
             lines.add(tr(result.messageKey()));
             if (!result.text().isBlank()) lines.add(result.text());
@@ -77,8 +78,8 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
         Element area = document.getElementById("speech");
         area.scrollTop = 0;
         area.targetScrollTop = 0;
-        text(document.getElementById("status"), tr(AssistantClient.busy() ? "system.ui.working" : "system.ui.ready"));
-        text(document.getElementById("send"), tr(AssistantClient.busy() ? "system.ui.working" : "system.ui.send"));
+        text(document.getElementById("status"), tr(AssistantClient.state().busy() ? "system.ui.working" : "system.ui.ready"));
+        text(document.getElementById("send"), tr(AssistantClient.state().busy() ? "system.ui.working" : "system.ui.send"));
     }
 
     @Override

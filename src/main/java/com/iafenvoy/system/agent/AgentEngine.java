@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.commerce.ShopQuotes;
+import com.iafenvoy.system.agent.commerce.CommerceQuotes;
 import com.iafenvoy.system.agent.commerce.SystemCoinPayment;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.model.ModelGateway;
@@ -12,7 +12,6 @@ import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.config.file.AgentConfig;
-import com.iafenvoy.system.config.file.SemanticConfig;
 import net.minecraft.resources.Identifier;
 
 import java.util.*;
@@ -25,7 +24,6 @@ import java.util.function.Function;
  * Agent execution engine; persistence, inference and workflow waits run off the game thread.
  */
 public final class AgentEngine implements AutoCloseable {
-    private final AgentConfig settings;
     private final AgentStore store;
     private final ModelGateway model;
     private final ToolRegistry tools = new ToolRegistry();
@@ -40,7 +38,7 @@ public final class AgentEngine implements AutoCloseable {
     private final AtomicBoolean closed = new AtomicBoolean();
     private volatile CommerceCatalog catalog;
     private volatile SystemCoinPayment coinPayment = SystemCoinPayment.DISABLED;
-    private final ShopQuotes shopQuotes = new ShopQuotes();
+    private final CommerceQuotes commerceQuotes = new CommerceQuotes();
     private final Set<UUID> maintenanceOwners = ConcurrentHashMap.newKeySet();
     // Incarnations invalidate every queued task and storage handle after revoke.
     private final Map<UUID, Long> incarnations = new ConcurrentHashMap<>();
@@ -48,17 +46,12 @@ public final class AgentEngine implements AutoCloseable {
     private final List<Consumer<UUID>> revokeListeners = new CopyOnWriteArrayList<>();
     private final ConversationService conversations = new ConversationService(this);
 
-    public AgentEngine(AgentConfig settings, SemanticConfig semantic, CommerceCatalog catalog, AgentStore store, ModelClient model) {
-        this.settings = settings;
+    public AgentEngine(CommerceCatalog catalog, AgentStore store, ModelClient model) {
         this.store = store;
         this.model = new ModelGateway(model);
         this.catalog = Objects.requireNonNull(catalog);
-        this.modelSlots = new Semaphore(settings.concurrentModels(), true);
-        this.router = new HybridRouter(this, semantic);
-    }
-
-    public AgentConfig settings() {
-        return this.settings;
+        this.modelSlots = new Semaphore(AgentConfig.INSTANCE.get().concurrentModels(), true);
+        this.router = new HybridRouter(this);
     }
 
     public SystemPrompts prompts() {
@@ -82,7 +75,7 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     public void start() {
-        for (String id : this.settings.policies().keySet())
+        for (String id : AgentConfig.INSTANCE.get().policies().keySet())
             if (this.modules.get(Identifier.tryParse(id)) == null)
                 throw new IllegalArgumentException("Unknown policy module " + id);
         this.router.start();
@@ -179,7 +172,7 @@ public final class AgentEngine implements AutoCloseable {
         this.incarnations.merge(player, 1L, Long::sum);
         this.cancel(player);
         this.disableRules(player);
-        this.shopQuotes.clear(player);
+        this.commerceQuotes.clear(player);
         this.router.clear(player);
         return this.maintenance(() -> {
             this.revokeListeners.forEach(listener -> listener.accept(player));
@@ -220,8 +213,8 @@ public final class AgentEngine implements AutoCloseable {
         this.catalog = Objects.requireNonNull(value);
     }
 
-    public ShopQuotes shopQuotes() {
-        return this.shopQuotes;
+    public CommerceQuotes commerceQuotes() {
+        return this.commerceQuotes;
     }
 
     public SystemCoinPayment coinPayment() {
@@ -249,7 +242,7 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     ExecutionPolicy policy(AgentModule<?> module) {
-        return this.settings.policies().getOrDefault(module.descriptor().id().toString(), module.descriptor().policy());
+        return AgentConfig.INSTANCE.get().policies().getOrDefault(module.descriptor().id().toString(), module.descriptor().policy());
     }
 
     public CompletionStage<AgentResult> submit(UUID player, String requestId, TypedPayload<?> input, String text) {

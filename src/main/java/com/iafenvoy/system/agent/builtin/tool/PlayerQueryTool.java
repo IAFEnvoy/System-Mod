@@ -4,7 +4,7 @@ import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
-import com.iafenvoy.system.runtime.server.MinecraftTools;
+import com.iafenvoy.system.assistant.MinecraftTools;
 
 import java.util.concurrent.CompletionStage;
 

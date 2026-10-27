@@ -1,6 +1,5 @@
 package com.iafenvoy.system.speech.asr;
 
-import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.network.payload.RecognitionUsageReportC2SPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -19,9 +18,9 @@ final class RecognitionUsageTracker {
     private final AtomicBoolean completed = new AtomicBoolean();
     private boolean started;
 
-    RecognitionUsageTracker(RecognitionConfig settings) {
-        this.provider = settings.provider();
-        this.region = settings.region();
+    RecognitionUsageTracker(String provider, String region) {
+        this.provider = provider;
+        this.region = region;
     }
 
     void begin() {

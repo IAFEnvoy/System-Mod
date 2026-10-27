@@ -7,12 +7,14 @@ import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.TtsProviders;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.sounds.SoundEngine;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundSource;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.sound.PlaySoundSourceEvent;
 import net.neoforged.neoforge.client.event.sound.PlayStreamingSourceEvent;
 
 import java.net.http.HttpTimeoutException;
@@ -37,12 +39,13 @@ public final class AssistantSpeech {
     private static Future<?> pending;
     private static SpeechAudio audio;
     private static SpeechPlayback playback;
+    private static NotificationSound notification;
     private static boolean previewing;
     private static String status = "idle";
     private static long cooldownUntil;
     private static long deadline;
 
-    private record Utterance(Session source, String text, SpeechConfig settings, boolean preview) {
+    private record Utterance(Session source, String text, boolean preview, boolean notification) {
     }
 
     // A closed UI session cannot enqueue again, including after a delayed streaming callback.
@@ -56,14 +59,18 @@ public final class AssistantSpeech {
         }
 
         public void say(String text) {
-            if (!this.closed) AssistantSpeech.say(this, text);
+            if (!this.closed) AssistantSpeech.say(this, text, false);
+        }
+
+        public void notification(String text) {
+            if (!this.closed) AssistantSpeech.say(this, text, true);
         }
 
         public void preview(SpeechConfig current) throws SpeechException {
             if (this.closed) return;
             validate(current);
             stop();
-            start(new Utterance(this, AssistantView.tr("system.tts.preview_text"), current, true));
+            start(new Utterance(this, AssistantView.tr("system.tts.preview_text"), true, false), current);
         }
 
         @Override
@@ -78,10 +85,6 @@ public final class AssistantSpeech {
     }
 
     private AssistantSpeech() {
-    }
-
-    public static SpeechConfig settings() {
-        return SpeechConfig.INSTANCE.get();
     }
 
     public static void configure(SpeechConfig next) throws Exception {
@@ -102,19 +105,21 @@ public final class AssistantSpeech {
         }
     }
 
-    private static void say(Session source, String text) {
+    private static boolean canSpeak() {
+        return SpeechConfig.INSTANCE.get().enabled() && SpeechConfig.INSTANCE.get().hasKey() && System.nanoTime() >= cooldownUntil;
+    }
+
+    private static void say(Session source, String text, boolean notification) {
         // The UI selects the current message; speech must never hold the next message behind old audio.
         stop();
-        SpeechConfig current = settings();
-        if (!current.enabled() || !current.hasKey() || System.nanoTime() < cooldownUntil) return;
-        queued = new Utterance(source, text, current, false);
+        if (!notification && !canSpeak()) return;
+        queued = new Utterance(source, text, false, notification);
         status = "queued";
     }
 
-    private static void start(Utterance utterance) {
+    private static void start(Utterance utterance, SpeechConfig current) {
         Session source = utterance.source();
         if (source.closed) return;
-        SpeechConfig current = utterance.settings();
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.options.getSoundSourceVolume(SoundSource.MASTER) <= 0
                 || minecraft.options.getSoundSourceVolume(SoundSource.VOICE) <= 0 || current.volume() == 0) {
@@ -122,18 +127,37 @@ public final class AssistantSpeech {
             return;
         }
         String normalized = utterance.text().replaceAll("§.", "").replaceAll("[\\p{Cc}&&[^\\n\\t]]", " ").strip();
-        if (normalized.isEmpty()) return;
+        if (normalized.isEmpty() && !utterance.notification()) return;
         if (normalized.length() > 500) {
             int end = Character.isHighSurrogate(normalized.charAt(499)) ? 499 : 500;
             normalized = normalized.substring(0, end) + "…";
         }
-        TtsProvider.Request request = current.request(normalized, minecraft.options.languageCode);
         long epoch = generation;
         owner = source;
         previewing = utterance.preview();
-        status = "loading";
+        status = utterance.notification() ? "starting" : "loading";
         deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(180);
-        SpeechUsageTracker accounting = new SpeechUsageTracker(current);
+        if (utterance.notification()) {
+            NotificationSound cue = new NotificationSound(current.volume());
+            notification = cue;
+            try {
+                if (minecraft.getSoundManager().play(cue) == SoundEngine.PlayResult.NOT_STARTED) {
+                    cue.close();
+                    notification = null;
+                }
+            } catch (RuntimeException error) {
+                cue.close();
+                notification = null;
+                SystemMod.LOGGER.warn("Unable to play notification cue ({})", error.getClass().getSimpleName());
+            }
+        }
+        // Local cues also work with automatic speech disabled, missing credentials or a cloud cooldown.
+        if (normalized.isEmpty() || !utterance.preview() && !canSpeak()) return;
+        TtsProvider.Request request = current.request(normalized, minecraft.options.languageCode);
+        String providerId = current.provider();
+        int volume = current.volume();
+        boolean cacheEnabled = current.cacheEnabled();
+        SpeechUsageTracker accounting = new SpeechUsageTracker(providerId, request.model(), request.region());
         SpeechAudio sourceAudio = new SpeechAudio();
         audio = sourceAudio;
         AtomicBoolean playbackQueued = new AtomicBoolean();
@@ -145,16 +169,16 @@ public final class AssistantSpeech {
                     stop();
                     return;
                 }
-                playback = new SpeechPlayback(new SpeechSound(sourceAudio, current.volume()), current.volume());
+                playback = new SpeechPlayback(new SpeechSound(sourceAudio, volume), volume);
                 status = "starting";
             });
         };
         WORKER.purge();
         pending = WORKER.submit(() -> {
-            try (TtsProvider provider = TtsProviders.create(current.provider())) {
+            try (TtsProvider provider = TtsProviders.create(providerId)) {
                 provider.validate(request);
                 if (Thread.currentThread().isInterrupted()) return;
-                String cacheKey = current.cacheEnabled() ? SpeechAudioCache.key(current.provider(), request) : null;
+                String cacheKey = cacheEnabled ? SpeechAudioCache.key(providerId, request) : null;
                 if (cacheKey != null) {
                     SpeechAudio.Snapshot cached = SpeechAudioCache.read(cacheKey);
                     if (Thread.currentThread().isInterrupted()) return;
@@ -228,6 +252,8 @@ public final class AssistantSpeech {
         if (audio != null) audio.cancel();
         audio = null;
         WORKER.purge();
+        if (notification != null) notification.close();
+        notification = null;
         if (playback != null) {
             try {
                 playback.close();
@@ -256,6 +282,12 @@ public final class AssistantSpeech {
     @SubscribeEvent
     public static void streamingStarted(PlayStreamingSourceEvent event) {
         if (event.getSound() instanceof SpeechSound speech) speech.nativeSourceStarted(event.getChannel());
+        if (event.getSound() instanceof NotificationSound cue) cue.nativeSourceStarted(event.getChannel());
+    }
+
+    @SubscribeEvent
+    public static void soundStarted(PlaySoundSourceEvent event) {
+        if (event.getSound() instanceof NotificationSound cue) cue.nativeSourceStarted(event.getChannel());
     }
 
     @SubscribeEvent
@@ -269,7 +301,12 @@ public final class AssistantSpeech {
             fail("timeout");
             return;
         }
-        if (playback != null) {
+        if (notification != null && !minecraft.getSoundManager().isActive(notification)) {
+            notification.close();
+            notification = null;
+        }
+        // Synthesis runs while the cue plays; buffered speech starts only after the actual sound ends.
+        if (playback != null && notification == null) {
             SpeechPlayback.State state = playback.tick();
             switch (state) {
                 case STARTING -> status = "starting";
@@ -282,10 +319,14 @@ public final class AssistantSpeech {
                 }
             }
         }
+        if (owner != null && audio == null && notification == null) {
+            cancelCurrent();
+            status = "idle";
+        }
         if (owner == null && queued != null && !minecraft.isPaused()) {
             Utterance next = queued;
             queued = null;
-            start(next);
+            start(next, SpeechConfig.INSTANCE.get());
         }
     }
 }

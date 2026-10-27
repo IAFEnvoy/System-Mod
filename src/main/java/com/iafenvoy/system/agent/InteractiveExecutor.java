@@ -3,6 +3,7 @@ package com.iafenvoy.system.agent;
 import com.iafenvoy.system.agent.routing.RouteDecision;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.util.codec.CodecIO;
 import net.minecraft.resources.Identifier;
 
@@ -81,7 +82,7 @@ final class InteractiveExecutor implements AutoCloseable {
             return data.conversation.memoryEpoch;
         });
         AgentModule<?> direct = this.engine.modules().get(Identifier.tryParse(moduleId));
-        ExecutionPolicy initial = moduleId.isBlank() || direct == null ? this.engine.settings().routingPolicy() : this.engine.policy(direct);
+        ExecutionPolicy initial = moduleId.isBlank() || direct == null ? AgentConfig.INSTANCE.get().routingPolicy() : this.engine.policy(direct);
         ExecutionContext context = new ExecutionContext(this.engine, player, id, null, received, epoch, initial, store, incarnation);
         this.active.put(player, context);
         AgentResult result;

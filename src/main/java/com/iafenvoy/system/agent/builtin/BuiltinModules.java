@@ -26,6 +26,7 @@ public final class BuiltinModules {
         ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> items = BuiltinTools.require(gameTools, BuiltinTools.ITEMS);
         ToolRegistry.Tool<EntitlementInput, StateOutput> deliver = BuiltinTools.require(gameTools, BuiltinTools.DELIVER);
         ToolRegistry.Tool<ShopPurchaseInput, PurchaseReceiptOutput> purchase = BuiltinTools.require(gameTools, BuiltinTools.SHOP_PURCHASE);
+        ToolRegistry.Tool<LotteryDrawInput, PurchaseReceiptOutput> draw = BuiltinTools.require(gameTools, BuiltinTools.LOTTERY_DRAW);
         ToolRegistry.Tool<SignInCreditInput, RewardOutput> signInCredit = new SignInCreditTool().tool();
         ToolRegistry.Tool<RewardCreditInput, CreditReceiptOutput> rewardCredit = new RewardCreditTool().tool();
         ToolRegistry.Tool<FeatureInput, FeatureOutput> featureUnlock = new FeatureUnlockTool().tool();
@@ -38,6 +39,9 @@ public final class BuiltinModules {
         engine.registerModule(new ShopModule());
         engine.registerModule(new ShopQuoteModule());
         engine.registerModule(new ShopPurchaseModule(purchase));
+        engine.registerModule(new LotteryModule());
+        engine.registerModule(new LotteryPreviewModule());
+        engine.registerModule(new LotteryDrawModule(draw));
         engine.registerModule(new AdvancementFollowupModule(featureUnlock, rewardCredit));
         engine.modules().root(ResultTypes.HELP_ACTION.of(EmptyInput.INSTANCE));
         engine.modules().reject(Identifier.fromNamespaceAndPath("system", "semantic_reject"), RoutingProfile.hints(

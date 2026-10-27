@@ -36,18 +36,18 @@ final class SemanticIndex {
     private final Map<String, Map<String, Double>> idf;
     private final Map<String, Double> unknownIdf;
 
-    SemanticIndex(Collection<RoutingProfile.Bound> profiles, SemanticConfig settings) throws IOException {
+    SemanticIndex(Collection<RoutingProfile.Bound> profiles) throws IOException {
         this.encoder = new LexicalEncoder();
         List<Document> documents = new ArrayList<>();
         for (RoutingProfile.Bound profile : profiles) {
             Map<String, List<String>> texts = new LinkedHashMap<>(profile.examples());
-            settings.examples().getOrDefault(profile.moduleId().toString(), Map.of()).forEach((language, extra) -> {
+            SemanticConfig.INSTANCE.get().examples().getOrDefault(profile.moduleId().toString(), Map.of()).forEach((language, extra) -> {
                 List<String> combined = new ArrayList<>(texts.getOrDefault(language, List.of()));
                 combined.addAll(extra);
                 texts.put(language, combined);
             });
             for (Map.Entry<String, List<String>> language : texts.entrySet())
-                if (settings.languages().contains(language.getKey()))
+                if (SemanticConfig.INSTANCE.get().languages().contains(language.getKey()))
                     for (String text : new LinkedHashSet<>(language.getValue()))
                         documents.add(new Document(profile, language.getKey(), this.encoder.encode(text, language.getKey())));
         }

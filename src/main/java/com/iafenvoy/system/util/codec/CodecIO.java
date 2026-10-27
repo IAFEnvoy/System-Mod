@@ -12,6 +12,8 @@ import java.util.function.Supplier;
  * The JSON/file boundary is centralized; callers provide a Codec and exchange Java objects.
  */
 public final class CodecIO {
+    public static final Codec<String> NOT_BLANK_STRING = checked(Codec.STRING, value -> !value.isBlank());
+
     private CodecIO() {
     }
 
@@ -33,5 +35,9 @@ public final class CodecIO {
 
     public static <A> Codec<A> checked(Codec<A> codec, Predicate<A> validator) {
         return codec.validate(x -> validator.test(x) ? DataResult.success(x) : DataResult.error(() -> "Invalid configuration value"));
+    }
+
+    public static Codec<String> string(String regex) {
+        return checked(Codec.STRING, value -> value.matches(regex));
     }
 }

@@ -9,6 +9,7 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.ExtraCodecs;
 
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.function.Function;
  */
 public final class SchemaCodecs {
     public static final Value<String> STRING = new Value<>(Codec.STRING, jsonObject("type", "string"));
+    public static final Value<Identifier> IDENTIFIER = new Value<>(Identifier.CODEC, jsonObject("type", "string"));
     public static final Value<Integer> NON_NEGATIVE_INT = new Value<>(ExtraCodecs.NON_NEGATIVE_INT, jsonObject("type", "integer", "minimum", 0));
     public static final Value<Boolean> BOOL = new Value<>(Codec.BOOL, jsonObject("type", "boolean"));
 

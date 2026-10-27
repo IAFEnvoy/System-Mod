@@ -4,7 +4,7 @@
 
 ## 配置
 
-服务端模型配置在 `config/system/system-model.json`，修改后正常重启。下面是默认配置中的模型字段：
+服务端模型配置在 `config/system/system-model.json`，修改后通过资源重载重新读取，后续请求直接使用当前配置；在途请求保持原报文与连接参数。下面是默认配置中的模型字段：
 
 ```json
 {

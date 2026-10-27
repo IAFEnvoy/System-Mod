@@ -4,7 +4,7 @@ import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.builtin.QuestClaimModule;
 import com.iafenvoy.system.agent.builtin.QuestDetailModule;
 import com.iafenvoy.system.agent.builtin.QuestQueryModule;
-import com.iafenvoy.system.runtime.server.MinecraftTools;
+import com.iafenvoy.system.assistant.MinecraftTools;
 
 /**
  * Assemble the optional workflows from three independent operations sharing per-server state.

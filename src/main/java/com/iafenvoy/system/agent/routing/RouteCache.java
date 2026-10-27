@@ -25,15 +25,7 @@ final class RouteCache {
 
     private final LinkedHashMap<UUID, Scope> scopes = new LinkedHashMap<>(16, 0.75f, true);
     private final LinkedHashMap<Key, Entry> entries = new LinkedHashMap<>(16, 0.75f, true);
-    private final int maximum, perPlayer;
-    private final long ttlNanos;
     private boolean closed;
-
-    RouteCache(SemanticConfig settings) {
-        this.maximum = settings.cacheEntries();
-        this.perPlayer = settings.entriesPerPlayer();
-        this.ttlNanos = settings.cacheSeconds() * 1_000_000_000L;
-    }
 
     synchronized Scope scope(UUID player, long incarnation, long epoch) {
         // Revoke and memory changes replace the scope; late results cannot repopulate the old cache.
@@ -41,7 +33,8 @@ final class RouteCache {
         if (this.closed) return new Scope(player, incarnation, epoch);
         if (scope == null || scope.incarnation != incarnation || scope.epoch != epoch) {
             this.clear(player);
-            if (this.scopes.size() >= this.maximum) this.clear(this.scopes.firstEntry().getKey());
+            while (this.scopes.size() >= SemanticConfig.INSTANCE.get().cacheEntries())
+                this.clear(this.scopes.firstEntry().getKey());
             scope = new Scope(player, incarnation, epoch);
             this.scopes.put(player, scope);
         }
@@ -67,10 +60,11 @@ final class RouteCache {
         if (this.closed || this.scopes.get(key.scope().player) != key.scope()) return;
         long now = System.nanoTime();
         this.entries.values().removeIf(entry -> now - entry.expiresNanos() >= 0);
-        List<Key> owned = this.entries.keySet().stream().filter(value -> value.scope() == key.scope()).toList();
-        if (!this.entries.containsKey(key) && owned.size() >= this.perPlayer) this.entries.remove(owned.getFirst());
-        this.entries.put(key, new Entry(moduleId, now + this.ttlNanos));
-        while (this.entries.size() > this.maximum) this.entries.pollFirstEntry();
+        List<Key> owned = this.entries.keySet().stream().filter(value -> value.scope() == key.scope() && !value.equals(key)).toList();
+        for (int index = 0; index <= owned.size() - SemanticConfig.INSTANCE.get().entriesPerPlayer(); index++)
+            this.entries.remove(owned.get(index));
+        this.entries.put(key, new Entry(moduleId, now + SemanticConfig.INSTANCE.get().cacheSeconds() * 1_000_000_000L));
+        while (this.entries.size() > SemanticConfig.INSTANCE.get().cacheEntries()) this.entries.pollFirstEntry();
     }
 
     synchronized void clear(UUID player) {

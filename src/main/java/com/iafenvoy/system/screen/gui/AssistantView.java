@@ -9,16 +9,26 @@ import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestRewardOutput;
+import com.iafenvoy.system.agent.builtin.output.LotteryPoolOutput;
+import com.iafenvoy.system.agent.builtin.output.LotteryPrizeOutput;
+import com.iafenvoy.system.agent.commerce.CommerceCatalog;
+import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.util.MiscUtil;
 import com.iafenvoy.system.util.TypeDispatch;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.*;
 import java.util.function.Consumer;
 
 /**
- * Shared plain-text formatting for both layouts.
+ * Shared text formatting and typed card rendering; all dynamic content remains plain text.
  */
 public final class AssistantView {
     private static final TypeDispatch<AgentResult.Action, String> ACTION_LABELS = new TypeDispatch<AgentResult.Action, String>((action, _) -> tr(action.labelKey()))
@@ -26,7 +36,18 @@ public final class AssistantView {
             .register(QuestOutput.class, AssistantView::rewardLabel);
     private static final TypeDispatch<AgentResult.Card, String> CARD_FORMATTERS = new TypeDispatch<AgentResult.Card, String>((card, _) -> format(card.data().json(), 0))
             .register(ResultTypes.QuestList.class, (_, _) -> tr("system.ui.quest_list_hint"))
+            .register(LotteryPoolOutput.class, (_, pool) -> pool.label() + "\n" + lotteryCount(pool) + "\n"
+                    + tr("system.ui.lottery_cost") + ": " + lotteryPrice(pool)
+                    + (pool.paymentAvailable() ? "" : "\n" + tr("system.ui.lottery_unavailable")))
+            .register(LotteryPrizeOutput.class, (_, prize) -> prize.reward().label() + "\n"
+                    + formatItems(prize.reward().items()) + "\n" + lotteryChance(prize))
             .register(QuestOutput.class, (card, _) -> formatQuest(card));
+    private static final TypeDispatch<CardContext, Boolean> CARD_RENDERERS = new TypeDispatch<CardContext, Boolean>((_, _) -> false)
+            .register(LotteryPoolOutput.class, AssistantView::renderLotteryPool)
+            .register(LotteryPrizeOutput.class, AssistantView::renderLotteryPrize);
+
+    private record CardContext(Document document, Element element) {
+    }
 
     private AssistantView() {
     }
@@ -66,6 +87,88 @@ public final class AssistantView {
     public static String formatCard(AgentResult.Card card) {
         // Summary rows are numbered detail actions; never dump quest IDs or nested objectives here.
         return CARD_FORMATTERS.apply(card, card.data().value());
+    }
+
+    public static Element renderCard(Document document, AgentResult.Card card, String messageKey) {
+        Element result = element(document, "div", "result_card", "");
+        if (!CARD_RENDERERS.apply(new CardContext(document, result), card.data().value())) {
+            if (!card.titleKey().equals(messageKey))
+                result.appendChild(element(document, "div", "card_title", tr(card.titleKey())));
+            String formatted = formatCard(card);
+            if (!formatted.isBlank())
+                result.appendChild(element(document, "div", "card_body",
+                        card.titleKey().equals("system.result.quest") ? formatted : MiscUtil.clip(formatted, 6000)));
+        }
+        // Custom card bodies share the same trusted actions and server-side confirmation flow.
+        for (AgentResult.Action action : card.actions()) {
+            Element button = element(document, "button", card.data().value() instanceof ResultTypes.QuestList
+                    ? "card_action quest_row" : "card_action", actionLabel(card, action));
+            button.addEventListener("click", event -> AssistantClient.send(action, ""));
+            result.appendChild(button);
+        }
+        return result;
+    }
+
+    private static boolean renderLotteryPool(CardContext context, LotteryPoolOutput pool) {
+        Document document = context.document();
+        Element card = context.element();
+        card.setClassName("result_card lottery_card");
+        Element header = element(document, "div", "lottery_heading", "");
+        header.appendChild(element(document, "div", "lottery_name", pool.label()));
+        header.appendChild(element(document, "span", "lottery_count", lotteryCount(pool)));
+        card.appendChild(header);
+        card.appendChild(element(document, "div", "lottery_id", pool.id().toString()));
+        Element cost = element(document, "div", "lottery_cost", "");
+        cost.appendChild(element(document, "span", "lottery_cost_label", tr("system.ui.lottery_cost")));
+        cost.appendChild(element(document, "span", "lottery_cost_value", lotteryPrice(pool)));
+        card.appendChild(cost);
+        if (!pool.paymentAvailable())
+            card.appendChild(element(document, "div", "lottery_unavailable", tr("system.ui.lottery_unavailable")));
+        return true;
+    }
+
+    private static boolean renderLotteryPrize(CardContext context, LotteryPrizeOutput prize) {
+        Document document = context.document();
+        Element card = context.element();
+        card.setClassName("result_card lottery_card lottery_prize");
+        Element header = element(document, "div", "lottery_heading", "");
+        header.appendChild(element(document, "div", "lottery_name", prize.reward().label()));
+        header.appendChild(element(document, "span", "lottery_chance", lotteryChance(prize)));
+        card.appendChild(header);
+        card.appendChild(element(document, "div", "lottery_items", formatItems(prize.reward().items())));
+        return true;
+    }
+
+    private static String lotteryCount(LotteryPoolOutput pool) {
+        return Component.translatable("system.ui.lottery_count", pool.prizeCount()).getString();
+    }
+
+    private static String lotteryChance(LotteryPrizeOutput prize) {
+        String chance = BigDecimal.valueOf(prize.weight()).multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(prize.totalWeight()), new MathContext(4)).stripTrailingZeros().toPlainString();
+        return Component.translatable("system.ui.lottery_chance", chance + "%").getString();
+    }
+
+    private static String lotteryPrice(LotteryPoolOutput pool) {
+        return pool.price().map(AssistantView::formatPrice).orElseGet(() -> tr("system.ui.lottery_no_cost"));
+    }
+
+    private static String formatPrice(CommerceCatalog.Price price) {
+        return switch (price.type()) {
+            case ITEMS -> formatItems(price.items());
+            case SYSTEM_COIN -> Component.translatable("system.ui.lottery_coin_cost", price.coins()).getString();
+        };
+    }
+
+    private static String formatItems(List<ItemStackTemplate> items) {
+        List<String> names = new ArrayList<>();
+        for (ItemStackTemplate template : items) {
+            ItemStack stack = template.create();
+            String name = stack.isEmpty() ? BuiltInRegistries.ITEM.getKey(template.item().value()).toString()
+                    : stack.getHoverName().getString();
+            names.add(Component.translatable("system.ui.item_amount", name, template.count()).getString());
+        }
+        return String.join("\n", names);
     }
 
     private static String formatQuest(AgentResult.Card card) {

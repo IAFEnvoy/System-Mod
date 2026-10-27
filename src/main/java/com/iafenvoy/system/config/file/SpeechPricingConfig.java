@@ -7,6 +7,8 @@ import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.ExtraCodecs;
+import net.minecraft.util.StringRepresentable;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 
 import java.math.BigDecimal;
@@ -19,6 +21,8 @@ import java.util.*;
  */
 public final class SpeechPricingConfig {
     public static final String FILE_NAME = "system-speech-pricing.json";
+    public static final Codec<SpeechPricingConfig> CODEC = Table.CODEC.xmap(SpeechPricingConfig::new, value -> value.table);
+    public static final ConfigInstance<SpeechPricingConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, new SpeechPricingConfig(new Table(1, "CNY", LocalDate.EPOCH.toString(), List.of())));
     private static final Logger LOGGER = LogUtils.getLogger();
     private final Table table;
     private final Map<Key, Rate> rates;
@@ -77,7 +81,7 @@ public final class SpeechPricingConfig {
                 Codec.STRING.lenientOptionalFieldOf("provider", "").forGetter(Entry::provider),
                 Codec.STRING.lenientOptionalFieldOf("model", "").forGetter(Entry::model),
                 Codec.STRING.lenientOptionalFieldOf("region", "").forGetter(Entry::region),
-                Codec.STRING.comapFlatMap(value -> CodecIO.mapOrError(() -> Unit.valueOf(value)), Unit::name).lenientOptionalFieldOf("unit").forGetter(Entry::unit),
+                Unit.CODEC.lenientOptionalFieldOf("unit").forGetter(Entry::unit),
                 ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("units", 0).forGetter(Entry::units),
                 PRICE.lenientOptionalFieldOf("input").forGetter(Entry::input),
                 PRICE.lenientOptionalFieldOf("output").forGetter(Entry::output)
@@ -100,14 +104,18 @@ public final class SpeechPricingConfig {
         ).apply(i, Table::new));
     }
 
-    public static final Codec<SpeechPricingConfig> CODEC = Table.CODEC.xmap(SpeechPricingConfig::new, value -> value.table);
-    public static final ConfigInstance<SpeechPricingConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC,
-            new SpeechPricingConfig(new Table(1, "CNY", LocalDate.EPOCH.toString(), List.of())));
-
     private record Key(String provider, String model, String region) {
     }
 
-    private enum Unit {CHARACTERS, TOKENS, CALLS}
+    private enum Unit implements StringRepresentable {
+        CHARACTERS, TOKENS, CALLS;
+        public static final Codec<Unit> CODEC = StringRepresentable.fromValues(Unit::values);
+
+        @Override
+        public @NonNull String getSerializedName() {
+            return this.name().toLowerCase(Locale.ROOT);
+        }
+    }
 
     private record Rate(BigDecimal input, BigDecimal output, Unit unit, int units) {
     }

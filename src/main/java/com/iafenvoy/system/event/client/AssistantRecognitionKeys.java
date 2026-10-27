@@ -1,7 +1,8 @@
 package com.iafenvoy.system.event.client;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.runtime.client.AssistantClient;
+import com.iafenvoy.system.config.file.RecognitionConfig;
+import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
@@ -81,9 +82,9 @@ public final class AssistantRecognitionKeys {
         if (held) return true;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.getConnection() == null || !minecraft.isWindowActive()
-                || AssistantClient.busy() || !RECORD.isConflictContextAndModifierActive()) return false;
+                || AssistantClient.state().busy() || !RECORD.isConflictContextAndModifierActive()) return false;
         if (minecraft.screen == null) {
-            if (!AssistantRecognition.settings().enabled()) {
+            if (!RecognitionConfig.INSTANCE.get().enabled()) {
                 minecraft.setScreen(new AssistantSettingsScreen(null, AssistantSettingsScreen.Tab.ASR));
                 return true;
             }

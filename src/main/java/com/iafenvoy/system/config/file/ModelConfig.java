@@ -30,8 +30,7 @@ public record ModelConfig(String model, String baseUrl, String apiKeyEnvironment
             Codec.BOOL.lenientOptionalFieldOf("jsonMode", true).forGetter(ModelConfig::jsonMode),
             CodecIO.checked(Codec.STRING, Set.of("max_tokens", "max_completion_tokens")::contains).lenientOptionalFieldOf("outputTokenParameter", "max_tokens").forGetter(ModelConfig::outputTokenParameter)
     ).apply(i, ModelConfig::new));
-    public static final ConfigInstance<ModelConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, new ModelConfig("deepseek-chat", "https://api.deepseek.com", "SYSTEM_DEEPSEEK_API_KEY",
-            "auto", false, "high", true, true, "max_tokens"));
+    public static final ConfigInstance<ModelConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, new ModelConfig("deepseek-chat", "https://api.deepseek.com", "SYSTEM_DEEPSEEK_API_KEY", "auto", false, "high", true, true, "max_tokens"));
 
     public URI chatCompletionsEndpoint() {
         return endpoint(this.baseUrl);

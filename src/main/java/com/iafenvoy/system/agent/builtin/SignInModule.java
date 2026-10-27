@@ -12,7 +12,9 @@ import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.util.MiscUtil;
+import net.minecraft.resources.Identifier;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -39,7 +41,7 @@ public final class SignInModule extends BuiltinModule<EmptyInput> {
     @Override
     public AgentResult execute(ExecutionContext context, EmptyInput input) throws Exception {
         // AI selects an existing reward ID; the server owns quantities and commits the daily entitlement.
-        ZoneId zone = ZoneId.of(context.settings().timeZone());
+        ZoneId zone = ZoneId.of(AgentConfig.INSTANCE.get().timeZone());
         String day = LocalDate.now(zone).toString();
         PlayerData.Reward existing = context.store().read(context.player(), data -> data.signIns.get(day));
         if (existing != null)
@@ -49,7 +51,7 @@ public final class SignInModule extends BuiltinModule<EmptyInput> {
         SignInDecision.Player state = SignInDecision.Player.of(context.tool(BuiltinTools.PLAYER, "snapshot", input));
         SignInDecision decision = context.model(context.prompt(SystemPrompts.SIGN_IN), SignInDecision.Input.CODEC,
                 new SignInDecision.Input(state, catalog.rewards(), day), SignInDecision.CODEC);
-        String selectedId = decision.rewardId();
+        Identifier selectedId = decision.rewardId();
         String reason = MiscUtil.clip(decision.reason(), 240);
         PlayerData.Reward reward = catalog.rewards().stream().filter(value -> value.id().equals(selectedId)).findFirst()
                 .orElseThrow(() -> new AgentException("MODEL_INVALID"));

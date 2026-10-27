@@ -6,7 +6,7 @@ import com.iafenvoy.system.agent.AgentResponse;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import com.iafenvoy.system.runtime.server.AssistantServer;
+import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -82,19 +82,19 @@ public final class SystemCommand {
 
     private static int open(ServerPlayer player, AgentResponse.View view) {
         AssistantServer runtime = runtime(player);
-        if (runtime != null) runtime.open(player, view);
+        if (runtime != null) runtime.requests().open(player, view);
         return 1;
     }
 
     private static int ask(ServerPlayer player, String text) {
         AssistantServer runtime = runtime(player);
-        if (runtime != null) runtime.request(player, UUID.randomUUID().toString(), new AgentRequest.Chat(text));
+        if (runtime != null) runtime.requests().request(player, UUID.randomUUID().toString(), new AgentRequest.Chat(text));
         return 1;
     }
 
     private static int usage(ServerPlayer player, boolean all) {
         AssistantServer runtime = runtime(player);
-        if (runtime != null) runtime.openUsage(player, all);
+        if (runtime != null) runtime.usage().openUsage(player, all);
         return 1;
     }
 
@@ -102,8 +102,8 @@ public final class SystemCommand {
         AssistantServer runtime = runtime(target);
         if (runtime == null) return 0;
         Consumer<AgentResult> feedback = feedback(context, target);
-        if (grant) runtime.grant(target, feedback);
-        else runtime.revoke(target, feedback);
+        if (grant) runtime.players().grant(target, feedback);
+        else runtime.players().revoke(target, feedback);
         return 1;
     }
 
@@ -121,7 +121,7 @@ public final class SystemCommand {
         AssistantServer runtime = runtime(target);
         if (runtime == null) return 0;
         context.getSource().sendSuccess(() -> Component.translatable("system.command.reset_warning", target.getName()), false);
-        runtime.reset(target, feedback(context, target));
+        runtime.players().reset(target, feedback(context, target));
         return 1;
     }
 }

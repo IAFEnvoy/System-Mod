@@ -4,7 +4,6 @@ import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.store.ConversationMemory;
-import com.iafenvoy.system.config.file.SemanticConfig;
 import com.iafenvoy.system.util.codec.CodecIO;
 import net.minecraft.resources.Identifier;
 
@@ -17,11 +16,10 @@ import java.util.UUID;
  */
 public final class HybridRouter implements AutoCloseable {
     private final ModuleRegistry modules;
-    private final SemanticRouter semantic;
+    private final SemanticRouter semantic = new SemanticRouter();
 
-    public HybridRouter(AgentEngine engine, SemanticConfig settings) {
+    public HybridRouter(AgentEngine engine) {
         this.modules = engine.modules();
-        this.semantic = new SemanticRouter(settings);
     }
 
     public void start() {

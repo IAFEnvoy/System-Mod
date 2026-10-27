@@ -5,6 +5,8 @@ import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.ExtraCodecs;
+import net.minecraft.util.StringRepresentable;
+import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 
@@ -18,29 +20,23 @@ public record SemanticConfig(Mode mode, int maxCharacters, double minCoverage, T
     public static final String FILE_NAME = "system-semantic.json";
     public static final String ALGORITHM = "lexical-tfidf-v1";
     private static final Codec<Double> UNIT_INTERVAL = CodecIO.checked(Codec.doubleRange(0, 1), Double::isFinite);
-    private static final Codec<String> LANGUAGE = CodecIO.checked(Codec.STRING, value -> value.matches("[a-z]{2,3}"));
-    private static final Codec<String> MODULE_ID = CodecIO.checked(Codec.STRING, value -> value.matches("[a-z0-9_.-]+:[a-z0-9_./-]+"));
+    private static final Codec<String> LANGUAGE = CodecIO.string("[a-z]{2,3}");
+    private static final Codec<String> MODULE_ID = CodecIO.string("[a-z0-9_.-]+:[a-z0-9_./-]+");
     public static final Codec<SemanticConfig> CODEC = RecordCodecBuilder.create(i -> i.group(
-            Codec.STRING.comapFlatMap(value -> CodecIO.mapOrError(() -> Mode.valueOf(value)), Mode::name)
-                    .lenientOptionalFieldOf("mode", Mode.ENFORCE).forGetter(SemanticConfig::mode),
+            Mode.CODEC.lenientOptionalFieldOf("mode", Mode.ENFORCE).forGetter(SemanticConfig::mode),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("maxCharacters", 240).forGetter(SemanticConfig::maxCharacters),
             UNIT_INTERVAL.lenientOptionalFieldOf("minCoverage", 0.9).forGetter(SemanticConfig::minCoverage),
             Threshold.CODEC.lenientOptionalFieldOf("defaultThreshold", new Threshold(0.9, 0.15)).forGetter(SemanticConfig::defaultThreshold),
             LANGUAGE.listOf()
                     .xmap(values -> Collections.unmodifiableSet(new LinkedHashSet<>(values)), List::copyOf)
                     .lenientOptionalFieldOf("languages", Set.of("zh", "en")).forGetter(SemanticConfig::languages),
-            Codec.unboundedMap(CodecIO.checked(Codec.STRING, value -> value.matches("[a-z0-9_.-]+:[a-z0-9_./-]+(?:@[a-z]{2,3})?")), Threshold.CODEC)
-                    .lenientOptionalFieldOf("lexicalThresholds", Map.of()).forGetter(SemanticConfig::lexicalThresholds),
-            Codec.unboundedMap(MODULE_ID, Codec.unboundedMap(LANGUAGE, CodecIO.checked(Codec.STRING, value -> !value.isBlank()).listOf()))
-                    .lenientOptionalFieldOf("examples", Map.of()).forGetter(SemanticConfig::examples),
+            Codec.unboundedMap(CodecIO.string("[a-z0-9_.-]+:[a-z0-9_./-]+(?:@[a-z]{2,3})?"), Threshold.CODEC).lenientOptionalFieldOf("lexicalThresholds", Map.of()).forGetter(SemanticConfig::lexicalThresholds),
+            Codec.unboundedMap(MODULE_ID, Codec.unboundedMap(LANGUAGE, CodecIO.NOT_BLANK_STRING.listOf())).lenientOptionalFieldOf("examples", Map.of()).forGetter(SemanticConfig::examples),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("cacheEntries", 1024).forGetter(SemanticConfig::cacheEntries),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("cacheSeconds", 300).forGetter(SemanticConfig::cacheSeconds),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("entriesPerPlayer", 32).forGetter(SemanticConfig::entriesPerPlayer)
     ).apply(i, SemanticConfig::new));
-    public static final ConfigInstance<SemanticConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, new SemanticConfig(Mode.ENFORCE, 240, 0.9, new Threshold(0.9, 0.15),
-            Set.of("zh", "en"), Map.of(), Map.of(), 1024, 300, 32));
-
-    public enum Mode {OFF, SHADOW, ENFORCE}
+    public static final ConfigInstance<SemanticConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, new SemanticConfig(Mode.ENFORCE, 240, 0.9, new Threshold(0.9, 0.15), Set.of("zh", "en"), Map.of(), Map.of(), 1024, 300, 32));
 
     public SemanticConfig {
         languages = Set.copyOf(languages);
@@ -66,5 +62,15 @@ public record SemanticConfig(Mode mode, int maxCharacters, double minCoverage, T
 
     public Threshold threshold(String moduleId, String language) {
         return this.lexicalThresholds.getOrDefault(moduleId + "@" + language, this.lexicalThresholds.getOrDefault(moduleId, this.defaultThreshold));
+    }
+
+    public enum Mode implements StringRepresentable {
+        OFF, SHADOW, ENFORCE;
+        public static final Codec<Mode> CODEC = StringRepresentable.fromValues(Mode::values);
+
+        @Override
+        public @NonNull String getSerializedName() {
+            return this.name().toLowerCase(Locale.ROOT);
+        }
     }
 }

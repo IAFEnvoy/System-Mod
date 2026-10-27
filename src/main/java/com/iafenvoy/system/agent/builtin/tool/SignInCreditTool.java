@@ -7,6 +7,8 @@ import com.iafenvoy.system.agent.builtin.input.SignInCreditInput;
 import com.iafenvoy.system.agent.builtin.output.RewardOutput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.config.file.AgentConfig;
+import net.minecraft.resources.Identifier;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -24,7 +26,7 @@ public final class SignInCreditTool implements ToolRegistry.Handler<SignInCredit
     @Override
     public CompletionStage<RewardOutput> execute(ExecutionContext context, SignInCreditInput input) {
         String day = input.date();
-        String rewardId = input.rewardId();
+        Identifier rewardId = input.rewardId();
         CommerceCatalog catalog = context.catalog();
         if (!catalog.revision().equals(input.catalogRevision()))
             throw new AgentException("CATALOG_CHANGED");
@@ -33,7 +35,7 @@ public final class SignInCreditTool implements ToolRegistry.Handler<SignInCredit
         context.ensureMemoryCurrent();
         return CompletableFuture.completedFuture(context.store().update(context.player(), data -> {
             context.check();
-            if (!day.equals(LocalDate.now(ZoneId.of(context.settings().timeZone())).toString()))
+            if (!day.equals(LocalDate.now(ZoneId.of(AgentConfig.INSTANCE.get().timeZone())).toString()))
                 throw new AgentException("EXPIRED");
             if (!data.externalModel) throw new AgentException("MODEL_DISABLED");
             if (data.signIns.containsKey(day)) return new RewardOutput(data.signIns.get(day));

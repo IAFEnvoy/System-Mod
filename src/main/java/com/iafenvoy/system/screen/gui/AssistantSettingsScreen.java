@@ -4,7 +4,7 @@ import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.config.file.SpeechConfig;
-import com.iafenvoy.system.runtime.client.AssistantClient;
+import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.asr.RecognitionCapture;
@@ -32,11 +32,12 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
 
     private final Screen parent;
     private Tab tab;
-    private SpeechConfig speechForm = AssistantSpeech.settings();
-    private RecognitionConfig asrForm = AssistantRecognition.settings();
+    // Uncommitted form drafts stay local; runtime consumers read the config instances directly.
+    private SpeechConfig speechForm = SpeechConfig.INSTANCE.get();
+    private RecognitionConfig asrForm = RecognitionConfig.INSTANCE.get();
     private boolean simpleMode = AssistantClient.simpleMode();
-    private boolean saveHistory = AssistantClient.saveHistory();
-    private boolean externalModel = AssistantClient.externalModel();
+    private boolean saveHistory = AssistantClient.state().saveHistory();
+    private boolean externalModel = AssistantClient.state().externalModel();
     private boolean savingPreferences;
     private boolean preferencesEdited;
     private String generalStatus = "";
@@ -167,8 +168,9 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         bindSwitch(document, "asr_auto_send", checked ->
                 this.changeAsr(this.asrForm.enabled(), this.asrForm.region(), checked));
         bind(document, "asr_region", () -> {
-            int index = RecognitionConfig.REGIONS.indexOf(this.asrForm.region());
-            this.changeAsr(this.asrForm.enabled(), RecognitionConfig.REGIONS.get((index + 1) % RecognitionConfig.REGIONS.size()), this.asrForm.autoSend());
+            List<String> regions = RecognitionConfig.REGIONS.stream().sorted().toList();
+            int index = regions.indexOf(this.asrForm.region());
+            this.changeAsr(this.asrForm.enabled(), regions.get((index + 1) % regions.size()), this.asrForm.autoSend());
         });
         bind(document, "settings_save", this::save);
         bind(document, "settings_back", this::onClose);
@@ -250,10 +252,10 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         if (document == null) return;
         switch (this.tab) {
             case GENERAL -> {
-                if (AssistantClient.busy() || this.minecraft.getConnection() == null) return;
+                if (AssistantClient.state().busy() || this.minecraft.getConnection() == null) return;
                 try {
                     AssistantClient.configureMode(this.simpleMode);
-                    if (this.saveHistory != AssistantClient.saveHistory() || this.externalModel != AssistantClient.externalModel()) {
+                    if (this.saveHistory != AssistantClient.state().saveHistory() || this.externalModel != AssistantClient.state().externalModel()) {
                         this.savingPreferences = true;
                         AssistantClient.send(new AgentRequest.Preferences(this.saveHistory, this.externalModel));
                     } else {
@@ -313,24 +315,24 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         super.tick();
         Document document = this.getLinkedDocument();
         if (document == null) return;
-        if (this.savingPreferences && !AssistantClient.busy()) {
+        if (this.savingPreferences && !AssistantClient.state().busy()) {
             this.savingPreferences = false;
-            AgentResult result = AssistantClient.current() == null ? null : AssistantClient.current().result();
+            AgentResult result = AssistantClient.state().current() == null ? null : AssistantClient.state().current().result();
             this.generalStatus = result == null ? tr("system.ui.settings_config_error")
                     : tr(result.messageKey().equals("system.result.preferences") ? "system.ui.settings_saved" : result.messageKey());
-            this.saveHistory = AssistantClient.saveHistory();
-            this.externalModel = AssistantClient.externalModel();
+            this.saveHistory = AssistantClient.state().saveHistory();
+            this.externalModel = AssistantClient.state().externalModel();
             this.preferencesEdited = false;
             this.renderControls();
         }
         // A late server state may arrive after settings opens; preserve deliberate edits to the form.
         if (!this.preferencesEdited && !this.savingPreferences
-                && (this.saveHistory != AssistantClient.saveHistory() || this.externalModel != AssistantClient.externalModel())) {
-            this.saveHistory = AssistantClient.saveHistory();
-            this.externalModel = AssistantClient.externalModel();
+                && (this.saveHistory != AssistantClient.state().saveHistory() || this.externalModel != AssistantClient.state().externalModel())) {
+            this.saveHistory = AssistantClient.state().saveHistory();
+            this.externalModel = AssistantClient.state().externalModel();
             this.renderControls();
         }
-        boolean busy = AssistantClient.busy();
+        boolean busy = AssistantClient.state().busy();
         for (String id : List.of("settings_mode_full", "settings_mode_simple", "history_toggle", "model_toggle")) {
             Element control = document.getElementById(id);
             if (control.isDisabled() != busy) control.setDisabled(busy);

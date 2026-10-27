@@ -1,4 +1,4 @@
-package com.iafenvoy.system.runtime.server;
+package com.iafenvoy.system.assistant;
 
 import java.util.concurrent.ArrayBlockingQueue;
 

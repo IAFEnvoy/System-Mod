@@ -7,6 +7,7 @@ import com.iafenvoy.system.agent.store.PlayerData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +33,8 @@ public final class ResultTypes {
     public static final TypedPayload.Type<SignInStatus> SIGN_IN_STATUS = card("sign_in_status", SignInStatus.CODEC);
     public static final TypedPayload.Type<ShopOffer> SHOP_OFFER = card("shop_offer", ShopOffer.CODEC);
     public static final TypedPayload.Type<ShopOrder> SHOP_ORDER = card("shop_order", ShopOrder.CODEC);
+    public static final TypedPayload.Type<LotteryPoolOutput> LOTTERY_POOL = card("lottery_pool", LotteryPoolOutput.CODEC);
+    public static final TypedPayload.Type<LotteryPrizeOutput> LOTTERY_PRIZE = card("lottery_prize", LotteryPrizeOutput.CODEC);
     public static final TypedPayload.Type<QuestList> QUEST_LIST = card("quest_list", QuestList.CODEC);
     public static final TypedPayload.Type<QuestNotice> QUEST_NOTICE = card("quest_notice", QuestNotice.CODEC);
 
@@ -44,6 +47,9 @@ public final class ResultTypes {
     public static final TypedPayload.Type<ShopQueryInput> SHOP_ACTION = action("shop", ShopQueryInput.CODEC.codec());
     public static final TypedPayload.Type<ShopQuoteInput> QUOTE_ACTION = action("shop_quote", ShopQuoteInput.CODEC.codec());
     public static final TypedPayload.Type<ShopPurchaseInput> PURCHASE_ACTION = action("shop_purchase", ShopPurchaseInput.CODEC.codec());
+    public static final TypedPayload.Type<LotteryQueryInput> LOTTERY_ACTION = action("lottery", LotteryQueryInput.CODEC.codec());
+    public static final TypedPayload.Type<LotteryPreviewInput> LOTTERY_PREVIEW_ACTION = action("lottery_preview", LotteryPreviewInput.CODEC.codec());
+    public static final TypedPayload.Type<LotteryDrawInput> LOTTERY_DRAW_ACTION = action("lottery_draw", LotteryDrawInput.CODEC.codec());
     public static final TypedPayload.Type<QuestQueryInput> QUESTS_ACTION = action("quest_query", QuestQueryInput.CODEC.codec());
     public static final TypedPayload.Type<QuestDetailInput> QUEST_ACTION = action("quest_detail", QuestDetailInput.CODEC.codec());
     public static final TypedPayload.Type<QuestClaimInput> CLAIM_ACTION = action("quest_claim", QuestClaimInput.CODEC.codec());
@@ -106,12 +112,12 @@ public final class ResultTypes {
         }
     }
 
-    public record ShopOffer(Optional<String> id, String label, List<PlayerData.Item> items, CommerceCatalog.Price price,
+    public record ShopOffer(Optional<Identifier> id, String label, List<ItemStackTemplate> items, CommerceCatalog.Price price,
                             Optional<Boolean> paymentAvailable) {
         public static final Codec<ShopOffer> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.optionalFieldOf("id").forGetter(ShopOffer::id),
+                Identifier.CODEC.optionalFieldOf("id").forGetter(ShopOffer::id),
                 Codec.STRING.fieldOf("label").forGetter(ShopOffer::label),
-                PlayerData.Item.CODEC.listOf().fieldOf("items").forGetter(ShopOffer::items),
+                PlayerData.Reward.ITEMS_CODEC.fieldOf("items").forGetter(ShopOffer::items),
                 CommerceCatalog.Price.CODEC.fieldOf("price").forGetter(ShopOffer::price),
                 Codec.BOOL.optionalFieldOf("paymentAvailable").forGetter(ShopOffer::paymentAvailable)
         ).apply(i, ShopOffer::new));

@@ -24,6 +24,8 @@ public final class BuiltinTools {
             new ToolRegistry.Type<>("feature.unlock", FeatureInput.CODEC, FeatureOutput.CODEC);
     public static final ToolRegistry.Type<ShopPurchaseInput, PurchaseReceiptOutput> SHOP_PURCHASE =
             new ToolRegistry.Type<>("game.shop.purchase", ShopPurchaseInput.CODEC, PurchaseReceiptOutput.CODEC);
+    public static final ToolRegistry.Type<LotteryDrawInput, PurchaseReceiptOutput> LOTTERY_DRAW =
+            new ToolRegistry.Type<>("game.lottery.draw", LotteryDrawInput.CODEC, PurchaseReceiptOutput.CODEC);
     public static final ToolRegistry.Type<QuestQueryInput, QuestPageOutput> QUEST_QUERY =
             new ToolRegistry.Type<>("ftb.query", QuestQueryInput.CODEC, QuestPageOutput.CODEC.codec());
     public static final ToolRegistry.Type<QuestDetailInput, QuestLookupOutput> QUEST_DETAIL =

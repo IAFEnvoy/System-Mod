@@ -1,6 +1,5 @@
 package com.iafenvoy.system.speech.tts;
 
-import com.iafenvoy.system.config.file.SpeechConfig;
 import com.iafenvoy.system.network.payload.SpeechUsageReportC2SPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -19,10 +18,10 @@ final class SpeechUsageTracker {
     private final AtomicBoolean completed = new AtomicBoolean();
     private boolean started;
 
-    SpeechUsageTracker(SpeechConfig settings) {
-        this.provider = settings.provider();
-        this.model = settings.model();
-        this.region = settings.region();
+    SpeechUsageTracker(String provider, String model, String region) {
+        this.provider = provider;
+        this.model = model;
+        this.region = region;
     }
 
     void begin() {

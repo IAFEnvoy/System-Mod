@@ -1,0 +1,25 @@
+{
+  "label": "补给抽奖示例",
+  "price": {
+    "type": "ITEMS",
+    "items": [{ "id": "minecraft:emerald", "count": 1 }]
+  },
+  "entries": [
+    {
+      "weight": 9,
+      "reward": {
+        "id": "example:lottery/food",
+        "label": "食物补给",
+        "items": [{ "id": "minecraft:bread", "count": 8 }]
+      }
+    },
+    {
+      "weight": 1,
+      "reward": {
+        "id": "example:lottery/diamond",
+        "label": "钻石补给",
+        "items": [{ "id": "minecraft:diamond", "count": 1 }]
+      }
+    }
+  ]
+}

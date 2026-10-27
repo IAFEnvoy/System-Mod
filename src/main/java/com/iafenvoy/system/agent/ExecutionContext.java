@@ -2,7 +2,7 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.commerce.ShopQuotes;
+import com.iafenvoy.system.agent.commerce.CommerceQuotes;
 import com.iafenvoy.system.agent.commerce.SystemCoinPayment;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
@@ -140,10 +140,6 @@ public final class ExecutionContext {
         return this.store;
     }
 
-    public AgentConfig settings() {
-        return this.engine.settings();
-    }
-
     public CommerceCatalog catalog() {
         return this.engine.catalog();
     }
@@ -152,8 +148,8 @@ public final class ExecutionContext {
         return this.engine.coinPayment();
     }
 
-    public ShopQuotes shopQuotes() {
-        return this.engine.shopQuotes();
+    public CommerceQuotes commerceQuotes() {
+        return this.engine.commerceQuotes();
     }
 
     public List<String> commandUsages() {
@@ -213,12 +209,12 @@ public final class ExecutionContext {
             this.store().update(this.player, data -> {
                 if (!data.externalModel || (!this.isEvent() && data.conversation.memoryEpoch != this.memoryEpoch))
                     throw new AgentException("MODEL_DISABLED");
-                String day = LocalDate.now(ZoneId.of(this.settings().timeZone())).toString();
+                String day = LocalDate.now(ZoneId.of(AgentConfig.INSTANCE.get().timeZone())).toString();
                 if (!day.equals(data.modelQuota.usageDate)) {
                     data.modelQuota.usageDate = day;
                     data.modelQuota.usedModelCalls = 0;
                 }
-                if (data.modelQuota.usedModelCalls >= this.settings().modelCallsPerPlayerDay())
+                if (data.modelQuota.usedModelCalls >= AgentConfig.INSTANCE.get().modelCallsPerPlayerDay())
                     throw new AgentException("RATE_LIMITED");
                 data.modelQuota.usedModelCalls++;
                 return null;

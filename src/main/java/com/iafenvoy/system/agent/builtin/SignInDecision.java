@@ -5,15 +5,16 @@ import com.iafenvoy.system.agent.store.PlayerData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.resources.Identifier;
 
 import java.util.List;
 
 /**
  * Only this private projection is sent to the reward selector; other players never enter its context.
  */
-public record SignInDecision(String rewardId, String reason) {
+public record SignInDecision(Identifier rewardId, String reason) {
     public static final Codec<SignInDecision> CODEC = RecordCodecBuilder.create(i -> i.group(
-            Codec.STRING.fieldOf("rewardId").forGetter(SignInDecision::rewardId),
+            Identifier.CODEC.fieldOf("rewardId").forGetter(SignInDecision::rewardId),
             Codec.STRING.optionalFieldOf("reason", "").forGetter(SignInDecision::reason)
     ).apply(i, SignInDecision::new));
 

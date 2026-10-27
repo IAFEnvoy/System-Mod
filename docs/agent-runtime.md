@@ -109,4 +109,4 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 
 任务查询的 `QuestLookupOutput` 按 `system:quest_page` / `system:quest_detail` 分派，不再用 `detail` 布尔值推断子类型。模型路由仍保留对外的 `capabilityId` 字段，解码 Map 只包含当前可选择的 Module 与 `clarify`，不会因共享输入类型存在就开放未安装模块。
 
-新增业务能力继续通过 Module 注册。若要新增协议请求，增加请求类型及其 `MapCodec` 注册，再在 `AssistantServer.registerRequests()` 登记执行处理器；新增响应时同步登记类型 Codec 和客户端处理器，不再增加字符串判断或类型 switch。类型实现保持无默认方法的接口，Codec 注册集中于嵌套 `Types`，避免子类静态初始化时递归读取尚未赋值的 Codec。
+新增业务能力继续通过 Module 注册。若要新增协议请求，增加请求类型及其 `MapCodec` 注册，再在 `AssistantRequests.registerRequests()` 登记执行处理器；新增响应时同步登记类型 Codec 和客户端处理器，不再增加字符串判断或类型 switch。类型实现保持无默认方法的接口，Codec 注册集中于嵌套 `Types`，避免子类静态初始化时递归读取尚未赋值的 Codec。

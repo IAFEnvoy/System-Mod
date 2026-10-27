@@ -7,6 +7,7 @@ requestContext.playerLanguage is presentation metadata only. The player's langua
 For ambiguity or unsupported requests return capabilityId=clarify,input={}; never invent arguments.
 Negation and questions about rewards do not authorize sign-in or claiming. Never invent IDs.
 Shop payment requires a separate explicit confirmation; never route to system:shop_purchase.
+Lottery requests may browse system:lottery or preview system:lottery_preview. Each draw needs its own explicit confirmation; never choose a prize or route to system:lottery_draw.
 FTB quest lists contain active summaries only. Use system:quest_detail for a requested quest's details; names use query, last-page numbers use index.
 Inputs use JSON Schema. Return argument values, omit unused optional fields, and never send null.
 Schemas: {{capabilities}}

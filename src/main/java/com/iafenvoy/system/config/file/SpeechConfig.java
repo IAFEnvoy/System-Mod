@@ -29,8 +29,7 @@ public record SpeechConfig(boolean enabled, String provider, String apiKey, Stri
     ).apply(i, SpeechConfig::new));
     public static final ConfigInstance<SpeechConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, defaults());
 
-    public static final List<String> LANGUAGES = List.of("Client", "Auto", "Chinese", "English", "German", "Italian",
-            "Portuguese", "Spanish", "Japanese", "Korean", "French", "Russian");
+    public static final List<String> LANGUAGES = List.of("Client", "Auto", "Chinese", "English", "German", "Italian", "Portuguese", "Spanish", "Japanese", "Korean", "French", "Russian");
 
     public static SpeechConfig defaults() {
         return new SpeechConfig(false, "aliyun", "", "beijing", "", "qwen3-tts-flash", "Cherry", "Client", 80, false);

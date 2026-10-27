@@ -1,0 +1,8 @@
+{
+  "notification": {
+    "subtitle": "system.sound.notification",
+    "sounds": [
+      { "name": "system:notification", "preload": true }
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-package com.iafenvoy.system.runtime.server;
+package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;

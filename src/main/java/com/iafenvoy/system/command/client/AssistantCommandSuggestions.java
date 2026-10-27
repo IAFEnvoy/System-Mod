@@ -3,7 +3,7 @@ package com.iafenvoy.system.command.client;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
-import com.iafenvoy.system.runtime.client.AssistantClient;
+import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.util.MiscUtil;
 
@@ -32,10 +32,10 @@ public final class AssistantCommandSuggestions {
         String prefix = lower.startsWith("/system ") ? "/system " : input.startsWith("/") ? "/" : "";
         Map<String, Suggestion> candidates = new LinkedHashMap<>();
         if (!prefix.equals("/system ") && "/system ".startsWith(lower)) add(candidates, input, "/system ", "");
-        for (String command : AssistantClient.commands()) add(candidates, input, prefix + command, "");
+        for (String command : AssistantClient.state().commands()) add(candidates, input, prefix + command, "");
         for (String command : AssistantClientCommands.suggestions()) add(candidates, input, prefix + command, "");
         // Dynamic arguments come only from the current code-created result, never from inferred commands.
-        AgentResult result = AssistantClient.current() == null ? null : AssistantClient.current().result();
+        AgentResult result = AssistantClient.state().current() == null ? null : AssistantClient.state().current().result();
         if (result != null) {
             int index = 1;
             for (AgentResult.Card card : result.cards()) {

@@ -5,7 +5,7 @@ import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.ItemQueryInput;
 import com.iafenvoy.system.agent.builtin.output.ItemInfoOutput;
 import com.iafenvoy.system.agent.builtin.output.ItemPageOutput;
-import com.iafenvoy.system.runtime.server.MinecraftTools;
+import com.iafenvoy.system.assistant.MinecraftTools;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;

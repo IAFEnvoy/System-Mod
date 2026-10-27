@@ -4,12 +4,14 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ExecutionPolicy;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.TypedPayload;
-import com.iafenvoy.system.agent.commerce.CommerceCatalog;
+import com.iafenvoy.system.agent.commerce.CommerceOrder;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.util.ExtraCodecs;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.*;
 
@@ -18,7 +20,7 @@ import java.util.*;
  */
 public final class PlayerData {
     public static final Codec<PlayerData> CODEC = RecordCodecBuilder.create(i -> i.group(
-            Codec.INT.optionalFieldOf("version", 1).forGetter((PlayerData v) -> v.version),
+            Codec.INT.optionalFieldOf("version", 1).forGetter(v -> v.version),
             Codec.BOOL.optionalFieldOf("bound", false).forGetter(v -> v.bound),
             Codec.BOOL.optionalFieldOf("saveHistory", true).forGetter(v -> v.saveHistory),
             Codec.BOOL.optionalFieldOf("externalModel", true).forGetter(v -> v.externalModel),
@@ -74,7 +76,7 @@ public final class PlayerData {
      */
     public static final class Conversation {
         public static final MapCodec<Conversation> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-                Codec.LONG.optionalFieldOf("memoryEpoch", 0L).forGetter((Conversation v) -> v.memoryEpoch),
+                Codec.LONG.optionalFieldOf("memoryEpoch", 0L).forGetter(v -> v.memoryEpoch),
                 Message.CODEC.listOf().optionalFieldOf("history", List.of()).forGetter(v -> v.history),
                 Codec.unboundedMap(Codec.STRING, Codec.lazyInitialized(() -> AgentResult.CODEC))
                         .optionalFieldOf("requests", Map.of()).forGetter(v -> v.requests),
@@ -110,7 +112,7 @@ public final class PlayerData {
      */
     public static final class ModelQuota {
         public static final MapCodec<ModelQuota> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-                Codec.STRING.optionalFieldOf("usageDate", "").forGetter((ModelQuota v) -> v.usageDate),
+                Codec.STRING.optionalFieldOf("usageDate", "").forGetter(v -> v.usageDate),
                 Codec.INT.optionalFieldOf("usedModelCalls", 0).forGetter(v -> v.usedModelCalls)
         ).apply(i, ModelQuota::new));
         public String usageDate;
@@ -135,18 +137,13 @@ public final class PlayerData {
         ).apply(i, Message::new));
     }
 
-    public record Item(String id, int count) {
-        public static final Codec<Item> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.fieldOf("id").forGetter(Item::id),
-                ExtraCodecs.POSITIVE_INT.optionalFieldOf("count", 1).forGetter(Item::count)
-        ).apply(i, Item::new));
-    }
-
-    public record Reward(String id, String label, List<Item> items) {
+    public record Reward(Identifier id, String label, List<ItemStackTemplate> items) {
+        // Delivery reserves one main-inventory slot per template before inserting any items.
+        public static final Codec<List<ItemStackTemplate>> ITEMS_CODEC = ItemStackTemplate.CODEC.listOf(1, Inventory.INVENTORY_SIZE);
         public static final Codec<Reward> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.fieldOf("id").forGetter(Reward::id),
+                Identifier.CODEC.fieldOf("id").forGetter(Reward::id),
                 Codec.STRING.fieldOf("label").forGetter(Reward::label),
-                Item.CODEC.listOf().fieldOf("items").forGetter(Reward::items)
+                ITEMS_CODEC.fieldOf("items").forGetter(Reward::items)
         ).apply(i, Reward::new));
 
         public Reward {
@@ -156,7 +153,7 @@ public final class PlayerData {
 
     public static final class Delivery {
         public static final Codec<Delivery> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.optionalFieldOf("id").forGetter((Delivery v) -> Optional.ofNullable(v.id)),
+                Codec.STRING.optionalFieldOf("id").forGetter(v -> Optional.ofNullable(v.id)),
                 Reward.CODEC.optionalFieldOf("reward").forGetter(v -> Optional.ofNullable(v.reward)),
                 Codec.STRING.optionalFieldOf("state", "PENDING").forGetter(v -> v.state),
                 Codec.LONG.optionalFieldOf("created", 0L).forGetter(v -> v.created)
@@ -190,7 +187,7 @@ public final class PlayerData {
 
     public static final class EventTask {
         public static final Codec<EventTask> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.optionalFieldOf("id").forGetter((EventTask v) -> Optional.ofNullable(v.id)),
+                Codec.STRING.optionalFieldOf("id").forGetter(v -> Optional.ofNullable(v.id)),
                 Codec.STRING.optionalFieldOf("key").forGetter(v -> Optional.ofNullable(v.key)),
                 Codec.INT.optionalFieldOf("moduleVersion", 0).forGetter(v -> v.moduleVersion),
                 ResultTypes.ACTIONS.mapCodec().forGetter(v -> v.call),
@@ -250,7 +247,7 @@ public final class PlayerData {
 
     public static final class Step {
         public static final Codec<Step> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.optionalFieldOf("state", "RUNNING").forGetter((Step v) -> v.state),
+                Codec.STRING.optionalFieldOf("state", "RUNNING").forGetter(v -> v.state),
                 Codec.STRING.optionalFieldOf("fingerprint").forGetter(v -> Optional.ofNullable(v.fingerprint)),
                 Codec.PASSTHROUGH.optionalFieldOf("result").forGetter(v -> Optional.ofNullable(v.result))
         ).apply(i, Step::new));
@@ -269,23 +266,23 @@ public final class PlayerData {
 
     public static final class Purchase {
         public static final Codec<Purchase> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.optionalFieldOf("id").forGetter((Purchase v) -> Optional.ofNullable(v.id)),
-                CommerceCatalog.Offer.CODEC.optionalFieldOf("offer").forGetter(v -> Optional.ofNullable(v.offer)),
+                Codec.STRING.optionalFieldOf("id").forGetter(v -> Optional.ofNullable(v.id)),
+                CommerceOrder.CODEC.fieldOf("order").forGetter(v -> v.order),
                 Codec.STRING.optionalFieldOf("state", "PREPARED").forGetter(v -> v.state),
                 Codec.STRING.optionalFieldOf("error", "").forGetter(v -> v.error),
                 Codec.LONG.optionalFieldOf("created", 0L).forGetter(v -> v.created)
         ).apply(i, Purchase::new));
         public String id;
-        public CommerceCatalog.Offer offer;
+        public CommerceOrder order;
         public String state = "PREPARED", error = "";
         public long created;
 
         public Purchase() {
         }
 
-        private Purchase(Optional<String> id, Optional<CommerceCatalog.Offer> offer, String state, String error, long created) {
+        private Purchase(Optional<String> id, CommerceOrder order, String state, String error, long created) {
             this.id = id.orElse(null);
-            this.offer = offer.orElse(null);
+            this.order = order;
             this.state = state;
             this.error = error;
             this.created = created;

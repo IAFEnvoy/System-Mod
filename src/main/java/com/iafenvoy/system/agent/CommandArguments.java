@@ -1,5 +1,7 @@
 package com.iafenvoy.system.agent;
 
+import net.minecraft.resources.Identifier;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -12,9 +14,10 @@ public final class CommandArguments {
     private CommandArguments() {
     }
 
-    public static String identifier(String text) {
-        if (!text.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) throw new AgentException("INVALID_INPUT");
-        return text;
+    public static Identifier identifier(String text) {
+        Identifier id = Identifier.tryParse(text);
+        if (id == null) throw new AgentException("INVALID_INPUT");
+        return id;
     }
 
     public static String singleItemId(String text) {

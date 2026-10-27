@@ -6,7 +6,7 @@ import com.iafenvoy.system.agent.AgentResponse;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.iafenvoy.system.network.payload.*;
-import com.iafenvoy.system.runtime.server.AssistantServer;
+import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.util.TypeDispatch;
 import com.iafenvoy.system.util.codec.CodecIO;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,7 +37,7 @@ public final class ServerNetworkHandler {
             UUID.fromString(payload.id());
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
             if (runtime == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
-            runtime.request(player, payload.id(), payload.request());
+            runtime.requests().request(player, payload.id(), payload.request());
         } catch (RuntimeException e) {
             reply(player, payload.id(), AgentResult.error(AgentEngine.errorCode(e)));
         }
@@ -49,7 +49,7 @@ public final class ServerNetworkHandler {
             UUID.fromString(payload.id());
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
             if (runtime == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
-            runtime.requestUsage(player, payload);
+            runtime.usage().requestUsage(player, payload);
         } catch (RuntimeException e) {
             replyUsageError(player, payload.id(), AgentEngine.errorCode(e));
         }
@@ -58,13 +58,13 @@ public final class ServerNetworkHandler {
     public static void handleSpeechUsageReport(SpeechUsageReportC2SPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) return;
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
-        if (runtime != null) runtime.reportSpeech(player, payload);
+        if (runtime != null) runtime.usage().reportSpeech(player, payload);
     }
 
     public static void handleRecognitionUsageReport(RecognitionUsageReportC2SPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) return;
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
-        if (runtime != null) runtime.reportRecognition(player, payload);
+        if (runtime != null) runtime.usage().reportRecognition(player, payload);
     }
 
     public static void reply(ServerPlayer player, String requestId, AgentResult result) {

@@ -3,6 +3,8 @@ package com.iafenvoy.system.agent.commerce;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.HashSet;
 import java.util.List;
@@ -10,38 +12,39 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Immutable trusted definitions shared by sign-in and shop workflows.
+ * Immutable trusted definitions shared by sign-in, shop and lottery workflows.
  */
-public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, List<Offer> offers) {
+public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, List<Offer> offers, List<LotteryPool> lotteries) {
     public CommerceCatalog {
         rewards = List.copyOf(rewards);
         offers = List.copyOf(offers);
-        Set<String> ids = new HashSet<>();
+        lotteries = List.copyOf(lotteries);
+        Set<Identifier> ids = new HashSet<>();
         for (PlayerData.Reward reward : rewards) {
-            if (!validId(reward.id()) || !ids.add(reward.id()) || reward.label().isBlank())
+            if (!ids.add(reward.id()) || reward.label().isBlank())
                 throw new IllegalArgumentException("Invalid reward");
-            validateItems(reward.items());
         }
         ids.clear();
         for (Offer offer : offers) if (!ids.add(offer.id())) throw new IllegalArgumentException("Duplicate offer");
+        ids.clear();
+        for (LotteryPool pool : lotteries) if (!ids.add(pool.id())) throw new IllegalArgumentException("Duplicate lottery pool");
     }
 
-    public static CommerceCatalog create(List<PlayerData.Reward> rewards, List<Offer> offers) {
-        return new CommerceCatalog(UUID.randomUUID().toString(), rewards, offers);
+    public static CommerceCatalog create(List<PlayerData.Reward> rewards, List<Offer> offers, List<LotteryPool> lotteries) {
+        return new CommerceCatalog(UUID.randomUUID().toString(), rewards, offers, lotteries);
     }
 
-    public record Offer(String id, String label, List<PlayerData.Item> items, Price price) {
+    public record Offer(Identifier id, String label, List<ItemStackTemplate> items, Price price) {
         public static final Codec<Offer> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.fieldOf("id").forGetter(Offer::id),
+                Identifier.CODEC.fieldOf("id").forGetter(Offer::id),
                 Codec.STRING.fieldOf("label").forGetter(Offer::label),
-                PlayerData.Item.CODEC.listOf().fieldOf("items").forGetter(Offer::items),
+                PlayerData.Reward.ITEMS_CODEC.fieldOf("items").forGetter(Offer::items),
                 Price.CODEC.fieldOf("price").forGetter(Offer::price)
         ).apply(i, Offer::new));
 
         public Offer {
-            if (!validId(id) || label.isBlank())
+            if (label.isBlank())
                 throw new IllegalArgumentException("Invalid offer");
-            validateItems(items);
             items = List.copyOf(items);
         }
 
@@ -50,34 +53,25 @@ public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, 
         }
     }
 
-    public record Price(String type, List<PlayerData.Item> items, long coins) {
+    public record Price(PaymentType type, List<ItemStackTemplate> items, long coins) {
         public static final Codec<Price> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.fieldOf("type").forGetter(Price::type),
-                PlayerData.Item.CODEC.listOf().optionalFieldOf("items", List.of()).forGetter(Price::items),
+                PaymentType.CODEC.fieldOf("type").forGetter(Price::type),
+                ItemStackTemplate.CODEC.listOf().optionalFieldOf("items", List.of()).forGetter(Price::items),
                 Codec.LONG.optionalFieldOf("coins", 0L).forGetter(Price::coins)
         ).apply(i, Price::new));
 
         public Price {
             items = List.copyOf(items);
-            if ("ITEMS".equals(type)) {
-                validateItems(items);
-                if (coins != 0) throw new IllegalArgumentException("Unexpected coin price");
-            } else if ("SYSTEM_COIN".equals(type)) {
-                if (!items.isEmpty() || coins < 1)
-                    throw new IllegalArgumentException("Invalid coin price");
-            } else throw new IllegalArgumentException("Unknown payment type");
+            switch (type) {
+                case ITEMS -> {
+                    if (items.isEmpty()) throw new IllegalArgumentException("Missing item price");
+                    if (coins != 0) throw new IllegalArgumentException("Unexpected coin price");
+                }
+                case SYSTEM_COIN -> {
+                    if (!items.isEmpty() || coins < 1)
+                        throw new IllegalArgumentException("Invalid coin price");
+                }
+            }
         }
-    }
-
-    public static void validateItems(List<PlayerData.Item> items) {
-        if (items.isEmpty())
-            throw new IllegalArgumentException("Invalid item list");
-        for (PlayerData.Item item : items)
-            if (!item.id().matches("[a-z0-9_.-]+:[a-z0-9_./-]+") || item.count() < 1)
-                throw new IllegalArgumentException("Invalid catalog item");
-    }
-
-    private static boolean validId(String id) {
-        return id.matches("(?:[a-z0-9_.-]+:)?[a-z0-9_./-]+");
     }
 }

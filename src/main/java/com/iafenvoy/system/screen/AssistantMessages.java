@@ -2,7 +2,8 @@ package com.iafenvoy.system.screen;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.runtime.client.AssistantClient;
+import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.iafenvoy.system.speech.tts.SpeechText;
 import com.sighs.apricityui.event.MouseEvent;
@@ -108,7 +109,7 @@ public final class AssistantMessages {
             if (buttons.size() >= 2) break;
         }
         if (review) buttons.add(new Button("details", tr("system.ui.message_details"), false, () -> {
-            AssistantClient.ChatEntry entry = AssistantClient.current();
+            AssistantClientState.ChatEntry entry = AssistantClient.state().current();
             AssistantClient.open(entry != null && entry.result() == result && AssistantClient.simpleMode(), "");
         }));
         String speechText = SpeechText.result(result);
@@ -202,21 +203,27 @@ public final class AssistantMessages {
         interactive = null;
         displayedBusy = null;
         displayedPending = -1;
-        // The message queue selects speech, so an expired notice cannot delay the next one.
-        if (!speechStarted) {
-            speechStarted = true;
-            if (speakCurrent) {
-                speech = new AssistantSpeech.Session();
-                speech.say(current.speechText());
-            }
-        }
     }
 
     private static void animate(Phase next, boolean chatting) {
+        Phase previous = phase;
         phase = next;
         interactive = null;
         updateInteraction(chatting);
         document.commitPendingStyleRecalcForRender();
+        if (next == Phase.EXPANDING || next == Phase.FADING_IN)
+            startSpeech(previous == Phase.HIDDEN && next == Phase.EXPANDING);
+    }
+
+    private static void startSpeech(boolean playCue) {
+        if (speechStarted || current == null) return;
+        speechStarted = true;
+        // Only the initial expansion plays a cue; swaps and interrupted collapses keep narration direct.
+        if (playCue || speakCurrent) {
+            speech = new AssistantSpeech.Session();
+            if (playCue) speech.notification(speakCurrent ? current.speechText() : "");
+            else speech.say(current.speechText());
+        }
     }
 
     private static void advanceAnimation(boolean chatting) {
@@ -271,7 +278,7 @@ public final class AssistantMessages {
         for (Button option : shown.buttons()) {
             Element button = element(document, "button", "notification_action", option.label());
             button.addEventListener("click", event -> {
-                if (!canInteract(shown) || option.requiresIdle() && AssistantClient.busy()) return;
+                if (!canInteract(shown) || option.requiresIdle() && AssistantClient.state().busy()) return;
                 dismiss(shown);
                 option.action().run();
             });
@@ -314,7 +321,7 @@ public final class AssistantMessages {
         boolean enabled = chatting && phase == Phase.VISIBLE && current != null;
         boolean expanded = phase != Phase.HIDDEN && phase != Phase.COLLAPSING;
         boolean contentVisible = phase == Phase.FADING_IN || phase == Phase.VISIBLE;
-        boolean busy = AssistantClient.busy();
+        boolean busy = AssistantClient.state().busy();
         if (interactive == null || interactive != enabled || displayedBusy == null || displayedBusy != busy) {
             interactive = enabled;
             displayedBusy = busy;

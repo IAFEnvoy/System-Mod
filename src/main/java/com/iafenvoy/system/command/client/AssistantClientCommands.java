@@ -2,7 +2,7 @@ package com.iafenvoy.system.command.client;
 
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.runtime.client.AssistantClient;
+import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
 import net.minecraft.client.Minecraft;
@@ -27,10 +27,10 @@ public final class AssistantClientCommands {
             else AssistantClient.send(AgentRequest.Control.HISTORY);
         }, "history", "对话历史");
         register(() -> AssistantClient.send(AgentRequest.Control.FORGET), "forget", "清空记忆");
-        register(() -> preferences(true, AssistantClient.externalModel()), "memory on");
-        register(() -> preferences(false, AssistantClient.externalModel()), "memory off");
-        register(() -> preferences(AssistantClient.saveHistory(), true), "ai on");
-        register(() -> preferences(AssistantClient.saveHistory(), false), "ai off");
+        register(() -> preferences(true, AssistantClient.state().externalModel()), "memory on");
+        register(() -> preferences(false, AssistantClient.state().externalModel()), "memory off");
+        register(() -> preferences(AssistantClient.state().saveHistory(), true), "ai on");
+        register(() -> preferences(AssistantClient.state().saveHistory(), false), "ai off");
         register(() -> AssistantClient.command("grant"), "grant");
         register(() -> AssistantClient.command("revoke"), "revoke");
         register(() -> AssistantClient.command("reset"), "reset");
@@ -70,7 +70,7 @@ public final class AssistantClientCommands {
         Matcher selection = SELECT.matcher(command);
         if (selection.matches()) {
             int index = Integer.parseInt(selection.group(1)) - 1;
-            List<AgentResult.Action> actions = AssistantClient.currentActions();
+            List<AgentResult.Action> actions = AssistantClient.state().currentActions();
             if (index < 0 || index >= actions.size()) AssistantClient.local(AgentResult.error("INVALID_SELECTION"));
             else AssistantClient.send(actions.get(index), text);
             return true;

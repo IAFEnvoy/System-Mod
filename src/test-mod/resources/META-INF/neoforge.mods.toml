@@ -26,6 +26,6 @@ side="BOTH"
 [[dependencies.system_test]]
 modId="system"
 type="required"
-versionRange="[1.0.0,)"
+versionRange="[0,)"
 ordering="AFTER"
 side="BOTH"

@@ -4,9 +4,8 @@ import com.iafenvoy.system.config.ConfigInstance;
 import com.iafenvoy.system.speech.asr.AsrProvider;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import org.jspecify.annotations.NonNull;
 
-import java.util.List;
+import java.util.Set;
 
 /**
  * NLS credentials are client-local and separate from DashScope TTS credentials.
@@ -22,13 +21,8 @@ public record RecognitionConfig(boolean enabled, String provider, String appKey,
             Codec.STRING.lenientOptionalFieldOf("region", "shanghai").forGetter(RecognitionConfig::region),
             Codec.BOOL.lenientOptionalFieldOf("autoSend", false).forGetter(RecognitionConfig::autoSend)
     ).apply(i, RecognitionConfig::new));
-    public static final ConfigInstance<RecognitionConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, defaults());
-
-    public static final List<String> REGIONS = List.of("shanghai", "beijing", "shenzhen");
-
-    public static RecognitionConfig defaults() {
-        return new RecognitionConfig(false, "aliyun-nls", "", "", "shanghai", false);
-    }
+    public static final ConfigInstance<RecognitionConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, new RecognitionConfig(false, "aliyun-nls", "", "", "shanghai", false));
+    public static final Set<String> REGIONS = Set.of("shanghai", "beijing", "shenzhen");
 
     public AsrProvider.Request request() {
         return new AsrProvider.Request(fallback(this.appKey, "ALIYUN_NLS_APP_KEY"),
@@ -38,10 +32,5 @@ public record RecognitionConfig(boolean enabled, String provider, String appKey,
     private static String fallback(String value, String environment) {
         String variable = System.getenv(environment);
         return value.isBlank() && variable != null ? variable.strip() : value.strip();
-    }
-
-    @Override
-    public @NonNull String toString() {
-        return "RecognitionSettings[provider=" + this.provider + ", enabled=" + this.enabled + "]";
     }
 }

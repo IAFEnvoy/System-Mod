@@ -11,6 +11,11 @@ public final class AgentException extends RuntimeException {
         this.code = code;
     }
 
+    public AgentException(String code, Throwable cause) {
+        super(code, cause);
+        this.code = code;
+    }
+
     public String code() {
         return this.code;
     }

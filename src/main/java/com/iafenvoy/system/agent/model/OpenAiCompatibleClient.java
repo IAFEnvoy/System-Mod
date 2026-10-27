@@ -6,6 +6,7 @@ import com.iafenvoy.system.util.HttpTransport;
 import com.iafenvoy.system.util.codec.CodecIO;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
@@ -20,11 +21,6 @@ import java.util.function.Consumer;
  */
 public final class OpenAiCompatibleClient implements ModelClient {
     private final HttpTransport http = new HttpTransport();
-    private final ModelConfig settings;
-
-    public OpenAiCompatibleClient(ModelConfig settings) {
-        this.settings = settings;
-    }
 
     @Override
     public Reply complete(List<Message> messages, int maxOutputTokens, Duration timeout) throws Exception {
@@ -34,14 +30,22 @@ public final class OpenAiCompatibleClient implements ModelClient {
 
     @Override
     public Reply complete(List<Message> messages, int maxOutputTokens, Duration timeout, Consumer<Usage> observer) throws Exception {
-        String key = System.getenv(this.settings.apiKeyEnvironment());
-        if ((key == null || key.isBlank()) && this.settings.apiKeyRequired())
-            throw new AgentException("MODEL_NOT_CONFIGURED");
-        String body = CodecIO.write(ChatCompletion.Request.CODEC, ChatCompletion.Request.of(this.settings, messages, maxOutputTokens));
-        Map<String, String> headers = key == null || key.isBlank() ? Map.of() : Map.of("Authorization", "Bearer " + key);
+        ChatCompletion.Request request;
+        URI endpoint;
+        Map<String, String> headers;
+        // Read one request's endpoint, credentials and body atomically with config reloads; HTTP holds no lock.
+        synchronized (ModelConfig.INSTANCE) {
+            String key = System.getenv(ModelConfig.INSTANCE.get().apiKeyEnvironment());
+            if ((key == null || key.isBlank()) && ModelConfig.INSTANCE.get().apiKeyRequired())
+                throw new AgentException("MODEL_NOT_CONFIGURED");
+            request = ChatCompletion.Request.of(messages, maxOutputTokens);
+            endpoint = ModelConfig.INSTANCE.get().chatCompletionsEndpoint();
+            headers = key == null || key.isBlank() ? Map.of() : Map.of("Authorization", "Bearer " + key);
+        }
+        String body = CodecIO.write(ChatCompletion.Request.CODEC, request);
         HttpResponse<byte[]> response;
         try {
-            response = this.http.postJson(this.settings.chatCompletionsEndpoint(), body, headers, timeout, 65536);
+            response = this.http.postJson(endpoint, body, headers, timeout, 65536);
         } catch (TimeoutException | HttpTimeoutException e) {
             throw new AgentException("MODEL_TIMEOUT");
         } catch (IOException e) {

@@ -1,5 +1,61 @@
 # 编译与验收
 
+## 2026-10-27 两端运行时职责拆分
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；`testModClasses` 只编译开发源集。静态检查确认：`AssistantServer` 的玩家会话、请求分派和用量计量分别交由 `AssistantPlayers`、`AssistantRequests`、`AssistantUsage`，命令、网络及 FTB 桥接调用已同步；异步回复的连接代次校验和计量的主线程写入保留。
+
+客户端对话、请求和服务端元数据归入不可变 `AssistantClientState`，所有界面改从状态快照读取；登出或成功撤销时替换为 `EMPTY`，刷新版本号独立递增。同步修正设置页把 ASR 地区 `Set` 当作列表使用的问题，地区切换从排序快照读取。`git diff --check` 通过；没有运行测试、启动 Minecraft 或调用外部 API，绑定、登出、异步回复与界面刷新尚未作游戏内验收。
+
+## 2026-10-27 全局配置直接读取
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；`testModClasses` 只编译开发源集。静态扫描确认：引擎、执行上下文、模型客户端、语义路由和服务端桥接不再持有配置对象字段，不再传递全局配置构造参数或通过 `settings()` 转发；使用 `XxxConfig.INSTANCE.get()` 直接读取。路由缓存不再保存容量和 TTL 的配置副本，写入时按当前限制淘汰。
+
+设置页只保留未提交草稿，配置提交仍使用 `INSTANCE.set()` 的脏标记机制。TTS 等待队列不再保存配置；TTS / ASR 单次请求保留不可变报文与计量维度，模型在配置实例锁内一起读取地址、鉴权和请求体，HTTP 在锁外执行。词法索引与模型并发信号量仍在启动时构建，相关结构参数修改后需重启。`git diff --check` 通过；没有运行测试、启动 Minecraft 或调用外部 API，资源重载和在途请求尚未作运行验收。
+
+## 2026-10-26 抽奖界面布局
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；`testModClasses` 只编译开发源集。静态检查确认中英文各 406 个语言键且集合一致，`git diff --check` 通过。
+
+阅读样式和渲染代码确认：抽奖与商城搜索框伸展占满剩余宽度，按钮等高，窄窗口换行；奖池卡片按名称、奖品种类、ID 和单次消耗分层，奖品卡片突出名称、物品数量与中奖概率。卡片正文通过类型注册渲染，简约模式使用同一套紧凑文本格式；原有可信动作、独立报价与确认流程保留。没有运行测试或启动 Minecraft，实际排版、输入法、滚动和不同 GUI 缩放尚未作游戏内验收。
+
+## 2026-10-26 通知首次展开提示音
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；`testModClasses` 只编译开发源集。阅读通知状态机确认：提示音在 `HIDDEN` → `EXPANDING` 时提交一次，连续消息的淡出淡入和收缩中途反向展开只提交正文播报，完全收起后下一轮才重新播放提示音；恢复通知、文档重建不补播。提示音与正文仍共用 session，音量维持播报音量的 75%，切换、关闭和隐藏时取消。
+
+没有运行测试或启动 Minecraft，实际连续播放、音量和动画时序尚未作游戏内验收。
+
+## 2026-10-26 玩家存档读取句柄
+
+读取现有 `run-test-client/logs/latest.log` 确认登录时出现 baseline 失败，打开助手后显示存储不可用；原实现没有记录底层异常，日志无法直接确认具体 I/O 错误。本次使用的玩家文件只有合法的 `{"bound":true}`，没有旧订单或缓存卡片字段。阅读源码发现 `FileAgentStore.load()` 直接创建 `FileReader` 后未关闭，读取句柄可能在 Windows 下阻止同一事务随后原子替换原文件。
+
+改用 UTF-8 `Files.newBufferedReader` 和 try-with-resources，确保读完或解析失败时都关闭文件；存储 I/O 和目录枚举失败统一记录操作、路径及原因，并在 `AgentException` 中保留 cause，网络只返回原错误码。未修改或清理任何玩家存档，未增加格式兼容或解析失败后的空数据兜底。
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；`testModClasses` 只编译开发源集。静态检查与 `git diff --check` 通过。没有运行测试或启动 Minecraft，原子替换与反复打开助手尚未作运行验收。
+
+## 2026-10-26 HUD 通知提示音
+
+执行 `compileJava testModClasses jar --console=plain`，主源码与开发源集编译、打包通过；没有运行测试或启动 Minecraft。使用 FFmpeg 将提供的 `1.mp3` 转为 Ogg Vorbis，FFprobe 确认结果为单声道、44.1 kHz、约 1.78 秒、16,584 字节。静态检查确认中英文各 400 个语言键且集合一致，声音定义与字幕键、OGG 路径可对应，`git diff --check` 通过；发布 JAR 包含 `sounds.json`、OGG、`SystemSounds` 与 `NotificationSound`，大小为 861,806 字节。
+
+阅读本地 Minecraft / NeoForge 依赖源码确认注册事件、原版声音实例和静态/流式启动回调签名。阅读调用链确认：HUD 首次渲染提交当前 session 的提示音，按播报音量的 75% 使用 Voice 分类播放；云端合成并行准备，原版声音实例结束后才启动正文播放。通知关闭、确认、切换、隐藏和声音重载复用 session 取消，声音线程的延迟启动回调也检查取消状态；恢复通知、文档刷新不补播。提示音不依赖云端密钥或自动朗读，不增加 API 用量。没有调用外部语音 API；实际音量、播放顺序、通知连续切换与取消尚未进行游戏内验收。
+
+## 2026-10-26 数据驱动抽奖
+
+执行 `compileJava testModClasses --console=plain`，主源码和开发源集编译通过；`testModClasses` 只编译开发源集。静态检查确认中英文各 399 个语言键且集合一致，10 份内置及示例商业目录 JSON 可解析，抽奖界面元素 ID 无重复且与 Java 引用一致，抽奖模块语言键齐全，`git diff --check` 通过。
+
+阅读代码确认：奖池从 `system/lottery_pools` 资源加载，使用 Codec 定义奖品、正整数权重及可选消耗；默认池消耗 1 个绿宝石，三个奖品权重为 60/30/10。浏览和预览接入模块注册表、指令与语义路由，单抽只接受独立结构化确认。商城与抽奖共用报价、支付和订单流程；确认绑定玩家、操作类型及目录版本，服务端选中奖励并保存快照，重复确认不会重新收费或抽样。支付前在游戏线程验证整个奖池的物品模板，待支付或结果未知时隐藏未结算奖品，成功后存入收件箱供领取。完整界面有抽奖入口，简约界面复用编号操作，结算口播只读奖品名称。
+
+没有运行测试、启动 Minecraft、创建存档或调用外部 API；奖池重载、概率分布、实际扣款与交付、重复确认、重启恢复、两种界面交互和 TTS 尚未作运行验收。订单存档已改用 `Purchase.order`，没有旧 `Purchase.offer` 兼容逻辑；开发存档若无法解析，使用 `/system reset [玩家]` 后重新授予。
+
+## 2026-10-26 目录 ID 与支付类型
+
+执行 `compileJava testModClasses --console=plain`，主源码和开发源集编译通过；没有运行测试或启动 Minecraft。阅读代码确认：目录奖励和商品 ID、相关请求及签到模型选择使用 `Identifier`，移除 `validId` 正则；`Price.type` 改为 `PaymentType`，通过原版 `StringRepresentable.fromEnum` 编解码，校验及支付分支不再比较字符串。JSON 支付类型仍为 `ITEMS` / `SYSTEM_COIN`；数据包、存档和游戏内交易未作运行验收。
+
+## 2026-10-26 奖励与商城使用 ItemStackTemplate
+
+执行 `compileJava testModClasses --console=plain`，主源码和开发源集编译通过；`testModClasses` 只编译开发源集。阅读依赖 JAR 确认：`ItemStackTemplate.CODEC` 解析物品 ID、1～99 的数量及组件补丁，不访问物品默认组件；`create()` 构建物品堆并通过原版严格校验，失败返回空堆。
+
+阅读代码确认：已移除 `PlayerData.Item` 和重载阶段的 `validateItems`，奖励、商品、价格与结果均直接保存模板；奖励及商品产出列表在 Codec 中统一限制为 1～36 项。发奖时先创建全部物品堆，商城在扣款前检查产出；扣除材料按物品与组件精确匹配并逐槽预留，重复模板不会重复扣同一份材料。未运行测试或启动 Minecraft；数据包重载、组件持久化和游戏内交易未作运行验收。
+
 ## 2026-10-26 成就规则使用 Identifier
 
 执行 `compileJava testModClasses --console=plain`，主源码和开发源集编译通过；没有运行测试或启动 Minecraft。阅读代码确认：`AdvancementRule` 的规则 ID 与成就 ID 改为 `Identifier`，使用原版 Codec 解析，移除手写正则；登录完成状态、待处理成就事件和已启用基线缓存使用该类型，查询成就不再重复解析。持久化键、事件任务入口与模块参数按原有文本格式转换，配置 JSON 结构不变；缺失或无效的 ID 不生成默认规则，仍由外层 `rules` 的 lenient 字段回退。游戏内事件触发与配置容错未作运行验收。

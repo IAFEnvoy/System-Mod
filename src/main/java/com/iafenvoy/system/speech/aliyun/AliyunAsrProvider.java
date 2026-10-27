@@ -1,5 +1,6 @@
 package com.iafenvoy.system.speech.aliyun;
 
+import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.data.speech.AliyunAsrMessage;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AsrProvider;
@@ -14,7 +15,6 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
@@ -34,7 +34,7 @@ public final class AliyunAsrProvider implements AsrProvider {
         if (!request.appKey().matches("[A-Za-z0-9_-]{1,128}")) throw new SpeechException("appkey");
         if (request.token().isBlank() || request.token().length() > 2000
                 || request.token().chars().anyMatch(c -> c <= 32 || c >= 127)) throw new SpeechException("token");
-        if (!Set.of("shanghai", "beijing", "shenzhen").contains(request.region())) throw new SpeechException("region");
+        if (!RecognitionConfig.REGIONS.contains(request.region())) throw new SpeechException("region");
     }
 
     @Override

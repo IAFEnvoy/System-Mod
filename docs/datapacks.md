@@ -1,6 +1,6 @@
 # 扩展配置
 
-旧的数据包注册表与 `SystemFunction` 已移除。执行预算、模型连接、本地路由和成就规则分别来自服务端 `config/system/` 中的 `system-agent.json`、`system-model.json`、`system-semantic.json` 和 `system-advancements.json`；签到奖励池、商城目录和模型提示词有独立的数据包入口，不使用旧的 `data/.../system/system` 注册表。客户端不能提供价格、商品内容或触发规则。
+旧的数据包注册表与 `SystemFunction` 已移除。执行预算、模型连接、本地路由和成就规则分别来自服务端 `config/system/` 中的 `system-agent.json`、`system-model.json`、`system-semantic.json` 和 `system-advancements.json`；签到奖励池、商城目录、抽奖奖池和模型提示词有独立的数据包入口，不使用旧的 `data/.../system/system` 注册表。客户端不能提供价格、商品内容、抽奖权重或触发规则。
 
 完整示例见 [执行预算](../examples/agent/system-agent.json)、[模型连接](../examples/agent/system-model.json)、[本地路由](../examples/agent/system-semantic.json) 和 [成就规则](../examples/agent/system-advancements.json)。首次初始化会从 JAR 内 `defaults/` 复制各默认文件，修改后正常重启。密钥只使用 `apiKeyEnvironment` 指定的环境变量。默认 DeepSeek 与其他 OpenAI 兼容服务的配置见 [模型接口与 DeepSeek 兼容](model-api.md)。
 
@@ -25,7 +25,7 @@
 
 ## 奖励目录
 
-奖励和商品只从下述数据包目录读取，不再由 `AgentSettings` 提供列表或兜底。条目 ID 来自文件路径，正文包含简短 `label` 和 `items` 列表；商品另有 `price`。物品使用注册 ID 和正整数数量；每包至少一项，产出每项占一个物品堆，数量不得超过该物品自身的堆叠上限。付款材料可超过一堆，从多个背包格扣除。没有任意 NBT 或组件注入。
+奖励和商品只从下述数据包目录读取，不再由 `AgentSettings` 提供列表或兜底。条目 ID 来自文件路径，正文包含简短 `label` 和 `items` 列表；商品另有 `price`。物品直接使用原版 `ItemStackTemplate.CODEC`，包含注册 ID、可选的 `count`（默认 1，原版范围 1～99）及 `components`。签到奖励和商品产出每包为 1～36 项，与交付时主背包预留空位的规则一致。重载阶段只读取模板，不构建 `ItemStack`；实际扣款前或交付时才调用 `create()`，由原版校验最终组件及产出的实际堆叠上限。付款材料可以跨背包格扣除，超过单个模板数量范围时拆成多项。
 
 AI 只返回候选奖励 ID，不能修改条目数量。入账保存完整奖励快照，修改目录不会改写已经获得的权益。正常签到必须成功调用 AI；成就固定奖励不受此要求影响。
 
@@ -37,8 +37,9 @@ AI 只返回候选奖励 ID，不能修改条目数量。入账保存完整奖�
 | --- | --- | --- |
 | `data/<namespace>/system/signin_rewards/<path>.json` | `<namespace>:<path>` | AI 签到候选奖励包 |
 | `data/<namespace>/system/shop_offers/<path>.json` | `<namespace>:<path>` | 商城商品和价格 |
+| `data/<namespace>/system/lottery_pools/<path>.json` | `<namespace>:<path>` | 抽奖奖池、奖品权重和单次消耗 |
 
-两个目录的所有有效资源按条目 ID 汇总：不同路径会新增条目，同路径按数据包优先级覆盖。JAR 内置奖励为 `system:food`、`system:mining`、`system:building`，商品为 `system:torch_bundle`，默认内容和自定义内容使用同一加载流程。`{"enabled":false}` 可以覆盖并禁用单个条目；需要空目录时，禁用该类所有有效条目，或通过数据包过滤移除资源。移除覆盖文件会恢复下层数据包的同路径条目；若最终没有有效资源则保持空目录，不从配置补回。奖励包、商品及包内条目数量、资源文件大小均不设额外硬上限。
+三个目录的所有有效资源按条目 ID 汇总：不同路径会新增条目，同路径按数据包优先级覆盖。JAR 内置奖励为 `system:food`、`system:mining`、`system:building`，商品为 `system:torch_bundle`，奖池为 `system:supplies`，默认内容和自定义内容使用同一加载流程。`{"enabled":false}` 可以覆盖并禁用单个条目；需要空目录时，禁用该类所有有效条目，或通过数据包过滤移除资源。移除覆盖文件会恢复下层数据包的同路径条目；若最终没有有效资源则保持空目录，不从配置补回。奖励包、商品、奖池及奖品总数和资源文件大小不设额外硬上限；每个奖励包内产出使用上述 1～36 项限制，付款材料列表不设额外项数上限。
 
 签到包文件：
 
@@ -62,11 +63,51 @@ AI 只返回候选奖励 ID，不能修改条目数量。入账保存完整奖�
 }
 ```
 
-`price.type` 支持 `ITEMS` 和预留的 `SYSTEM_COIN`。一个条目选择一种支付方式；需要两种购买方式时定义两个商品条目。物品价格的所有材料都必须满足；重复物品 ID 的数量会合并。系统币格式为 `{"type":"SYSTEM_COIN","coins":20}`，金额为正整数（Java `long`），未安装可信支付适配器时只展示、不能购买。价格不能同时使用物品与系统币。
+`price.type` 支持 `ITEMS` 和预留的 `SYSTEM_COIN`。一个条目选择一种支付方式；需要两种购买方式时定义两个商品条目。物品价格至少一项且所有材料都必须满足；物品类型和最终组件必须与模板完全一致。扣款先按背包槽位预留数量，重复模板不会重复使用同一份材料。系统币格式为 `{"type":"SYSTEM_COIN","coins":20}`，金额为正整数（Java `long`），未安装可信支付适配器时只展示、不能购买。价格不能同时使用物品与系统币。
 
-标签为非空纯文本；无效 ID、非正数数量、产出超过实际堆叠上限、缺失价格或无效物品会拒绝本轮重载，不发布半份目录。未知字段遵循原版 Codec 行为忽略。成功重载会更换目录版本，旧报价失效；正在推理的签到决策提交前需要校验版本。已入账的签到/商城奖励、订单和当日唯一标记均保留。
+标签为非空纯文本；无效物品 ID、不在原版范围内的数量、无法解析的组件、产出列表不在 1～36 项范围内或缺失价格都会拒绝本轮重载，不发布半份目录。依赖最终物品组件的校验留到运行时；商品产出无法创建时会在扣款前失败，奖励无法创建时保留为待领取。未知字段遵循原版 Codec 行为忽略。成功重载会更换目录版本，旧报价失效；正在推理的签到决策提交前需要校验版本。已入账的签到/商城奖励、订单和当日唯一标记均保留。
 
 成就 `rewardId` 引用当前奖励池中的完整资源 ID，例如 `system:mining`。
+
+## 抽奖奖池
+
+奖池通过同一个目录重载监听器加载，奖池 ID 来自 `data/<namespace>/system/lottery_pools/<path>.json` 的路径。默认 `system:supplies` 消耗 1 个绿宝石，奖品分别为 16 个火把（60%）、8 个面包（30%）、4 个铁锭（10%）；可覆盖同路径文件或用 `{"enabled":false}` 禁用。可复制的示例在 [supplies.json](../examples/commerce-pack/data/example/system/lottery_pools/supplies.json)。
+
+```json
+{
+  "label": "补给奖池",
+  "price": {
+    "type": "ITEMS",
+    "items": [{ "id": "minecraft:emerald", "count": 1 }]
+  },
+  "entries": [
+    {
+      "weight": 9,
+      "reward": {
+        "id": "example:lottery/food",
+        "label": "食物补给",
+        "items": [{ "id": "minecraft:bread", "count": 8 }]
+      }
+    },
+    {
+      "weight": 1,
+      "reward": {
+        "id": "example:lottery/diamond",
+        "label": "钻石补给",
+        "items": [{ "id": "minecraft:diamond", "count": 1 }]
+      }
+    }
+  ]
+}
+```
+
+`label` 非空，启用的奖池至少有一项 `entries`。`weight` 默认为 1，必须为正整数；单项概率等于该项权重除以奖池总权重，上例为 90% 与 10%。每次独立抽取一个完整奖励包，没有保底、多连抽或额外 AI 调用。`reward` 复用奖励 Codec：`id` 为 `Identifier`，`items` 为 1～36 项原版 `ItemStackTemplate`；奖品内联定义，不依赖签到奖励池。默认和示例均只引用必装的原版物品。
+
+`price` 为每次单抽的消耗，使用与商城相同的 `Price` Codec；可配置 `ITEMS`，或预留的 `SYSTEM_COIN`。省略整个 `price` 表示免费，免费奖池可重复抽取；不支持把空物品价格或 0 系统币当作免费。未接入支付适配器时，系统币奖池可查看，但不提供确认按钮。
+
+完整界面进入“系统抽奖”，或输入 `/lottery [关键词]`；`/draw <奖池ID>` / `单抽 <奖池ID>` 只预览，显示奖品概率和费用后，必须单独点击或用 `选择 编号` 确认。奖池与奖品均按每页 8 项展示。确认引用有效期两分钟，绑定玩家、操作类型及目录版本；成功重载会使旧确认失效。模型和本地语义路由只能浏览或预览，不能直接确认扣款、修改权重或指定中奖奖品。
+
+服务端在确认时抽样并持久化中奖快照，共用商城的订单、扣款与收件箱结算流程；重复确认同一引用只返回原结果，不重复扣款或重抽。待支付与结果未知订单不展示未结算奖品。扣款前在游戏线程验证整个奖池的物品模板，任何奖品无法构建时均失败；资源重载阶段不会构建 `ItemStack`。已结算奖品保留快照，目录修改不会改写；仍需从收件箱领取。
 
 ## 成就规则
 
@@ -89,4 +130,4 @@ AI 只返回候选奖励 ID，不能修改条目数量。入账保存完整奖�
 
 `system-agent.json` 中 `policies` 的键是模块 ID，值必须提供全部 `ExecutionPolicy` 字段。不同模块有自己的模型数、工具数、写步骤、tokens 与期限。`0` 模型次数表示禁止，不能写负数表示无限。未知模块配置会导致助手初始化失败并停止奖励写入。
 
-配置错误不会回退到不校验的发奖方式。诊断在服务端日志中；修改配置文件需要正常重启，修改奖励/商品数据包可正常重载。FTB 自身任务配置仍是独立入口。
+配置错误不会回退到不校验的发奖方式。诊断在服务端日志中；修改配置文件需要正常重启，修改奖励、商品或奖池数据包可正常重载。FTB 自身任务配置仍是独立入口。

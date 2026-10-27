@@ -1,11 +1,12 @@
 package com.iafenvoy.system.agent.store;
 
 import com.google.gson.JsonParser;
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.serialization.JsonOps;
 
-import java.io.FileReader;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -56,7 +57,12 @@ public final class FileAgentStore implements AgentStore {
         Path path = this.root.resolve(player + ".json");
         if (!Files.exists(path)) return new PlayerData();
         if (Files.size(path) > MAX_BYTES) throw new AgentException("STORAGE_FULL");
-        PlayerData data = PlayerData.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseReader(new FileReader(path.toFile()))).getOrThrow(message -> new IOException("Invalid structured file: " + path.getFileName() + ": " + message));
+        PlayerData data;
+        // Release the read handle before updatePlayer atomically replaces this file on Windows.
+        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            data = PlayerData.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseReader(reader))
+                    .getOrThrow(message -> new IOException("Invalid structured file: " + path.getFileName() + ": " + message));
+        }
         if (data.version != 1) throw new IOException("Invalid agent store version");
         prune(data.conversation);
         return data;
@@ -72,7 +78,7 @@ public final class FileAgentStore implements AgentStore {
             try {
                 return query.apply(this.load(player));
             } catch (IOException e) {
-                throw new AgentException("STORAGE_UNAVAILABLE");
+                throw storageFailure("read", this.root.resolve(player + ".json"), e);
             }
         }
     }
@@ -101,7 +107,7 @@ public final class FileAgentStore implements AgentStore {
                 Files.move(temp, this.root.resolve(player + ".json"), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
                 return result;
             } catch (IOException e) {
-                throw new AgentException("STORAGE_UNAVAILABLE");
+                throw storageFailure("save", this.root.resolve(player + ".json"), e);
             } finally {
                 try {
                     Files.deleteIfExists(temp);
@@ -135,7 +141,7 @@ public final class FileAgentStore implements AgentStore {
                     Files.deleteIfExists(this.root.resolve(player + ".tmp"));
                     Files.deleteIfExists(this.root.resolve(player + ".json"));
                 } catch (IOException e) {
-                    throw new AgentException("STORAGE_UNAVAILABLE");
+                    throw storageFailure("delete", this.root.resolve(player + ".json"), e);
                 }
             }
             return null;
@@ -152,8 +158,13 @@ public final class FileAgentStore implements AgentStore {
             return files.map(path -> path.getFileName().toString()).filter(name -> name.endsWith(".json"))
                     .map(name -> UUID.fromString(name.substring(0, name.length() - 5))).toList();
         } catch (IOException | IllegalArgumentException e) {
-            throw new AgentException("STORAGE_UNAVAILABLE");
+            throw storageFailure("list", this.root, e);
         }
+    }
+
+    private static AgentException storageFailure(String operation, Path path, Exception error) {
+        SystemMod.LOGGER.error("Unable to {} agent store {}", operation, path, error);
+        return new AgentException("STORAGE_UNAVAILABLE", error);
     }
 
     private <T> T whileOpen(Supplier<T> work) {

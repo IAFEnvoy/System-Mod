@@ -5,7 +5,7 @@ import com.iafenvoy.system.agent.AgentResponse;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
 import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
-import com.iafenvoy.system.runtime.client.AssistantClient;
+import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.screen.AssistantMessages;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;

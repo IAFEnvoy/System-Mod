@@ -46,7 +46,7 @@ final class FtbQuestQueryTool implements ToolRegistry.Handler<QuestQueryInput, Q
             for (Chapter chapter : file.getAllChapters()) {
                 if (chapter.isAlwaysInvisible()) continue;
                 for (Quest quest : chapter.getQuests()) {
-                    if (!quest.isVisible(team) || team.isLocked()) continue;
+                    if (!FtbQuestRules.readable(team, quest) || team.isLocked()) continue;
                     if (claimable ? !hasClaim(player, team, quest) : team.isCompleted(quest) || !team.canStartTasks(quest))
                         continue;
                     if (!matches(quest, query)) continue;

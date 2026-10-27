@@ -32,6 +32,10 @@ public final class BuiltinTools {
             new ToolRegistry.Type<>("ftb.detail", QuestDetailInput.CODEC, QuestLookupOutput.CODEC);
     public static final ToolRegistry.Type<QuestClaimInput, QuestClaimOutput> QUEST_CLAIM =
             new ToolRegistry.Type<>("ftb.claim", QuestClaimInput.CODEC, QuestClaimOutput.CODEC);
+    public static final ToolRegistry.Type<StarterGiftInput, StarterGiftOutput> STARTER_GIFT =
+            new ToolRegistry.Type<>("ftb.starter_gift", StarterGiftInput.CODEC, StarterGiftOutput.CODEC.codec());
+    public static final ToolRegistry.Type<QuestSubmitInput, QuestSubmitOutput> QUEST_SUBMIT =
+            new ToolRegistry.Type<>("ftb.submit", QuestSubmitInput.CODEC, QuestSubmitOutput.CODEC);
 
     private BuiltinTools() {
     }

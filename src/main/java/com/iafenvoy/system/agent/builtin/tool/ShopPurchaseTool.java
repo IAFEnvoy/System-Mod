@@ -12,7 +12,8 @@ import java.util.concurrent.CompletionStage;
 /**
  * One tool confirms one shop purchase through the shared transaction journal.
  */
-public record ShopPurchaseTool(CommerceTransactions transactions) implements ToolRegistry.Handler<ShopPurchaseInput, PurchaseReceiptOutput> {
+public record ShopPurchaseTool(
+        CommerceTransactions transactions) implements ToolRegistry.Handler<ShopPurchaseInput, PurchaseReceiptOutput> {
     public ToolRegistry.Tool<ShopPurchaseInput, PurchaseReceiptOutput> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.SHOP_PURCHASE, true, true, false, this);
     }

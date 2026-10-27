@@ -1,0 +1,46 @@
+{
+  "system.ui.message_confirm": {
+    "zh": ["确定", "确认", "好的", "知道了", "收到", "关闭", "关闭通知", "关闭消息", "忽略通知", "取消", "下一条", "确认这条通知"],
+    "en": ["OK", "okay", "confirm", "dismiss", "close", "close notification", "cancel", "next notification"]
+  },
+  "system.ui.message_details": {
+    "zh": ["查看详情", "详情", "详细信息", "查看这条消息的详情"],
+    "en": ["view details", "show details", "details", "show notification details"]
+  },
+  "system.ui.message_open_button": {
+    "zh": ["打开系统", "打开助手", "进入系统"],
+    "en": ["open system", "open assistant", "show assistant"]
+  },
+  "system.action.quest_detail": {
+    "zh": ["查看任务详情", "任务详情", "查看任务", "查看这个任务", "查看详情", "详情"],
+    "en": ["view quest details", "quest details", "show quest", "show this quest", "view details", "details"]
+  },
+  "system.action.claim": {
+    "zh": ["领取奖励", "领取", "领奖", "领取任务奖励", "收下奖励", "把奖励领了"],
+    "en": ["claim reward", "claim rewards", "claim", "collect reward", "collect rewards", "claim quest reward", "claim the reward"]
+  },
+  "system.action.claim_starter_gift": {
+    "zh": ["领取礼包", "领取新手礼包", "领取新手奖励", "收下礼包", "打开礼包", "领取", "领取奖励"],
+    "en": ["claim starter gift", "claim gift", "collect gift", "open gift", "claim reward", "claim"]
+  },
+  "system.action.refresh_starter_gift": {
+    "zh": ["查看礼包", "礼包详情", "刷新礼包", "查看新手礼包"],
+    "en": ["view gift", "gift details", "refresh gift", "show starter gift"]
+  },
+  "system.action.view_quests": {
+    "zh": ["查看任务", "查看全部任务", "任务列表", "打开任务列表"],
+    "en": ["view quests", "show all quests", "quest list", "open quest list"]
+  },
+  "system.action.choose": {
+    "zh": ["选择奖励", "选择这份奖励"],
+    "en": ["choose reward", "select reward"]
+  },
+  "system.action.deliver": {
+    "zh": ["领取到背包", "放进背包"],
+    "en": ["deliver to inventory", "deliver reward"]
+  },
+  "system.action.next": {
+    "zh": ["下一页", "翻页"],
+    "en": ["next page", "turn page"]
+  }
+}

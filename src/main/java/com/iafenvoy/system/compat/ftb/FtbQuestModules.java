@@ -1,13 +1,11 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.builtin.QuestClaimModule;
-import com.iafenvoy.system.agent.builtin.QuestDetailModule;
-import com.iafenvoy.system.agent.builtin.QuestQueryModule;
+import com.iafenvoy.system.agent.builtin.*;
 import com.iafenvoy.system.assistant.MinecraftTools;
 
 /**
- * Assemble the optional workflows from three independent operations sharing per-server state.
+ * Assemble optional single-purpose operations sharing per-server references and quest rules.
  */
 public final class FtbQuestModules {
     private FtbQuestModules() {
@@ -18,5 +16,9 @@ public final class FtbQuestModules {
         engine.registerModule(new QuestQueryModule(new FtbQuestQueryTool(access).tool()));
         engine.registerModule(new QuestDetailModule(new FtbQuestDetailTool(access).tool()));
         engine.registerModule(new QuestClaimModule(new FtbQuestClaimTool(access).tool()));
+        engine.registerModule(new QuestSubmitModule(new FtbQuestSubmitTool(access).tool()));
+        engine.registerModule(new StarterGiftModule(new FtbStarterGiftTool(access).tool()));
+        engine.questNarration().source(new FtbQuestSpeech(access));
+        FtbQuestNotifications.install(game.server(), access);
     }
 }

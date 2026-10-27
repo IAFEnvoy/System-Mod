@@ -40,7 +40,8 @@ public record LotteryPool(Identifier id, String label, Optional<CommerceCatalog.
         ).apply(i, Entry::new));
     }
 
-    public record Definition(String label, Optional<CommerceCatalog.Price> price, List<Entry> entries, boolean enabled) {
+    public record Definition(String label, Optional<CommerceCatalog.Price> price, List<Entry> entries,
+                             boolean enabled) {
         public static final Codec<Definition> CODEC = RecordCodecBuilder.<Definition>create(i -> i.group(
                 Codec.STRING.optionalFieldOf("label", "").forGetter(Definition::label),
                 CommerceCatalog.Price.CODEC.optionalFieldOf("price").forGetter(Definition::price),

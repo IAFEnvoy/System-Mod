@@ -5,8 +5,8 @@ import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResponse;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
-import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.assistant.AssistantServer;
+import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -88,7 +88,8 @@ public final class SystemCommand {
 
     private static int ask(ServerPlayer player, String text) {
         AssistantServer runtime = runtime(player);
-        if (runtime != null) runtime.requests().request(player, UUID.randomUUID().toString(), new AgentRequest.Chat(text));
+        if (runtime != null)
+            runtime.requests().request(player, UUID.randomUUID().toString(), new AgentRequest.Chat(text));
         return 1;
     }
 

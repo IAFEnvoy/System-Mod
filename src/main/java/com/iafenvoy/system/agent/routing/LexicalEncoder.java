@@ -25,6 +25,14 @@ final class LexicalEncoder {
     private final Map<String, List<Alias>> aliases;
 
     LexicalEncoder() throws IOException {
+        this(true);
+    }
+
+    LexicalEncoder(boolean domainAliases) throws IOException {
+        if (!domainAliases) {
+            this.aliases = Map.of();
+            return;
+        }
         try (InputStream stream = LexicalEncoder.class.getResourceAsStream("/assets/system/routing/lexicon.json")) {
             if (stream == null) throw new IOException("Missing routing lexicon");
             Codec<Map<String, Map<String, List<String>>>> codec = Codec.unboundedMap(Codec.STRING,

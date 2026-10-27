@@ -47,7 +47,8 @@ public final class CommerceQuotes {
     }
 
     public record Quote(String id, UUID player, String revision, PurchaseType type, Identifier source,
-                        String label, Optional<CommerceCatalog.Price> price, List<LotteryPool.Entry> entries, long expires) {
+                        String label, Optional<CommerceCatalog.Price> price, List<LotteryPool.Entry> entries,
+                        long expires) {
         public Quote {
             entries = List.copyOf(entries);
         }

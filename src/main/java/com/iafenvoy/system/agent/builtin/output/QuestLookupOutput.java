@@ -18,6 +18,8 @@ public interface QuestLookupOutput {
                 Identifier.fromNamespaceAndPath("system", "quest_page"), QuestPageOutput.CODEC);
         public static final DispatchRegistry.Type<QuestDetailOutput> DETAIL = REGISTRY.register(
                 Identifier.fromNamespaceAndPath("system", "quest_detail"), QuestDetailOutput.CODEC);
+        public static final DispatchRegistry.Type<StarterGiftOutput> STARTER_GIFT = REGISTRY.register(
+                Identifier.fromNamespaceAndPath("system", "starter_gift"), StarterGiftOutput.CODEC);
 
         private Types() {
         }

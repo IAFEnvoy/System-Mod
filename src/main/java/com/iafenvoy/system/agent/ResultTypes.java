@@ -37,6 +37,9 @@ public final class ResultTypes {
     public static final TypedPayload.Type<LotteryPrizeOutput> LOTTERY_PRIZE = card("lottery_prize", LotteryPrizeOutput.CODEC);
     public static final TypedPayload.Type<QuestList> QUEST_LIST = card("quest_list", QuestList.CODEC);
     public static final TypedPayload.Type<QuestNotice> QUEST_NOTICE = card("quest_notice", QuestNotice.CODEC);
+    public static final TypedPayload.Type<QuestStartupOutput> QUEST_STARTUP = card("quest_startup", QuestStartupOutput.CODEC);
+    public static final TypedPayload.Type<StarterGiftOutput> STARTER_GIFT = card("starter_gift", StarterGiftOutput.CODEC.codec());
+    public static final TypedPayload.Type<QuestSubmitOutput> QUEST_SUBMIT = card("quest_submit", QuestSubmitOutput.CODEC);
 
     public static final TypedPayload.Type<EmptyInput> HELP_ACTION = action("help", EmptyInput.CODEC.codec());
     public static final TypedPayload.Type<EmptyInput> PLAYER_ACTION = action("player_query", EmptyInput.CODEC.codec());
@@ -53,6 +56,8 @@ public final class ResultTypes {
     public static final TypedPayload.Type<QuestQueryInput> QUESTS_ACTION = action("quest_query", QuestQueryInput.CODEC.codec());
     public static final TypedPayload.Type<QuestDetailInput> QUEST_ACTION = action("quest_detail", QuestDetailInput.CODEC.codec());
     public static final TypedPayload.Type<QuestClaimInput> CLAIM_ACTION = action("quest_claim", QuestClaimInput.CODEC.codec());
+    public static final TypedPayload.Type<StarterGiftInput> STARTER_GIFT_ACTION = action("starter_gift", StarterGiftInput.CODEC.codec());
+    public static final TypedPayload.Type<QuestSubmitInput> QUEST_SUBMIT_ACTION = action("quest_submit", QuestSubmitInput.CODEC.codec());
 
     public static final TypedPayload.Type<AdvancementInput> ADVANCEMENT_ACTION = action("advancement_followup", AdvancementInput.CODEC.codec());
 
@@ -112,7 +117,8 @@ public final class ResultTypes {
         }
     }
 
-    public record ShopOffer(Optional<Identifier> id, String label, List<ItemStackTemplate> items, CommerceCatalog.Price price,
+    public record ShopOffer(Optional<Identifier> id, String label, List<ItemStackTemplate> items,
+                            CommerceCatalog.Price price,
                             Optional<Boolean> paymentAvailable) {
         public static final Codec<ShopOffer> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Identifier.CODEC.optionalFieldOf("id").forGetter(ShopOffer::id),
@@ -144,10 +150,16 @@ public final class ResultTypes {
         }
     }
 
-    public record QuestNotice(String title, String chapter) {
+    public record QuestNotice(String id, String title, String chapter, List<ItemPreviewOutput> items) {
         public static final Codec<QuestNotice> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.STRING.fieldOf("id").forGetter(QuestNotice::id),
                 Codec.STRING.fieldOf("title").forGetter(QuestNotice::title),
-                Codec.STRING.fieldOf("chapter").forGetter(QuestNotice::chapter)
+                Codec.STRING.fieldOf("chapter").forGetter(QuestNotice::chapter),
+                ItemPreviewOutput.CODEC.listOf().optionalFieldOf("items", List.of()).forGetter(QuestNotice::items)
         ).apply(i, QuestNotice::new));
+
+        public QuestNotice {
+            items = List.copyOf(items);
+        }
     }
 }

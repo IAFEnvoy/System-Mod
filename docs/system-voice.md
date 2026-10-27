@@ -43,7 +43,7 @@
 
 ## 提示词位置与边界
 
-- 默认模型提示词位于 `src/main/resources/data/system/system/prompts/routing.txt` 与 `sign_in.txt`，可用数据包同路径覆盖并 `/reload`，由服务端 `PromptReloadListener` 加载 UTF-8 文本。
+- 默认模型提示词位于 `src/main/resources/data/system/system/prompts/` 下的 `routing.txt`、`sign_in.txt` 和 `quest_narration.txt`，可用数据包同路径覆盖并 `/reload`，由服务端 `PromptReloadListener` 加载 UTF-8 文本。任务口播只整理无法直接格式化的片段，要求保留事实、数量及限制，结果通过 Codec 验证并按内容缓存，不生成工具调用。
 - `agent/prompt/SystemPrompts` 保存每服不可变模板快照，`PromptTemplate` 执行单次 `{{name}}` 替换。`{{player_language}}` 自动注入；路由额外提供必需的 `{{capabilities}}` JSON。模板限制、扩展参数与失败重载行为见[提示词模板](datapacks.md#提示词模板)。
 - 路由提示词仅允许返回一个模块与输入 JSON，不输出故事、台词或思考过程。本地候选分数只是提示，不能替代原文或授权；歧义返回 `clarify`，由代码生成只读选项。注册目录和每模块预算不因语气调整而扩张。
 - 每次模型调用由执行上下文注入 `requestContext.playerLanguage`，来源为 Minecraft 已同步的客户端语言，无额外客户端语言包。

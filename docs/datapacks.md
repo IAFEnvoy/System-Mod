@@ -14,6 +14,7 @@
 | --- | --- | --- |
 | `data/system/system/prompts/routing.txt` | `system:routing` | `{{player_language}}`、`{{capabilities}}` |
 | `data/system/system/prompts/sign_in.txt` | `system:sign_in` | `{{player_language}}` |
+| `data/system/system/prompts/quest_narration.txt` | `system:quest_narration` | `{{player_language}}` |
 
 `{{player_language}}` 由执行上下文自动提供，例如 `zh_cn`、`en_us`，来源为 MC 同步的玩家语言，模块不能通过同名参数覆盖它。`{{capabilities}}` 由路由器传入当前已注册的交互模块 JSON，包含说明和输入 schema；路由模板必须保留这个占位符。签到的玩家快照、候选奖励和日期仍通过用户消息的结构化 JSON 传入，不内联成系统指令。
 

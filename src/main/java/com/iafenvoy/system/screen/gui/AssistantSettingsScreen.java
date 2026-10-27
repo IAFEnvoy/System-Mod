@@ -2,9 +2,9 @@ package com.iafenvoy.system.screen.gui;
 
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.config.file.SpeechConfig;
-import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.asr.RecognitionCapture;
@@ -72,6 +72,9 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         text(document.getElementById("settings_speech_enabled_label"), tr("system.tts.ui.enabled"));
         text(document.getElementById("settings_speech_cache_label"), tr("system.tts.ui.cache_enabled"));
         text(document.getElementById("speech_cache_hint"), tr("system.tts.ui.cache_hint"));
+        for (String part : List.of("requirements", "rewards", "description"))
+            text(document.getElementById("speech_quest_" + part + "_label"), tr("system.tts.ui.quest_" + part));
+        text(document.getElementById("speech_quest_hint"), tr("system.tts.ui.quest_hint"));
         text(document.getElementById("speech_language_label"), tr("system.tts.ui.language"));
         text(document.getElementById("settings_asr_enabled_label"), tr("system.asr.ui.enabled"));
         text(document.getElementById("settings_asr_auto_send_label"), tr("system.asr.ui.auto_send"));
@@ -129,11 +132,12 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         });
         bindSwitch(document, "speech_enabled", checked ->
                 this.changeSpeech(checked, this.speechForm.region(), this.speechForm.language()));
-        bindSwitch(document, "speech_cache", checked -> {
-            this.readSpeechForm(document);
-            this.speechStatus = null;
-            this.renderControls();
-        });
+        for (String id : List.of("speech_cache", "speech_quest_requirements", "speech_quest_rewards", "speech_quest_description"))
+            bindSwitch(document, id, checked -> {
+                this.readSpeechForm(document);
+                this.speechStatus = null;
+                this.renderControls();
+            });
         bind(document, "speech_region", () -> this.changeSpeech(this.speechForm.enabled(),
                 this.speechForm.region().equals("beijing") ? "singapore" : "beijing", this.speechForm.language()));
         languageSelect.addEventListener("change", event -> {
@@ -185,6 +189,9 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         document.getElementById("speech_language").setValue(this.speechForm.language());
         document.getElementById("speech_volume").setValue(Integer.toString(this.speechForm.volume()));
         switchChecked(document.getElementById("speech_cache"), this.speechForm.cacheEnabled());
+        switchChecked(document.getElementById("speech_quest_requirements"), this.speechForm.questRequirements());
+        switchChecked(document.getElementById("speech_quest_rewards"), this.speechForm.questRewards());
+        switchChecked(document.getElementById("speech_quest_description"), this.speechForm.questDescription());
     }
 
     private void readSpeechForm(Document document) {
@@ -197,7 +204,8 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         this.speechForm = new SpeechConfig(this.speechForm.enabled(), this.speechForm.provider(), document.getElementById("speech_key").getValue().strip(),
                 this.speechForm.region(), document.getElementById("speech_workspace").getValue().strip(), document.getElementById("speech_model").getValue().strip(),
                 document.getElementById("speech_voice").getValue().strip(), document.getElementById("speech_language").getValue(), volume,
-                switchChecked(document.getElementById("speech_cache")));
+                switchChecked(document.getElementById("speech_cache")), switchChecked(document.getElementById("speech_quest_requirements")),
+                switchChecked(document.getElementById("speech_quest_rewards")), switchChecked(document.getElementById("speech_quest_description")));
     }
 
     private void readAsrForm(Document document) {
@@ -210,7 +218,8 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         if (document == null) return;
         this.readSpeechForm(document);
         this.speechForm = new SpeechConfig(enabled, this.speechForm.provider(), this.speechForm.apiKey(), region, this.speechForm.workspace(),
-                this.speechForm.model(), this.speechForm.voice(), language, this.speechForm.volume(), this.speechForm.cacheEnabled());
+                this.speechForm.model(), this.speechForm.voice(), language, this.speechForm.volume(), this.speechForm.cacheEnabled(),
+                this.speechForm.questRequirements(), this.speechForm.questRewards(), this.speechForm.questDescription());
         this.speechStatus = null;
         this.renderControls();
     }

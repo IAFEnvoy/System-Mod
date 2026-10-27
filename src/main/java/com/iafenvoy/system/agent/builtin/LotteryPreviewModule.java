@@ -37,10 +37,11 @@ public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInpu
     @Override
     public AgentResult execute(ExecutionContext context, LotteryPreviewInput input) {
         CommerceCatalog catalog = context.catalog();
-        if (!input.catalogRevision().orElse(catalog.revision()).equals(catalog.revision())) throw new AgentException("STALE_QUOTE");
+        if (!input.catalogRevision().orElse(catalog.revision()).equals(catalog.revision()))
+            throw new AgentException("STALE_QUOTE");
         LotteryPool pool = catalog.lotteries().stream().filter(value -> value.id().equals(input.poolId())).findFirst()
                 .orElseThrow(() -> new AgentException("INVALID_INPUT"));
-        LotteryPoolOutput summary = LotteryModule.summary(context, pool);
+        LotteryPoolOutput summary = LotteryModule.summary(context, pool, false);
         List<AgentResult.Action> actions = new ArrayList<>();
         if (summary.paymentAvailable()) {
             CommerceQuotes.Quote quote = context.commerceQuotes().create(context.player(), catalog, pool);
@@ -49,13 +50,13 @@ public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInpu
         List<AgentResult.Card> cards = new ArrayList<>();
         cards.add(new AgentResult.Card("system.result.lottery_pool", ResultTypes.LOTTERY_POOL.of(summary), actions));
         long totalWeight = pool.totalWeight();
-        for (LotteryPool.Entry entry : pool.entries().stream().skip(input.offset()).limit(8).toList())
+        for (LotteryPool.Entry entry : pool.entries().stream().skip(input.offset()).limit(LotteryModule.PAGE_SIZE).toList())
             cards.add(new AgentResult.Card("system.result.lottery_prize", ResultTypes.LOTTERY_PRIZE.of(
                     new LotteryPrizeOutput(entry.reward(), entry.weight(), totalWeight)), List.of()));
-        if (pool.entries().size() - input.offset() > 8)
+        if (pool.entries().size() - input.offset() > LotteryModule.PAGE_SIZE)
             cards.add(new AgentResult.Card("system.result.page", ResultTypes.EMPTY.of(EmptyInput.INSTANCE), List.of(
                     new AgentResult.Action("system.action.next", ResultTypes.LOTTERY_PREVIEW_ACTION,
-                            new LotteryPreviewInput(pool.id(), input.offset() + 8, Optional.of(catalog.revision()))))));
+                            new LotteryPreviewInput(pool.id(), input.offset() + LotteryModule.PAGE_SIZE, Optional.of(catalog.revision()))))));
         return new AgentResult("SUCCEEDED", "system.result.lottery_preview", "", cards);
     }
 }

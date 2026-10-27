@@ -20,7 +20,8 @@ public final class QuestDetailModule extends BuiltinModule<QuestDetailInput> {
     private static final TypeDispatch<QuestDetailInput, AgentResult> RESULTS = new TypeDispatch<QuestDetailInput, AgentResult>((_, _) -> {
         throw new AgentException("UNSUPPORTED");
     }).register(QuestPageOutput.class, (input, page) -> QuestQueryModule.questList(page, ResultTypes.QUEST_ACTION.of(input)))
-            .register(QuestDetailOutput.class, (_, detail) -> detail(detail.quest()));
+            .register(QuestDetailOutput.class, (_, detail) -> detail(detail.quest()))
+            .register(StarterGiftOutput.class, (_, gift) -> StarterGiftModule.preview(gift));
 
     public QuestDetailModule(ToolRegistry.Tool<QuestDetailInput, QuestLookupOutput> detail) {
         super(ResultTypes.QUEST_ACTION, "View one FTB quest's description, objectives, progress and rewards. Ambiguous names return a brief candidate list. Never invent IDs or indices.",
@@ -55,7 +56,7 @@ public final class QuestDetailModule extends BuiltinModule<QuestDetailInput> {
             if (!reward.claimable() || reward.claimRef().isEmpty()) continue;
             if (reward.choices().isPresent()) {
                 int index = reward.choiceOffset();
-                for (String ignored : reward.choices().get()) {
+                for (QuestChoiceOutput ignored : reward.choices().get()) {
                     QuestClaimInput claim = new QuestClaimInput(reward.claimRef().get(), Optional.of(index++));
                     actions.add(new AgentResult.Action("system.action.choose", ResultTypes.CLAIM_ACTION, claim));
                 }

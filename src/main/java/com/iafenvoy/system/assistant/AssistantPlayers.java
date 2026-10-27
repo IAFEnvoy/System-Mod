@@ -6,10 +6,10 @@ import com.iafenvoy.system.agent.builtin.input.AdvancementInput;
 import com.iafenvoy.system.agent.commerce.CommerceTransactions;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import com.iafenvoy.system.config.AdvancementRule;
 import com.iafenvoy.system.config.file.AdvancementConfig;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -33,6 +33,7 @@ public final class AssistantPlayers {
     private final Map<UUID, List<Identifier>> initializingEvents = new HashMap<>();
     private final Map<UUID, UUID> initializations = new HashMap<>();
     private final Set<UUID> bindingChanges = new HashSet<>();
+    private final Set<UUID> pendingBindingIntroductions = new HashSet<>();
 
     AssistantPlayers(MinecraftServer server, AgentEngine engine, CommerceTransactions transactions, AssistantUsage usage) {
         this.server = server;
@@ -50,7 +51,7 @@ public final class AssistantPlayers {
         }
     }
 
-    void refreshPlayer(ServerPlayer player) {
+    public void refreshPlayer(ServerPlayer player) {
         this.usage.rememberPlayer(player);
         this.engine.language(player.getUUID(), player.clientInformation().language());
     }
@@ -74,6 +75,11 @@ public final class AssistantPlayers {
 
     public void notifyEvent(ServerPlayer player, AgentResult result) {
         if (this.notificationsEnabled(player)) ServerNetworkHandler.notice(player, result);
+    }
+
+    // Only a new successful binding schedules onboarding; login merely restores notification readiness.
+    public boolean consumeBindingIntroduction(ServerPlayer player) {
+        return this.notificationsEnabled(player) && this.pendingBindingIntroductions.remove(player.getUUID());
     }
 
     CompletionStage<AgentResult> requireBound(UUID player) {
@@ -100,10 +106,11 @@ public final class AssistantPlayers {
             if (this.server.getPlayerList().getPlayer(uuid) != player || !connection.equals(ServerNetworkHandler.connectionId(player)))
                 return;
             boolean fresh = answer.messageKey().equals("system.result.bound");
-            if (fresh) this.login(player);
-            if (answer.status().equals("SUCCEEDED") && fresh)
+            if (answer.status().equals("SUCCEEDED") && fresh) {
                 ServerNetworkHandler.binding(player, AgentResponse.Change.BOUND, answer);
-            else ServerNetworkHandler.notice(player, answer);
+                this.pendingBindingIntroductions.add(uuid);
+                this.login(player);
+            } else ServerNetworkHandler.notice(player, answer);
         }));
     }
 
@@ -250,6 +257,7 @@ public final class AssistantPlayers {
     }
 
     private void clearSession(UUID uuid) {
+        this.pendingBindingIntroductions.remove(uuid);
         this.lastRequest.remove(uuid);
         this.baselineReady.remove(uuid);
         this.initializingEvents.remove(uuid);

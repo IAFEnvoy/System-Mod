@@ -7,12 +7,10 @@ import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.output.QuestDetailOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestLookupOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
-import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletionStage;
@@ -43,35 +41,17 @@ final class FtbQuestDetailTool implements ToolRegistry.Handler<QuestDetailInput,
             if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
             ServerQuestFile file = ServerQuestFile.getInstance();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("CAPABILITY_UNAVAILABLE"));
-            Quest selected;
-            if (index > 0) {
-                QuestPage previous = this.access.pages.get(player.getUUID());
-                if (previous == null || previous.expires() < System.currentTimeMillis()
-                        || previous.incarnation() != context.incarnation() || previous.epoch() != context.memoryEpoch()
-                        || !previous.team().equals(team.getTeamId())) throw new AgentException("STALE_QUEST_LIST");
-                if (index > previous.quests().size()) throw new AgentException("INVALID_SELECTION");
-                selected = previous.quests().get(index - 1);
-                if (file.getQuest(selected.getId()) != selected) throw new AgentException("STALE_QUEST_LIST");
-            } else if (!questId.isBlank()) selected = file.getQuest(Long.parseUnsignedLong(questId, 16));
-            else {
-                List<Quest> exact = new ArrayList<>();
-                List<Quest> partial = new ArrayList<>();
-                for (Chapter chapter : file.getAllChapters()) {
-                    if (chapter.isAlwaysInvisible()) continue;
-                    for (Quest quest : chapter.getQuests()) {
-                        if (!quest.isVisible(team)) continue;
-                        if (quest.getTitle().getString().equalsIgnoreCase(query) || hex(quest.getId()).equalsIgnoreCase(query)) {
-                            if (exact.size() - offset <= PAGE_SIZE) exact.add(quest);
-                        } else if (matches(quest, query) && partial.size() - offset <= PAGE_SIZE) partial.add(quest);
-                    }
-                }
-                List<Quest> matches = exact.isEmpty() ? partial : exact;
+            Quest selected = selected(context, file, team, questId, index, this.access.pages);
+            if (questId.isBlank() && index == 0) {
+                List<Quest> matches = find(file, team, query, offset);
                 if (matches.size() != 1) return page(context, team, matches, offset, this.access.pages);
                 selected = matches.getFirst();
             }
-            if (selected == null || selected.getChapter().isAlwaysInvisible() || !selected.isVisible(team)
+            if (selected == null || !FtbQuestRules.readable(team, selected)
                     || selected.hideDetailsUntilStartable() && !team.canStartTasks(selected))
                 throw new AgentException("QUEST_UNAVAILABLE");
+            if (FtbQuestRules.kind(selected) == FtbQuestRules.Kind.STARTER_GIFT)
+                return this.access.gifts.preview(player, team, selected);
             return new QuestDetailOutput(detail(player, team, selected, input, this.access.references));
         });
     }

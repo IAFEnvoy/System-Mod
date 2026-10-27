@@ -2,18 +2,30 @@ package com.iafenvoy.system.screen;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
+import com.iafenvoy.system.command.client.NotificationVoiceCommands;
+import com.iafenvoy.system.config.file.RecognitionConfig;
+import com.iafenvoy.system.event.client.AssistantRecognitionKeys;
+import com.iafenvoy.system.screen.gui.AssistantItems;
+import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
+import com.iafenvoy.system.speech.SpeechException;
+import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.iafenvoy.system.speech.tts.SpeechText;
+import com.sighs.apricityui.client.gui.ApricityGuiLayers;
 import com.sighs.apricityui.event.MouseEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import com.sighs.apricityui.style.Transition;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
@@ -42,6 +54,8 @@ public final class AssistantMessages {
     private static int displayedPending = -1;
     private static Boolean interactive;
     private static Boolean displayedBusy;
+    private static AssistantRecognition.Session recognition;
+    private static String recognitionStatus = "idle";
 
     private AssistantMessages() {
     }
@@ -54,18 +68,39 @@ public final class AssistantMessages {
     }
 
     // Callbacks come from trusted client code, never from model-generated strings or commands.
-    public record Button(String id, String label, boolean requiresIdle, Runnable action) {
+    public record Button(String id, String labelKey, boolean requiresIdle, Runnable action) {
         public Button {
             Objects.requireNonNull(id);
-            label = limit(Objects.requireNonNull(label), 80, 1);
+            Objects.requireNonNull(labelKey);
             Objects.requireNonNull(action);
+        }
+
+        public String label() {
+            return limit(tr(this.labelKey), 80, 1);
         }
     }
 
+    public record Row(String label, Button button) {
+    }
+
     // Visual details and spoken text are separate; direct notifications default to reading their body.
-    public record Message(String title, String text, String speechText, List<Button> buttons, int durationTicks) {
+    public record Message(String title, String text, String speechText, List<Button> buttons, int durationTicks,
+                          List<AssistantItems.Group> items, List<String> quests, List<Row> rows) {
         public Message(String title, String text, List<Button> buttons, int durationTicks) {
             this(title, text, text, buttons, durationTicks);
+        }
+
+        public Message(String title, String text, String speechText, List<Button> buttons, int durationTicks) {
+            this(title, text, speechText, buttons, durationTicks, List.of(), List.of(), List.of());
+        }
+
+        public Message(String title, String text, String speechText, List<Button> buttons, int durationTicks, List<AssistantItems.Group> items) {
+            this(title, text, speechText, buttons, durationTicks, items, List.of(), List.of());
+        }
+
+        public Message(String title, String text, String speechText, List<Button> buttons, int durationTicks,
+                       List<AssistantItems.Group> items, List<String> quests) {
+            this(title, text, speechText, buttons, durationTicks, items, quests, List.of());
         }
 
         public Message {
@@ -73,6 +108,9 @@ public final class AssistantMessages {
             text = limit(Objects.requireNonNull(text), 360, 6);
             speechText = limit(Objects.requireNonNull(speechText), 500, 10);
             buttons = List.copyOf(buttons).stream().limit(3).toList();
+            items = List.copyOf(items);
+            quests = List.copyOf(quests);
+            rows = List.copyOf(rows);
             durationTicks = Math.clamp(durationTicks, 20, 1200);
         }
     }
@@ -93,27 +131,32 @@ public final class AssistantMessages {
         post(new Message(tr("system.ui.binding_title"),
                 Component.translatable("system.ui.binding_text", playerName).getString(),
                 Component.translatable("system.tts.message.binding", playerName).getString(), List.of(
-                new Button("open", tr("system.ui.message_open_button"), false,
+                new Button("open", "system.ui.message_open_button", false,
                         () -> AssistantClient.open(AssistantClient.simpleMode(), ""))), 240));
     }
 
     public static void result(AgentResult result, boolean review) {
         String summary = summary(result);
         List<Button> buttons = new ArrayList<>();
+        List<Row> rows = new ArrayList<>();
         for (AgentResult.Card card : result.cards()) {
             for (AgentResult.Action action : card.actions()) {
-                if (buttons.size() >= 2) break;
-                buttons.add(new Button(action.moduleId() + ":" + action.call().value(), actionLabel(card, action), true,
-                        () -> AssistantClient.send(action, "")));
+                Button button = new Button(action.moduleId() + ":" + action.call().value(), action.labelKey(), true,
+                        () -> AssistantClient.send(action, ""));
+                // Quest rows belong to the list body, not the limited generic action footer.
+                if (card.data().value() instanceof ResultTypes.QuestList && action.call().value() instanceof QuestDetailInput)
+                    rows.add(new Row(actionLabel(card, action), button));
+                else if (buttons.size() < 2) buttons.add(button);
             }
-            if (buttons.size() >= 2) break;
         }
-        if (review) buttons.add(new Button("details", tr("system.ui.message_details"), false, () -> {
-            AssistantClientState.ChatEntry entry = AssistantClient.state().current();
-            AssistantClient.open(entry != null && entry.result() == result && AssistantClient.simpleMode(), "");
-        }));
+        if (review && buttons.stream().noneMatch(button -> Set.of("system.action.quest_detail", "system.action.refresh_starter_gift",
+                "system.action.view_quests").contains(button.labelKey())))
+            buttons.add(new Button("details", "system.ui.message_details", false, () -> {
+                AssistantClientState.ChatEntry entry = AssistantClient.state().current();
+                AssistantClient.open(entry != null && entry.result() == result && AssistantClient.simpleMode(), "");
+            }));
         String speechText = SpeechText.result(result);
-        post(new Message(tr("system.ui.assistant"), summary, speechText, buttons, 160), !speechText.isBlank());
+        post(new Message(tr("system.ui.assistant"), summary, speechText, buttons, 160, AssistantItems.groups(result), SpeechText.quests(result), rows), !speechText.isBlank());
     }
 
     public static String summary(AgentResult result) {
@@ -122,7 +165,7 @@ public final class AssistantMessages {
         if (!result.cards().isEmpty() && !result.messageKey().equals("system.result.history")) {
             AgentResult.Card card = result.cards().getFirst();
             if (!card.titleKey().equals(result.messageKey())) summary.append("\n").append(tr(card.titleKey()));
-            String data = formatCard(card);
+            String data = formatCard(card, false);
             if (!data.isBlank()) summary.append("\n").append(data);
         }
         return summary.toString();
@@ -177,16 +220,18 @@ public final class AssistantMessages {
         }
         advanceAnimation(chatting);
         if (document == null) return;
+        updateRecognition();
         updateInteraction(chatting);
         if (displayedPending != QUEUE.size()) {
             displayedPending = QUEUE.size();
             text(document.getElementById("notification_pending"), displayedPending == 0 ? ""
                     : Component.translatable("system.ui.message_pending", displayedPending).getString());
         }
-        if (phase == Phase.VISIBLE && !chatting) remainingTicks--;
+        if (phase == Phase.VISIBLE && !chatting && (recognition == null || recognition.finished())) remainingTicks--;
     }
 
     private static void nextMessage() {
+        stopRecognition();
         stopSpeech();
         Pending next = QUEUE.pollFirst();
         current = next == null ? null : next.message();
@@ -199,6 +244,8 @@ public final class AssistantMessages {
         displayedMessage = current;
         text(document.getElementById("notification_title"), current.title());
         text(document.getElementById("notification_text"), current.text());
+        renderRows();
+        AssistantItems.render(document, document.getElementById("notification_items"), current.items(), true);
         renderButtons();
         interactive = null;
         displayedBusy = null;
@@ -221,8 +268,9 @@ public final class AssistantMessages {
         // Only the initial expansion plays a cue; swaps and interrupted collapses keep narration direct.
         if (playCue || speakCurrent) {
             speech = new AssistantSpeech.Session();
-            if (playCue) speech.notification(speakCurrent ? current.speechText() : "");
-            else speech.say(current.speechText());
+            if (playCue)
+                speech.notification(speakCurrent ? current.speechText() : "", speakCurrent ? current.quests() : List.of());
+            else speech.say(current.speechText(), current.quests());
         }
     }
 
@@ -270,25 +318,130 @@ public final class AssistantMessages {
         if (event.getScreen() instanceof ChatScreen) updateInteraction(false);
     }
 
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void tooltip(ScreenEvent.Render.Foreground event) {
+        if (current == null || document == null || !canInteract(current) || !(event.getScreen() instanceof ChatScreen))
+            return;
+        if (AssistantItems.tooltip(document, event.getGuiGraphics(), event.getMouseX(), event.getMouseY()))
+            // AUI deduplicates this submission; vanilla then flushes tooltips/IME once above the HUD.
+            ApricityGuiLayers.submitUi(event.getGuiGraphics());
+    }
+
+    private static void renderRows() {
+        Message shown = current;
+        Element choices = document.getElementById("notification_choices");
+        if (choices == null) return;
+        choices.setInnerHTML("");
+        choices.scrollTop = 0;
+        choices.targetScrollTop = 0;
+        choices.setInlineStyleProperty("display", shown.rows().isEmpty() ? "none" : "flex");
+        for (Row row : shown.rows()) {
+            Element button = element(document, "button", "quest_row", row.label());
+            button.addEventListener("click", event -> {
+                if (canInteract(shown)) activate(shown, row.button());
+            });
+            choices.appendChild(button);
+        }
+    }
+
     private static void renderButtons() {
         Message shown = current;
         Element actions = document.getElementById("notification_actions");
         if (actions == null) return;
         actions.setInnerHTML("");
-        for (Button option : shown.buttons()) {
-            Element button = element(document, "button", "notification_action", option.label());
+        for (Button option : buttons(shown)) {
+            Element button = element(document, "button", option.id().equals("confirm") ? "primary" : "notification_action", option.label());
             button.addEventListener("click", event -> {
-                if (!canInteract(shown) || option.requiresIdle() && AssistantClient.state().busy()) return;
-                dismiss(shown);
-                option.action().run();
+                if (canInteract(shown)) activate(shown, option);
             });
             actions.appendChild(button);
         }
-        Element confirm = element(document, "button", "primary", tr("system.ui.message_confirm"));
-        confirm.addEventListener("click", event -> {
-            if (canInteract(shown)) dismiss(shown);
-        });
-        actions.appendChild(confirm);
+    }
+
+    private static List<Button> buttons(Message shown) {
+        List<Button> buttons = new ArrayList<>(shown.buttons());
+        buttons.add(new Button("confirm", "system.ui.message_confirm", false, () -> {
+        }));
+        return buttons;
+    }
+
+    private static List<Button> voiceButtons(Message shown) {
+        List<Button> buttons = new ArrayList<>(shown.rows().stream().map(Row::button).toList());
+        buttons.addAll(buttons(shown));
+        return buttons;
+    }
+
+    private static void activate(Message shown, Button option) {
+        if (current != shown || option.requiresIdle() && AssistantClient.state().busy()) return;
+        dismiss(shown);
+        option.action().run();
+    }
+
+    public static boolean hasVoiceTarget() {
+        Minecraft minecraft = Minecraft.getInstance();
+        return phase == Phase.VISIBLE && current != null && displayedMessage == current
+                && document != null && !document.isDisposed() && !minecraft.options.hideGui
+                && (minecraft.screen == null || minecraft.screen instanceof ChatScreen);
+    }
+
+    public static AssistantRecognition.Session startRecognition() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (!hasVoiceTarget() || recognition != null && !recognition.finished()) return null;
+        if (!RecognitionConfig.INSTANCE.get().enabled()) {
+            minecraft.setScreen(new AssistantSettingsScreen(minecraft.screen, AssistantSettingsScreen.Tab.ASR));
+            return null;
+        }
+        stopRecognition();
+        try {
+            AssistantRecognition.validate();
+        } catch (SpeechException error) {
+            recognitionStatus = error.code();
+            return null;
+        }
+        stopSpeech();
+        Message shown = current;
+        Screen owner = minecraft.screen;
+        NotificationVoiceCommands.prepare(voiceButtons(shown), minecraft.options.languageCode.split("_", 2)[0]);
+        recognition = new AssistantRecognition.Session(() -> current == shown && hasVoiceTarget()
+                && minecraft.screen == owner && minecraft.isWindowActive(), text -> recognized(shown, text));
+        recognition.start();
+        return recognition;
+    }
+
+    private static void recognized(Message shown, String text) {
+        if (current != shown || !hasVoiceTarget()) return;
+        stopRecognition();
+        String language = Minecraft.getInstance().options.languageCode.split("_", 2)[0];
+        List<Button> matches = NotificationVoiceCommands.match(text, voiceButtons(shown), language);
+        if (matches.size() == 1) {
+            Button button = matches.getFirst();
+            if (button.requiresIdle() && AssistantClient.state().busy()) recognitionStatus = "busy";
+            else activate(shown, button);
+            return;
+        }
+        // Missing or ambiguous buttons become ordinary input, never a guessed notification action.
+        boolean busy = AssistantClient.state().busy();
+        AssistantClient.open(AssistantClient.simpleMode(), busy ? text : "");
+        if (!busy) AssistantClient.submitText(text);
+    }
+
+    private static void updateRecognition() {
+        if (recognition != null && !recognition.active()) stopRecognition();
+        Element label = document.getElementById("notification_voice");
+        if (label == null) return;
+        String status = recognition == null ? recognitionStatus : recognition.status();
+        boolean active = recognition != null && !recognition.finished();
+        String partial = active ? recognition.intermediate() : "";
+        String value = status.equals("idle") ? "" : tr("system.asr.status." + status)
+                + (partial.isBlank() ? "" : " · " + limit(partial, 160, 1));
+        label.setInlineStyleProperty("display", value.isBlank() ? "none" : "block");
+        if (!value.equals(label.getTextContent())) text(label, value);
+    }
+
+    private static void stopRecognition() {
+        if (recognition != null) recognition.close();
+        recognition = null;
+        recognitionStatus = "idle";
     }
 
     private static void bindMouseEvents() {
@@ -310,6 +463,7 @@ public final class AssistantMessages {
 
     private static void dismiss(Message shown) {
         if (current != shown) return;
+        stopRecognition();
         stopSpeech();
         current = null;
         remainingTicks = 0;
@@ -329,6 +483,12 @@ public final class AssistantMessages {
                     + (contentVisible ? " content_visible" : "") + (enabled ? " interactive" : ""));
             document.clearFocus();
             if (!enabled) document.setPressedElement(null);
+            Element choices = document.getElementById("notification_choices");
+            if (choices != null)
+                for (Element button : choices.children) {
+                    if (!enabled || busy) button.setAttribute("disabled", "");
+                    else button.removeAttribute("disabled");
+                }
             Element actions = document.getElementById("notification_actions");
             if (actions != null)
                 for (int index = 0; index < actions.children.size(); index++) {
@@ -340,6 +500,9 @@ public final class AssistantMessages {
         }
         String hint = chatting ? tr("system.ui.message_interacting")
                 : Component.translatable("system.ui.message_interact", Minecraft.getInstance().options.keyChat.getTranslatedKeyMessage()).getString();
+        if (RecognitionConfig.INSTANCE.get().enabled())
+            hint += " · " + Component.translatable("system.ui.message_voice_hint",
+                    AssistantRecognitionKeys.translatedKey()).getString();
         Element label = document.getElementById("notification_hint");
         if (label != null && !hint.equals(label.getTextContent())) text(label, hint);
     }
@@ -353,6 +516,7 @@ public final class AssistantMessages {
     }
 
     private static void unmount() {
+        stopRecognition();
         stopSpeech();
         if (document != null) document.remove();
         document = null;
@@ -371,14 +535,23 @@ public final class AssistantMessages {
 
     private static boolean sameContent(Message first, Message second) {
         if (second == null || !first.title().equals(second.title()) || !first.text().equals(second.text()) || !first.speechText().equals(second.speechText())
-                || first.durationTicks() != second.durationTicks() || first.buttons().size() != second.buttons().size())
+                || !first.items().equals(second.items()) || !first.quests().equals(second.quests())
+                || first.durationTicks() != second.durationTicks() || first.buttons().size() != second.buttons().size()
+                || first.rows().size() != second.rows().size())
             return false;
+        for (int index = 0; index < first.rows().size(); index++) {
+            Row left = first.rows().get(index), right = second.rows().get(index);
+            if (!left.label().equals(right.label()) || !sameButton(left.button(), right.button())) return false;
+        }
         for (int index = 0; index < first.buttons().size(); index++) {
             Button left = first.buttons().get(index), right = second.buttons().get(index);
-            if (!left.id().equals(right.id()) || !left.label().equals(right.label()) || left.requiresIdle() != right.requiresIdle())
-                return false;
+            if (!sameButton(left, right)) return false;
         }
         return true;
+    }
+
+    private static boolean sameButton(Button left, Button right) {
+        return left.id().equals(right.id()) && left.label().equals(right.label()) && left.requiresIdle() == right.requiresIdle();
     }
 
     private static String limit(String value, int codePoints, int lines) {

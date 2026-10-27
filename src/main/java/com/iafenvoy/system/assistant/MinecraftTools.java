@@ -21,6 +21,10 @@ public final class MinecraftTools {
         this.queue = queue;
     }
 
+    public MinecraftServer server() {
+        return this.server;
+    }
+
     public <T> CompletionStage<T> onPlayer(ExecutionContext context, Function<ServerPlayer, T> work) {
         // Game state is touched only inside the bounded tick queue, after rechecking task and player liveness.
         CompletableFuture<T> future = new CompletableFuture<>();

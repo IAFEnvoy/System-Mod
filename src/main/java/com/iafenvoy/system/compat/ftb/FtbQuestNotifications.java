@@ -2,15 +2,22 @@ package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.builtin.StarterGiftModule;
+import com.iafenvoy.system.agent.builtin.input.QuestClaimInput;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
-import com.iafenvoy.system.network.ServerNetworkHandler;
+import com.iafenvoy.system.agent.builtin.input.QuestQueryInput;
+import com.iafenvoy.system.agent.builtin.output.QuestStartupOutput;
 import com.iafenvoy.system.assistant.AssistantServer;
+import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.util.MiscUtil;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressEventData;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressType;
 import dev.ftb.mods.ftbquests.api.event.progress.QuestProgressEvent;
 import dev.ftb.mods.ftbquests.api.neoforge.FTBQuestsEvent;
 import dev.ftb.mods.ftbquests.quest.*;
+import dev.ftb.mods.ftbquests.quest.reward.ChoiceReward;
+import dev.ftb.mods.ftbquests.quest.reward.Reward;
+import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
@@ -20,21 +27,25 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import java.util.*;
 
 /**
- * Optional, server-thread FTB event bridge. Progress changes produce system messages without inference or rewards.
+ * Optional, server-thread FTB event bridge. Notices expose trusted actions without granting rewards on arrival.
  */
 final class FtbQuestNotifications {
     private static final Map<MinecraftServer, FtbQuestNotifications> SERVERS = new IdentityHashMap<>();
+    private static final Map<MinecraftServer, FtbQuestAccess> ACCESS = new IdentityHashMap<>();
     private static final int MAX_COMPLETIONS_PER_TICK = 256;
     private static boolean installed;
-    private final ServerQuestFile file;
+    private ServerQuestFile file;
+    private final FtbQuestAccess access;
     private final Map<UUID, TeamState> teams = new HashMap<>();
     private int ticks;
 
-    private FtbQuestNotifications(ServerQuestFile file) {
+    private FtbQuestNotifications(ServerQuestFile file, FtbQuestAccess access) {
         this.file = file;
+        this.access = access;
     }
 
-    static void install() {
+    static void install(MinecraftServer server, FtbQuestAccess access) {
+        ACCESS.put(server, access);
         if (installed) return;
         installed = true;
         NeoForge.EVENT_BUS.addListener(FTBQuestsEvent.QuestProgress.class, event -> {
@@ -46,10 +57,16 @@ final class FtbQuestNotifications {
         NeoForge.EVENT_BUS.addListener(FTBQuestsEvent.ChapterProgress.class, event -> changed(event.getEventData().progressData()));
         NeoForge.EVENT_BUS.addListener(FTBQuestsEvent.FileProgress.class, event -> changed(event.getEventData().progressData()));
         NeoForge.EVENT_BUS.addListener(FTBQuestsEvent.ClearFileCache.class, event -> {
-            if (event.getEventData().file() instanceof ServerQuestFile file) SERVERS.remove(file.server);
+            if (event.getEventData().file() instanceof ServerQuestFile file) {
+                FtbQuestNotifications tracker = SERVERS.get(file.server);
+                if (tracker != null) tracker.teams.clear();
+            }
         });
         NeoForge.EVENT_BUS.addListener(ServerTickEvent.Post.class, FtbQuestNotifications::tick);
-        NeoForge.EVENT_BUS.addListener(ServerStoppingEvent.class, event -> SERVERS.remove(event.getServer()));
+        NeoForge.EVENT_BUS.addListener(ServerStoppingEvent.class, event -> {
+            SERVERS.remove(event.getServer());
+            ACCESS.remove(event.getServer());
+        });
     }
 
     private static FtbQuestNotifications changed(ProgressEventData<?> data) {
@@ -67,7 +84,8 @@ final class FtbQuestNotifications {
     private void completed(ProgressEventData<Quest> data) {
         TeamState state = this.teams.get(data.teamData().getTeamId());
         Quest quest = data.object();
-        if (state == null || state.silent || state.team.isLocked() || !visible(state.team, quest)) return;
+        if (state == null || state.silent || state.team.isLocked() || !visible(state.team, quest)
+                || FtbQuestRules.kind(quest) != FtbQuestRules.Kind.NORMAL) return;
         AssistantServer runtime = AssistantServer.get(this.file.server);
         if (runtime == null) return;
         List<Recipient> recipients = new ArrayList<>();
@@ -77,22 +95,28 @@ final class FtbQuestNotifications {
                 recipients.add(previous);
         }
         if (recipients.isEmpty() || state.completed.size() >= MAX_COMPLETIONS_PER_TICK) return;
-        state.completed.putIfAbsent(quest.getId(), new Completion(notification(quest, true), List.copyOf(recipients)));
+        state.completed.putIfAbsent(quest.getId(), new Completion(quest, List.copyOf(recipients)));
     }
 
     private static void tick(ServerTickEvent.Post event) {
         MinecraftServer server = event.getServer();
         AssistantServer runtime = AssistantServer.get(server);
-        if (runtime == null || !ServerQuestFile.exists()) {
+        if (runtime == null) {
             SERVERS.remove(server);
             return;
         }
+        if (!ServerQuestFile.exists()) return;
         ServerQuestFile file = ServerQuestFile.getInstance();
         if (file.server != server) return;
+        FtbQuestAccess access = ACCESS.get(server);
+        if (access == null) return;
         FtbQuestNotifications tracker = SERVERS.get(server);
-        if (tracker == null || tracker.file != file) {
-            tracker = new FtbQuestNotifications(file);
+        if (tracker == null || tracker.access != access) {
+            tracker = new FtbQuestNotifications(file, access);
             SERVERS.put(server, tracker);
+        } else if (tracker.file != file) {
+            tracker.file = file;
+            tracker.teams.clear();
         }
         tracker.flush(runtime);
     }
@@ -116,10 +140,9 @@ final class FtbQuestNotifications {
             Map<UUID, Recipient> current = recipients.get(id);
             TeamState state = this.teams.get(id);
             if (state == null || state.team != team) {
-                // Login, first binding and team replacement establish a silent baseline, never a backlog.
+                // Restored sessions and team changes establish a silent baseline for existing quests.
                 state = new TeamState(team, this.available(team), Map.copyOf(current));
                 this.teams.put(id, state);
-                continue;
             }
             // Events coalesce within a tick; the slow refresh also observes locks, resets and repeat cooldowns.
             if (state.dirty || !state.recipients.equals(current) || this.ticks % 20 == 0) {
@@ -127,15 +150,20 @@ final class FtbQuestNotifications {
                 for (Completion completion : state.completed.values())
                     for (Recipient recipient : completion.recipients())
                         if (recipient.valid(runtime, this.file, id))
-                            runtime.players().notifyEvent(recipient.player(), completion.result());
+                            runtime.players().notifyEvent(recipient.player(), this.notification(completion.quest(), true, recipient.player(), team));
                 if (!state.silent && state.locked == team.isLocked())
                     for (Map.Entry<Long, Quest> quest : available.entrySet()) {
                         if (state.available.contains(quest.getKey()) || team.isCompleted(quest.getValue())) continue;
-                        AgentResult result = notification(quest.getValue(), false);
                         for (Recipient recipient : current.values()) {
                             if (!recipient.equals(state.recipients.get(recipient.player().getUUID()))) continue;
-                            if (recipient.valid(runtime, this.file, id))
-                                runtime.players().notifyEvent(recipient.player(), result);
+                            if (recipient.valid(runtime, this.file, id)) {
+                                if (FtbQuestRules.kind(quest.getValue()) == FtbQuestRules.Kind.STARTER_GIFT) {
+                                    if (FtbStarterGifts.available(recipient.player(), team, quest.getValue()))
+                                        runtime.players().notifyEvent(recipient.player(), StarterGiftModule.preview(
+                                                this.access.gifts.preview(recipient.player(), team, quest.getValue())));
+                                } else
+                                    runtime.players().notifyEvent(recipient.player(), this.notification(quest.getValue(), false, null, team));
+                            }
                         }
                     }
                 state.available = Set.copyOf(available.keySet());
@@ -145,6 +173,11 @@ final class FtbQuestNotifications {
                 state.silent = false;
             }
             state.recipients = Map.copyOf(current);
+            for (Recipient recipient : current.values()) {
+                if (!recipient.valid(runtime, this.file, id) || !runtime.players().consumeBindingIntroduction(recipient.player()))
+                    continue;
+                this.startup(runtime, recipient.player(), team);
+            }
         }
     }
 
@@ -154,23 +187,56 @@ final class FtbQuestNotifications {
         for (Chapter chapter : this.file.getAllChapters()) {
             if (chapter.isAlwaysInvisible()) continue;
             for (Quest quest : chapter.getQuests())
-                if (quest.isVisible(team) && team.canStartTasks(quest)) result.put(quest.getId(), quest);
+                if (visible(team, quest) && (team.canStartTasks(quest)
+                        || team.isCompleted(quest) && FtbQuestRules.kind(quest) == FtbQuestRules.Kind.STARTER_GIFT))
+                    result.put(quest.getId(), quest);
         }
         // Keep completed but startable quests in the baseline so a reset is not itself a new unlock.
         return result;
     }
 
     private static boolean visible(TeamData team, Quest quest) {
-        return !quest.getChapter().isAlwaysInvisible() && quest.isVisible(team);
+        return FtbQuestRules.readable(team, quest);
     }
 
-    private static AgentResult notification(Quest quest, boolean completed) {
+    private void startup(AssistantServer runtime, ServerPlayer player, TeamData team) {
+        List<Quest> available = new ArrayList<>(this.available(team).values());
+        // Binding was sent before initialization; enqueue all available gifts before the quest overview.
+        for (Quest quest : available)
+            if (FtbStarterGifts.available(player, team, quest)) runtime.players().notifyEvent(player,
+                    StarterGiftModule.preview(this.access.gifts.preview(player, team, quest)));
+        List<Quest> active = available.stream().filter(quest -> FtbQuestRules.kind(quest) == FtbQuestRules.Kind.NORMAL
+                && FtbQuestRules.active(team, quest) && !team.isProgressionPaused(player)).toList();
+        if (!active.isEmpty()) {
+            String key = "system.result.quest_startup";
+            // Three titles fit the HUD's six-line body; viewing all always runs a fresh normal query.
+            QuestStartupOutput overview = new QuestStartupOutput(active.size(), active.stream().limit(3)
+                    .map(quest -> FtbQuestAccess.brief(team, quest, 0)).toList());
+            runtime.players().notifyEvent(player, new AgentResult("SUCCEEDED", key, "", List.of(new AgentResult.Card(key,
+                    ResultTypes.QUEST_STARTUP.of(overview), List.of(new AgentResult.Action("system.action.view_quests",
+                    ResultTypes.QUESTS_ACTION, new QuestQueryInput("", 0, false)))))));
+        }
+    }
+
+    private AgentResult notification(Quest quest, boolean completed, ServerPlayer player, TeamData team) {
         String key = completed ? "system.result.quest_completed" : "system.result.quest_unlocked";
         String id = String.format(Locale.ROOT, "%016x", quest.getId());
+        List<AgentResult.Action> actions = new ArrayList<>();
+        if (completed && this.file.getQuest(quest.getId()) == quest) {
+            List<Reward> rewards = quest.getRewards().stream().filter(reward -> FtbQuestAccess.canClaim(player, team, reward)).toList();
+            // A single ordinary reward can execute directly; choices and multiple rewards retain explicit selection.
+            if (rewards.size() == 1 && !(rewards.getFirst() instanceof ChoiceReward)) {
+                FtbQuestAccess.reference(player, team, quest, rewards.getFirst(), this.access.references).ifPresent(reference ->
+                        actions.add(new AgentResult.Action("system.action.claim", ResultTypes.CLAIM_ACTION, new QuestClaimInput(reference, Optional.empty()))));
+            } else if (!rewards.isEmpty())
+                actions.add(new AgentResult.Action("system.action.claim", ResultTypes.QUEST_ACTION, QuestDetailInput.byId(id)));
+        }
+        actions.add(new AgentResult.Action("system.action.quest_detail", ResultTypes.QUEST_ACTION, QuestDetailInput.byId(id)));
         return new AgentResult("SUCCEEDED", key, "", List.of(new AgentResult.Card(key,
-                ResultTypes.QUEST_NOTICE.of(new ResultTypes.QuestNotice(MiscUtil.clip(quest.getTitle().getString(), 256),
-                        MiscUtil.clip(quest.getChapter().getTitle().getString(), 128))), List.of(
-                new AgentResult.Action("system.action.quest_detail", ResultTypes.QUEST_ACTION, QuestDetailInput.byId(id))))));
+                ResultTypes.QUEST_NOTICE.of(new ResultTypes.QuestNotice(id, MiscUtil.clip(quest.getTitle().getString(), 256),
+                        MiscUtil.clip(quest.getChapter().getTitle().getString(), 128), quest.getRewards().stream()
+                        .filter(reward -> !team.isRewardBlocked(reward) && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE)
+                        .flatMap(reward -> FtbQuestAccess.previewItems(reward).stream()).toList())), actions)));
     }
 
     private record Recipient(ServerPlayer player, UUID connection, long incarnation) {
@@ -181,7 +247,7 @@ final class FtbQuestNotifications {
         }
     }
 
-    private record Completion(AgentResult result, List<Recipient> recipients) {
+    private record Completion(Quest quest, List<Recipient> recipients) {
     }
 
     private static final class TeamState {

@@ -3,14 +3,16 @@ package com.iafenvoy.system.network;
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResponse;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
-import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
+import com.iafenvoy.system.network.payload.QuestNarrationResponseS2CPayload;
+import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
 import com.iafenvoy.system.screen.AssistantMessages;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
 import com.iafenvoy.system.screen.gui.AssistantSimpleScreen;
 import com.iafenvoy.system.screen.gui.TokenUsageScreen;
+import com.iafenvoy.system.speech.tts.QuestSpeechClient;
 import com.iafenvoy.system.util.TypeDispatch;
 import net.minecraft.client.Minecraft;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -57,6 +59,10 @@ public final class ClientNetworkHandler {
 
     public static void handleAssistantResponse(AssistantResponseS2CPayload response, IPayloadContext context) {
         RESPONSES.apply(Minecraft.getInstance(), response.response());
+    }
+
+    public static void handleQuestNarrationResponse(QuestNarrationResponseS2CPayload response, IPayloadContext context) {
+        QuestSpeechClient.receive(response);
     }
 
     private static void bound(AgentResult result) {

@@ -12,6 +12,5 @@ public final class FtbQuestAdapter {
 
     public static void install(AgentEngine engine, MinecraftTools game) {
         FtbQuestModules.install(engine, game);
-        FtbQuestNotifications.install();
     }
 }

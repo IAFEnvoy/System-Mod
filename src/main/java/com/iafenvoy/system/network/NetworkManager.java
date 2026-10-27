@@ -15,11 +15,13 @@ import net.neoforged.neoforge.network.handling.MainThreadPayloadHandler;
 public final class NetworkManager {
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
-        event.registrar("3")
+        event.registrar("4")
+                .playToServer(QuestNarrationRequestC2SPayload.TYPE, QuestNarrationRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleQuestNarrationRequest))
                 .playToServer(AssistantRequestC2SPayload.TYPE, AssistantRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleAssistantRequest))
                 .playToServer(TokenUsageRequestC2SPayload.TYPE, TokenUsageRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleTokenUsageRequest))
                 .playToServer(SpeechUsageReportC2SPayload.TYPE, SpeechUsageReportC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleSpeechUsageReport))
                 .playToServer(RecognitionUsageReportC2SPayload.TYPE, RecognitionUsageReportC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleRecognitionUsageReport))
+                .playToClient(QuestNarrationResponseS2CPayload.TYPE, QuestNarrationResponseS2CPayload.CODEC)
                 .playToClient(AssistantResponseS2CPayload.TYPE, AssistantResponseS2CPayload.CODEC)
                 .playToClient(TokenUsageResponseS2CPayload.TYPE, TokenUsageResponseS2CPayload.CODEC);
     }
@@ -31,6 +33,7 @@ public final class NetworkManager {
     public static final class ClientRegistration {
         @SubscribeEvent
         public static void register(RegisterClientPayloadHandlersEvent event) {
+            event.register(QuestNarrationResponseS2CPayload.TYPE, new MainThreadPayloadHandler<>(ClientNetworkHandler::handleQuestNarrationResponse));
             event.register(AssistantResponseS2CPayload.TYPE, new MainThreadPayloadHandler<>(ClientNetworkHandler::handleAssistantResponse));
             event.register(TokenUsageResponseS2CPayload.TYPE, new MainThreadPayloadHandler<>(ClientNetworkHandler::handleTokenUsageResponse));
         }

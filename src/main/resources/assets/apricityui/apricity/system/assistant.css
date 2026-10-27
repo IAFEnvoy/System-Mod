@@ -472,6 +472,92 @@ p {
     font-size: 13px;
 }
 
+/* Native item nodes share AUI layout/opacity and use vanilla item tooltips. */
+.item_groups {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    margin-top: 10px;
+}
+
+.item_group {
+    min-width: 0;
+}
+
+.item_group_label {
+    color: #dcecf0;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 5px;
+    word-break: break-all;
+}
+
+.item_row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.item_entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 4px 9px 4px 4px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: rgba(1, 12, 20, 0.5);
+}
+
+.item_entry.compact {
+    padding: 4px;
+}
+
+.item_icon_frame {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+}
+
+/* AUI draws a fixed 16px model; scale the native item itself inside a reserved hit area. */
+.item_icon {
+    display: block;
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    transform: scale(1.75);
+    transform-origin: 50% 50%;
+    pointer-events: auto;
+}
+
+.item_icon:hover {
+    background-color: rgba(97, 230, 255, 0.15);
+}
+
+.item_name {
+    color: #e3f4f8;
+    font-size: 13px;
+    line-height: 1.5;
+    word-break: break-all;
+}
+
+.item_text {
+    min-width: 0;
+}
+
+.item_description {
+    color: #b6cfd5;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
 .quest_row {
     display: block;
     width: 100%;
@@ -549,15 +635,6 @@ p {
     flex: 1;
     min-width: 0;
     color: #edf5f7;
-    white-space: pre-wrap;
-    word-break: break-all;
-}
-
-.lottery_items {
-    margin-top: 8px;
-    color: #dcecf0;
-    font-size: 14px;
-    line-height: 1.7;
     white-space: pre-wrap;
     word-break: break-all;
 }
@@ -801,12 +878,46 @@ html.message_hud, .notification, .notification * {
     word-break: break-all;
 }
 
+#notification_choices {
+    display: none;
+    flex: 0 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 24vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    gap: 6px;
+}
+
+#notification_choices .quest_row {
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    min-width: 0;
+    width: 100%;
+    padding: 10px 12px;
+    line-height: 1.5;
+    text-align: left;
+}
+
 #notification_actions {
     display: flex;
     flex: 0 0 auto;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 8px;
+}
+
+#notification_items {
+    flex: 0 1 auto;
+    max-height: 16vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-top: 0;
+    gap: 6px;
+}
+
+.notification .item_icon {
+    pointer-events: none;
 }
 
 .notification button {
@@ -827,10 +938,17 @@ html.message_hud, .notification, .notification * {
     cursor: default;
 }
 
-#notification_hint {
+#notification_hint, #notification_voice {
     flex: 0 0 auto;
     color: #b6cfd5;
     font-size: 12px;
+}
+
+#notification_voice {
+    display: none;
+    max-height: 4em;
+    overflow: hidden;
+    color: var(--assistant-accent-hover);
 }
 
 /* World usage dashboard shares the same panel, typography, cards and controls. */

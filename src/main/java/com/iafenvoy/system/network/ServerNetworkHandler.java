@@ -1,14 +1,12 @@
 package com.iafenvoy.system.network;
 
-import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentResponse;
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.iafenvoy.system.network.payload.*;
-import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.util.TypeDispatch;
 import com.iafenvoy.system.util.codec.CodecIO;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -65,6 +63,29 @@ public final class ServerNetworkHandler {
         if (!(context.player() instanceof ServerPlayer player)) return;
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
         if (runtime != null) runtime.usage().reportRecognition(player, payload);
+    }
+
+    public static void handleQuestNarrationRequest(QuestNarrationRequestC2SPayload payload, IPayloadContext context) {
+        if (!(context.player() instanceof ServerPlayer player)) return;
+        UUID connection = connectionId(player);
+        MinecraftServer server = player.level().getServer();
+        AssistantServer runtime = AssistantServer.get(server);
+        if (runtime == null || !runtime.players().notificationsEnabled(player)) return;
+        long incarnation = runtime.engine().incarnation(player.getUUID());
+        try {
+            UUID.fromString(payload.id());
+            runtime.players().refreshPlayer(player);
+            runtime.engine().questNarration().request(player.getUUID(), payload.request()).whenComplete((reply, error) -> server.execute(() -> {
+                if (server.getPlayerList().getPlayer(player.getUUID()) != player || !connection.equals(connectionId(player))
+                        || !runtime.engine().current(player.getUUID(), incarnation)) return;
+                QuestNarration.Reply answer = error == null ? reply : QuestNarration.Reply.empty();
+                if (CodecIO.write(QuestNarration.Reply.CODEC, answer).length() > 60000)
+                    answer = QuestNarration.Reply.empty();
+                player.connection.send(new QuestNarrationResponseS2CPayload(payload.id(), answer));
+            }));
+        } catch (RuntimeException error) {
+            player.connection.send(new QuestNarrationResponseS2CPayload(payload.id(), QuestNarration.Reply.empty()));
+        }
     }
 
     public static void reply(ServerPlayer player, String requestId, AgentResult result) {

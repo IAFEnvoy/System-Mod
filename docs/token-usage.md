@@ -1,5 +1,7 @@
 # AI / TTS / ASR 用量统计
 
+任务播报中无法直接格式化的特殊类型，由服务端 `QuestNarration` 通过同一个 `ExecutionContext.model` / `ModelGateway` 发起整理，实际 Token 计入触发该请求的玩家。常见模板、文案缓存命中和合并后等待结果的其他请求不增加模型调用；整理失败或通知提前关闭时，已发生的模型用量仍保留。文案缓存与可选的客户端整句音频缓存相互独立。
+
 同页另显示 ASR 尝试次数和估算费用，以及失败/取消、未完成、未估价计数。按用户指定的 3.5 元/千次估算成功识别，费用通过现有价格配置的 `CALLS` 条目控制；已有配置需自行加入 ASR 条目，不自动覆盖。ASR 无 Token 字段，不混入 AI / TTS Token。详情见[语音识别与计费](asr.md#用量与费用)。
 
 `/system usage` 打开个人用量界面，不要求当前已绑定系统。完整工作台侧栏有“AI / TTS / ASR 用量”入口；在完整或简约模式输入 `/usage` 或“用量统计”也可打开。管理员可通过 `/system usage all` 或界面内“所有玩家”切换到全服列表；普通玩家的请求即使伪造全服参数，也会由服务端拒绝。
@@ -109,7 +111,7 @@ Token 计费模型可能同时返回 `characters`，字符计费模型也可能�
 
 账本内部的 `PlayerUsage` 为可变类，名称和调用计数直接更新；四项 AI Token 计数封装在不可变的 `data/usage/TokenUsage` record 中，TTS 统计封装在不可变的 `data/usage/SpeechUsage` 中，合并时替换该值。全服汇总使用独立累加对象，存档 Codec 继续展开原有 AI 字段，与必需的 speech、recognition 字段一起编码，不提供旧账本字段回退。
 
-`snapshot()` 返回不可变的 `data/usage/TokenUsageSnapshot` 对象，包含分页信息、AI / TTS / ASR 汇总和玩家明细，列表复制且不暴露可变账本。`TokenUsageResponseS2C` 通过专用 `StreamCodec` 编码快照对象、错误状态及打开页面的 `open` 标志，客户端直接读取类型字段；用量链路不再包装 `AgentResult` 或序列化 JSON，也不使用特殊请求 ID 打开界面。当前网络协议为 **3**，客户端与服务端需使用相同协议版本；每包最多 8 位玩家，名字、错误键和请求 ID 都有限长。
+`snapshot()` 返回不可变的 `data/usage/TokenUsageSnapshot` 对象，包含分页信息、AI / TTS / ASR 汇总和玩家明细，列表复制且不暴露可变账本。`TokenUsageResponseS2C` 通过专用 `StreamCodec` 编码快照对象、错误状态及打开页面的 `open` 标志，客户端直接读取类型字段；用量链路不再包装 `AgentResult` 或序列化 JSON，也不使用特殊请求 ID 打开界面。当前网络协议为 **4**，客户端与服务端需使用相同协议版本；每包最多 8 位玩家，名字、错误键和请求 ID 都有限长。
 
 `revoke`、`forget`、关闭记忆与重新 `grant` 均不删除累计统计。`revoke` 仍会重置玩家业务文件中的每日模型调用额度；该额度与长期用量账本是独立记录。当前没有清空统计的游戏命令。
 

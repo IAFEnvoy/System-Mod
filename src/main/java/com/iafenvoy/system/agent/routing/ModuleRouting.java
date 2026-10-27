@@ -37,6 +37,10 @@ public record ModuleRouting<I>(List<AgentCommand<I>> commands, Optional<RoutingP
     }
 
     public ModuleRouting<I> structuredOnly() {
+        return this.explicitOnly();
+    }
+
+    public ModuleRouting<I> explicitOnly() {
         return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, false);
     }
 

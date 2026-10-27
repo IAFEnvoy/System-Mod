@@ -45,10 +45,13 @@ public final class AgentEngine implements AutoCloseable {
     private final Set<UUID> revoking = ConcurrentHashMap.newKeySet();
     private final List<Consumer<UUID>> revokeListeners = new CopyOnWriteArrayList<>();
     private final ConversationService conversations = new ConversationService(this);
+    private final QuestNarration questNarration;
 
     public AgentEngine(CommerceCatalog catalog, AgentStore store, ModelClient model) {
         this.store = store;
         this.model = new ModelGateway(model);
+        this.questNarration = new QuestNarration(this);
+        this.onRevoke(this.questNarration::cancel);
         this.catalog = Objects.requireNonNull(catalog);
         this.modelSlots = new Semaphore(AgentConfig.INSTANCE.get().concurrentModels(), true);
         this.router = new HybridRouter(this);
@@ -95,6 +98,7 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     public void disconnected(UUID player) {
+        this.questNarration.cancel(player);
         this.playerLanguages.remove(player);
         this.router.clear(player);
     }
@@ -197,6 +201,10 @@ public final class AgentEngine implements AutoCloseable {
         return this.model;
     }
 
+    public QuestNarration questNarration() {
+        return this.questNarration;
+    }
+
     public void onModelUsage(ModelClient.UsageListener listener) {
         this.model.onUsage(listener);
     }
@@ -272,7 +280,7 @@ public final class AgentEngine implements AutoCloseable {
             AgentModule.Descriptor descriptor = call.module().descriptor();
             if (context.isEvent() ? !descriptor.event() : !descriptor.interactive())
                 throw new AgentException("CAPABILITY_UNAVAILABLE");
-            if (!context.isEvent() && context.routeSource() != RouteSource.STRUCTURED && !this.modules.modelSelectable(descriptor.id()))
+            if (!context.isEvent() && context.routeSource().automatic() && !this.modules.modelSelectable(descriptor.id()))
                 throw new AgentException("CONFIRM_REQUIRED");
             if ((context.routeSource() == RouteSource.SEMANTIC || context.routeSource() == RouteSource.ROUTE_CACHE)
                     && !this.modules.readOnly(descriptor.id())) throw new AgentException("NOT_AUTHORIZED");
@@ -326,6 +334,7 @@ public final class AgentEngine implements AutoCloseable {
         if (!this.closed.compareAndSet(false, true)) return;
         this.interactive.close();
         this.events.close();
+        this.questNarration.close();
         this.maintenance.close();
         this.router.close();
         this.playerLanguages.clear();

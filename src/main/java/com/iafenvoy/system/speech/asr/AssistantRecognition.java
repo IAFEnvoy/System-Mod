@@ -1,17 +1,17 @@
 package com.iafenvoy.system.speech.asr;
 
 import com.iafenvoy.system.config.file.RecognitionConfig;
-import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.speech.AsrProviders;
 import com.iafenvoy.system.speech.SpeechException;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 
 import java.util.concurrent.*;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 /**
- * Each input screen owns one microphone/request session; callbacks cannot escape that screen or connection.
+ * Each UI owner supplies its lifetime; callbacks cannot escape that owner or the original connection.
  */
 public final class AssistantRecognition {
     private static final ThreadPoolExecutor WORKER = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS,
@@ -38,20 +38,27 @@ public final class AssistantRecognition {
         RecognitionConfig.INSTANCE.set(next);
     }
 
+    public static void validate() throws SpeechException {
+        RecognitionConfig config = RecognitionConfig.INSTANCE.get();
+        try (AsrProvider provider = AsrProviders.create(config.provider())) {
+            provider.validate(config.request());
+        }
+    }
+
     public static final class Session implements AutoCloseable {
         private final Minecraft minecraft = Minecraft.getInstance();
-        private final AssistantInputScreen owner;
+        private final BooleanSupplier owner;
         private final ClientPacketListener connection = this.minecraft.getConnection();
         private final RecognitionRecording microphone = new RecognitionRecording();
         private final Consumer<String> result;
         private Future<?> pending;
         private volatile boolean closed;
-        private boolean stopping;
+        private volatile boolean stopping;
         private String status = "connecting";
         private String intermediate = "";
         private boolean finished;
 
-        public Session(AssistantInputScreen owner, Consumer<String> result) {
+        public Session(BooleanSupplier owner, Consumer<String> result) {
             this.owner = owner;
             this.result = result;
         }
@@ -107,9 +114,12 @@ public final class AssistantRecognition {
 
         private void update(Runnable action) {
             this.minecraft.execute(() -> {
-                if (!this.closed && this.minecraft.screen == this.owner && this.minecraft.getConnection() == this.connection)
-                    action.run();
+                if (this.active()) action.run();
             });
+        }
+
+        public boolean active() {
+            return !this.closed && this.connection != null && this.minecraft.getConnection() == this.connection && this.owner.getAsBoolean();
         }
 
         public String status() {

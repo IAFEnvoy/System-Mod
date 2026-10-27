@@ -32,10 +32,13 @@ public final class ConversationMemory {
             .register(LotteryPoolOutput.class, (_, v) -> fact("lottery_pool", v.id().toString(), v.label(), ""))
             .register(LotteryPrizeOutput.class, (_, v) -> reward("", "", v.reward()))
             .register(ResultTypes.QuestNotice.class, (_, v) -> fact("quest_notice", "", v.title(), ""))
+            .register(StarterGiftOutput.class, (_, v) -> fact("starter_gift", v.questId(), v.title(), v.claimed() ? "CLAIMED" : ""))
+            .register(QuestSubmitOutput.class, (_, v) -> fact("quest_submit", v.questId(), v.title(), v.completed() ? "COMPLETED" : "INCOMPLETE"))
+            .register(QuestStartupOutput.class, (_, v) -> fact("quest_startup", "", "", Integer.toString(v.total())))
             .register(QuestOutput.class, (_, v) -> new Fact("quest", v.id(), MiscUtil.clip(v.title(), 96), "",
                     v.rewards().stream().filter(r -> r.claimRef().isPresent()).limit(2).map(r -> new Reference(
                             r.id(), MiscUtil.clip(r.title(), 64), r.claimRef().orElseThrow(),
-                            r.choices().orElse(List.of()).stream().limit(3).map(c -> MiscUtil.clip(c, 48)).toList(), r.choiceOffset())).toList()));
+                            r.choices().orElse(List.of()).stream().limit(3).map(c -> MiscUtil.clip(c.title(), 48)).toList(), r.choiceOffset())).toList()));
 
     private ConversationMemory() {
     }

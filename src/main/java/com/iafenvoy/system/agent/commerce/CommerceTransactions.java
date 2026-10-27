@@ -12,7 +12,9 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
 
-import java.util.*;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
@@ -83,7 +85,8 @@ public final class CommerceTransactions {
             for (LotteryPool.Entry entry : quote.entries())
                 for (ItemStackTemplate item : entry.reward().items())
                     if (item.create().isEmpty()) throw new AgentException("INVALID_REWARD");
-            if (!useCoins && quote.price().isPresent()) debitItems(player, quote.price().get().items(), context, touched);
+            if (!useCoins && quote.price().isPresent())
+                debitItems(player, quote.price().get().items(), context, touched);
             return !useCoins;
         });
         if (useCoins) payment = payment.thenCompose(ignored -> this.engine.maintenance(() -> {

@@ -8,5 +8,8 @@
   "voice": "Cherry",
   "language": "Client",
   "volume": 80,
-  "cacheEnabled": false
+  "cacheEnabled": false,
+  "questRequirements": true,
+  "questRewards": true,
+  "questDescription": false
 }

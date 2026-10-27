@@ -7,13 +7,17 @@ import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.output.*;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.util.MiscUtil;
+import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.Quest;
+import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.quest.loot.WeightedReward;
 import dev.ftb.mods.ftbquests.quest.reward.ChoiceReward;
+import dev.ftb.mods.ftbquests.quest.reward.ItemReward;
 import dev.ftb.mods.ftbquests.quest.reward.Reward;
 import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,18 +30,50 @@ final class FtbQuestAccess {
     final MinecraftTools game;
     final Map<String, RewardReference> references = new ConcurrentHashMap<>();
     final Map<UUID, QuestPage> pages = new ConcurrentHashMap<>();
+    final FtbStarterGifts gifts = new FtbStarterGifts();
 
     FtbQuestAccess(AgentEngine engine, MinecraftTools game) {
         this.game = game;
         engine.onRevoke(player -> {
             this.references.values().removeIf(reference -> reference.player.equals(player));
             this.pages.remove(player);
+            this.gifts.clear(player);
         });
     }
 
     static boolean matches(Quest quest, String query) {
         return query.isBlank() || quest.getTitle().getString().toLowerCase(Locale.ROOT).contains(query)
                 || hex(quest.getId()).equalsIgnoreCase(query);
+    }
+
+    static Quest selected(ExecutionContext context, ServerQuestFile file, TeamData team, String questId, int index, Map<UUID, QuestPage> pages) {
+        if (index > 0) {
+            QuestPage previous = pages.get(context.player());
+            if (previous == null || previous.expires() < System.currentTimeMillis()
+                    || previous.incarnation() != context.incarnation() || previous.epoch() != context.memoryEpoch()
+                    || !previous.team().equals(team.getTeamId())) throw new AgentException("STALE_QUEST_LIST");
+            if (index > previous.quests().size()) throw new AgentException("INVALID_SELECTION");
+            Quest selected = previous.quests().get(index - 1);
+            if (file.getQuest(selected.getId()) != selected) throw new AgentException("STALE_QUEST_LIST");
+            return selected;
+        }
+        return questId.isBlank() ? null : file.getQuest(Long.parseUnsignedLong(questId, 16));
+    }
+
+    static List<Quest> find(ServerQuestFile file, TeamData team, String name, int offset) {
+        String query = name.strip().toLowerCase(Locale.ROOT);
+        List<Quest> exact = new ArrayList<>();
+        List<Quest> partial = new ArrayList<>();
+        for (Chapter chapter : file.getAllChapters()) {
+            if (chapter.isAlwaysInvisible()) continue;
+            for (Quest quest : chapter.getQuests()) {
+                if (!FtbQuestRules.readable(team, quest)) continue;
+                if (quest.getTitle().getString().equalsIgnoreCase(query) || hex(quest.getId()).equalsIgnoreCase(query)) {
+                    if (exact.size() - offset <= PAGE_SIZE) exact.add(quest);
+                } else if (matches(quest, query) && partial.size() - offset <= PAGE_SIZE) partial.add(quest);
+            }
+        }
+        return exact.isEmpty() ? partial : exact;
     }
 
     static boolean canClaim(ServerPlayer player, TeamData team, Reward reward) {
@@ -50,12 +86,22 @@ final class FtbQuestAccess {
         return quest.getRewards().stream().anyMatch(reward -> canClaim(player, team, reward));
     }
 
+    static Optional<String> reference(ServerPlayer player, TeamData team, Quest quest, Reward reward, Map<String, RewardReference> references) {
+        long now = System.currentTimeMillis();
+        references.values().removeIf(value -> value.expires < now);
+        long owned = references.values().stream().filter(ref -> ref.player.equals(player.getUUID())).count();
+        if (!canClaim(player, team, reward) || owned >= 256 || references.size() >= 4096) return Optional.empty();
+        String reference = UUID.randomUUID().toString();
+        references.put(reference, new RewardReference(player.getUUID(), team.getTeamId(), quest.getId(), reward.getId(),
+                team.getCompletedTime(quest.getId()).map(Date::getTime).orElse(0L), quest, reward, choiceVersion(reward), now + 120000));
+        return Optional.of(reference);
+    }
+
     static QuestPageOutput page(ExecutionContext context, TeamData team, List<Quest> matches, int offset, Map<UUID, QuestPage> pages) {
         List<Quest> selected = matches.stream().skip(offset).limit(PAGE_SIZE).toList();
         List<QuestBriefOutput> quests = new ArrayList<>();
         for (Quest quest : selected)
-            quests.add(new QuestBriefOutput(quests.size() + 1, hex(quest.getId()), MiscUtil.clip(quest.getTitle().getString(), 256),
-                    MiscUtil.clip(quest.getChapter().getTitle().getString(), 128), team.getRelativeProgress(quest)));
+            quests.add(brief(team, quest, quests.size() + 1));
         long now = System.currentTimeMillis();
         pages.values().removeIf(value -> value.expires < now);
         if (!pages.containsKey(context.player()) && pages.size() >= 4096) throw new AgentException("BUSY");
@@ -64,38 +110,36 @@ final class FtbQuestAccess {
         return new QuestPageOutput(quests, matches.size() > offset + selected.size(), offset + selected.size());
     }
 
+    static QuestBriefOutput brief(TeamData team, Quest quest, int number) {
+        return new QuestBriefOutput(number, hex(quest.getId()), MiscUtil.clip(quest.getTitle().getString(), 256),
+                MiscUtil.clip(quest.getChapter().getTitle().getString(), 128), team.getRelativeProgress(quest));
+    }
+
     static QuestOutput detail(ServerPlayer player, TeamData team, Quest quest, QuestDetailInput input, Map<String, RewardReference> references) {
         int rewardOffset = input.rewardOffset();
         int choiceOffset = input.choiceOffset();
         int taskOffset = input.taskOffset();
         int descriptionOffset = input.descriptionOffset();
-        long now = System.currentTimeMillis();
-        references.values().removeIf(value -> value.expires < now);
-        long owned = references.values().stream().filter(ref -> ref.player.equals(player.getUUID())).count();
         List<QuestRewardOutput> rewards = new ArrayList<>();
         int visibleRewards = 0;
         for (Reward reward : quest.getRewards()) {
             if (team.isRewardBlocked(reward) || reward.getAutoClaimType() == RewardAutoClaim.INVISIBLE) continue;
             if (visibleRewards++ < rewardOffset || rewards.size() == 4) continue;
             boolean claimable = canClaim(player, team, reward);
-            Optional<List<String>> choices = Optional.empty();
+            Optional<List<QuestChoiceOutput>> choices = Optional.empty();
             boolean hasMoreChoices = false;
             if (reward instanceof ChoiceReward choice && choice.getTable() != null) {
                 choices = Optional.of(choice.getTable().getWeightedRewards().stream().skip(choiceOffset).limit(8)
-                        .map(candidate -> MiscUtil.clip(candidate.getReward().getTitle().getString(), 256)).toList());
+                        .map(candidate -> new QuestChoiceOutput(MiscUtil.clip(candidate.getReward().getTitle().getString(), 256),
+                                previewItems(candidate.getReward()))).toList());
                 hasMoreChoices = choice.getTable().getWeightedRewards().size() > choiceOffset + choices.get().size();
             }
-            Optional<String> claimRef = Optional.empty();
-            // Only expanded details mint short-lived references, bound to the original player, team and objects.
-            if (claimable && owned < 256 && references.size() < 4096) {
-                String reference = UUID.randomUUID().toString();
-                references.put(reference, new RewardReference(player.getUUID(), team.getTeamId(), quest.getId(), reward.getId(),
-                        team.getCompletedTime(quest.getId()).map(Date::getTime).orElse(0L), quest, reward, choiceVersion(reward), now + 120000));
-                claimRef = Optional.of(reference);
-                owned++;
-            } else if (claimable) claimable = false;
+            // Expanded details and completion notices share player/team/object-bound reward references.
+            Optional<String> claimRef = claimable ? reference(player, team, quest, reward, references) : Optional.empty();
+            if (claimable && claimRef.isEmpty()) claimable = false;
             rewards.add(new QuestRewardOutput(hex(reward.getId()), MiscUtil.clip(reward.getTitle().getString(), 256), claimable,
-                    team.getClaimType(player.getUUID(), reward).name(), choices, choices.isPresent() ? choiceOffset : 0, hasMoreChoices, claimRef));
+                    team.getClaimType(player.getUUID(), reward).name(), choices, choices.isPresent() ? choiceOffset : 0, hasMoreChoices, claimRef,
+                    previewItems(reward)));
         }
         List<QuestTaskOutput> tasks = quest.getTasksAsList().stream().skip(taskOffset).limit(12)
                 .map(task -> new QuestTaskOutput(MiscUtil.clip(task.getTitle().getString(), 256), team.getProgress(task), task.getMaxProgress())).toList();
@@ -111,6 +155,12 @@ final class FtbQuestAccess {
     }
 
     record QuestPage(UUID team, long incarnation, long epoch, List<Quest> quests, long expires) {
+    }
+
+    static List<ItemPreviewOutput> previewItems(Reward reward) {
+        if (!(reward instanceof ItemReward item) || item.getItem().isEmpty()) return List.of();
+        // FTB keeps the base stack separate from its count/range; never mutate that configured stack.
+        return List.of(new ItemPreviewOutput(ItemStackTemplate.fromNonEmptyStack(item.getItem()).withCount(1), item.getButtonText()));
     }
 
     static String hex(long value) {

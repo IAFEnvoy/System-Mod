@@ -13,7 +13,8 @@ import java.util.Locale;
  * Client-local settings; keys never enter packets, player attachments or assistant conversations.
  */
 public record SpeechConfig(boolean enabled, String provider, String apiKey, String region, String workspace,
-                           String model, String voice, String language, int volume, boolean cacheEnabled) {
+                           String model, String voice, String language, int volume, boolean cacheEnabled,
+                           boolean questRequirements, boolean questRewards, boolean questDescription) {
     public static final String FILE_NAME = "system-speech.json";
     public static final Codec<SpeechConfig> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.BOOL.lenientOptionalFieldOf("enabled", false).forGetter(SpeechConfig::enabled),
@@ -25,14 +26,17 @@ public record SpeechConfig(boolean enabled, String provider, String apiKey, Stri
             Codec.STRING.lenientOptionalFieldOf("voice", "Cherry").forGetter(SpeechConfig::voice),
             Codec.STRING.lenientOptionalFieldOf("language", "Client").forGetter(SpeechConfig::language),
             Codec.intRange(0, 100).lenientOptionalFieldOf("volume", 80).forGetter(SpeechConfig::volume),
-            Codec.BOOL.lenientOptionalFieldOf("cacheEnabled", false).forGetter(SpeechConfig::cacheEnabled)
+            Codec.BOOL.lenientOptionalFieldOf("cacheEnabled", false).forGetter(SpeechConfig::cacheEnabled),
+            Codec.BOOL.lenientOptionalFieldOf("questRequirements", true).forGetter(SpeechConfig::questRequirements),
+            Codec.BOOL.lenientOptionalFieldOf("questRewards", true).forGetter(SpeechConfig::questRewards),
+            Codec.BOOL.lenientOptionalFieldOf("questDescription", false).forGetter(SpeechConfig::questDescription)
     ).apply(i, SpeechConfig::new));
     public static final ConfigInstance<SpeechConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, defaults());
 
     public static final List<String> LANGUAGES = List.of("Client", "Auto", "Chinese", "English", "German", "Italian", "Portuguese", "Spanish", "Japanese", "Korean", "French", "Russian");
 
     public static SpeechConfig defaults() {
-        return new SpeechConfig(false, "aliyun", "", "beijing", "", "qwen3-tts-flash", "Cherry", "Client", 80, false);
+        return new SpeechConfig(false, "aliyun", "", "beijing", "", "qwen3-tts-flash", "Cherry", "Client", 80, false, true, true, false);
     }
 
     public boolean hasKey() {

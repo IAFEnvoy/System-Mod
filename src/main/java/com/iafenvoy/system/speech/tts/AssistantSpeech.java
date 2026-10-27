@@ -18,6 +18,7 @@ import net.neoforged.neoforge.client.event.sound.PlaySoundSourceEvent;
 import net.neoforged.neoforge.client.event.sound.PlayStreamingSourceEvent;
 
 import java.net.http.HttpTimeoutException;
+import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,7 +46,7 @@ public final class AssistantSpeech {
     private static long cooldownUntil;
     private static long deadline;
 
-    private record Utterance(Session source, String text, boolean preview, boolean notification) {
+    private record Utterance(Session source, String text, List<String> quests, boolean preview, boolean notification) {
     }
 
     // A closed UI session cannot enqueue again, including after a delayed streaming callback.
@@ -55,22 +56,30 @@ public final class AssistantSpeech {
         public void result(AgentResult result) {
             stop(this);
             String text = SpeechText.result(result);
-            if (!text.isBlank()) this.say(text);
+            if (!text.isBlank()) this.say(text, SpeechText.quests(result));
         }
 
         public void say(String text) {
-            if (!this.closed) AssistantSpeech.say(this, text, false);
+            this.say(text, List.of());
+        }
+
+        public void say(String text, List<String> quests) {
+            if (!this.closed) AssistantSpeech.say(this, text, quests, false);
         }
 
         public void notification(String text) {
-            if (!this.closed) AssistantSpeech.say(this, text, true);
+            this.notification(text, List.of());
+        }
+
+        public void notification(String text, List<String> quests) {
+            if (!this.closed) AssistantSpeech.say(this, text, quests, true);
         }
 
         public void preview(SpeechConfig current) throws SpeechException {
             if (this.closed) return;
             validate(current);
             stop();
-            start(new Utterance(this, AssistantView.tr("system.tts.preview_text"), true, false), current);
+            start(new Utterance(this, AssistantView.tr("system.tts.preview_text"), List.of(), true, false), current);
         }
 
         @Override
@@ -109,11 +118,11 @@ public final class AssistantSpeech {
         return SpeechConfig.INSTANCE.get().enabled() && SpeechConfig.INSTANCE.get().hasKey() && System.nanoTime() >= cooldownUntil;
     }
 
-    private static void say(Session source, String text, boolean notification) {
+    private static void say(Session source, String text, List<String> quests, boolean notification) {
         // The UI selects the current message; speech must never hold the next message behind old audio.
         stop();
         if (!notification && !canSpeak()) return;
-        queued = new Utterance(source, text, false, notification);
+        queued = new Utterance(source, text, List.copyOf(quests), false, notification);
         status = "queued";
     }
 
@@ -126,12 +135,8 @@ public final class AssistantSpeech {
             status = "muted";
             return;
         }
-        String normalized = utterance.text().replaceAll("§.", "").replaceAll("[\\p{Cc}&&[^\\n\\t]]", " ").strip();
+        String normalized = normalize(utterance.text());
         if (normalized.isEmpty() && !utterance.notification()) return;
-        if (normalized.length() > 500) {
-            int end = Character.isHighSurrogate(normalized.charAt(499)) ? 499 : 500;
-            normalized = normalized.substring(0, end) + "…";
-        }
         long epoch = generation;
         owner = source;
         previewing = utterance.preview();
@@ -153,11 +158,12 @@ public final class AssistantSpeech {
         }
         // Local cues also work with automatic speech disabled, missing credentials or a cloud cooldown.
         if (normalized.isEmpty() || !utterance.preview() && !canSpeak()) return;
-        TtsProvider.Request request = current.request(normalized, minecraft.options.languageCode);
+        CompletableFuture<String> narration = QuestSpeechClient.request(utterance.quests(), current);
+        String language = minecraft.options.languageCode;
         String providerId = current.provider();
         int volume = current.volume();
         boolean cacheEnabled = current.cacheEnabled();
-        SpeechUsageTracker accounting = new SpeechUsageTracker(providerId, request.model(), request.region());
+        SpeechUsageTracker accounting = new SpeechUsageTracker(providerId, current.model(), current.region());
         SpeechAudio sourceAudio = new SpeechAudio();
         audio = sourceAudio;
         AtomicBoolean playbackQueued = new AtomicBoolean();
@@ -176,6 +182,9 @@ public final class AssistantSpeech {
         WORKER.purge();
         pending = WORKER.submit(() -> {
             try (TtsProvider provider = TtsProviders.create(providerId)) {
+                // Only this worker waits for optional model wording; UI state and the local cue remain responsive.
+                String details = narration.get();
+                TtsProvider.Request request = current.request(normalize(normalized + (details.isBlank() ? "" : "\n" + details)), language);
                 provider.validate(request);
                 if (Thread.currentThread().isInterrupted()) return;
                 String cacheKey = cacheEnabled ? SpeechAudioCache.key(providerId, request) : null;
@@ -233,6 +242,13 @@ public final class AssistantSpeech {
         return status;
     }
 
+    private static String normalize(String text) {
+        String normalized = text.replaceAll("§.", "").replaceAll("[\\p{Cc}&&[^\\n\\t]]", " ").strip();
+        if (normalized.length() <= 500) return normalized;
+        int end = Character.isHighSurrogate(normalized.charAt(499)) ? 499 : 500;
+        return normalized.substring(0, end) + "…";
+    }
+
     private static void stop(Session source) {
         if (queued != null && queued.source() == source) queued = null;
         if (owner == source) cancelCurrent();
@@ -247,6 +263,7 @@ public final class AssistantSpeech {
 
     private static void cancelCurrent() {
         generation++;
+        QuestSpeechClient.cancel();
         if (pending != null) pending.cancel(true);
         pending = null;
         if (audio != null) audio.cancel();

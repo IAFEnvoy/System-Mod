@@ -58,7 +58,8 @@ public final class DeliverTool implements ToolRegistry.Handler<EntitlementInput,
                     stacks.add(stack);
                 }
                 int free = 0;
-                for (int slot = 0; slot < Inventory.INVENTORY_SIZE; slot++) if (player.getInventory().getItem(slot).isEmpty()) free++;
+                for (int slot = 0; slot < Inventory.INVENTORY_SIZE; slot++)
+                    if (player.getInventory().getItem(slot).isEmpty()) free++;
                 if (free < stacks.size()) throw new AgentException("INVENTORY_FULL");
                 context.check();
                 for (ItemStack stack : stacks) {

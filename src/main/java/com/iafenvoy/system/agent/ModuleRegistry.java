@@ -37,8 +37,7 @@ public final class ModuleRegistry {
         ModuleRouting<I> routing = module.routing();
         if (!descriptor.interactive() && (!routing.commands().isEmpty() || routing.semantic().isPresent() || routing.shortcut().isPresent()))
             throw new IllegalArgumentException("Event-only modules cannot declare interactive entry points");
-        if (!routing.modelSelectable() && !routing.commands().isEmpty())
-            throw new IllegalArgumentException("Structured-only modules cannot declare commands");
+        // Explicit commands can authorize operations that remain absent from all automatic model routes.
         this.commands.validate(routing.commands());
         boolean readOnly = descriptor.interactive() && descriptor.policy().writeSteps() == 0
                 && operations.stream().noneMatch(ToolRegistry.Tool::write);

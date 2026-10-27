@@ -63,7 +63,7 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
             int index = 1;
             for (AgentResult.Card card : result.cards()) {
                 if (!card.titleKey().equals(result.messageKey())) lines.add(tr(card.titleKey()));
-                String data = formatCard(card);
+                String data = formatCard(card, false);
                 if (!data.isBlank()) lines.add(data);
                 for (AgentResult.Action action : card.actions()) {
                     boolean questRow = card.data().value() instanceof ResultTypes.QuestList && action.labelKey().equals("system.action.quest_detail");
@@ -75,6 +75,8 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
         }
         Element speech = document.getElementById("current_result");
         text(speech, String.join("\n\n", lines));
+        AssistantItems.render(document, document.getElementById("current_items"),
+                result == null ? List.of() : AssistantItems.groups(result), false);
         Element area = document.getElementById("speech");
         area.scrollTop = 0;
         area.targetScrollTop = 0;

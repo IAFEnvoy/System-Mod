@@ -137,7 +137,8 @@ public final class SemanticRouter implements AutoCloseable {
         // Unknown or unmatched topic content must not be turned into an exact intent shortcut.
         SemanticIndex.Ranking ranking = this.index.search(text, language);
         if (ranking.writeRequest() || !ranking.hasTopic() || ranking.matches().stream().noneMatch(match -> match.profile().moduleId().toString().equals(decision.moduleId())
-                && match.topicsCovered() && match.coverage() + 1e-9 >= SemanticConfig.INSTANCE.get().minCoverage())) return;
+                && match.topicsCovered() && match.coverage() + 1e-9 >= SemanticConfig.INSTANCE.get().minCoverage()))
+            return;
         RouteCache.Key key = this.key(context, language, text);
         if (key != null) context.store().read(context.player(), data -> {
             context.ensureMemoryCurrent();
@@ -158,7 +159,8 @@ public final class SemanticRouter implements AutoCloseable {
     private String guard(String text, String language) {
         if (text.isBlank() || text.codePointCount(0, text.length()) > SemanticConfig.INSTANCE.get().maxCharacters())
             return "TEXT_LIMIT";
-        if (!SemanticConfig.INSTANCE.get().languages().contains(language) || !supportedText(text, language)) return "LANGUAGE";
+        if (!SemanticConfig.INSTANCE.get().languages().contains(language) || !supportedText(text, language))
+            return "LANGUAGE";
         return COMPLEX.matcher(text).find() ? "COMPLEX_REQUEST" : null;
     }
 

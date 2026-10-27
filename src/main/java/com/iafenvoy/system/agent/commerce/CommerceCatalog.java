@@ -14,7 +14,8 @@ import java.util.UUID;
 /**
  * Immutable trusted definitions shared by sign-in, shop and lottery workflows.
  */
-public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, List<Offer> offers, List<LotteryPool> lotteries) {
+public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, List<Offer> offers,
+                              List<LotteryPool> lotteries) {
     public CommerceCatalog {
         rewards = List.copyOf(rewards);
         offers = List.copyOf(offers);
@@ -27,7 +28,8 @@ public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, 
         ids.clear();
         for (Offer offer : offers) if (!ids.add(offer.id())) throw new IllegalArgumentException("Duplicate offer");
         ids.clear();
-        for (LotteryPool pool : lotteries) if (!ids.add(pool.id())) throw new IllegalArgumentException("Duplicate lottery pool");
+        for (LotteryPool pool : lotteries)
+            if (!ids.add(pool.id())) throw new IllegalArgumentException("Duplicate lottery pool");
     }
 
     public static CommerceCatalog create(List<PlayerData.Reward> rewards, List<Offer> offers, List<LotteryPool> lotteries) {

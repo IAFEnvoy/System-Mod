@@ -1,11 +1,9 @@
 package com.iafenvoy.system.screen.gui;
 
+import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
 import com.iafenvoy.system.config.file.RecognitionConfig;
-import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.speech.AsrProviders;
 import com.iafenvoy.system.speech.SpeechException;
-import com.iafenvoy.system.speech.asr.AsrProvider;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.iafenvoy.system.speech.tts.AssistantSpeech.Session;
@@ -139,13 +137,14 @@ public abstract class AssistantInputScreen extends ApricityScreen {
     public final boolean startRecognition() {
         Document document = this.getLinkedDocument();
         if (document == null || document.getElementById("message") == null || this.imeOwnsKeys()
-                || AssistantClient.state().busy() || this.recognition != null && !this.recognition.finished()) return false;
+                || AssistantClient.state().busy() || this.recognition != null && !this.recognition.finished())
+            return false;
         if (!RecognitionConfig.INSTANCE.get().enabled()) {
             this.minecraft.setScreen(new AssistantSettingsScreen(this, AssistantSettingsScreen.Tab.ASR));
             return false;
         }
-        try (AsrProvider provider = AsrProviders.create(RecognitionConfig.INSTANCE.get().provider())) {
-            provider.validate(RecognitionConfig.INSTANCE.get().request());
+        try {
+            AssistantRecognition.validate();
         } catch (SpeechException error) {
             this.recognitionStatus = error.code();
             this.renderRecognition();
@@ -154,7 +153,7 @@ public abstract class AssistantInputScreen extends ApricityScreen {
         this.stopRecognition();
         AssistantSpeech.stop();
         this.recognitionDraft = document.getElementById("message").getValue();
-        this.recognition = new AssistantRecognition.Session(this, this::recognized);
+        this.recognition = new AssistantRecognition.Session(() -> this.minecraft.screen == this && this.minecraft.isWindowActive(), this::recognized);
         this.recognition.start();
         this.renderRecognition();
         return true;
@@ -372,6 +371,7 @@ public abstract class AssistantInputScreen extends ApricityScreen {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         this.syncTextInputFocus();
         Document document = this.getLinkedDocument();
+        AssistantItems.tooltip(document, graphics, mouseX, mouseY);
         if (this.textInput == null || document == null) return;
         Element.DOMRect bounds = this.textInput.getBoundingClientRect();
         if (bounds.width <= 0 || bounds.height <= 0) return;

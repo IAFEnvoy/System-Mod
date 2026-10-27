@@ -12,7 +12,8 @@ import java.util.concurrent.CompletionStage;
 /**
  * One tool settles one confirmed draw; payment and inbox writes share the shop's lifecycle.
  */
-public record LotteryDrawTool(CommerceTransactions transactions) implements ToolRegistry.Handler<LotteryDrawInput, PurchaseReceiptOutput> {
+public record LotteryDrawTool(
+        CommerceTransactions transactions) implements ToolRegistry.Handler<LotteryDrawInput, PurchaseReceiptOutput> {
     public ToolRegistry.Tool<LotteryDrawInput, PurchaseReceiptOutput> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.LOTTERY_DRAW, true, true, false, this);
     }

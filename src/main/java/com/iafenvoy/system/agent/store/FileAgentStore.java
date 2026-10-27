@@ -97,6 +97,14 @@ public final class FileAgentStore implements AgentStore {
                 T result = transaction.apply(data);
                 prune(data.conversation);
                 byte[] bytes = CodecIO.write(PlayerData.CODEC, data).getBytes(StandardCharsets.UTF_8);
+                // Full lists can outweigh count-based retention; evict whole exchanges, never business journals.
+                while (bytes.length > MAX_BYTES && !data.conversation.history.isEmpty()) {
+                    String request = data.conversation.history.getFirst().requestId();
+                    data.conversation.history.removeIf(message -> message.requestId().equals(request));
+                    data.conversation.requests.remove(request);
+                    data.conversation.requestInputs.remove(request);
+                    bytes = CodecIO.write(PlayerData.CODEC, data).getBytes(StandardCharsets.UTF_8);
+                }
                 if (bytes.length > MAX_BYTES) throw new AgentException("STORAGE_FULL");
                 try (FileChannel file = FileChannel.open(temp, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
                     ByteBuffer buffer = ByteBuffer.wrap(bytes);

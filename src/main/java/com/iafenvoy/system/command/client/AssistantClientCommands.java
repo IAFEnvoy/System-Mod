@@ -1,12 +1,19 @@
 package com.iafenvoy.system.command.client;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.commands.Commands;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -15,6 +22,7 @@ import java.util.regex.Pattern;
 /**
  * Client navigation stays local; both execution and completion use these exact registered aliases.
  */
+@EventBusSubscriber(Dist.CLIENT)
 public final class AssistantClientCommands {
     private static final Pattern SELECT = Pattern.compile("^(?:/?select\\s+|/?选择\\s*)?([0-9]{1,4})$", Pattern.CASE_INSENSITIVE);
     private static final Map<String, Runnable> COMMANDS = new LinkedHashMap<>();
@@ -36,9 +44,7 @@ public final class AssistantClientCommands {
         register(() -> AssistantClient.command("reset"), "reset");
         register(() -> AssistantClient.command("usage"), "usage", "token统计", "token 统计", "用量统计");
         register(() -> AssistantClient.command("usage all"), "usage all");
-        register(() -> settings(AssistantSettingsScreen.Tab.GENERAL), "settings", "设置", "系统设置");
-        register(() -> settings(AssistantSettingsScreen.Tab.TTS), "tts", "voice", "语音设置");
-        register(() -> settings(AssistantSettingsScreen.Tab.ASR), "asr", "语音识别设置");
+        register(AssistantClientCommands::settings, "settings", "设置", "系统设置");
         register(() -> {
             Screen screen = Minecraft.getInstance().screen;
             if (screen != null) screen.onClose();
@@ -49,6 +55,15 @@ public final class AssistantClientCommands {
     }
 
     private AssistantClientCommands() {
+    }
+
+    @SubscribeEvent
+    public static void register(RegisterClientCommandsEvent event) {
+        event.getDispatcher().register(Commands.literal(SystemMod.MOD_ID)
+                .then(Commands.literal("settings").executes(context -> {
+                    settings();
+                    return 1;
+                })));
     }
 
     private static void register(Runnable handler, String... aliases) {
@@ -82,9 +97,11 @@ public final class AssistantClientCommands {
         return true;
     }
 
-    private static void settings(AssistantSettingsScreen.Tab tab) {
+    private static void settings() {
         Minecraft minecraft = Minecraft.getInstance();
-        minecraft.setScreen(new AssistantSettingsScreen(minecraft.screen, tab));
+        // A chat command returns to gameplay; assistant navigation keeps its original page and draft.
+        Screen parent = minecraft.screen instanceof ChatScreen ? null : minecraft.screen;
+        minecraft.setScreen(new AssistantSettingsScreen(parent, AssistantSettingsScreen.Tab.GENERAL));
     }
 
     private static void preferences(boolean history, boolean external) {

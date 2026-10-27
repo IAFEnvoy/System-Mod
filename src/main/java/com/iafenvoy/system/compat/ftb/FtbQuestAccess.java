@@ -7,7 +7,6 @@ import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.output.*;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.util.MiscUtil;
-import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
@@ -23,32 +22,26 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Shared quest pages and reward references; operations are separate single-purpose tools.
+ * Shared quest list snapshots and reward references; operations are separate single-purpose tools.
  */
 final class FtbQuestAccess {
-    static final int PAGE_SIZE = 8;
     final MinecraftTools game;
     final Map<String, RewardReference> references = new ConcurrentHashMap<>();
-    final Map<UUID, QuestPage> pages = new ConcurrentHashMap<>();
+    final Map<UUID, QuestList> lists = new ConcurrentHashMap<>();
     final FtbStarterGifts gifts = new FtbStarterGifts();
 
     FtbQuestAccess(AgentEngine engine, MinecraftTools game) {
         this.game = game;
         engine.onRevoke(player -> {
             this.references.values().removeIf(reference -> reference.player.equals(player));
-            this.pages.remove(player);
+            this.lists.remove(player);
             this.gifts.clear(player);
         });
     }
 
-    static boolean matches(Quest quest, String query) {
-        return query.isBlank() || quest.getTitle().getString().toLowerCase(Locale.ROOT).contains(query)
-                || hex(quest.getId()).equalsIgnoreCase(query);
-    }
-
-    static Quest selected(ExecutionContext context, ServerQuestFile file, TeamData team, String questId, int index, Map<UUID, QuestPage> pages) {
+    static Quest selected(ExecutionContext context, ServerQuestFile file, TeamData team, String questId, int index, Map<UUID, QuestList> lists) {
         if (index > 0) {
-            QuestPage previous = pages.get(context.player());
+            QuestList previous = lists.get(context.player());
             if (previous == null || previous.expires() < System.currentTimeMillis()
                     || previous.incarnation() != context.incarnation() || previous.epoch() != context.memoryEpoch()
                     || !previous.team().equals(team.getTeamId())) throw new AgentException("STALE_QUEST_LIST");
@@ -60,54 +53,29 @@ final class FtbQuestAccess {
         return questId.isBlank() ? null : file.getQuest(Long.parseUnsignedLong(questId, 16));
     }
 
-    static List<Quest> find(ServerQuestFile file, TeamData team, String name, int offset) {
-        String query = name.strip().toLowerCase(Locale.ROOT);
-        List<Quest> exact = new ArrayList<>();
-        List<Quest> partial = new ArrayList<>();
-        for (Chapter chapter : file.getAllChapters()) {
-            if (chapter.isAlwaysInvisible()) continue;
-            for (Quest quest : chapter.getQuests()) {
-                if (!FtbQuestRules.readable(team, quest)) continue;
-                if (quest.getTitle().getString().equalsIgnoreCase(query) || hex(quest.getId()).equalsIgnoreCase(query)) {
-                    if (exact.size() - offset <= PAGE_SIZE) exact.add(quest);
-                } else if (matches(quest, query) && partial.size() - offset <= PAGE_SIZE) partial.add(quest);
-            }
-        }
-        return exact.isEmpty() ? partial : exact;
-    }
-
-    static boolean canClaim(ServerPlayer player, TeamData team, Reward reward) {
-        return !team.isLocked() && team.isCompleted(reward.getQuest()) && !team.isRewardBlocked(reward)
-                && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE
-                && "CAN_CLAIM".equals(team.getClaimType(player.getUUID(), reward).name());
-    }
-
-    static boolean hasClaim(ServerPlayer player, TeamData team, Quest quest) {
-        return quest.getRewards().stream().anyMatch(reward -> canClaim(player, team, reward));
-    }
-
     static Optional<String> reference(ServerPlayer player, TeamData team, Quest quest, Reward reward, Map<String, RewardReference> references) {
         long now = System.currentTimeMillis();
         references.values().removeIf(value -> value.expires < now);
         long owned = references.values().stream().filter(ref -> ref.player.equals(player.getUUID())).count();
-        if (!canClaim(player, team, reward) || owned >= 256 || references.size() >= 4096) return Optional.empty();
+        if (!FtbQuestReader.canClaim(player, team, reward) || owned >= 256 || references.size() >= 4096)
+            return Optional.empty();
         String reference = UUID.randomUUID().toString();
         references.put(reference, new RewardReference(player.getUUID(), team.getTeamId(), quest.getId(), reward.getId(),
                 team.getCompletedTime(quest.getId()).map(Date::getTime).orElse(0L), quest, reward, choiceVersion(reward), now + 120000));
         return Optional.of(reference);
     }
 
-    static QuestPageOutput page(ExecutionContext context, TeamData team, List<Quest> matches, int offset, Map<UUID, QuestPage> pages) {
-        List<Quest> selected = matches.stream().skip(offset).limit(PAGE_SIZE).toList();
+    static QuestListOutput list(ExecutionContext context, TeamData team, List<Quest> matches, Map<UUID, QuestList> lists) {
+        List<Quest> selected = List.copyOf(matches);
         List<QuestBriefOutput> quests = new ArrayList<>();
         for (Quest quest : selected)
             quests.add(brief(team, quest, quests.size() + 1));
         long now = System.currentTimeMillis();
-        pages.values().removeIf(value -> value.expires < now);
-        if (!pages.containsKey(context.player()) && pages.size() >= 4096) throw new AgentException("BUSY");
-        // Indices refer to the last displayed page, never to a newly filtered or reordered quest file.
-        pages.put(context.player(), new QuestPage(team.getTeamId(), context.incarnation(), context.memoryEpoch(), selected, now + 600000));
-        return new QuestPageOutput(quests, matches.size() > offset + selected.size(), offset + selected.size());
+        lists.values().removeIf(value -> value.expires < now);
+        if (!lists.containsKey(context.player()) && lists.size() >= 4096) throw new AgentException("BUSY");
+        // Indices refer to the complete displayed list, never to a newly filtered or reordered quest file.
+        lists.put(context.player(), new QuestList(team.getTeamId(), context.incarnation(), context.memoryEpoch(), selected, now + 600000));
+        return new QuestListOutput(quests);
     }
 
     static QuestBriefOutput brief(TeamData team, Quest quest, int number) {
@@ -125,7 +93,7 @@ final class FtbQuestAccess {
         for (Reward reward : quest.getRewards()) {
             if (team.isRewardBlocked(reward) || reward.getAutoClaimType() == RewardAutoClaim.INVISIBLE) continue;
             if (visibleRewards++ < rewardOffset || rewards.size() == 4) continue;
-            boolean claimable = canClaim(player, team, reward);
+            boolean claimable = FtbQuestReader.canClaim(player, team, reward);
             Optional<List<QuestChoiceOutput>> choices = Optional.empty();
             boolean hasMoreChoices = false;
             if (reward instanceof ChoiceReward choice && choice.getTable() != null) {
@@ -143,18 +111,19 @@ final class FtbQuestAccess {
         }
         List<QuestTaskOutput> tasks = quest.getTasksAsList().stream().skip(taskOffset).limit(12)
                 .map(task -> new QuestTaskOutput(MiscUtil.clip(task.getTitle().getString(), 256), team.getProgress(task), task.getMaxProgress())).toList();
-        String description = String.join("\n", quest.getRawDescription());
+        String description = quest.getHideTextUntilComplete().get(quest.getChapter().isHideTextUntilComplete()) && !team.isCompleted(quest)
+                ? "" : String.join("\n", quest.getRawDescription());
         int start = Math.min(descriptionOffset, description.length());
         int end = start + Math.min(2048, description.length() - start);
         return new QuestOutput(hex(quest.getId()), MiscUtil.clip(quest.getTitle().getString(), 256),
                 MiscUtil.clip(quest.getChapter().getTitle().getString(), 128), description.substring(start, end),
-                team.getRelativeProgress(quest), team.isCompleted(quest), tasks, rewards,
+                team.getRelativeProgress(quest), team.isCompleted(quest), FtbQuestReader.canComplete(player, team, quest), tasks, rewards,
                 new SectionPageOutput(rewardOffset, rewardOffset + rewards.size(), visibleRewards > rewardOffset + rewards.size()),
                 new SectionPageOutput(taskOffset, taskOffset + tasks.size(), quest.getTasksAsList().size() > taskOffset + tasks.size()),
                 new SectionPageOutput(start, end, description.length() > end));
     }
 
-    record QuestPage(UUID team, long incarnation, long epoch, List<Quest> quests, long expires) {
+    record QuestList(UUID team, long incarnation, long epoch, List<Quest> quests, long expires) {
     }
 
     static List<ItemPreviewOutput> previewItems(Reward reward) {

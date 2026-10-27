@@ -51,7 +51,7 @@ final class FtbQuestClaimTool implements ToolRegistry.Handler<QuestClaimInput, Q
                     || quest != reference.questVersion() || reward != reference.rewardVersion() || choiceVersion(reward) != reference.choiceVersion()
                     || team.getCompletedTime(questId).map(Date::getTime).orElse(0L) != reference.completedAt())
                 throw new AgentException("STALE_REFERENCE");
-            if (reward.getQuest() != quest || !FtbQuestRules.readable(team, quest) || team.isLocked()
+            if (reward.getQuest() != quest || !FtbQuestReader.readable(team, quest) || team.isLocked()
                     || !team.isCompleted(quest) || team.isRewardBlocked(reward) || reward.getAutoClaimType() == RewardAutoClaim.INVISIBLE)
                 throw new AgentException("NOT_AUTHORIZED");
             if (!"CAN_CLAIM".equals(team.getClaimType(player.getUUID(), reward).name()))

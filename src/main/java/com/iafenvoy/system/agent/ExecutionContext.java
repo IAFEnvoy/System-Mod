@@ -2,8 +2,6 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.commerce.CommerceQuotes;
-import com.iafenvoy.system.agent.commerce.SystemCoinPayment;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.routing.RouteSource;
@@ -142,14 +140,6 @@ public final class ExecutionContext {
 
     public CommerceCatalog catalog() {
         return this.engine.catalog();
-    }
-
-    public SystemCoinPayment coinPayment() {
-        return this.engine.coinPayment();
-    }
-
-    public CommerceQuotes commerceQuotes() {
-        return this.engine.commerceQuotes();
     }
 
     public List<String> commandUsages() {

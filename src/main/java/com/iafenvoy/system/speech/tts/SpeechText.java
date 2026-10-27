@@ -26,7 +26,8 @@ public final class SpeechText {
             Map.entry("system.result.quest", result -> quest(result, "detail")),
             Map.entry("system.result.quest_startup", SpeechText::startup),
             Map.entry("system.result.starter_gift", result -> gift(result, "starter_gift")),
-            Map.entry("system.result.starter_gift_claimed", result -> gift(result, "starter_gift_claimed")),
+            Map.entry("system.result.quest_submitted", result -> submission(result, true)),
+            Map.entry("system.result.quest_submit_unchanged", result -> submission(result, false)),
             Map.entry("system.result.lottery_drawn", SpeechText::lottery),
             Map.entry("system.result.help", _ -> tr("system.tts.message.help")));
     private static final TypeDispatch<Void, String> TITLES = new TypeDispatch<Void, String>((_, _) -> "")
@@ -37,6 +38,7 @@ public final class SpeechText {
     }
 
     public static String result(AgentResult result) {
+        if (result.silent()) return "";
         return MESSAGES.getOrDefault(result.messageKey(), SpeechText::primary).apply(result);
     }
 
@@ -45,9 +47,7 @@ public final class SpeechText {
             Object value = card.data().value();
             if (value instanceof QuestOutput quest) return List.of(quest.id());
             if (value instanceof ResultTypes.QuestNotice quest) return List.of(quest.id());
-            if (value instanceof QuestStartupOutput startup)
-                return startup.quests().stream().map(QuestBriefOutput::id).toList();
-            if (value instanceof StarterGiftOutput gift && !gift.claimed()) return List.of(gift.questId());
+            // The overview and starter gifts never narrate individual source quest names.
         }
         return List.of();
     }
@@ -56,6 +56,13 @@ public final class SpeechText {
         // Card fields, descriptions and action labels belong to the visual result, never the narration.
         String primary = tr(result.messageKey());
         return result.text().isBlank() ? primary : primary + "\n" + result.text().strip();
+    }
+
+    private static String submission(AgentResult result, boolean changed) {
+        for (AgentResult.Card card : result.cards())
+            if (card.data().value() instanceof QuestSubmitOutput submit)
+                return Component.translatable(changed ? "system.tts.message.quest_submitted" : "system.tts.message.quest_submit_unchanged", submit.title()).getString();
+        return primary(result);
     }
 
     private static String lottery(AgentResult result) {
@@ -70,15 +77,14 @@ public final class SpeechText {
             if (card.data().value() instanceof QuestStartupOutput(
                     int total, List<QuestBriefOutput> quests
             ))
-                return Component.translatable("system.tts.message.quest_startup", total).getString()
-                        + (quests.size() == 1 ? Component.translatable("system.tts.quest.name", quests.getFirst().title()).getString() : "");
+                return Component.translatable("system.tts.message.quest_startup", total).getString();
         return primary(result);
     }
 
     private static String gift(AgentResult result, String event) {
         for (AgentResult.Card card : result.cards())
-            if (card.data().value() instanceof StarterGiftOutput gift)
-                return Component.translatable("system.tts.message." + event, MiscUtil.clip(gift.title(), 128)).getString();
+            if (card.data().value() instanceof StarterGiftOutput)
+                return Component.translatable("system.tts.message." + event).getString();
         return primary(result);
     }
 

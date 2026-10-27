@@ -11,5 +11,6 @@
   "cacheEnabled": false,
   "questRequirements": true,
   "questRewards": true,
-  "questDescription": false
+  "questDescription": false,
+  "notificationSoundEnabled": true
 }

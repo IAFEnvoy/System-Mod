@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.builtin.input;
 
-import com.iafenvoy.system.util.codec.SchemaCodecs;
-import com.iafenvoy.system.util.codec.SchemaMapCodec;
+import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
+import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 
 import java.util.Optional;
 

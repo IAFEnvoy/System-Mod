@@ -3,10 +3,7 @@
   "items": [
     { "id": "minecraft:torch", "count": 4 }
   ],
-  "price": {
-    "type": "ITEMS",
-    "items": [
-      { "id": "minecraft:cobblestone", "count": 16 }
-    ]
-  }
+  "costs": [
+    { "type": "saturn:item", "items": ["minecraft:cobblestone"], "amount": 16 }
+  ]
 }

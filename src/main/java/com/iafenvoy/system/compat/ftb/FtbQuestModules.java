@@ -18,6 +18,7 @@ public final class FtbQuestModules {
         engine.registerModule(new QuestClaimModule(new FtbQuestClaimTool(access).tool()));
         engine.registerModule(new QuestSubmitModule(new FtbQuestSubmitTool(access).tool()));
         engine.registerModule(new StarterGiftModule(new FtbStarterGiftTool(access).tool()));
+        engine.registerModule(new StarterGiftQueryModule(new FtbStarterGiftQueryTool(access).tool()));
         engine.questNarration().source(new FtbQuestSpeech(access));
         FtbQuestNotifications.install(game.server(), access);
     }

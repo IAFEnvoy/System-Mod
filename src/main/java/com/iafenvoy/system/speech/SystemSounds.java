@@ -4,19 +4,15 @@ import com.iafenvoy.system.SystemMod;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.registries.RegisterEvent;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
-@EventBusSubscriber
 public final class SystemSounds {
-    public static final SoundEvent NOTIFICATION = SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "notification"));
+    public static final DeferredRegister<SoundEvent> REGISTRY = DeferredRegister.create(Registries.SOUND_EVENT, SystemMod.MOD_ID);
 
-    private SystemSounds() {
-    }
+    public static final DeferredHolder<SoundEvent, SoundEvent> NOTIFICATION = register("notification");
 
-    @SubscribeEvent
-    public static void register(RegisterEvent event) {
-        event.register(Registries.SOUND_EVENT, NOTIFICATION.location(), () -> NOTIFICATION);
+    private static DeferredHolder<SoundEvent, SoundEvent> register(String id) {
+        return REGISTRY.register(id, () -> SoundEvent.createVariableRangeEvent(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, id)));
     }
 }

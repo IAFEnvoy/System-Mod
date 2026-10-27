@@ -28,6 +28,7 @@ public final class QuestClaimModule extends BuiltinModule<QuestClaimInput> {
 
     @Override
     public AgentResult execute(ExecutionContext context, QuestClaimInput input) throws Exception {
-        return AgentResult.data("system.result.claim", ResultTypes.CLAIM.of(context.tool(BuiltinTools.QUEST_CLAIM, "claim", input)));
+        QuestClaimOutput result = context.tool(BuiltinTools.QUEST_CLAIM, "claim", input);
+        return AgentResult.data(result.state().equals("CLAIM_EXECUTED") ? "system.result.claim" : "system.result.claim_unavailable", ResultTypes.CLAIM.of(result));
     }
 }

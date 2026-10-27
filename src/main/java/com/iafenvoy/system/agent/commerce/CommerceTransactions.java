@@ -4,17 +4,15 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.ExecutionContext;
+import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
+import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
 import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.assistant.MinecraftTools;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStackTemplate;
 
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,6 +35,31 @@ public final class CommerceTransactions {
         return this.active.contains(player + ":" + order);
     }
 
+    public CompletionStage<List<CommercePreviewOutput>> preview(ExecutionContext context, CommercePreviewInput input) {
+        return this.game.onPlayer(context, player -> {
+            CommerceCatalog catalog = this.engine.catalog();
+            if (!catalog.revision().equals(input.revision())) throw new AgentException("STALE_QUOTE");
+            List<CommercePreviewOutput> previews = new ArrayList<>();
+            for (Identifier id : input.offers()) {
+                CommerceCatalog.Offer offer = catalog.offers().stream().filter(value -> value.id().equals(id)).findFirst()
+                        .orElseThrow(() -> new AgentException("STALE_QUOTE"));
+                CommerceCosts.Prepared payment = CommerceCosts.prepare(offer.costs(), player, PurchaseType.SHOP, id);
+                Optional<String> reference = input.quote() && payment.available()
+                        ? Optional.of(this.engine.commerceQuotes().create(context.player(), catalog, offer, payment).id()) : Optional.empty();
+                previews.add(new CommercePreviewOutput(id, payment.price(), payment.available(), reference));
+            }
+            for (Identifier id : input.lotteries()) {
+                LotteryPool pool = catalog.lotteries().stream().filter(value -> value.id().equals(id)).findFirst()
+                        .orElseThrow(() -> new AgentException("STALE_QUOTE"));
+                CommerceCosts.Prepared payment = CommerceCosts.prepare(pool.costs(), player, PurchaseType.LOTTERY, id);
+                Optional<String> reference = input.quote() && payment.available()
+                        ? Optional.of(this.engine.commerceQuotes().create(context.player(), catalog, pool, payment).id()) : Optional.empty();
+                previews.add(new CommercePreviewOutput(id, payment.price(), payment.available(), reference));
+            }
+            return List.copyOf(previews);
+        });
+    }
+
     public CompletionStage<PurchaseReceiptOutput> execute(ExecutionContext context, String id, PurchaseType type) {
         try {
             UUID.fromString(id);
@@ -50,9 +73,6 @@ public final class CommerceTransactions {
             throw new AgentException(previous.state.equals("FAILED") ? previous.error : "EFFECT_UNKNOWN");
         }
         CommerceQuotes.Quote quote = this.engine.commerceQuotes().require(context.player(), id, this.engine.catalog(), type);
-        SystemCoinPayment coins = this.engine.coinPayment();
-        boolean useCoins = quote.price().filter(price -> price.type() == PaymentType.SYSTEM_COIN).isPresent();
-        if (useCoins && !coins.available()) throw new AgentException("CURRENCY_UNAVAILABLE");
         String key = context.player() + ":" + id;
         if (!this.active.add(key)) throw new AgentException("BUSY");
         try {
@@ -85,24 +105,10 @@ public final class CommerceTransactions {
             for (LotteryPool.Entry entry : quote.entries())
                 for (ItemStackTemplate item : entry.reward().items())
                     if (item.create().isEmpty()) throw new AgentException("INVALID_REWARD");
-            if (!useCoins && quote.price().isPresent())
-                debitItems(player, quote.price().get().items(), context, touched);
-            return !useCoins;
-        });
-        if (useCoins) payment = payment.thenCompose(ignored -> this.engine.maintenance(() -> {
-            context.ensureMemoryCurrent();
-            this.engine.commerceQuotes().require(context.player(), id, this.engine.catalog(), type);
-            if (!coins.available()) throw new AgentException("CURRENCY_UNAVAILABLE");
-            touched.set(true);
-            return coins.debit(context.player(), quote.price().orElseThrow().coins(), type.entitlement(context.player() + ":" + id));
-        }).thenCompose(stage -> stage).thenApply(paid -> {
-            if (Boolean.FALSE.equals(paid)) {
-                touched.set(false);
-                throw new AgentException("INSUFFICIENT_FUNDS");
-            }
-            if (!Boolean.TRUE.equals(paid)) throw new AgentException("EFFECT_UNKNOWN");
+            context.check();
+            quote.payment().pay(player, touched);
             return true;
-        }));
+        });
 
         CompletableFuture<PurchaseReceiptOutput> result = new CompletableFuture<>();
         payment.whenComplete((paid, error) -> this.engine.maintenance(() -> {
@@ -134,30 +140,6 @@ public final class CommerceTransactions {
             return null;
         }));
         return result.whenComplete((ignored, error) -> this.active.remove(key));
-    }
-
-    private static void debitItems(ServerPlayer player, List<ItemStackTemplate> costs, ExecutionContext context, AtomicBoolean touched) {
-        // Reserve per slot so repeated or equivalent component templates cannot spend the same items twice.
-        int[] removals = new int[Inventory.INVENTORY_SIZE];
-        for (ItemStackTemplate cost : costs) {
-            ItemStack template = cost.withCount(1).create();
-            if (template.isEmpty()) throw new AgentException("INVALID_REWARD");
-            int remaining = cost.count();
-            for (int slot = 0; slot < Inventory.INVENTORY_SIZE && remaining > 0; slot++) {
-                ItemStack stack = player.getInventory().getItem(slot);
-                if (stack.isEmpty() || !ItemStack.isSameItemSameComponents(stack, template)) continue;
-                int count = Math.min(remaining, stack.getCount() - removals[slot]);
-                removals[slot] += count;
-                remaining -= count;
-            }
-            if (remaining != 0) throw new AgentException("INSUFFICIENT_ITEMS");
-        }
-        context.check();
-        // Validation and mutation happen in one callback, with no yield between them.
-        touched.set(true);
-        for (int slot = 0; slot < Inventory.INVENTORY_SIZE; slot++)
-            if (removals[slot] != 0) player.getInventory().getItem(slot).shrink(removals[slot]);
-        player.getInventory().setChanged();
     }
 
     private static PurchaseReceiptOutput receipt(PlayerData.Purchase purchase) {

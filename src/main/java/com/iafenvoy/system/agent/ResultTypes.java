@@ -6,6 +6,8 @@ import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStackTemplate;
 
@@ -57,6 +59,7 @@ public final class ResultTypes {
     public static final TypedPayload.Type<QuestDetailInput> QUEST_ACTION = action("quest_detail", QuestDetailInput.CODEC.codec());
     public static final TypedPayload.Type<QuestClaimInput> CLAIM_ACTION = action("quest_claim", QuestClaimInput.CODEC.codec());
     public static final TypedPayload.Type<StarterGiftInput> STARTER_GIFT_ACTION = action("starter_gift", StarterGiftInput.CODEC.codec());
+    public static final TypedPayload.Type<EmptyInput> STARTER_GIFTS_ACTION = action("starter_gifts", EmptyInput.CODEC.codec());
     public static final TypedPayload.Type<QuestSubmitInput> QUEST_SUBMIT_ACTION = action("quest_submit", QuestSubmitInput.CODEC.codec());
 
     public static final TypedPayload.Type<AdvancementInput> ADVANCEMENT_ACTION = action("advancement_followup", AdvancementInput.CODEC.codec());
@@ -150,16 +153,24 @@ public final class ResultTypes {
         }
     }
 
-    public record QuestNotice(String id, String title, String chapter, List<ItemPreviewOutput> items) {
+    public record QuestNotice(String id, String title, String chapter, List<ItemPreviewOutput> items,
+                              String description, List<Component> requirements, List<Component> otherRewards,
+                              boolean manualSubmission) {
         public static final Codec<QuestNotice> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("id").forGetter(QuestNotice::id),
                 Codec.STRING.fieldOf("title").forGetter(QuestNotice::title),
                 Codec.STRING.fieldOf("chapter").forGetter(QuestNotice::chapter),
-                ItemPreviewOutput.CODEC.listOf().optionalFieldOf("items", List.of()).forGetter(QuestNotice::items)
+                ItemPreviewOutput.CODEC.listOf().fieldOf("items").forGetter(QuestNotice::items),
+                Codec.STRING.fieldOf("description").forGetter(QuestNotice::description),
+                ComponentSerialization.CODEC.listOf().fieldOf("requirements").forGetter(QuestNotice::requirements),
+                ComponentSerialization.CODEC.listOf().fieldOf("otherRewards").forGetter(QuestNotice::otherRewards),
+                Codec.BOOL.fieldOf("manualSubmission").forGetter(QuestNotice::manualSubmission)
         ).apply(i, QuestNotice::new));
 
         public QuestNotice {
             items = List.copyOf(items);
+            requirements = List.copyOf(requirements);
+            otherRewards = List.copyOf(otherRewards);
         }
     }
 }

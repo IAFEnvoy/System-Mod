@@ -1,9 +1,8 @@
 {
   "label": "补给抽奖",
-  "price": {
-    "type": "ITEMS",
-    "items": [{ "id": "minecraft:emerald", "count": 1 }]
-  },
+  "costs": [
+    { "type": "saturn:item", "items": ["minecraft:emerald"], "amount": 1 }
+  ],
   "entries": [
     {
       "weight": 60,

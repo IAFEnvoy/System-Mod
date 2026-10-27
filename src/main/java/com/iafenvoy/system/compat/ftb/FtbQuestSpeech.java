@@ -49,15 +49,14 @@ final class FtbQuestSpeech implements QuestNarration.Source {
             ServerQuestFile file = ServerQuestFile.getInstance();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));
             Quest quest = file.getQuest(Long.parseUnsignedLong(questId, 16));
-            if (quest == null || !FtbQuestRules.readable(team, quest)
-                    || quest.hideDetailsUntilStartable() && !team.canStartTasks(quest))
+            if (quest == null || !FtbQuestReader.detailAvailable(team, quest))
                 throw new AgentException("QUEST_UNAVAILABLE");
-            List<QuestNarration.Line> requirements = request.requirements() && FtbQuestRules.kind(quest) == FtbQuestRules.Kind.NORMAL ? quest.getTasksAsList().stream()
+            List<QuestNarration.Line> requirements = request.requirements() && FtbQuestReader.kind(quest) == FtbQuestReader.Kind.NORMAL ? quest.getTasksAsList().stream()
                     .map(task -> requirement(team, task)).toList() : List.of();
             List<QuestNarration.Line> rewards = request.rewards() ? quest.getRewards().stream()
                     .filter(reward -> !team.isRewardBlocked(reward) && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE)
                     .map(reward -> REWARDS.apply(null, reward)).toList() : List.of();
-            boolean showDescription = request.description() && (!quest.getHideTextUntilComplete().get(quest.getChapter().isHideTextUntilComplete())
+            boolean showDescription = request.requirements() && request.description() && (!quest.getHideTextUntilComplete().get(quest.getChapter().isHideTextUntilComplete())
                     || team.isCompleted(quest));
             return new QuestNarration.Quest(quest.getTitle().copy(), requirements, rewards,
                     showDescription ? String.join("\n", quest.getRawDescription()) : "");
@@ -73,7 +72,7 @@ final class FtbQuestSpeech implements QuestNarration.Source {
                 + "\nOnly from crafting: " + (!item.consumesResources() && item.isOnlyFromCrafting()) : ""));
     }
 
-    private static QuestNarration.Line requirement(TeamData team, Task task) {
+    static QuestNarration.Line requirement(TeamData team, Task task) {
         QuestNarration.Line line = TASKS.apply(null, task);
         return task.isOptionalForProgression(team) ? new QuestNarration.Line(Component.translatable("system.tts.quest.optional", line.text()),
                 line.unformatted().map(text -> "Optional requirement.\n" + text)) : line;
@@ -87,5 +86,9 @@ final class FtbQuestSpeech implements QuestNarration.Source {
     private static QuestNarration.Line unknown(Reward reward) {
         return QuestNarration.Line.unknown(reward.getTitle().copy(), "Reward type: " + reward.getType().getTypeId()
                 + "\nTitle: " + reward.getTitle().getString() + "\nAmount: " + reward.getButtonText());
+    }
+
+    static Component rewardText(Reward reward) {
+        return REWARDS.apply(null, reward).text();
     }
 }

@@ -19,6 +19,10 @@
     "zh": ["领取奖励", "领取", "领奖", "领取任务奖励", "收下奖励", "把奖励领了"],
     "en": ["claim reward", "claim rewards", "claim", "collect reward", "collect rewards", "claim quest reward", "claim the reward"]
   },
+  "system.action.complete_quest": {
+    "zh": ["完成此任务", "完成这个任务", "完成任务", "勾选任务", "提交此任务"],
+    "en": ["complete this quest", "complete quest", "finish this quest", "check off this quest", "submit this quest"]
+  },
   "system.action.claim_starter_gift": {
     "zh": ["领取礼包", "领取新手礼包", "领取新手奖励", "收下礼包", "打开礼包", "领取", "领取奖励"],
     "en": ["claim starter gift", "claim gift", "collect gift", "open gift", "claim reward", "claim"]

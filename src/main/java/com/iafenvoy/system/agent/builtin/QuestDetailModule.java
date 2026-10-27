@@ -19,7 +19,7 @@ import java.util.Optional;
 public final class QuestDetailModule extends BuiltinModule<QuestDetailInput> {
     private static final TypeDispatch<QuestDetailInput, AgentResult> RESULTS = new TypeDispatch<QuestDetailInput, AgentResult>((_, _) -> {
         throw new AgentException("UNSUPPORTED");
-    }).register(QuestPageOutput.class, (input, page) -> QuestQueryModule.questList(page, ResultTypes.QUEST_ACTION.of(input)))
+    }).register(QuestListOutput.class, (_, list) -> QuestQueryModule.questList(list, "system.result.quest_matches"))
             .register(QuestDetailOutput.class, (_, detail) -> detail(detail.quest()))
             .register(StarterGiftOutput.class, (_, gift) -> StarterGiftModule.preview(gift));
 
@@ -40,9 +40,9 @@ public final class QuestDetailModule extends BuiltinModule<QuestDetailInput> {
     private static QuestDetailInput commandInput(String text) {
         if (text.matches("[0-9]+")) {
             int index = Integer.parseInt(text);
-            return new QuestDetailInput("", Optional.of(index), "", 0, 0, 0, 0, 0);
+            return new QuestDetailInput("", Optional.of(index), "", 0, 0, 0, 0);
         }
-        return new QuestDetailInput(text, Optional.empty(), "", 0, 0, 0, 0, 0);
+        return new QuestDetailInput(text, Optional.empty(), "", 0, 0, 0, 0);
     }
 
     @Override
@@ -52,6 +52,7 @@ public final class QuestDetailModule extends BuiltinModule<QuestDetailInput> {
 
     private static AgentResult detail(QuestOutput quest) {
         List<AgentResult.Action> actions = new ArrayList<>();
+        if (quest.canComplete()) actions.add(QuestSubmitModule.completeAction(quest.id()));
         for (QuestRewardOutput reward : quest.rewards()) {
             if (!reward.claimable() || reward.claimRef().isEmpty()) continue;
             if (reward.choices().isPresent()) {
@@ -82,6 +83,6 @@ public final class QuestDetailModule extends BuiltinModule<QuestDetailInput> {
     }
 
     private static QuestDetailInput page(QuestOutput quest, int rewards, int choices, int description, int tasks) {
-        return new QuestDetailInput("", Optional.empty(), quest.id(), 0, rewards, choices, description, tasks);
+        return new QuestDetailInput("", Optional.empty(), quest.id(), rewards, choices, description, tasks);
     }
 }

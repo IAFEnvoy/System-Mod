@@ -3,7 +3,12 @@ package com.iafenvoy.system.screen;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.builtin.StarterGiftModule;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
+import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
+import com.iafenvoy.system.agent.builtin.output.QuestStartupOutput;
+import com.iafenvoy.system.agent.builtin.output.QuestSubmitOutput;
+import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.command.client.NotificationVoiceCommands;
@@ -15,6 +20,7 @@ import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.iafenvoy.system.speech.tts.SpeechText;
+import com.iafenvoy.system.util.LegacyText;
 import com.sighs.apricityui.client.gui.ApricityGuiLayers;
 import com.sighs.apricityui.event.MouseEvent;
 import com.sighs.apricityui.init.Document;
@@ -104,8 +110,8 @@ public final class AssistantMessages {
         }
 
         public Message {
-            title = limit(Objects.requireNonNull(title), 96, 1);
-            text = limit(Objects.requireNonNull(text), 360, 6);
+            title = tr("system.ui.assistant");
+            text = Objects.requireNonNull(text);
             speechText = limit(Objects.requireNonNull(speechText), 500, 10);
             buttons = List.copyOf(buttons).stream().limit(3).toList();
             items = List.copyOf(items);
@@ -128,21 +134,32 @@ public final class AssistantMessages {
     }
 
     public static void binding(String playerName) {
-        post(new Message(tr("system.ui.binding_title"),
-                Component.translatable("system.ui.binding_text", playerName).getString(),
-                Component.translatable("system.tts.message.binding", playerName).getString(), List.of(
+        Component name = Component.translatable(AssistantClient.system().name());
+        Component description = Component.translatable(AssistantClient.system().description());
+        post(new Message(tr("system.ui.assistant"),
+                Component.translatable("system.ui.binding_text", playerName, name, description).getString(),
+                Component.translatable("system.tts.message.binding", name, description).getString(), List.of(
                 new Button("open", "system.ui.message_open_button", false,
                         () -> AssistantClient.open(AssistantClient.simpleMode(), ""))), 240));
     }
 
     public static void result(AgentResult result, boolean review) {
+        if (result.silent()) return;
+        post(message(result, review), !SpeechText.result(result).isBlank());
+    }
+
+    private static Message message(AgentResult result, boolean review) {
         String summary = summary(result);
         List<Button> buttons = new ArrayList<>();
         List<Row> rows = new ArrayList<>();
         for (AgentResult.Card card : result.cards()) {
             for (AgentResult.Action action : card.actions()) {
                 Button button = new Button(action.moduleId() + ":" + action.call().value(), action.labelKey(), true,
-                        () -> AssistantClient.send(action, ""));
+                        () -> {
+                            if (action.labelKey().equals("system.action.refresh_starter_gift"))
+                                AssistantClient.open(false, "");
+                            AssistantClient.send(action, "");
+                        });
                 // Quest rows belong to the list body, not the limited generic action footer.
                 if (card.data().value() instanceof ResultTypes.QuestList && action.call().value() instanceof QuestDetailInput)
                     rows.add(new Row(actionLabel(card, action), button));
@@ -156,10 +173,52 @@ public final class AssistantMessages {
                 AssistantClient.open(entry != null && entry.result() == result && AssistantClient.simpleMode(), "");
             }));
         String speechText = SpeechText.result(result);
-        post(new Message(tr("system.ui.assistant"), summary, speechText, buttons, 160, AssistantItems.groups(result), SpeechText.quests(result), rows), !speechText.isBlank());
+        return new Message(tr("system.ui.assistant"), summary, speechText, buttons, 160, AssistantItems.groups(result), SpeechText.quests(result), rows);
+    }
+
+    public static void updateGifts(AgentResult result) {
+        for (AgentResult.Card card : result.cards()) {
+            if (!(card.data().value() instanceof StarterGiftOutput gifts)) continue;
+            QUEUE.removeIf(pending -> giftMessage(pending.message()));
+            if (current != null && giftMessage(current)) {
+                if (gifts.gifts().isEmpty()) dismiss(current);
+                else {
+                    stopSpeech();
+                    current = message(StarterGiftModule.preview(gifts), false);
+                    speakCurrent = false;
+                    speechStarted = true;
+                    remainingTicks = current.durationTicks();
+                    if (document != null && !document.isDisposed()) renderMessage();
+                }
+            } else if (!gifts.gifts().isEmpty())
+                post(message(StarterGiftModule.preview(gifts), false), false);
+        }
+    }
+
+    private static boolean giftMessage(Message message) {
+        return message.buttons().stream().anyMatch(button -> button.labelKey().equals("system.action.refresh_starter_gift"));
     }
 
     public static String summary(AgentResult result) {
+        for (AgentResult.Card card : result.cards()) {
+            if (card.data().value() instanceof ResultTypes.QuestNotice quest) {
+                String event = result.messageKey().equals("system.result.quest_completed") ? "completed" : "unlocked";
+                return Component.translatable("system.tts.message.quest_" + event, quest.title()).getString()
+                        + (formatCard(card, false).isBlank() ? "" : "\n" + formatCard(card, false))
+                        + (event.equals("completed") && card.actions().stream().anyMatch(action -> action.labelKey().equals("system.action.claim"))
+                        ? "\n" + tr("system.ui.quest_reward_pending") : "");
+            }
+            if (card.data().value() instanceof StarterGiftOutput) return tr(result.messageKey());
+            if (card.data().value() instanceof QuestStartupOutput(
+                    int total, List<QuestBriefOutput> quests
+            ))
+                return Component.translatable("system.tts.message.quest_startup", total).getString()
+                        + "\n" + String.join("\n", quests.stream().map(quest -> LegacyText.scoped(quest.title()) + " · " + (int) quest.progress() + "%").toList())
+                        + (total > quests.size() ? "\n" + Component.translatable("system.ui.quest_startup_more", total - quests.size()).getString() : "");
+            if (card.data().value() instanceof QuestSubmitOutput submit)
+                return Component.translatable(submit.changed() ? "system.ui.quest_submitted" : "system.ui.quest_submit_unchanged", submit.title()).getString()
+                        + "\n" + String.join("\n", submit.tasks().stream().map(task -> LegacyText.scoped(task.title()) + " · " + task.progress() + "/" + task.required()).toList());
+        }
         StringBuilder summary = new StringBuilder(tr(result.messageKey()));
         if (!result.text().isBlank()) summary.append("\n").append(result.text());
         if (!result.cards().isEmpty() && !result.messageKey().equals("system.result.history")) {
@@ -189,6 +248,7 @@ public final class AssistantMessages {
             if (current == null) nextMessage();
             if (current == null) return;
             try {
+                AssistantPages.prepare("system/assistant-message.html");
                 document = Document.create("system/assistant-message.html");
                 if (document == null) throw new IllegalStateException("Missing assistant message template");
             } catch (RuntimeException error) {
@@ -217,6 +277,7 @@ public final class AssistantMessages {
             // Establish hidden content and a collapsed panel before starting either transition.
             document.commitPendingStyleRecalcForRender();
             renderMessage();
+            AssistantPages.commit(document);
         }
         advanceAnimation(chatting);
         if (document == null) return;
@@ -227,7 +288,8 @@ public final class AssistantMessages {
             text(document.getElementById("notification_pending"), displayedPending == 0 ? ""
                     : Component.translatable("system.ui.message_pending", displayedPending).getString());
         }
-        if (phase == Phase.VISIBLE && !chatting && (recognition == null || recognition.finished())) remainingTicks--;
+        if (phase == Phase.VISIBLE && !chatting && (recognition == null || recognition.finished())
+                && !(giftMessage(current) && AssistantClient.state().busy())) remainingTicks--;
     }
 
     private static void nextMessage() {
@@ -320,7 +382,7 @@ public final class AssistantMessages {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void tooltip(ScreenEvent.Render.Foreground event) {
-        if (current == null || document == null || !canInteract(current) || !(event.getScreen() instanceof ChatScreen))
+        if (document == null || !canInteract(current) || !(event.getScreen() instanceof ChatScreen))
             return;
         if (AssistantItems.tooltip(document, event.getGuiGraphics(), event.getMouseX(), event.getMouseY()))
             // AUI deduplicates this submission; vanilla then flushes tooltips/IME once above the HUD.
@@ -373,7 +435,11 @@ public final class AssistantMessages {
 
     private static void activate(Message shown, Button option) {
         if (current != shown || option.requiresIdle() && AssistantClient.state().busy()) return;
-        dismiss(shown);
+        if (giftMessage(shown) && option.labelKey().equals("system.action.claim_starter_gift")) {
+            stopRecognition();
+            stopSpeech();
+            remainingTicks = shown.durationTicks();
+        } else dismiss(shown);
         option.action().run();
     }
 
@@ -445,19 +511,23 @@ public final class AssistantMessages {
     }
 
     private static void bindMouseEvents() {
-        // Consume only clicks on this panel; vanilla chat typing and clicks outside it keep their defaults.
+        Document mounted = document;
+        Element panel = mounted.getElementById("workspace");
+        if (panel == null) return;
+        // Only the visible panel owns mouse input; document events also include clicks outside the HUD.
         for (String type : List.of("mousedown", "mouseup", "wheel"))
-            document.addEventListener(type, event -> {
-                if (Minecraft.getInstance().screen instanceof ChatScreen && event instanceof MouseEvent mouse) {
+            panel.addEventListener(type, event -> {
+                if (document == mounted && canInteract(displayedMessage) && event instanceof MouseEvent mouse) {
                     mouse.consumeNative();
-                    if (document != null) document.clearFocus();
+                    mounted.clearFocus();
                 }
             });
     }
 
     private static boolean canInteract(Message shown) {
         Minecraft minecraft = Minecraft.getInstance();
-        return phase == Phase.VISIBLE && current == shown && displayedMessage == shown
+        return shown != null && document != null && !document.isDisposed()
+                && phase == Phase.VISIBLE && current == shown && displayedMessage == shown
                 && minecraft.screen instanceof ChatScreen && !minecraft.options.hideGui;
     }
 
@@ -467,12 +537,21 @@ public final class AssistantMessages {
         stopSpeech();
         current = null;
         remainingTicks = 0;
+        // A claim can finish while another screen has temporarily unmounted the HUD.
+        if (document == null || document.isDisposed()) {
+            displayedMessage = null;
+            phase = Phase.HIDDEN;
+            return;
+        }
         animate(Phase.FADING_OUT, Minecraft.getInstance().screen instanceof ChatScreen);
     }
 
     private static void updateInteraction(boolean chatting) {
         if (document == null || document.isDisposed()) return;
-        boolean enabled = chatting && phase == Phase.VISIBLE && current != null;
+        boolean enabled = chatting && phase == Phase.VISIBLE && current != null && displayedMessage == current;
+        // HUD buttons never own keyboard focus, including after native mouse defaults run.
+        if (document.getFocusedElement() != null) document.clearFocus();
+        if (!enabled) document.setPressedElement(null);
         boolean expanded = phase != Phase.HIDDEN && phase != Phase.COLLAPSING;
         boolean contentVisible = phase == Phase.FADING_IN || phase == Phase.VISIBLE;
         boolean busy = AssistantClient.state().busy();
@@ -481,8 +560,6 @@ public final class AssistantMessages {
             displayedBusy = busy;
             document.body.setClassName("notification" + (expanded ? " expanded" : "")
                     + (contentVisible ? " content_visible" : "") + (enabled ? " interactive" : ""));
-            document.clearFocus();
-            if (!enabled) document.setPressedElement(null);
             Element choices = document.getElementById("notification_choices");
             if (choices != null)
                 for (Element button : choices.children) {

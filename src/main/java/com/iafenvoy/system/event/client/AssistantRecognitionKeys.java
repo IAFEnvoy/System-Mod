@@ -67,14 +67,15 @@ public final class AssistantRecognitionKeys {
     @SubscribeEvent
     public static void screenRelease(ScreenEvent.KeyReleased.Pre event) {
         if (held && RECORD.matches(event.getKeyEvent())) {
+            boolean consumed = ownsInput(event.getScreen());
             release();
-            event.setCanceled(true);
+            if (consumed) event.setCanceled(true);
         }
     }
 
     @SubscribeEvent
     public static void character(ScreenEvent.CharacterTyped.Pre event) {
-        if (held && event.getScreen() == owner) event.setCanceled(true);
+        if (ownsInput(event.getScreen())) event.setCanceled(true);
     }
 
     @SubscribeEvent
@@ -82,14 +83,15 @@ public final class AssistantRecognitionKeys {
         InputConstants.Key key = RECORD.getKey();
         if (key.getType() != InputConstants.Type.MOUSE || key.getValue() != event.getButton()) return;
         if (event.getAction() == GLFW.GLFW_RELEASE && held) {
+            boolean consumed = ownsInput(Minecraft.getInstance().screen);
             release();
-            event.setCanceled(true);
+            if (consumed) event.setCanceled(true);
         } else if (event.getAction() == GLFW.GLFW_PRESS && press()) event.setCanceled(true);
     }
 
     private static boolean press() {
-        if (held) return true;
         Minecraft minecraft = Minecraft.getInstance();
+        if (held) return ownsInput(minecraft.screen);
         if (minecraft.player == null || minecraft.getConnection() == null || !minecraft.isWindowActive()
                 || !RECORD.isConflictContextAndModifierActive()) return false;
         if (AssistantMessages.hasVoiceTarget()) {
@@ -118,6 +120,12 @@ public final class AssistantRecognitionKeys {
         return true;
     }
 
+    private static boolean ownsInput(Screen screen) {
+        // A held-key latch may outlive its recording; it must not suppress unrelated typing.
+        return held && session != null && !session.finished() && session.active()
+                && screen == owner && Minecraft.getInstance().isWindowActive();
+    }
+
     private static void release() {
         if (session != null) {
             if (session.active()) session.finish();
@@ -135,7 +143,11 @@ public final class AssistantRecognitionKeys {
             // Input events own the edge; never replay a queued click after changing screens.
         }
         if (!held) return;
-        if (minecraft.screen != owner || minecraft.player == null || !minecraft.isWindowActive() || session == null || !session.active()) {
+        if (minecraft.player == null || !minecraft.isWindowActive()) {
+            release();
+            return;
+        }
+        if (minecraft.screen != owner || session == null || session.finished() || !session.active()) {
             if (session != null) session.close();
             owner = null;
             session = null;

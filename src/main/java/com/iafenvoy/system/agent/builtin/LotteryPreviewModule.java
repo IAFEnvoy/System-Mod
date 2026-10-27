@@ -1,13 +1,15 @@
 package com.iafenvoy.system.agent.builtin;
 
 import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryDrawInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryPreviewInput;
+import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
 import com.iafenvoy.system.agent.builtin.output.LotteryPoolOutput;
 import com.iafenvoy.system.agent.builtin.output.LotteryPrizeOutput;
+import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.commerce.CommerceQuotes;
 import com.iafenvoy.system.agent.commerce.LotteryPool;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
@@ -20,9 +22,9 @@ import java.util.Optional;
  * Paged prize odds and a short-lived confirmation are produced from the same immutable catalog snapshot.
  */
 public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInput> {
-    public LotteryPreviewModule() {
+    public LotteryPreviewModule(ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
         super(ResultTypes.LOTTERY_PREVIEW_ACTION, "Preview one lottery pool's prizes, odds and cost. The player must separately confirm one draw.",
-                LotteryPreviewInput.CODEC, List.of(), true, false, ExecutionPolicy.quick(1, 0));
+                LotteryPreviewInput.CODEC, List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
     }
 
     @Override
@@ -35,17 +37,18 @@ public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInpu
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, LotteryPreviewInput input) {
+    public AgentResult execute(ExecutionContext context, LotteryPreviewInput input) throws Exception {
         CommerceCatalog catalog = context.catalog();
         if (!input.catalogRevision().orElse(catalog.revision()).equals(catalog.revision()))
             throw new AgentException("STALE_QUOTE");
         LotteryPool pool = catalog.lotteries().stream().filter(value -> value.id().equals(input.poolId())).findFirst()
                 .orElseThrow(() -> new AgentException("INVALID_INPUT"));
-        LotteryPoolOutput summary = LotteryModule.summary(context, pool, false);
+        CommercePreviewOutput price = context.tool(BuiltinTools.COMMERCE_PREVIEW, "quote",
+                new CommercePreviewInput(List.of(), List.of(pool.id()), true, catalog.revision())).getFirst();
+        LotteryPoolOutput summary = LotteryModule.summary(pool, price, false);
         List<AgentResult.Action> actions = new ArrayList<>();
         if (summary.paymentAvailable()) {
-            CommerceQuotes.Quote quote = context.commerceQuotes().create(context.player(), catalog, pool);
-            actions.add(new AgentResult.Action("system.action.lottery_confirm", ResultTypes.LOTTERY_DRAW_ACTION, new LotteryDrawInput(quote.id())));
+            actions.add(new AgentResult.Action("system.action.lottery_confirm", ResultTypes.LOTTERY_DRAW_ACTION, new LotteryDrawInput(price.quoteRef().orElseThrow())));
         }
         List<AgentResult.Card> cards = new ArrayList<>();
         cards.add(new AgentResult.Card("system.result.lottery_pool", ResultTypes.LOTTERY_POOL.of(summary), actions));

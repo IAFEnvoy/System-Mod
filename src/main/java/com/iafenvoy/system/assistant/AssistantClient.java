@@ -5,7 +5,9 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.command.client.AssistantClientCommands;
 import com.iafenvoy.system.config.file.ClientConfig;
+import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
+import com.iafenvoy.system.registry.SystemDefinitions;
 import com.iafenvoy.system.screen.AssistantMessages;
 import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
@@ -34,6 +36,11 @@ public final class AssistantClient {
 
     public static AssistantClientState state() {
         return state;
+    }
+
+    public static SystemDefinition system() {
+        ClientPacketListener connection = Minecraft.getInstance().getConnection();
+        return connection == null ? SystemDefinition.DEFAULT : SystemDefinitions.current(connection.registryAccess());
     }
 
     public static long revision() {
@@ -95,6 +102,13 @@ public final class AssistantClient {
     }
 
     private static void receive(String requestId, AgentResult result, boolean notification) {
+        if (result.silent()) {
+            state = state.silent(requestId, result);
+            revision++;
+            if (result.messageKey().equals("system.result.starter_gift_updated"))
+                AssistantMessages.updateGifts(result);
+            return;
+        }
         state = state.receive(requestId, result, notification);
         revision++;
         if (result.messageKey().equals("system.result.state")) return;

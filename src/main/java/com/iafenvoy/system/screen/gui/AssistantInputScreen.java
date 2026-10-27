@@ -3,6 +3,7 @@ package com.iafenvoy.system.screen.gui;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
 import com.iafenvoy.system.config.file.RecognitionConfig;
+import com.iafenvoy.system.screen.AssistantPages;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
@@ -12,7 +13,6 @@ import com.sighs.apricityui.event.KeyEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import com.sighs.apricityui.layout.Position;
-import com.sighs.apricityui.screen.ApricityScreen;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.IMEPreeditOverlay;
 import net.minecraft.client.input.PreeditEvent;
@@ -25,12 +25,13 @@ import java.util.List;
 /**
  * Shared single-line composer, local completions and native input-method lifecycle.
  */
-public abstract class AssistantInputScreen extends ApricityScreen {
+public abstract class AssistantInputScreen extends AssistantPageScreen {
     protected String draft;
     private @Nullable AbstractText textInput;
     private @Nullable IMEPreeditOverlay preeditOverlay;
     private @Nullable InputArea inputArea;
     private @Nullable SuggestionState suggestionState;
+    private @Nullable SuggestionArea suggestionArea;
     private List<AssistantCommandSuggestions.Suggestion> suggestions = List.of();
     private int selectedSuggestion;
     private @Nullable String dismissedDraft;
@@ -49,6 +50,9 @@ public abstract class AssistantInputScreen extends ApricityScreen {
                                    boolean eligible) {
     }
 
+    private record SuggestionArea(int left, int bottom, int width, int maxHeight) {
+    }
+
     protected AssistantInputScreen(String templatePath, String draft) {
         super(templatePath);
         this.draft = draft == null ? "" : draft.replace('\r', ' ').replace('\n', ' ');
@@ -65,17 +69,15 @@ public abstract class AssistantInputScreen extends ApricityScreen {
     }
 
     @Override
-    protected void init() {
+    protected void initPage(Document document) {
         this.stopRecognition();
         this.renderedRecognition = "";
         this.clearTextInputFocus();
         this.suggestionState = null;
+        this.suggestionArea = null;
         this.suggestions = List.of();
         this.dismissedDraft = null;
         this.enterDown = false;
-        super.init();
-        Document document = this.getLinkedDocument();
-        if (document == null) return;
         for (Element input : document.querySelectorAll("input, textarea")) {
             input.addEventListener("focus", event -> this.syncTextInputFocus());
             input.addEventListener("keydown", event -> {
@@ -305,7 +307,9 @@ public abstract class AssistantInputScreen extends ApricityScreen {
         Element popup = document.getElementById("command_suggestions");
         if (popup == null) return;
         popup.setInnerHTML("");
-        popup.setInlineStyleProperty("display", this.suggestions.isEmpty() ? "none" : "flex");
+        // Rebuild off-screen; the render phase anchors the independent overlay before showing it.
+        popup.setInlineStyleProperty("display", "none");
+        this.suggestionArea = null;
         if (this.suggestions.isEmpty()) return;
         int start = Math.clamp(this.selectedSuggestion - 2, 0, Math.max(0, this.suggestions.size() - 6));
         for (int i = start; i < Math.min(start + 6, this.suggestions.size()); i++) {
@@ -320,6 +324,34 @@ public abstract class AssistantInputScreen extends ApricityScreen {
             popup.appendChild(row);
         }
         popup.appendChild(AssistantView.element(document, "div", "command_hint", AssistantView.tr("system.ui.command_hint")));
+    }
+
+    private void positionSuggestions(Document document) {
+        if (this.suggestions.isEmpty()) return;
+        Element popup = document.getElementById("command_suggestions");
+        Element message = document.getElementById("message");
+        if (popup == null || message == null) return;
+        Element.DOMRect bounds = message.getBoundingClientRect();
+        int viewportWidth = document.getViewport().layoutWidth();
+        int viewportHeight = document.getViewport().layoutHeight();
+        int maxHeight = Math.max(0, (int) Math.floor(bounds.top - 12));
+        if (document.getFocusedElement() != message || this.imeOwnsKeys() || bounds.width <= 0 || bounds.height <= 0 || maxHeight == 0) {
+            popup.setInlineStyleProperty("display", "none");
+            this.suggestionArea = null;
+            return;
+        }
+        int width = Math.clamp((int) Math.round(bounds.width), 1, Math.max(1, viewportWidth - 12));
+        int left = Math.clamp((int) Math.floor(bounds.left), 6, Math.max(6, viewportWidth - width - 6));
+        int bottom = Math.max(0, (int) Math.ceil(viewportHeight - bounds.top + 6));
+        SuggestionArea area = new SuggestionArea(left, bottom, width, maxHeight);
+        if (area.equals(this.suggestionArea)) return;
+        this.suggestionArea = area;
+        // All values use the owning document's CSS pixels, including after GUI scale or AUI zoom changes.
+        popup.setInlineStyleProperty("left", left + "px");
+        popup.setInlineStyleProperty("bottom", bottom + "px");
+        popup.setInlineStyleProperty("width", width + "px");
+        popup.setInlineStyleProperty("max-height", maxHeight + "px");
+        popup.setInlineStyleProperty("display", "flex");
     }
 
     private void completeSuggestion(int index) {
@@ -371,26 +403,32 @@ public abstract class AssistantInputScreen extends ApricityScreen {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         this.syncTextInputFocus();
         Document document = this.getLinkedDocument();
-        AssistantItems.tooltip(document, graphics, mouseX, mouseY);
-        if (this.textInput == null || document == null) return;
-        Element.DOMRect bounds = this.textInput.getBoundingClientRect();
-        if (bounds.width <= 0 || bounds.height <= 0) return;
-        Position start = document.documentToGuiPosition(new Position(bounds.left, bounds.top));
-        Position end = document.documentToGuiPosition(new Position(bounds.right, bounds.bottom));
-        int left = Math.clamp((int) Math.floor(start.x), 0, Math.max(0, this.width - 1));
-        int top = Math.clamp((int) Math.floor(start.y), 0, Math.max(0, this.height - 1));
-        int right = Math.clamp((int) Math.ceil(end.x), left + 1, Math.max(left + 1, this.width));
-        int bottom = Math.clamp((int) Math.ceil(end.y), top + 1, Math.max(top + 1, this.height));
-        if (this.preeditOverlay != null) {
-            // The vanilla overlay sets its own hot area; a second rectangle here makes IMEs oscillate.
-            this.inputArea = null;
-            this.preeditOverlay.updateInputPosition(left, Math.max(top, bottom - this.font.lineHeight - 1));
-            graphics.setPreeditOverlay(this.preeditOverlay);
-        } else {
-            InputArea area = new InputArea(left, top, right, bottom, this.minecraft.getWindow().getGuiScale());
-            if (!area.equals(this.inputArea)) {
-                this.minecraft.textInputManager().setTextInputArea(left, top, right, bottom);
-                this.inputArea = area;
+        if (document == null) return;
+        // Geometry queries can populate layout caches; always resolve them in this document's viewport.
+        try (Document.ContextScope ignored = Document.withContext(document)) {
+            this.positionSuggestions(document);
+            AssistantPages.commit(document);
+            AssistantItems.tooltip(document, graphics, mouseX, mouseY);
+            if (this.textInput == null) return;
+            Element.DOMRect bounds = this.textInput.getBoundingClientRect();
+            if (bounds.width <= 0 || bounds.height <= 0) return;
+            Position start = document.documentToGuiPosition(new Position(bounds.left, bounds.top));
+            Position end = document.documentToGuiPosition(new Position(bounds.right, bounds.bottom));
+            int left = Math.clamp((int) Math.floor(start.x), 0, Math.max(0, this.width - 1));
+            int top = Math.clamp((int) Math.floor(start.y), 0, Math.max(0, this.height - 1));
+            int right = Math.clamp((int) Math.ceil(end.x), left + 1, Math.max(left + 1, this.width));
+            int bottom = Math.clamp((int) Math.ceil(end.y), top + 1, Math.max(top + 1, this.height));
+            if (this.preeditOverlay != null) {
+                // The vanilla overlay sets its own hot area; a second rectangle here makes IMEs oscillate.
+                this.inputArea = null;
+                this.preeditOverlay.updateInputPosition(left, Math.max(top, bottom - this.font.lineHeight - 1));
+                graphics.setPreeditOverlay(this.preeditOverlay);
+            } else {
+                InputArea area = new InputArea(left, top, right, bottom, this.minecraft.getWindow().getGuiScale());
+                if (!area.equals(this.inputArea)) {
+                    this.minecraft.textInputManager().setTextInputArea(left, top, right, bottom);
+                    this.inputArea = area;
+                }
             }
         }
     }

@@ -4,7 +4,6 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.builtin.output.*;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.commerce.PaymentType;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.util.TypeDispatch;
 import com.sighs.apricityui.element.Item;
@@ -32,9 +31,9 @@ public final class AssistantItems {
             .register(RewardOutput.class, (_, value) -> reward(value.reward()))
             .register(CreditReceiptOutput.class, (_, value) -> reward(value.reward()))
             .register(PurchaseReceiptOutput.class, (_, value) -> reward(value.reward()))
-            .register(StarterGiftOutput.class, (_, value) -> List.of(new Group(tr("system.field.reward"), value.items().stream()
-                    .map(item -> new Entry(item, tr(value.claimed() ? "system.state.claimed"
-                            : value.claimRef().isPresent() ? "system.state.can_claim" : "system.state.cant_claim"))).toList())))
+            .register(StarterGiftOutput.class, (_, value) -> value.gifts().stream().map(gift -> new Group(tr("system.field.reward"), gift.items().stream()
+                    .map(item -> new Entry(item, gift.error().map(error -> tr("system.error." + error.toLowerCase(Locale.ROOT)))
+                            .orElse(""))).toList())).toList())
             .register(LotteryPrizeOutput.class, (_, value) -> reward(value.reward()))
             .register(LotteryPoolOutput.class, (_, value) -> {
                 List<Group> groups = new ArrayList<>(value.price().map(price -> price(tr("system.ui.lottery_cost"), price)).orElse(List.of()));
@@ -121,8 +120,7 @@ public final class AssistantItems {
     }
 
     private static List<Group> price(String label, CommerceCatalog.Price price) {
-        return price.type() == PaymentType.ITEMS
-                ? List.of(templates(label, price.items())) : List.of();
+        return price.items().isEmpty() ? List.of() : List.of(group(label, price.items()));
     }
 
     public static void render(Document document, Element container, List<Group> groups, boolean compact) {

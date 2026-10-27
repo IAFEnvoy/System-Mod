@@ -6,6 +6,7 @@ import com.iafenvoy.system.config.file.SpeechConfig;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.TtsProviders;
+import com.iafenvoy.system.util.LegacyText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.sounds.SoundEngine;
 import net.minecraft.network.chat.Component;
@@ -28,8 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 @EventBusSubscriber(Dist.CLIENT)
 public final class AssistantSpeech {
-    private static final ThreadPoolExecutor WORKER = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS,
-            new ArrayBlockingQueue<>(1), runnable -> {
+    private static final ThreadPoolExecutor WORKER = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(1), runnable -> {
         Thread thread = new Thread(runnable, "system-speech");
         thread.setDaemon(true);
         return thread;
@@ -42,7 +42,7 @@ public final class AssistantSpeech {
     private static SpeechPlayback playback;
     private static NotificationSound notification;
     private static boolean previewing;
-    private static String status = "idle";
+    private static SpeechState status = SpeechState.IDLE;
     private static long cooldownUntil;
     private static long deadline;
 
@@ -99,11 +99,12 @@ public final class AssistantSpeech {
     public static void configure(SpeechConfig next) throws Exception {
         if (!SpeechConfig.LANGUAGES.contains(next.language()) || next.volume() < 0 || next.volume() > 100)
             throw new SpeechException("settings");
-        if (next.enabled()) validate(next);
+        // Credentials and model fields can be edited independently; actual synthesis validates the complete request.
         SpeechConfig.INSTANCE.set(next);
         stop();
         cooldownUntil = 0;
-        status = "saved";
+        if (!SpeechConfig.INSTANCE.save()) throw new SpeechException("config");
+        status = SpeechState.SAVED;
     }
 
     public static void validate(SpeechConfig next) throws SpeechException {
@@ -123,7 +124,7 @@ public final class AssistantSpeech {
         stop();
         if (!notification && !canSpeak()) return;
         queued = new Utterance(source, text, List.copyOf(quests), false, notification);
-        status = "queued";
+        status = SpeechState.QUEUED;
     }
 
     private static void start(Utterance utterance, SpeechConfig current) {
@@ -132,7 +133,7 @@ public final class AssistantSpeech {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.options.getSoundSourceVolume(SoundSource.MASTER) <= 0
                 || minecraft.options.getSoundSourceVolume(SoundSource.VOICE) <= 0 || current.volume() == 0) {
-            status = "muted";
+            status = SpeechState.MUTED;
             return;
         }
         String normalized = normalize(utterance.text());
@@ -140,9 +141,9 @@ public final class AssistantSpeech {
         long epoch = generation;
         owner = source;
         previewing = utterance.preview();
-        status = utterance.notification() ? "starting" : "loading";
+        status = utterance.notification() ? SpeechState.STARTING : SpeechState.LOADING;
         deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(180);
-        if (utterance.notification()) {
+        if (utterance.notification() && current.notificationSoundEnabled()) {
             NotificationSound cue = new NotificationSound(current.volume());
             notification = cue;
             try {
@@ -176,7 +177,7 @@ public final class AssistantSpeech {
                     return;
                 }
                 playback = new SpeechPlayback(new SpeechSound(sourceAudio, volume), volume);
-                status = "starting";
+                status = SpeechState.STARTING;
             });
         };
         WORKER.purge();
@@ -226,11 +227,11 @@ public final class AssistantSpeech {
                 }
             } catch (Exception error) {
                 if (Thread.currentThread().isInterrupted()) return;
-                String code = error instanceof SpeechException speech ? speech.code()
-                        : error instanceof TimeoutException || error instanceof HttpTimeoutException ? "timeout" : "network";
+                SpeechState failure = error instanceof SpeechException speech ? SpeechState.fromCode(speech.code())
+                        : error instanceof TimeoutException || error instanceof HttpTimeoutException ? SpeechState.TIMEOUT : SpeechState.NETWORK;
                 minecraft.execute(() -> {
                     if (generation != epoch || owner != source) return;
-                    fail(code);
+                    fail(failure);
                 });
             } finally {
                 accounting.complete(TtsProvider.Usage.UNKNOWN, false);
@@ -238,12 +239,12 @@ public final class AssistantSpeech {
         });
     }
 
-    public static String status() {
+    public static SpeechState status() {
         return status;
     }
 
     private static String normalize(String text) {
-        String normalized = text.replaceAll("§.", "").replaceAll("[\\p{Cc}&&[^\\n\\t]]", " ").strip();
+        String normalized = LegacyText.plain(text).replaceAll("[\\p{Cc}&&[^\\n\\t]]", " ").strip();
         if (normalized.length() <= 500) return normalized;
         int end = Character.isHighSurrogate(normalized.charAt(499)) ? 499 : 500;
         return normalized.substring(0, end) + "…";
@@ -252,13 +253,13 @@ public final class AssistantSpeech {
     private static void stop(Session source) {
         if (queued != null && queued.source() == source) queued = null;
         if (owner == source) cancelCurrent();
-        if (owner == null) status = queued == null ? "idle" : "queued";
+        if (owner == null) status = queued == null ? SpeechState.IDLE : SpeechState.QUEUED;
     }
 
     public static void stop() {
         queued = null;
         cancelCurrent();
-        status = "idle";
+        status = SpeechState.IDLE;
     }
 
     private static void cancelCurrent() {
@@ -282,13 +283,13 @@ public final class AssistantSpeech {
         owner = null;
     }
 
-    private static void fail(String code) {
+    private static void fail(SpeechState failure) {
         boolean notify = !previewing;
         stop();
-        status = code;
+        status = failure;
         cooldownUntil = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
         if (notify && Minecraft.getInstance().player != null)
-            Minecraft.getInstance().player.sendSystemMessage(Component.translatable("system.tts.failed", Component.translatable("system.tts.status." + code)));
+            Minecraft.getInstance().player.sendSystemMessage(Component.translatable("system.tts.failed", Component.translatable(failure.translationKey())));
     }
 
     // Called before SoundEngine tears down its context, including resource/device reload and /stopsound.
@@ -315,7 +316,7 @@ public final class AssistantSpeech {
             return;
         }
         if (owner != null && System.nanoTime() >= deadline) {
-            fail("timeout");
+            fail(SpeechState.TIMEOUT);
             return;
         }
         if (notification != null && !minecraft.getSoundManager().isActive(notification)) {
@@ -324,21 +325,19 @@ public final class AssistantSpeech {
         }
         // Synthesis runs while the cue plays; buffered speech starts only after the actual sound ends.
         if (playback != null && notification == null) {
-            SpeechPlayback.State state = playback.tick();
+            SpeechState state = playback.tick();
             switch (state) {
-                case STARTING -> status = "starting";
-                case NATIVE -> status = "playing";
-                case OPENAL -> status = "playing_openal";
-                case FAILED -> fail("playback");
+                case FAILED -> fail(state);
                 case FINISHED, MUTED -> {
                     cancelCurrent();
-                    status = state == SpeechPlayback.State.MUTED ? "muted" : "idle";
+                    status = state == SpeechState.MUTED ? SpeechState.MUTED : SpeechState.IDLE;
                 }
+                default -> status = state;
             }
         }
         if (owner != null && audio == null && notification == null) {
             cancelCurrent();
-            status = "idle";
+            status = SpeechState.IDLE;
         }
         if (owner == null && queued != null && !minecraft.isPaused()) {
             Utterance next = queued;

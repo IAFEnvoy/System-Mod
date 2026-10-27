@@ -31,11 +31,9 @@ public final class AssistantScreen extends AssistantInputScreen {
     }
 
     @Override
-    protected void init() {
-        super.init();
-        Document document = this.getLinkedDocument();
-        if (document == null) return;
-        for (String id : List.of("brand", "subtitle", "nav_chat", "nav_player", "nav_items", "nav_quests", "nav_signin", "nav_inbox",
+    protected void initPage(Document document) {
+        super.initPage(document);
+        for (String id : List.of("brand", "nav_chat", "nav_player", "nav_items", "nav_quests", "nav_signin", "nav_inbox",
                 "privacy_heading", "privacy_text", "send", "close", "forget", "history", "welcome_title", "welcome_text", "item_search",
                 "signin_title", "signin_text", "signin_action", "quest_refresh", "quest_claimable",
                 "nav_shop", "shop_search", "shop_refresh", "shop_text", "nav_lottery", "lottery_search", "lottery_refresh", "lottery_text", "nav_usage", "nav_settings"))
@@ -55,7 +53,7 @@ public final class AssistantScreen extends AssistantInputScreen {
         bind(document, "nav_items", () -> this.show("items"));
         bind(document, "nav_quests", () -> {
             this.show("quests");
-            AssistantClient.send(ResultTypes.QUESTS_ACTION.of(new QuestQueryInput("", 0, false)), "");
+            AssistantClient.send(ResultTypes.QUESTS_ACTION.of(new QuestQueryInput("", false)), "");
         });
         bind(document, "nav_signin", () -> this.show("signin"));
         bind(document, "nav_inbox", () -> {
@@ -91,8 +89,8 @@ public final class AssistantScreen extends AssistantInputScreen {
             if (query != null && !query.isBlank())
                 AssistantClient.send(ResultTypes.ITEMS_ACTION.of(new ItemQueryInput(query.strip(), 0)), "");
         });
-        bind(document, "quest_refresh", () -> AssistantClient.send(ResultTypes.QUESTS_ACTION.of(new QuestQueryInput("", 0, false)), ""));
-        bind(document, "quest_claimable", () -> AssistantClient.send(ResultTypes.QUESTS_ACTION.of(new QuestQueryInput("", 0, true)), ""));
+        bind(document, "quest_refresh", () -> AssistantClient.send(ResultTypes.QUESTS_ACTION.of(new QuestQueryInput("", false)), ""));
+        bind(document, "quest_claimable", () -> AssistantClient.send(ResultTypes.QUESTS_ACTION.of(new QuestQueryInput("", true)), ""));
         bind(document, "forget", () -> AssistantClient.send(AgentRequest.Control.FORGET));
         bind(document, "history", () -> {
             this.show("chat");
@@ -112,7 +110,7 @@ public final class AssistantScreen extends AssistantInputScreen {
         for (String value : List.of("chat", "items", "quests", "signin", "shop", "lottery"))
             document.getElementById("nav_" + value).setClassName(value.equals(next) ? "nav active" : "nav");
         // The result stream remains visible beneath each specialised toolbar.
-        document.getElementById("conversation").setInlineStyleProperty("display", "flex");
+        document.getElementById("conversation").setInlineStyleProperty("display", "block");
     }
 
     @Override
@@ -127,13 +125,16 @@ public final class AssistantScreen extends AssistantInputScreen {
         Document document = this.getLinkedDocument();
         if (document == null) return;
         this.revision = AssistantClient.revision();
+        text(document.getElementById("brand"), tr("system.ui.assistant"));
+        text(document.getElementById("welcome_title"), tr(AssistantClient.system().name()));
+        text(document.getElementById("welcome_text"), tr(AssistantClient.system().description()));
         document.getElementById("nav_quests").setInlineStyleProperty("display", AssistantClient.state().questAvailable() ? "block" : "none");
         Element list = document.getElementById("conversation");
         list.setInnerHTML("");
         List<AssistantClientState.ChatEntry> entries = AssistantClient.state().entries();
         for (AssistantClientState.ChatEntry entry : entries) {
             Element row = element(document, "div", entry.player() ? "message user" : "message assistant", "");
-            row.appendChild(element(document, "div", "message_label", tr(entry.player() ? "system.ui.you" : "system.ui.assistant")));
+            row.appendChild(element(document, "div", "message_label", tr(entry.player() ? "system.ui.you" : AssistantClient.system().name())));
             if (!entry.text().isBlank()) row.appendChild(element(document, "div", "message_text", entry.text()));
             AgentResult result = entry.result();
             if (result != null) {

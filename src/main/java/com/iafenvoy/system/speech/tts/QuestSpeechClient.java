@@ -31,7 +31,7 @@ public final class QuestSpeechClient {
         requestId = UUID.randomUUID().toString();
         pending = new CompletableFuture<>();
         connection.send(new QuestNarrationRequestC2SPayload(requestId,
-                new QuestNarration.Request(quests, settings.questRequirements(), settings.questRewards(), settings.questDescription())));
+                new QuestNarration.Request(quests, settings.questRequirements(), settings.questRewards(), settings.questRequirements() && settings.questDescription())));
         return pending.completeOnTimeout("", 8, TimeUnit.SECONDS);
     }
 

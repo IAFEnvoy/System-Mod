@@ -1,0 +1,5 @@
+{
+  "baseUrl": "https://api.deepseek.com/v1",
+  "apiKeyEnvironment": "SYSTEM_DEEPSEEK_API_KEY",
+  "maxResponseBytes": 4194304
+}

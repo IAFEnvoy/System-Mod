@@ -36,22 +36,20 @@ final class FtbQuestDetailTool implements ToolRegistry.Handler<QuestDetailInput,
         String query = input.query().strip().toLowerCase(Locale.ROOT);
         String questId = input.questId();
         int index = input.index().orElse(0);
-        int offset = input.offset();
         return this.access.game.onPlayer(context, player -> {
             if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
             ServerQuestFile file = ServerQuestFile.getInstance();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("CAPABILITY_UNAVAILABLE"));
-            Quest selected = selected(context, file, team, questId, index, this.access.pages);
+            Quest selected = selected(context, file, team, questId, index, this.access.lists);
             if (questId.isBlank() && index == 0) {
-                List<Quest> matches = find(file, team, query, offset);
-                if (matches.size() != 1) return page(context, team, matches, offset, this.access.pages);
+                List<Quest> matches = new FtbQuestReader(file, team).find(query);
+                if (matches.size() != 1) return list(context, team, matches, this.access.lists);
                 selected = matches.getFirst();
             }
-            if (selected == null || !FtbQuestRules.readable(team, selected)
-                    || selected.hideDetailsUntilStartable() && !team.canStartTasks(selected))
+            if (selected == null || !FtbQuestReader.detailAvailable(team, selected))
                 throw new AgentException("QUEST_UNAVAILABLE");
-            if (FtbQuestRules.kind(selected) == FtbQuestRules.Kind.STARTER_GIFT)
-                return this.access.gifts.preview(player, team, selected);
+            if (FtbQuestReader.kind(selected) == FtbQuestReader.Kind.STARTER_GIFT)
+                return this.access.gifts.preview(player, file, team);
             return new QuestDetailOutput(detail(player, team, selected, input, this.access.references));
         });
     }

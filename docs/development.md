@@ -2,7 +2,7 @@
 
 ## 当前版本
 
-ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充，`RecognitionUsage` 与 AI / TTS 共用 SavedData；网络协议 4。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
+ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充，`RecognitionUsage` 与 AI / TTS 共用 SavedData；当前网络协议 1。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
 
 语音供应商接口及客户端录音和播放分别位于 `speech.asr` 与 `speech.tts`，注册表位于 `registry.speech`，协议实现位于 `speech.aliyun`；配置集中在 `config`。阿里云默认使用 `qwen3-tts-flash`，额外兼容设计音色绑定的 Qwen-Audio-TTS HTTP 协议；复用 `HttpTransport`，没有新增依赖或模型文件。详见 [语音合成与音色设计](tts.md)。
 
@@ -13,6 +13,7 @@ ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，�
 | Minecraft / NeoForge | 26.1.2 / 26.1.2.114 |
 | ApricityUI | 1.2.6 |
 | Jupiter | CurseMaven 8569832 |
+| Saturn | 1.0-beta.1 / CurseMaven 9334739；客户端和服务端均必装，统一 Cost 支付与 Codec 工具 |
 | Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
 | Gson | 2.13.2；主项目直接声明依赖，Minecraft 提供运行时类 |
 | FTB Quests / Library / Teams | 26.1.2.8 / 26.1.2.9 / 26.1.2.4，可选 compileOnly |
@@ -40,8 +41,9 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | `agent/builtin/tool` | 每个行为各自一个 Tool（含游戏适配与内部入账工具），以及共享工具类型 |
 | `agent/routing` | 混合路由、本地匹配与缓存、语义声明、路由结果及诊断 |
 | `agent/model` | 模型接口、统一请求与计量入口、OpenAI 兼容协议及报文 |
+| `search` | 独立 Search / Fetch 接口、DeepSeek 协议客户端和类型化结果，尚未注册为 Agent 能力 |
 | `agent/store` | 存储接口、文件事务存储、玩家业务记录与对话投影 |
-| `agent/commerce、agent/prompt` | 商城目录、报价和系统币接口；提示词快照与占位符模板 |
+| `agent/commerce、agent/prompt` | 商城目录、Saturn Cost 账单、报价与订单；提示词快照与占位符模板 |
 | `config` | Agent/路由配置，以及模组客户端、语音和计费配置 |
 | `command/client、command/server` | 两端命令注册、分派与补全，调用 Agent 根包中的类型化指令声明与解析 |
 | `util、util/codec` | 类型处理 Map、Codec/Schema 工具、共享 HTTP/SSE；配置目录由 ConfigInstance 提供 |
@@ -50,7 +52,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | `runtime/client、screen/gui、screen` | 客户端不可变会话状态、导航及副作用、助手界面、设置、用量与通知队列 |
 | `speech/aliyun、speech/tts、speech/asr、registry/speech、data/speech` | 语音接口及供应商协议、工厂注册、报文、流式播放会话、缓存与可取消录音 |
 | `compat/ftb、compat/voicechat` | 可选 FTB 工具/事件和 SVC 收音，检测后才加载相关实现 |
-| `event、network、network/payload` | 扩展/按键事件、协议 4 注册、Handler 与有界载荷 |
+| `event、network、network/payload` | 扩展/按键事件、协议 6 注册、Handler 与有界载荷 |
 
 上表路径均相对于 `src/main/java/com/iafenvoy/system/`。Agent 与游戏接入代码处于同一主项目；模块、工具和服务接口仍保留职责划分，工具使用稳定逻辑 ID，方便后续扩展业务。
 
@@ -60,17 +62,19 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 ## Codec 边界
 
+`data.SystemDefinition` 使用 `RecordCodecBuilder` 保存名称/介绍翻译键及预留模块 ID 列表。`registry.SystemDefinitions` 在 mod bus 的 `DataPackRegistryEvent.NewRegistry` 注册 `system:system`，加载与网络同步共用 `SystemDefinition.CODEC`；数据路径为 `data/<namespace>/system/system/<path>.json`。服务端通过 `SystemDefinitions.current(server.registryAccess())` 读取当前 `system:default`，客户端通过 `AssistantClient.system()` 从当前连接读取同步快照；未连接或缺少默认条目时使用内置元数据，不跨世界缓存。模块 ID 仅为元数据，不触发可选类加载或改变模块权限。该原生注册表随世界加载，不属于 `/reload` 的 retained listener；完整格式与资源包翻译见[系统定义](datapacks.md#系统定义)。
+
 配置类各自声明 `FILE_NAME`、`CODEC` 和 `ConfigInstance<T> INSTANCE = ConfigInstance.of(...)`。容器首次初始化时从 `/defaults/<文件名>` 复制缺失的默认文件，再通过 Codec 读取；已有文件不覆盖，加载失败时记录错误并在内存中使用默认值。读取使用 `INSTANCE.get()`，提交不可变新值使用 `INSTANCE.set(next)`，实际变化由容器自动调用 `markDirty()`。若未来使用可变配置并原地修改，则必须显式调用 `INSTANCE.markDirty()`，不能绕过变更标记。
 
 `ConfigReloader` 在资源重载时调用 `reloadAll()`，客户端/服务端 tick 与关闭事件调用 `saveAll()`，只保存有标记的配置。检查标记、保存及加载使用同一实例锁；保存失败恢复标记以便重试，重载前先保存已提交的改动。所有生效配置从对应 `config.file.XxxConfig.INSTANCE.get()` 直接读取；引擎、路由、模型客户端和成就桥接不缓存配置对象，构造函数也不传递全局配置，删除 `settings()` 转发链。
 
-设置表单仍为未提交草稿，试听不会自动保存；语音页的重新加载按钮调用 `SpeechConfig.INSTANCE.load()` 并替换本页草稿，音色直接写入该配置。TTS 队列只存文本和会话，启动播报时读取配置；模型与语音请求发出后保留该次调用的报文、供应商和计量信息，不因配置变化改写在途请求。模型连接地址、鉴权和请求体在配置实例锁内一起读取，网络请求在锁外执行。路由阈值、缓存容量和新条目 TTL 按当前配置读取；已生成的词法索引和模型并发信号量仍在启动时构建，修改索引例句、索引语言或并发容量后需重启。
+助手输入框的设置指令为 `/settings`，执行与补全共享 `AssistantClientCommands` 的入口表；游戏聊天栏通过客户端 `RegisterClientCommandsEvent` 注册 `/system settings`，复用同一设置入口，不发送服务端命令或模型请求，并与服务端 `/system` 的其他子命令合并补全。聊天命令打开设置后返回游戏，助手内打开则保留原页面与草稿。设置控件在 input/change/开关操作时提交本页配置，本地配置先 `INSTANCE.set(next)` 标记修改，再立即 `save()`；服务端偏好沿用请求及确认流程。TTS / ASR 允许先保存不完整凭据，完整参数在试听、合成或开始识别时校验；非法音量保留原值并提示错误，其他设置仍保存。语音页没有 JSON 导入、重新加载或手动保存按钮。TTS 队列只存文本和会话，启动播报时读取配置；模型与语音请求发出后保留该次调用的报文、供应商和计量信息，不因配置变化改写在途请求。模型连接地址、鉴权和请求体在配置实例锁内一起读取，网络请求在锁外执行。路由阈值、缓存容量和新条目 TTL 按当前配置读取；已生成的词法索引和模型并发信号量仍在启动时构建，修改索引例句、索引语言或并发容量后需重启。
 
 `ConfigInstance.getConfigFolder()` 提供所有配置共用的根目录，配置实例和 TTS 缓存分别在其下拼接文件名及固定 `tts-cache` 子目录，不再维护额外的 `SystemConfig` 路径工具。
 
 `AgentConfig` 只保留执行预算、并发、每日模型限额和时区；`ModelConfig` 管模型连接和提供商参数，`SemanticConfig` 管本地路由，`AdvancementConfig` 管成就绑定。对应文件为 `system-agent.json`、`system-model.json`、`system-semantic.json`、`system-advancements.json`，均位于 `config/system/`。奖励、商品和奖池完全由数据包定义，不参与配置解析，不提供旧聚合配置自动迁移。
 
-`CodecIO` 统一限长 JSON 解析及 Codec 编解码；HTTP 响应可通过 `Document` 一次解析后分别解码用量与正文，保证正文无效仍记录已计费用量。存档和恢复日志使用 `RecordCodecBuilder`，可选字段通过严格的 `optionalFieldOf` 读取；配置使用不可变 record、`RecordCodecBuilder` 和 record getter，按字段以 `lenientOptionalFieldOf` 读取。范围与字段语义在子 Codec 校验，枚举及嵌套构造异常通过 `ConfigCodecs` 转为解析错误。配置中缺失、null、类型错误、无效枚举、越界值或嵌套 Codec 构造异常只回退该字段，其他有效配置保留；配置集合返回不可变快照，玩家文件仍使用 FileAgentStore 的原有 force/原子替换事务。
+`CodecIO` 统一限长 JSON 解析及 Codec 编解码；HTTP 响应可通过 `Document` 一次解析后分别解码用量与正文，保证正文无效仍记录已计费用量。存档和恢复日志使用 `RecordCodecBuilder`，业务账本的可选字段通过严格的 `optionalFieldOf` 读取；可丢弃的 `Conversation.requests` 展示/请求回放缓存使用 `lenientOptionalFieldOf`，结果载荷过期或格式无效时仅将该缓存回退为空，不影响绑定、奖励、订单、写步骤和其他玩家数据，也不迁移旧载荷。配置使用不可变 record、`RecordCodecBuilder` 和 record getter，按字段以 `lenientOptionalFieldOf` 读取。范围与字段语义在子 Codec 校验，枚举及嵌套构造异常通过 `ConfigCodecs` 转为解析错误。配置中缺失、null、类型错误、无效枚举、越界值或嵌套 Codec 构造异常只回退该字段，其他有效配置保留；配置集合返回不可变快照，玩家文件仍使用 FileAgentStore 的原有 force/原子替换事务。
 
 `AgentRequest` 表达聊天、模块调用、控制请求和偏好，通过 `Types.REGISTRY` 注册的 `MapCodec` 按 `type` 分派；已删除 `mode/encodedInput/decode` 的字符串转换。`AgentResponse` 同样分派回复、通知、打开界面和绑定变更。两端载荷通过原版 `ByteBufCodecs.fromCodecWithRegistries` 复用 Codec，直接传递类型对象；JSON 只用于文本边界。模型路由返回值按 `capabilityId` 从本次可选模块的 Codec Map 分派，签到仅接收 SignInDecision，发送的玩家投影不包含其他在线玩家。ConversationMemory 使用有界、允许字段组成的对象投影。
 
@@ -91,7 +95,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | `SpeechUsageReportC2S` | `system:speech_usage_report_c2s` |
 | `RecognitionUsageReportC2S` | `system:recognition_usage_report_c2s` |
 
-当前协议版本为 **4**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航和绑定变更，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的 Codec 在网络解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
+当前协议版本为 **6**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航和绑定变更，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的 Codec 在网络解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
 
 ## 扩展模块
 
@@ -101,7 +105,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 每个 Tool 只负责一个行为，`ToolRegistry.Type<I, O>` 保存稳定 ID、参数 `MapCodec<I>` 和结果 `Codec<O>`，`Tool<I, O>` 保存写入、幂等、事件权限和单一 Handler。模块直接调用 `context.tool(type, stepId, typedInput)` 获得类型化结果；一个流程需要多个行为时使用模块的 `List.of(toolA, toolB)` 组合。同一工具被多个模块使用时共享同一实例，重复的不同实现或同 ID 不同类型键会被拒绝。
 
-扩展在 `AssistantRegistrationEvent` 中只需调用 `engine.registerModule(module)`：注册表核对描述白名单与工具列表，检查模块 ID、指令别名和工具实例冲突，再统一收集工具、指令、语义 profile 和快捷入口。不再提供先注册工具、再注册模块的两阶段入口。FTB 也使用此路径，查询、详情、普通领奖、新手礼包领取和明确物品提交各有独立 Tool 及对应模块，不需要专用服务接口。
+扩展在 `AssistantRegistrationEvent` 中只需调用 `engine.registerModule(module)`：注册表核对描述白名单与工具列表，检查模块 ID、指令别名和工具实例冲突，再统一收集工具、指令、语义 profile 和快捷入口。不再提供先注册工具、再注册模块的两阶段入口。FTB 也使用此路径，查询、详情、普通领奖、新手礼包领取和明确任务提交各有独立 Tool 及对应模块，不需要专用服务接口。
 
 `PayloadRegistry` 参考原版 `Recipe` / `PlacementModifier` 的类型分派，统一使用 `Codec.dispatch` 按 `moduleId` 选择共享参数 Codec；调用封装为 `{"moduleId":"system:item_query","input":{"query":"stone"}}`。`ModuleRegistry.call` 根据同一类型键定位当前服务器已安装模块、校验参数并生成可执行调用，不再维护另一套输入 dispatch Codec。模型目录和模型返回值解码都由当前模块注册表约束；未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `TypedPayload<?>`。
 
@@ -109,13 +113,13 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 ### 调度、路由与执行职责
 
-`ModuleRouting.explicitOnly()` 排除模型与自动语义选择，同时允许模块注册自己的明确指令；`structuredOnly()` 保留为相同的自动选择禁用声明。执行入口允许 `STRUCTURED` 和注册表解析得到的 `COMMAND`，自动来源仍需 `modelSelectable` 授权。物品任务提交采用这一方式，不通过自然语言推断自动消费背包。
+`ModuleRouting.explicitOnly()` 排除模型与自动语义选择，同时允许模块注册自己的明确指令；`structuredOnly()` 保留为相同的自动选择禁用声明。执行入口允许 `STRUCTURED` 和注册表解析得到的 `COMMAND`，自动来源仍需 `modelSelectable` 授权。手动任务提交采用这一方式，不通过自然语言推断自动消耗物品、经验或勾选任务。
 
 - `AgentEngine` 提供统一入口，持有服务和玩家生命周期，并通过同一个 `execute` 校验模块权限、选择策略、执行流程、报告部分成功。
 - `InteractiveExecutor` 管理每玩家一个交互请求、取消代次、请求指纹与结果回放；入队、初始化和写回都检查取消代次。
 - `EventExecutor` 管理持久事件、规则授权、去重和恢复；恢复使用已保存策略、预算与工具回执。
 - `ConversationService` 负责历史读取、清空和偏好修改，不重复实现执行或队列逻辑。
-- `QuestNarration` 管理只读任务口播、短期同玩家并发约束、模型整理片段缓存及同批合并，不占用主聊天、不创建对话记录。FTB 的 `FtbQuestSpeech` 只提供主线程定义快照；格式化和模型预算及客户端 session 边界见[语音合成](tts.md)。
+- `QuestNarration` 管理只读任务口播、短期同玩家并发约束、模型整理片段缓存及同批合并，不占用主聊天、不创建对话记录。`QuestBackgrounds` 按任务唯一 ID、语言和内容指纹持久化背景分类与文案（含无背景），存档根目录文件为 `system-quest-backgrounds.json`，不含玩家进度。FTB 的 `FtbQuestSpeech` 只提供主线程定义快照；命中缓存后仍复核当前权限，格式化和模型预算及客户端 session 边界见[语音合成](tts.md)。
 - `TaskExecutor` 统一有界调度、队列满错误、关闭和 Future 收尾；关闭后未执行的任务也得到 `CANCELLED`。
 - `HybridRouter` 只编排结构化调用 → 指令注册表 → 本地语义/缓存 → 一次模型回退。每个模块通过 `ModuleRouting<I>` 提供自己的指令、例句、参数提取和可选只读快捷入口。
 - `ExecutionContext` 是执行权限、预算、模型与工具调用的共同入口。Module 组合流程，Tool 每次只执行一个行为。
@@ -124,7 +128,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 ### 内置输入与输出
 
-`agent.builtin.input` 与 `agent.builtin.output` 中每个类型独立成文件，直接导入后使用 `QuestDetailInput`、`PlayerSnapshotOutput` 等名称，不再通过聚合外类引用。输入使用带校验和 Schema 元数据的 MapCodec，输出使用 Codec；`QuestLookupOutput` 是由 QuestPageOutput / QuestDetailOutput 实现的 sealed interface。奖励入账参数 `RewardCreditInput` 归入输入包，物品直接使用原版 `ItemStackTemplate.CODEC`，奖励使用 `PlayerData.Reward.CODEC`；`Reward.ITEMS_CODEC` 统一限制产出为 1～36 项。重载阶段不创建物品堆，运行时在游戏线程调用模板的 `create()`。
+`agent.builtin.input` 与 `agent.builtin.output` 中每个类型独立成文件，直接导入后使用 `QuestDetailInput`、`PlayerSnapshotOutput` 等名称，不再通过聚合外类引用。输入使用带校验和 Schema 元数据的 MapCodec，输出使用 Codec；`QuestLookupOutput` 通过注册表分派 QuestListOutput / QuestDetailOutput / StarterGiftOutput。奖励入账参数 `RewardCreditInput` 归入输入包，物品直接使用原版 `ItemStackTemplate.CODEC`，奖励使用 `PlayerData.Reward.CODEC`；`Reward.ITEMS_CODEC` 统一限制产出为 1～36 项。重载阶段不创建物品堆，运行时在游戏线程调用模板的 `create()`。
 
 ### 从 Codec 定义生成输入 schema
 
@@ -221,31 +225,43 @@ AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", Res
 
 `agent/commerce/CommerceCatalog` 是奖励、商品与奖池目录的不可变快照，只从数据包生成；默认内容也放在 JAR 内 `data/system/system/signin_rewards/`、`shop_offers/` 与 `lottery_pools/`。初始目录注入引擎，重载后通过 `engine.catalog(snapshot)` 发布新目录。MC 使用已核对依赖源码的 `AddServerReloadListenersEvent.addRetainedListener` 注册加载器；只在成功切换服务器资源后发布新快照，不使用全局跨世界目录。资源同路径按数据包优先级覆盖，不同 ID 汇总，格式见 [扩展配置](datapacks.md)。
 
-奖励和商品 ID 使用 `Identifier`，通过 `Identifier.CODEC` 解析；签到选择、报价请求和成就奖励引用保留该类型，只在搜索或对话摘要等文本边界转换。`Price.type` 使用实现 `StringRepresentable` 的 `PaymentType` 枚举，目录校验、展示可用性、报价和扣款使用枚举常量；JSON 仍为 `ITEMS` / `SYSTEM_COIN`，未知类型由枚举 Codec 拒绝。
+奖励和商品 ID 使用 `Identifier`，通过 `Identifier.CODEC` 解析；签到选择、报价请求和成就奖励引用保留该类型，只在搜索或对话摘要等文本边界转换。商品与奖池直接保存 `List<Cost>`，通过 Saturn `Cost.LIST_CODEC` 按注册类型分派；目录监听器使用 NeoForge 注入的 `getRegistryLookup()` 创建 RegistryOps，支持资源 Cost 的动态注册表引用。`CommerceCatalog.Price` 仅保存求值后的物品图标和文字组件，供客户端及订单快照使用，不含可执行费用。
 
 `system:shop` 分页浏览、`system:shop_quote` 生成预览、`system:shop_purchase` 处理独立确认，后者拒绝模型路由直接进入。支付内容只来自服务端签发的 `CommerceQuotes`，绑定玩家、操作类型与目录版本；订单按报价 ID 持久化，清空对话不删除订单。`ShopPurchaseTool` 与 `LotteryDrawTool` 各自只负责一种确认行为，通过同一 `CommerceTransactions` 预留 `CommerceOrder` 与锁定的收件箱权益，再进入受限主线程队列验证模板并扣除材料，最后在同一玩家事务中完成订单并解锁权益。扣款失败与结果未知分别记录；未知订单不自动重试，权益保持锁定。`Purchase.order` 保存操作类型、来源、价格及完整奖励快照；没有迁移旧 `Purchase.offer` 的兼容逻辑，开发存档若无法解析，使用 `/system reset [玩家]` 后重新授予。
 
 `system:lottery` 浏览奖池、`system:lottery_preview` 分页展示奖品权重并签发确认、`system:lottery_draw` 只接受结构化确认。浏览与预览声明指令及语义 profile；实际抽奖不进入模型能力目录。`LotteryPool` 通过 JDK `ThreadLocalRandom.nextLong(totalWeight)` 选择一个奖励，结果在支付前存入订单；整个奖池的物品模板在扣款前创建验证，避免错误奖品改变成功抽奖的概率。待支付或支付未知权益不进入收件箱奖励展示，仅返回订单状态；完成后重复确认返回原回执。
 
-奖池列表的 `LotteryPoolOutput.prizes` 通过 Codec 携带首个奖品页的公开奖励模板、权重及完整总权重，供共享物品投影显示图标和概率；列表与详情使用同一个 8 项分页常量。详情已发送独立 `LotteryPrizeOutput` 卡片，顶部摘要不重复携带奖品。预览不会生成抽奖结果、扣款或调用模型。物品消耗统一由 `AssistantItems` 渲染，免费与系统币仍使用文字；签到候选的物品卡片保留所属奖励包名称，物品模板只在客户端展示阶段创建。
+奖池列表的 `LotteryPoolOutput.prizes` 通过 Codec 携带首个奖品页的公开奖励模板、权重及完整总权重，供共享物品投影显示图标和概率；列表与详情使用同一个 8 项分页常量。详情已发送独立 `LotteryPrizeOutput` 卡片，顶部摘要不重复携带奖品。预览不会生成抽奖结果、扣款或调用模型。单物品消耗统一由 `AssistantItems` 渲染，免费、资源及其他 Cost 使用文字；签到候选的物品卡片保留所属奖励包名称。
 
-`SystemCoinPayment` 预留 `available()` 和异步 `debit(UUID,long,transactionId)`。默认关闭。可信模组可以在 `AssistantRegistrationEvent` 中使用 `engine.coinPayment(provider)` 接入；适配器必须按交易 ID 持久化幂等扣款，`true` 表示已扣款，`false` 必须保证没有扣款，异常一律视为不确定。`available()` 不得阻塞，`debit` 从维护线程调用，不得直接使用 MC 线程 API。当前没有内置币账本或管理命令。
+商城 / 抽奖模块共用只读 `CommercePreviewTool`，由 `CommerceTransactions.preview` 在游戏线程按目录 ID 获取可信费用并生成 `CommerceCosts.Prepared`。Cost 只定价一次，短期报价保留绑定玩家实体、支付目标及金额的 Saturn `CostPayment`；确认沿用该账单，掉线 / 重生导致实体更换时拒绝旧账单。`CostContext` 包含 `origin=system:shop` / `system:lottery` 和 `system:source`，扩展 Cost 可读取。System 不再保留单独的系统币接口或自定义物品扣款器；币可由 Saturn 资源或扩展 Cost 表达。
 
-订单、收件箱各最多 4096 条，文件总体 4MiB；没有历史订单归档工具。材料校验用 `ItemStack.isSameItemSameComponents`，只消费与价格模板物品类型、最终组件完全匹配的物品。崩溃时 MC 存档与外部文件无法统一提交，人工核对窗口仍存在。
+支付全部通过 Saturn 的 `test()` / `pay()` 执行。当前依赖会在实际扣款出错后继续其他费用并可能返回成功，因此 `CommerceCosts` 包装绑定事务，额外追踪每项真实扣款的失败与异常；一旦出现部分 / 不确定扣款，订单和权益保持 `PAYMENT_UNKNOWN`，不发奖、不自动重试。Saturn 不统一预留重复 / 重叠费用，不保证跨费用回滚，数据包应合并同一种需求。扩展 Cost 必须遵守 `prepare`、`execute(true)` 只读的契约。
+
+订单、收件箱各最多 4096 条，文件总体 4MiB；没有历史订单归档工具。材料匹配与扣除由 Saturn Cost 执行，普通物品 ID 可能消耗带自定义组件的同类物品，范围为玩家 Inventory。订单只保存展示价格与完整奖励快照，不序列化绑定的 CostPayment 或恢复后自动扣款。崩溃时 MC 存档与外部文件无法统一提交，人工核对窗口仍存在；旧价格存档不迁移，必要时用 `/system reset [玩家]` 清理开发数据。
 
 ## FTB 适配与边界
 
 只有 `ModList.isLoaded("ftbquests")` 为真才反射加载 `FtbQuestAdapter`；该类内部直接调用 Java API，反射只用于隔离加载，业务不走 MCP 传输。先检查 `ServerQuestFile.exists()`，再访问不可空的 `getInstance()`。
 
-查询包含已完成但仍可领奖励的任务。每页最多 8 个任务、每个任务 4 个奖励、每个自选奖励 8 个选项，同时按响应大小提前分页；更多奖励和选项由独立按钮继续读取。领取引用为随机短期令牌，绑定玩家、队伍、任务/奖励对象、完成时间、自选表版本，2 分钟失效；重启、换队或变化后重新查询。读取回执不以模型文字认定成功，自选路径校验索引并采用 FTB 的先标记后调用奖励语义。第三方奖励的实际交付不作独立保证。
+查询包含已完成但仍可领奖励的任务。任务列表一次返回全部匹配简表并连续编号，查询与名称候选不再携带列表分页偏移；详情保留每页 4 个奖励、每个自选奖励 8 个选项；更多奖励和选项由独立按钮继续读取。领取引用为随机短期令牌，绑定玩家、队伍、任务/奖励对象、完成时间、自选表版本，2 分钟失效；重启、换队或变化后重新查询。读取回执不以模型文字认定成功，自选路径校验索引并采用 FTB 的先标记后调用奖励语义。第三方奖励的实际交付不作独立保证。
+
+任务列表在完整界面与通知中使用限高滚动区域，不再创建列表翻页动作。S2C 回复使用 trusted Codec 和 NeoForge 的大包拆分，不再受旧的 60000 字符回复拦截；C2S 仍使用受限解码。玩家文件容量不足时先按整轮淘汰对话及回放缓存，业务记录不参与淘汰。
 
 `FtbQuestAdapter.install` 同时安装 `FtbQuestNotifications` 的进程级监听器，仍只有检测到可选依赖后才加载；其服务端快照按 `MinecraftServer` 隔离，停止时移除。核对当前依赖源码后使用 NeoForge 原生 `FTBQuestsEvent.QuestProgress` 的 `COMPLETED`，并监听 task/quest/chapter/file 的 started/completed 变化。相同事件也会在客户端回显，必须以 `object.getQuestFile() instanceof ServerQuestFile` 过滤，不能重复发送。
 
-FTB 没有专门的解锁事件。按队伍保存可见且 `canStartTasks` 的任务 ID 集合，收到进度事件后标记 dirty，在服务器 tick 结束时合并比较；完成提示按事件顺序先发送，新增且未完成的任务按章节/任务顺序分别发送解锁提示。保留已完成但可推进的 ID 作为基线，避免普通重置直接冒充新解锁；每 20 tick 再扫描一次，以覆盖没有进度事件的锁定、重置与重复任务冷却变化。锁定切换、换队和任务文件 cache clear 重载只重建基线，不批量播报已有任务。只有新绑定成功会在 `AssistantPlayers` 标记一次待发送引导，绑定消息先发送，等登录基线就绪且队伍可用后由 FTB tick 消费该标记，依次发送可领取的新手礼包和普通任务概览（总数及前三项）；缺少内容时跳过。概览不生成列表编号，点击“查看任务”才重新执行正式分页查询。普通登录及重复授予不创建标记，登出、撤销或重置清除未发送标记，文件重载不重复引导；撤销后新绑定可再次触发。FTB 明确关闭通知的进度批次静默更新基线，隐藏章节与不可见任务不发送。
+FTB 没有专门的解锁事件。按队伍保存可见且 `canStartTasks` 的任务 ID 集合，收到进度事件后标记 dirty，在服务器 tick 结束时合并比较；完成提示按事件顺序先发送，新增且未完成的任务按章节/任务顺序分别发送解锁提示。保留已完成但可推进的 ID 作为基线，避免普通重置直接冒充新解锁；每 20 tick 再扫描一次，以覆盖没有进度事件的锁定、重置与重复任务冷却变化。锁定切换、换队和任务文件 cache clear 重载只重建基线，不批量播报已有任务。只有新绑定成功会在 `AssistantPlayers` 标记一次待发送引导，绑定消息先发送，等登录基线就绪且队伍可用后由 FTB tick 消费该标记，依次发送可领取的新手礼包和普通任务概览（总数及前三项）；缺少内容时跳过。概览不生成列表编号，点击“查看任务”才重新执行完整列表查询。普通登录及重复授予不创建标记，登出、撤销或重置清除未发送标记，文件重载不重复引导；撤销后新绑定可再次触发。FTB 明确关闭通知的进度批次静默更新基线，隐藏章节与不可见任务不发送。
 
-`FtbQuestRules` 统一查询、详情、领奖及通知的读取范围：无任务或全部为原生 `CheckmarkTask` 且无奖励的任务视为介绍任务，系统不读取，也不修改其进度或绕过它作为前置时的依赖。至少有一个原生勾选任务、不可重复、所有奖励均为非空且非隐藏的原生 `ItemReward` 时，识别为新手礼包。使用精确类匹配，第三方任务/奖励子类、混合奖励及重复任务保留普通处理，不按任务名称猜测。
+`FtbQuestReader` 是独立的只读任务入口，按当前 `ServerQuestFile` 与 `TeamData` 创建并在服务端线程使用，不缓存进度。`stream(Predicate<Quest>)` 统一章节遍历、可见性和介绍任务过滤，其余类型可组合谓词扩展；查询、详情、播报、礼包和通知共用这里的读取判定。无任务或全部为原生 `CheckmarkTask` 且无奖励的任务视为介绍任务，系统不读取，也不修改其进度或绕过它作为前置时的依赖。至少有一个原生勾选任务、不可重复、所有奖励均为非空且非隐藏的原生 `ItemReward` 时，识别为新手礼包。使用精确类匹配，第三方任务/奖励子类、混合奖励及重复任务保留普通处理，不按任务名称猜测。
 
-新手礼包详情使用 `StarterGiftOutput`，在两种界面和通知中共用物品预览；领取模块只接受可信按钮携带的 `StarterGiftInput`，不参与自由模型路由。领取引用绑定玩家、队伍、原任务/奖励对象及完成时间，2 分钟有效，撤销同步清理；过期后通过“查看礼包”刷新。显式领取时先重新检查解锁、暂停、可见及奖励阻止状态，再在 `withPlayerContext` 内逐个执行原生勾选提交，完成后通过 `TeamData.claimReward` 领取原奖励。任务顺序、自动领取和队伍奖励语义沿用 FTB；只以 FTB 原账本判断重复领取，不新建签到/收件箱权益。未完成全部预期领取时不会返回成功回执，第三方实际交付仍以背包为准；礼包完成不重复推送普通任务完成通知。
+读取视图分别为 `active(player)`（可见、已解锁、可推进、未完成，排除队伍锁定和玩家暂停）、`unfinishedStarterGifts()`（所有可见但未完成的礼包，包含尚未解锁项）、`availableStarterGifts(player)`（现在可领取的礼包，包含已完成但尚未领取的礼包）、`claimable(player)`（有可领奖励的任务）和 `manualSubmission(player)`（当前可执行且包含手动目标的任务）。`find(name)` 按标题或十六进制 ID 精确优先匹配，完整列表快照与玩家编号仍由 `FtbQuestAccess` 管理。通知单独使用 `notificationBaseline()` 保留已完成且可推进的任务，避免重置被当作新解锁。
+
+FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubmission(quest)` 对全部目标执行 `anyMatch`，任意一个原生手动目标就将整个任务归入手动提交，包括可选目标或已完成的手动目标。按实际配置区分消耗物品、仅任务界面物品、勾选、经验及仅启用按钮且不自动检查的自定义任务；未适配的资源目标保守交给 FTB 专用输入。类型判定不加载 `TaskClient`，也不把“没有 tick 自动检查”的击杀、观察等目标误当成手动任务。显式提交只遍历 `submittableTasks(quest)` 中支持直接调用的原生目标：消耗物品、勾选、经验和手动自定义按钮；仅任务界面、流体、能量与未知资源目标仍在 FTB 中操作，查询和通知不触发提交。
+
+`canComplete(player, team, quest)` 统一判断已解锁、未完成、玩家未暂停，且全部剩余目标均为原生 `CheckmarkTask` 的情况。`QuestOutput.canComplete` 供详情创建“完成此任务”动作，解锁通知共用同一判定和 `QuestSubmitModule.completeAction`。动作复用提交模块，`QuestSubmitInput.checkmarkOnly=true` 在真正执行时重查上述条件，并只遍历勾选目标，避免旧按钮提交新增加的资源目标；依赖、顺序、重复任务代次和完成通知合并仍沿用原链路。按钮不会自动执行、不会解锁真正不可推进的任务，也不改变介绍任务与新手礼包分类。新增该快照字段和受限提交模式后，当前网络协议为 `1`（任务列表输入移除 offset，列表输出改为 QuestListOutput）。
+
+新手礼包详情使用 `StarterGiftOutput.gifts` 汇总全部当前可领取的匹配任务；每组只同步内部任务 ID、奖励预览、领取引用与可选错误，界面和播报不显示任务名或章节。`StarterGiftQueryModule` 与只读 Tool 负责刷新完整列表，领取模块只接受可信按钮携带的 `StarterGiftInput.claimRefs`，不参与自由模型路由。领取引用绑定玩家、队伍、原任务/奖励对象及完成时间，2 分钟有效，撤销同步清理。显式批量领取先校验引用归属，再逐组核对解锁、暂停、可见和奖励阻止状态，在 `withPlayerContext` 内执行原生勾选提交，并通过 `TeamData.claimReward` 领取原奖励；不消耗物品或经验。成功项从列表移除，失败项保留错误与可用动作；回包仅静默更新状态和原礼包列表，不新建成功通知、对话记录或播报，全部领取后继续下一条通知。任务顺序、自动领取和队伍奖励语义沿用 FTB；不新建签到/收件箱权益，不重复推送礼包任务的普通完成消息。
+
+明确提交完成的普通任务与 FTB 原生完成事件合并到同一队伍、任务 ID 的当批完成项；提交回包仅结束请求，不再追加“已提交”或“进度更新”通知。未完成时才返回实际进度是否变化。`AgentResult.silent()` 统一标记这两类静默回包，客户端更新请求与礼包状态，历史不新增空白结果；写步骤与请求回放仍保留。新增礼包列表输入和丰富任务通知载荷后，未发布版本的网络协议统一为 `1`，客户端与服务端需同步更新。
 
 通知接收者为已完成系统绑定初始化的在线队员。`AssistantPlayers.notificationsEnabled` 复用服务端已完成登录基线作为绑定缓存，不在 tick 中读取玩家文件；发送前重新核对原玩家实例、连接代次、绑定运行代次及当前队伍。新加入或刚绑定的成员不接收加入前的解锁差异，离线队伍不保留积压。单队同 tick 最多保留 256 个不同完成项，客户端仍使用 32 个等待槽的限长 HUD 队列；大批量管理操作不承诺无限保留通知。消息由 `notifyEvent` 直接以 `event` 回包进入队列，没有模型请求、Agent 写任务或新奖励副作用；详情按钮继续走既有授权查询。通知没有独立持久化 outbox，不补播停机或离线期间的历史。FTB 原生 toast 不拦截。
 

@@ -109,6 +109,7 @@ configurations {
 
 dependencies {
     implementation "curse.maven:jupiter-1072905:8569832"
+    implementation "curse.maven:saturn-lib-1767455:9334739"
     implementation "com.sighs:ApricityUI-neoforge-26.1:${apricityui_version}"
 
     // SVC for optional voice input support

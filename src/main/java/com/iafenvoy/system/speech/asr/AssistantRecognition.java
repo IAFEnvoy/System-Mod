@@ -30,12 +30,9 @@ public final class AssistantRecognition {
 
     public static void configure(RecognitionConfig next) throws Exception {
         if (!RecognitionConfig.REGIONS.contains(next.region())) throw new SpeechException("region");
-        if (next.enabled()) {
-            try (AsrProvider provider = AsrProviders.create(next.provider())) {
-                provider.validate(next.request());
-            }
-        }
+        // Partial credentials are saved as typed; starting recognition still validates the complete request.
         RecognitionConfig.INSTANCE.set(next);
+        if (!RecognitionConfig.INSTANCE.save()) throw new SpeechException("config");
     }
 
     public static void validate() throws SpeechException {

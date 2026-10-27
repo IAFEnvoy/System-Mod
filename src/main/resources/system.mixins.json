@@ -3,7 +3,7 @@
   "package": "com.iafenvoy.system.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [],
-  "client": ["SpeechSoundEngineMixin"],
+  "client": ["AuiCursorReleaseMixin", "SpeechSoundEngineMixin"],
   "injectors": {
     "defaultRequire": 1
   },

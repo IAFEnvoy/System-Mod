@@ -27,6 +27,11 @@ public record AgentResult(String status, String messageKey, String text, List<Ca
         return new AgentResult("SUCCEEDED", key, "", List.of());
     }
 
+    // These results finish a request without creating another visible or spoken notification.
+    public boolean silent() {
+        return this.messageKey.equals("system.result.quest_submit_completed") || this.messageKey.equals("system.result.starter_gift_updated");
+    }
+
     public static AgentResult error(String code) {
         return new AgentResult("FAILED", "system.error." + code.toLowerCase(Locale.ROOT), "", List.of());
     }

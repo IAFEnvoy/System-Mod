@@ -6,6 +6,8 @@
 | --- | --- |
 | [使用与配置](usage.md) | 打开助手、服务端密钥、功能入口、隐私及奖励状态 |
 | [模型接口与 DeepSeek 兼容](model-api.md) | OpenAI Chat Completions、提供商配置、DeepSeek 思考参数与用量格式 |
+| [DeepSeek 网页搜索与抓取](search-api.md) | 独立 Search / Fetch Java 客户端、配置与 Codec；暂不开放给 Agent |
+| [外部 API 请求清单](external-apis.md) | 模组与独立音色工具访问的接口、客户端/服务端归属、触发条件和发送的数据 |
 | [开发与架构](development.md) | Agent 包组织、模块与工具接口、预算、持久化、MC 接入和当前限制 |
 | [轻量本地意图路由](semantic-routing.md) | 纯 Java 领域词表/TF-IDF、玩家意图缓存、只读直达、低把握回退与扩展 API |
 | [路由选型与后续计划](semantic-routing-plan.md) | 10MB 分发约束、fastText/LIBLINEAR 等方案核实、校准与后续方向 |

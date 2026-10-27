@@ -2,7 +2,6 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.commerce.CommerceQuotes;
-import com.iafenvoy.system.agent.commerce.SystemCoinPayment;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.model.ModelGateway;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
@@ -37,7 +36,6 @@ public final class AgentEngine implements AutoCloseable {
     private final Map<UUID, String> playerLanguages = new ConcurrentHashMap<>();
     private final AtomicBoolean closed = new AtomicBoolean();
     private volatile CommerceCatalog catalog;
-    private volatile SystemCoinPayment coinPayment = SystemCoinPayment.DISABLED;
     private final CommerceQuotes commerceQuotes = new CommerceQuotes();
     private final Set<UUID> maintenanceOwners = ConcurrentHashMap.newKeySet();
     // Incarnations invalidate every queued task and storage handle after revoke.
@@ -223,14 +221,6 @@ public final class AgentEngine implements AutoCloseable {
 
     public CommerceQuotes commerceQuotes() {
         return this.commerceQuotes;
-    }
-
-    public SystemCoinPayment coinPayment() {
-        return this.coinPayment;
-    }
-
-    public void coinPayment(SystemCoinPayment value) {
-        this.coinPayment = Objects.requireNonNull(value);
     }
 
     Semaphore modelSlots() {

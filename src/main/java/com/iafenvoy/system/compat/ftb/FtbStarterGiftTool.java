@@ -31,7 +31,7 @@ final class FtbStarterGiftTool implements ToolRegistry.Handler<StarterGiftInput,
             if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
             ServerQuestFile file = ServerQuestFile.getInstance();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));
-            return this.access.gifts.claim(player, file, team, input.claimRef());
+            return this.access.gifts.claim(player, file, team, input.claimRefs());
         });
     }
 }

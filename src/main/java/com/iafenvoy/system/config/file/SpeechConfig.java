@@ -14,7 +14,8 @@ import java.util.Locale;
  */
 public record SpeechConfig(boolean enabled, String provider, String apiKey, String region, String workspace,
                            String model, String voice, String language, int volume, boolean cacheEnabled,
-                           boolean questRequirements, boolean questRewards, boolean questDescription) {
+                           boolean questRequirements, boolean questRewards, boolean questDescription,
+                           boolean notificationSoundEnabled) {
     public static final String FILE_NAME = "system-speech.json";
     public static final Codec<SpeechConfig> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.BOOL.lenientOptionalFieldOf("enabled", false).forGetter(SpeechConfig::enabled),
@@ -29,14 +30,15 @@ public record SpeechConfig(boolean enabled, String provider, String apiKey, Stri
             Codec.BOOL.lenientOptionalFieldOf("cacheEnabled", false).forGetter(SpeechConfig::cacheEnabled),
             Codec.BOOL.lenientOptionalFieldOf("questRequirements", true).forGetter(SpeechConfig::questRequirements),
             Codec.BOOL.lenientOptionalFieldOf("questRewards", true).forGetter(SpeechConfig::questRewards),
-            Codec.BOOL.lenientOptionalFieldOf("questDescription", false).forGetter(SpeechConfig::questDescription)
+            Codec.BOOL.lenientOptionalFieldOf("questDescription", false).forGetter(SpeechConfig::questDescription),
+            Codec.BOOL.lenientOptionalFieldOf("notificationSoundEnabled", true).forGetter(SpeechConfig::notificationSoundEnabled)
     ).apply(i, SpeechConfig::new));
     public static final ConfigInstance<SpeechConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, defaults());
 
     public static final List<String> LANGUAGES = List.of("Client", "Auto", "Chinese", "English", "German", "Italian", "Portuguese", "Spanish", "Japanese", "Korean", "French", "Russian");
 
     public static SpeechConfig defaults() {
-        return new SpeechConfig(false, "aliyun", "", "beijing", "", "qwen3-tts-flash", "Cherry", "Client", 80, false, true, true, false);
+        return new SpeechConfig(false, "aliyun", "", "beijing", "", "qwen3-tts-flash", "Cherry", "Client", 80, false, true, true, false, true);
     }
 
     public boolean hasKey() {

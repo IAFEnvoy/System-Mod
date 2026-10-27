@@ -1,11 +1,13 @@
 package com.iafenvoy.system.agent.builtin;
 
 import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.input.ShopQueryInput;
 import com.iafenvoy.system.agent.builtin.input.ShopQuoteInput;
+import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
+import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.commerce.PaymentType;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 
@@ -18,9 +20,9 @@ import java.util.Optional;
  * Keeps shop browsing and quoting separate from the confirmed payment operation.
  */
 public final class ShopModule extends BuiltinModule<ShopQueryInput> {
-    public ShopModule() {
+    public ShopModule(ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
         super(ResultTypes.SHOP_ACTION, "Browse the system shop and prices.",
-                ShopQueryInput.CODEC, List.of(), true, false, ExecutionPolicy.quick(1, 0));
+                ShopQueryInput.CODEC, List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
     }
 
     @Override
@@ -34,7 +36,7 @@ public final class ShopModule extends BuiltinModule<ShopQueryInput> {
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, ShopQueryInput input) {
+    public AgentResult execute(ExecutionContext context, ShopQueryInput input) throws Exception {
         String query = input.query().toLowerCase(Locale.ROOT);
         int offset = input.offset();
         CommerceCatalog catalog = context.catalog();
@@ -42,10 +44,15 @@ public final class ShopModule extends BuiltinModule<ShopQueryInput> {
                 || offer.label().toLowerCase(Locale.ROOT).contains(query)
                 || offer.items().stream().anyMatch(item -> item.item().getRegisteredName().contains(query))).toList();
         List<AgentResult.Card> cards = new ArrayList<>();
-        for (CommerceCatalog.Offer offer : matches.stream().skip(offset).limit(8).toList()) {
-            boolean available = offer.price().type() != PaymentType.SYSTEM_COIN || context.coinPayment().available();
+        List<CommerceCatalog.Offer> page = matches.stream().skip(offset).limit(8).toList();
+        List<CommercePreviewOutput> prices = page.isEmpty() ? List.of() : context.tool(BuiltinTools.COMMERCE_PREVIEW, "prices",
+                new CommercePreviewInput(page.stream().map(CommerceCatalog.Offer::id).toList(), List.of(), false, catalog.revision()));
+        for (int index = 0; index < page.size(); index++) {
+            CommerceCatalog.Offer offer = page.get(index);
+            CommercePreviewOutput price = prices.get(index);
+            boolean available = price.available();
             cards.add(new AgentResult.Card("system.result.shop_offer", ResultTypes.SHOP_OFFER.of(new ResultTypes.ShopOffer(Optional.of(offer.id()), offer.label(),
-                    offer.items(), offer.price(), Optional.of(available))), available ? List.of(
+                    offer.items(), price.price(), Optional.of(available))), available ? List.of(
                     new AgentResult.Action("system.action.shop_quote", ResultTypes.QUOTE_ACTION, new ShopQuoteInput(offer.id(), Optional.of(catalog.revision())))) : List.of()));
         }
         if (matches.size() - offset > 8)

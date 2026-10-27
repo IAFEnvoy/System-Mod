@@ -4,7 +4,6 @@ import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.iafenvoy.system.network.payload.*;
-import com.iafenvoy.system.util.TypeDispatch;
 import com.iafenvoy.system.util.codec.CodecIO;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,11 +19,6 @@ import java.util.UUID;
 public final class ServerNetworkHandler {
     // Reconnects and binding resets invalidate callbacks from previous connection generations.
     private static final Map<UUID, UUID> CONNECTIONS = new HashMap<>();
-    // All reply paths, including registered asynchronous handlers, share the result size budget.
-    private static final TypeDispatch<Void, AgentResponse> OUTBOUND = new TypeDispatch<Void, AgentResponse>((_, response) -> (AgentResponse) response)
-            .register(AgentResponse.Reply.class, (_, reply) -> new AgentResponse.Reply(reply.requestId(), bounded(reply.result())))
-            .register(AgentResponse.Notice.class, (_, notice) -> new AgentResponse.Notice(bounded(notice.result())))
-            .register(AgentResponse.Binding.class, (_, binding) -> new AgentResponse.Binding(binding.change(), bounded(binding.result())));
 
     private ServerNetworkHandler() {
     }
@@ -101,11 +95,8 @@ public final class ServerNetworkHandler {
     }
 
     public static void send(ServerPlayer player, AgentResponse response) {
-        player.connection.send(new AssistantResponseS2CPayload(OUTBOUND.apply(null, response)));
-    }
-
-    private static AgentResult bounded(AgentResult result) {
-        return CodecIO.write(AgentResult.CODEC, result).length() > 60000 ? AgentResult.error("RESULT_TOO_LARGE") : result;
+        // NeoForge splits large server-built replies; quest lists must arrive without UI pagination.
+        player.connection.send(new AssistantResponseS2CPayload(response));
     }
 
     public static void connected(ServerPlayer player) {

@@ -51,6 +51,7 @@ public final class AssistantServer {
         this.engine = new AgentEngine(this.catalogListener.catalog(),
                 new FileAgentStore(server.getWorldPath(LevelResource.ROOT).resolve("system-agent")), new OpenAiCompatibleClient());
         try {
+            this.engine.questNarration().cacheFile(server.getWorldPath(LevelResource.ROOT).resolve("system-quest-backgrounds.json"));
             this.usage = new AssistantUsage(server, this.engine);
             this.refreshPrompts();
             MinecraftTools game = new MinecraftTools(server, this.gameQueue);
@@ -68,7 +69,8 @@ public final class AssistantServer {
 
     private void installModules(MinecraftTools game, CommerceTransactions transactions) {
         BuiltinModules.install(this.engine, List.of(new PlayerQueryTool(game).tool(), new ItemQueryTool(game).tool(),
-                new DeliverTool(this.engine, game).tool(), new ShopPurchaseTool(transactions).tool(), new LotteryDrawTool(transactions).tool()));
+                new DeliverTool(this.engine, game).tool(), new ShopPurchaseTool(transactions).tool(), new LotteryDrawTool(transactions).tool(),
+                new CommercePreviewTool(transactions).tool()));
         // Resolve optional adapters only after the mod check to keep their classes safe to omit.
         if (ModList.get().isLoaded("ftbquests")) {
             try {

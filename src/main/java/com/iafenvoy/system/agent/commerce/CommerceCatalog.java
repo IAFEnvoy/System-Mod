@@ -1,8 +1,12 @@
 package com.iafenvoy.system.agent.commerce;
 
+import com.iafenvoy.saturn.data.cost.Cost;
+import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStackTemplate;
 
@@ -36,18 +40,19 @@ public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, 
         return new CommerceCatalog(UUID.randomUUID().toString(), rewards, offers, lotteries);
     }
 
-    public record Offer(Identifier id, String label, List<ItemStackTemplate> items, Price price) {
+    public record Offer(Identifier id, String label, List<ItemStackTemplate> items, List<Cost> costs) {
         public static final Codec<Offer> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Identifier.CODEC.fieldOf("id").forGetter(Offer::id),
                 Codec.STRING.fieldOf("label").forGetter(Offer::label),
                 PlayerData.Reward.ITEMS_CODEC.fieldOf("items").forGetter(Offer::items),
-                Price.CODEC.fieldOf("price").forGetter(Offer::price)
+                Cost.LIST_CODEC.fieldOf("costs").forGetter(Offer::costs)
         ).apply(i, Offer::new));
 
         public Offer {
             if (label.isBlank())
                 throw new IllegalArgumentException("Invalid offer");
             items = List.copyOf(items);
+            costs = List.copyOf(costs);
         }
 
         public PlayerData.Reward reward() {
@@ -55,25 +60,16 @@ public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, 
         }
     }
 
-    public record Price(PaymentType type, List<ItemStackTemplate> items, long coins) {
+    // Only the evaluated display snapshot crosses the wire or enters the order journal.
+    public record Price(List<ItemPreviewOutput> items, List<Component> descriptions) {
         public static final Codec<Price> CODEC = RecordCodecBuilder.create(i -> i.group(
-                PaymentType.CODEC.fieldOf("type").forGetter(Price::type),
-                ItemStackTemplate.CODEC.listOf().optionalFieldOf("items", List.of()).forGetter(Price::items),
-                Codec.LONG.optionalFieldOf("coins", 0L).forGetter(Price::coins)
+                ItemPreviewOutput.CODEC.listOf().fieldOf("items").forGetter(Price::items),
+                ComponentSerialization.CODEC.listOf().fieldOf("descriptions").forGetter(Price::descriptions)
         ).apply(i, Price::new));
 
         public Price {
             items = List.copyOf(items);
-            switch (type) {
-                case ITEMS -> {
-                    if (items.isEmpty()) throw new IllegalArgumentException("Missing item price");
-                    if (coins != 0) throw new IllegalArgumentException("Unexpected coin price");
-                }
-                case SYSTEM_COIN -> {
-                    if (!items.isEmpty() || coins < 1)
-                        throw new IllegalArgumentException("Invalid coin price");
-                }
-            }
+            descriptions = List.copyOf(descriptions);
         }
     }
 }

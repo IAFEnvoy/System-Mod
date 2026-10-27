@@ -6,7 +6,7 @@ version = "${mod_version}" #mandatory
 displayName = "${mod_name}" #mandatory
 authors = "IAFEnvoy"
 description = '''
-Server-side AI game assistant with bounded modules, local FTB Quests integration and daily rewards.
+Server-side AI game assistant with various and extensible features.
 '''
 
 [[mixins]]
@@ -29,6 +29,20 @@ versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
 
+[[dependencies.${mod_id}]]
+modId = "saturn"
+type = "required"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
+modId = "apricityui"
+type = "required"
+versionRange = "[1.2.6,)"
+ordering = "AFTER"
+side = "CLIENT"
+
 # The FTB adapter is loaded only when this optional mod is present.
 [[dependencies.${mod_id}]]
 modId = "ftbquests"
@@ -42,12 +56,5 @@ side = "BOTH"
 modId = "voicechat"
 type = "optional"
 versionRange = "[0,)"
-ordering = "AFTER"
-side = "CLIENT"
-
-[[dependencies.${mod_id}]]
-modId = "apricityui"
-type = "required"
-versionRange = "[1.2.6,)"
 ordering = "AFTER"
 side = "CLIENT"

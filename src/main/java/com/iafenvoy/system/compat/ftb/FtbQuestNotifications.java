@@ -2,6 +2,7 @@ package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.builtin.QuestSubmitModule;
 import com.iafenvoy.system.agent.builtin.StarterGiftModule;
 import com.iafenvoy.system.agent.builtin.input.QuestClaimInput;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
@@ -14,7 +15,10 @@ import dev.ftb.mods.ftbquests.api.event.progress.ProgressEventData;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressType;
 import dev.ftb.mods.ftbquests.api.event.progress.QuestProgressEvent;
 import dev.ftb.mods.ftbquests.api.neoforge.FTBQuestsEvent;
-import dev.ftb.mods.ftbquests.quest.*;
+import dev.ftb.mods.ftbquests.quest.Quest;
+import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
+import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
+import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.quest.reward.ChoiceReward;
 import dev.ftb.mods.ftbquests.quest.reward.Reward;
 import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
@@ -85,7 +89,7 @@ final class FtbQuestNotifications {
         TeamState state = this.teams.get(data.teamData().getTeamId());
         Quest quest = data.object();
         if (state == null || state.silent || state.team.isLocked() || !visible(state.team, quest)
-                || FtbQuestRules.kind(quest) != FtbQuestRules.Kind.NORMAL) return;
+                || FtbQuestReader.kind(quest) != FtbQuestReader.Kind.NORMAL) return;
         AssistantServer runtime = AssistantServer.get(this.file.server);
         if (runtime == null) return;
         List<Recipient> recipients = new ArrayList<>();
@@ -147,6 +151,7 @@ final class FtbQuestNotifications {
             // Events coalesce within a tick; the slow refresh also observes locks, resets and repeat cooldowns.
             if (state.dirty || !state.recipients.equals(current) || this.ticks % 20 == 0) {
                 Map<Long, Quest> available = this.available(team);
+                Set<UUID> giftRecipients = new HashSet<>();
                 for (Completion completion : state.completed.values())
                     for (Recipient recipient : completion.recipients())
                         if (recipient.valid(runtime, this.file, id))
@@ -157,12 +162,13 @@ final class FtbQuestNotifications {
                         for (Recipient recipient : current.values()) {
                             if (!recipient.equals(state.recipients.get(recipient.player().getUUID()))) continue;
                             if (recipient.valid(runtime, this.file, id)) {
-                                if (FtbQuestRules.kind(quest.getValue()) == FtbQuestRules.Kind.STARTER_GIFT) {
-                                    if (FtbStarterGifts.available(recipient.player(), team, quest.getValue()))
+                                if (FtbQuestReader.kind(quest.getValue()) == FtbQuestReader.Kind.STARTER_GIFT) {
+                                    if (FtbQuestReader.starterGiftAvailable(recipient.player(), team, quest.getValue())
+                                            && giftRecipients.add(recipient.player().getUUID()))
                                         runtime.players().notifyEvent(recipient.player(), StarterGiftModule.preview(
-                                                this.access.gifts.preview(recipient.player(), team, quest.getValue())));
+                                                this.access.gifts.preview(recipient.player(), this.file, team)));
                                 } else
-                                    runtime.players().notifyEvent(recipient.player(), this.notification(quest.getValue(), false, null, team));
+                                    runtime.players().notifyEvent(recipient.player(), this.notification(quest.getValue(), false, recipient.player(), team));
                             }
                         }
                     }
@@ -183,38 +189,28 @@ final class FtbQuestNotifications {
 
     private Map<Long, Quest> available(TeamData team) {
         Map<Long, Quest> result = new LinkedHashMap<>();
-        if (team.isLocked()) return result;
-        for (Chapter chapter : this.file.getAllChapters()) {
-            if (chapter.isAlwaysInvisible()) continue;
-            for (Quest quest : chapter.getQuests())
-                if (visible(team, quest) && (team.canStartTasks(quest)
-                        || team.isCompleted(quest) && FtbQuestRules.kind(quest) == FtbQuestRules.Kind.STARTER_GIFT))
-                    result.put(quest.getId(), quest);
-        }
-        // Keep completed but startable quests in the baseline so a reset is not itself a new unlock.
+        for (Quest quest : new FtbQuestReader(this.file, team).notificationBaseline()) result.put(quest.getId(), quest);
         return result;
     }
 
     private static boolean visible(TeamData team, Quest quest) {
-        return FtbQuestRules.readable(team, quest);
+        return FtbQuestReader.readable(team, quest);
     }
 
     private void startup(AssistantServer runtime, ServerPlayer player, TeamData team) {
-        List<Quest> available = new ArrayList<>(this.available(team).values());
+        FtbQuestReader reader = new FtbQuestReader(this.file, team);
         // Binding was sent before initialization; enqueue all available gifts before the quest overview.
-        for (Quest quest : available)
-            if (FtbStarterGifts.available(player, team, quest)) runtime.players().notifyEvent(player,
-                    StarterGiftModule.preview(this.access.gifts.preview(player, team, quest)));
-        List<Quest> active = available.stream().filter(quest -> FtbQuestRules.kind(quest) == FtbQuestRules.Kind.NORMAL
-                && FtbQuestRules.active(team, quest) && !team.isProgressionPaused(player)).toList();
+        if (!reader.availableStarterGifts(player).isEmpty()) runtime.players().notifyEvent(player,
+                StarterGiftModule.preview(this.access.gifts.preview(player, this.file, team)));
+        List<Quest> active = reader.active(player).stream().filter(quest -> FtbQuestReader.kind(quest) == FtbQuestReader.Kind.NORMAL).toList();
         if (!active.isEmpty()) {
             String key = "system.result.quest_startup";
-            // Three titles fit the HUD's six-line body; viewing all always runs a fresh normal query.
+            // Keep the introduction brief; viewing all always runs a fresh normal query.
             QuestStartupOutput overview = new QuestStartupOutput(active.size(), active.stream().limit(3)
                     .map(quest -> FtbQuestAccess.brief(team, quest, 0)).toList());
             runtime.players().notifyEvent(player, new AgentResult("SUCCEEDED", key, "", List.of(new AgentResult.Card(key,
                     ResultTypes.QUEST_STARTUP.of(overview), List.of(new AgentResult.Action("system.action.view_quests",
-                    ResultTypes.QUESTS_ACTION, new QuestQueryInput("", 0, false)))))));
+                    ResultTypes.QUESTS_ACTION, new QuestQueryInput("", false)))))));
         }
     }
 
@@ -222,8 +218,10 @@ final class FtbQuestNotifications {
         String key = completed ? "system.result.quest_completed" : "system.result.quest_unlocked";
         String id = String.format(Locale.ROOT, "%016x", quest.getId());
         List<AgentResult.Action> actions = new ArrayList<>();
+        if (!completed && FtbQuestReader.canComplete(player, team, quest))
+            actions.add(QuestSubmitModule.completeAction(id));
         if (completed && this.file.getQuest(quest.getId()) == quest) {
-            List<Reward> rewards = quest.getRewards().stream().filter(reward -> FtbQuestAccess.canClaim(player, team, reward)).toList();
+            List<Reward> rewards = quest.getRewards().stream().filter(reward -> FtbQuestReader.canClaim(player, team, reward)).toList();
             // A single ordinary reward can execute directly; choices and multiple rewards retain explicit selection.
             if (rewards.size() == 1 && !(rewards.getFirst() instanceof ChoiceReward)) {
                 FtbQuestAccess.reference(player, team, quest, rewards.getFirst(), this.access.references).ifPresent(reference ->
@@ -236,7 +234,30 @@ final class FtbQuestNotifications {
                 ResultTypes.QUEST_NOTICE.of(new ResultTypes.QuestNotice(id, MiscUtil.clip(quest.getTitle().getString(), 256),
                         MiscUtil.clip(quest.getChapter().getTitle().getString(), 128), quest.getRewards().stream()
                         .filter(reward -> !team.isRewardBlocked(reward) && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE)
-                        .flatMap(reward -> FtbQuestAccess.previewItems(reward).stream()).toList())), actions)));
+                        .flatMap(reward -> FtbQuestAccess.previewItems(reward).stream()).toList(),
+                        !completed && (!quest.getHideTextUntilComplete().get(quest.getChapter().isHideTextUntilComplete()) || team.isCompleted(quest))
+                                ? String.join("\n", quest.getRawDescription()) : "",
+                        completed ? List.of() : quest.getTasksAsList().stream().map(task -> FtbQuestSpeech.requirement(team, task).text()).toList(),
+                        quest.getRewards().stream().filter(reward -> !team.isRewardBlocked(reward)
+                                        && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE && FtbQuestAccess.previewItems(reward).isEmpty())
+                                .map(FtbQuestSpeech::rewardText).toList(),
+                        !completed && FtbQuestReader.requiresManualSubmission(quest))), actions)));
+    }
+
+    // The native event and explicit submission converge on the same pending completion entry.
+    static void submitted(ServerPlayer player, ServerQuestFile file, TeamData team, Quest quest) {
+        if (FtbQuestReader.kind(quest) != FtbQuestReader.Kind.NORMAL) return;
+        AssistantServer runtime = AssistantServer.get(file.server);
+        FtbQuestAccess access = ACCESS.get(file.server);
+        if (runtime == null || access == null || !runtime.players().notificationsEnabled(player)) return;
+        FtbQuestNotifications tracker = SERVERS.computeIfAbsent(file.server, _ -> new FtbQuestNotifications(file, access));
+        TeamState state = tracker.teams.computeIfAbsent(team.getTeamId(), _ -> new TeamState(team, tracker.available(team), Map.of()));
+        Completion previous = state.completed.get(quest.getId());
+        List<Recipient> recipients = new ArrayList<>(previous == null ? List.of() : previous.recipients());
+        if (recipients.stream().noneMatch(recipient -> recipient.player() == player))
+            recipients.add(new Recipient(player, ServerNetworkHandler.connectionId(player), runtime.engine().incarnation(player.getUUID())));
+        state.completed.put(quest.getId(), new Completion(quest, List.copyOf(recipients)));
+        state.dirty = true;
     }
 
     private record Recipient(ServerPlayer player, UUID connection, long incarnation) {

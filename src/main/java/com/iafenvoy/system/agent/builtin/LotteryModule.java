@@ -1,14 +1,16 @@
 package com.iafenvoy.system.agent.builtin;
 
 import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryPreviewInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryQueryInput;
+import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
 import com.iafenvoy.system.agent.builtin.output.LotteryPoolOutput;
 import com.iafenvoy.system.agent.builtin.output.LotteryPrizeOutput;
+import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.commerce.LotteryPool;
-import com.iafenvoy.system.agent.commerce.PaymentType;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 
@@ -23,9 +25,9 @@ import java.util.Optional;
 public final class LotteryModule extends BuiltinModule<LotteryQueryInput> {
     static final int PAGE_SIZE = 8;
 
-    public LotteryModule() {
+    public LotteryModule(ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
         super(ResultTypes.LOTTERY_ACTION, "Browse lottery pools and their single-draw costs. Viewing never draws or pays.",
-                LotteryQueryInput.CODEC, List.of(), true, false, ExecutionPolicy.quick(1, 0));
+                LotteryQueryInput.CODEC, List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
     }
 
     @Override
@@ -38,27 +40,30 @@ public final class LotteryModule extends BuiltinModule<LotteryQueryInput> {
                 .shortcut("system.action.view_lottery", new LotteryQueryInput("", 0));
     }
 
-    static LotteryPoolOutput summary(ExecutionContext context, LotteryPool pool, boolean includePrizes) {
-        boolean available = pool.price().filter(price -> price.type() == PaymentType.SYSTEM_COIN).isEmpty()
-                || context.coinPayment().available();
+    static LotteryPoolOutput summary(LotteryPool pool, CommercePreviewOutput price, boolean includePrizes) {
         // Browsing samples one prize page; the detail view already sends its own paged prize cards.
         long totalWeight = pool.totalWeight();
         List<LotteryPrizeOutput> prizes = includePrizes ? pool.entries().stream().limit(PAGE_SIZE)
                 .map(entry -> new LotteryPrizeOutput(entry.reward(), entry.weight(), totalWeight)).toList() : List.of();
-        return new LotteryPoolOutput(pool.id(), pool.label(), pool.price(), pool.entries().size(), available, prizes);
+        return new LotteryPoolOutput(pool.id(), pool.label(), Optional.of(price.price()), pool.entries().size(), price.available(), prizes);
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, LotteryQueryInput input) {
+    public AgentResult execute(ExecutionContext context, LotteryQueryInput input) throws Exception {
         String query = input.query().toLowerCase(Locale.ROOT);
         CommerceCatalog catalog = context.catalog();
         List<LotteryPool> matches = catalog.lotteries().stream().filter(pool -> pool.id().toString().contains(query)
                 || pool.label().toLowerCase(Locale.ROOT).contains(query)).toList();
         List<AgentResult.Card> cards = new ArrayList<>();
-        for (LotteryPool pool : matches.stream().skip(input.offset()).limit(PAGE_SIZE).toList())
-            cards.add(new AgentResult.Card("system.result.lottery_pool", ResultTypes.LOTTERY_POOL.of(summary(context, pool, true)), List.of(
+        List<LotteryPool> page = matches.stream().skip(input.offset()).limit(PAGE_SIZE).toList();
+        List<CommercePreviewOutput> prices = page.isEmpty() ? List.of() : context.tool(BuiltinTools.COMMERCE_PREVIEW, "prices",
+                new CommercePreviewInput(List.of(), page.stream().map(LotteryPool::id).toList(), false, catalog.revision()));
+        for (int index = 0; index < page.size(); index++) {
+            LotteryPool pool = page.get(index);
+            cards.add(new AgentResult.Card("system.result.lottery_pool", ResultTypes.LOTTERY_POOL.of(summary(pool, prices.get(index), true)), List.of(
                     new AgentResult.Action("system.action.lottery_preview", ResultTypes.LOTTERY_PREVIEW_ACTION,
                             new LotteryPreviewInput(pool.id(), 0, Optional.of(catalog.revision()))))));
+        }
         if (matches.size() - input.offset() > PAGE_SIZE)
             cards.add(new AgentResult.Card("system.result.page", ResultTypes.EMPTY.of(EmptyInput.INSTANCE), List.of(
                     new AgentResult.Action("system.action.next", ResultTypes.LOTTERY_ACTION, new LotteryQueryInput(query, input.offset() + PAGE_SIZE)))));

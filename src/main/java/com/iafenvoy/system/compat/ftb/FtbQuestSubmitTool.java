@@ -10,13 +10,14 @@ import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
-import dev.ftb.mods.ftbquests.quest.task.ItemTask;
+import dev.ftb.mods.ftbquests.quest.task.CheckmarkTask;
+import dev.ftb.mods.ftbquests.quest.task.Task;
 
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
 /**
- * Native submission consumes only supported item tasks and preserves sequence, pause and dependency rules.
+ * Explicit submission invokes supported native manual tasks, preserving sequence, pause and dependency rules.
  */
 final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput, QuestSubmitOutput> {
     private final FtbQuestAccess access;
@@ -35,22 +36,24 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
             if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
             ServerQuestFile file = ServerQuestFile.getInstance();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));
-            Quest quest = FtbQuestAccess.selected(context, file, team, input.questId(), input.index().orElse(0), this.access.pages);
+            Quest quest = FtbQuestAccess.selected(context, file, team, input.questId(), input.index().orElse(0), this.access.lists);
             if (quest == null && !input.query().isBlank()) {
-                List<Quest> matches = FtbQuestAccess.find(file, team, input.query(), 0);
+                List<Quest> matches = new FtbQuestReader(file, team).find(input.query());
                 if (matches.size() > 1) throw new AgentException("QUEST_AMBIGUOUS");
                 quest = matches.isEmpty() ? null : matches.getFirst();
             }
-            if (quest == null || !FtbQuestRules.active(team, quest) || team.isProgressionPaused(player))
+            if (quest == null || !FtbQuestReader.active(team, quest) || team.isProgressionPaused(player))
                 throw new AgentException("QUEST_UNAVAILABLE");
-            List<ItemTask> tasks = quest.getTasksAsList().stream().filter(task -> task.getClass() == ItemTask.class)
-                    .map(ItemTask.class::cast).filter(task -> task.consumesResources() && !task.isTaskScreenOnly()).toList();
+            if (input.checkmarkOnly() && !FtbQuestReader.canComplete(player, team, quest))
+                throw new AgentException("QUEST_UNAVAILABLE");
+            List<Task> tasks = FtbQuestReader.submittableTasks(quest).stream()
+                    .filter(task -> !input.checkmarkOnly() || task.getClass() == CheckmarkTask.class).toList();
             if (tasks.isEmpty()) throw new AgentException("NO_SUBMITTABLE_TASK");
             List<Long> before = tasks.stream().map(team::getProgress).toList();
             Quest target = quest;
             int completions = team.getCompletionCount(target);
             file.withPlayerContext(player, () -> {
-                for (ItemTask task : tasks) {
+                for (Task task : tasks) {
                     // Auto-claimed repeatable quests may reset immediately; one command never enters the next cycle.
                     if (team.isCompleted(target) || team.getCompletionCount(target) != completions || team.isLocked()
                             || !team.canStartTasks(target) || team.isProgressionPaused(player)) break;
@@ -58,8 +61,10 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
                 }
             });
             boolean changed = !before.equals(tasks.stream().map(team::getProgress).toList()) || team.getCompletionCount(target) != completions;
+            boolean completed = team.isCompleted(quest) || team.getCompletionCount(target) != completions;
+            if (completed) FtbQuestNotifications.submitted(player, file, team, quest);
             return new QuestSubmitOutput(FtbQuestAccess.hex(quest.getId()), quest.getTitle().getString(), tasks.stream()
-                    .map(task -> new QuestTaskOutput(task.getTitle().getString(), team.getProgress(task), task.getMaxProgress())).toList(), changed, team.isCompleted(quest));
+                    .map(task -> new QuestTaskOutput(task.getTitle().getString(), team.getProgress(task), task.getMaxProgress())).toList(), changed, completed);
         });
     }
 }

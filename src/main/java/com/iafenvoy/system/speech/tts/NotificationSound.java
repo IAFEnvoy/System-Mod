@@ -14,7 +14,7 @@ final class NotificationSound extends AbstractSoundInstance implements AutoClose
     private volatile boolean cancelled;
 
     NotificationSound(int speechVolume) {
-        super(SystemSounds.NOTIFICATION, SoundSource.VOICE, RandomSource.create());
+        super(SystemSounds.NOTIFICATION.get(), SoundSource.VOICE, RandomSource.create());
         this.volume = speechVolume / 100.0F * 0.75F;
         this.relative = true;
         this.attenuation = Attenuation.NONE;

@@ -9,21 +9,28 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * A gift is a typed quest detail, retaining its source and original item components.
+ * All gifts share one list; source IDs authorize actions but never become display titles.
  */
-public record StarterGiftOutput(String questId, String title, String chapter, List<ItemPreviewOutput> items,
-                                Optional<String> claimRef, boolean claimed) implements QuestLookupOutput {
-    public static final MapCodec<StarterGiftOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Codec.STRING.fieldOf("questId").forGetter(StarterGiftOutput::questId),
-            Codec.STRING.fieldOf("title").forGetter(StarterGiftOutput::title),
-            Codec.STRING.fieldOf("chapter").forGetter(StarterGiftOutput::chapter),
-            ItemPreviewOutput.CODEC.listOf().fieldOf("items").forGetter(StarterGiftOutput::items),
-            Codec.STRING.optionalFieldOf("claimRef").forGetter(StarterGiftOutput::claimRef),
-            Codec.BOOL.fieldOf("claimed").forGetter(StarterGiftOutput::claimed)
-    ).apply(i, StarterGiftOutput::new));
+public record StarterGiftOutput(List<Gift> gifts) implements QuestLookupOutput {
+    public static final MapCodec<StarterGiftOutput> CODEC = Gift.CODEC.listOf().fieldOf("gifts")
+            .xmap(StarterGiftOutput::new, StarterGiftOutput::gifts);
 
     public StarterGiftOutput {
-        items = List.copyOf(items);
+        gifts = List.copyOf(gifts);
+    }
+
+    public record Gift(String questId, List<ItemPreviewOutput> items, Optional<String> claimRef,
+                       Optional<String> error) {
+        public static final Codec<Gift> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.STRING.fieldOf("questId").forGetter(Gift::questId),
+                ItemPreviewOutput.CODEC.listOf().fieldOf("items").forGetter(Gift::items),
+                Codec.STRING.optionalFieldOf("claimRef").forGetter(Gift::claimRef),
+                Codec.STRING.optionalFieldOf("error").forGetter(Gift::error)
+        ).apply(i, Gift::new));
+
+        public Gift {
+            items = List.copyOf(items);
+        }
     }
 
     @Override

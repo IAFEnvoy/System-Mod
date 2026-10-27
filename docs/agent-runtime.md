@@ -103,10 +103,10 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 {"type":"system:preferences","history":true,"external":true}
 ```
 
-响应类型为 `system:reply`、`system:notice`、`system:open` 和 `system:binding`。回复关联请求 UUID，通知直接进入消息队列；导航携带 `CURRENT/SIMPLE/FULL`，绑定变更携带 `BOUND/REVOKED/INVALIDATED`。请求 ID 只作关联，不再传递 `bound/open/event/revoked` 等操作字符串。网络协议为 3，两端需一起更新。
+响应类型为 `system:reply`、`system:notice`、`system:open` 和 `system:binding`。回复关联请求 UUID，通知直接进入消息队列；导航携带 `CURRENT/SIMPLE/FULL`，绑定变更携带 `BOUND/REVOKED/INVALIDATED`。请求 ID 只作关联，不再传递 `bound/open/event/revoked` 等操作字符串。网络协议为 1，两端需一起更新。
 
 服务端请求执行、客户端响应处理、卡片状态更新、任务列表来源、摘要投影、展示和口播使用 `util.TypeDispatch` 的类型处理 Map；控制动作、消息文案和 NLS 事件使用显式 Map。它们负责运行行为，不承担编解码。未注册的请求处理器报 `UNSUPPORTED`；通用卡片展示沿用默认格式，摘要和口播标题提取只读取已登记的数据。UI 动画、按键和播放状态机继续使用自身状态判断。
 
-任务查询的 `QuestLookupOutput` 按 `system:quest_page` / `system:quest_detail` 分派，不再用 `detail` 布尔值推断子类型。模型路由仍保留对外的 `capabilityId` 字段，解码 Map 只包含当前可选择的 Module 与 `clarify`，不会因共享输入类型存在就开放未安装模块。
+任务查询的 `QuestLookupOutput` 按 `system:quest_list` / `system:quest_detail` 分派，不再用 `detail` 布尔值推断子类型。模型路由仍保留对外的 `capabilityId` 字段，解码 Map 只包含当前可选择的 Module 与 `clarify`，不会因共享输入类型存在就开放未安装模块。
 
 新增业务能力继续通过 Module 注册。若要新增协议请求，增加请求类型及其 `MapCodec` 注册，再在 `AssistantRequests.registerRequests()` 登记执行处理器；新增响应时同步登记类型 Codec 和客户端处理器，不再增加字符串判断或类型 switch。类型实现保持无默认方法的接口，Codec 注册集中于嵌套 `Types`，避免子类静态初始化时递归读取尚未赋值的 Codec。

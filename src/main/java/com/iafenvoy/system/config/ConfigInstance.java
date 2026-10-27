@@ -3,7 +3,7 @@ package com.iafenvoy.system.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParser;
-import com.iafenvoy.system.util.AbstractChangeTrackable;
+import com.iafenvoy.saturn.util.AbstractChangeTrackable;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;

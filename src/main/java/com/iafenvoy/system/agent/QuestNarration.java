@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.chat.MutableComponent;
 
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -21,6 +22,7 @@ import java.util.concurrent.TimeUnit;
  */
 public final class QuestNarration implements AutoCloseable {
     private final AgentEngine engine;
+    private final QuestBackgrounds backgrounds = new QuestBackgrounds();
     private final TaskExecutor workers = new TaskExecutor("agent-quest-speech", 2, 32);
     private final Map<UUID, ExecutionContext> active = new ConcurrentHashMap<>();
     private final Set<UUID> queued = ConcurrentHashMap.newKeySet();
@@ -39,6 +41,10 @@ public final class QuestNarration implements AutoCloseable {
 
     public void source(Source source) {
         this.source = Objects.requireNonNull(source);
+    }
+
+    public void cacheFile(Path file) {
+        this.backgrounds.file(file);
     }
 
     public record Request(List<String> quests, boolean requirements, boolean rewards, boolean description) {
@@ -113,11 +119,12 @@ public final class QuestNarration implements AutoCloseable {
                 return data.conversation.memoryEpoch;
             });
             ExecutionContext context = new ExecutionContext(this.engine, player, UUID.randomUUID().toString(), null,
-                    System.currentTimeMillis(), epoch, ExecutionPolicy.quick(1, 0), store, incarnation);
+                    System.currentTimeMillis(), epoch, new ExecutionPolicy(4, 0, 8, 0, 32768, 1024, 131072, 14500, 4000), store, incarnation);
             if (this.active.putIfAbsent(player, context) != null) throw new AgentException("BUSY");
             try {
+                List<String> ids = new ArrayList<>(new LinkedHashSet<>(request.quests()));
                 List<Quest> quests = new ArrayList<>();
-                for (String id : new LinkedHashSet<>(request.quests())) {
+                for (String id : ids) {
                     context.check();
                     quests.add(source.load(context, id, request).toCompletableFuture().get(context.remainingMillis(), TimeUnit.MILLISECONDS));
                 }
@@ -131,12 +138,18 @@ public final class QuestNarration implements AutoCloseable {
                 List<Component> lines = new ArrayList<>();
                 for (int q = 0; q < quests.size(); q++) {
                     Quest quest = quests.get(q);
+                    String id = ids.get(q);
+                    String background = request.requirements() && request.description()
+                            ? this.backgrounds.resolve(context, id, quest.title().getString(), quest.description()) : "";
+                    Quest current = source.load(context, id, request).toCompletableFuture().get(context.remainingMillis(), TimeUnit.MILLISECONDS);
+                    // Cached text cannot bypass a later visibility change, task edit or description concealment.
+                    if (!current.equals(quest)) continue;
                     if (quests.size() > 1) lines.add(Component.translatable("system.tts.quest.name", quest.title()));
+                    if (!background.isBlank()) lines.add(Component.literal(background));
                     append(lines, summaries, q + ".requirement.", "system.tts.quest.requirements", quest.requirements());
                     append(lines, summaries, q + ".reward.", "system.tts.quest.rewards", quest.rewards());
-                    if (!quest.description().isBlank())
-                        lines.add(Component.translatable("system.tts.quest.description", quest.description()));
                 }
+                context.ensureMemoryCurrent();
                 return new Reply(lines);
             } finally {
                 this.active.remove(player, context);

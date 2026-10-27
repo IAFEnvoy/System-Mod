@@ -1,8 +1,8 @@
 package com.iafenvoy.system.compat.ftb;
 
+import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
-import com.iafenvoy.system.util.MiscUtil;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
@@ -29,15 +29,14 @@ final class FtbStarterGifts {
                 && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE).toList();
     }
 
-    static boolean available(ServerPlayer player, TeamData team, Quest quest) {
-        return FtbQuestRules.kind(quest) == FtbQuestRules.Kind.STARTER_GIFT && FtbQuestRules.readable(team, quest)
-                && !team.isLocked() && (team.isCompleted(quest) || team.canStartTasks(quest) && !team.isProgressionPaused(player))
-                && rewards(team, quest).stream().anyMatch(reward -> !team.isRewardClaimed(player.getUUID(), reward));
+    StarterGiftOutput preview(ServerPlayer player, ServerQuestFile file, TeamData team) {
+        return new StarterGiftOutput(new FtbQuestReader(file, team).availableStarterGifts(player).stream()
+                .map(quest -> this.previewGift(player, team, quest)).toList());
     }
 
-    StarterGiftOutput preview(ServerPlayer player, TeamData team, Quest quest) {
+    private StarterGiftOutput.Gift previewGift(ServerPlayer player, TeamData team, Quest quest) {
         Optional<String> reference = Optional.empty();
-        if (available(player, team, quest)) {
+        if (FtbQuestReader.starterGiftAvailable(player, team, quest)) {
             long now = System.currentTimeMillis();
             this.references.values().removeIf(value -> value.expires() < now);
             // Refreshing details renews the same reference instead of accumulating duplicate gift tokens.
@@ -49,10 +48,45 @@ final class FtbStarterGifts {
                     team.getCompletedTime(quest.getId()).map(Date::getTime).orElse(0L), now + 120000));
             reference = Optional.of(id);
         }
-        return output(player, team, quest, reference);
+        return new StarterGiftOutput.Gift(FtbQuestAccess.hex(quest.getId()), rewards(team, quest).stream()
+                .filter(reward -> !team.isRewardClaimed(player.getUUID(), reward))
+                .flatMap(reward -> FtbQuestAccess.previewItems(reward).stream()).toList(), reference, Optional.empty());
     }
 
-    StarterGiftOutput claim(ServerPlayer player, ServerQuestFile file, TeamData team, String id) {
+    StarterGiftOutput claim(ServerPlayer player, ServerQuestFile file, TeamData team, List<String> ids) {
+        if (ids.isEmpty()) throw new AgentException("INVALID_INPUT");
+        // Validate ownership before any write, then retain per-gift failures without replaying successful claims.
+        Map<String, Reference> requested = new LinkedHashMap<>();
+        for (String id : ids) {
+            Reference reference = this.references.get(id);
+            if (reference == null || !reference.player().equals(player.getUUID()))
+                throw new AgentException("STALE_REFERENCE");
+            requested.put(id, reference);
+        }
+        Map<String, StarterGiftOutput.Gift> failures = new LinkedHashMap<>();
+        for (Map.Entry<String, Reference> entry : requested.entrySet()) {
+            Reference reference = entry.getValue();
+            try {
+                this.claimOne(player, file, team, entry.getKey());
+            } catch (RuntimeException error) {
+                Quest quest = reference.quest();
+                if (file.getQuest(quest.getId()) == quest && FtbQuestReader.readable(team, quest))
+                    failures.put(FtbQuestAccess.hex(quest.getId()), new StarterGiftOutput.Gift(FtbQuestAccess.hex(quest.getId()),
+                            rewards(team, quest).stream().flatMap(reward -> FtbQuestAccess.previewItems(reward).stream()).toList(),
+                            Optional.empty(), Optional.of(AgentEngine.errorCode(error))));
+            }
+        }
+        StarterGiftOutput remaining = this.preview(player, file, team);
+        List<StarterGiftOutput.Gift> gifts = new ArrayList<>();
+        for (StarterGiftOutput.Gift gift : remaining.gifts()) {
+            StarterGiftOutput.Gift failure = failures.remove(gift.questId());
+            gifts.add(failure == null ? gift : new StarterGiftOutput.Gift(gift.questId(), gift.items(), gift.claimRef(), failure.error()));
+        }
+        gifts.addAll(failures.values());
+        return new StarterGiftOutput(gifts);
+    }
+
+    private void claimOne(ServerPlayer player, ServerQuestFile file, TeamData team, String id) {
         Reference reference = this.references.get(id);
         if (reference == null || !reference.player().equals(player.getUUID()) || reference.expires() < System.currentTimeMillis())
             throw new AgentException("STALE_REFERENCE");
@@ -62,32 +96,23 @@ final class FtbStarterGifts {
                 || !reference.tasks().equals(quest.getTasksAsList()) || !reference.rewards().equals(quest.getRewards())
                 || reference.completedAt() != 0 && reference.completedAt() != completed)
             throw new AgentException("STALE_REFERENCE");
-        if (FtbQuestRules.kind(quest) != FtbQuestRules.Kind.STARTER_GIFT || !FtbQuestRules.readable(team, quest)
+        if (FtbQuestReader.kind(quest) != FtbQuestReader.Kind.STARTER_GIFT || !FtbQuestReader.readable(team, quest)
                 || team.isLocked() || !team.isCompleted(quest) && (!team.canStartTasks(quest) || team.isProgressionPaused(player)))
             throw new AgentException("NOT_AUTHORIZED");
         List<Reward> rewards = rewards(team, quest);
         if (rewards.isEmpty()) throw new AgentException("NOT_AUTHORIZED");
         if (rewards.stream().allMatch(reward -> team.isRewardClaimed(player.getUUID(), reward)))
-            return output(player, team, quest, Optional.empty());
+            return;
         // Native submission honors sequential tasks, progression pause, dependency events and auto-claims.
         if (!team.isCompleted(quest)) file.withPlayerContext(player, () -> {
             for (Task task : reference.tasks()) if (!team.isCompleted(task)) task.submitTask(team, player);
         });
         if (!team.isCompleted(quest)) throw new AgentException("QUEST_UNAVAILABLE");
         for (Reward reward : rewards)
-            if (FtbQuestAccess.canClaim(player, team, reward)) team.claimReward(player, reward, true);
+            if (FtbQuestReader.canClaim(player, team, reward)) team.claimReward(player, reward, true);
         // Completion hooks can change reward blocking; never report a complete claim for a partial result.
         if (rewards.stream().anyMatch(reward -> !team.isRewardClaimed(player.getUUID(), reward)))
             throw new AgentException("EFFECT_UNKNOWN");
-        return output(player, team, quest, Optional.empty());
-    }
-
-    private static StarterGiftOutput output(ServerPlayer player, TeamData team, Quest quest, Optional<String> reference) {
-        List<Reward> rewards = rewards(team, quest);
-        return new StarterGiftOutput(FtbQuestAccess.hex(quest.getId()), MiscUtil.clip(quest.getTitle().getString(), 256),
-                MiscUtil.clip(quest.getChapter().getTitle().getString(), 128), rewards.stream()
-                .flatMap(reward -> FtbQuestAccess.previewItems(reward).stream()).toList(), reference,
-                !rewards.isEmpty() && rewards.stream().allMatch(reward -> team.isRewardClaimed(player.getUUID(), reward)));
     }
 
     private record Reference(UUID player, UUID team, Quest quest, List<Task> tasks, List<Reward> rewards,

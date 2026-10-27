@@ -1,0 +1,9 @@
+Use case: logo-brand
+Asset type: square icon for the Minecraft mod System, an in-game AI companion inspired by the System in web novels.
+Primary request: Create one finished, memorable emblem for System. A bold angular S-shaped symbol made from chunky cyan voxel segments wraps around a small warm-gold cubic core, suggesting a helpful system awakening and connecting to its host. Four understated right-angle HUD corner brackets frame the central emblem.
+Style/medium: polished geometric game-mod logo, restrained 2.5D voxel construction, precise clean edges and large simple shapes. The visual language is a futuristic transparent HUD with cyan outlines and warm-gold highlights.
+Scene/backdrop: opaque deep navy square with a very subtle central illumination; clean and quiet background.
+Composition/framing: one centered emblem fills about 72 percent of the square, generous equal margins on all sides, strong silhouette, balanced symmetry, recognizable as a small 64px mod-list icon.
+Color palette: deep navy #06131d, luminous cyan #61e6ff, restrained warm gold #ffd38a.
+Lighting/mood: crisp cyan rim light, gentle golden glow from the core, controlled luminous accents, confident and helpful.
+Constraints: deliver only the square logo artwork, edge-to-edge background. No written words, no labels, no numbers, no watermark, no mockup, no decorative UI text, no Minecraft grass block, no robot face, no brain, no generic AI sparkle, no busy circuitry, no excessive particles, no blur.

@@ -25,7 +25,11 @@
         </div>
         <div id="settings_page_tts" class="settings_page" role="tabpanel">
             <p id="speech_note"></p>
-            <div class="speech_controls"><button id="speech_enabled" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_speech_enabled_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_speech_enabled_label" class="switch_label"></span></button></div>
+            <div class="speech_controls">
+                <button id="speech_enabled" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_speech_enabled_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_speech_enabled_label" class="switch_label"></span></button>
+                <button id="speech_notification_sound" class="assistant_switch" type="button" role="switch" aria-checked="true" aria-labelledby="settings_speech_notification_sound_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_speech_notification_sound_label" class="switch_label"></span></button>
+            </div>
+            <p id="speech_notification_sound_hint"></p>
             <div class="result_card speech_step">
                 <h2 id="speech_key_step"></h2>
                 <label id="speech_key_label" for="speech_key"></label><input id="speech_key" type="password" maxlength="512" autocomplete="off">
@@ -67,8 +71,7 @@
     </div>
     <div id="settings_footer">
         <span id="settings_status"></span>
-        <div id="settings_speech_actions" class="speech_controls"><button id="speech_reload"></button><button id="speech_stop"></button><button id="speech_preview"></button></div>
-        <button id="settings_save" class="primary"></button>
+        <div id="settings_speech_actions" class="speech_controls"><button id="speech_stop"></button><button id="speech_preview"></button></div>
     </div>
 </div>
 </body></html>

@@ -25,11 +25,8 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
     }
 
     @Override
-    protected void init() {
-        super.init();
-        Document document = this.getLinkedDocument();
-        if (document == null) return;
-        text(document.getElementById("speaker"), tr("system.ui.assistant"));
+    protected void initPage(Document document) {
+        super.initPage(document);
         Element input = document.getElementById("message");
         input.setAttribute("placeholder", tr("system.ui.simple_placeholder"));
         bind(document, "send", this::sendMessage);
@@ -49,15 +46,17 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
         Document document = this.getLinkedDocument();
         if (document == null) return;
         this.revision = AssistantClient.revision();
+        text(document.getElementById("speaker"), tr("system.ui.assistant"));
         AssistantClientState.ChatEntry current = AssistantClient.state().current();
         String request = current == null ? "" : current.text();
         text(document.getElementById("current_request"), request);
         document.getElementById("current_request").setInlineStyleProperty("display", request.isBlank() ? "none" : "block");
         AgentResult result = current == null ? null : current.result();
         List<String> lines = new ArrayList<>();
-        if (result == null)
+        if (result == null) {
+            if (!AssistantClient.state().busy()) lines.add(tr(AssistantClient.system().description()));
             lines.add(tr(AssistantClient.state().busy() ? "system.ui.simple_working" : "system.ui.simple_welcome"));
-        else {
+        } else {
             lines.add(tr(result.messageKey()));
             if (!result.text().isBlank()) lines.add(result.text());
             int index = 1;

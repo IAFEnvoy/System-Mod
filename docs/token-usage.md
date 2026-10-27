@@ -111,7 +111,7 @@ Token 计费模型可能同时返回 `characters`，字符计费模型也可能�
 
 账本内部的 `PlayerUsage` 为可变类，名称和调用计数直接更新；四项 AI Token 计数封装在不可变的 `data/usage/TokenUsage` record 中，TTS 统计封装在不可变的 `data/usage/SpeechUsage` 中，合并时替换该值。全服汇总使用独立累加对象，存档 Codec 继续展开原有 AI 字段，与必需的 speech、recognition 字段一起编码，不提供旧账本字段回退。
 
-`snapshot()` 返回不可变的 `data/usage/TokenUsageSnapshot` 对象，包含分页信息、AI / TTS / ASR 汇总和玩家明细，列表复制且不暴露可变账本。`TokenUsageResponseS2C` 通过专用 `StreamCodec` 编码快照对象、错误状态及打开页面的 `open` 标志，客户端直接读取类型字段；用量链路不再包装 `AgentResult` 或序列化 JSON，也不使用特殊请求 ID 打开界面。当前网络协议为 **4**，客户端与服务端需使用相同协议版本；每包最多 8 位玩家，名字、错误键和请求 ID 都有限长。
+`snapshot()` 返回不可变的 `data/usage/TokenUsageSnapshot` 对象，包含分页信息、AI / TTS / ASR 汇总和玩家明细，列表复制且不暴露可变账本。`TokenUsageResponseS2C` 通过专用 `StreamCodec` 编码快照对象、错误状态及打开页面的 `open` 标志，客户端直接读取类型字段；用量链路不再包装 `AgentResult` 或序列化 JSON，也不使用特殊请求 ID 打开界面。当前网络协议为 **1**，客户端与服务端需使用相同协议版本；每包最多 8 位玩家，名字、错误键和请求 ID 都有限长。
 
 `revoke`、`forget`、关闭记忆与重新 `grant` 均不删除累计统计。`revoke` 仍会重置玩家业务文件中的每日模型调用额度；该额度与长期用量账本是独立记录。当前没有清空统计的游戏命令。
 

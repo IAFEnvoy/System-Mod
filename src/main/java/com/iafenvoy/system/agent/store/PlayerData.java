@@ -78,8 +78,9 @@ public final class PlayerData {
         public static final MapCodec<Conversation> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 Codec.LONG.optionalFieldOf("memoryEpoch", 0L).forGetter(v -> v.memoryEpoch),
                 Message.CODEC.listOf().optionalFieldOf("history", List.of()).forGetter(v -> v.history),
+                // Discard an invalid display/replay cache without weakening authoritative operation journals.
                 Codec.unboundedMap(Codec.STRING, Codec.lazyInitialized(() -> AgentResult.CODEC))
-                        .optionalFieldOf("requests", Map.of()).forGetter(v -> v.requests),
+                        .lenientOptionalFieldOf("requests", Map.of()).forGetter(v -> v.requests),
                 Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("requestInputs", Map.of()).forGetter(v -> v.requestInputs)
         ).apply(i, Conversation::new));
         public long memoryEpoch;

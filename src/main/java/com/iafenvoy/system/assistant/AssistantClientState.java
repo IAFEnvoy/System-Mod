@@ -3,6 +3,8 @@ package com.iafenvoy.system.assistant;
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.builtin.StarterGiftModule;
+import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.util.TypeDispatch;
 import com.iafenvoy.system.util.codec.CodecIO;
@@ -89,6 +91,28 @@ public record AssistantClientState(List<ChatEntry> entries, Set<String> pending,
         return this.pending.isEmpty() ? this : new AssistantClientState(this.entries, Set.of(), this.serverState, this.current);
     }
 
+    AssistantClientState silent(String id, AgentResult result) {
+        AssistantClientState completed = this.complete(id);
+        List<ChatEntry> entries = new ArrayList<>(completed.entries);
+        ChatEntry current = completed.current;
+        for (AgentResult.Card card : result.cards()) {
+            if (!(card.data().value() instanceof StarterGiftOutput gifts)) continue;
+            AgentResult refreshed = StarterGiftModule.preview(gifts);
+            for (int index = 0; index < entries.size(); index++) {
+                ChatEntry entry = entries.get(index);
+                if (giftEntry(entry)) entries.set(index, new ChatEntry(false, entry.text(), refreshed));
+            }
+            current = new ChatEntry(false, current == null ? "" : current.text(), refreshed);
+        }
+        if (current != null && current.result() == null && !completed.busy())
+            current = entries.stream().filter(entry -> !entry.player() && entry.result() != null).reduce((_, last) -> last).orElse(null);
+        return new AssistantClientState(entries, completed.pending, completed.serverState, current);
+    }
+
+    private static boolean giftEntry(ChatEntry entry) {
+        return entry.result() != null && entry.result().cards().stream().anyMatch(card -> card.data().value() instanceof StarterGiftOutput);
+    }
+
     AssistantClientState receive(String id, AgentResult result, boolean notification) {
         Reception reception = new Reception(result, this.pending.contains(id), notification);
         AssistantClientState completed = this.complete(id);
@@ -116,7 +140,8 @@ public record AssistantClientState(List<ChatEntry> entries, Set<String> pending,
                 if (message.role().equals("user")) entries.add(new ChatEntry(true, message.text(), null));
                 else {
                     try {
-                        entries.add(new ChatEntry(false, "", CodecIO.parse(AgentResult.CODEC, message.text())));
+                        AgentResult result = CodecIO.parse(AgentResult.CODEC, message.text());
+                        if (!result.silent()) entries.add(new ChatEntry(false, "", result));
                     } catch (RuntimeException error) {
                         entries.add(new ChatEntry(false, message.text(), null));
                     }

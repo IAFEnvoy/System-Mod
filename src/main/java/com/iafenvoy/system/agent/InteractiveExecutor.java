@@ -107,7 +107,8 @@ final class InteractiveExecutor implements AutoCloseable {
             if (generation != this.generations.getOrDefault(player, 0L)) return null;
             if (data.saveHistory && data.conversation.memoryEpoch == epoch) {
                 data.conversation.requests.put(id, completed);
-                data.conversation.history.add(new PlayerData.Message(id, "assistant", System.currentTimeMillis(), CodecIO.write(AgentResult.CODEC, completed)));
+                if (!completed.silent())
+                    data.conversation.history.add(new PlayerData.Message(id, "assistant", System.currentTimeMillis(), CodecIO.write(AgentResult.CODEC, completed)));
             } else data.conversation.requestInputs.remove(id);
             return null;
         });

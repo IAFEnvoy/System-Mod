@@ -44,8 +44,7 @@ public final class AliyunAsrProvider implements AsrProvider {
         Events events = new Events(task, intermediate);
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(90);
         try {
-            this.socket = this.transport.webSocket(URI.create("wss://nls-gateway-cn-" + request.region()
-                    + ".aliyuncs.com/ws/v1"), Map.of("X-NLS-Token", request.token()), Duration.ofSeconds(10), events);
+            this.socket = this.transport.webSocket(URI.create("wss://nls-gateway-cn-" + request.region() + ".aliyuncs.com/ws/v1"), Map.of("X-NLS-Token", request.token()), Duration.ofSeconds(10), events);
         } catch (WebSocketHandshakeException error) {
             int status = error.getResponse().statusCode();
             throw new SpeechException(status == 401 || status == 403 ? "token" : status == 429 ? "rate_limit" : "network");

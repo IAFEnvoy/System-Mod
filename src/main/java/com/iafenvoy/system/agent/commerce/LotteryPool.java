@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.commerce;
 
+import com.iafenvoy.saturn.data.cost.Cost;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
@@ -8,14 +9,14 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.ExtraCodecs;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Each confirmed draw selects one complete reward by integer weight; the model never chooses prizes.
  */
-public record LotteryPool(Identifier id, String label, Optional<CommerceCatalog.Price> price, List<Entry> entries) {
+public record LotteryPool(Identifier id, String label, List<Cost> costs, List<Entry> entries) {
     public LotteryPool {
+        costs = List.copyOf(costs);
         entries = List.copyOf(entries);
         if (label.isBlank() || entries.isEmpty()) throw new IllegalArgumentException("Invalid lottery pool");
     }
@@ -40,18 +41,18 @@ public record LotteryPool(Identifier id, String label, Optional<CommerceCatalog.
         ).apply(i, Entry::new));
     }
 
-    public record Definition(String label, Optional<CommerceCatalog.Price> price, List<Entry> entries,
+    public record Definition(String label, List<Cost> costs, List<Entry> entries,
                              boolean enabled) {
         public static final Codec<Definition> CODEC = RecordCodecBuilder.<Definition>create(i -> i.group(
                 Codec.STRING.optionalFieldOf("label", "").forGetter(Definition::label),
-                CommerceCatalog.Price.CODEC.optionalFieldOf("price").forGetter(Definition::price),
+                Cost.LIST_CODEC.optionalFieldOf("costs", List.of()).forGetter(Definition::costs),
                 Entry.CODEC.listOf().optionalFieldOf("entries", List.of()).forGetter(Definition::entries),
                 Codec.BOOL.optionalFieldOf("enabled", true).forGetter(Definition::enabled)
         ).apply(i, Definition::new)).validate(value -> value.enabled() && (value.label().isBlank() || value.entries().isEmpty())
                 ? DataResult.error(() -> "Enabled lottery pools need a label and entries") : DataResult.success(value));
 
         public LotteryPool resolve(Identifier id) {
-            return new LotteryPool(id, this.label, this.price, this.entries);
+            return new LotteryPool(id, this.label, this.costs, this.entries);
         }
     }
 }

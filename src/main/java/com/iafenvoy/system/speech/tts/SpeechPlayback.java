@@ -11,11 +11,9 @@ import java.util.concurrent.TimeUnit;
  * One PCM producer: prefer native playback, then consume the same stream through raw OpenAL.
  */
 final class SpeechPlayback implements AutoCloseable {
-    enum State {STARTING, NATIVE, OPENAL, FINISHED, MUTED, FAILED}
-
     private final SpeechSound sound;
     private final int volume;
-    private State state = State.STARTING;
+    private SpeechState state = SpeechState.STARTING;
     private boolean attempted;
     private long startDeadline;
     private OpenAlSpeechPlayer direct;
@@ -25,13 +23,14 @@ final class SpeechPlayback implements AutoCloseable {
         this.volume = volume;
     }
 
-    State tick() {
-        if (this.state == State.FINISHED || this.state == State.FAILED || this.state == State.MUTED) return this.state;
+    SpeechState tick() {
+        if (this.state == SpeechState.FINISHED || this.state == SpeechState.FAILED || this.state == SpeechState.MUTED)
+            return this.state;
         Minecraft minecraft = Minecraft.getInstance();
         float gain = this.volume / 100.0F * minecraft.options.getFinalSoundSourceVolume(SoundSource.VOICE);
         if (gain <= 0) {
             this.close();
-            return this.state = State.MUTED;
+            return this.state = SpeechState.MUTED;
         }
         if (minecraft.isPaused() && this.direct == null) {
             this.startDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
@@ -52,11 +51,11 @@ final class SpeechPlayback implements AutoCloseable {
                 if (!this.direct.tick(gain, minecraft.isPaused())) this.close();
             } catch (RuntimeException error) {
                 this.close();
-                this.state = State.FAILED;
+                this.state = SpeechState.FAILED;
             }
-        } else if (this.state == State.STARTING || this.state == State.NATIVE) {
+        } else if (this.state == SpeechState.STARTING || this.state == SpeechState.PLAYING_NATIVE) {
             if (this.sound.nativeStarted()) {
-                this.state = State.NATIVE;
+                this.state = SpeechState.PLAYING_NATIVE;
                 if (!minecraft.getSoundManager().isActive(this.sound)) this.close();
             } else if (this.sound.nativeFailed() || !minecraft.getSoundManager().isActive(this.sound)
                     || System.nanoTime() >= this.startDeadline) this.fallback(gain);
@@ -71,9 +70,9 @@ final class SpeechPlayback implements AutoCloseable {
         SystemMod.LOGGER.debug("Native speech did not start; trying the PCM stream through OpenAL");
         try {
             this.direct = new OpenAlSpeechPlayer(this.sound, gain);
-            this.state = State.OPENAL;
+            this.state = SpeechState.PLAYING_OPENAL;
         } catch (RuntimeException error) {
-            this.state = State.FAILED;
+            this.state = SpeechState.FAILED;
             SystemMod.LOGGER.warn("Unable to start OpenAL speech playback ({})", error.getClass().getSimpleName());
         }
     }
@@ -84,6 +83,6 @@ final class SpeechPlayback implements AutoCloseable {
         Minecraft.getInstance().getSoundManager().stop(this.sound);
         if (this.direct != null) this.direct.close();
         this.direct = null;
-        this.state = State.FINISHED;
+        this.state = SpeechState.FINISHED;
     }
 }

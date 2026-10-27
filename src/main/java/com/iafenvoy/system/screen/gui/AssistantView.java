@@ -7,9 +7,9 @@ import com.iafenvoy.system.agent.builtin.input.QuestClaimInput;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.output.*;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.commerce.PaymentType;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.util.LegacyText;
 import com.iafenvoy.system.util.MiscUtil;
 import com.iafenvoy.system.util.TypeDispatch;
 import com.sighs.apricityui.init.Document;
@@ -33,6 +33,7 @@ public final class AssistantView {
             .register(QuestOutput.class, AssistantView::rewardLabel);
     private static final TypeDispatch<CardFormat, String> CARD_FORMATTERS = new TypeDispatch<CardFormat, String>((context, _) -> format(context.card().data().json(), 0))
             .register(ResultTypes.QuestList.class, (_, _) -> tr("system.ui.quest_list_hint"))
+            .register(QuestClaimOutput.class, (_, _) -> "")
             .register(RewardOutput.class, (context, value) -> formatReward(value.reward(), context.textItems()))
             .register(CreditReceiptOutput.class, (context, value) -> formatReward(value.reward(), context.textItems())
                     + "\n" + field("entitlementId", value.entitlementId()) + "\n" + field("state", state(value.state())))
@@ -47,26 +48,37 @@ public final class AssistantView {
             .register(ResultTypes.ShopOffer.class, (context, value) -> value.label()
                     + value.id().map(id -> "\n" + id).orElse("")
                     + (context.textItems() ? "\n" + formatItems(value.items()) : "")
-                    + (context.textItems() || value.price().type() == PaymentType.SYSTEM_COIN ? "\n" + field("price", formatPrice(value.price())) : "")
+                    + (context.textItems() || !value.price().descriptions().isEmpty() || value.price().items().isEmpty()
+                    ? "\n" + field("price", formatPrice(value.price(), context.textItems())) : "")
                     + (value.paymentAvailable().orElse(true) ? "" : "\n" + tr("system.ui.lottery_unavailable")))
             .register(ItemPageOutput.class, (_, value) -> String.join("\n", value.items().stream()
                     .map(item -> item.name() + " · " + item.id() + " · " + field("maxStack", Integer.toString(item.maxStack()))).toList()))
-            .register(ResultTypes.QuestNotice.class, (_, value) -> value.title() + "\n" + field("chapter", value.chapter()))
-            .register(StarterGiftOutput.class, (_, value) -> value.title() + "\n" + field("chapter", value.chapter()))
+            .register(ResultTypes.QuestNotice.class, (_, value) -> {
+                List<String> lines = new ArrayList<>();
+                if (!value.description().isBlank()) lines.add(value.description());
+                if (!value.requirements().isEmpty()) lines.add(Component.translatable("system.tts.quest.requirements",
+                        String.join("，", value.requirements().stream().map(Component::getString).toList())).getString());
+                if (value.manualSubmission()) lines.add(tr("system.ui.quest_manual_submission"));
+                if (!value.otherRewards().isEmpty()) lines.add(Component.translatable("system.tts.quest.rewards",
+                        String.join("，", value.otherRewards().stream().map(Component::getString).toList())).getString());
+                return String.join("\n", lines);
+            })
+            .register(StarterGiftOutput.class, (_, _) -> "")
             .register(QuestSubmitOutput.class, (_, value) -> value.title() + "\n" + String.join("\n", value.tasks().stream()
-                    .map(task -> task.title() + " · " + task.progress() + "/" + task.required()).toList()))
+                    .map(task -> LegacyText.scoped(task.title()) + " · " + task.progress() + "/" + task.required()).toList()))
             .register(QuestStartupOutput.class, (_, value) -> {
                 List<String> lines = new ArrayList<>();
                 lines.add(Component.translatable("system.ui.quest_startup_count", value.total()).getString());
                 for (QuestBriefOutput quest : value.quests())
-                    lines.add(quest.title() + " · " + (int) quest.progress() + "%");
+                    lines.add(LegacyText.scoped(quest.title()) + " · " + (int) quest.progress() + "%");
                 if (value.total() > value.quests().size())
                     lines.add(Component.translatable("system.ui.quest_startup_more",
                             value.total() - value.quests().size()).getString());
                 return String.join("\n", lines);
             })
             .register(LotteryPoolOutput.class, (context, pool) -> pool.label() + "\n" + lotteryCount(pool)
-                    + (context.textItems() || !lotteryItemPrice(pool) ? "\n" + tr("system.ui.lottery_cost") + ": " + lotteryPrice(pool) : "")
+                    + (context.textItems() || !lotteryItemPrice(pool) ? "\n" + tr("system.ui.lottery_cost") + ": "
+                    + pool.price().map(price -> formatPrice(price, context.textItems())).orElseGet(() -> tr("system.ui.lottery_no_cost")) : "")
                     + (pool.paymentAvailable() ? "" : "\n" + tr("system.ui.lottery_unavailable")))
             .register(LotteryPrizeOutput.class, (context, prize) -> formatReward(prize.reward(), context.textItems()) + "\n" + lotteryChance(prize))
             .register(QuestOutput.class, (context, quest) -> formatQuest(quest, context.textItems()));
@@ -92,7 +104,8 @@ public final class AssistantView {
         if (action.call().value() instanceof QuestDetailInput detail) {
             for (QuestBriefOutput quest : list.quests())
                 if (quest.id().equals(detail.questId()))
-                    return quest.number() + ". " + quest.title() + " · " + quest.chapter() + " · " + (int) quest.progress() + "%";
+                    return quest.number() + ". " + LegacyText.scoped(quest.title()) + " · "
+                            + LegacyText.scoped(quest.chapter()) + " · " + (int) quest.progress() + "%";
         }
         return label;
     }
@@ -137,12 +150,17 @@ public final class AssistantView {
         Element items = element(document, "div", "item_groups", "");
         AssistantItems.render(document, items, AssistantItems.groups(card), false);
         result.appendChild(items);
+        Element actions = result;
+        if (card.data().value() instanceof ResultTypes.QuestList) {
+            actions = element(document, "div", "quest_list", "");
+            result.appendChild(actions);
+        }
         // Custom card bodies share the same trusted actions and server-side confirmation flow.
         for (AgentResult.Action action : card.actions()) {
             Element button = element(document, "button", card.data().value() instanceof ResultTypes.QuestList
                     ? "card_action quest_row" : "card_action", actionLabel(card, action));
             button.addEventListener("click", event -> AssistantClient.send(action, ""));
-            result.appendChild(button);
+            actions.appendChild(button);
         }
         return result;
     }
@@ -189,18 +207,19 @@ public final class AssistantView {
     }
 
     private static String lotteryPrice(LotteryPoolOutput pool) {
-        return pool.price().map(AssistantView::formatPrice).orElseGet(() -> tr("system.ui.lottery_no_cost"));
+        return pool.price().map(price -> formatPrice(price, false)).orElseGet(() -> tr("system.ui.lottery_no_cost"));
     }
 
     private static boolean lotteryItemPrice(LotteryPoolOutput pool) {
-        return pool.price().filter(price -> price.type() == PaymentType.ITEMS).isPresent();
+        return pool.price().filter(price -> !price.items().isEmpty() && price.descriptions().isEmpty()).isPresent();
     }
 
-    private static String formatPrice(CommerceCatalog.Price price) {
-        return switch (price.type()) {
-            case ITEMS -> formatItems(price.items());
-            case SYSTEM_COIN -> Component.translatable("system.ui.lottery_coin_cost", price.coins()).getString();
-        };
+    private static String formatPrice(CommerceCatalog.Price price, boolean textItems) {
+        List<String> lines = new ArrayList<>(price.descriptions().stream().map(Component::getString).toList());
+        if (textItems)
+            for (ItemPreviewOutput item : price.items())
+                lines.add(Component.translatable("system.ui.item_amount", item.item().create().getHoverName(), item.amount()).getString());
+        return lines.isEmpty() && price.items().isEmpty() ? tr("system.ui.lottery_no_cost") : String.join("\n", lines);
     }
 
     private static String formatItems(List<ItemStackTemplate> items) {
@@ -234,10 +253,10 @@ public final class AssistantView {
         lines.add(field("completed", tr(quest.completed() ? "system.ui.yes" : "system.ui.no")));
         if (!quest.description().isBlank()) lines.add(quest.description());
         for (QuestTaskOutput task : quest.tasks())
-            lines.add(task.title() + " · " + task.progress() + "/" + task.required());
+            lines.add(LegacyText.scoped(task.title()) + " · " + task.progress() + "/" + task.required());
         for (QuestRewardOutput reward : quest.rewards()) {
             if (!textItems && !reward.items().isEmpty()) continue;
-            lines.add(field("reward", reward.title()) + " · " + state(reward.state()));
+            lines.add(field("reward", LegacyText.scoped(reward.title())) + " · " + state(reward.state()));
             int index = reward.choiceOffset();
             for (QuestChoiceOutput choice : reward.choices().orElse(List.of()))
                 lines.add(++index + ". " + choice.title());
@@ -250,7 +269,7 @@ public final class AssistantView {
         if (value.isJsonPrimitive()) {
             String text = value.getAsString();
             if (Set.of("PENDING", "DELIVERING", "DELIVERED", "DELIVERY_UNKNOWN", "CLAIM_EXECUTED", "CLAIMED", "CAN_CLAIM", "CANT_CLAIM", "ALREADY_CLAIMED",
-                    "ITEMS", "SYSTEM_COIN", "COMPLETED", "PREPARED", "PAYMENT_PENDING", "PAYMENT_UNKNOWN").contains(text))
+                    "COMPLETED", "PREPARED", "PAYMENT_PENDING", "PAYMENT_UNKNOWN").contains(text))
                 return tr("system.state." + text.toLowerCase(Locale.ROOT));
             return text.equals("true") ? tr("system.ui.yes") : text.equals("false") ? tr("system.ui.no") : text;
         }
@@ -259,8 +278,7 @@ public final class AssistantView {
             for (JsonElement element : value.getAsJsonArray()) lines.add(format(element, depth + 1));
         } else for (Map.Entry<String, JsonElement> field : value.getAsJsonObject().entrySet()) {
             if (Set.of("claimRef", "quoteRef", "catalogRevision").contains(field.getKey())) continue;
-            if ((field.getKey().equals("coins") && field.getValue().isJsonPrimitive() && field.getValue().getAsLong() == 0)
-                    || (field.getKey().equals("items") && field.getValue().isJsonArray() && field.getValue().getAsJsonArray().isEmpty()))
+            if (field.getKey().equals("items") && field.getValue().isJsonArray() && field.getValue().getAsJsonArray().isEmpty())
                 continue;
             if (field.getKey().equals("error") && field.getValue().isJsonPrimitive()) {
                 String error = field.getValue().getAsString();
@@ -276,7 +294,7 @@ public final class AssistantView {
     public static Element element(Document document, String tag, String css, String value) {
         Element result = document.createElement(tag);
         result.setClassName(css);
-        result.setTextContent(value);
+        text(result, value);
         return result;
     }
 
@@ -306,7 +324,7 @@ public final class AssistantView {
     }
 
     public static void text(Element element, String value) {
-        if (element != null) element.setTextContent(value);
+        AssistantText.set(element, value);
     }
 
     public static String tr(String key) {

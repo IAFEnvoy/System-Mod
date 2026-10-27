@@ -9,7 +9,7 @@ import java.util.List;
  * Built-in result data and its serialization codec.
  */
 public record QuestOutput(String id, String title, String chapter, String description, double progress,
-                          boolean completed,
+                          boolean completed, boolean canComplete,
                           List<QuestTaskOutput> tasks, List<QuestRewardOutput> rewards, SectionPageOutput rewardPage,
                           SectionPageOutput taskPage, SectionPageOutput descriptionPage) {
     public static final Codec<QuestOutput> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -19,6 +19,7 @@ public record QuestOutput(String id, String title, String chapter, String descri
             Codec.STRING.fieldOf("description").forGetter(QuestOutput::description),
             Codec.DOUBLE.fieldOf("progress").forGetter(QuestOutput::progress),
             Codec.BOOL.fieldOf("completed").forGetter(QuestOutput::completed),
+            Codec.BOOL.optionalFieldOf("canComplete", false).forGetter(QuestOutput::canComplete),
             QuestTaskOutput.CODEC.listOf().fieldOf("tasks").forGetter(QuestOutput::tasks),
             QuestRewardOutput.CODEC.listOf().fieldOf("rewards").forGetter(QuestOutput::rewards),
             SectionPageOutput.codec("reward").forGetter(QuestOutput::rewardPage),

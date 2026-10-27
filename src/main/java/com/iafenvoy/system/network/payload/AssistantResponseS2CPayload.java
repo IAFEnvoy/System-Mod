@@ -11,7 +11,8 @@ import org.jspecify.annotations.NonNull;
 
 public record AssistantResponseS2CPayload(AgentResponse response) implements CustomPacketPayload {
     public static final Type<AssistantResponseS2CPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "assistant_response_s2c"));
-    public static final StreamCodec<RegistryFriendlyByteBuf, AssistantResponseS2CPayload> CODEC = ByteBufCodecs.fromCodecWithRegistries(AgentResponse.CODEC)
+    // Only the server produces these replies; full lists can exceed the default NBT allocation quota.
+    public static final StreamCodec<RegistryFriendlyByteBuf, AssistantResponseS2CPayload> CODEC = ByteBufCodecs.fromCodecWithRegistriesTrusted(AgentResponse.CODEC)
             .map(AssistantResponseS2CPayload::new, AssistantResponseS2CPayload::response);
 
     @Override

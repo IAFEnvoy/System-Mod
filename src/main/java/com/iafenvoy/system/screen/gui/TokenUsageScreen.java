@@ -7,7 +7,6 @@ import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
 import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
-import com.sighs.apricityui.screen.ApricityScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.chat.Component;
@@ -26,7 +25,7 @@ import static com.iafenvoy.system.screen.gui.AssistantView.*;
 /**
  * Read-only usage dashboard; requests never enter conversation memory or inference.
  */
-public final class TokenUsageScreen extends ApricityScreen {
+public final class TokenUsageScreen extends AssistantPageScreen {
     private static final int PAGE_SIZE = TokenUsageSnapshot.PAGE_SIZE;
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
     // Summary and player details share the same service groups and metric order.
@@ -72,10 +71,7 @@ public final class TokenUsageScreen extends ApricityScreen {
     }
 
     @Override
-    protected void init() {
-        super.init();
-        Document document = this.getLinkedDocument();
-        if (document == null) return;
+    protected void initPage(Document document) {
         text(document.getElementById("brand"), tr("system.ui.usage_title"));
         for (String id : List.of("usage_mine", "usage_all", "usage_refresh", "usage_back", "usage_prev", "usage_next", "usage_note", "usage_speech_note", "usage_recognition_note", "close"))
             text(document.getElementById(id), tr("system.ui." + id));

@@ -52,6 +52,8 @@
 
 ## 用量
 
+网页搜索是独立协议，使用 `SearchProvider` 与 `DeepSeekSearchClient`，不经过 Chat Completions，也不改变模型路由和 Token 统计。搜索独立配置在 `config/system/system-search.json`，当前不开放给 Agent；见 [网页搜索与抓取](search-api.md)。
+
 通用用量读取 `prompt_tokens`、`completion_tokens` 与 `total_tokens`。缓存命中优先使用 OpenAI 的 `prompt_tokens_details.cached_tokens`，缺省时兼容 DeepSeek 的 `prompt_cache_hit_tokens`，只计一次。缺失或无效 usage 仍标记为用量未知；在校验模型正文前读取 usage，正文错误不会删除已知消费。
 
 ## HTTP 工具复用

@@ -28,7 +28,8 @@ and HUD notifications that keep gameplay uninterrupted, with optional speech out
   streaming
   TTS reads message bodies; closing a view, dismissing a notification or switching messages ends the corresponding
   speech session.
-- **Usage and privacy controls:** server AI usage by player, private local TTS / ASR usage, history management, external-AI opt-out,
+- **Usage and privacy controls:** server AI usage by player, private local TTS / ASR usage, history management,
+  external-AI opt-out,
   UUID-isolated
   data and limits on model and tool execution.
 
@@ -78,18 +79,18 @@ when using a proxy for DeepSeek, explicitly select `deepseek`.
 
 The following commands run in Minecraft chat:
 
-| Command                                              | Action                                                                                      |
-|------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| `/system`                                            | Open the last selected view                                                                 |
-| `/system full` / `/system simple`                    | Open the full / minimal view                                                                |
-| `/system settings`                                   | Open unified client settings directly; no binding required                                  |
-| `/system ask <text>`                                 | Submit a natural-language request                                                           |
-| `/system player`                                     | View your own status                                                                        |
+| Command                                              | Action                                                                                       |
+|------------------------------------------------------|----------------------------------------------------------------------------------------------|
+| `/system`                                            | Open the last selected view                                                                  |
+| `/system full` / `/system simple`                    | Open the full / minimal view                                                                 |
+| `/system settings`                                   | Open unified client settings directly; no binding required                                   |
+| `/system ask <text>`                                 | Submit a natural-language request                                                            |
+| `/system player`                                     | View your own status                                                                         |
 | `/system usage` / `/system usage all`                | View personal usage / server AI usage as an administrator; voice totals always stay personal |
-| `/system grant [player]` / `/system revoke [player]` | Grant access / revoke access and clear System records as an administrator                   |
-| `/system reset [player]`                             | Clear old-format System records and binding; cumulative usage is retained, then grant again |
-| `/system routing`                                    | View routing diagnostics as an administrator                                                |
-| `/system help`                                       | Show available actions                                                                      |
+| `/system grant [player]` / `/system revoke [player]` | Grant access / revoke access and clear System records as an administrator                    |
+| `/system reset [player]`                             | Clear old-format System records and binding; cumulative usage is retained, then grant again  |
+| `/system routing`                                    | View routing diagnostics as an administrator                                                 |
+| `/system help`                                       | Show available actions                                                                       |
 
 Notifications appear at the bottom of the HUD. Open vanilla chat with its configured key (**T by default**) to click
 "Confirm" or an action button. Consecutive notifications keep the panel expanded while the content fades out, changes
@@ -155,19 +156,19 @@ See the examples in this GitHub repository for details.
 
 ### Configuration Files
 
-| Location                                          | Contents                                                                                                   |
-|---------------------------------------------------|------------------------------------------------------------------------------------------------------------|
-| Server `config/system/system-agent.json`          | Execution budgets, concurrency, daily model limits and time zone                                           |
-| Server `config/system/system-model.json`          | Model connection and provider options                                                                      |
-| Server `config/system/system-semantic.json`       | Local intent routing, thresholds, examples and cache                                                       |
-| Server `config/system/system-advancements.json`   | Trusted advancement rules                                                                                  |
-| Client `config/system/system-speech-pricing.json` | Personal TTS / ASR rates; copied from bundled defaults if missing                                          |
-| `<world>/system-agent/<UUID>.json`                | Binding, conversations, preferences, rewards, orders and workflow records                                  |
-| `<world>/data/system/token_usage.dat`             | Server AI usage by player; retained after revoking access or clearing memory                               |
-| Client `config/system/speech-usage/<UUID>.json`   | Personal TTS / ASR totals for this local account, retained across servers; never uploaded                   |
-| Client `config/system/system-client.json`         | View preference                                                                                            |
-| Client `config/system/system-speech.json`         | Local speech settings and any key entered in the UI                                                        |
-| Client `config/system/system-asr.json`            | Local recognition switch, NLS AppKey, temporary Token and region                                           |
+| Location                                          | Contents                                                                                  |
+|---------------------------------------------------|-------------------------------------------------------------------------------------------|
+| Server `config/system/system-agent.json`          | Execution budgets, concurrency, daily model limits and time zone                          |
+| Server `config/system/system-model.json`          | Model connection and provider options                                                     |
+| Server `config/system/system-semantic.json`       | Local intent routing, thresholds, examples and cache                                      |
+| Server `config/system/system-advancements.json`   | Trusted advancement rules                                                                 |
+| Client `config/system/system-speech-pricing.json` | Personal TTS / ASR rates; copied from bundled defaults if missing                         |
+| `<world>/system-agent/<UUID>.json`                | Binding, conversations, preferences, rewards, orders and workflow records                 |
+| `<world>/data/system/token_usage.dat`             | Server AI usage by player; retained after revoking access or clearing memory              |
+| Client `config/system/speech-usage/<UUID>.json`   | Personal TTS / ASR totals for this local account, retained across servers; never uploaded |
+| Client `config/system/system-client.json`         | View preference                                                                           |
+| Client `config/system/system-speech.json`         | Local speech settings and any key entered in the UI                                       |
+| Client `config/system/system-asr.json`            | Local recognition switch, NLS AppKey, temporary Token and region                          |
 
 Configuration files are not synchronized between the client and server. Player data files in the world folder are
 managed by the server; clients cannot modify them directly.

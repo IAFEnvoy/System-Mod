@@ -23,7 +23,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  */
 @SuppressWarnings("unused")
 public final class SystemClientModules {
-    public static final DeferredRegister<ClientModule> REGISTRY = DeferredRegister.create(SystemResourceKeys.Client.CLIENT_MODULE, SystemMod.MOD_ID);
+    public static final DeferredRegister<ClientModule> REGISTRY = DeferredRegister.create(SystemResourceKeys.CLIENT_MODULE, SystemMod.MOD_ID);
 
     public static final DeferredHolder<ClientModule, CoreClientModule> CORE = REGISTRY.register("core", CoreClientModule::new);
     public static final DeferredHolder<ClientModule, BindingClientModule> BINDING = REGISTRY.register("binding", BindingClientModule::new);

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.module;
 
-import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.request.ChatRequest;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.mojang.brigadier.context.CommandContext;
@@ -28,7 +28,7 @@ public final class ModuleCommands {
     public static int ask(ServerPlayer player, String text) {
         AssistantServer runtime = runtime(player);
         if (runtime == null) return 0;
-        runtime.requests().request(player, UUID.randomUUID().toString(), new AgentRequest.Chat(text));
+        runtime.requests().request(player, UUID.randomUUID().toString(), new ChatRequest(text));
         return 1;
     }
 

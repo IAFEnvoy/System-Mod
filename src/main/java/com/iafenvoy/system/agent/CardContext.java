@@ -1,6 +1,4 @@
-package com.iafenvoy.system.screen.card;
-
-import com.iafenvoy.system.agent.AgentResult;
+package com.iafenvoy.system.agent;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMaps;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;

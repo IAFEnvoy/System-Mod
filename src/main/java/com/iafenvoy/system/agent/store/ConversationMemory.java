@@ -4,7 +4,7 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.builtin.output.*;
 import com.iafenvoy.system.util.TypeDispatch;
-import com.iafenvoy.system.util.codec.CodecIO;
+import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
@@ -110,7 +110,7 @@ public final class ConversationMemory {
     }
 
     private static Fact fields(AgentResult.Card card) {
-        return FACTS.apply(null, card.data().value());
+        return FACTS.apply(null, card.data());
     }
 
     private static Fact fact(String kind, String id, String label, String state) {

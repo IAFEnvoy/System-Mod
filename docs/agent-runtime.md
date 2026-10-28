@@ -17,7 +17,7 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 
 `engine.start()` 校验策略和事件引用，冻结注册表并建立语义索引。启动后禁止继续注册工具、模块或 profile。未安装的可选模块不注册，因此不会出现在指令、帮助、补全、语义可执行候选或模型目录中。
 
-普通模块仍需先在公共初始化中注册 `ResultTypes.ACTIONS` 类型键；按钮、模型和 Module 复用同一键。类型与 Codec 必须在两端可用，定义不得引用未安装的可选模组类。
+普通模块先通过 DeferredRegister 在 `SystemResourceKeys.ACTION_TYPE` 注册类型键；内置键由 `SystemActionTypes` 公开，注册后通过 `.get()` 访问。按钮、模型和 Module 复用同一键。类型与 Codec 必须在两端可用，定义不得引用未安装的可选模组类，详见[注册表速查](registries.md)。
 
 ## 职责边界
 
@@ -102,7 +102,9 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 
 ## 请求、响应与类型分派
 
-`AgentRequest.CODEC` 与 `AgentResponse.CODEC` 使用 `util.codec.DispatchRegistry`：注册 `Identifier` 和 `MapCodec<T>` 后取得类型键，实例的 `type()` 返回同一个键。编码和解码共用原版 `Codec.dispatch`；重复 ID、未知 ID 或伪造的同名类型键会被拒绝。注册在两端公共初始化阶段完成，定义中不能引用可选模组的类。
+`AgentRequest.CODEC` 与 `AgentResponse.CODEC` 从正式内置注册表 `SystemRegistries.AGENT_REQUEST_TYPE / AGENT_RESPONSE_TYPE` 的 `byNameCodec()` 按 `type` 分派；实例的 `codec()` 返回同一个已注册 MapCodec。内置条目通过 `SystemRequestTypes / SystemResponseTypes` 的 DeferredRegister 在两端登记，不再维护 DispatchRegistry 或自建类型 Map。未知 ID 和未注册的 Codec 由原版注册表 Codec 拒绝，定义中不能引用可选模组的类。卡片数据直接实现 `CardData`，根 `CardData.CODEC` 按同样方式分派各实现自己的 MapCodec，数据不再套 `TypedPayload`；`template()` 提供布局资源 ID，`buildContext(builder, formatting)` 负责类型自己的展示参数。CardContext 与 CardFormatting 位于公共 agent 包，不引用客户端 GUI；标题、显示模式和按钮回调由客户端补充。模块动作继续通过 `TypedPayload.ACTION_CODEC` 分派输入，条目列表及查询方式见[注册表速查](registries.md)。
+
+请求实现为 `agent.request` 下的 `ChatRequest`、`InvokeRequest`、`ControlRequest` 和 `PreferencesRequest`，响应实现为 `agent.response` 下的 `ReplyResponse`、`NoticeResponse`、`OpenResponse` 和 `BindingResponse`。每个实现维护静态 MapCodec，`SystemRequestTypes` / `SystemResponseTypes` 只负责注册；根接口不再内联实现。`ControlRequest` 是枚举，其 Codec 保留 `action` 字段；导航与绑定枚举分别由对应响应持有。
 
 以下 JSON 仅示意 Codec 结构；网络实际通过 `ByteBufCodecs.fromCodecWithRegistries` 编码类型对象：
 
@@ -117,6 +119,8 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 
 服务端请求执行、客户端响应处理、卡片状态更新、任务列表来源、摘要投影、展示和口播使用 `util.TypeDispatch` 的类型处理 Map；控制动作、消息文案和 NLS 事件使用显式 Map。它们负责运行行为，不承担编解码。未注册的请求处理器报 `UNSUPPORTED`；通用卡片展示沿用默认格式，摘要和口播标题提取只读取已登记的数据。UI 动画、按键和播放状态机继续使用自身状态判断。
 
-任务查询的 `QuestLookupOutput` 按 `system:quest_list` / `system:quest_detail` 分派，不再用 `detail` 布尔值推断子类型。模型路由仍保留对外的 `capabilityId` 字段，解码 Map 只包含当前可选择的 Module 与 `clarify`，不会因共享输入类型存在就开放未安装模块。
+FTB 查询 Tool 使用固定返回类型：`ftb.query` 列出当前可执行或可领奖任务、`ftb.find` 搜索可读任务，均返回 `List<QuestBriefOutput>`；`ftb.detail` 按 ID 或玩家上次列表编号返回一个 `QuestOutput`，不存在或不可查看时抛出业务错误。`QuestDetailModule` 负责名称搜索、歧义候选展示和单个详情读取；详情快照的 `starterGift` 只标记任务分类，遇到礼包时由 Module 再调用共享的礼包列表工具。不再为任务查询定义多态结果或类型注册表。任务对象和队伍进度只在兼容层的服务端线程读取，传给 Agent 的是带 Codec 的数据快照。
 
-新增业务能力继续通过 Module 注册。若要新增协议请求，增加请求类型及其 `MapCodec` 注册，再在 `AssistantRequests.registerRequests()` 登记执行处理器；新增响应时同步登记类型 Codec 和客户端处理器，不再增加字符串判断或类型 switch。类型实现保持无默认方法的接口，Codec 注册集中于嵌套 `Types`，避免子类静态初始化时递归读取尚未赋值的 Codec。
+模型路由仍保留对外的 `capabilityId` 字段，解码 Map 只包含当前可选择的 Module 与 `clarify`，不会因共享输入类型存在就开放未安装模块。
+
+新增业务能力继续通过 Module 注册。若要新增协议请求，增加请求类型及其 `MapCodec` 注册，再在 `AssistantRequests.registerRequests()` 登记执行处理器；新增响应时同步登记类型 Codec 和客户端处理器，不再增加字符串判断或类型 switch。类型实现保持无默认方法的接口，Codec 声明在实现类，注册集中于 `registry` 包，根 Codec 延迟访问注册表，避免子类静态初始化时递归读取尚未赋值的 Codec。

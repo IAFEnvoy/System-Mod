@@ -3,10 +3,10 @@ package com.iafenvoy.system.agent.builtin.lottery;
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
 import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryPreviewInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryQueryInput;
 import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
+import com.iafenvoy.system.agent.builtin.output.EmptyCardData;
 import com.iafenvoy.system.agent.builtin.output.LotteryPoolOutput;
 import com.iafenvoy.system.agent.builtin.output.LotteryPrizeOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
@@ -14,6 +14,7 @@ import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.commerce.LotteryPool;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +28,7 @@ public final class LotteryModule extends BuiltinModule<LotteryQueryInput> {
     static final int PAGE_SIZE = 8;
 
     public LotteryModule(ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
-        super(ResultTypes.LOTTERY_ACTION, "Browse lottery pools and their single-draw costs. Viewing never draws or pays.",
+        super(SystemActionTypes.LOTTERY_ACTION.get(), "Browse lottery pools and their single-draw costs. Viewing never draws or pays.",
                 LotteryQueryInput.CODEC, List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
     }
 
@@ -61,13 +62,13 @@ public final class LotteryModule extends BuiltinModule<LotteryQueryInput> {
                 new CommercePreviewInput(List.of(), page.stream().map(LotteryPool::id).toList(), false, catalog.revision()));
         for (int index = 0; index < page.size(); index++) {
             LotteryPool pool = page.get(index);
-            cards.add(new AgentResult.Card("system.result.lottery_pool", ResultTypes.LOTTERY_POOL.of(summary(pool, prices.get(index), true)), List.of(
-                    new AgentResult.Action("system.action.lottery_preview", ResultTypes.LOTTERY_PREVIEW_ACTION,
+            cards.add(new AgentResult.Card("system.result.lottery_pool", summary(pool, prices.get(index), true), List.of(
+                    new AgentResult.Action("system.action.lottery_preview", SystemActionTypes.LOTTERY_PREVIEW_ACTION.get(),
                             new LotteryPreviewInput(pool.id(), 0, Optional.of(catalog.revision()))))));
         }
         if (matches.size() - input.offset() > PAGE_SIZE)
-            cards.add(new AgentResult.Card("system.result.page", ResultTypes.EMPTY.of(EmptyInput.INSTANCE), List.of(
-                    new AgentResult.Action("system.action.next", ResultTypes.LOTTERY_ACTION, new LotteryQueryInput(query, input.offset() + PAGE_SIZE)))));
+            cards.add(new AgentResult.Card("system.result.page", EmptyCardData.INSTANCE, List.of(
+                    new AgentResult.Action("system.action.next", SystemActionTypes.LOTTERY_ACTION.get(), new LotteryQueryInput(query, input.offset() + PAGE_SIZE)))));
         return new AgentResult("SUCCEEDED", cards.isEmpty() ? "system.result.lottery_empty" : "system.result.lottery", "", cards);
     }
 }

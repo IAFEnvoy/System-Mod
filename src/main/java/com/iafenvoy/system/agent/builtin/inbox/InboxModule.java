@@ -10,9 +10,10 @@ import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.module.CommerceDataStorage;
+import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.inbox.InboxSystemModule;
 import com.iafenvoy.system.module.signin.SignInSystemModule;
-import com.iafenvoy.system.module.ModuleData;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -25,7 +26,7 @@ import java.util.Set;
  */
 public final class InboxModule extends BuiltinModule<EmptyInput> {
     public InboxModule() {
-        super(ResultTypes.INBOX_ACTION, "Read sign-in status, available reward packages and my reward inbox.",
+        super(SystemActionTypes.INBOX_ACTION.get(), "Read sign-in status, available reward packages and my reward inbox.",
                 EmptyInput.CODEC, List.of(), true, false, ExecutionPolicy.quick(2, 0));
     }
 
@@ -48,14 +49,14 @@ public final class InboxModule extends BuiltinModule<EmptyInput> {
             for (PlayerData.Delivery delivery : ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.values().stream()
                     .filter(value -> !Set.of("DELIVERED", "PAYMENT_PENDING", "PAYMENT_UNKNOWN").contains(value.state)).limit(32).toList()) {
                 List<AgentResult.Action> actions = "PENDING".equals(delivery.state)
-                        ? List.of(new AgentResult.Action("system.action.deliver", ResultTypes.DELIVER_ACTION, new EntitlementInput(delivery.id))) : List.of();
-                cards.add(new AgentResult.Card("system.result.reward", ResultTypes.ENTITLEMENT.of(new CreditReceiptOutput(delivery.id, delivery.reward, delivery.state)), actions));
+                        ? List.of(new AgentResult.Action("system.action.deliver", SystemActionTypes.DELIVER_ACTION.get(), new EntitlementInput(delivery.id))) : List.of();
+                cards.add(new AgentResult.Card("system.result.reward", new CreditReceiptOutput(delivery.id, delivery.reward, delivery.state), actions));
             }
-            cards.add(new AgentResult.Card("system.result.sign_in_status", ResultTypes.SIGN_IN_STATUS.of(new ResultTypes.SignInStatus(day, ModuleData.get(data, SignInSystemModule.STORAGE).rewards.containsKey(day),
-                    context.catalog().rewards(), data.saveHistory, data.externalModel)), List.of()));
+            cards.add(new AgentResult.Card("system.result.sign_in_status", new ResultTypes.SignInStatus(day, ModuleData.get(data, SignInSystemModule.STORAGE).rewards.containsKey(day),
+                    context.catalog().rewards(), data.saveHistory, data.externalModel), List.of()));
             for (PlayerData.Purchase purchase : ModuleData.values(data, CommerceDataStorage.class)
                     .flatMap(storage -> storage.purchases.values().stream()).filter(value -> !"COMPLETED".equals(value.state) && !"FAILED".equals(value.state)).limit(8).toList())
-                cards.add(new AgentResult.Card("system.result.shop_order", ResultTypes.SHOP_ORDER.of(new ResultTypes.ShopOrder(purchase.id, purchase.order.label(), purchase.state, purchase.error)), List.of()));
+                cards.add(new AgentResult.Card("system.result.shop_order", new ResultTypes.ShopOrder(purchase.id, purchase.order.label(), purchase.state, purchase.error), List.of()));
             return new AgentResult("SUCCEEDED", "system.result.inbox", "", cards);
         });
     }

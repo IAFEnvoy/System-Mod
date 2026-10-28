@@ -1,17 +1,17 @@
 {
   "body": [
     {
-      "type": "row",
+      "type": "system:row",
       "style": "lottery_heading",
       "text_separator": " · ",
       "children": [
         {
-          "type": "header",
+          "type": "system:header",
           "text": "{{reward_label}}",
           "style": "lottery_name"
         },
         {
-          "type": "text",
+          "type": "system:text",
           "translate": "system.ui.lottery_chance",
           "args": [
             "{{chance}}%"
@@ -22,17 +22,17 @@
       ]
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{reward_items}}",
       "when": "text_items"
     },
     {
-      "type": "items",
+      "type": "system:items",
       "items": "{{result_items}}",
       "label": "{{field:reward}}"
     },
     {
-      "type": "actions",
+      "type": "system:actions",
       "actions": "{{result_actions}}"
     }
   ],

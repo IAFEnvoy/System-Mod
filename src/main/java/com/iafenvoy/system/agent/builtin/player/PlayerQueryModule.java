@@ -7,6 +7,7 @@ import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 
@@ -15,7 +16,7 @@ import java.util.List;
  */
 public final class PlayerQueryModule extends BuiltinModule<EmptyInput> {
     public PlayerQueryModule(ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player) {
-        super(ResultTypes.PLAYER_ACTION, "Read my current health, experience and dimension; public online player names only.",
+        super(SystemActionTypes.PLAYER_ACTION.get(), "Read my current health, experience and dimension; public online player names only.",
                 EmptyInput.CODEC, List.of(player), true, false, ExecutionPolicy.quick(2, 0));
     }
 
@@ -31,6 +32,6 @@ public final class PlayerQueryModule extends BuiltinModule<EmptyInput> {
 
     @Override
     public AgentResult execute(ExecutionContext context, EmptyInput input) throws Exception {
-        return AgentResult.data("system.result.player", ResultTypes.PLAYER.of(context.tool(BuiltinTools.PLAYER, "player", input)));
+        return AgentResult.data("system.result.player", context.tool(BuiltinTools.PLAYER, "player", input));
     }
 }

@@ -3,6 +3,9 @@ package com.iafenvoy.system.assistant;
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.TypedPayload;
+import com.iafenvoy.system.agent.request.ChatRequest;
+import com.iafenvoy.system.agent.request.ControlRequest;
+import com.iafenvoy.system.agent.request.InvokeRequest;
 import com.iafenvoy.system.command.client.AssistantClientCommands;
 import com.iafenvoy.system.config.file.ClientConfig;
 import com.iafenvoy.system.data.SystemDefinition;
@@ -66,7 +69,7 @@ public final class AssistantClient {
             local(AgentResult.error("INVALID_INPUT"));
             return true;
         }
-        if (!AssistantClientCommands.execute(text)) send(new AgentRequest.Chat(text.strip()));
+        if (!AssistantClientCommands.execute(text)) send(new ChatRequest(text.strip()));
         return true;
     }
 
@@ -122,14 +125,14 @@ public final class AssistantClient {
     }
 
     public static void send(TypedPayload<?> call, String message) {
-        send(new AgentRequest.Invoke(call, message));
+        send(new InvokeRequest(call, message));
     }
 
     public static void send(AgentRequest request) {
         ClientPacketListener connection = Minecraft.getInstance().getConnection();
         if (connection == null || state.busy()) return;
         String id = UUID.randomUUID().toString();
-        if (request != AgentRequest.Control.STATE && Minecraft.getInstance().screen instanceof AssistantInputScreen screen) {
+        if (request != ControlRequest.STATE && Minecraft.getInstance().screen instanceof AssistantInputScreen screen) {
             screen.stopSpeech();
             screen.stopRecognition();
         }

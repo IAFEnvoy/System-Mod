@@ -1,4 +1,4 @@
-package com.iafenvoy.system.util.codec;
+package com.iafenvoy.system.util;
 
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;

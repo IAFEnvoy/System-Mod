@@ -1,5 +1,6 @@
 package com.iafenvoy.system.screen.card;
 
+import com.iafenvoy.system.agent.CardContext;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.util.LegacyText;
 import com.sighs.apricityui.init.Document;

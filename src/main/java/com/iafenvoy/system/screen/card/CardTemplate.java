@@ -1,5 +1,6 @@
 package com.iafenvoy.system.screen.card;
 
+import com.iafenvoy.system.agent.CardContext;
 import com.iafenvoy.system.screen.card.node.ActionsNode;
 import com.iafenvoy.system.screen.card.node.ItemsNode;
 import com.iafenvoy.system.screen.card.node.TextNode;

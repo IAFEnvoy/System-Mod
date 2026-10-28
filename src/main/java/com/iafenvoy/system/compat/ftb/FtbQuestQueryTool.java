@@ -4,7 +4,7 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.QuestQueryInput;
-import com.iafenvoy.system.agent.builtin.output.QuestListOutput;
+import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
@@ -18,19 +18,19 @@ import static com.iafenvoy.system.compat.ftb.FtbQuestAccess.list;
 /**
  * One FTB operation, loaded only after the optional dependency check.
  */
-final class FtbQuestQueryTool implements ToolRegistry.Handler<QuestQueryInput, QuestListOutput> {
+final class FtbQuestQueryTool implements ToolRegistry.Handler<QuestQueryInput, List<QuestBriefOutput>> {
     private final FtbQuestAccess access;
 
     FtbQuestQueryTool(FtbQuestAccess access) {
         this.access = access;
     }
 
-    ToolRegistry.Tool<QuestQueryInput, QuestListOutput> tool() {
+    ToolRegistry.Tool<QuestQueryInput, List<QuestBriefOutput>> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.QUEST_QUERY, false, true, false, this);
     }
 
     @Override
-    public CompletionStage<QuestListOutput> execute(ExecutionContext context, QuestQueryInput input) {
+    public CompletionStage<List<QuestBriefOutput>> execute(ExecutionContext context, QuestQueryInput input) {
         return this.access.game.onPlayer(context, player -> {
             if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
             ServerQuestFile file = ServerQuestFile.getInstance();

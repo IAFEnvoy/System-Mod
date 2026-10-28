@@ -3,7 +3,7 @@ package com.iafenvoy.system.agent.store;
 import com.google.gson.JsonParser;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.util.codec.CodecIO;
+import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.JsonOps;
 
 import java.io.BufferedReader;

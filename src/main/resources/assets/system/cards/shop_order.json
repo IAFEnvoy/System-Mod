@@ -1,24 +1,24 @@
 {
   "body": [
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:order_id}}: {{order_id}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{label}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:state}}: {{state:state}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{error}}",
       "when": "error"
     },
     {
-      "type": "actions",
+      "type": "system:actions",
       "actions": "{{result_actions}}"
     }
   ]

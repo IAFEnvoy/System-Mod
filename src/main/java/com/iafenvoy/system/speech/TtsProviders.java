@@ -8,27 +8,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
- * Register additional suppliers during client setup; each synthesis owns and closes its provider.
+ * Plain factories are selected by name; every synthesis owns a fresh provider instance.
  */
-@SuppressWarnings("unused")
 public final class TtsProviders {
-    private static final Map<String, Supplier<TtsProvider>> FACTORIES = new ConcurrentHashMap<>();
+    private static final Map<String, Supplier<TtsProvider>> REGISTRY = new ConcurrentHashMap<>();
 
-    public static final Supplier<TtsProvider> ALIYUN = register("aliyun", AliyunTtsProvider::new);
-
-    private TtsProviders() {
+    static {
+        register("aliyun", AliyunTtsProvider::new);
     }
 
-    public static Supplier<TtsProvider> register(String id, Supplier<TtsProvider> factory) {
-        if (id == null || !id.matches("[a-z0-9_.:-]{1,80}") || factory == null)
-            throw new IllegalArgumentException("Invalid TTS provider registration");
-        if (FACTORIES.putIfAbsent(id, factory) != null)
-            throw new IllegalArgumentException("Duplicate TTS provider: " + id);
-        return factory;
+    public static void register(String id, Supplier<TtsProvider> factory) {
+        REGISTRY.put(id, factory);
     }
 
-    public static TtsProvider create(String id) throws SpeechException {
-        Supplier<TtsProvider> factory = FACTORIES.get(id);
+    public static TtsProvider create(String name) throws SpeechException {
+        Supplier<TtsProvider> factory = REGISTRY.get(name);
         if (factory == null) throw new SpeechException("provider");
         return factory.get();
     }

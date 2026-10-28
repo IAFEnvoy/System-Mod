@@ -1,6 +1,6 @@
 package com.iafenvoy.system.agent.routing;
 
-import com.iafenvoy.system.util.codec.CodecIO;
+import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 
 import java.io.IOException;

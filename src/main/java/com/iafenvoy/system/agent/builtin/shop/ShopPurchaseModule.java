@@ -8,6 +8,7 @@ import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 
@@ -16,7 +17,7 @@ import java.util.List;
  */
 public final class ShopPurchaseModule extends BuiltinModule<ShopPurchaseInput> {
     public ShopPurchaseModule(ToolRegistry.Tool<ShopPurchaseInput, PurchaseReceiptOutput> purchase) {
-        super(ResultTypes.PURCHASE_ACTION, "Explicit action confirmation only; never select from natural language. Use system:shop_quote to preview.",
+        super(SystemActionTypes.PURCHASE_ACTION.get(), "Explicit action confirmation only; never select from natural language. Use system:shop_quote to preview.",
                 ShopPurchaseInput.CODEC, List.of(purchase), true, false, ExecutionPolicy.quick(1, 1));
     }
 
@@ -32,7 +33,7 @@ public final class ShopPurchaseModule extends BuiltinModule<ShopPurchaseInput> {
     @Override
     public AgentResult execute(ExecutionContext context, ShopPurchaseInput input) throws Exception {
         PurchaseReceiptOutput receipt = context.tool(BuiltinTools.SHOP_PURCHASE, "purchase", input);
-        return new AgentResult("SUCCEEDED", "system.result.shop_purchased", "", List.of(new AgentResult.Card("system.result.reward", ResultTypes.PURCHASE.of(receipt), List.of(
-                new AgentResult.Action("system.action.deliver", ResultTypes.DELIVER_ACTION, new EntitlementInput(receipt.entitlementId()))))));
+        return new AgentResult("SUCCEEDED", "system.result.shop_purchased", "", List.of(new AgentResult.Card("system.result.reward", receipt, List.of(
+                new AgentResult.Action("system.action.deliver", SystemActionTypes.DELIVER_ACTION.get(), new EntitlementInput(receipt.entitlementId()))))));
     }
 }

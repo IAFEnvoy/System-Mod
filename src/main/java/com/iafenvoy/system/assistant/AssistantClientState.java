@@ -3,10 +3,11 @@ package com.iafenvoy.system.assistant;
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.module.client.ClientCardRegistry;
+import com.iafenvoy.system.module.client.ClientCardBindings;
 import com.iafenvoy.system.module.client.ClientModuleBindings;
-import com.iafenvoy.system.util.codec.CodecIO;
+import com.iafenvoy.system.util.CodecIO;
 import net.minecraft.resources.Identifier;
 
 import java.util.*;
@@ -71,7 +72,7 @@ public record AssistantClientState(List<ChatEntry> entries, Set<String> pending,
         if (!request.text().isBlank()) entries.add(new ChatEntry(true, request.text(), null));
         Set<String> pending = new HashSet<>(this.pending);
         pending.add(id);
-        ChatEntry current = request == AgentRequest.Control.STATE ? this.current : new ChatEntry(false, request.text(), null);
+        ChatEntry current = request == ControlRequest.STATE ? this.current : new ChatEntry(false, request.text(), null);
         return new AssistantClientState(entries, pending, this.serverState, current);
     }
 
@@ -90,7 +91,7 @@ public record AssistantClientState(List<ChatEntry> entries, Set<String> pending,
         AssistantClientState completed = this.complete(id);
         List<ChatEntry> entries = new ArrayList<>(completed.entries);
         ChatEntry current = completed.current;
-        for (ClientCardRegistry.Refresh refresh : ClientModuleBindings.get().cards().refreshes(result)) {
+        for (ClientCardBindings.Refresh refresh : ClientModuleBindings.get().cards().refreshes(result)) {
             for (int index = 0; index < entries.size(); index++) {
                 ChatEntry entry = entries.get(index);
                 if (refresh.matches(entry.result()))
@@ -126,7 +127,7 @@ public record AssistantClientState(List<ChatEntry> entries, Set<String> pending,
     private AssistantClientState restoreHistory(Reception reception) {
         List<ChatEntry> entries = new ArrayList<>();
         for (AgentResult.Card card : reception.result().cards()) {
-            if (!(card.data().value() instanceof ResultTypes.History(List<PlayerData.Message> messages))) continue;
+            if (!(card.data() instanceof ResultTypes.History(List<PlayerData.Message> messages))) continue;
             for (PlayerData.Message message : messages) {
                 if (message.role().equals("user")) entries.add(new ChatEntry(true, message.text(), null));
                 else {

@@ -3,8 +3,8 @@ package com.iafenvoy.system.assistant;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentResponse;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.response.BindingResponse;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import com.iafenvoy.system.module.ModuleManager;
@@ -93,7 +93,7 @@ public final class AssistantPlayers {
                 return;
             boolean fresh = answer.messageKey().equals("system.result.bound");
             if (answer.isSuccess() && fresh) {
-                ServerNetworkHandler.binding(player, AgentResponse.Change.BOUND, answer);
+                ServerNetworkHandler.binding(player, BindingResponse.Change.BOUND, answer);
                 this.pendingBindingIntroductions.add(uuid);
                 this.login(player);
             } else ServerNetworkHandler.notice(player, answer);
@@ -127,9 +127,9 @@ public final class AssistantPlayers {
                 return;
             if (answer.isFailure() && this.engine.incarnation(uuid) != previous) this.login(player);
             if (answer.isSuccess())
-                ServerNetworkHandler.binding(player, AgentResponse.Change.REVOKED, answer);
+                ServerNetworkHandler.binding(player, BindingResponse.Change.REVOKED, answer);
             else if (this.engine.incarnation(uuid) != previous)
-                ServerNetworkHandler.binding(player, AgentResponse.Change.INVALIDATED, answer);
+                ServerNetworkHandler.binding(player, BindingResponse.Change.INVALIDATED, answer);
             else ServerNetworkHandler.notice(player, answer);
         }));
     }

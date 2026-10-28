@@ -53,7 +53,7 @@ HUD 通知框从隐藏状态首次展开时，播放一次注册的 `system:noti
 
 `TtsProvider.supportsStreaming()` 默认 false。新供应商可实现 `synthesizeStreaming(Request, AudioSink, Consumer<Usage>)`，通过 AudioSink 提供采样率、声道及 16-bit 小端 PCM，并报告累计 usage。未实现流式的旧供应商沿用完整 WAV 合成，在工作线程解码后进入同一播放管线；阿里云流式失败不会自动重发非流式请求，避免重复消费。
 
-`HttpTransport.stream` 对整个流施加 90 秒等待期限、16MiB 总响应限制；`ServerSentEvents` 按 UTF-8 增量组帧，支持 CR/LF、注释、多行 data、BOM 与跨网络块的字符，单事件上限 2MiB。校验 HTTP 状态、SSE Content-Type、JSON 错误和最终 `finish_reason=stop`，播放不会把上游正文或签名 URL 暴露给玩家。session 结束、停止朗读、断线、撤销或资源重载取消在途请求并释放 PCM，过期回调受 session 和 generation 保护。已收到的 usage 仍按原连接统计；取消本地连接不保证云端立即停止生成或计费。
+`HttpTransport.stream` 对整个流施加 90 秒等待期限、16MiB 总响应限制；`ServerSentEvents` 按 UTF-8 增量组帧，支持 CR/LF、注释、多行 data、BOM 与跨网络块的字符，单事件上限 2MiB。校验 HTTP 状态、SSE Content-Type、JSON 错误和最终 `finish_reason=stop`，播放不会把上游正文或签名 URL 暴露给玩家。session 结束、停止朗读、断线、撤销或资源重载取消在途请求并释放 PCM，过期回调受 session 和 generation 保护。已收到的 usage 仍计入发起请求的本地账号；取消本地连接不保证云端立即停止生成或计费。
 
 ### 原版播放与 OpenAL 后备
 
@@ -151,13 +151,13 @@ python tools/voice_design.py --lang zh upload reference.wav --model voice-enroll
 
 ## 接口与边界
 
-- `com.iafenvoy.system.speech.tts.TtsProvider` 是无 MC 依赖的合成接口，保留 WAV 字节接口，并提供可选的流式 PCM 回调。注册入口为 `com.iafenvoy.system.speech.TtsProviders`，内置工厂通过 `ALIYUN` 字段公开；`TtsProviders.register(id, factory)` 可在客户端初始化时注册其他供应商，再在本地配置选择该 provider；新供应商自行校验其协议参数。
+- `com.iafenvoy.system.speech.tts.TtsProvider` 是无 MC 依赖的合成接口，保留 WAV 字节接口，并提供可选的流式 PCM 回调。供应商由 `speech.TtsProviders` 的普通工厂 Map 管理，内置键为 `aliyun`。扩展在客户端初始化时调用 `TtsProviders.register(name, factory)`，不参与 MC 注册表生命周期；`TtsProviders.create(provider)` 按配置字符串精确查找并创建独占实例，不自动补命名空间。收费表另将短名补为 `system:` 后匹配；新供应商自行校验协议参数。完整示例见[注册表速查](registries.md)。
 - `AliyunTtsProvider` 通过共享的 `HttpTransport` 实现两种阿里云 HTTP 协议，MC 默认使用上述 SSE 路径。保留的非流式接口总响应超时 45 秒，音频下载 25 秒；JSON 最大 12MiB，音频最大 8MiB。无重定向、无自动重试。非流式下载仅接受阿里云 OSS 音频域名，旧 HTTP URL 升级 HTTPS，下载不携带 Bearer。
 - `AssistantSpeech.Session` 由界面和当前通知持有；全局只保留当前朗读及一个待启动项，新朗读替换旧项，文字队列由 `AssistantMessages` 管理。关闭 session 同时取消在途 Future、PCM 和播放，已关闭的 session 不能重新提交。单个合成工作线程及单个工作等待槽保持有界；请求、SSE 解析及旧供应商 WAV 解码不占 MC 线程，旧代次结果不得重新开始播放。
 - `SpeechAudio` 保存有界的 16-bit 小端、单/双声道 PCM；`SpeechSound` 提供原版非阻塞读取，`SpeechPlayback` 管理原版优先/单次后备，`OpenAlSpeechPlayer` 按游标向循环 buffer 队列补充音频。仅有客户端声音生命周期 mixin，不需要资源包、外部播放器或音频库。
 - `AssistantSpeech.status()`、`SpeechPlayback` 和设置页共用 `SpeechState` 枚举，统一合成、播放及错误状态；供应商错误码在入口转换，界面通过 `translationKey()` 读取现有双语文案。
-- 没有新增 Java 依赖、模型文件或原生运行库。TTS 继续由客户端独立调用，响应 usage 经限长的开始/完成报告合入存档中的玩家用量账本；不上传密钥、正文或音色 ID。`/system usage` 同页展示 AI / TTS 用量，按模型区分字符计费和 Token 计费并显示 TTS 费用估算，revoke 不清除。报告可信度、断线边界与官方单价见 [AI / TTS 用量统计](token-usage.md)。
-- 收费标准使用服务端 `config/system/system-speech-pricing.json`；缺失时复制 JAR 内 `defaults/system-speech-pricing.json` 后加载，保留已有配置。修改后通过服务端 `/reload` 或重启生效，历史累计费用不重算；详细字段见[收费标准配置](token-usage.md#收费标准配置)。
+- 没有新增 Java 依赖、模型文件或原生运行库。TTS 由客户端独立调用，用量只写入本机 `config/system/speech-usage/<客户端账号UUID>.json`；用量、密钥、正文和音色 ID 均不上传 MC 服务端。`/system usage` 同页展示服务端 AI 和本人的本地 TTS / ASR，用量跨服务器累计，revoke 不清除。累计口径与官方单价见[用量统计](token-usage.md)。
+- 收费标准使用客户端 `config/system/system-speech-pricing.json`；缺失时复制 JAR 内 `defaults/system-speech-pricing.json` 后加载，保留已有配置。修改后通过客户端 F3+T 或重启生效，历史累计费用不重算；详细字段见[收费标准配置](token-usage.md#收费标准配置)。
 
 ## 验证范围
 

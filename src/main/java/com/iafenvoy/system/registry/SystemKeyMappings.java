@@ -18,9 +18,6 @@ public final class SystemKeyMappings {
     public static final KeyMapping TOGGLE_INTERFACE = new KeyMapping("key.system.toggle_interface", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
     public static final KeyMapping VOICE_INPUT = new KeyMapping("key.system.voice_input", GLFW.GLFW_KEY_F8, CATEGORY);
 
-    private SystemKeyMappings() {
-    }
-
     @SubscribeEvent
     public static void register(RegisterKeyMappingsEvent event) {
         event.registerCategory(CATEGORY);

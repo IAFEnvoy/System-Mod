@@ -1,20 +1,20 @@
 {
   "body": [
     {
-      "type": "items",
+      "type": "system:items",
       "items": "{{gifts.*.result_items}}",
       "repeat": "gifts",
       "label": "{{field:reward}}",
       "description": [
         {
-          "type": "text",
+          "type": "system:text",
           "text": "{{gifts.*.error}}",
           "when": "gifts.*.error"
         }
       ]
     },
     {
-      "type": "actions",
+      "type": "system:actions",
       "actions": "{{result_actions}}"
     }
   ]

@@ -3,9 +3,6 @@ package com.iafenvoy.system.data.usage;
 import com.iafenvoy.system.config.file.SpeechPricingConfig;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
 
 import java.util.OptionalLong;
 
@@ -24,13 +21,6 @@ public record RecognitionUsage(long calls, long failedCalls, long unreportedCall
             Codec.LONG.fieldOf("estimated_nano_yuan").forGetter(RecognitionUsage::estimatedNanoYuan),
             Codec.LONG.fieldOf("unpriced_calls").forGetter(RecognitionUsage::unpricedCalls)
     ).apply(i, RecognitionUsage::new));
-    public static final StreamCodec<ByteBuf, RecognitionUsage> STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.VAR_LONG, RecognitionUsage::calls,
-            ByteBufCodecs.VAR_LONG, RecognitionUsage::failedCalls,
-            ByteBufCodecs.VAR_LONG, RecognitionUsage::unreportedCalls,
-            ByteBufCodecs.VAR_LONG, RecognitionUsage::estimatedNanoYuan,
-            ByteBufCodecs.VAR_LONG, RecognitionUsage::unpricedCalls, RecognitionUsage::new);
-
     public RecognitionUsage {
         if (failedCalls < 0 || failedCalls > calls || unreportedCalls < 0 || unreportedCalls > calls
                 || estimatedNanoYuan < 0 || unpricedCalls < 0 || unpricedCalls > calls)

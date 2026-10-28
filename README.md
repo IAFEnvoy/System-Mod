@@ -28,7 +28,7 @@ and HUD notifications that keep gameplay uninterrupted, with optional speech out
   streaming
   TTS reads message bodies; closing a view, dismissing a notification or switching messages ends the corresponding
   speech session.
-- **Usage and privacy controls:** per-player AI / TTS / ASR usage, history management, external-AI opt-out,
+- **Usage and privacy controls:** server AI usage by player, private local TTS / ASR usage, history management, external-AI opt-out,
   UUID-isolated
   data and limits on model and tool execution.
 
@@ -85,7 +85,7 @@ The following commands run in Minecraft chat:
 | `/system settings`                                   | Open unified client settings directly; no binding required                                  |
 | `/system ask <text>`                                 | Submit a natural-language request                                                           |
 | `/system player`                                     | View your own status                                                                        |
-| `/system usage` / `/system usage all`                | View personal usage / all players' usage as an administrator                                |
+| `/system usage` / `/system usage all`                | View personal usage / server AI usage as an administrator; voice totals always stay personal |
 | `/system grant [player]` / `/system revoke [player]` | Grant access / revoke access and clear System records as an administrator                   |
 | `/system reset [player]`                             | Clear old-format System records and binding; cumulative usage is retained, then grant again |
 | `/system routing`                                    | View routing diagnostics as an administrator                                                |
@@ -161,9 +161,10 @@ See the examples in this GitHub repository for details.
 | Server `config/system/system-model.json`          | Model connection and provider options                                                                      |
 | Server `config/system/system-semantic.json`       | Local intent routing, thresholds, examples and cache                                                       |
 | Server `config/system/system-advancements.json`   | Trusted advancement rules                                                                                  |
-| Server `config/system/system-speech-pricing.json` | TTS rates; copied from bundled defaults if missing and read on server startup                              |
+| Client `config/system/system-speech-pricing.json` | Personal TTS / ASR rates; copied from bundled defaults if missing                                          |
 | `<world>/system-agent/<UUID>.json`                | Binding, conversations, preferences, rewards, orders and workflow records                                  |
-| `<world>/data/system/token_usage.dat`             | Independently persisted per-player AI / TTS / ASR usage; retained after revoking access or clearing memory |
+| `<world>/data/system/token_usage.dat`             | Server AI usage by player; retained after revoking access or clearing memory                               |
+| Client `config/system/speech-usage/<UUID>.json`   | Personal TTS / ASR totals for this local account, retained across servers; never uploaded                   |
 | Client `config/system/system-client.json`         | View preference                                                                                            |
 | Client `config/system/system-speech.json`         | Local speech settings and any key entered in the UI                                                        |
 | Client `config/system/system-asr.json`            | Local recognition switch, NLS AppKey, temporary Token and region                                           |
@@ -173,6 +174,7 @@ managed by the server; clients cannot modify them directly.
 
 ### API Usage
 
-AI usage comes from server-side API responses. TTS usage is reported by the client and is informational; it cannot serve
-as a basis for payments or rewards. Fees are estimated from the server's pricing configuration. Rate changes take effect
-after a server `/reload` or restart and do not recalculate past totals. Provider billing is authoritative.
+AI usage comes from server-side API responses. TTS and ASR totals stay on the client, per local account; they are never
+uploaded to the game server. The all-player view contains AI only; voice panels always show your own local totals.
+Voice fees use client-configured rates. Reload client resources with F3+T or restart after editing rates; past totals
+are unchanged. Provider billing is authoritative.

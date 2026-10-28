@@ -2,7 +2,7 @@ package com.iafenvoy.system.screen.card;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.module.client.ClientModuleBindings;
-import com.iafenvoy.system.util.codec.CodecIO;
+import com.iafenvoy.system.util.CodecIO;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Highest-priority assets/<namespace>/cards/<path>.json override a card's presentation by payload type ID.
+ * CardData template IDs select the highest-priority assets/<namespace>/cards/<path>.json layout.
  */
 @EventBusSubscriber(Dist.CLIENT)
 public enum CardTemplates implements ResourceManagerReloadListener {
@@ -34,7 +34,7 @@ public enum CardTemplates implements ResourceManagerReloadListener {
 
     @Override
     public void onResourceManagerReload(ResourceManager manager) {
-        // Complete extension registration before dispatch resolves the first template node.
+        // Assemble module parameters and message handlers; node types already froze at mod loading.
         ClientModuleBindings.get();
         Map<Identifier, CardTemplate> loaded = new LinkedHashMap<>();
         manager.listResources("cards", id -> id.getPath().endsWith(".json")).forEach((resourceId, resource) -> {

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.screen.gui;
 
-import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.request.PreferencesRequest;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.config.file.ClientConfig;
 import com.iafenvoy.system.config.file.RecognitionConfig;
@@ -254,7 +254,7 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
             this.externalModel = AssistantClient.state().externalModel();
         } else if (this.saveHistory != AssistantClient.state().saveHistory() || this.externalModel != AssistantClient.state().externalModel()) {
             this.savingPreferences = true;
-            AssistantClient.send(new AgentRequest.Preferences(this.saveHistory, this.externalModel));
+            AssistantClient.send(new PreferencesRequest(this.saveHistory, this.externalModel));
         }
         this.renderControls();
     }

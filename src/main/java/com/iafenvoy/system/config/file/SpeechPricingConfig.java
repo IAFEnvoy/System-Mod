@@ -1,6 +1,7 @@
 package com.iafenvoy.system.config.file;
 
 import com.iafenvoy.saturn.util.codec.MiscCodecs;
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.config.ConfigInstance;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import com.mojang.logging.LogUtils;
@@ -17,7 +18,7 @@ import java.time.LocalDate;
 import java.util.*;
 
 /**
- * Server-configured CNY estimates; unavailable pricing leaves usage recorded but unpriced.
+ * Client-configured CNY estimates; unavailable pricing leaves local usage recorded but unpriced.
  */
 public final class SpeechPricingConfig {
     public static final String FILE_NAME = "system-speech-pricing.json";
@@ -109,11 +110,16 @@ public final class SpeechPricingConfig {
     }
 
     private record Key(String provider, String model, String region) {
+        private Key {
+            // Provider configuration accepts short System IDs and fully qualified extension IDs.
+            if (!provider.contains(":")) provider = SystemMod.MOD_ID + ":" + provider;
+        }
     }
 
     private enum Unit implements StringRepresentable {
         CHARACTERS, TOKENS, CALLS;
-        public static final Codec<Unit> CODEC = StringRepresentable.fromValues(Unit::values);
+        public static final Codec<Unit> CODEC = Codec.STRING.comapFlatMap(value -> MiscCodecs.mapOrError(
+                () -> Unit.valueOf(value.toUpperCase(Locale.ROOT))), Unit::getSerializedName);
 
         @Override
         public @NonNull String getSerializedName() {

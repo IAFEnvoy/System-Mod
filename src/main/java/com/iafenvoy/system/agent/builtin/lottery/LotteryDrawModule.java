@@ -8,8 +8,9 @@ import com.iafenvoy.system.agent.builtin.input.LotteryPreviewInput;
 import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.module.lottery.LotterySystemModule;
 import com.iafenvoy.system.module.ModuleData;
+import com.iafenvoy.system.module.lottery.LotterySystemModule;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,7 +20,7 @@ import java.util.Optional;
  */
 public final class LotteryDrawModule extends BuiltinModule<LotteryDrawInput> {
     public LotteryDrawModule(ToolRegistry.Tool<LotteryDrawInput, PurchaseReceiptOutput> draw) {
-        super(ResultTypes.LOTTERY_DRAW_ACTION, "Explicit action confirmation only; never select from natural language. Preview a pool first.",
+        super(SystemActionTypes.LOTTERY_DRAW_ACTION.get(), "Explicit action confirmation only; never select from natural language. Preview a pool first.",
                 LotteryDrawInput.CODEC, List.of(draw), true, false, ExecutionPolicy.quick(0, 1));
     }
 
@@ -34,8 +35,8 @@ public final class LotteryDrawModule extends BuiltinModule<LotteryDrawInput> {
         LotteryPreviewInput again = context.store().read(context.player(), data -> new LotteryPreviewInput(
                 ModuleData.get(data, LotterySystemModule.STORAGE).purchases.get(receipt.orderId()).order.source(), 0, Optional.empty()));
         return new AgentResult("SUCCEEDED", "system.result.lottery_drawn", "", List.of(
-                new AgentResult.Card("system.result.reward", ResultTypes.PURCHASE.of(receipt), List.of(
-                        new AgentResult.Action("system.action.deliver", ResultTypes.DELIVER_ACTION, new EntitlementInput(receipt.entitlementId())),
-                        new AgentResult.Action("system.action.lottery_again", ResultTypes.LOTTERY_PREVIEW_ACTION, again)))));
+                new AgentResult.Card("system.result.reward", receipt, List.of(
+                        new AgentResult.Action("system.action.deliver", SystemActionTypes.DELIVER_ACTION.get(), new EntitlementInput(receipt.entitlementId())),
+                        new AgentResult.Action("system.action.lottery_again", SystemActionTypes.LOTTERY_PREVIEW_ACTION.get(), again)))));
     }
 }

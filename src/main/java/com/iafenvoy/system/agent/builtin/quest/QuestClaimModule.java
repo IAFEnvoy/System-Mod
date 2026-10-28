@@ -7,6 +7,7 @@ import com.iafenvoy.system.agent.builtin.output.QuestClaimOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 
@@ -15,7 +16,7 @@ import java.util.List;
  */
 public final class QuestClaimModule extends BuiltinModule<QuestClaimInput> {
     public QuestClaimModule(ToolRegistry.Tool<QuestClaimInput, QuestClaimOutput> claim) {
-        super(ResultTypes.CLAIM_ACTION, "Claim exactly one known FTB reward using a previously returned claimRef. Without a ref, list claimable quests then open system:quest_detail; never invent references.",
+        super(SystemActionTypes.CLAIM_ACTION.get(), "Claim exactly one known FTB reward using a previously returned claimRef. Without a ref, list claimable quests then open system:quest_detail; never invent references.",
                 QuestClaimInput.CODEC, List.of(claim), true, false, ExecutionPolicy.quick(1, 1));
     }
 
@@ -30,6 +31,6 @@ public final class QuestClaimModule extends BuiltinModule<QuestClaimInput> {
     @Override
     public AgentResult execute(ExecutionContext context, QuestClaimInput input) throws Exception {
         QuestClaimOutput result = context.tool(BuiltinTools.QUEST_CLAIM, "claim", input);
-        return AgentResult.data(result.state().equals("CLAIM_EXECUTED") ? "system.result.claim" : "system.result.claim_unavailable", ResultTypes.CLAIM.of(result));
+        return AgentResult.data(result.state().equals("CLAIM_EXECUTED") ? "system.result.claim" : "system.result.claim_unavailable", result);
     }
 }

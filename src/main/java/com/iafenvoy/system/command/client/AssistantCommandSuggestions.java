@@ -44,7 +44,7 @@ public final class AssistantCommandSuggestions {
                     add(candidates, input, prefix + "select " + index, hint);
                     add(candidates, input, prefix + "选择 " + index++, hint);
                 }
-                if (!(card.data().value() instanceof ResultTypes.QuestList(List<QuestBriefOutput> quests))) continue;
+                if (!(card.data() instanceof ResultTypes.QuestList(List<QuestBriefOutput> quests))) continue;
                 for (QuestBriefOutput quest : quests) {
                     String number = Integer.toString(quest.number()), title = quest.title();
                     for (String command : List.of("view", "查看")) {

@@ -2,14 +2,15 @@ package com.iafenvoy.system.screen;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.CardContext;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.command.client.NotificationVoiceCommands;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.event.client.AssistantRecognitionKeys;
-import com.iafenvoy.system.module.client.ClientCardRegistry;
+import com.iafenvoy.system.module.client.ClientCardBindings;
+import com.iafenvoy.system.module.client.ClientMessage;
 import com.iafenvoy.system.module.client.ClientModuleBindings;
-import com.iafenvoy.system.screen.card.CardContext;
 import com.iafenvoy.system.screen.card.CardPresentation;
 import com.iafenvoy.system.screen.gui.AssistantItems;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
@@ -143,11 +144,13 @@ public final class AssistantMessages {
 
     public static void result(AgentResult result, boolean review) {
         if (result.silent()) return;
-        post(message(result, review), !SpeechText.result(result).isBlank());
+        Message message = message(result, review);
+        post(message, !message.speechText().isBlank());
     }
 
     private static Message message(AgentResult result, boolean review) {
-        String summary = summary(result);
+        ClientMessage message = ClientModuleBindings.get().cards().message(result);
+        String summary = summary(result, message.text());
         List<Button> buttons = new ArrayList<>();
         List<Row> rows = new ArrayList<>();
         for (AgentResult.Card card : result.cards()) {
@@ -171,16 +174,16 @@ public final class AssistantMessages {
                 AssistantClientState.ChatEntry entry = AssistantClient.state().current();
                 AssistantClient.open(entry != null && entry.result() == result && AssistantClient.simpleMode(), "");
             }));
-        String speechText = SpeechText.result(result);
+        String speechText = result.silent() ? "" : message.speech();
         Class<?> refreshType = ClientModuleBindings.get().cards().refreshes(result).stream()
-                .map(ClientCardRegistry.Refresh::type).findFirst().orElse(null);
-        CardBody body = new CardBody(preamble(result), result.cards().stream().map(card ->
-                ClientModuleBindings.get().cards().presentation(card, result.messageKey(), CardContext.Mode.NOTIFICATION, 0)).toList());
+                .map(ClientCardBindings.Refresh::type).findFirst().orElse(null);
+        CardBody body = new CardBody(message.text(), result.cards().stream().map(card ->
+                CardPresentation.of(card, result.messageKey(), CardContext.Mode.NOTIFICATION, 0)).toList());
         return new Message(tr("system.ui.assistant"), summary, speechText, buttons, 160, List.of(), SpeechText.quests(result), rows, refreshType, body);
     }
 
     public static void refresh(AgentResult result) {
-        for (ClientCardRegistry.Refresh refresh : ClientModuleBindings.get().cards().refreshes(result)) {
+        for (ClientCardBindings.Refresh refresh : ClientModuleBindings.get().cards().refreshes(result)) {
             QUEUE.removeIf(pending -> pending.message().refreshType() == refresh.type());
             if (current != null && current.refreshType() == refresh.type()) {
                 if (!refresh.visible()) dismiss(current);
@@ -196,14 +199,12 @@ public final class AssistantMessages {
         }
     }
 
-    private static String preamble(AgentResult result) {
-        String custom = ClientModuleBindings.get().cards().summary(result);
-        if (custom != null) return custom;
-        return tr(result.messageKey()) + (result.text().isBlank() ? "" : "\n" + result.text());
+    public static String summary(AgentResult result) {
+        return summary(result, ClientModuleBindings.get().cards().message(result).text());
     }
 
-    public static String summary(AgentResult result) {
-        StringBuilder summary = new StringBuilder(preamble(result));
+    private static String summary(AgentResult result, String text) {
+        StringBuilder summary = new StringBuilder(text);
         if (!result.cards().isEmpty() && !result.messageKey().equals("system.result.history")) {
             AgentResult.Card card = result.cards().getFirst();
             if (!card.titleKey().equals(result.messageKey())) summary.append("\n").append(tr(card.titleKey()));

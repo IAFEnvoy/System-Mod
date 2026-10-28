@@ -1,78 +1,78 @@
 {
   "body": [
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{title}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:chapter}}: {{chapter}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:progress}}: {{progress}}%"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:completed}}: {{bool:completed}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{description}}",
       "when": "description"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{tasks.*.task_title}} · {{tasks.*.task_progress}}/{{tasks.*.task_required}}",
       "repeat": "tasks"
     },
     {
-      "type": "container",
+      "type": "system:container",
       "repeat": "rewards",
       "children": [
         {
-          "type": "container",
+          "type": "system:container",
           "when": "text_items",
           "children": [
             {
-              "type": "text",
+              "type": "system:text",
               "text": "{{field:reward}}: {{rewards.*.reward_title}} · {{state:rewards.*.reward_state}}"
             },
             {
-              "type": "text",
+              "type": "system:text",
               "text": "{{rewards.*.choices.*.choice_number}}. {{rewards.*.choices.*.choice_title}}",
               "repeat": "rewards.*.choices"
             }
           ]
         },
         {
-          "type": "container",
+          "type": "system:container",
           "unless": "text_items",
           "children": [
             {
-              "type": "text",
+              "type": "system:text",
               "text": "{{field:reward}}: {{rewards.*.reward_title}} · {{state:rewards.*.reward_state}}",
               "unless": "rewards.*.result_items"
             },
             {
-              "type": "items",
+              "type": "system:items",
               "items": "{{rewards.*.result_items}}",
               "label": "{{field:reward}}",
               "description": [
                 {
-                  "type": "text",
+                  "type": "system:text",
                   "text": "{{state:rewards.*.reward_state}}"
                 }
               ]
             },
             {
-              "type": "items",
+              "type": "system:items",
               "items": "{{rewards.*.choices.*.result_items}}",
               "repeat": "rewards.*.choices",
               "label": "{{rewards.*.reward_title}} · {{rewards.*.choices.*.choice_title}}"
             },
             {
-              "type": "text",
+              "type": "system:text",
               "text": "{{rewards.*.choices.*.choice_number}}. {{rewards.*.choices.*.choice_title}}",
               "repeat": "rewards.*.choices",
               "unless": "rewards.*.choices.*.result_items"
@@ -82,18 +82,18 @@
       ]
     },
     {
-      "type": "actions",
+      "type": "system:actions",
       "actions": "{{result_actions}}"
     }
   ],
   "actions": {
     "label": [
       {
-        "type": "text",
+        "type": "system:text",
         "text": "{{actions.*.label}}"
       },
       {
-        "type": "text",
+        "type": "system:text",
         "text": " · {{actions.*.action_reward_title}}",
         "when": "actions.*.action_reward_title"
       }

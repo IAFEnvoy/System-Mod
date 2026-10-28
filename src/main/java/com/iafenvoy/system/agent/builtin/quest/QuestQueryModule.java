@@ -5,10 +5,10 @@ import com.iafenvoy.system.agent.builtin.BuiltinModule;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.input.QuestQueryInput;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestListOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,8 +17,8 @@ import java.util.List;
  * Lists all active or claimable quests as brief entries with trusted detail actions.
  */
 public final class QuestQueryModule extends BuiltinModule<QuestQueryInput> {
-    public QuestQueryModule(ToolRegistry.Tool<QuestQueryInput, QuestListOutput> query) {
-        super(ResultTypes.QUESTS_ACTION, "List active FTB quests: visible, unlocked, actionable and incomplete. Returns brief numbered summaries only. Set claimable=true to list completed quests with unclaimed rewards.",
+    public QuestQueryModule(ToolRegistry.Tool<QuestQueryInput, List<QuestBriefOutput>> query) {
+        super(SystemActionTypes.QUESTS_ACTION.get(), "List active FTB quests: visible, unlocked, actionable and incomplete. Returns brief numbered summaries only. Set claimable=true to list completed quests with unclaimed rewards.",
                 QuestQueryInput.CODEC, List.of(query), true, false, ExecutionPolicy.quick(2, 0));
     }
 
@@ -39,11 +39,11 @@ public final class QuestQueryModule extends BuiltinModule<QuestQueryInput> {
                 input.claimable() ? "system.result.claimable_quests" : "system.result.quests");
     }
 
-    static AgentResult questList(QuestListOutput result, String key) {
-        if (result.quests().isEmpty()) return AgentResult.ok("system.result.empty");
+    static AgentResult questList(List<QuestBriefOutput> quests, String key) {
+        if (quests.isEmpty()) return AgentResult.ok("system.result.empty");
         List<AgentResult.Action> actions = new ArrayList<>();
-        for (QuestBriefOutput quest : result.quests())
-            actions.add(new AgentResult.Action("system.action.quest_detail", ResultTypes.QUEST_ACTION, QuestDetailInput.byId(quest.id())));
-        return new AgentResult("SUCCEEDED", key, "", List.of(new AgentResult.Card(key, ResultTypes.QUEST_LIST.of(new ResultTypes.QuestList(result.quests())), actions)));
+        for (QuestBriefOutput quest : quests)
+            actions.add(new AgentResult.Action("system.action.quest_detail", SystemActionTypes.QUEST_ACTION.get(), QuestDetailInput.byId(quest.id())));
+        return new AgentResult("SUCCEEDED", key, "", List.of(new AgentResult.Card(key, new ResultTypes.QuestList(quests), actions)));
     }
 }

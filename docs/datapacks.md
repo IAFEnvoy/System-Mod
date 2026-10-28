@@ -39,7 +39,7 @@
 
 `modules` 现在控制每个已绑定玩家可用的功能，省略时为 `[]`。条目可以是模块 ID 字符串，也可以是 `{ "id": "system:shop", "condition": ... }`；省略 condition 表示无条件启用，condition 使用 Saturn 的 EntityCondition Codec，可写单个对象或条件数组（数组全部成立）。同一个 ID 的多条定义只要有一条成立即可启用。未列出的可选功能关闭；`core`、`binding`、`usage` 是基础设施，保留聊天、绑定管理与独立用量账本，不能通过模块开关关闭。客户端设置、记忆控制和语音输入仍属于本地功能。
 
-模块 ID 是正式内置注册表 `SystemRegistries.SERVER_MODULE` 的条目 ID，`ServerModule.id()` 从注册表取得该值，并非 Agent 工作流 ID。客户端定义位于独立的 `SystemRegistries.Client.CLIENT_MODULE`，客户端入口通常使用对应服务端模块的同名 ID。例如：
+模块 ID 是正式内置注册表 `SystemRegistries.SERVER_MODULE` 的条目 ID，`ServerModule.id()` 从注册表取得该值，并非 Agent 工作流 ID。客户端定义位于独立的 `SystemRegistries.CLIENT_MODULE`，客户端入口通常使用对应服务端模块的同名 ID。例如：
 
 | 功能 | 模块 ID |
 | --- | --- |

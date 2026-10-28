@@ -12,7 +12,7 @@ import java.util.Objects;
  */
 public interface ClientModule {
     default Identifier id() {
-        return Objects.requireNonNull(SystemRegistries.Client.CLIENT_MODULE.getKey(this), "Unregistered client module");
+        return Objects.requireNonNull(SystemRegistries.CLIENT_MODULE.getKey(this), "Unregistered client module");
     }
 
     default boolean serverRequired() {

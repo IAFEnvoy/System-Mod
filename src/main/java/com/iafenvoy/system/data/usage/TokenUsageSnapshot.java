@@ -32,21 +32,16 @@ public record TokenUsageSnapshot(boolean all, boolean canViewAll, int offset, bo
             throw new IllegalArgumentException("Invalid token usage page");
     }
 
-    public record Usage(TokenUsage tokens, long calls, long failedCalls, long unreportedCalls, SpeechUsage speech,
-                        RecognitionUsage recognition) {
+    public record Usage(TokenUsage tokens, long calls, long failedCalls, long unreportedCalls) {
         public static final StreamCodec<ByteBuf, Usage> STREAM_CODEC = StreamCodec.composite(
                 TokenUsage.STREAM_CODEC, Usage::tokens,
                 ByteBufCodecs.VAR_LONG, Usage::calls,
                 ByteBufCodecs.VAR_LONG, Usage::failedCalls,
                 ByteBufCodecs.VAR_LONG, Usage::unreportedCalls,
-                SpeechUsage.STREAM_CODEC, Usage::speech,
-                RecognitionUsage.STREAM_CODEC, Usage::recognition,
                 Usage::new);
 
         public Usage {
             Objects.requireNonNull(tokens);
-            Objects.requireNonNull(speech);
-            Objects.requireNonNull(recognition);
             if (failedCalls < 0 || failedCalls > calls || unreportedCalls < 0 || unreportedCalls > calls)
                 throw new IllegalArgumentException("Invalid token usage counters");
         }

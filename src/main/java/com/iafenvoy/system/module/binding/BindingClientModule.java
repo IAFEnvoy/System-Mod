@@ -1,6 +1,7 @@
 package com.iafenvoy.system.module.binding;
 
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.module.client.ClientMessage;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
 import com.iafenvoy.system.screen.AssistantMessages;
@@ -21,7 +22,7 @@ public final class BindingClientModule implements ClientModule {
         module.command(() -> AssistantClient.command("grant"), "grant");
         module.command(() -> AssistantClient.command("revoke"), "revoke");
         module.command(() -> AssistantClient.command("reset"), "reset");
-        module.speech("system.result.bound", _ -> "");
+        module.message("system.result.bound", _ -> ClientMessage.speech(""));
     }
 
     public static void bound(String playerName) {

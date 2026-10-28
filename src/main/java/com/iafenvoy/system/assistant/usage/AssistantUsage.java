@@ -5,8 +5,6 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import com.iafenvoy.system.network.payload.RecognitionUsageReportC2SPayload;
-import com.iafenvoy.system.network.payload.SpeechUsageReportC2SPayload;
 import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,14 +22,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public final class AssistantUsage {
     private final TokenUsageData tokenUsage;
-    private final SpeechAccounting speechAccounting;
     private final Queue<UsageRecord> pendingUsage = new ConcurrentLinkedQueue<>();
     private final Map<UUID, String> usageNames = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastUsageRequest = new HashMap<>();
 
     public AssistantUsage(MinecraftServer server, AgentEngine engine) {
         this.tokenUsage = server.getDataStorage().computeIfAbsent(TokenUsageData.TYPE);
-        this.speechAccounting = new SpeechAccounting(this.tokenUsage);
         engine.onModelUsage((player, usage, successful, time) -> this.pendingUsage.add(new UsageRecord(
                 player, this.usageNames.getOrDefault(player, player.toString()), usage, successful, time)));
     }
@@ -65,14 +61,6 @@ public final class AssistantUsage {
         this.requestUsage(player, new TokenUsageRequestC2SPayload(UUID.randomUUID().toString(), all, 0), true);
     }
 
-    public void reportSpeech(ServerPlayer player, SpeechUsageReportC2SPayload report) {
-        this.speechAccounting.report(player, report);
-    }
-
-    public void reportRecognition(ServerPlayer player, RecognitionUsageReportC2SPayload report) {
-        this.speechAccounting.report(player, report);
-    }
-
     public void requestUsage(ServerPlayer player, TokenUsageRequestC2SPayload request) {
         this.requestUsage(player, request, false);
     }
@@ -90,6 +78,5 @@ public final class AssistantUsage {
 
     public void disconnected(UUID player) {
         this.lastUsageRequest.remove(player);
-        this.speechAccounting.disconnected(player);
     }
 }

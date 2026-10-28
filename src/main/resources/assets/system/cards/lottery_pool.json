@@ -1,17 +1,17 @@
 {
   "body": [
     {
-      "type": "row",
+      "type": "system:row",
       "style": "lottery_heading",
       "text_separator": " · ",
       "children": [
         {
-          "type": "header",
+          "type": "system:header",
           "text": "{{label}}",
           "style": "lottery_name"
         },
         {
-          "type": "text",
+          "type": "system:text",
           "translate": "system.ui.lottery_count",
           "args": [
             "{{prize_count}}"
@@ -22,25 +22,25 @@
       ]
     },
     {
-      "type": "context",
+      "type": "system:context",
       "text": "{{id}}",
       "when": "full",
       "style": "lottery_id"
     },
     {
-      "type": "row",
+      "type": "system:row",
       "when": "price",
       "style": "lottery_cost",
       "text_separator": ": ",
       "children": [
         {
-          "type": "text",
+          "type": "system:text",
           "translate": "system.ui.lottery_cost",
           "inline": true,
           "style": "lottery_cost_label"
         },
         {
-          "type": "text",
+          "type": "system:text",
           "text": "{{price}}",
           "inline": true,
           "style": "lottery_cost_value"
@@ -49,19 +49,19 @@
       "unless": "text_items"
     },
     {
-      "type": "row",
+      "type": "system:row",
       "when": "text_items",
       "style": "lottery_cost",
       "text_separator": ": ",
       "children": [
         {
-          "type": "text",
+          "type": "system:text",
           "translate": "system.ui.lottery_cost",
           "inline": true,
           "style": "lottery_cost_label"
         },
         {
-          "type": "text",
+          "type": "system:text",
           "text": "{{price_text}}",
           "inline": true,
           "style": "lottery_cost_value"
@@ -70,19 +70,19 @@
       "unless": "free"
     },
     {
-      "type": "row",
+      "type": "system:row",
       "when": "free",
       "style": "lottery_cost",
       "text_separator": ": ",
       "children": [
         {
-          "type": "text",
+          "type": "system:text",
           "translate": "system.ui.lottery_cost",
           "inline": true,
           "style": "lottery_cost_label"
         },
         {
-          "type": "text",
+          "type": "system:text",
           "inline": true,
           "style": "lottery_cost_value",
           "translate": "system.ui.lottery_no_cost"
@@ -90,23 +90,23 @@
       ]
     },
     {
-      "type": "context",
+      "type": "system:context",
       "translate": "system.ui.lottery_unavailable",
       "unless": "payment_available",
       "style": "lottery_unavailable"
     },
     {
-      "type": "items",
+      "type": "system:items",
       "items": "{{price_items}}",
       "label": "{{tr:system.ui.lottery_cost}}"
     },
     {
-      "type": "container",
+      "type": "system:container",
       "unless": "text_items",
       "when": "prizes",
       "children": [
         {
-          "type": "context",
+          "type": "system:context",
           "translate": "system.ui.lottery_prize_preview",
           "args": [
             "{{preview_count}}",
@@ -115,16 +115,16 @@
           "style": "item_group_label"
         },
         {
-          "type": "items",
+          "type": "system:items",
           "items": "{{prizes.*.result_items}}",
           "repeat": "prizes",
           "description": [
             {
-              "type": "text",
+              "type": "system:text",
               "text": "{{prizes.*.reward_label}}"
             },
             {
-              "type": "text",
+              "type": "system:text",
               "translate": "system.ui.lottery_chance",
               "args": [
                 "{{prizes.*.chance}}%"
@@ -135,7 +135,7 @@
       ]
     },
     {
-      "type": "actions",
+      "type": "system:actions",
       "actions": "{{result_actions}}"
     }
   ],

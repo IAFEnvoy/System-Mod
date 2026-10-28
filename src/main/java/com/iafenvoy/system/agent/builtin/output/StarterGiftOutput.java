@@ -1,19 +1,24 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.util.codec.DispatchRegistry;
+import com.iafenvoy.system.agent.CardContext;
+import com.iafenvoy.system.agent.CardData;
+import com.iafenvoy.system.agent.CardFormatting;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.resources.Identifier;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
  * All gifts share one list; source IDs authorize actions but never become display titles.
  */
-public record StarterGiftOutput(List<Gift> gifts) implements QuestLookupOutput {
+public record StarterGiftOutput(List<Gift> gifts) implements CardData {
     public static final MapCodec<StarterGiftOutput> CODEC = Gift.CODEC.listOf().fieldOf("gifts")
             .xmap(StarterGiftOutput::new, StarterGiftOutput::gifts);
+    public static final Identifier TEMPLATE = Identifier.parse("system:starter_gift");
 
     public StarterGiftOutput {
         gifts = List.copyOf(gifts);
@@ -34,7 +39,19 @@ public record StarterGiftOutput(List<Gift> gifts) implements QuestLookupOutput {
     }
 
     @Override
-    public DispatchRegistry.Type<StarterGiftOutput> type() {
-        return Types.STARTER_GIFT;
+    public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
+        builder.list("gifts", this.gifts(), (prefix, gift) -> builder
+                .put(prefix + "result_items", gift.items())
+                .put(prefix + "error", gift.error().map(error -> formatting.tr("system.error." + error.toLowerCase(Locale.ROOT))).orElse("")));
+    }
+
+    @Override
+    public MapCodec<StarterGiftOutput> codec() {
+        return CODEC;
+    }
+
+    @Override
+    public Identifier template() {
+        return TEMPLATE;
     }
 }

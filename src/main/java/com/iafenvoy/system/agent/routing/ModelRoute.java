@@ -1,7 +1,6 @@
 package com.iafenvoy.system.agent.routing;
 
 import com.google.gson.JsonElement;
-import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.store.ConversationMemory;
@@ -25,7 +24,7 @@ public record ModelRoute(TypedPayload<?> call) {
         types.put("clarify", EmptyInput.CODEC.codec().fieldOf("input")
                 .xmap(_ -> new ModelRoute(null), _ -> EmptyInput.INSTANCE));
         for (TypedPayload.Type<?> type : capabilities)
-            types.put(type.id().toString(), ResultTypes.ACTIONS.valueCodec(type.id(), "input").xmap(ModelRoute::new, ModelRoute::call));
+            types.put(type.id().toString(), TypedPayload.valueCodec(type, "input").xmap(ModelRoute::new, ModelRoute::call));
         Codec<String> ids = Codec.STRING.validate(id -> types.containsKey(id)
                 ? DataResult.success(id) : DataResult.error(() -> "Unavailable model capability " + id));
         return ids.dispatch("capabilityId",

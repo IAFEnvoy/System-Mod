@@ -1,16 +1,16 @@
 package com.iafenvoy.system.module.advancement;
 
 import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.agent.builtin.input.AdvancementInput;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.config.AdvancementRule;
 import com.iafenvoy.system.config.file.AdvancementConfig;
+import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import com.iafenvoy.system.module.ModuleData;
+import com.iafenvoy.system.registry.SystemActionTypes;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -86,7 +86,7 @@ final class AdvancementTracker implements PlayerModule {
                     if (baseline || !this.engine.current(player, incarnation)) return;
                     TypedPayload<?> input = rule.call();
                     if (input.value() instanceof AdvancementInput value)
-                        input = ResultTypes.ADVANCEMENT_ACTION.of(new AdvancementInput(value.featureId(), value.rewardId(),
+                        input = SystemActionTypes.ADVANCEMENT_ACTION.get().of(new AdvancementInput(value.featureId(), value.rewardId(),
                                 Optional.of(rule.advancementId().toString()), Optional.of(rule.id().toString())));
                     this.engine.trigger(player, rule.id() + "|" + rule.advancementId(), rule.id().toString(), input).thenAccept(result -> {
                         if (result != null && result.isSuccess()) this.server.execute(() -> {

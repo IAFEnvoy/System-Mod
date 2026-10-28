@@ -72,7 +72,7 @@ public final class AgentResult extends ResultWithData<List<AgentResult.Card>> {
         return new AgentResult("FAILED", "system.error." + code.toLowerCase(Locale.ROOT), "", List.of());
     }
 
-    public static AgentResult data(String key, TypedPayload<?> data) {
+    public static AgentResult data(String key, CardData data) {
         return new AgentResult("SUCCEEDED", key, "", List.of(new Card(key, data, List.of())));
     }
 
@@ -109,10 +109,10 @@ public final class AgentResult extends ResultWithData<List<AgentResult.Card>> {
         }
     }
 
-    public record Card(String titleKey, TypedPayload<?> data, List<Action> actions) {
+    public record Card(String titleKey, CardData data, List<Action> actions) {
         public static final Codec<Card> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("titleKey").forGetter(Card::titleKey),
-                ResultTypes.CARDS.codec().fieldOf("data").forGetter(Card::data),
+                CardData.CODEC.fieldOf("data").forGetter(Card::data),
                 Action.CODEC.listOf().optionalFieldOf("actions", List.of()).forGetter(Card::actions)
         ).apply(i, Card::new));
 
@@ -126,7 +126,7 @@ public final class AgentResult extends ResultWithData<List<AgentResult.Card>> {
     public record Action(String labelKey, TypedPayload<?> call) {
         public static final Codec<Action> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("labelKey").forGetter(Action::labelKey),
-                ResultTypes.ACTIONS.codec().fieldOf("call").forGetter(Action::call)
+                TypedPayload.ACTION_CODEC.codec().fieldOf("call").forGetter(Action::call)
         ).apply(i, Action::new));
 
         public Action {

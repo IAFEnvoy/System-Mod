@@ -3,14 +3,15 @@ package com.iafenvoy.system.agent.builtin.shop;
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
 import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.input.ShopQueryInput;
 import com.iafenvoy.system.agent.builtin.input.ShopQuoteInput;
 import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
+import com.iafenvoy.system.agent.builtin.output.EmptyCardData;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +23,7 @@ import java.util.Optional;
  */
 public final class ShopModule extends BuiltinModule<ShopQueryInput> {
     public ShopModule(ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
-        super(ResultTypes.SHOP_ACTION, "Browse the system shop and prices.",
+        super(SystemActionTypes.SHOP_ACTION.get(), "Browse the system shop and prices.",
                 ShopQueryInput.CODEC, List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
     }
 
@@ -52,13 +53,13 @@ public final class ShopModule extends BuiltinModule<ShopQueryInput> {
             CommerceCatalog.Offer offer = page.get(index);
             CommercePreviewOutput price = prices.get(index);
             boolean available = price.available();
-            cards.add(new AgentResult.Card("system.result.shop_offer", ResultTypes.SHOP_OFFER.of(new ResultTypes.ShopOffer(Optional.of(offer.id()), offer.label(),
-                    offer.items(), price.price(), Optional.of(available))), available ? List.of(
-                    new AgentResult.Action("system.action.shop_quote", ResultTypes.QUOTE_ACTION, new ShopQuoteInput(offer.id(), Optional.of(catalog.revision())))) : List.of()));
+            cards.add(new AgentResult.Card("system.result.shop_offer", new ResultTypes.ShopOffer(Optional.of(offer.id()), offer.label(),
+                    offer.items(), price.price(), Optional.of(available)), available ? List.of(
+                    new AgentResult.Action("system.action.shop_quote", SystemActionTypes.QUOTE_ACTION.get(), new ShopQuoteInput(offer.id(), Optional.of(catalog.revision())))) : List.of()));
         }
         if (matches.size() - offset > 8)
-            cards.add(new AgentResult.Card("system.result.page", ResultTypes.EMPTY.of(EmptyInput.INSTANCE), List.of(
-                    new AgentResult.Action("system.action.next", ResultTypes.SHOP_ACTION, new ShopQueryInput(query, offset + 8)))));
+            cards.add(new AgentResult.Card("system.result.page", EmptyCardData.INSTANCE, List.of(
+                    new AgentResult.Action("system.action.next", SystemActionTypes.SHOP_ACTION.get(), new ShopQueryInput(query, offset + 8)))));
         return new AgentResult("SUCCEEDED", cards.isEmpty() ? "system.result.shop_empty" : "system.result.shop", "", cards);
     }
 }

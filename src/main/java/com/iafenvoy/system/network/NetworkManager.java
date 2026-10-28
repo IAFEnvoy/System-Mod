@@ -19,8 +19,6 @@ public final class NetworkManager {
                 .playToServer(QuestNarrationRequestC2SPayload.TYPE, QuestNarrationRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleQuestNarrationRequest))
                 .playToServer(AssistantRequestC2SPayload.TYPE, AssistantRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleAssistantRequest))
                 .playToServer(TokenUsageRequestC2SPayload.TYPE, TokenUsageRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleTokenUsageRequest))
-                .playToServer(SpeechUsageReportC2SPayload.TYPE, SpeechUsageReportC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleSpeechUsageReport))
-                .playToServer(RecognitionUsageReportC2SPayload.TYPE, RecognitionUsageReportC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleRecognitionUsageReport))
                 .playToClient(QuestNarrationResponseS2CPayload.TYPE, QuestNarrationResponseS2CPayload.CODEC)
                 .playToClient(AssistantResponseS2CPayload.TYPE, AssistantResponseS2CPayload.CODEC)
                 .playToClient(TokenUsageResponseS2CPayload.TYPE, TokenUsageResponseS2CPayload.CODEC);

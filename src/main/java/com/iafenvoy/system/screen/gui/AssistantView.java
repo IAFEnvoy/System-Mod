@@ -2,17 +2,11 @@ package com.iafenvoy.system.screen.gui;
 
 import com.google.gson.JsonElement;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
-import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.module.client.ClientModuleBindings;
-import com.iafenvoy.system.screen.card.CardContext;
+import com.iafenvoy.system.agent.CardContext;
+import com.iafenvoy.system.screen.card.CardPresentation;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -25,7 +19,7 @@ public final class AssistantView {
     }
 
     public static String actionLabel(AgentResult.Card card, AgentResult.Action action) {
-        return ClientModuleBindings.get().cards().label(card, action);
+        return CardPresentation.label(card, action);
     }
 
     public static String formatCard(AgentResult.Card card) {
@@ -33,44 +27,11 @@ public final class AssistantView {
     }
 
     public static String formatCard(AgentResult.Card card, boolean textItems) {
-        return ClientModuleBindings.get().cards().format(card, textItems);
+        return CardPresentation.format(card, textItems);
     }
 
     public static Element renderCard(Document document, AgentResult.Card card, String messageKey) {
-        return ClientModuleBindings.get().cards().presentation(card, messageKey, CardContext.Mode.FULL, 0).render(document);
-    }
-
-    public static String formatPrice(CommerceCatalog.Price price, boolean textItems) {
-        List<String> lines = new ArrayList<>(price.descriptions().stream().map(Component::getString).toList());
-        if (textItems)
-            for (ItemPreviewOutput item : price.items())
-                lines.add(Component.translatable("system.ui.item_amount", item.item().create().getHoverName(), item.amount()).getString());
-        return lines.isEmpty() && price.items().isEmpty() ? tr("system.ui.lottery_no_cost") : String.join("\n", lines);
-    }
-
-    public static String formatItems(List<ItemStackTemplate> items) {
-        List<String> names = new ArrayList<>();
-        for (ItemStackTemplate template : items) {
-            ItemStack stack = template.create();
-            String name = stack.isEmpty() ? BuiltInRegistries.ITEM.getKey(template.item().value()).toString()
-                    : stack.getHoverName().getString();
-            names.add(Component.translatable("system.ui.item_amount", name, template.count()).getString());
-        }
-        return String.join("\n", names);
-    }
-
-    public static CardContext.Builder rewardParameters(CardContext.Builder builder, PlayerData.Reward reward) {
-        return rewardParameters(builder, "", reward);
-    }
-
-    public static CardContext.Builder rewardParameters(CardContext.Builder builder, String prefix, PlayerData.Reward reward) {
-        return builder.put(prefix + "reward_label", reward.label()).put(prefix + "reward_items", formatItems(reward.items()))
-                .put(prefix + "result_items", reward.items().stream().map(ItemPreviewOutput::of).toList());
-    }
-
-    public static CardContext.Builder priceParameters(CardContext.Builder builder, CommerceCatalog.Price price) {
-        return builder.put("price", formatPrice(price, false)).put("price_text", formatPrice(price, true))
-                .put("price_items", price.items());
+        return CardPresentation.of(card, messageKey, CardContext.Mode.FULL, 0).render(document);
     }
 
     public static String format(JsonElement value, int depth) {

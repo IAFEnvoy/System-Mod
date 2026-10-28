@@ -1,11 +1,11 @@
 {
   "body": [
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:state}}: {{state:state}}"
     },
     {
-      "type": "actions",
+      "type": "system:actions",
       "actions": "{{result_actions}}"
     }
   ]

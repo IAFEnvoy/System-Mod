@@ -5,7 +5,7 @@ import com.iafenvoy.system.data.speech.AliyunAsrMessage;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AsrProvider;
 import com.iafenvoy.system.util.HttpTransport;
-import com.iafenvoy.system.util.codec.CodecIO;
+import com.iafenvoy.system.util.CodecIO;
 
 import java.io.IOException;
 import java.net.URI;

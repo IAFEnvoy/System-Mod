@@ -7,7 +7,7 @@ import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import com.iafenvoy.system.util.HttpTransport;
 import com.iafenvoy.system.util.ServerSentEvents;
-import com.iafenvoy.system.util.codec.CodecIO;
+import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.JsonOps;
 
 import java.io.IOException;

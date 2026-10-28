@@ -4,6 +4,7 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import net.minecraft.resources.Identifier;
 
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -32,11 +33,15 @@ public record ClientModuleContext(ClientModuleBindings bindings, Identifier id, 
         this.bindings.workspace(new ClientModuleBindings.Workspace(this.id, this.serverRequired, page, navigation, label, group, bind));
     }
 
-    public ClientCardRegistry cards() {
+    public ClientCardBindings cards() {
         return this.bindings.cards();
     }
 
-    public void speech(String key, Function<AgentResult, String> handler) {
-        this.bindings.speech(key, handler);
+    public void message(String key, Function<AgentResult, ClientMessage> handler) {
+        this.cards().message(key, handler);
+    }
+
+    public <T> void message(String key, Class<T> type, BiFunction<AgentResult.Card, T, ClientMessage> handler) {
+        this.cards().message(key, type, handler);
     }
 }

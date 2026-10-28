@@ -3,7 +3,6 @@ package com.iafenvoy.system.agent.store;
 import com.iafenvoy.saturn.data.storage.DataStorageHolder;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.agent.commerce.CommerceOrder;
 import com.mojang.serialization.Codec;
@@ -181,7 +180,7 @@ public final class PlayerData {
                 Codec.STRING.optionalFieldOf("id").forGetter(v -> Optional.ofNullable(v.id)),
                 Codec.STRING.optionalFieldOf("key").forGetter(v -> Optional.ofNullable(v.key)),
                 Codec.INT.optionalFieldOf("moduleVersion", 0).forGetter(v -> v.moduleVersion),
-                ResultTypes.ACTIONS.mapCodec().forGetter(v -> v.call),
+                TypedPayload.ACTION_CODEC.forGetter(v -> v.call),
                 Codec.STRING.optionalFieldOf("ruleId", "").forGetter(v -> v.ruleId),
                 ExecutionPolicy.CODEC.optionalFieldOf("policy").forGetter(v -> Optional.ofNullable(v.policy)),
                 Codec.LONG.optionalFieldOf("created", 0L).forGetter(v -> v.created),

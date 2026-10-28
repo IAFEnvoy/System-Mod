@@ -2,7 +2,7 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.util.codec.CodecIO;
+import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.JsonOps;
 
 import java.util.ArrayList;
@@ -42,7 +42,7 @@ final class ConversationService {
             this.engine.router().clear(player);
             if (!history) data.conversation.clear();
             else data.conversation.memoryEpoch++;
-            return AgentResult.data("system.result.preferences", ResultTypes.PREFERENCES.of(new ResultTypes.Preferences(history, external)));
+            return AgentResult.data("system.result.preferences", new ResultTypes.Preferences(history, external));
         }));
     }
 
@@ -73,7 +73,7 @@ final class ConversationService {
                 if (size > 44000) break;
                 selected.add(entry);
             }
-            return AgentResult.data("system.result.history", ResultTypes.HISTORY.of(new ResultTypes.History(selected.reversed())));
+            return AgentResult.data("system.result.history", new ResultTypes.History(selected.reversed()));
         }));
     }
 

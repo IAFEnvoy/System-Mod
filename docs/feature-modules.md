@@ -1,6 +1,6 @@
 # 功能模块化
 
-功能定义和装配契约在 `com.iafenvoy.system.module`。两端统一使用正式内置注册表：`SystemRegistries.SERVER_MODULE`（`system:server_module`，元素为 `ServerModule`）和 `SystemRegistries.Client.CLIENT_MODULE`（`system:client_module`，元素为 `ClientModule`）。后者仅在物理客户端创建；两者均不启用数字 ID 网络同步，玩家可用模块仍通过已有状态快照同步。内置项由 `registry.module.ServerModules` / `ClientModules` 的 `DeferredRegister` 注册，公开的 `DeferredHolder` 在注册完成后通过 `.get()` 取得对象，注册类使用类级别 `@SuppressWarnings("unused")`。绑定、用量、玩家、物品、签到、收件箱、商城、抽奖、成就和 FTB 任务分别管理自己的贡献；Agent 执行代码继续位于 `com.iafenvoy.system.agent`。
+功能定义和装配契约在 `com.iafenvoy.system.module`。两端统一使用正式内置注册表：`SystemRegistries.SERVER_MODULE`（`system:server_module`，元素为 `ServerModule`）和 `SystemRegistries.CLIENT_MODULE`（`system:client_module`，元素为 `ClientModule`）。两张表都在两端创建；客户端实现的条目仅由物理客户端入口装配，专用服务端的 CLIENT_MODULE 为空。两者均不启用数字 ID 网络同步，玩家可用模块仍通过已有状态快照同步。内置项由 `registry.SystemServerModules` / `SystemClientModules` 的 `DeferredRegister` 注册，公开的 `DeferredHolder` 在注册完成后通过 `.get()` 取得对象，注册类使用类级别 `@SuppressWarnings("unused")`。绑定、用量、玩家、物品、签到、收件箱、商城、抽奖、成就和 FTB 任务分别管理自己的贡献；Agent 执行代码继续位于 `com.iafenvoy.system.agent`。
 
 ## 两层模块
 
@@ -82,13 +82,13 @@ public List<ModuleStorage<?>> storages() {
 
 ## 客户端贡献
 
-客户端模块同样通过标准内置注册表注册，注册入口须限定为 `Dist.CLIENT`。`SystemClientMod` 仅负责绑定内置 `ClientModules.REGISTRY`，专用服务端不会加载其实现。扩展可使用自己的客户端入口：
+客户端模块同样通过标准内置注册表注册，注册入口须限定为 `Dist.CLIENT`。`SystemClientMod` 负责绑定 `SystemClientModules.REGISTRY` 和卡片节点的 DeferredRegister，专用服务端不会加载其实现。扩展可使用自己的客户端入口：
 
 ```java
 @Mod(value = "example", dist = Dist.CLIENT)
 public final class ExampleClientMod {
     public static final DeferredRegister<ClientModule> MODULES =
-            DeferredRegister.create(SystemResourceKeys.Client.CLIENT_MODULE, "example");
+            DeferredRegister.create(SystemResourceKeys.CLIENT_MODULE, "example");
     public static final DeferredHolder<ClientModule, ExampleClientModule> EXAMPLE =
             MODULES.register("example", ExampleClientModule::new);
 
@@ -98,7 +98,7 @@ public final class ExampleClientMod {
 }
 ```
 
-首次使用客户端贡献时，`ClientModuleBindings.get()` 遍历已冻结的客户端注册表，调用所有模块的 `register(context)`，一次性装配命令、页面、卡片、口播与通知动作，然后冻结贡献表及卡片节点类型。它只保存这些贡献，不另维护模块目录；客户端命令树也直接遍历正式注册表。原来的两种自定义模块注册事件和模块 Map 目录已移除。
+首次使用客户端贡献时，`ClientModuleBindings.get()` 遍历已冻结的客户端注册表，调用所有模块的 `register(context)`，一次性装配命令、页面、卡片、口播与通知动作，然后冻结贡献表。它只保存这些贡献，不另维护模块目录；客户端命令树也直接遍历正式注册表。卡片节点类型和协议类型的正式注册与冻结由 NeoForge 模组加载流程负责；ASR / TTS 工厂使用普通 Map，完整入口见[注册表速查](registries.md)。原来的两种自定义模块注册事件和模块 Map 目录已移除。
 
 `ClientModule.register(context)` 可贡献以下内容：
 
@@ -106,11 +106,11 @@ public final class ExampleClientMod {
 | --- | --- |
 | `command(action, aliases...)` / `pattern(handler, suggestions...)` | 助手内本地控制，执行和补全共用声明 |
 | `workspace(page, navigation, group, bind)` | 页面、动态导航、分类与控件绑定；空页面/导航可用于工具栏；可另传翻译键 label |
-| `cards().register` | 每个输出只填一次 CardContext.Builder，统一提供平铺状态、对象参数与按钮回调；build 创建不可变副本 |
-| `cards().notificationRows` | 通知中的代码生成选择行及样式，不由模板定义按钮 |
-| `cards().summary` / `speech(key, handler)` | 通知开头提示与独立主文字口播；主体详情由卡片展示 |
-| `cards().state` | 从类型化卡片更新客户端状态快照 |
-| `cards().refresh` | 静默结果替换同类型卡片、更新或移除通知 |
+| `cards().register(type)` | 按需登记客户端消息、状态、刷新和通知行为，返回可链式配置的 Registration；参数由 CardData 自己构建 |
+| `Registration.message(key, handler)` | 同时生成显示主文字与播报文字；handler 直接接收卡片及其类型化数据 |
+| `Registration.quests(handler)` / `.notificationRows(css)` | 任务播报引用与通知选择行样式；选择按钮仍由代码生成 |
+| `Registration.state(handler)` / `.refresh(result, visible)` | 客户端状态快照更新；静默结果替换同类型卡片、更新或移除通知 |
+| `message(key, handler)` / `message(key, type, handler)` | 不附属于当前卡片注册的消息规则，例如无卡片提示、跨模块共用的购买回执 |
 | `bindings().notificationAction` | 动作是否提供详情、等待刷新时保留通知、先打开工作台 |
 | `ClientModule.commands(root)` | 游戏聊天栏中的本地 Brigadier 指令，例如 `/system settings` |
 
@@ -124,9 +124,11 @@ module.workspace("example", "nav_example", "example.ui.open", WorkspaceGroup.MOD
 
 页面 HTML 与共享 CSS 仍是资源文件。扩展页面需要提供 `page_example` 等正文模板元素，导航按钮不再需要 HTML 元素；注册表不根据模型输出生成 HTML。`WorkspaceContext.input(id, placeholder, submit)` 声明 Enter 的目标按钮，输入框宿主不再硬编码每种查询框。
 
-卡片的正文、容器层次、条件、循环、物品/动作区位置及标签由 `assets/<namespace>/cards/<path>.json` 定义，按卡片数据类型 ID 选择。各节点在 `screen/card/node` 独立实现 `CardNode`，自己提供 codec/render/text/css；`CardNodeTypes` 只保存 ID 到 MapCodec 的映射，根接口通过 `type` 分派，`style` 等字段支持字符串或字符串数组，后者由 Codec 拼接。功能只填 `CardContext.Builder`，统一创建不可变的状态、参数与回调三表；循环只选择平铺键，不创建子 Context。分组标题、概率/状态说明和排列交给 JSON，不再编写业务卡片的正文渲染器。需要新布局类型时，在 ClientModule.register 中调用 `CardNodeTypes.register(id, NodeClass.CODEC)`；贡献装配完成后冻结，资源重载前保证装配完成。完整格式见[客户端 JSON 卡片](cards.md)。
+卡片的正文、容器层次、条件、循环、物品/动作区位置及标签由 `assets/<namespace>/cards/<path>.json` 定义，由 `CardData.template()` 提供资源 ID。各节点在 `screen/card/node` 独立实现 `CardNode`，自己提供 codec/render/text/css；`SystemRegistries.CARD_NODE_TYPE` 保存已注册的 MapCodec，根接口通过 `type` 分派，JSON 使用 `system:text` 等完整 ID。`style` 等字段支持字符串或字符串数组，后者由 Codec 拼接。各 CardData 实现填充公共 `CardContext.Builder`，CardPresentation 补充通用标题、模式及客户端回调，统一创建不可变的状态、参数与回调三表；循环只选择平铺键，不创建子 Context。分组标题、概率/状态说明和排列交给 JSON，不再编写业务卡片的正文渲染器。新增布局类型通过客户端 mod 入口的 DeferredRegister 登记，不能在 ClientModule.register 或资源重载阶段修改类型注册表。完整格式见[客户端 JSON 卡片](cards.md)。
 
-绑定消息由绑定客户端模块生成。任务模块管理任务列表标签、完成/解锁摘要、新手礼包静默刷新、口播和物品投影。通用工作台、简约界面、HUD 队列、物品渲染与 TTS 文本入口只调用注册后的处理器。
+绑定消息由绑定客户端模块生成。任务模块管理任务列表标签、完成/解锁摘要、新手礼包静默刷新、口播和物品投影。工作台、简约界面及 HUD 主体直接使用 CardPresentation 展示，普通卡片不需要登记客户端行为；状态、消息与 TTS 文本入口通过 ClientCardBindings 调用可选的行为规则。
+
+消息与语音不再各自登记、查找一遍卡片。`ClientCardBindings` 按消息键选择一个处理器，类型化重载统一找到对应输出后，将原卡片及 DTO 传入；返回的 `ClientMessage(text, speech)` 同时提供通知主文字和口播。`new ClientMessage(text)` 两者共用一句，`ClientMessage.speech(text)` 只覆盖口播；字段为 null 时沿用默认消息键及结果正文，空字符串则明确关闭该通道。默认播报保留正文去除首尾空白的原行为。HUD 构建一条通知时只解析一次消息，任务卡片的引用、消息、刷新规则集中在同一段链式声明中，参数填充则由对应 CardData 的 `buildContext(...)` 负责；同名消息键和同类型卡片重复注册会报错，贡献冻结后不可修改。
 
 静默结果通过 `AgentResult.silent` 显式声明并随 Codec 编解码，不再由通用结果类按任务文案键推断。静默结果会结束等待，可按注册规则刷新已有卡片，不会新增一条提示或重复口播。
 

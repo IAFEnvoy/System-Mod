@@ -3,6 +3,7 @@ package com.iafenvoy.system.module.core;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.module.client.ClientMessage;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
 import com.iafenvoy.system.module.client.WorkspaceGroup;
@@ -34,8 +35,8 @@ public final class CoreClientModule implements ClientModule {
             workspace.labels("nav_chat");
             workspace.click("nav_chat", () -> workspace.show("chat"));
         });
-        module.cards().state(ResultTypes.ClientState.class, (_, state) -> state);
-        module.speech("system.result.help", _ -> tr("system.tts.message.help"));
+        module.cards().register(ResultTypes.ClientState.class).state((_, state) -> state);
+        module.message("system.result.help", _ -> ClientMessage.speech(tr("system.tts.message.help")));
     }
 
     private static final Pattern SELECT = Pattern.compile("^(?:select\\s+|选择\\s*)?([0-9]{1,4})$", Pattern.CASE_INSENSITIVE);

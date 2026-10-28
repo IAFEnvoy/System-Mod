@@ -5,6 +5,7 @@ import com.iafenvoy.system.data.usage.SpeechUsage;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
 import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
+import com.iafenvoy.system.speech.LocalSpeechUsage;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.client.gui.screens.Screen;
@@ -28,13 +29,13 @@ import static com.iafenvoy.system.screen.gui.AssistantView.*;
 public final class TokenUsageScreen extends AssistantPageScreen {
     private static final int PAGE_SIZE = TokenUsageSnapshot.PAGE_SIZE;
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
-    // Summary and player details share the same service groups and metric order.
+    // AI is server-observed; voice metrics always come from the current local account.
     private static final List<MetricGroup> GROUPS = List.of(
             new MetricGroup("ai", "usage_counts", List.of(
-                    new Metric("totalTokens", usage -> usage.tokens().totalTokens()),
-                    new Metric("inputTokens", usage -> usage.tokens().inputTokens()),
-                    new Metric("outputTokens", usage -> usage.tokens().outputTokens()),
-                    new Metric("cachedInputTokens", usage -> usage.tokens().cachedInputTokens()))),
+                    new Metric("totalTokens", usage -> usage.ai().tokens().totalTokens()),
+                    new Metric("inputTokens", usage -> usage.ai().tokens().inputTokens()),
+                    new Metric("outputTokens", usage -> usage.ai().tokens().outputTokens()),
+                    new Metric("cachedInputTokens", usage -> usage.ai().tokens().cachedInputTokens()))),
             new MetricGroup("tts", "usage_speech_counts", List.of(
                     new Metric("speechCost", usage -> usage.speech().estimatedNanoYuan()),
                     new Metric("speechCharacters", usage -> usage.speech().characters()),
@@ -45,6 +46,7 @@ public final class TokenUsageScreen extends AssistantPageScreen {
                     new Metric("recognitionCalls", usage -> usage.recognition().calls()),
                     new Metric("recognitionCost", usage -> usage.recognition().estimatedNanoYuan()))));
     private final Screen parent;
+    private LocalSpeechUsage.Snapshot localUsage = LocalSpeechUsage.snapshot();
     private TokenUsageSnapshot snapshot;
     private String error = "";
     private String requestId;
@@ -52,8 +54,11 @@ public final class TokenUsageScreen extends AssistantPageScreen {
     private boolean all;
     private int offset;
 
-    private record Metric(String key, ToLongFunction<TokenUsageSnapshot.Usage> value) {
-        private String format(TokenUsageSnapshot.Usage usage) {
+    private record DisplayUsage(TokenUsageSnapshot.Usage ai, SpeechUsage speech, RecognitionUsage recognition) {
+    }
+
+    private record Metric(String key, ToLongFunction<DisplayUsage> value) {
+        private String format(DisplayUsage usage) {
             long value = this.value.applyAsLong(usage);
             return this.key.endsWith("Cost") ? "¥" + BigDecimal.valueOf(value, 9).stripTrailingZeros().toPlainString() : number(value);
         }
@@ -150,6 +155,12 @@ public final class TokenUsageScreen extends AssistantPageScreen {
     @Override
     public void tick() {
         super.tick();
+        LocalSpeechUsage.Snapshot local = LocalSpeechUsage.snapshot();
+        if (!local.equals(this.localUsage)) {
+            this.localUsage = local;
+            Document document = this.getLinkedDocument();
+            if (document != null) this.renderVoiceUsage(document);
+        }
         if (this.requestId != null && System.currentTimeMillis() - this.requestedAt > 10000) {
             this.update(TokenUsageResponseS2CPayload.failure(this.requestId, "EXPIRED"));
         }
@@ -169,21 +180,18 @@ public final class TokenUsageScreen extends AssistantPageScreen {
             document.getElementById(id).setDisabled(loading);
         document.getElementById("usage_prev").setDisabled(loading || this.offset == 0);
         document.getElementById("usage_next").setDisabled(loading || this.snapshot == null || !this.snapshot.hasMore());
-        for (MetricGroup group : GROUPS)
-            for (Metric metric : group.metrics())
-                text(document.getElementById("value_" + metric.key()), this.snapshot == null ? "—" : metric.format(this.snapshot.totals()));
+        DisplayUsage totals = new DisplayUsage(this.snapshot == null ? null : this.snapshot.totals(), this.localUsage.speech(), this.localUsage.recognition());
+        for (Metric metric : GROUPS.getFirst().metrics())
+            text(document.getElementById("value_" + metric.key()), this.snapshot == null ? "—" : metric.format(totals));
+        this.renderVoiceUsage(document);
         Element list = document.getElementById("usage_players");
         list.setInnerHTML("");
         if (this.snapshot == null) {
             text(document.getElementById("usage_counts"), tr(this.error.isEmpty() ? "system.ui.usage_empty" : this.error));
-            text(document.getElementById("usage_speech_counts"), "");
-            text(document.getElementById("usage_recognition_counts"), "");
             text(document.getElementById("usage_page"), "");
             return;
         }
         text(document.getElementById("usage_counts"), counts(this.snapshot.totals()));
-        text(document.getElementById("usage_speech_counts"), speechCounts(this.snapshot.totals().speech()));
-        text(document.getElementById("usage_recognition_counts"), recognitionCounts(this.snapshot.totals().recognition()));
         int playerCount = this.snapshot.playerCount();
         text(document.getElementById("usage_page"), Component.translatable("system.ui.usage_page",
                 this.offset / PAGE_SIZE + 1, Math.max(1, (playerCount + PAGE_SIZE - 1) / PAGE_SIZE), playerCount).getString());
@@ -196,30 +204,36 @@ public final class TokenUsageScreen extends AssistantPageScreen {
             identity.appendChild(element(document, "div", "usage_last_call", Component.translatable("system.ui.usage_last_call",
                     lastCall == 0 ? tr("system.ui.usage_never") : TIME.format(Instant.ofEpochMilli(lastCall))).getString()));
             row.appendChild(identity);
-            for (MetricGroup group : GROUPS) {
-                Element section = element(document, "div", "usage_section usage_section_" + group.key(), "");
-                section.appendChild(element(document, "div", "usage_section_title", tr("system.ui.usage_group_" + group.key())));
-                Element metrics = element(document, "div", "usage_metrics", "");
-                for (Metric field : group.metrics()) {
-                    Element metric = element(document, "div", "usage_metric", "");
-                    metric.appendChild(element(document, "span", "usage_label", tr("system.usage." + field.key())));
-                    metric.appendChild(element(document, "span", "usage_value", field.format(player.usage())));
-                    metrics.appendChild(metric);
-                }
-                section.appendChild(metrics);
-                section.appendChild(element(document, "div", "usage_counts", switch (group.key()) {
-                    case "tts" -> speechCounts(player.usage().speech());
-                    case "asr" -> recognitionCounts(player.usage().recognition());
-                    default -> counts(player.usage());
-                }));
-                row.appendChild(section);
+            // Player rows only expose server AI records, including when an administrator views all players.
+            DisplayUsage data = new DisplayUsage(player.usage(), SpeechUsage.EMPTY, RecognitionUsage.EMPTY);
+            MetricGroup group = GROUPS.getFirst();
+            Element section = element(document, "div", "usage_section usage_section_" + group.key(), "");
+            section.appendChild(element(document, "div", "usage_section_title", tr("system.ui.usage_group_" + group.key())));
+            Element metrics = element(document, "div", "usage_metrics", "");
+            for (Metric field : group.metrics()) {
+                Element metric = element(document, "div", "usage_metric", "");
+                metric.appendChild(element(document, "span", "usage_label", tr("system.usage." + field.key())));
+                metric.appendChild(element(document, "span", "usage_value", field.format(data)));
+                metrics.appendChild(metric);
             }
+            section.appendChild(metrics);
+            section.appendChild(element(document, "div", "usage_counts", counts(player.usage())));
+            row.appendChild(section);
             list.appendChild(row);
         }
         if (playerCount == 0) list.appendChild(element(document, "p", "", tr("system.ui.usage_empty")));
         Element scroll = document.getElementById("usage_scroll");
         scroll.scrollTop = 0;
         scroll.targetScrollTop = 0;
+    }
+
+    private void renderVoiceUsage(Document document) {
+        DisplayUsage local = new DisplayUsage(null, this.localUsage.speech(), this.localUsage.recognition());
+        for (MetricGroup group : GROUPS.subList(1, GROUPS.size()))
+            for (Metric metric : group.metrics())
+                text(document.getElementById("value_" + metric.key()), metric.format(local));
+        text(document.getElementById("usage_speech_counts"), speechCounts(this.localUsage.speech()));
+        text(document.getElementById("usage_recognition_counts"), recognitionCounts(this.localUsage.recognition()));
     }
 
     private static String counts(TokenUsageSnapshot.Usage data) {

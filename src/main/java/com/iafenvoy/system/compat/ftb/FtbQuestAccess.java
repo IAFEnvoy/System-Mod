@@ -64,7 +64,7 @@ final class FtbQuestAccess {
         return Optional.of(reference);
     }
 
-    static QuestListOutput list(ExecutionContext context, TeamData team, List<Quest> matches, Map<UUID, QuestList> lists) {
+    static List<QuestBriefOutput> list(ExecutionContext context, TeamData team, List<Quest> matches, Map<UUID, QuestList> lists) {
         List<Quest> selected = List.copyOf(matches);
         List<QuestBriefOutput> quests = new ArrayList<>();
         for (Quest quest : selected)
@@ -74,7 +74,7 @@ final class FtbQuestAccess {
         if (!lists.containsKey(context.player()) && lists.size() >= 4096) throw new AgentException("BUSY");
         // Indices refer to the complete displayed list, never to a newly filtered or reordered quest file.
         lists.put(context.player(), new QuestList(team.getTeamId(), context.incarnation(), context.memoryEpoch(), selected, now + 600000));
-        return new QuestListOutput(quests);
+        return List.copyOf(quests);
     }
 
     static QuestBriefOutput brief(TeamData team, Quest quest, int number) {
@@ -127,7 +127,8 @@ final class FtbQuestAccess {
         String text1 = quest.getTitle().getString();
         return new QuestOutput(hex(quest.getId()), com.iafenvoy.saturn.util.MiscUtil.clip(text1, 256),
                 com.iafenvoy.saturn.util.MiscUtil.clip(text, 128), description.substring(start, end),
-                team.getRelativeProgress(quest), team.isCompleted(quest), FtbQuestReader.canComplete(player, team, quest), tasks, rewards,
+                team.getRelativeProgress(quest), team.isCompleted(quest), FtbQuestReader.canComplete(player, team, quest),
+                FtbQuestReader.kind(quest) == FtbQuestReader.Kind.STARTER_GIFT, tasks, rewards,
                 new SectionPageOutput(rewardOffset, rewardOffset + rewards.size(), visibleRewards > rewardOffset + rewards.size()),
                 new SectionPageOutput(taskOffset, taskOffset + tasks.size(), quest.getTasksAsList().size() > taskOffset + tasks.size()),
                 new SectionPageOutput(start, end, description.length() > end));

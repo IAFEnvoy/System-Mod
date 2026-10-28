@@ -1,54 +1,54 @@
 {
   "body": [
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:date}}: {{date}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:signed_in}}: {{bool:signed_in}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:history_saved}}: {{bool:history_saved}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:external_model}}: {{bool:external_model}}"
     },
     {
-      "type": "container",
+      "type": "system:container",
       "when": "text_items",
       "repeat": "candidates",
       "children": [
         {
-          "type": "text",
+          "type": "system:text",
           "text": "{{candidates.*.reward_label}}"
         },
         {
-          "type": "text",
+          "type": "system:text",
           "text": "{{candidates.*.reward_items}}",
           "when": "text_items"
         }
       ]
     },
     {
-      "type": "container",
+      "type": "system:container",
       "when": "candidates",
       "unless": "text_items",
       "children": [
         {
-          "type": "context",
+          "type": "system:context",
           "text": "{{field:candidates}}:",
           "style": "item_group_label"
         },
         {
-          "type": "items",
+          "type": "system:items",
           "items": "{{candidates.*.result_items}}",
           "repeat": "candidates",
           "description": [
             {
-              "type": "text",
+              "type": "system:text",
               "text": "{{candidates.*.reward_label}}"
             }
           ]
@@ -56,7 +56,7 @@
       ]
     },
     {
-      "type": "actions",
+      "type": "system:actions",
       "actions": "{{result_actions}}"
     }
   ]

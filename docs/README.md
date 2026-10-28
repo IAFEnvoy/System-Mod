@@ -10,7 +10,8 @@
 | [外部 API 请求清单](external-apis.md) | 模组与独立音色工具访问的接口、客户端/服务端归属、触发条件和发送的数据 |
 | [开发与架构](development.md) | Agent 包组织、模块与工具接口、预算、持久化、MC 接入和当前限制 |
 | [功能模块化](feature-modules.md) | 功能装配、两端指令、生命周期、页面/通知/口播注册与可选集成 |
-| [客户端 JSON 卡片](cards.md) | CardContext.Builder、通用解析器、占位符、平铺参数/物品/回调、按钮布局和资源包覆盖 |
+| [注册表速查](registries.md) | 正式注册表 ID、条目类型、公开入口、查询方式及扩展注册示例 |
+| [客户端 JSON 卡片](cards.md) | CardData.buildContext、公共 CardContext/CardFormatting、通用解析器、占位符、物品/回调和资源包覆盖 |
 | [轻量本地意图路由](semantic-routing.md) | 纯 Java 领域词表/TF-IDF、玩家意图缓存、只读直达、低把握回退与扩展 API |
 | [路由选型与后续计划](semantic-routing-plan.md) | 10MB 分发约束、fastText/LIBLINEAR 等方案核实、校准与后续方向 |
 | [扩展配置](datapacks.md) | 服务端配置、成就规则及签到/商城数据包；不使用旧注册表 |

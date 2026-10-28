@@ -4,9 +4,6 @@ import com.iafenvoy.system.config.file.SpeechPricingConfig;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
-import net.minecraft.network.codec.StreamCodec;
 
 import java.util.Objects;
 import java.util.OptionalLong;
@@ -14,7 +11,7 @@ import java.util.OptionalLong;
 import static com.iafenvoy.system.data.usage.TokenUsage.add;
 
 /**
- * Immutable client-reported TTS totals, stored beside server-observed AI tokens in the world ledger.
+ * Immutable TTS totals belong to the local account and never enter server packets or world storage.
  */
 public record SpeechUsage(long characters, TokenUsage tokens, long calls, long failedCalls,
                           long unreportedCalls, long estimatedNanoYuan, long unpricedCalls) {
@@ -28,15 +25,6 @@ public record SpeechUsage(long characters, TokenUsage tokens, long calls, long f
             Codec.LONG.fieldOf("estimated_nano_yuan").forGetter(SpeechUsage::estimatedNanoYuan),
             Codec.LONG.fieldOf("unpriced_calls").forGetter(SpeechUsage::unpricedCalls)
     ).apply(i, SpeechUsage::new));
-    public static final StreamCodec<ByteBuf, SpeechUsage> STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.VAR_LONG, SpeechUsage::characters,
-            TokenUsage.STREAM_CODEC, SpeechUsage::tokens,
-            ByteBufCodecs.VAR_LONG, SpeechUsage::calls,
-            ByteBufCodecs.VAR_LONG, SpeechUsage::failedCalls,
-            ByteBufCodecs.VAR_LONG, SpeechUsage::unreportedCalls,
-            ByteBufCodecs.VAR_LONG, SpeechUsage::estimatedNanoYuan,
-            ByteBufCodecs.VAR_LONG, SpeechUsage::unpricedCalls, SpeechUsage::new);
-
     public SpeechUsage {
         Objects.requireNonNull(tokens);
         if (characters < 0 || failedCalls < 0 || failedCalls > calls || unreportedCalls < 0

@@ -50,7 +50,7 @@ DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的�
 - [模型 HTTP 客户端](../src/main/java/com/iafenvoy/system/agent/model/OpenAiCompatibleClient.java)
 - [模型连接配置](../src/main/java/com/iafenvoy/system/config/file/ModelConfig.java)
 - [意图路由](../src/main/java/com/iafenvoy/system/agent/routing/HybridRouter.java)
-- [签到模型输入](../src/main/java/com/iafenvoy/system/agent/builtin/SignInDecision.java)
+- [签到模型输入](../src/main/java/com/iafenvoy/system/agent/builtin/signin/SignInDecision.java)
 - [任务播报整理](../src/main/java/com/iafenvoy/system/agent/QuestNarration.java) / [背景筛选缓存](../src/main/java/com/iafenvoy/system/agent/QuestBackgrounds.java)
 
 ## 2. 客户端 TTS API
@@ -97,7 +97,7 @@ DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的�
 
 识别成功后，文字填入输入框，或按“识别后立即发送”设置继续提交；通知语音先匹配当前通知按钮，匹配失败才进入主聊天处理。后续若需要 AI 意图判断，还可能产生第 1 节的服务端模型请求，ASR 本身不是模型路由请求。
 
-当前代码不请求阿里云 Token 签发或自动刷新接口，临时 Token 需要外部获取并配置。Simple Voice Chat 只作为可选录音设备适配来源，未安装时使用 Java Sound；ASR 音频由本模组客户端直接上传 NLS，识别文本和用量报告再按需发送给 Minecraft 服务端。
+当前代码不请求阿里云 Token 签发或自动刷新接口，临时 Token 需要外部获取并配置。Simple Voice Chat 只作为可选录音设备适配来源，未安装时使用 Java Sound；ASR 音频由本模组客户端直接上传 NLS。只有玩家发送识别文字或执行通知操作时，才进入正常助手请求；ASR / TTS 用量不上传 Minecraft 服务端。
 
 实现入口：[阿里云 ASR 适配器](../src/main/java/com/iafenvoy/system/speech/aliyun/AliyunAsrProvider.java)、[ASR 配置](../src/main/java/com/iafenvoy/system/config/file/RecognitionConfig.java)、[录音与识别 session](../src/main/java/com/iafenvoy/system/speech/asr/AssistantRecognition.java)。
 
@@ -135,10 +135,10 @@ DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的�
 - 玩家与物品查询、FTB 查询/明确提交/领奖、新手礼包领取、商城与抽奖结算：内置逻辑直接读取或修改服务端游戏状态；明确指令或可信按钮执行这些操作本身不需要云端。自然语言先走模型兜底、结果触发 TTS 或特殊任务播报时，仍可能产生对应请求。
 - 绑定成功通知、任务完成/解锁事件与消息队列：事件生成和固定文案在本地处理；语音开启后可另触发 TTS 和按需任务文案整理。
 - 语义匹配与对话压缩：使用本地词法 / TF-IDF、缓存及确定性历史投影；没有 embedding、向量数据库、Redis、独立摘要模型或模型自动下载请求。
-- 用量统计与费用估算：AI 用量取模型响应，TTS / ASR 用量由客户端报告给游戏服务端，费率读取 `config/system` 下的本地配置；不会请求供应商账单、余额或实时价格 API。
+- 用量统计与费用估算：AI 用量由服务端从模型响应记录；TTS / ASR 用量仅按客户端账号存本机，费率读取客户端 `config/system` 下的配置；不会请求供应商账单、余额或实时价格 API，也不向 MC 服务端报告语音用量。
 - 提示词与奖励数据包重载、配置加载、通知音效播放：读取本地资源或存档，不调用云端。
 
-客户端与服务端之间的助手请求、任务播报查询和用量报告使用 Minecraft 自定义网络载荷，不是新增的公开 HTTP API。TTS 密钥和 NLS Token 保留在客户端，不随这些用量报告发送给游戏服务端。
+客户端与服务端之间的助手请求、任务播报查询和 AI 用量查询使用 Minecraft 自定义网络载荷，不是新增的公开 HTTP API。TTS 密钥、NLS Token 及语音用量均保留在客户端，不发送给游戏服务端。
 
 按当前内置源码，本模组没有额外的遥测、广告、更新检查或通用数据上传接口。外部请求实现集中于 `OpenAiCompatibleClient`、`AliyunTtsProvider`、`AliyunAsrProvider`、尚未挂接游戏流程的 `DeepSeekSearchClient` 和上述 Python 工具；新增提供商或其他第三方扩展后，应同步更新本清单。
 

@@ -3,6 +3,7 @@ package com.iafenvoy.system.agent;
 import com.iafenvoy.system.agent.routing.ModelRoute;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.registry.SystemRegistries;
 import com.mojang.serialization.Codec;
 import net.minecraft.resources.Identifier;
 
@@ -34,7 +35,7 @@ public final class ModuleRegistry {
         Identifier id = descriptor.id();
         if (this.modules.containsKey(id) || this.profiles.containsKey(id))
             throw new IllegalArgumentException("Duplicate module " + id);
-        if (!id.equals(module.inputType().id()) || !ResultTypes.ACTIONS.contains(module.inputType()))
+        if (!id.equals(module.inputType().id()) || SystemRegistries.ACTION_TYPE.getValue(id) != module.inputType())
             throw new IllegalArgumentException("Module input type must be registered under its descriptor ID");
         List<ToolRegistry.Tool<?, ?>> operations = List.copyOf(module.tools());
         if (!operations.stream().map(ToolRegistry.Tool::id).collect(Collectors.toSet()).equals(descriptor.tools()))

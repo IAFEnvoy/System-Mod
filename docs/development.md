@@ -2,9 +2,9 @@
 
 ## 当前版本
 
-ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充，`RecognitionUsage` 与 AI / TTS 共用 SavedData；当前网络协议 1。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
+ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充。TTS / ASR 用量由 `LocalSpeechUsage` 按客户端账号 UUID 独立保存，不向服务端上报；服务端 SavedData 只记录 AI。当前网络协议 1。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
 
-语音供应商接口及客户端录音和播放分别位于 `speech.asr` 与 `speech.tts`，供应商注册表位于 `registry`，协议实现位于 `speech.aliyun`；配置集中在 `config`。阿里云默认使用 `qwen3-tts-flash`，额外兼容设计音色绑定的 Qwen-Audio-TTS HTTP 协议；复用 `HttpTransport`，没有新增依赖或模型文件。详见 [语音合成与音色设计](tts.md)。
+语音供应商接口及客户端录音和播放分别位于 `speech.asr` 与 `speech.tts`，供应商工厂 `TtsProviders` / `AsrProviders` 位于 `speech`，协议实现位于 `speech.aliyun`；配置集中在 `config`。阿里云默认使用 `qwen3-tts-flash`，额外兼容设计音色绑定的 Qwen-Audio-TTS HTTP 协议；复用 `HttpTransport`，没有新增依赖或模型文件。详见 [语音合成与音色设计](tts.md)。
 
 | 组件 | 配置 |
 | --- | --- |
@@ -35,14 +35,15 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 | 路径 | 职责 |
 | --- | --- |
-| `agent` | 引擎与执行器、预算和授权上下文、Module/Tool 契约、类型/模块/工具/指令注册表、请求与结果 |
-| `registry、registry/module` | 系统定义、Saturn action/condition 与存储类型、按键、声音、两端模块内置注册表及 DeferredRegister 注册项 |
+| `agent` | 引擎与执行器、预算和授权上下文、Module/Tool 契约、每服务实例的模块/工具/指令索引、请求与结果 |
+| `registry` | 系统定义、Saturn action/condition 与存储类型、按键、声音、两端模块、协议/载荷类型、卡片节点的注册表及 DeferredRegister 注册项，以及语音供应商工厂 Map |
 | `module/<功能>` | 功能装配、平台指令、玩家生命周期、客户端页面/卡片/通知/口播贡献 |
 | `module` | 功能定义、装配、ModuleManager、玩家权限快照、模块存储声明和生命周期 |
 | `module/client` | 客户端功能契约、ClientModuleBindings 贡献装配、指令、三分类动态导航、工作台及类型化卡片映射 |
 | `agent/builtin` | 按功能分包的工作流、单行为工具和签到模型决策结构 |
 | `agent/builtin/input、agent/builtin/output` | 内置模块/工具参数及查询结果，一类一文件 |
 | `agent/builtin/tool` | 共享工具类型键；具体实现位于 `builtin/<功能>` |
+| `agent/request、agent/response` | 独立请求/响应实现及各自的 MapCodec，注册声明位于 SystemRequestTypes / SystemResponseTypes |
 | `agent/routing` | 混合路由、本地匹配与缓存、语义声明、路由结果及诊断 |
 | `agent/model` | 模型接口、统一请求与计量入口、OpenAI 兼容协议及报文 |
 | `search` | 独立 Search / Fetch 接口、DeepSeek 协议客户端和类型化结果，尚未注册为 Agent 能力 |
@@ -62,7 +63,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 上表路径均相对于 `src/main/java/com/iafenvoy/system/`。Agent 与游戏接入代码处于同一主项目；模块、工具和服务接口仍保留职责划分，工具使用稳定逻辑 ID，方便后续扩展业务。
 
-注册项通过对应注册类的 `public static final` 字段公开，例如 `SystemKeyMappings.TOGGLE_INTERFACE`、`SystemSoundEvents.NOTIFICATION`、`SystemEntityActions.ADD_MODULE` 和 `ServerModules.SIGN_IN`。模块注册类使用类级别 `@SuppressWarnings("unused")`。`SystemRegistries.SERVER_MODULE` 与 `SystemRegistries.Client.CLIENT_MODULE` 是通过 `NewRegistryEvent` 加入原版根注册表的正式内置注册表；`registry.module.ServerModules` / `ClientModules` 用 DeferredRegister 注册条目，由 NeoForge 冻结。模块接口分别为 `ServerModule` 和 `ClientModule`，默认 `id()` 从注册表取得。客户端注册表及其入口 `SystemClientMod` 仅在物理客户端加载，客户端贡献由 `ClientModuleBindings.get()` 从冻结注册表装配；原模块 Map 目录与自定义模块注册事件已删除。按键事件处理、网络、指令、资源重载监听器保持原有位置，Agent 内部按实例管理的工作流目录与类型 Codec 继续位于独立的 `agent` 包。
+注册项通过对应注册类的 `public static final` 字段公开，例如 `SystemKeyMappings.TOGGLE_INTERFACE`、`SystemSoundEvents.NOTIFICATION`、`SystemEntityActions.ADD_MODULE` 和 `SystemServerModules.SIGN_IN`。注册类使用类级别 `@SuppressWarnings("unused")`。`SystemRegistries` 的正式内置注册表在两端统一创建，通过 `NewRegistryEvent` 加入原版根注册表，由对应的 DeferredRegister 注册条目，再由 NeoForge 冻结；完整 ID、字段与扩展入口见[注册表速查](registries.md)。模块由 `SystemServerModules` / `SystemClientModules` 注册，接口分别为 `ServerModule` 和 `ClientModule`，默认 `id()` 从注册表取得。客户端实现的条目由仅在物理客户端加载的 `SystemClientMod` 绑定，专用服务端保留对应空表；公共协议与卡片载荷在两端登记。客户端贡献由 `ClientModuleBindings.get()` 从冻结注册表装配。按键事件处理、网络、指令、资源重载监听器保持原有位置，Agent 内部按实例管理的工作流、工具与指令索引继续位于独立的 `agent` 包。
 
 `AssistantServer` 负责组装引擎、安装模块、转发游戏事件及资源刷新；`AssistantPlayers` 管理绑定与连接，ModuleManager 根据 ServerModule.runtime 创建 PlayerModule 并统一管理模块会话、事件、tick 和关闭；成就基线与派发由成就模块管理，`AssistantRequests` 管理类型化请求分派与回复，`AssistantUsage` 管理用量查询及计量队列。命令、网络和可选桥接通过 `players()`、`requests()`、`usage()` 调用对应服务；异步回复仍核对连接代次，模型计量仍由服务端主线程写入 SavedData。
 
@@ -84,7 +85,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 `CodecIO` 统一限长 JSON 解析及 Codec 编解码；HTTP 响应可通过 `Document` 一次解析后分别解码用量与正文，保证正文无效仍记录已计费用量。存档和恢复日志使用 `RecordCodecBuilder`，业务账本的可选字段通过严格的 `optionalFieldOf` 读取；可丢弃的 `Conversation.requests` 展示/请求回放缓存使用 `lenientOptionalFieldOf`，结果载荷过期或格式无效时仅将该缓存回退为空，不影响绑定、奖励、订单、写步骤和其他玩家数据，也不迁移旧载荷。配置使用不可变 record、`RecordCodecBuilder` 和 record getter，按字段以 `lenientOptionalFieldOf` 读取。范围与字段语义在子 Codec 校验，枚举及嵌套构造异常通过 `ConfigCodecs` 转为解析错误。配置中缺失、null、类型错误、无效枚举、越界值或嵌套 Codec 构造异常只回退该字段，其他有效配置保留；配置集合返回不可变快照，玩家文件仍使用 FileAgentStore 的原有 force/原子替换事务。
 
-`AgentRequest` 表达聊天、模块调用、控制请求和偏好，通过 `Types.REGISTRY` 注册的 `MapCodec` 按 `type` 分派；已删除 `mode/encodedInput/decode` 的字符串转换。`AgentResponse` 同样分派回复、通知、打开界面和绑定变更。两端载荷通过原版 `ByteBufCodecs.fromCodecWithRegistries` 复用 Codec，直接传递类型对象；JSON 只用于文本边界。模型路由返回值按 `capabilityId` 从本次可选模块的 Codec Map 分派，签到仅接收 SignInDecision，发送的玩家投影不包含其他在线玩家。ConversationMemory 使用有界、允许字段组成的对象投影。
+`AgentRequest` 表达聊天、模块调用、控制请求和偏好，通过 `SystemRequestTypes` 向 `SystemRegistries.AGENT_REQUEST_TYPE` 登记 `MapCodec`；对象的 `codec()` 返回注册实例，根 Codec 按 `type` 分派。`AgentResponse` 使用对应的正式注册表分派，已删除旧 `DispatchRegistry`；任务查询按 Tool 声明固定返回单个数据对象或 List，不使用多态结果注册表。两端载荷通过原版 `ByteBufCodecs.fromCodecWithRegistries` 复用 Codec，直接传递类型对象；JSON 只用于文本边界。模型路由返回值按 `capabilityId` 从本次可选模块的 Codec Map 分派，签到仅接收 SignInDecision，发送的玩家投影不包含其他在线玩家。ConversationMemory 使用有界、允许字段组成的对象投影。
 
 固定业务数据、配置、存档、模型与语音报文使用 Codec。JSON 只保留在动态 JSON Schema 与通用界面格式化边界；工具写入回执使用原版 Dynamic/PASSTHROUGH 保存暂不解释的结果，回放时由对应工具结果 Codec 解码，不在业务中按键取值。
 
@@ -100,8 +101,6 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | `AssistantResponseS2C` | `system:assistant_response_s2c` |
 | `TokenUsageRequestC2S` | `system:token_usage_request_c2s` |
 | `TokenUsageResponseS2C` | `system:token_usage_response_s2c` |
-| `SpeechUsageReportC2S` | `system:speech_usage_report_c2s` |
-| `RecognitionUsageReportC2S` | `system:recognition_usage_report_c2s` |
 
 当前协议版本为 **1**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航和绑定变更，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的 Codec 在网络解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
 
@@ -109,13 +108,13 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 实现 `AgentModule<I>`，提供已注册的 `TypedPayload.Type<I>`、描述信息和 `List<ToolRegistry.Tool<?, ?>> tools()`，在 `execute` 中处理不可变参数。内置模块继承 `BuiltinModule<I>`：构造时传入共享输入类型键 `TypedPayload.Type<I>`、`SchemaMapCodec<I>` 和工具列表，描述中的输入 schema 从 Codec 获取，工具白名单从列表生成，避免重复声明。模块是受信 Java 代码，Codec 不替代业务授权，也不是同 JVM 沙箱。
 
-模块 ID 使用原版 `Identifier`：`Descriptor.id`、输入类型键 `TypedPayload.Type.id` 及模块注册表的键均为该类型。先用 `ResultTypes.ACTIONS.register(identifier, inputCodec)` 注册共享类型键，模块的 `inputType()`、按钮、指令与路由必须复用这个键；引擎拒绝 ID 不一致或未注册的类型键。`BuiltinModule` 从传入类型键取得 Identifier。配置和网络仍编码为 `namespace:path` 字符串。
+模块 ID 使用原版 `Identifier`：`Descriptor.id`、输入类型键 `TypedPayload.Type.id` 及模块注册表的键均为该类型。先通过 DeferredRegister 向 `SystemResourceKeys.ACTION_TYPE` 登记共享类型键，内置键由 `SystemActionTypes` 提供。模块的 `inputType()`、按钮、指令与路由必须复用这个键；引擎拒绝 ID 不一致或未注册的类型键。`BuiltinModule` 从传入类型键取得 Identifier。配置和网络仍编码为 `namespace:path` 字符串。
 
 每个 Tool 只负责一个行为，`ToolRegistry.Type<I, O>` 保存稳定 ID、参数 `MapCodec<I>` 和结果 `Codec<O>`，`Tool<I, O>` 保存写入、幂等、事件权限和单一 Handler。模块直接调用 `context.tool(type, stepId, typedInput)` 获得类型化结果；一个流程需要多个行为时使用模块的 `List.of(toolA, toolB)` 组合。同一工具被多个模块使用时共享同一实例，重复的不同实现或同 ID 不同类型键会被拒绝。
 
-功能级扩展用标准 `DeferredRegister<ServerModule>` 注册到 `SystemResourceKeys.SERVER_MODULE`；客户端以相同方式注册到 `SystemResourceKeys.Client.CLIENT_MODULE`，注册入口限定 `Dist.CLIENT`。完整示例见[功能模块化](feature-modules.md)。只有工作流的扩展也可在原有 `AssistantRegistrationEvent` 中调用 `engine.registerModule(module)`：引擎的工作流目录核对描述白名单与工具列表，检查 ID、指令别名和工具实例冲突，再统一收集工具、指令、语义 profile 和快捷入口。不再提供先注册工具、再注册模块的两阶段入口。FTB 也使用此路径，查询、详情、普通领奖、新手礼包领取和明确任务提交各有独立 Tool 及对应模块，不需要专用服务接口。
+功能级扩展用标准 `DeferredRegister<ServerModule>` 注册到 `SystemResourceKeys.SERVER_MODULE`；客户端以相同方式注册到 `SystemResourceKeys.CLIENT_MODULE`，注册入口限定 `Dist.CLIENT`。完整示例见[功能模块化](feature-modules.md)。只有工作流的扩展也可在原有 `AssistantRegistrationEvent` 中调用 `engine.registerModule(module)`：引擎的工作流目录核对描述白名单与工具列表，检查 ID、指令别名和工具实例冲突，再统一收集工具、指令、语义 profile 和快捷入口。不再提供先注册工具、再注册模块的两阶段入口。FTB 也使用此路径，查询、详情、普通领奖、新手礼包领取和明确任务提交各有独立 Tool 及对应模块，不需要专用服务接口。
 
-`PayloadRegistry` 参考原版 `Recipe` / `PlacementModifier` 的类型分派，统一使用 `Codec.dispatch` 按 `moduleId` 选择共享参数 Codec；调用封装为 `{"moduleId":"system:item_query","input":{"query":"stone"}}`。`ModuleRegistry.call` 根据同一类型键定位当前服务器已安装模块、校验参数并生成可执行调用，不再维护另一套输入 dispatch Codec。模型目录和模型返回值解码都由当前模块注册表约束；未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `TypedPayload<?>`。
+`TypedPayload.ACTION_CODEC` 通过正式 `SystemRegistries.ACTION_TYPE` 的 `byNameCodec().dispatchMap(...)` 按 `moduleId` 选择共享参数 Codec；调用封装为 `{"moduleId":"system:item_query","input":{"query":"stone"}}`。`ModuleRegistry.call` 根据同一类型键定位当前服务器已安装模块、校验参数并生成可执行调用，不再维护另一套输入 dispatch Codec。模型目录和模型返回值解码都由当前模块注册表约束；未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `TypedPayload<?>`。
 
 `AgentCodecs.strict` 在原版 Codec 基础上额外拒绝未知键和显式 null；精确整数 Codec 拒绝小数和溢出值，避免原版 `Codec.INT` 的截断行为影响索引。业务参数的缺省值由严格 `optionalFieldOf` 提供，类型错误不静默回退；配置字段统一使用 `lenientOptionalFieldOf` 回退默认值，两者互不影响。Codec 解析失败不接受部分结果。写工具回放要求指纹完全一致，再由对应工具的结果 Codec 恢复对象；不匹配时拒绝执行，不归一旧格式，也不重新执行已完成写操作。
 
@@ -136,7 +135,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 ### 内置输入与输出
 
-`agent.builtin.input` 与 `agent.builtin.output` 中每个类型独立成文件，直接导入后使用 `QuestDetailInput`、`PlayerSnapshotOutput` 等名称，不再通过聚合外类引用。输入使用带校验和 Schema 元数据的 MapCodec，输出使用 Codec；`QuestLookupOutput` 通过注册表分派 QuestListOutput / QuestDetailOutput / StarterGiftOutput。奖励入账参数 `RewardCreditInput` 归入输入包，物品直接使用原版 `ItemStackTemplate.CODEC`，奖励使用 `PlayerData.Reward.CODEC`；`Reward.ITEMS_CODEC` 统一限制产出为 1～36 项。重载阶段不创建物品堆，运行时在游戏线程调用模板的 `create()`。
+`agent.builtin.input` 与 `agent.builtin.output` 中每个类型独立成文件，直接导入后使用 `QuestDetailInput`、`PlayerSnapshotOutput` 等名称，不再通过聚合外类引用。输入使用带校验和 Schema 元数据的 MapCodec，输出使用 Codec；任务列表和名称搜索返回 `List<QuestBriefOutput>`，详情返回 `QuestOutput`，礼包返回 `StarterGiftOutput`。奖励入账参数 `RewardCreditInput` 归入输入包，物品直接使用原版 `ItemStackTemplate.CODEC`，奖励使用 `PlayerData.Reward.CODEC`；`Reward.ITEMS_CODEC` 统一限制产出为 1～36 项。重载阶段不创建物品堆，运行时在游戏线程调用模板的 `create()`。
 
 ### 从 Codec 定义生成输入 schema
 
@@ -157,21 +156,21 @@ public record Search(String query, int offset) {
 
 ### 结果卡片与动作
 
-`AgentResult`、`Card` 和 `Action` 各自提供 `CODEC`。`Card.data` 为 `TypedPayload<?>`，携带类型键及不可变 Java 值；`Action.call` 同样携带类型化模块参数，其类型键 ID 就是模块的 `Identifier`。`PayloadRegistry` 使用原版 `Codec.dispatch`：卡片按 `type` 选择结果 Codec，动作按 `moduleId` 选择输入 Codec。`titleKey` 仅用于本地化显示，不参与新结果的类型判断。
+`AgentResult`、`Card` 和 `Action` 各自提供 `CODEC`。`Card.data` 直接持有 `CardData`，各数据实现提供 `MapCodec` 和模板标识，`codec()` 返回已登记的 MapCodec，`template()` 返回布局资源 ID，`buildContext(builder, formatting)` 填充自身展示参数。公共 CardContext 和 CardFormatting 不引用客户端 GUI，翻译由调用方传入的文字解析器提供。根 `CardData.CODEC` 从正式注册表 `CARD_DATA_TYPE` 按 `type` 分派；`Action.call` 仍为 `TypedPayload<?>`，其 `ACTION_CODEC` 从 `ACTION_TYPE` 按 `moduleId` 选择输入 Codec。`titleKey` 仅用于本地化显示，不参与结果的类型判断。
 
 `AgentResult` 继承 Saturn `ResultWithData<List<Card>>`，成功判断统一使用 `isSuccess()` / `isFailure()`，卡片由父类保存，`cards()` 是展示访问器。Agent 继续保留文案、静默标志与 `status`；`PARTIALLY_SUCCEEDED` 表示存在未完成操作，仍属于失败，不能写入成功路由缓存。失败通过文案键适配 `Failure`，网络与存档继续使用原有 Codec 字段，不序列化 Failure 实现类。`partial()` 与 `withPresentation(...)` 分别用于部分成功标记和展示副本，值相等语义保留。
 
 ```java
-AgentResult result = AgentResult.data("system.result.player", ResultTypes.PLAYER.of(snapshot));
-AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", ResultTypes.DELIVER_ACTION,
+AgentResult result = AgentResult.data("system.result.player", snapshot);
+AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", SystemActionTypes.DELIVER_ACTION.get(),
         new EntitlementInput(entitlementId));
 ```
 
-卡片数据编码为 `{"type":"system:player","value":{...}}`；动作编码为 `{"labelKey":"system.action.deliver","call":{"moduleId":"system:deliver","input":{"entitlementId":"..."}}}`。新业务直接创建输入/结果对象，不再为卡片或按钮手工拼接 `JsonObject`。客户端任务行、奖励选项、指令补全、设置状态和口播通过类型访问数据；`TypedPayload.json()` 只用于展示、输入预算和指纹等需要文本的边界，C2S 直接传对象。历史压缩继续只提取允许字段及有限领奖引用，不把整个卡片序列化后塞进模型上下文。
+卡片数据编码为 `{"type":"system:player","name":"...",...}`，没有 `value` 包装；动作编码为 `{"labelKey":"system.action.deliver","call":{"moduleId":"system:deliver","input":{"entitlementId":"..."}}}`。新业务直接创建输入/结果对象，不再为卡片或按钮手工拼接 `JsonObject`。客户端任务行、奖励选项、指令补全、设置状态和口播通过类型访问数据；`TypedPayload.json()` 仅用于模块动作的输入预算和指纹等需要文本的边界，C2S 直接传对象。历史压缩继续只提取允许字段及有限领奖引用，不把整个卡片序列化后塞进模型上下文。
 
-客户端展示模板按数据类型 ID 从 `assets/<namespace>/cards/<path>.json` 选择。`CardNode` 根接口通过 Codec 按 `type` 分派，`CardNodeTypes` 的 Map 只绑定节点 ID 与 MapCodec；`screen/card/node` 中的独立实现负责 codec/render/text/css，`CardTemplate.Node` 保留共用条件及样式；文字、容器、横排/竖排、分割线、物品与动作区可任意组合。JSON 的 style 接受字符串或字符串数组，Codec 将数组拼接为空格分隔的 AUI 类名。`ClientCardRegistry` 每个类型只注册一个参数填充函数，使用 `CardContext.Builder` 构建不可变 `CardContext` 后再绑定模板；整张卡片共用状态、对象参数和回调三张表，重复条目使用带下标的平铺键，`items: "{{result_items}}"` 直接绑定物品对象，不经 JSON 字符串转换。完整/简约界面和 HUD 主体共用布局树；HUD 确认、关闭、领取和任务行继续由代码生成，模板动作节点在通知中忽略。资源重载刷新完整/简约界面，通知保留入队时的模板及数据快照。内置 22 种卡片均有默认资源，格式及类型扩展见[客户端 JSON 卡片](cards.md)。
+客户端先由 `CardPresentation.context(...)` 预填动作，调用 `CardData.buildContext(builder, formatting)` 填充类型参数，再补充通用标题、模式和按钮回调并构建不可变 `CardContext`，再由 `CardPresentation.of(data, context)` 按 `CardData.template()` 直接读取 `assets/<namespace>/cards/<path>.json`。没有额外渲染映射表；资源 ID 可与数据类型 ID 分别命名，缺失模板沿用通用回退展示。`CardNode` 根接口通过 Codec 按 `type` 分派，`SystemRegistries.CARD_NODE_TYPE` 通过正式注册表绑定节点 ID 与 MapCodec，JSON 节点类型使用 `system:text` 等完整 ID；`screen/card/node` 中的独立实现负责 codec/render/text/css，`CardTemplate.Node` 保留共用条件及样式；文字、容器、横排/竖排、分割线、物品与动作区可任意组合。JSON 的 style 接受字符串或字符串数组，Codec 将数组拼接为空格分隔的 AUI 类名。`ClientCardBindings` 仅按需登记客户端行为，Registration 链式组合任务引用、状态、刷新与消息，不负责上下文构建或渲染。图形、纯文本和按钮标签分别直接调用 `CardPresentation.of/format/label`；参数由数据实现构建，不再登记构建处理器。消息按键统一返回 ClientMessage 的显示和播报文字，不再维护独立摘要/口播表。参数使用 `CardContext.Builder` 构建不可变 `CardContext` 后再绑定模板；整张卡片共用状态、对象参数和回调三张表，重复条目使用带下标的平铺键，`items: "{{result_items}}"` 直接绑定物品对象，不经 JSON 字符串转换。完整/简约界面和 HUD 主体共用布局树；HUD 确认、关闭、领取和任务行继续由代码生成，模板动作节点在通知中忽略。资源重载刷新完整/简约界面，通知保留入队时的模板及数据快照。内置 22 种卡片均有默认资源，格式及类型扩展见[客户端 JSON 卡片](cards.md)。
 
-新增结果类型在公共初始化阶段调用 `ResultTypes.CARDS.register(identifier, codec)`，返回的类型键用 `.of(value)` 创建数据。新增模块按钮参数同样注册 `ResultTypes.ACTIONS`，复用模块输入 Codec。注册必须在两端、处理结果之前完成，类型 ID 唯一，未知 ID 或未注册的同名类型键在编解码时拒绝。共享结果定义不得引用可选模组类；FTB 的普通输入/结果 Codec 即使未安装 FTB 也能读取历史卡片，实际模块仍只在检测到 FTB 后注册，点击动作仍由服务端模块权限及引用校验约束。
+新增结果类型实现 `CardData`，通过 DeferredRegister 向 `SystemResourceKeys.CARD_DATA_TYPE` 登记自身 `MapCodec`；业务直接创建结果对象，不再经 Holder 包装。内置条目由 `SystemCardDataTypes` 公开。新增模块按钮参数仍向 `SystemResourceKeys.ACTION_TYPE` 登记 `TypedPayload.Type<?>`，内置条目由 `SystemActionTypes` 公开，复用模块输入 Codec。请求、响应及客户端卡片节点也使用正式注册表；语音供应商使用普通工厂 Map，声明与查询入口见[注册表速查](registries.md)。注册必须在两端模组加载期间完成，类型 ID 唯一，未知 ID 或未注册的 Codec / 类型键在编解码时拒绝。共享结果定义不得引用可选模组类；FTB 的普通输入/结果 Codec 即使未安装 FTB 也能读取历史卡片，实际模块仍只在检测到 FTB 后注册，点击动作仍由服务端模块权限及引用校验约束。
 
 网络、历史和嵌入玩家存档的结果统一使用 `AgentResult.CODEC`，文本边界通过 `CodecIO.parse/write` 处理。项目尚未发布，已移除旧卡片形状、旧动作结构、旧事件授权字段和写回执格式的兼容分支；不提供历史开发存档迁移。结果类型 ID 和当前格式自身的任务恢复/写入去重机制保留。
 
@@ -207,7 +206,7 @@ AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", Res
 
 玩家文件按 UTF-8 读取，读取器在 `load` 返回前通过 try-with-resources 关闭，避免 Windows 下未释放的读取句柄阻止后续原子替换。读写、删除和目录枚举失败会在服务端记录操作、路径与异常原因，并通过带 cause 的 `AgentException` 保留错误链；客户端仍只接收稳定的 `STORAGE_UNAVAILABLE` 错误码，不发送内部路径或堆栈。
 
-长期 AI / TTS / ASR 用量独立使用服务器全局 SavedData，保存在 `<存档>/data/system/token_usage.dat`，不进入上述业务文件或玩家附件，也不随 revoke 清理。所有 AI 请求统一经过 `ModelGateway`，按 API 实际 usage 累计；客户端 TTS 报告经 `SpeechAccounting` 归并，字符和 Token 分开累计，协议 4。详情见 [AI / TTS / ASR 用量统计](token-usage.md)。
+长期 AI 用量使用服务器全局 SavedData，保存在 `<存档>/data/system/token_usage.dat`，不进入上述业务文件或玩家附件，也不随 revoke 清理。所有 AI 请求统一经过 `ModelGateway`，按 API 实际 usage 累计。TTS / ASR 由客户端使用私人凭据请求，用量按客户端账号 UUID 只存本机 `config/system/speech-usage/<UUID>.json`，费用读取客户端 `SpeechPricingConfig`。服务端没有语音上报消息、存储字段或快照字段；管理员全服视图只有 AI，个人语音面板跨服务器累计，协议保持 1。详情见[用量统计](token-usage.md)。
 
 每玩家文件包含对话、每日签到、收件箱、业务操作回执、事件任务、成就状态及模块覆盖，各业务状态分属独立 DataStorage。对话清理不清除业务唯一标记。配置不进入玩家文件；密钥始终来自服务端环境变量。请用宿主机权限保护存档、临时文件和备份。
 
@@ -257,6 +256,17 @@ AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", Res
 
 只有 `ModList.isLoaded("ftbquests")` 为真才反射加载 `FtbQuestAdapter`；该类内部直接调用 Java API，反射只用于隔离加载，业务不走 MCP 传输。先检查 `ServerQuestFile.exists()`，再访问不可空的 `getInstance()`。
 
+读取 Tool 各自返回固定类型，FTB 原生 `Quest` 和 `TeamData` 只在游戏线程内使用，对外返回可序列化的数据快照：
+
+| Tool | 参数 | 固定返回类型 |
+| --- | --- | --- |
+| `ftb.query` | `QuestQueryInput`：关键词、是否只看可领奖 | `List<QuestBriefOutput>` |
+| `ftb.find` | `QuestFindInput`：任务名或 ID，精确匹配优先 | `List<QuestBriefOutput>` |
+| `ftb.detail` | `QuestDetailInput`：已知 ID 或上次列表编号、详情分页偏移 | `QuestOutput` |
+| `ftb.starter_gifts` | `EmptyInput` | `StarterGiftOutput` |
+
+`QuestDetailModule` 将名称输入先交给 `ftb.find`；无匹配或多匹配显示候选列表，单匹配再按 ID 读取详情。唯一匹配直接打开详情，不替换玩家原先看到的编号列表；ID/编号查询不存在或不可查看时返回业务错误，不切换结果类型。详情的 `starterGift` 标记由兼容层分类，Module 遇到礼包后调用共享的 `ftb.starter_gifts` 工具展示全部可领取礼包，不让详情 Tool 返回礼包对象。这些只读组合最多调用 3 次本地工具，不增加模型调用；礼包工具实例与独立礼包查询模块复用。
+
 查询包含已完成但仍可领奖励的任务。任务列表一次返回全部匹配简表并连续编号，查询与名称候选不再携带列表分页偏移；详情保留每页 4 个奖励、每个自选奖励 8 个选项；更多奖励和选项由独立按钮继续读取。领取引用为随机短期令牌，绑定玩家、队伍、任务/奖励对象、完成时间、自选表版本，2 分钟失效；重启、换队或变化后重新查询。读取回执不以模型文字认定成功，自选路径校验索引并采用 FTB 的先标记后调用奖励语义。第三方奖励的实际交付不作独立保证。
 
 任务列表在完整界面与通知中使用限高滚动区域，不再创建列表翻页动作。S2C 回复使用 trusted Codec 和 NeoForge 的大包拆分，不再受旧的 60000 字符回复拦截；C2S 仍使用受限解码。玩家文件容量不足时先按整轮淘汰对话及回放缓存，业务记录不参与淘汰。
@@ -271,7 +281,7 @@ FTB 没有专门的解锁事件。按队伍保存可见且 `canStartTasks` 的�
 
 FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubmission(quest)` 对全部目标执行 `anyMatch`，任意一个原生手动目标就将整个任务归入手动提交，包括可选目标或已完成的手动目标。按实际配置区分消耗物品、仅任务界面物品、勾选、经验及仅启用按钮且不自动检查的自定义任务；未适配的资源目标保守交给 FTB 专用输入。类型判定不加载 `TaskClient`，也不把“没有 tick 自动检查”的击杀、观察等目标误当成手动任务。显式提交只遍历 `submittableTasks(quest)` 中支持直接调用的原生目标：消耗物品、勾选、经验和手动自定义按钮；仅任务界面、流体、能量与未知资源目标仍在 FTB 中操作，查询和通知不触发提交。
 
-`canComplete(player, team, quest)` 统一判断已解锁、未完成、玩家未暂停，且全部剩余目标均为原生 `CheckmarkTask` 的情况。`QuestOutput.canComplete` 供详情创建“完成此任务”动作，解锁通知共用同一判定和 `QuestSubmitModule.completeAction`。动作复用提交模块，`QuestSubmitInput.checkmarkOnly=true` 在真正执行时重查上述条件，并只遍历勾选目标，避免旧按钮提交新增加的资源目标；依赖、顺序、重复任务代次和完成通知合并仍沿用原链路。按钮不会自动执行、不会解锁真正不可推进的任务，也不改变介绍任务与新手礼包分类。新增该快照字段和受限提交模式后，当前网络协议为 `1`（任务列表输入移除 offset，列表输出改为 QuestListOutput）。
+`canComplete(player, team, quest)` 统一判断已解锁、未完成、玩家未暂停，且全部剩余目标均为原生 `CheckmarkTask` 的情况。`QuestOutput.canComplete` 供详情创建“完成此任务”动作，解锁通知共用同一判定和 `QuestSubmitModule.completeAction`。动作复用提交模块，`QuestSubmitInput.checkmarkOnly=true` 在真正执行时重查上述条件，并只遍历勾选目标，避免旧按钮提交新增加的资源目标；依赖、顺序、重复任务代次和完成通知合并仍沿用原链路。按钮不会自动执行、不会解锁真正不可推进的任务，也不改变介绍任务与新手礼包分类。当前网络协议为 `1`，任务列表没有分页偏移，Tool 直接返回完整简表 List，Module 再包装为 `ResultTypes.QuestList` 卡片。
 
 新手礼包详情使用 `StarterGiftOutput.gifts` 汇总全部当前可领取的匹配任务；每组只同步内部任务 ID、奖励预览、领取引用与可选错误，界面和播报不显示任务名或章节。`StarterGiftQueryModule` 与只读 Tool 负责刷新完整列表，领取模块只接受可信按钮携带的 `StarterGiftInput.claimRefs`，不参与自由模型路由。领取引用绑定玩家、队伍、原任务/奖励对象及完成时间，2 分钟有效，撤销同步清理。显式批量领取先校验引用归属，再逐组核对解锁、暂停、可见和奖励阻止状态，在 `withPlayerContext` 内执行原生勾选提交，并通过 `TeamData.claimReward` 领取原奖励；不消耗物品或经验。成功项从列表移除，失败项保留错误与可用动作；回包仅静默更新状态和原礼包列表，不新建成功通知、对话记录或播报，全部领取后继续下一条通知。任务顺序、自动领取和队伍奖励语义沿用 FTB；不新建签到/收件箱权益，不重复推送礼包任务的普通完成消息。
 
@@ -281,7 +291,7 @@ FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubm
 
 完成通知在发送时按接收玩家的可领奖励生成操作，与详情共用 `FtbQuestAccess.reference`。仅一项普通奖励可直接复用 `quest_claim`，多项或自选奖励先走 `quest_detail` 供选择；没有可领奖励则只保留详情。事件到达本身不发奖，领取时仍校验引用期限、玩家/队伍和对象版本。可选模块安装时把共用的访问对象按服务器传给通知桥接，停服时清理。
 
-物品参数由功能模块填入 `CardContext.Builder`，JSON 的 items 节点选择来源、分组标题和说明，再交给客户端 `AssistantItems` 共享绘制，卡片、当前回复和通知使用同一个 AUI `Item` 组件及共享 CSS。物品数据来自已解码的业务对象，不扫描 JSON 或模型文字；新类型可在投影注册处扩展。`ItemPreviewOutput` 使用 `RecordCodecBuilder` 保存物品模板与数量文本，`QuestChoiceOutput` 保存候选名称与预览；只有隔离的 FTB 适配器访问 `ItemReward`，核心载荷及客户端不引用可选模组类。FTB 使用数量 1 的模板保留组件，再用 `getButtonText()` 展示真实配置数量/随机范围，不构造超出模板范围的物品，也不改动 FTB 原始栈。客户端在渲染阶段创建实际栈；原版 tooltip 接收该栈，保留物品 tooltip 组件和模组事件。详见[界面与本地化](ui-localization.md)。
+物品参数由 `CardData.buildContext(...)` 填入公共 `CardContext.Builder`，JSON 的 items 节点选择来源、分组标题和说明，再交给客户端 `AssistantItems` 共享绘制，卡片、当前回复和通知使用同一个 AUI `Item` 组件及共享 CSS。物品数据来自已解码的业务对象，不扫描 JSON 或模型文字；新类型在自己的 `buildContext(...)` 中扩展。`ItemPreviewOutput` 使用 `RecordCodecBuilder` 保存物品模板与数量文本，`QuestChoiceOutput` 保存候选名称与预览；只有隔离的 FTB 适配器访问 `ItemReward`，核心载荷及客户端不引用可选模组类。FTB 使用数量 1 的模板保留组件，再用 `getButtonText()` 展示真实配置数量/随机范围，不构造超出模板范围的物品，也不改动 FTB 原始栈。客户端在渲染阶段创建实际栈；原版 tooltip 接收该栈，保留物品 tooltip 组件和模组事件。详见[界面与本地化](ui-localization.md)。
 
 客户端 `AssistantRecognition.Session` 通过 `BooleanSupplier` 接收所属 UI 的有效性判断，供输入界面与 HUD 通知共用录音、网络与计量；最终回调同时核对原连接。`AssistantRecognitionKeys` 优先将按住说话交给当前可见通知，再交给主输入界面。通知将按钮本地化键与回调分离，用共用 `LexicalIndex` 缓存固定例句向量；未命中时进入主聊天路由。资源包定义、匹配门槛和生命周期见[语音识别](asr.md)与[轻量路由](semantic-routing.md)。
 

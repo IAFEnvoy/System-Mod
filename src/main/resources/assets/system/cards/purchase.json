@@ -1,33 +1,33 @@
 {
   "body": [
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{reward_label}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{reward_items}}",
       "when": "text_items"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:order_id}}: {{order_id}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:entitlement_id}}: {{entitlement_id}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:state}}: {{state:state}}"
     },
     {
-      "type": "items",
+      "type": "system:items",
       "items": "{{result_items}}",
       "label": "{{field:reward}}"
     },
     {
-      "type": "actions",
+      "type": "system:actions",
       "actions": "{{result_actions}}"
     }
   ]

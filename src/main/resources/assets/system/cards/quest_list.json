@@ -1,11 +1,11 @@
 {
   "body": [
     {
-      "type": "text",
+      "type": "system:text",
       "translate": "system.ui.quest_list_hint"
     },
     {
-      "type": "actions",
+      "type": "system:actions",
       "actions": "{{result_actions}}"
     }
   ],
@@ -18,12 +18,12 @@
     "numbered": false,
     "label": [
       {
-        "type": "text",
+        "type": "system:text",
         "text": "{{actions.*.action_number}}. {{actions.*.action_title}} · {{actions.*.action_chapter}} · {{actions.*.action_progress}}%",
         "when": "actions.*.action_title"
       },
       {
-        "type": "text",
+        "type": "system:text",
         "text": "{{actions.*.label}}",
         "unless": "actions.*.action_title"
       }

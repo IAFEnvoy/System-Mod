@@ -1,11 +1,14 @@
 package com.iafenvoy.system.network;
 
 import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.response.BindingResponse;
+import com.iafenvoy.system.agent.response.NoticeResponse;
+import com.iafenvoy.system.agent.response.ReplyResponse;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.iafenvoy.system.network.payload.*;
 import com.iafenvoy.system.module.quest.QuestSystemModule;
-import com.iafenvoy.system.util.codec.CodecIO;
+import com.iafenvoy.system.util.CodecIO;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
@@ -48,18 +51,6 @@ public final class ServerNetworkHandler {
         }
     }
 
-    public static void handleSpeechUsageReport(SpeechUsageReportC2SPayload payload, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer player)) return;
-        AssistantServer runtime = AssistantServer.get(player.level().getServer());
-        if (runtime != null) runtime.usage().reportSpeech(player, payload);
-    }
-
-    public static void handleRecognitionUsageReport(RecognitionUsageReportC2SPayload payload, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer player)) return;
-        AssistantServer runtime = AssistantServer.get(player.level().getServer());
-        if (runtime != null) runtime.usage().reportRecognition(player, payload);
-    }
-
     public static void handleQuestNarrationRequest(QuestNarrationRequestC2SPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) return;
         UUID connection = connectionId(player);
@@ -85,15 +76,15 @@ public final class ServerNetworkHandler {
     }
 
     public static void reply(ServerPlayer player, String requestId, AgentResult result) {
-        send(player, new AgentResponse.Reply(requestId, result));
+        send(player, new ReplyResponse(requestId, result));
     }
 
     public static void notice(ServerPlayer player, AgentResult result) {
-        send(player, new AgentResponse.Notice(result));
+        send(player, new NoticeResponse(result));
     }
 
-    public static void binding(ServerPlayer player, AgentResponse.Change change, AgentResult result) {
-        send(player, new AgentResponse.Binding(change, result));
+    public static void binding(ServerPlayer player, BindingResponse.Change change, AgentResult result) {
+        send(player, new BindingResponse(change, result));
     }
 
     public static void send(ServerPlayer player, AgentResponse response) {

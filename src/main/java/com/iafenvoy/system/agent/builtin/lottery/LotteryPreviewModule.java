@@ -3,10 +3,10 @@ package com.iafenvoy.system.agent.builtin.lottery;
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
 import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryDrawInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryPreviewInput;
 import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
+import com.iafenvoy.system.agent.builtin.output.EmptyCardData;
 import com.iafenvoy.system.agent.builtin.output.LotteryPoolOutput;
 import com.iafenvoy.system.agent.builtin.output.LotteryPrizeOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
@@ -14,6 +14,7 @@ import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.commerce.LotteryPool;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +25,7 @@ import java.util.Optional;
  */
 public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInput> {
     public LotteryPreviewModule(ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
-        super(ResultTypes.LOTTERY_PREVIEW_ACTION, "Preview one lottery pool's prizes, odds and cost. The player must separately confirm one draw.",
+        super(SystemActionTypes.LOTTERY_PREVIEW_ACTION.get(), "Preview one lottery pool's prizes, odds and cost. The player must separately confirm one draw.",
                 LotteryPreviewInput.CODEC, List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
     }
 
@@ -49,17 +50,17 @@ public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInpu
         LotteryPoolOutput summary = LotteryModule.summary(pool, price, false);
         List<AgentResult.Action> actions = new ArrayList<>();
         if (summary.paymentAvailable()) {
-            actions.add(new AgentResult.Action("system.action.lottery_confirm", ResultTypes.LOTTERY_DRAW_ACTION, new LotteryDrawInput(price.quoteRef().orElseThrow())));
+            actions.add(new AgentResult.Action("system.action.lottery_confirm", SystemActionTypes.LOTTERY_DRAW_ACTION.get(), new LotteryDrawInput(price.quoteRef().orElseThrow())));
         }
         List<AgentResult.Card> cards = new ArrayList<>();
-        cards.add(new AgentResult.Card("system.result.lottery_pool", ResultTypes.LOTTERY_POOL.of(summary), actions));
+        cards.add(new AgentResult.Card("system.result.lottery_pool", summary, actions));
         long totalWeight = pool.totalWeight();
         for (LotteryPool.Entry entry : pool.entries().stream().skip(input.offset()).limit(LotteryModule.PAGE_SIZE).toList())
-            cards.add(new AgentResult.Card("system.result.lottery_prize", ResultTypes.LOTTERY_PRIZE.of(
-                    new LotteryPrizeOutput(entry.reward(), entry.weight(), totalWeight)), List.of()));
+            cards.add(new AgentResult.Card("system.result.lottery_prize",
+                    new LotteryPrizeOutput(entry.reward(), entry.weight(), totalWeight), List.of()));
         if (pool.entries().size() - input.offset() > LotteryModule.PAGE_SIZE)
-            cards.add(new AgentResult.Card("system.result.page", ResultTypes.EMPTY.of(EmptyInput.INSTANCE), List.of(
-                    new AgentResult.Action("system.action.next", ResultTypes.LOTTERY_PREVIEW_ACTION,
+            cards.add(new AgentResult.Card("system.result.page", EmptyCardData.INSTANCE, List.of(
+                    new AgentResult.Action("system.action.next", SystemActionTypes.LOTTERY_PREVIEW_ACTION.get(),
                             new LotteryPreviewInput(pool.id(), input.offset() + LotteryModule.PAGE_SIZE, Optional.of(catalog.revision()))))));
         return new AgentResult("SUCCEEDED", "system.result.lottery_preview", "", cards);
     }

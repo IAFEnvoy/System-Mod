@@ -1,15 +1,15 @@
 {
   "body": [
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:history_saved}}: {{bool:history_saved}}"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{field:external_model}}: {{bool:external_model}}"
     },
     {
-      "type": "actions",
+      "type": "system:actions",
       "actions": "{{result_actions}}"
     }
   ]

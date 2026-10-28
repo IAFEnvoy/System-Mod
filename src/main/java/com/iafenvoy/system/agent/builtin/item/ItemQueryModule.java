@@ -7,6 +7,7 @@ import com.iafenvoy.system.agent.builtin.output.ItemPageOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 
@@ -15,7 +16,7 @@ import java.util.List;
  */
 public final class ItemQueryModule extends BuiltinModule<ItemQueryInput> {
     public ItemQueryModule(ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> items) {
-        super(ResultTypes.ITEMS_ACTION, "Search item name or registry ID.",
+        super(SystemActionTypes.ITEMS_ACTION.get(), "Search item name or registry ID.",
                 ItemQueryInput.CODEC, List.of(items), true, false, ExecutionPolicy.quick(2, 0));
     }
 
@@ -35,7 +36,7 @@ public final class ItemQueryModule extends BuiltinModule<ItemQueryInput> {
     public AgentResult execute(ExecutionContext context, ItemQueryInput input) throws Exception {
         ItemPageOutput result = context.tool(BuiltinTools.ITEMS, "items", input);
         List<AgentResult.Action> actions = result.hasMore() ? List.of(
-                new AgentResult.Action("system.action.next", ResultTypes.ITEMS_ACTION, new ItemQueryInput(input.query(), result.nextOffset()))) : List.of();
-        return new AgentResult("SUCCEEDED", "system.result.items", "", List.of(new AgentResult.Card("system.result.items", ResultTypes.ITEMS.of(result), actions)));
+                new AgentResult.Action("system.action.next", SystemActionTypes.ITEMS_ACTION.get(), new ItemQueryInput(input.query(), result.nextOffset()))) : List.of();
+        return new AgentResult("SUCCEEDED", "system.result.items", "", List.of(new AgentResult.Card("system.result.items", result, actions)));
     }
 }

@@ -1,5 +1,6 @@
 package com.iafenvoy.system.screen.card;
 
+import com.iafenvoy.system.registry.SystemRegistries;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -11,7 +12,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public interface CardNode {
     Codec<String> STYLE_CODEC = Codec.either(Codec.STRING, Codec.STRING.listOf()).xmap(value -> value.map(style -> style, styles -> String.join(" ", styles)), Either::left);
-    MapCodec<CardNode> CODEC = Codec.STRING.flatXmap(CardNodeTypes::decode, CardNodeTypes::encode).dispatchMap("type", CardNode::codec, codec -> codec);
+    MapCodec<CardNode> CODEC = Codec.lazyInitialized(() -> SystemRegistries.CARD_NODE_TYPE.byNameCodec()).dispatchMap("type", CardNode::codec, codec -> codec);
 
     MapCodec<? extends CardNode> codec();
 

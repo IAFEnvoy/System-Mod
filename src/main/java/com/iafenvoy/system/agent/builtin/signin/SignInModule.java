@@ -14,8 +14,9 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.config.file.AgentConfig;
-import com.iafenvoy.system.module.signin.SignInSystemModule;
 import com.iafenvoy.system.module.ModuleData;
+import com.iafenvoy.system.module.signin.SignInSystemModule;
+import com.iafenvoy.system.registry.SystemActionTypes;
 import net.minecraft.resources.Identifier;
 
 import java.time.LocalDate;
@@ -27,7 +28,7 @@ import java.util.List;
  */
 public final class SignInModule extends BuiltinModule<EmptyInput> {
     public SignInModule(ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player, ToolRegistry.Tool<SignInCreditInput, RewardOutput> credit) {
-        super(ResultTypes.SIGN_IN_ACTION, "Perform today's AI sign-in ONLY when explicitly requested. For status/reward questions use system:inbox.",
+        super(SystemActionTypes.SIGN_IN_ACTION.get(), "Perform today's AI sign-in ONLY when explicitly requested. For status/reward questions use system:inbox.",
                 EmptyInput.CODEC, List.of(player, credit), true, false, ExecutionPolicy.quick(2, 1));
     }
 
@@ -47,7 +48,7 @@ public final class SignInModule extends BuiltinModule<EmptyInput> {
         String day = LocalDate.now(zone).toString();
         PlayerData.Reward existing = context.store().read(context.player(), data -> ModuleData.get(data, SignInSystemModule.STORAGE).rewards.get(day));
         if (existing != null)
-            return AgentResult.data("system.result.already", ResultTypes.REWARD.of(new RewardOutput(existing)));
+            return AgentResult.data("system.result.already", new RewardOutput(existing));
         CommerceCatalog catalog = context.catalog();
         if (catalog.rewards().isEmpty()) throw new AgentException("CAPABILITY_UNAVAILABLE");
         SignInDecision.Player state = SignInDecision.Player.of(context.tool(BuiltinTools.PLAYER, "snapshot", input));
@@ -64,7 +65,7 @@ public final class SignInModule extends BuiltinModule<EmptyInput> {
         RewardOutput committed = context.tool(BuiltinTools.SIGN_IN_CREDIT, "credit", new SignInCreditInput(day, reward.id(), catalog.revision()));
         PlayerData.Reward chosen = committed.reward();
         return new AgentResult("SUCCEEDED", "system.result.sign_in", reason,
-                List.of(new AgentResult.Card("system.result.reward", ResultTypes.REWARD.of(new RewardOutput(chosen)), List.of(
-                        new AgentResult.Action("system.action.deliver", ResultTypes.DELIVER_ACTION, new EntitlementInput("daily:" + day))))));
+                List.of(new AgentResult.Card("system.result.reward", new RewardOutput(chosen), List.of(
+                        new AgentResult.Action("system.action.deliver", SystemActionTypes.DELIVER_ACTION.get(), new EntitlementInput("daily:" + day))))));
     }
 }

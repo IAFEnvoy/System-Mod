@@ -11,6 +11,7 @@ import com.iafenvoy.system.agent.builtin.quest.StarterGiftModule;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.quest.QuestSystemModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
+import com.iafenvoy.system.registry.SystemActionTypes;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressEventData;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressType;
 import dev.ftb.mods.ftbquests.api.event.progress.QuestProgressEvent;
@@ -218,8 +219,8 @@ final class FtbQuestNotifications {
             QuestStartupOutput overview = new QuestStartupOutput(active.size(), active.stream().limit(3)
                     .map(quest -> FtbQuestAccess.brief(team, quest, 0)).toList());
             runtime.players().notifyEvent(player, new AgentResult("SUCCEEDED", key, "", List.of(new AgentResult.Card(key,
-                    ResultTypes.QUEST_STARTUP.of(overview), List.of(new AgentResult.Action("system.action.view_quests",
-                    ResultTypes.QUESTS_ACTION, new QuestQueryInput("", false)))))));
+                    overview, List.of(new AgentResult.Action("system.action.view_quests",
+                    SystemActionTypes.QUESTS_ACTION.get(), new QuestQueryInput("", false)))))));
         }
     }
 
@@ -234,15 +235,15 @@ final class FtbQuestNotifications {
             // A single ordinary reward can execute directly; choices and multiple rewards retain explicit selection.
             if (rewards.size() == 1 && !(rewards.getFirst() instanceof ChoiceReward)) {
                 FtbQuestAccess.reference(player, team, quest, rewards.getFirst(), this.access.references).ifPresent(reference ->
-                        actions.add(new AgentResult.Action("system.action.claim", ResultTypes.CLAIM_ACTION, new QuestClaimInput(reference, Optional.empty()))));
+                        actions.add(new AgentResult.Action("system.action.claim", SystemActionTypes.CLAIM_ACTION.get(), new QuestClaimInput(reference, Optional.empty()))));
             } else if (!rewards.isEmpty())
-                actions.add(new AgentResult.Action("system.action.claim", ResultTypes.QUEST_ACTION, QuestDetailInput.byId(id)));
+                actions.add(new AgentResult.Action("system.action.claim", SystemActionTypes.QUEST_ACTION.get(), QuestDetailInput.byId(id)));
         }
-        actions.add(new AgentResult.Action("system.action.quest_detail", ResultTypes.QUEST_ACTION, QuestDetailInput.byId(id)));
+        actions.add(new AgentResult.Action("system.action.quest_detail", SystemActionTypes.QUEST_ACTION.get(), QuestDetailInput.byId(id)));
         String text = quest.getChapter().getTitle().getString();
         String text1 = quest.getTitle().getString();
         return new AgentResult("SUCCEEDED", key, "", List.of(new AgentResult.Card(key,
-                ResultTypes.QUEST_NOTICE.of(new ResultTypes.QuestNotice(id, com.iafenvoy.saturn.util.MiscUtil.clip(text1, 256),
+                new ResultTypes.QuestNotice(id, com.iafenvoy.saturn.util.MiscUtil.clip(text1, 256),
                         com.iafenvoy.saturn.util.MiscUtil.clip(text, 128), quest.getRewards().stream()
                         .filter(reward -> !team.isRewardBlocked(reward) && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE)
                         .flatMap(reward -> FtbQuestAccess.previewItems(reward).stream()).toList(),
@@ -252,7 +253,7 @@ final class FtbQuestNotifications {
                         quest.getRewards().stream().filter(reward -> !team.isRewardBlocked(reward)
                                         && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE && FtbQuestAccess.previewItems(reward).isEmpty())
                                 .map(FtbQuestSpeech::rewardText).toList(),
-                        !completed && FtbQuestReader.requiresManualSubmission(quest))), actions)));
+                        !completed && FtbQuestReader.requiresManualSubmission(quest)), actions)));
     }
 
     // The native event and explicit submission converge on the same pending completion entry.

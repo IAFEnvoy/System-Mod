@@ -1,7 +1,7 @@
 {
   "body": [
     {
-      "type": "text",
+      "type": "system:text",
       "translate": "system.ui.quest_startup_count",
       "unless": "notification",
       "args": [
@@ -9,12 +9,12 @@
       ]
     },
     {
-      "type": "text",
+      "type": "system:text",
       "text": "{{quests.*.title}} · {{quests.*.progress}}%",
       "repeat": "quests"
     },
     {
-      "type": "text",
+      "type": "system:text",
       "translate": "system.ui.quest_startup_more",
       "args": [
         "{{remaining}}"
@@ -22,7 +22,7 @@
       "when": "remaining"
     },
     {
-      "type": "actions",
+      "type": "system:actions",
       "actions": "{{result_actions}}"
     }
   ]

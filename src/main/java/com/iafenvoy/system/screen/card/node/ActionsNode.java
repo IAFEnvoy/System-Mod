@@ -1,7 +1,7 @@
 package com.iafenvoy.system.screen.card.node;
 
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.screen.card.CardContext;
+import com.iafenvoy.system.agent.CardContext;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.iafenvoy.system.screen.card.CardRenderer;
 import com.iafenvoy.system.screen.card.CardTemplate;

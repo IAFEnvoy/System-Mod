@@ -12,7 +12,10 @@ public final class SystemMod {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public SystemMod(IEventBus bus) {
-        SystemClientModules.REGISTRY.register(bus);
+        SystemActionTypes.REGISTRY.register(bus);
+        SystemCardDataTypes.REGISTRY.register(bus);
+        SystemRequestTypes.REGISTRY.register(bus);
+        SystemResponseTypes.REGISTRY.register(bus);
         SystemDataStorages.REGISTRY.register(bus);
         SystemEntityActions.REGISTRY.register(bus);
         SystemEntityConditions.REGISTRY.register(bus);

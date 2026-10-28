@@ -6,6 +6,7 @@ import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 
@@ -14,7 +15,7 @@ import java.util.List;
  */
 public final class StarterGiftQueryModule extends BuiltinModule<EmptyInput> {
     public StarterGiftQueryModule(ToolRegistry.Tool<EmptyInput, StarterGiftOutput> query) {
-        super(ResultTypes.STARTER_GIFTS_ACTION, "List all available starter gift rewards without exposing quest names.",
+        super(SystemActionTypes.STARTER_GIFTS_ACTION.get(), "List all available starter gift rewards without exposing quest names.",
                 EmptyInput.CODEC, List.of(query), true, false, ExecutionPolicy.quick(0, 0));
     }
 

@@ -3,7 +3,7 @@ package com.iafenvoy.system.agent;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.config.file.ModelConfig;
-import com.iafenvoy.system.util.codec.CodecIO;
+import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;

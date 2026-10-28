@@ -1,5 +1,37 @@
 # 编译与验收
 
+## 2026-10-28 ASR / TTS 工厂恢复普通 Map
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未执行测试、启动 Minecraft 或调用语音 API。
+
+阅读代码与静态检查确认：两种供应商改用公开的 PROVIDERS Map，键为完整名称，值为 Supplier；create 继续支持 System 短名称并为每次会话创建独立实例。已移除 ASR / TTS 的资源键、内置注册表及 DeferredRegister 绑定，剩余 8 张注册表声明与登记一致。内置 ASR 键对齐默认配置的 aliyun-nls；文档链接与差异空白检查通过。实际合成、录音与第三方工厂接入未作运行验证。
+
+## 2026-10-28 请求实现与 Codec 拆分
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未执行测试或启动 Minecraft。
+
+阅读代码确认：四种请求拆到 `agent.request` 的独立文件，各自声明 MapCodec，SystemRequestTypes 只登记这些实例。AgentRequest 保留注册表分派与公共契约，发送调用及服务端 Handler 同步引用新类。ControlRequest 保留枚举语义，其 MapCodec 直接包含 action 字段；注册 ID、协议字段及网络版本保持不变。
+
+## 2026-10-28 统一注册表声明与客户端实现隔离
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未执行测试或启动 Minecraft。
+
+阅读代码确认：SystemResourceKeys / SystemRegistries 移除 Client 内部类，全部 10 张代码注册表在两端统一创建并登记。客户端模块、节点和语音工厂仍仅在 Dist.CLIENT 入口绑定，专用服务端保留空表；共用卡片载荷在公共入口登记，供服务端构建回复。核对当前 NeoForge 26.1.2.114 源码，RegistryBuilder 的 sync 默认 false，sync(true) 仅用于数字 ID 同步；本次沿用名称编码，不新增同步协议。专用服务端实际类加载及联机同步尚未游戏内验收。
+
+## 2026-10-28 响应实现与 Codec 拆分
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未执行测试或启动 Minecraft。
+
+阅读代码确认：四种响应拆到 `agent.response` 的独立文件，各自声明静态 MapCodec 并由 `codec()` 返回同一实例。SystemResponseTypes 只登记这些 Codec，AgentResponse 保留注册表分派入口；两端 Handler 和调用点同步引用新类。注册 ID、协议字段和网络版本保持不变。
+
+## 2026-10-28 卡片节点、语音工厂与协议类型注册表
+
+执行 `compileJava testModClasses --console=plain`，主源码和开发源集编译通过；未执行测试或启动 Minecraft，未调用外部 API。
+
+阅读代码确认：卡片节点、TTS 工厂、ASR 工厂与协议类型改为正式内置注册表，通过 `NewRegistryEvent` 和 `DeferredRegister` 注册，由模组加载流程冻结。协议类型包含卡片/动作载荷、Agent 请求/响应及任务查询结果，Codec 从注册表按名称分派；旧 PayloadRegistry、DispatchRegistry、CardNodeTypes 和语音工厂 Map 已删除。客户端注册表及绑定入口独立于公共入口，FTB 类型只依赖本模组 DTO，实际可选 API 仍按安装检测加载。完整条目与扩展方式见[注册表速查](registries.md)。
+
+静态检查通过：22 个卡片 JSON 的 130 个节点引用均使用已登记的完整 `system:*` ID，中英文各 455 个语言键且集合相同，文档链接和差异空白有效。网络协议仍为 `1`，未增加依赖。注册生命周期、专用服务端隔离、可选依赖缺席、资源重载和第三方扩展尚未游戏内验收。
+
 ## 2026-10-28 两端模块内置注册表
 
 执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未执行测试或启动 Minecraft。
@@ -356,3 +388,43 @@ FTB 仅为 `compileOnly`，默认开发运行不安装。需要用户明确要�
 参照 MiXianTu 的 `AuiPages` 和页面宿主，核对实际使用的 ApricityUI 1.2.6 源码后，统一在文档创建前预热本地样式，在监听器绑定、内容填充和首次布局提交完成后恢复页面自动渲染；绘制及补全坐标测量前主动提交待处理布局。HUD 通知也在初始内容填充后提交隐藏布局，再启动原有动画。`compileJava --console=plain` 编译通过。
 
 没有执行测试或启动 Minecraft；静止鼠标首次打开、带补全重开、窗口缩放和连续通知的实际位置与动画尚未作游戏内验收。本次未修改 `README-zh.md`。
+
+## 2026-10-28 FTB 查询固定返回类型
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过。没有运行测试、启动 Minecraft 或调用外部 API；任务列表、名称歧义选择和礼包领取尚未进行游戏内验收。
+
+阅读代码确认：`ftb.query` 和新增的 `ftb.find` 直接返回不可变 `List<QuestBriefOutput>`，`ftb.detail` 只返回单个 `QuestOutput`，不存在或不可查看的任务返回业务错误。移除任务查询的多态根接口、列表/详情包装和专用类型注册表；新手礼包仍使用独立的 `StarterGiftOutput`。名称匹配、候选展示与礼包跳转由 `QuestDetailModule` 组合只读工具，最多 3 次本地调用，不增加模型调用，礼包查询复用同一个工具实例。唯一名称匹配不会覆盖原列表编号；编号仍核对玩家、队伍、系统代次、历史代次、有效期及原任务对象。可选 FTB 类仍隔离在兼容层，所有任务快照在游戏线程构建。
+
+静态检查：源码和当前架构文档没有任务查询类型注册表及旧包装类引用，保留 7 张代码注册表，注册声明与事件登记一致；`git diff --check` 通过。没有修改语言文件或 `README-zh.md`，网络协议保持 `1`。
+
+## 2026-10-28 卡片数据接口与个人语音用量
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；`testModClasses` 仅编译，不执行测试。没有启动 Minecraft、打开麦克风或调用外部 API，界面渲染、资源重载及实际合成/识别尚未作游戏内验收。
+
+阅读代码确认：`AgentResult.Card` 直接持有 `CardData`，22 个数据实现各自提供 MapCodec 与模板键，根 Codec 按注册表分派，无 `TypedPayload` 卡片包装或 `value` 层；模块动作继续使用 `TypedPayload`。客户端独立构建 CardContext，再由模板键选择渲染工厂，公共数据和 Codec 不引用客户端渲染类。默认 22 个渲染绑定均有对应 JSON 布局，资源 ID 不必与数据类型 ID 相同。
+
+TTS / ASR 统计由本机 `LocalSpeechUsage` 按客户端账号 UUID 保存于 `config/system/speech-usage/<UUID>.json`，tracker 捕获所属账号的 Ledger；关闭播放或换服务器后，已发起请求的结果仍记回原账号。语音报告网络包、服务端处理器和语音聚合字段已移除，服务端 SavedData 与玩家明细只保存 AI 用量。管理员全服切换只改变 AI 展示，语音面板始终读取本人本地记录。以上为代码阅读结论，尚未进行运行验收。
+
+静态检查：主资源、开发资源及示例共 60 个 JSON 文件语法与键唯一性通过；双语各 455 个键且集合一致；本次涉及的 11 份架构、语音和索引文档的本地链接有效。网络协议保持 `1`，未修改 `README-zh.md`。
+
+## 2026-10-28 卡片直接读取模板
+
+阅读代码发现原渲染映射的 22 个内置条目均为同名转发，没有自定义工厂调用方。移除 `SystemCardRenderers`，由 `CardPresentation.of(data, context)` 直接使用 `CardTemplates.get(data.template())`；上下文仍独立构建，缺少模板时保留原有回退展示，通知仍保存入队时的模板及上下文快照。
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；没有运行测试、启动 Minecraft 或调用外部 API。静态检查确认 22 个 CardData 模板 ID 都有对应 JSON，源码无已删除类的引用，更新的架构文档和索引链接有效，`git diff --check` 通过。实际页面、通知及资源重载尚未作游戏内验收；未修改语言资源、网络协议或 `README-zh.md`。
+
+## 2026-10-28 CardData 自建上下文
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未运行测试、启动 Minecraft 或调用外部 API。实际页面展示、通知交互、物品预览与语言切换尚未进行游戏内验收。
+
+阅读代码确认：原有 18 个类型参数构建器已移入对应 CardData 实现的 `buildContext(builder, formatting)`；其余 4 个协议或动作载荷保留默认空填充。任务及奖励子条目复用自身构建方法，任务列表编号和奖励选项仍读取预填的动作列表。公共 CardContext 保留原有状态、参数、回调三张表及不可变快照；CardFormatting 由调用方提供文字解析函数，共享奖励、价格和物品名称格式化，不加载 GUI 类。ClientCardRegistry 不再保存参数构建处理器，统一在类型填充后补充标题、模式及按钮发送回调；功能模块只保留消息、状态、刷新和通知行为。
+
+静态检查确认：公共卡片数据、上下文和格式化接口没有客户端 GUI、AssistantClient 或客户端模块导入；没有旧 CardContext 包路径或模块参数构建器注册残留。更新的 7 份架构文档及索引的本地链接有效，双语各 455 个键且集合一致，`git diff --check` 通过。未修改布局 JSON、语言键、网络协议或 `README-zh.md`。
+
+## 2026-10-28 客户端卡片行为与展示分离
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未运行测试或启动 Minecraft。完整/简约界面、HUD 通知和任务播报的实际交互尚未作游戏内验收。
+
+阅读代码确认：原 ClientCardRegistry 改为 ClientCardBindings，仅登记与调用消息、客户端状态、静默刷新、任务引用及通知行规则。上下文组装、布局解析、图形展示、纯文本格式化和按钮标签统一由 CardPresentation 提供，完整界面、简约界面与 HUD 直接调用，普通卡片无需登记行为。动作仍在类型参数填充前写入 Builder，通用标题、模式和发送回调仍在填充后补充，模板缺失回退及通知快照保持原实现。
+
+静态检查确认源码没有旧类名或通过行为表调用展示方法的残留，ClientCardBindings 不引用 CardContext、渲染类或 AssistantClient；CardPresentation 不引用行为装配表。状态、消息、刷新及任务引用的调用方仍使用行为绑定。更新的 5 份架构文档及索引的本地链接有效，双语各 455 个键且集合一致，`git diff --check` 通过；未修改语言资源、布局 JSON、网络协议或 `README-zh.md`。

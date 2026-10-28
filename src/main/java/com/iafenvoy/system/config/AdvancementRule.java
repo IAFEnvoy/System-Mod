@@ -1,6 +1,5 @@
 package com.iafenvoy.system.config;
 
-import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.TypedPayload;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
@@ -17,7 +16,7 @@ public record AdvancementRule(Identifier id, Identifier advancementId, TypedPayl
     public static final Codec<AdvancementRule> CODEC = RecordCodecBuilder.create(i -> i.group(
             identifierField("id").forGetter(AdvancementRule::id),
             identifierField("advancementId").forGetter(AdvancementRule::advancementId),
-            ResultTypes.ACTIONS.mapCodec().forGetter(AdvancementRule::call)
+            TypedPayload.ACTION_CODEC.forGetter(AdvancementRule::call)
     ).apply(i, AdvancementRule::new));
 
     private static MapCodec<Identifier> identifierField(String name) {

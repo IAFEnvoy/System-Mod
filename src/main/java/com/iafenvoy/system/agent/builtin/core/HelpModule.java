@@ -3,8 +3,10 @@ package com.iafenvoy.system.agent.builtin.core;
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
+import com.iafenvoy.system.agent.builtin.output.EmptyCardData;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 
@@ -13,7 +15,7 @@ import java.util.List;
  */
 public final class HelpModule extends BuiltinModule<EmptyInput> {
     public HelpModule() {
-        super(ResultTypes.HELP_ACTION, "Show supported commands and usage.",
+        super(SystemActionTypes.HELP_ACTION.get(), "Show supported commands and usage.",
                 EmptyInput.CODEC, List.of(), true, false, ExecutionPolicy.quick(1, 0));
     }
 
@@ -29,6 +31,6 @@ public final class HelpModule extends BuiltinModule<EmptyInput> {
     @Override
     public AgentResult execute(ExecutionContext context, EmptyInput input) {
         return new AgentResult("SUCCEEDED", "system.result.help", String.join("\n", context.commandUsages()), List.of(
-                new AgentResult.Card("system.result.clarify_choices", ResultTypes.EMPTY.of(EmptyInput.INSTANCE), context.shortcuts())));
+                new AgentResult.Card("system.result.clarify_choices", EmptyCardData.INSTANCE, context.shortcuts())));
     }
 }

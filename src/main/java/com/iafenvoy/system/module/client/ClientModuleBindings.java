@@ -3,10 +3,8 @@ package com.iafenvoy.system.module.client;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.registry.SystemRegistries;
-import com.iafenvoy.system.screen.card.CardNodeTypes;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantView;
-import com.iafenvoy.system.speech.tts.SpeechText;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
@@ -18,14 +16,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 /** Runtime presentation contributions are assembled once from the frozen client module registry. */
 public final class ClientModuleBindings {
     private final ClientCommandRegistry commands = new ClientCommandRegistry();
-    private final ClientCardRegistry cards = new ClientCardRegistry();
+    private final ClientCardBindings cards = new ClientCardBindings();
     private final List<Workspace> workspace = new ArrayList<>();
-    private final Map<String, Function<AgentResult, String>> speech = new LinkedHashMap<>();
     private final Map<String, NotificationAction> notificationActions = new LinkedHashMap<>();
     private boolean frozen;
 
@@ -42,9 +38,8 @@ public final class ClientModuleBindings {
 
     private static ClientModuleBindings create() {
         ClientModuleBindings bindings = new ClientModuleBindings();
-        for (ClientModule module : SystemRegistries.Client.CLIENT_MODULE)
+        for (ClientModule module : SystemRegistries.CLIENT_MODULE)
             module.register(new ClientModuleContext(bindings, module.id(), module.serverRequired()));
-        CardNodeTypes.freeze();
         bindings.freeze();
         return bindings;
     }
@@ -60,14 +55,14 @@ public final class ClientModuleBindings {
     }
 
     public void commands(LiteralArgumentBuilder<CommandSourceStack> root) {
-        SystemRegistries.Client.CLIENT_MODULE.forEach(module -> module.commands(root));
+        SystemRegistries.CLIENT_MODULE.forEach(module -> module.commands(root));
     }
 
     public ClientCommandRegistry commands() {
         return this.commands;
     }
 
-    public ClientCardRegistry cards() {
+    public ClientCardBindings cards() {
         return this.cards;
     }
 
@@ -80,24 +75,18 @@ public final class ClientModuleBindings {
         this.workspace.add(entry);
     }
 
-    public void speech(String key, Function<AgentResult, String> handler) {
-        this.checkMutable();
-        if (this.speech.putIfAbsent(key, handler) != null)
-            throw new IllegalArgumentException("Duplicate speech result " + key);
-    }
-
-    public String speech(AgentResult result) {
-        return this.speech.getOrDefault(result.messageKey(), SpeechText::primary).apply(result);
-    }
-
     public record NotificationAction(boolean details, boolean keepOpen, boolean openWorkspace) {
         public static final NotificationAction DEFAULT = new NotificationAction(false, false, false);
+        public static final NotificationAction DETAILS = new NotificationAction(true, false, false);
+        public static final NotificationAction DETAILS_IN_WORKSPACE = new NotificationAction(true, false, true);
+        public static final NotificationAction KEEP_OPEN = new NotificationAction(false, true, false);
     }
 
-    public void notificationAction(String label, NotificationAction action) {
+    public void notificationAction(NotificationAction action, String... labels) {
         this.checkMutable();
-        if (this.notificationActions.putIfAbsent(label, action) != null)
-            throw new IllegalArgumentException("Duplicate notification action " + label);
+        for (String label : labels)
+            if (this.notificationActions.putIfAbsent(label, action) != null)
+                throw new IllegalArgumentException("Duplicate notification action " + label);
     }
 
     public NotificationAction notificationAction(AgentResult.Action action) {

@@ -51,11 +51,12 @@ public final class FtbQuestAdapter {
         engine.questNarration().cacheFile(game.server().getWorldPath(LevelResource.ROOT).resolve("system-quest-backgrounds.json"));
         engine.questNarration().source(new FtbQuestSpeech(access));
         FtbQuestNotifications.install(game.server(), access);
+        var gifts = new FtbStarterGiftQueryTool(access).tool();
         return List.of(new QuestQueryModule(new FtbQuestQueryTool(access).tool()),
-                new QuestDetailModule(new FtbQuestDetailTool(access).tool()),
+                new QuestDetailModule(new FtbQuestFindTool(access).tool(), new FtbQuestDetailTool(access).tool(), gifts),
                 new QuestClaimModule(new FtbQuestClaimTool(access).tool()),
                 new QuestSubmitModule(new FtbQuestSubmitTool(access).tool()),
                 new StarterGiftModule(new FtbStarterGiftTool(access).tool()),
-                new StarterGiftQueryModule(new FtbStarterGiftQueryTool(access).tool()));
+                new StarterGiftQueryModule(gifts));
     }
 }

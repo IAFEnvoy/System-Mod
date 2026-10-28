@@ -7,6 +7,7 @@ import com.iafenvoy.system.agent.builtin.output.StateOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 
@@ -15,7 +16,7 @@ import java.util.List;
  */
 public final class DeliverModule extends BuiltinModule<EntitlementInput> {
     public DeliverModule(ToolRegistry.Tool<EntitlementInput, StateOutput> deliver) {
-        super(ResultTypes.DELIVER_ACTION, "Deliver an existing reward entitlement obtained from the inbox; never invent entitlement IDs.",
+        super(SystemActionTypes.DELIVER_ACTION.get(), "Deliver an existing reward entitlement obtained from the inbox; never invent entitlement IDs.",
                 EntitlementInput.CODEC, List.of(deliver), true, false, ExecutionPolicy.quick(1, 1));
     }
 
@@ -29,6 +30,6 @@ public final class DeliverModule extends BuiltinModule<EntitlementInput> {
 
     @Override
     public AgentResult execute(ExecutionContext context, EntitlementInput input) throws Exception {
-        return AgentResult.data("system.result.delivery", ResultTypes.DELIVERY_STATE.of(context.tool(BuiltinTools.DELIVER, "deliver", input)));
+        return AgentResult.data("system.result.delivery", context.tool(BuiltinTools.DELIVER, "deliver", input));
     }
 }

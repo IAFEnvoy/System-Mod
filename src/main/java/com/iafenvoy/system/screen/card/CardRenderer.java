@@ -28,6 +28,11 @@ public final class CardRenderer {
         public Element element(String tag, String value) {
             return AssistantView.element(this.document, tag, this.css, value);
         }
+
+        public boolean interactive() {
+            return !this.document.isDisposed() && (!enabled("notification", this.context, List.of())
+                    || this.document.body.getClassNames().contains("interactive"));
+        }
     }
 
     public record Text(CardTemplate template, CardContext context, List<Integer> indices, String separator) {
@@ -91,11 +96,20 @@ public final class CardRenderer {
     }
 
     public static String value(String source, CardContext context, List<Integer> indices) {
-        return PLACEHOLDER.matcher(source).replaceAll(match -> Matcher.quoteReplacement(placeholder(
-                match.group(1), match.group(), context, indices)));
+        return value(source, context, indices, true);
     }
 
-    private static String placeholder(String name, String original, CardContext context, List<Integer> indices) {
+    public static String rawValue(String source, CardContext context, List<Integer> indices) {
+        // URLs and other literal attributes must not acquire Minecraft formatting reset codes.
+        return value(source, context, indices, false);
+    }
+
+    private static String value(String source, CardContext context, List<Integer> indices, boolean formatted) {
+        return PLACEHOLDER.matcher(source).replaceAll(match -> Matcher.quoteReplacement(placeholder(
+                match.group(1), match.group(), context, indices, formatted)));
+    }
+
+    private static String placeholder(String name, String original, CardContext context, List<Integer> indices, boolean formatted) {
         if (name.startsWith("tr:")) return LegacyText.scoped(Component.translatable(name.substring(3)).getString());
         if (name.startsWith("field:")) return Component.translatable("system.field." + name.substring(6)).getString();
         if (name.startsWith("bool:"))
@@ -105,6 +119,7 @@ public final class CardRenderer {
             return state == null ? original : Component.translatable("system.state." + state.toLowerCase(Locale.ROOT)).getString();
         }
         Object value = context.get(binding(name, indices), Object.class);
-        return value instanceof String || value instanceof Number || value instanceof Boolean ? LegacyText.scoped(value.toString()) : original;
+        return value instanceof String || value instanceof Number || value instanceof Boolean
+                ? formatted ? LegacyText.scoped(value.toString()) : value.toString() : original;
     }
 }

@@ -96,7 +96,7 @@ public ModuleRouting<EmptyInput> routing() {
 }
 ```
 
-此例只适合没有参数的概况查询。业务参数解析器必须校验当前请求；缺参数或有歧义就返回 `null`，不能从历史补参数。受信 Java 扩展不得在工具之外隐藏副作用。所有注册在 `engine.start()` 前完成，启动后冻结。`RoutingProfile.hints(...)` 只贡献候选样例，不能直接执行；`structuredOnly()` 从模型目录和返回值解码中排除该模块，适合确认付款。拒绝样例通过 `engine.modules().reject(identifier, RoutingProfile.hints(...))` 注册，参与不同意图的分差计算，但没有可调用模块，也不会作为模型候选发送。
+此例只适合没有参数的概况查询。业务参数解析器必须校验当前请求；缺参数或有歧义就返回 `null`，不能从历史补参数。受信 Java 扩展不得在工具之外隐藏副作用。所有注册在 `engine.start()` 前完成，启动后冻结。`RoutingProfile.hints(...)` 只贡献候选样例，不能直接执行；`explicitOnly()` 仍向模型公开能力并附上 `explicitOnly: true`，要求模型非常确信才选择，同时禁止语义匹配和意图缓存直达。`structuredOnly()` 从模型目录和返回值解码中排除该模块，适合确认付款。拒绝样例通过 `engine.modules().reject(identifier, RoutingProfile.hints(...))` 注册，参与不同意图的分差计算，但没有可调用模块，也不会作为模型候选发送。
 
 `/system routing` 需要管理员权限，控制台也可使用。输出算法 `lexical-tfidf-v1`、模式、状态、例句数、缓存条数、各分派/回退原因计数，以及最近一次匹配的模块/语言/分数/分差/覆盖率。没有玩家原文或 UUID；最近匹配为全服共享快照。`DIRECT`、`CACHE_HIT` 是省去路由请求的本地路径计数，`SHADOW_DIRECT` 是候选数量，均不能证明判断正确；本地耗时不含模型和后续模块执行。
 

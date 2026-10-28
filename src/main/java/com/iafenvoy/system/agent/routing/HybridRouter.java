@@ -44,7 +44,7 @@ public final class HybridRouter implements AutoCloseable {
             attempt = SemanticRouter.Attempt.fallback("SEMANTIC_ERROR");
         }
         if (attempt.decision() != null && context.available(Identifier.tryParse(attempt.decision().moduleId()))
-                && this.modules.readOnly(Identifier.tryParse(attempt.decision().moduleId())))
+                && this.modules.semanticSelectable(Identifier.tryParse(attempt.decision().moduleId())))
             return attempt.decision();
         List<ModelRoute.Candidate> hints = attempt.hints().stream()
                 .filter(candidate -> this.modules.modelSelectable(Identifier.tryParse(candidate.moduleId()))
@@ -62,7 +62,7 @@ public final class HybridRouter implements AutoCloseable {
     }
 
     public void remember(ExecutionContext context, RouteDecision decision, String text) {
-        if (!this.modules.readOnly(Identifier.tryParse(decision.moduleId()))) return;
+        if (!this.modules.semanticSelectable(Identifier.tryParse(decision.moduleId()))) return;
         try {
             this.semantic.remember(context, decision, text);
         } catch (Exception ignored) { /* An optional cache must not change a completed read result. */ }

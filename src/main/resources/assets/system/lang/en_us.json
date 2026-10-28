@@ -469,6 +469,7 @@
   "system.search.no_results": "No usable web results were obtained for this request.",
   "system.search.incomplete": "The research summary is incomplete. Sources already retrieved are listed below, Host.",
   "system.ui.nav_search": "Web search",
+  "system.ui.search_sources": "Sources and summaries",
   "system.ui.web_search": "Search the web",
   "system.ui.web_search_placeholder": "Enter a question; Enter starts a paid web search",
   "system.ui.web_search_note": "Web access requires your explicit request; opening this page does not search. Search and Fetch each default to CNY 5 / 1,000 successful requests with results (CNY 0.005 each). Model tokens are counted separately.",

@@ -492,8 +492,44 @@ TTS / ASR 统计由本机 `LocalSpeechUsage` 按客户端账号 UUID 保存于 `
 
 尚未验收：实际 DeepSeek 响应兼容性和时延、游戏内页面与卡片排版、服务器重启后用量恢复、配置重载、权限变化和取消时序，以及供应商实际扣费。编译与静态检查不代表这些行为已经实测通过。
 
+## 2026-10-29 搜索请求的模型路由
+
+阅读代码确认：WebSearchModule 原先声明 explicitOnly，被同时排除在模型能力目录、路由返回值 Codec 和自动来源执行权限之外，未命中固定联网句式的“帮我查一下……”只能走其他能力或澄清。现已恢复普通模型路由，注册描述和数据包 routing.txt 要求模型从当前请求识别资料查询，优先使用本地任务、状态等能力；普通问题、否定联网与历史不作为搜索授权。这是模型意图判断规则，不是确定性授权校验。模块仍没有本地语义档案、快捷推荐或意图缓存，搜索预算、开关、权限和按次计费沿用原实现。模块路由声明在服务端初始化时装配，需重启后应用。
+
+执行 `compileJava testModClasses --console=plain` 编译通过；静态检查确认路由提示词占位符正确、中英文各 486 个语言键且集合一致，`git diff --check` 通过。未运行测试、启动 Minecraft 或调用收费 API；自然语言实际分类准确率、搜索结果及费用尚未运行验收。
+
+## 2026-10-29 explicitOnly 的高确信度标记
+
+阅读代码确认：ModuleRouting 使用 NORMAL、EXPLICIT_ONLY、STRUCTURED_ONLY 三种 Selection；explicitOnly 不再隐藏能力，ModuleRegistry 在 ModelRoute.Capability 目录中通过 Codec 写出 `explicitOnly: true`，路由返回值仍接受该能力。routing.txt 对所有带标记的能力统一要求非常确信当前意图时才选择，不确定则澄清，不需要固定关键词或额外的模型确认调用。
+
+搜索恢复 explicitOnly 声明；注册语义档案时禁止该策略直达，路由器、意图缓存写入与执行入口同步检查，不能靠相似度绕过模型判断。付款、抽奖等 structuredOnly 能力仍不进入模型目录或解码；原先借 explicitOnly 禁用模型的手动任务提交改为 structuredOnly，保留原有指令和按钮入口。
+
+执行 `compileJava testModClasses --console=plain` 编译通过；路由提示词占位符与双语 486 个语言键集合检查通过，`git diff --check` 通过。没有运行测试、启动 Minecraft 或调用收费 API；模型实际遵循高确信度要求的效果尚未运行验收。
+
+## 2026-10-29 精简搜索回答、折叠来源与原版外链
+
+新增客户端通用 CardNode `system:details` 与 `system:link`，各自提供 MapCodec 并通过 SystemCardNodeTypes 注册。静态阅读确认：折叠区支持 children 的递归节点、when/unless/repeat 与占位符，默认 open=false；展开只修改当前 DOM，不发送业务或模型请求。搜索模板改用折叠来源区，标题点击走 AssistantPageScreen 中对原版 Screen.clickUrlAction 的调用，复用 Util.parseAndValidateUntrustedUri、chatLinks/chatLinksPrompt 及确认后返回当前界面的逻辑。新节点在 HUD 中检查可交互状态；链接原值替换不加入格式码，语音仍只读取业务回答。
+
+web_search.txt 要求提炼相关事实、合并重复内容、先给结论和简短要点，保留必要数字与限制，不附加网页原文、导航、广告、检索过程和重复来源列表；不增加压缩模型调用，也不改变 explicitOnly 路由语义。
+
+执行 `compileJava testModClasses --console=plain` 编译通过。静态检查：21 份卡片 JSON 无重复键、全部节点 ID 对应 12 个注册类型，提示词占位符正确，中英文各 487 个语言键且集合一致，`git diff --check` 通过。未运行测试、启动 Minecraft 或调用收费 API；折叠布局、URL 确认交互与模型实际回答长度尚未游戏内验收。
+
+## 2026-10-29 折叠来源布局与搜索整理收尾
+
+根据截图和源码检查，调整折叠 / 链接按钮为 flex 容器、独立 block 文字和固定箭头占位；折叠切换立即清理子树布局缓存并提交重排。来源列表用普通块纵向排列并添加分隔线，摘要通过 AUI 支持的 line-clamp 最多展示三行，完整来源仍可点击。已读取当前 ApricityUI 1.2.6 sources JAR，核对布局失效方法、行数限制及节点文字绘制机制；未启动渲染验证，截图中的具体绘制路径尚未运行复现。
+
+阅读代码确认：原搜索循环在重复工具选择、可恢复异常后直接退出，且默认单次模型期限仅 10 秒；这些路径可能返回未整理来源。现有证据时预留最后一次整理和时间窗口，重复操作或可恢复的探索失败转为只解码 Answer；硬预算、授权检查、每日额度和取消语义保持生效。默认模型 / 工具次数仍为 6 / 5，总期限改为 90 秒，单次模型 20 秒，已有自定义策略继续优先。来源标题与摘要合并连续空白，提示词要求用法类问题给步骤和例子。最终无法整理时仅记录错误码、次数和剩余时间，便于后续区分超时、无效响应与预算失败；此前静默兜底缺少原因日志，不能据此断定截图这一次的具体失败原因。
+
+执行 `compileJava testModClasses --console=plain` 编译通过；21 份卡片 JSON 无重复键且节点 ID 均已注册，中英文各 487 个语言键集合一致，搜索提示词占位符检查通过，`git diff --check` 通过。没有运行测试、启动游戏或调用收费 API；实际展开后的排版、供应商响应时间及最终整理成功率尚未运行验收。
+
 ## 2026-10-28 系统定义的模块 tag
 
 已读取当前 Saturn 依赖 JAR 的 RegistryCodecs 签名及对应源码，模块引用复用 keyOrTag / matchesKeys，支持单个模块 ID、#tag 及带 condition 的对象形式。权限求值时读取注册表当前 tag 成员，继续保留重复引用任一条件成立、手动覆盖、必需模块及可选依赖检查。客户端仍同步实际模块 ID，不依赖 tag 展开。
 
 执行 `compileJava testModClasses --console=plain` 编译通过；新增文档中的两个 JSON 示例、文档本地链接、双语语言键集合及 `git diff --check` 检查通过。未运行测试、启动 Minecraft、创建临时数据包或调用收费 API；tag 实际加载、资源重载和条件切换尚未游戏内验收。README-zh.md 未修改。
+
+## 2026-10-28 搜索模块 ID 与开发默认资源
+
+搜索功能模块在两端统一注册为 system:web_search，工作流、动作与卡片继续使用同名 ID，各自属于不同注册表；命令 /search 和页面内部标识不变。默认系统及 #system:default 模块 tag 移到 src/test-mod/resources/data/system，主源集不再提供这两份数据文件。发布环境须由服务端数据包定义可绑定系统，Java DEFAULT 仅作客户端展示备用。
+
+执行 `compileJava testModClasses --console=plain` 和 `jar --console=plain` 均通过。直接读取新发布 JAR，确认默认系统 JSON 和默认模块 tag 均不在包中，搜索实现、提示词与卡片资源仍包含；开发资源输出包含两份默认数据。静态检查确认旧模块 ID 无残留，双语键集合一致，git diff --check 通过。未启动游戏、执行测试或调用收费 API；README-zh.md 未修改。

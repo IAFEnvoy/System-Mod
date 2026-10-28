@@ -7,7 +7,7 @@
 | 功能 | 请求发起方 | 外部服务 | 什么时候请求 | 默认状态 |
 | --- | --- | --- | --- | --- |
 | AI 意图判断、签到奖励选择、特殊任务文案整理、任务背景筛选 | Minecraft 服务端；单人游戏为内置服务端 | 配置的 OpenAI Chat Completions 兼容服务，默认 DeepSeek | 实际需要模型且当前玩家允许外部 AI 时 | 默认提供商为 DeepSeek；需要服务端配置密钥 |
-| 网页搜索与抓取 | Minecraft 服务端工作线程 | 独立配置的 DeepSeek Search / Fetch API | 当前玩家明确输入联网指令，或点击搜索页按钮 | 默认系统启用模块，但不自动检索；复用 DeepSeek 环境变量 |
+| 网页搜索与抓取 | Minecraft 服务端工作线程 | 独立配置的 DeepSeek Search / Fetch API | 当前玩家主动查资料（允许路由模型理解自然表达）、明确指令或搜索页按钮 | 由系统定义启用，开发默认示例包含；普通提问不代表授权，复用 DeepSeek 环境变量 |
 | 文字转语音（TTS） | Minecraft 客户端 | 阿里云百炼 / DashScope | 开启自动朗读后播报当前消息，或手动试听 | 自动朗读默认关闭 |
 | 语音转文字（ASR） | Minecraft 客户端 | 阿里云智能语音交互 NLS | 玩家开启语音输入并主动录音 | 默认关闭 |
 | 非流式 TTS 音频下载 | Minecraft 客户端 | TTS 响应中指定的阿里云 OSS 地址 | 调用非流式合成且返回音频 URL 时 | 正常游戏播报使用流式 PCM，不需要这次下载 |
@@ -121,11 +121,12 @@ DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的�
 
 ## 5. 服务端 DeepSeek 网页搜索与抓取 API
 
-功能模块 `system:search` 装配工作流 `system:web_search`，通过 `SearchGateway` 调用 `DeepSeekSearchClient`。当前消息中的 `/search <问题>`、“帮我联网搜索……”或搜索页的主动操作才会启动有预算的 ReAct；普通问题、历史、登录、绑定和事件均不会自动搜索。
+功能模块 `system:web_search` 装配工作流 `system:web_search`，通过 `SearchGateway` 调用 `DeepSeekSearchClient`。当前消息中的 `/search <问题>`、“帮我联网搜索……”、路由模型识别的“帮我查一下……”等主动资料查询，或搜索页的主动操作会启动有预算的 ReAct。提示词要求普通问题与历史不作为搜索授权；登录、绑定和事件不会启动该流程。
 
 - 配置：`config/system/system-search.json`，首次使用时从 JAR 默认文件复制；与文本模型配置独立，默认仍读取环境变量 `SYSTEM_DEEPSEEK_API_KEY`。
 - 搜索：`POST https://api.deepseek.com/v1/tools/search`，发送当前问题导出的查询、固定 5 条和不带正文的选项；内置工作流不填原始问题和定位字段，不自动采集玩家资料或 IP。
 - 抓取：`POST https://api.deepseek.com/v1/tools/fetch`，将调用者提供的页面 URL 发给 DeepSeek，由 DeepSeek 获取 Markdown；本机不直接访问该网页。
+- 搜索卡片的外链仅在玩家点击后交给 Minecraft 原版链接流程，根据链接开关与确认设置调用系统浏览器；浏览器届时自行访问目标网站，模组不会将 DeepSeek 密钥附加到该 URL。展开来源摘要不发送网络请求。
 - 认证：只向配置的 API 地址发送 `Authorization: Bearer ...`，不向结果 URL 或图标地址附带密钥，也不自动抓取结果。
 - Search / Fetch 各按每千次成功且有结果的请求 5 元估算，分别进入玩家的世界用量账本；空结果不估价，未知结果单列。模型 Token 另计。所有报文使用 Codec，网络复用限长、超时、禁止重定向且不自动重试的 `HttpTransport`。
 

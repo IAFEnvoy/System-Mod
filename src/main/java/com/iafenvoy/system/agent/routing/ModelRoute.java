@@ -42,10 +42,11 @@ public record ModelRoute(AgentAction call) {
         });
     }
 
-    public record Capability(String description, JsonElement input) {
+    public record Capability(String description, JsonElement input, boolean explicitOnly) {
         public static final Codec<Capability> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("description").forGetter(Capability::description),
-                ExtraCodecs.JSON.fieldOf("input").forGetter(Capability::input)
+                ExtraCodecs.JSON.fieldOf("input").forGetter(Capability::input),
+                Codec.BOOL.fieldOf("explicitOnly").forGetter(Capability::explicitOnly)
         ).apply(i, Capability::new));
         public static final Codec<Map<String, Capability>> CATALOGUE = Codec.unboundedMap(Codec.STRING, CODEC);
     }

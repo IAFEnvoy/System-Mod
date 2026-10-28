@@ -469,6 +469,7 @@
   "system.search.no_results": "本次未取得有效的网页搜索结果。",
   "system.search.incomplete": "本次检索未完成整理，以下为已取得的来源，供宿主查阅。",
   "system.ui.nav_search": "联网搜索",
+  "system.ui.search_sources": "来源与摘要",
   "system.ui.web_search": "联网搜索",
   "system.ui.web_search_placeholder": "输入要联网查询的问题，Enter 发起付费搜索",
   "system.ui.web_search_note": "仅在宿主明确要求时联网；打开本页不会搜索。Search、Fetch 各按每千次成功且有结果的请求 5 元估算（每次 0.005 元），模型 Token 另计。",

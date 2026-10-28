@@ -7,7 +7,7 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 
 /**
- * The question is supplied only by a current explicit user request, never by ordinary model routing.
+ * Routing may recognize a lookup request, but only the current request supplies its question and consent.
  */
 public record WebSearchInput(String question) implements AgentAction {
     public static final SchemaMapCodec<WebSearchInput> CODEC = SchemaCodecs.record((i, f) -> i.group(

@@ -39,5 +39,5 @@ public final class SystemClientModules {
     public static final DeferredHolder<ClientModule, ShopClientModule> SHOP = REGISTRY.register("shop", ShopClientModule::new);
     public static final DeferredHolder<ClientModule, LotteryClientModule> LOTTERY = REGISTRY.register("lottery", LotteryClientModule::new);
     public static final DeferredHolder<ClientModule, QuestClientModule> FTB_QUESTS = REGISTRY.register("ftb_quests", QuestClientModule::new);
-    public static final DeferredHolder<ClientModule, SearchClientModule> SEARCH = REGISTRY.register("search", SearchClientModule::new);
+    public static final DeferredHolder<ClientModule, SearchClientModule> SEARCH = REGISTRY.register("web_search", SearchClientModule::new);
 }

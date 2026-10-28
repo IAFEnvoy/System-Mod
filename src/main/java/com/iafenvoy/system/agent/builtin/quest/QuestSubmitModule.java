@@ -21,7 +21,7 @@ public final class QuestSubmitModule extends BuiltinModule<QuestSubmitInput> {
     @Override
     public ModuleRouting<QuestSubmitInput> routing() {
         return ModuleRouting.<QuestSubmitInput>defaults()
-                .button(a -> new QuestSubmitInput("", Optional.empty(), a.required("quest", "questId"), a.flag("complete", "checkmarkOnly"))).explicitOnly()
+                .button(a -> new QuestSubmitInput("", Optional.empty(), a.required("quest", "questId"), a.flag("complete", "checkmarkOnly"))).structuredOnly()
                 .command(AgentCommand.argument("<number|name>", QuestSubmitInput::parse, "submit", "提交", "提交任务"));
     }
 

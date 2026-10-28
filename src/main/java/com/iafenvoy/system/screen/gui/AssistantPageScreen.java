@@ -3,8 +3,12 @@ package com.iafenvoy.system.screen.gui;
 import com.iafenvoy.system.screen.AssistantPages;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.screen.ApricityScreen;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.util.Util;
 import org.jspecify.annotations.NonNull;
+
+import java.net.URISyntaxException;
 
 /**
  * Publishes a page only after its styles, bindings and initial content have been laid out.
@@ -36,6 +40,14 @@ public abstract class AssistantPageScreen extends ApricityScreen {
     }
 
     protected abstract void initPage(Document document);
+
+    public static void openLink(String url) {
+        Minecraft minecraft = Minecraft.getInstance();
+        try {
+            // Reuse vanilla URL validation, chatLinks/chatLinksPrompt and return to the actual active screen.
+            clickUrlAction(minecraft, minecraft.screen, Util.parseAndValidateUntrustedUri(url));
+        } catch (URISyntaxException ignored) { /* Invalid external links remain inert. */ }
+    }
 
     @Override
     public void extractRenderState(@NonNull GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {

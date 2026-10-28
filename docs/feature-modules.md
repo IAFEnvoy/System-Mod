@@ -151,6 +151,6 @@ Java 扩展可用 `runtime.moduleManager().add/remove(player, id)` 在主线程�
 
 ## 联网搜索模块
 
-`system:search` 同时登记服务端 SearchSystemModule 和客户端 SearchClientModule，默认系统启用它。服务端贡献 system:web_search 工作流和独立 Search/Fetch 工具；客户端贡献“模块 → 联网搜索”页面、标签和搜索提交按钮。游戏内 `/system search` 沿用通用指令转发与注册表补全，不新增中央业务 switch。
+`system:web_search` 同时登记服务端 SearchSystemModule 和客户端 SearchClientModule，仅开发源集的默认系统启用它；发布 JAR 不提供默认系统及默认模块 tag，由服务端数据包选择模块。服务端贡献 system:web_search 工作流和独立 Search/Fetch 工具；客户端贡献“模块 → 联网搜索”页面、标签和搜索提交按钮。游戏内 `/system search` 沿用通用指令转发与注册表补全，不新增中央业务 switch。
 
-仅明确联网输入或主动按钮触发该工作流；禁用模块后入口隐藏、请求被拒绝，移除和重加无需改变独立用量账本。执行中关闭外部 AI、取消、撤销或失去模块权限会阻止后续请求，已经发出的调用仍计量。独立 ReAct 策略和按次费用见[搜索模块](search-api.md)。
+明确指令、主动按钮或路由模型识别到当前查资料请求后触发该工作流；“帮我查一下……”无需包含“联网”，普通提问不作为搜索授权。禁用模块后入口隐藏、请求被拒绝，移除和重加无需改变独立用量账本。执行中关闭外部 AI、取消、撤销或失去模块权限会阻止后续请求，已经发出的调用仍计量。独立 ReAct 策略和按次费用见[搜索模块](search-api.md)。

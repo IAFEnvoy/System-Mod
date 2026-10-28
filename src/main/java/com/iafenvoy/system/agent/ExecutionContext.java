@@ -161,6 +161,10 @@ public final class ExecutionContext {
         return Math.max(0, this.expires - System.currentTimeMillis());
     }
 
+    public long modelTimeoutMillis() {
+        return Math.min(this.policy.modelTimeoutMillis(), this.remainingMillis());
+    }
+
     /**
      * Billable network tools obey the same external-service opt-out as inference, before each call.
      */
@@ -217,7 +221,7 @@ public final class ExecutionContext {
         if (inputBytes > this.policy.inputBytes() || this.tokens + inputBytes + this.policy.outputTokens() > this.policy.totalTokens())
             throw new AgentException("BUDGET_EXCEEDED");
         int estimated = (int) inputBytes;
-        long wait = Math.min(this.policy.modelTimeoutMillis(), this.remainingMillis());
+        long wait = this.modelTimeoutMillis();
         if (!this.engine.modelSlots().tryAcquire(wait, TimeUnit.MILLISECONDS)) throw new AgentException("BUSY");
         try {
             this.check();
@@ -239,7 +243,7 @@ public final class ExecutionContext {
             this.persist();
             ModelClient.Reply reply = this.engine.model().complete(this.player, List.of(
                             new ModelClient.Message(SystemMod.MOD_ID, instruction), new ModelClient.Message("user", content)),
-                    this.policy.outputTokens(), Duration.ofMillis(Math.min(this.policy.modelTimeoutMillis(), this.remainingMillis())));
+                    this.policy.outputTokens(), Duration.ofMillis(this.modelTimeoutMillis()));
             this.tokens = (int) Math.min(Integer.MAX_VALUE, (long) this.tokens + Math.max(0L, (long) reply.totalTokens() - estimated - this.policy.outputTokens()));
             this.persist();
             this.check();

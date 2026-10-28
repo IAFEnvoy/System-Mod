@@ -8,11 +8,11 @@
 
 ## 系统定义
 
-系统参数使用 NeoForge 同步数据包注册表 `system:system`，文件路径为 `data/<namespace>/system/system/<path>.json`，条目 ID 为 `<namespace>:<path>`。JAR 内默认文件是 `data/system/system/system/default.json`，在数据包中覆盖同路径文件即可定制；也可新增其他 ID，通过 `/system grant <系统ID> [玩家]` 为玩家选定，例如 `/system grant example:daily Steve`。自己绑定使用 `/system grant example:daily`；系统 ID 从该存档注册表补全和校验，玩家不必共用同一个定义。
+系统参数使用 NeoForge 同步数据包注册表 `system:system`，文件路径为 `data/<namespace>/system/system/<path>.json`，条目 ID 为 `<namespace>:<path>`。发布 JAR 不包含默认系统定义或默认模块 tag，需要由服务端数据包提供系统。开发示例仅放在 `src/test-mod/resources/data/system/system/system/default.json`，正常发布不包含；其条目仍为 `system:default`。数据包可按同一资源路径提供该定义，或新增其他 ID，通过 `/system grant <系统ID> [玩家]` 为玩家选定，例如 `/system grant example:daily Steve`。自己绑定使用 `/system grant example:daily`；系统 ID 从该存档注册表补全和校验，玩家不必共用同一个定义。
 
 每名玩家当前最多绑定一个系统，重复授予同一个 ID 不重新初始化，授予另一 ID 被拒绝，须先 `/system revoke <玩家>`。绑定状态以不可变 `SystemBindings` 集合保存于玩家文件的 `systems` 字段，集合形式为后续多系统保留位置，当前 Codec 最多接受一项；客户端状态同步当前系统 ID。绑定授予在同一玩家事务内检查与写入，未知 ID 不写入存档；定义后来被移除时保留原 ID 并停止初始化，不自动切换到默认系统。
 
-例如，将默认系统改成“签到系统”：
+例如，创建一个“签到系统”定义：
 
 ```json
 {
@@ -60,7 +60,7 @@ tag 来自正式的服务端功能注册表 `system:server_module`，不是客�
   "description": "system.definition.default.description",
   "modules": [
     "#example:basic",
-    "system:search",
+    "system:web_search",
     {
       "id": "#example:commerce",
       "condition": { "type": "system:has_module", "module": "system:signin" }
@@ -83,11 +83,11 @@ tag 来自正式的服务端功能注册表 `system:server_module`，不是客�
 | 收件箱与交付 | `system:inbox` |
 | 商城（浏览、报价、购买） | `system:shop` |
 | 抽奖（浏览、预览、抽取） | `system:lottery` |
-| 联网搜索（需玩家明确要求） | `system:search` |
+| 联网搜索（需玩家明确要求） | `system:web_search` |
 | 成就工作流 | `system:advancement` |
 | FTB 任务（列表、详情、提交、领奖、新手礼包） | `system:ftb_quests` |
 
-默认系统的 `modules` 仅引用 `["#system:default"]`，Java 展示备用定义也引用同一 tag。模块清单集中在 `data/system/tags/system/server_module/default.json`，数据包可在同路径追加或用 `replace: true` 替换成员，无需覆盖整个系统定义。当前清单保持原有功能，`system:ftb_quests` 以 `required: false` 的 tag 条目提供。模块定义与公共 Codec 始终注册，实际装配由 `ServerModule.available()` 决定；未安装 FTB 时不会启用任务功能或加载对应 API，缺失条目也不会让默认 tag 加载失败。玩家条件和手动覆盖均无法启用依赖缺席的模块。
+开发默认系统的 `modules` 仅引用 `["#system:default"]`，Java 展示备用定义也引用同一 tag；备用定义只用于客户端展示，不会注册可绑定系统。模块清单仅放在 `src/test-mod/resources/data/system/tags/system/server_module/default.json`，与默认系统一起只进入开发运行，不打入发布 JAR。实际数据包的资源路径仍为 `data/system/tags/system/server_module/default.json`，可使用原版追加或 `replace: true` 规则。开发清单保持原有功能，`system:ftb_quests` 以 `required: false` 的 tag 条目提供。模块定义与公共 Codec 始终注册，实际装配由 `ServerModule.available()` 决定；未安装 FTB 时不会启用任务功能或加载对应 API，缺失条目也不会让默认 tag 加载失败。玩家条件和手动覆盖均无法启用依赖缺席的模块。
 
 条件在玩家初始化完成后、交互请求前及每 20 个服务端 tick 在主线程重新求值。变化后同步玩家实际模块与指令列表，刷新完整侧栏，清理路由缓存与交易报价。帮助、补全、本地语义候选、模型能力目录和实际执行共用权限过滤；旧卡片的结构化动作以及已经排入游戏线程的工具也会重新检查权限。功能定义和工具仍在服务器启动时注册，开关不卸载 Java 类或重新注册工作流。
 

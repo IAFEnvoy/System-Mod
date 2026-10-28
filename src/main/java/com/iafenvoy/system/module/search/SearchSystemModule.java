@@ -14,7 +14,7 @@ import java.util.List;
  * Availability enables registration; only a current explicit request may incur search charges.
  */
 public final class SearchSystemModule implements ServerModule {
-    public static final Identifier ID = Identifier.parse("system:search");
+    public static final Identifier ID = Identifier.parse("system:web_search");
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {

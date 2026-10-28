@@ -2,11 +2,19 @@
   "body": [
     { "type": "system:text", "text": "{{summary}}" },
     {
-      "type": "system:column",
-      "repeat": "sources",
+      "type": "system:details",
+      "summary": "{{tr:system.ui.search_sources}} ({{sources}})",
+      "when": "sources",
       "children": [
-        { "type": "system:context", "text": "[{{sources.*.id}}] {{sources.*.title}}\n{{sources.*.url}}" },
-        { "type": "system:text", "text": "{{sources.*.snippet}}", "when": "sources.*.snippet" }
+        {
+          "type": "system:column",
+          "style": "search_source",
+          "repeat": "sources",
+          "children": [
+            { "type": "system:link", "text": "[{{sources.*.id}}] {{sources.*.title}}", "url": "{{sources.*.url}}" },
+            { "type": "system:context", "text": "{{sources.*.snippet}}", "when": "sources.*.snippet" }
+          ]
+        }
       ]
     }
   ]

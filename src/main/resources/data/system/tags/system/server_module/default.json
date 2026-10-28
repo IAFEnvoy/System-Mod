@@ -12,7 +12,6 @@
     {
       "id": "system:ftb_quests",
       "required": false
-    },
-    "system:search"
+    }
   ]
 }

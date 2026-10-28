@@ -19,9 +19,12 @@ import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantSimpleScreen;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -90,6 +93,7 @@ public final class AssistantClient {
     }
 
     public static void local(AgentResult result) {
+        if (chatError(result)) return;
         result.cards().forEach(card -> ClientCards.apply(card, false));
         state = state.local(result);
         revision++;
@@ -122,6 +126,11 @@ public final class AssistantClient {
     }
 
     private static void receive(String requestId, AgentResult result, boolean notification) {
+        // Command replies have no client pending entry, so unbound errors must precede late-reply filtering.
+        if (chatError(result)) {
+            complete(requestId);
+            return;
+        }
         AssistantClientState.Pending pending = state.pending().get(requestId);
         if (!notification && pending == null) {
             // Timed-out replies may finish an existing card, but cannot select a page or create a new message.
@@ -146,6 +155,15 @@ public final class AssistantClient {
         if (notification || select && !(minecraft.screen instanceof AssistantInputScreen))
             AssistantMessages.result(accepted);
         else if (select && minecraft.screen instanceof AssistantInputScreen screen) screen.speech().result(accepted);
+    }
+
+    private static boolean chatError(AgentResult result) {
+        if (result.status() != AgentResult.Status.FAILED || state.serverState().system().isPresent()
+                && !result.messageKey().equals("system.error.not_bound")) return false;
+        MutableComponent message = Component.translatable(result.messageKey());
+        if (!result.text().isBlank()) message.append("\n").append(result.text());
+        Minecraft.getInstance().gui.getChat().addClientSystemMessage(message.withStyle(ChatFormatting.RED));
+        return true;
     }
 
     public static void synchronizedState(String requestId, ResultTypes.ClientState value) {

@@ -22,8 +22,8 @@
 
 ### 内置模块
 
-- 服务端：`core`、`binding`、`usage`、`player`、`items`、`signin`、`inbox`、`shop`、`lottery`、`advancement`、`ftb_quests`、`search`。
-- 客户端：`core`、`binding`、`conversation`、`settings`、`usage`、`speech`、`player`、`items`、`signin`、`inbox`、`shop`、`lottery`、`ftb_quests`、`search`。
+- 服务端：`core`、`binding`、`usage`、`player`、`items`、`signin`、`inbox`、`shop`、`lottery`、`advancement`、`ftb_quests`、`web_search`。
+- 客户端：`core`、`binding`、`conversation`、`settings`、`usage`、`speech`、`player`、`items`、`signin`、`inbox`、`shop`、`lottery`、`ftb_quests`、`web_search`。
 
 以上条目均属于 `system` 命名空间，使用普通 `DeferredHolder` 始终登记。`ServerModule.available()` 在定义内部声明依赖是否满足；任务模块检测 FTB Quests，缺席时保留模块 ID 与公共 Codec，跳过指令、工作流和运行时。客户端任务模块只使用本模组 DTO，仍可保留卡片展示定义。模块装配、玩家启停及生命周期见[功能模块化](feature-modules.md)。
 
@@ -68,7 +68,9 @@ Codec 在第一次编解码时才访问注册表，避免静态初始化时提�
 
 ### 卡片节点
 
-内置节点：`system:text`、`system:header`、`system:context`、`system:container`、`system:row`、`system:column`、`system:divider`、`system:items`、`system:actions`、`system:button`。
+内置节点：`system:text`、`system:header`、`system:context`、`system:container`、`system:row`、`system:column`、`system:details`、`system:link`、`system:divider`、`system:items`、`system:actions`、`system:button`。
+
+`details` 通过 summary、children 和默认 false 的 open 控制本地折叠；`link` 通过 text/url 调用原版打开链接流程。两者都是通用客户端节点，不增加业务 CardData 类型、服务端动作或协议载荷。
 
 JSON 使用完整 ID，例如 `{"type":"system:items","items":"{{result_items}}"}`。节点自身实现 `codec/css/render/text`，`CardNode.CODEC` 通过正式注册表分派。资源包能调整布局与参数，不能新增 Java 节点类型。格式见[客户端 JSON 卡片](cards.md)。
 
@@ -94,7 +96,7 @@ JSON 使用完整 ID，例如 `{"type":"system:items","items":"{{result_items}}"
 
 系统定义通过 `RegistryAccess` 查询，随服务端资源重载和同步更新；不能用静态 `SystemRegistries` 查询世界数据包条目。文件路径为 `data/<条目命名空间>/system/system/<路径>.json`，格式见[数据包文档](datapacks.md)。
 
-系统定义的 `modules` 可引用 `SERVER_MODULE` 条目或 tag，例如 `"system:signin"`、`"#example:basic"`、`{ "id": "#example:basic", "condition": ... }`。模块 tag 文件位于 `data/<namespace>/tags/system/server_module/<path>.json`；复用 Saturn `RegistryCodecs.keyOrTag` / `matchesKeys`，解码保留 ID/tag，服务端权限求值时读取成员。客户端继续接收实际启用的模块 ID 列表，不自行展开 tag。格式与覆盖规则见[模块 tag](datapacks.md#模块-tag)。
+系统定义的 `modules` 可引用 `SERVER_MODULE` 条目或 tag，例如 `"system:signin"`、`"#example:basic"`、`{ "id": "#example:basic", "condition": ... }`。模块 tag 文件位于 `data/<namespace>/tags/system/server_module/<path>.json`；复用 Saturn `RegistryCodecs.keyOrTag` / `matchesKeys`，解码保留 ID/tag，服务端权限求值时读取成员。客户端继续接收实际启用的模块 ID 列表，不自行展开 tag。默认 tag `#system:default` 与默认系统仅在 `src/test-mod/resources` 提供，不进入发布 JAR。格式与覆盖规则见[模块 tag](datapacks.md#模块-tag)。
 
 `SystemDataPackRegistries.ids(access)` 提供当前存档的系统 ID 列表，`get(access, id)` 查找指定定义；`/system grant <系统ID> [玩家]` 使用前者补全、后者校验。玩家保存自己的绑定 ID，模块求值和客户端展示均按该 ID 读取，不再提供固定默认选择的 `current(access)`。
 
@@ -174,6 +176,6 @@ SystemRegistries.CARD_DATA_TYPE.forEach(entry -> { /* inspect registered types *
 
 ## 搜索模块入口
 
-服务端 `SystemServerModules.SEARCH` 和客户端 `SystemClientModules.SEARCH` 注册 ID 均为 `system:search`。动作 `SystemActionTypes.SEARCH_ACTION` 与卡片 `SystemCardDataTypes.WEB_SEARCH` 的 ID 均为 `system:web_search`，分别对应 WebSearchInput / WebSearchOutput；模板为 `assets/system/cards/web_search.json`。工具键 `BuiltinTools.WEB_SEARCH` / `WEB_FETCH` 对应 `web.search` / `web.fetch`，只执行一种操作。
+服务端 `SystemServerModules.SEARCH` 和客户端 `SystemClientModules.SEARCH` 注册 ID 均为 `system:web_search`。动作 `SystemActionTypes.SEARCH_ACTION` 与卡片 `SystemCardDataTypes.WEB_SEARCH` 的 ID 均为 `system:web_search`，分别对应 WebSearchInput / WebSearchOutput；模板为 `assets/system/cards/web_search.json`。工具键 `BuiltinTools.WEB_SEARCH` / `WEB_FETCH` 对应 `web.search` / `web.fetch`，只执行一种操作。
 
-搜索内部 SearchStep 以本地 Map 存三个 MapCodec，按 `type=search|fetch|answer` dispatch；它是单个工作流的模型决策协议，不是 MC 注册表或全局 AgentAction。ModuleRouting.explicit 声明保守的当前消息解析器，ModuleRegistry 统一解析并校验；该工作流 explicitOnly，不进入自动模型目录。
+搜索内部 SearchStep 以本地 Map 存三个 MapCodec，按 `type=search|fetch|answer` dispatch；它是单个工作流的模型决策协议，不是 MC 注册表或全局 AgentAction。ModuleRouting.explicit 声明保守的当前消息解析器，ModuleRegistry 统一解析并校验；固定句式未命中时，由模型路由根据当前请求识别搜索意图。工作流通过 `explicitOnly()` 在目录中携带 `explicitOnly: true` 标记，要求模型非常确信才选择，不隐藏能力；不提供语义档案或意图缓存。`structuredOnly()` 独立保留模型目录与返回值解码的硬性排除。

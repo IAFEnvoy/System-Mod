@@ -35,5 +35,5 @@ public final class SystemServerModules {
     public static final DeferredHolder<ServerModule, LotterySystemModule> LOTTERY = REGISTRY.register("lottery", LotterySystemModule::new);
     public static final DeferredHolder<ServerModule, AdvancementSystemModule> ADVANCEMENT = REGISTRY.register("advancement", AdvancementSystemModule::new);
     public static final DeferredHolder<ServerModule, QuestSystemModule> FTB_QUESTS = REGISTRY.register("ftb_quests", QuestSystemModule::new);
-    public static final DeferredHolder<ServerModule, SearchSystemModule> SEARCH = REGISTRY.register("search", SearchSystemModule::new);
+    public static final DeferredHolder<ServerModule, SearchSystemModule> SEARCH = REGISTRY.register("web_search", SearchSystemModule::new);
 }

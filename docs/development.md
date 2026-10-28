@@ -121,7 +121,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 ### 调度、路由与执行职责
 
-`ModuleRouting.explicitOnly()` 排除模型与自动语义选择，同时允许模块注册自己的明确指令；`structuredOnly()` 保留为相同的自动选择禁用声明。执行入口允许 `STRUCTURED` 和注册表解析得到的 `COMMAND`，自动来源仍需 `modelSelectable` 授权。手动任务提交采用这一方式，不通过自然语言推断自动消耗物品、经验或勾选任务。
+`ModuleRouting` 使用 Selection 区分 NORMAL、EXPLICIT_ONLY 和 STRUCTURED_ONLY。`explicitOnly()` 仍进入模型能力目录和返回值解码，目录中的 `explicitOnly: true` 要求模型只有在非常确信当前请求需要此能力时才选择，不确定则澄清；它不允许本地语义或意图缓存直接执行。`structuredOnly()` 才排除模型选择，保留已注册的明确指令、当前消息解析器和结构化按钮。执行入口分别核对模型可选性与本地语义可选性，避免相似度绕过高确信度要求。付款确认、实际抽奖与手动任务提交保留 structuredOnly，不因这次标记语义调整而开放模型自动执行。
 
 - `AgentEngine` 提供统一入口，持有服务和玩家生命周期，并通过同一个 `execute` 校验模块权限、选择策略、执行流程、报告部分成功。
 - `InteractiveExecutor` 管理每玩家一个交互请求、取消代次、请求指纹与结果回放；入队、初始化和写回都检查取消代次。
@@ -306,10 +306,10 @@ FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubm
 
 ## 联网搜索实现入口
 
-- `module/search`：功能装配、工作台入口；注册 ID system:search。
+- `module/search`：功能装配、工作台入口；注册 ID system:web_search。
 - `agent/builtin/search`：模块自身的明确输入解析、类型化 ReAct 决策和两个独立 Tool；工作流 ID system:web_search。
 - `search`：SearchProvider、DeepSeekSearchClient 与统一玩家计量 SearchGateway；复用 HttpTransport。
 - `config/file/SearchConfig`、`SearchPricingConfig`：默认共享 SYSTEM_DEEPSEEK_API_KEY，分别管理连接与按千次价格。
 - `data/usage/SearchUsage`：不可变计数，合入现有世界 SavedData 与 StreamCodec 快照；客户端语音账本不上传。
 
-该工作流默认 6 次模型、5 次网络工具、55 秒，独立于快速模块。ModuleRouting.explicit 作为通用扩展钩子，搜索不放入语义或自动模型路由。详见[搜索配置与流程](search-api.md)。
+该工作流默认 6 次模型、5 次网络工具、90 秒，单次模型最多 20 秒，独立于快速模块。已有证据时预留最终整理；重复操作或可恢复的探索失败改为只输出 Answer。ModuleRouting.explicit 作为通用扩展钩子，搜索不放入语义直达；自然语言可由带 explicitOnly 标记的模型路由判断。详见[搜索配置与流程](search-api.md)。

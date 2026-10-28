@@ -14,8 +14,9 @@ and HUD notifications that keep gameplay uninterrupted, with optional speech out
   by
   number or name, then explicitly select and claim rewards. Quest completion and newly unlocked quests appear as queued
   System notifications.
-- **Explicit web research:** use `/system search <question>` or the Web search page. Ordinary questions never trigger
-  browsing. Search and Fetch share the default DeepSeek key, have a separately configurable loop and are billed
+- **Explicit web research:** use `/system search <question>`, the Web search page, or a lookup request such as
+  "look up how a comparator works." The routing model recognizes flexible wording and prioritizes local queries;
+  its instructions exclude ordinary questions and history as search consent. Search and Fetch share the default DeepSeek key, have a separately configurable loop and are billed
   separately at CNY 5 per 1,000 successful requests with results; model tokens are additional.
 - **AI daily check-in:** the model selects rewards from a server-approved pool. Rewards enter an inbox for manual
   collection; the model cannot invent items or change quantities.
@@ -43,8 +44,12 @@ and HUD notifications that keep gameplay uninterrupted, with optional speech out
    `config/system/`.
 3. To use AI, set `SYSTEM_DEEPSEEK_API_KEY` in the server process's startup environment, then restart. In single-player,
    the Minecraft process must inherit the variable. Configuration stores the environment-variable name, not the key.
-4. An administrator binds a data-pack system with `/system grant <system ID> [player]`, for example
-   `/system grant system:default Steve`. Use `/system grant <system ID>` for yourself. Each player can currently bind one system.
+4. Install a server data pack defining a system, then an administrator binds it with
+   `/system grant <system ID> [player]`,
+   for example `/system grant example:daily Steve`. Use `/system grant <system ID>` for yourself. Each player can
+   currently
+   bind one system. The default system and its module tag are development-only resources in `src/test-mod/`; they are
+   excluded from the release JAR.
 5. Run `/system`, `/system full` or `/system simple`, then use the controls or type a request.
 
 For example, set the variable in PowerShell, then launch the server from the same environment:
@@ -83,20 +88,20 @@ when using a proxy for DeepSeek, explicitly select `deepseek`.
 
 The following commands run in Minecraft chat:
 
-| Command                                              | Action                                                                                       |
-|------------------------------------------------------|----------------------------------------------------------------------------------------------|
-| `/system`                                            | Open the last selected view                                                                  |
-| `/system full` / `/system simple`                    | Open the full / minimal view                                                                 |
-| `/system settings`                                   | Open unified client settings directly; no binding required                                   |
-| `/system ask <text>`                                 | Submit a natural-language request                                                            |
-| `/system search <question>`                        | Explicitly start paid web research; no automatic browsing                                     |
-| `/system player`                                     | View your own status                                                                         |
-| `/system usage` / `/system usage all`                | View personal usage / server AI and web usage as an administrator; voice totals always stay personal |
-| `/system grant <system ID> [player]`                | Bind one data-pack system as an administrator; omit the player to bind yourself               |
-| `/system revoke [player]`                           | Revoke access and clear System records as an administrator                                   |
-| `/system reset [player]`                             | Clear old-format System records and binding; cumulative usage is retained, then grant again  |
-| `/system routing`                                    | View routing diagnostics as an administrator                                                 |
-| `/system help`                                       | Show available actions                                                                       |
+| Command                               | Action                                                                                               |
+|---------------------------------------|------------------------------------------------------------------------------------------------------|
+| `/system`                             | Open the last selected view                                                                          |
+| `/system full` / `/system simple`     | Open the full / minimal view                                                                         |
+| `/system settings`                    | Open unified client settings directly; no binding required                                           |
+| `/system ask <text>`                  | Submit a natural-language request                                                                    |
+| `/system search <question>`           | Explicitly start paid web research; no automatic browsing                                            |
+| `/system player`                      | View your own status                                                                                 |
+| `/system usage` / `/system usage all` | View personal usage / server AI and web usage as an administrator; voice totals always stay personal |
+| `/system grant <system ID> [player]`  | Bind one data-pack system as an administrator; omit the player to bind yourself                      |
+| `/system revoke [player]`             | Revoke access and clear System records as an administrator                                           |
+| `/system reset [player]`              | Clear old-format System records and binding; cumulative usage is retained, then grant again          |
+| `/system routing`                     | View routing diagnostics as an administrator                                                         |
+| `/system help`                        | Show available actions                                                                               |
 
 Notifications appear at the bottom of the HUD. Open vanilla chat with its configured key (**T by default**) to click
 "Confirm" or an action button. Consecutive notifications keep the panel expanded while the content fades out, changes

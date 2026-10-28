@@ -100,12 +100,40 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 | `container` | `card_container` | 普通流布局 |
 | `row` | `card_row` | 横向排列并允许换行 |
 | `column` | `card_column` | 纵向排列 |
+| `details` | `card_details` | 默认折叠的通用内容区，点击标题展开 / 收起 |
+| `link` | `card_link` | 调用 Minecraft 原版打开 URL 的流程 |
 | `divider` | `card_divider` | 分割线 |
 | `items` | `item_groups` | 原版物品图标、数量及 tooltip |
 | `actions` | `card_actions` | 已有可信动作列表 |
 | `button` | `card_action` | 通过 callback ID 绑定 Java 操作 |
 
 `text/header/context` 共享 `text/translate/args/inline`：优先使用 translate，先替换 args 中占位符再翻译，inline 默认 false。容器的 children 必填，text_separator 可选，仅影响纯文本连接。
+
+### 折叠区与超链接
+
+```json
+{
+  "type": "system:details",
+  "summary": "{{tr:system.ui.search_sources}} ({{sources}})",
+  "when": "sources",
+  "children": [
+    {
+      "type": "system:column",
+      "repeat": "sources",
+      "children": [
+        { "type": "system:link", "text": "[{{sources.*.id}}] {{sources.*.title}}", "url": "{{sources.*.url}}" },
+        { "type": "system:context", "text": "{{sources.*.snippet}}", "when": "sources.*.snippet" }
+      ]
+    }
+  ]
+}
+```
+
+`details` 的 summary、children 必填，`open` 默认 false。children 使用完整节点语法，可嵌套其他折叠区、循环、物品和本地 / 服务端按钮；没有可见子节点时整个折叠区省略。展开状态仅属于当前渲染实例，重建或重开页面后按 open 初始化，不写业务数据、不请求模型或搜索。完整、简约模式可点击标题，HUD 需先按聊天键；纯文本导出保留标题和全部内容，TTS 仍只取独立的 SpeechContent。
+
+`link` 的 url 必填，text 缺省时使用 URL。两者支持平铺占位符与循环下标，URL 以原值替换，不注入 Minecraft 格式重置符。点击复用 `Screen.clickUrlAction`，由原版校验外部 URL、读取 chatLinks/chatLinksPrompt，必要时显示原版确认界面，结束后返回当时的界面；非法链接不执行。链接不作为 AUI 导航或脚本执行，不触发服务端动作。完整、简约模式均可点击，HUD 需进入聊天栏；纯文本格式为标题与 URL。
+
+折叠标题与链接采用 flex 按钮和独立的 block 文字子元素，避免按钮直接文字与行内片段重复绘制；标题的箭头单独占位。展开 / 收起时立即清理内容子树的布局缓存并提交重排。搜索模板用 search_source 块纵向排列来源，摘要通过 line-clamp 显示最多三行，完整内容可点击链接查看；这些显示限制不裁剪模型取得的证据。
 
 | 占位符 | 含义 |
 | --- | --- |

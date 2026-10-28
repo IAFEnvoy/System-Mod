@@ -72,7 +72,15 @@ public ModuleRouting<ItemQueryInput> routing() {
 
 `RoutingProfile.read` 是本地直达申请，注册表还要求模块可交互、写预算为零、所有声明工具只读，并通过相似度、分差、覆盖率和语句保护。相似度不是正确概率。写流程使用 `RoutingProfile.hints` 提供样例，仍由模型决定或由明确入口调用。
 
-`.shortcut(labelKey, input)` 声明澄清提示中的只读按钮；不设置则不展示。`.structuredOnly()` 用于付款确认等操作：不允许声明文本指令，不进入模型能力目录或返回值解码，只接受结构化操作。执行入口再检查来源，避免每个模块各写一次来源判断。
+`.shortcut(labelKey, input)` 声明澄清提示中的只读按钮；不设置则不展示。模型选择策略通过 ModuleRouting.Selection 统一保存：
+
+| 声明 | 模型能力目录与返回值解码 | 本地语义 / 意图缓存直达 |
+| --- | --- | --- |
+| `defaults()` | 正常参与匹配，`explicitOnly: false` | 沿用只读、参数、相似度等门槛 |
+| `explicitOnly()` | 仍可选择，`explicitOnly: true`；非常确信当前意图才使用，否则澄清 | 禁止，只能给模型提供候选提示 |
+| `structuredOnly()` | 不开放 | 禁止 |
+
+`explicitOnly` 是传给模型的通用标记，不要求固定关键词，也不增加一次确认模型调用；提示词要求基于当前请求判断，而不是把本地相似度当作确信度。付款确认等操作继续使用 `structuredOnly()`，通过已注册的明确指令或结构化按钮触发。执行入口统一检查来源，不由每个模块重复判断。
 
 拒绝样例单独使用 `engine.modules().reject(identifier, RoutingProfile.hints(...))` 注册。其 ID 与模块不能冲突，没有可执行入口，只参与本地分差与回退判断。
 
@@ -127,8 +135,8 @@ FTB 查询 Tool 使用固定返回类型：`ftb.query` 列出当前可执行或�
 
 ## 明确授权的联网工作流
 
-`SearchSystemModule` 装配一个 WebSearchModule 与两个独立的只读 Tool。ModuleRouting 新增模块自带的 explicit 解析器：路由在指令解析后、语义匹配前检查当前消息，通过统一 AgentAction 校验得到明确输入。搜索声明 explicitOnly，并且不提供语义档案、快捷推荐或缓存样例，因此不能由路由模型、历史或事件自行启用。
+`SearchSystemModule` 装配一个 WebSearchModule 与两个独立的只读 Tool。ModuleRouting 的 explicit 解析器在指令解析后、语义匹配前检查当前消息，通过统一 AgentAction 校验得到明确输入；未命中固定句式时，搜索以 `explicitOnly: true` 进入模型能力目录。提示词要求模型非常确信当前消息是在请求查资料时才使用，例如“帮我查一下……”；普通提问不代表联网授权，本地任务和状态优先使用对应能力。搜索不提供语义档案、快捷推荐或缓存样例，不因相似度或历史直接启动，也不允许事件调用。
 
-工作流持有紧凑的 SearchObservation 列表，模型经 SearchStep 的 Codec dispatch 选择 Search、Fetch 或 Answer。只有本次 Search 得到的 URL 可 Fetch，重复检索终止，最终引用编号由服务器核对。预算共用 ExecutionContext，搜索默认 6 次模型/5 次工具/55 秒，可按 system:web_search 独立覆盖；模型还受通用每日额度和并发限制。会话有效时，预算或整理失败保留已取得的来源。
+工作流持有紧凑的 SearchObservation 列表，探索模型经 SearchStep 的 Codec dispatch 选择 Search、Fetch 或 Answer，最终整理只解码 Answer。只有本次 Search 得到的 URL 可 Fetch，重复检索转入最终整理，引用编号由服务器核对。预算共用 ExecutionContext，搜索默认 6 次模型/5 次工具/90 秒，单次模型 20 秒，可按 system:web_search 独立覆盖；模型还受通用每日额度和并发限制。已有证据时为整理保留模型次数和时间窗口，探索失败可在原预算内整理，不重试收费工具；最终整理失败才保留来源并记录错误码。
 
 收费工具每次调用前检查取消、模块访问和外部服务偏好，经 SearchGateway 统一记录次数及价格；ModelGateway 继续负责模型 Token。客户端状态同步可用工作流的最大请求期限，避免自定义较长预算被本机等待上限提前丢弃。连接、计费与来源边界见[联网搜索](search-api.md)。

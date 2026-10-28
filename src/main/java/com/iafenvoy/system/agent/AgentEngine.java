@@ -330,7 +330,7 @@ public final class AgentEngine implements AutoCloseable {
             if (!context.isEvent() && context.routeSource().automatic() && !this.modules.modelSelectable(descriptor.id()))
                 throw new AgentException("CONFIRM_REQUIRED");
             if ((context.routeSource() == RouteSource.SEMANTIC || context.routeSource() == RouteSource.ROUTE_CACHE)
-                    && !this.modules.readOnly(descriptor.id())) throw new AgentException("NOT_AUTHORIZED");
+                    && !this.modules.semanticSelectable(descriptor.id())) throw new AgentException("NOT_AUTHORIZED");
             context.select(descriptor, policy == null ? this.policy(call.module()) : policy);
             context.ensureMemoryCurrent();
             return call.execute(context);

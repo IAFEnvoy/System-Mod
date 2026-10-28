@@ -54,7 +54,7 @@ public final class ModuleRegistry {
             if (!readOnly) throw new IllegalArgumentException("Clarification shortcuts must be read-only");
             return new AgentResult.Action(value.labelKey(), input);
         }).orElse(null);
-        RoutingProfile.Bound profile = routing.semantic().map(value -> value.bind(id, module.inputCodec(), readOnly && routing.modelSelectable())).orElse(null);
+        RoutingProfile.Bound profile = routing.semantic().map(value -> value.bind(id, module.inputCodec(), readOnly && routing.semanticSelectable())).orElse(null);
         // Every declaration is validated before any registry is changed; shared tools keep instance identity.
         this.tools.registerAll(operations);
         this.modules.put(id, new Entry<>(owner, module, routing, readOnly, shortcut));
@@ -106,6 +106,11 @@ public final class ModuleRegistry {
         return entry != null && entry.module().descriptor().interactive() && entry.routing().modelSelectable();
     }
 
+    public boolean semanticSelectable(Identifier id) {
+        Entry<?> entry = this.modules.get(id);
+        return entry != null && entry.readOnly() && entry.routing().semanticSelectable();
+    }
+
     public CommandRegistry commands() {
         return this.commands;
     }
@@ -150,7 +155,8 @@ public final class ModuleRegistry {
         this.modules.forEach((id, entry) -> {
             if (this.modelSelectable(id) && available.test(id)) {
                 AgentModule.Descriptor descriptor = entry.module().descriptor();
-                capabilities.put(id.toString(), new ModelRoute.Capability(descriptor.description(), descriptor.schema()));
+                capabilities.put(id.toString(), new ModelRoute.Capability(descriptor.description(), descriptor.schema(),
+                        entry.routing().selection() == ModuleRouting.Selection.EXPLICIT_ONLY));
             }
         });
         return Collections.unmodifiableMap(capabilities);

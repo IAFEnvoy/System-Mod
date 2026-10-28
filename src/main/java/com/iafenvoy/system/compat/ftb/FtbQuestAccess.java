@@ -6,7 +6,6 @@ import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.output.*;
 import com.iafenvoy.system.assistant.MinecraftTools;
-import com.iafenvoy.system.util.MiscUtil;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
@@ -79,8 +78,10 @@ final class FtbQuestAccess {
     }
 
     static QuestBriefOutput brief(TeamData team, Quest quest, int number) {
-        return new QuestBriefOutput(number, hex(quest.getId()), MiscUtil.clip(quest.getTitle().getString(), 256),
-                MiscUtil.clip(quest.getChapter().getTitle().getString(), 128), team.getRelativeProgress(quest));
+        String text = quest.getChapter().getTitle().getString();
+        String text1 = quest.getTitle().getString();
+        return new QuestBriefOutput(number, hex(quest.getId()), com.iafenvoy.saturn.util.MiscUtil.clip(text1, 256),
+                com.iafenvoy.saturn.util.MiscUtil.clip(text, 128), team.getRelativeProgress(quest));
     }
 
     static QuestOutput detail(ServerPlayer player, TeamData team, Quest quest, QuestDetailInput input, Map<String, RewardReference> references) {
@@ -98,25 +99,34 @@ final class FtbQuestAccess {
             boolean hasMoreChoices = false;
             if (reward instanceof ChoiceReward choice && choice.getTable() != null) {
                 choices = Optional.of(choice.getTable().getWeightedRewards().stream().skip(choiceOffset).limit(8)
-                        .map(candidate -> new QuestChoiceOutput(MiscUtil.clip(candidate.getReward().getTitle().getString(), 256),
-                                previewItems(candidate.getReward()))).toList());
+                        .map(candidate -> {
+                            String text = candidate.getReward().getTitle().getString();
+                            return new QuestChoiceOutput(com.iafenvoy.saturn.util.MiscUtil.clip(text, 256),
+                                    previewItems(candidate.getReward()));
+                        }).toList());
                 hasMoreChoices = choice.getTable().getWeightedRewards().size() > choiceOffset + choices.get().size();
             }
             // Expanded details and completion notices share player/team/object-bound reward references.
             Optional<String> claimRef = claimable ? reference(player, team, quest, reward, references) : Optional.empty();
             if (claimable && claimRef.isEmpty()) claimable = false;
-            rewards.add(new QuestRewardOutput(hex(reward.getId()), MiscUtil.clip(reward.getTitle().getString(), 256), claimable,
+            String text = reward.getTitle().getString();
+            rewards.add(new QuestRewardOutput(hex(reward.getId()), com.iafenvoy.saturn.util.MiscUtil.clip(text, 256), claimable,
                     team.getClaimType(player.getUUID(), reward).name(), choices, choices.isPresent() ? choiceOffset : 0, hasMoreChoices, claimRef,
                     previewItems(reward)));
         }
         List<QuestTaskOutput> tasks = quest.getTasksAsList().stream().skip(taskOffset).limit(12)
-                .map(task -> new QuestTaskOutput(MiscUtil.clip(task.getTitle().getString(), 256), team.getProgress(task), task.getMaxProgress())).toList();
+                .map(task -> {
+                    String text = task.getTitle().getString();
+                    return new QuestTaskOutput(com.iafenvoy.saturn.util.MiscUtil.clip(text, 256), team.getProgress(task), task.getMaxProgress());
+                }).toList();
         String description = quest.getHideTextUntilComplete().get(quest.getChapter().isHideTextUntilComplete()) && !team.isCompleted(quest)
                 ? "" : String.join("\n", quest.getRawDescription());
         int start = Math.min(descriptionOffset, description.length());
         int end = start + Math.min(2048, description.length() - start);
-        return new QuestOutput(hex(quest.getId()), MiscUtil.clip(quest.getTitle().getString(), 256),
-                MiscUtil.clip(quest.getChapter().getTitle().getString(), 128), description.substring(start, end),
+        String text = quest.getChapter().getTitle().getString();
+        String text1 = quest.getTitle().getString();
+        return new QuestOutput(hex(quest.getId()), com.iafenvoy.saturn.util.MiscUtil.clip(text1, 256),
+                com.iafenvoy.saturn.util.MiscUtil.clip(text, 128), description.substring(start, end),
                 team.getRelativeProgress(quest), team.isCompleted(quest), FtbQuestReader.canComplete(player, team, quest), tasks, rewards,
                 new SectionPageOutput(rewardOffset, rewardOffset + rewards.size(), visibleRewards > rewardOffset + rewards.size()),
                 new SectionPageOutput(taskOffset, taskOffset + tasks.size(), quest.getTasksAsList().size() > taskOffset + tasks.size()),

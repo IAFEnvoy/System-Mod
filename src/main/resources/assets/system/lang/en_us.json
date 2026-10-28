@@ -1,6 +1,10 @@
 {
+  "system.ui.sidebar.chat": "Chat",
+  "system.ui.sidebar.modules": "Modules",
+  "system.ui.sidebar.settings": "Settings",
   "key.category.system.assistant": "System",
   "key.system.voice_input": "Hold to record voice input",
+  "key.system.toggle_interface": "Toggle system interface",
   "system.action.choose": "Choose reward",
   "system.action.claim": "Claim reward",
   "system.action.claim_starter_gift": "Claim starter gift",

@@ -2,9 +2,9 @@ package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.store.AgentStore;
+import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.util.TypeDispatch;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -22,17 +22,17 @@ public final class AssistantRequests {
     private final MinecraftServer server;
     private final AgentEngine engine;
     private final AssistantPlayers players;
-    private final List<Identifier> modules;
+    private final ModuleManager modules;
     private final TypeDispatch<RequestContext, CompletionStage<AgentResponse>> requestHandlers = new TypeDispatch<>((_, _) -> {
         throw new AgentException("UNSUPPORTED");
     });
     private final Map<AgentRequest.Control, Function<RequestContext, CompletionStage<AgentResponse>>> controlHandlers = new EnumMap<>(AgentRequest.Control.class);
 
-    AssistantRequests(MinecraftServer server, AgentEngine engine, AssistantPlayers players, List<Identifier> modules) {
+    AssistantRequests(MinecraftServer server, AgentEngine engine, AssistantPlayers players, ModuleManager modules) {
         this.server = server;
         this.engine = engine;
         this.players = players;
-        this.modules = List.copyOf(modules);
+        this.modules = modules;
         this.registerRequests();
     }
 
@@ -103,8 +103,18 @@ public final class AssistantRequests {
             if (!data.bound) throw new AgentException("NOT_BOUND");
             return AgentResult.data("system.result.state",
                     ResultTypes.CLIENT_STATE.of(new ResultTypes.ClientState(data.saveHistory, data.externalModel,
-                            this.modules,
-                            this.engine.modules().commands().suggestions())));
+                            this.modules.enabled(player),
+                            this.engine.modules().commands().suggestions(id -> this.engine.available(player, id)))));
+        }));
+    }
+
+    public void syncState(ServerPlayer player) {
+        UUID connection = ServerNetworkHandler.connectionId(player);
+        long incarnation = this.engine.incarnation(player.getUUID());
+        this.state(player.getUUID()).whenComplete((result, error) -> this.server.execute(() -> {
+            if (error == null && this.server.getPlayerList().getPlayer(player.getUUID()) == player
+                    && connection.equals(ServerNetworkHandler.connectionId(player)) && this.engine.current(player.getUUID(), incarnation))
+                ServerNetworkHandler.notice(player, result);
         }));
     }
 }

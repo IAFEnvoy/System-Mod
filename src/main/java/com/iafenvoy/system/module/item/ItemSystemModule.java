@@ -8,18 +8,13 @@ import com.iafenvoy.system.agent.builtin.item.ItemQueryTool;
 import com.iafenvoy.system.agent.builtin.output.ItemPageOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.module.ModuleContext;
-import com.iafenvoy.system.module.SystemModule;
+import com.iafenvoy.system.module.ServerModule;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
 
-public final class ItemSystemModule implements SystemModule {
+public final class ItemSystemModule implements ServerModule {
     public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "items");
-
-    @Override
-    public Identifier id() {
-        return ID;
-    }
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {

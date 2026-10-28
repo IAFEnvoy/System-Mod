@@ -9,7 +9,6 @@ import com.iafenvoy.system.agent.builtin.output.StateOutput;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
-import net.minecraft.resources.Identifier;
 
 import java.util.Locale;
 
@@ -17,11 +16,6 @@ import static com.iafenvoy.system.screen.gui.AssistantView.rewardParameters;
 import static com.iafenvoy.system.screen.gui.AssistantView.tr;
 
 public final class InboxClientModule implements ClientModule {
-    @Override
-    public Identifier id() {
-        return InboxSystemModule.ID;
-    }
-
     @Override
     public void register(ClientModuleContext module) {
         module.workspace("", "nav_inbox", workspace -> {

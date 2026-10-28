@@ -6,6 +6,7 @@ import com.iafenvoy.saturn.data.cost.CostTarget;
 import com.iafenvoy.saturn.data.cost.Debit;
 import com.iafenvoy.saturn.data.cost.context.CostContext;
 import com.iafenvoy.saturn.registry.SaturnRegistries;
+import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.saturn.runtime.resulting.ResultWithData;
 import com.iafenvoy.saturn.runtime.resulting.failures.CostFailure;
 import com.iafenvoy.saturn.util.DefinitionText;
@@ -22,10 +23,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStackTemplate;
+import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -36,27 +39,32 @@ public final class CommerceCosts {
     }
 
     public static Prepared prepare(List<Cost> costs, ServerPlayer player, PurchaseType type, Identifier source) {
-        CostContext context = CostContext.of(player, "system:" + type.getSerializedName())
-                .with("system:source", source);
+        CostContext context = CostContext.of(player, "system:" + type.getSerializedName()).with("system:source", source);
         CostPayment bill = CostPayment.of(context);
         AtomicBoolean started = new AtomicBoolean();
         AtomicBoolean uncertain = new AtomicBoolean();
         List<ItemPreviewOutput> items = new ArrayList<>();
         List<Component> descriptions = new ArrayList<>();
+        Failure failure = null;
+        Identifier failedResource = null;
         for (Cost cost : costs) {
             ResultWithData<Cost.Transaction> result = cost.prepare(context);
-            Prepared failedPrepared = new Prepared(player, bill, new CommerceCatalog.Price(items, descriptions), false, started, uncertain);
             if (result.isFailure()) {
-                descriptions.add(result.failure().message());
-                return failedPrepared;
+                failure = result.failure();
+                failedResource = result.failedResource();
+                break;
             }
             Cost.Transaction transaction = result.getData();
             if (!Double.isFinite(transaction.amount()) || transaction.amount() < 0) {
-                descriptions.add(CostFailure.INVALID_AMOUNT.message());
-                return failedPrepared;
+                failure = CostFailure.INVALID_AMOUNT;
+                break;
             }
-            if (bill.price(List.of(new BoundCost(cost, new TrackedTransaction(transaction, started, uncertain)))).isPresent())
-                throw new AgentException("INVALID_COST");
+            Optional<Failure> pricingFailure = bill.price(List.of(new BoundCost(cost, new TrackedTransaction(transaction, started, uncertain))));
+            if (pricingFailure.isPresent()) {
+                failure = pricingFailure.get();
+                failedResource = bill.failedResource();
+                break;
+            }
             if (transaction.amount() == 0) continue;
             if (transaction.target() instanceof CostTarget.Items target && target.entries().size() == 1 && target.entries().getFirst() instanceof ItemEntry(
                     Item item
@@ -74,7 +82,8 @@ public final class CommerceCosts {
             } else
                 descriptions.add(Component.literal(transaction.target().label() + " × " + number(transaction.amount())));
         }
-        return new Prepared(player, bill, new CommerceCatalog.Price(items, descriptions), true, started, uncertain);
+        if (failure != null) descriptions.add(failure.message(failedResource));
+        return new Prepared(player, bill, new CommerceCatalog.Price(items, descriptions), failure, failedResource, started, uncertain);
     }
 
     private static Component describe(ItemMatcher.Entry entry) {
@@ -91,11 +100,24 @@ public final class CommerceCosts {
         return Double.isFinite(value) ? BigDecimal.valueOf(value).stripTrailingZeros().toPlainString() : Double.toString(value);
     }
 
-    public record Prepared(ServerPlayer payer, CostPayment bill, CommerceCatalog.Price price, boolean available,
-                           AtomicBoolean started, AtomicBoolean uncertain) {
+    /** The result owns the immutable display price; the bound bill stays server-side for confirmation. */
+    public static final class Prepared extends ResultWithData<CommerceCatalog.Price> {
+        private final ServerPlayer payer;
+        private final CostPayment bill;
+        private final AtomicBoolean started, uncertain;
+
+        private Prepared(ServerPlayer payer, CostPayment bill, CommerceCatalog.Price price, @Nullable Failure failure,
+                         @Nullable Identifier failedResource, AtomicBoolean started, AtomicBoolean uncertain) {
+            super(price, failure, failedResource);
+            this.payer = payer;
+            this.bill = bill;
+            this.started = started;
+            this.uncertain = uncertain;
+        }
+
         public void pay(ServerPlayer player, AtomicBoolean touched) {
             if (player != this.payer) throw new AgentException("STALE_QUOTE");
-            if (!this.available) throw new AgentException("INVALID_COST");
+            if (this.isFailure()) throw new AgentException("INVALID_COST");
             if (this.bill.test().isPresent()) throw new AgentException("INSUFFICIENT_COST");
             CostPayment.PaymentResult result;
             try {

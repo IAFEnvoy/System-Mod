@@ -5,18 +5,12 @@ import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
 import com.iafenvoy.system.screen.AssistantMessages;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 
 import java.util.List;
 
 import static com.iafenvoy.system.screen.gui.AssistantView.tr;
 
 public final class BindingClientModule implements ClientModule {
-    @Override
-    public Identifier id() {
-        return Identifier.fromNamespaceAndPath("system", "binding");
-    }
-
     @Override
     public boolean serverRequired() {
         return false;

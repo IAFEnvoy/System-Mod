@@ -2,19 +2,19 @@ package com.iafenvoy.system.module.usage;
 
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.ModuleCommands;
-import com.iafenvoy.system.module.SystemModule;
+import com.iafenvoy.system.module.ServerModule;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
-public final class UsageSystemModule implements SystemModule {
+public final class UsageSystemModule implements ServerModule {
     public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "usage");
 
     @Override
-    public Identifier id() {
-        return ID;
+    public boolean required() {
+        return true;
     }
 
     @Override

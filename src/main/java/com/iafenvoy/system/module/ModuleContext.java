@@ -5,9 +5,7 @@ import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.MinecraftTools;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -19,7 +17,6 @@ public final class ModuleContext {
     private final MinecraftTools game;
     private final CommerceTransactions commerce;
     private final Map<ToolRegistry.Type<?, ?>, ToolRegistry.Tool<?, ?>> tools = new HashMap<>();
-    private final List<PlayerModule> players = new ArrayList<>();
 
     public ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce) {
         this.engine = engine;
@@ -37,14 +34,6 @@ public final class ModuleContext {
 
     public CommerceTransactions commerce() {
         return this.commerce;
-    }
-
-    public void players(PlayerModule module) {
-        this.players.add(module);
-    }
-
-    public List<PlayerModule> players() {
-        return List.copyOf(this.players);
     }
 
     public <I, O> ToolRegistry.Tool<I, O> tool(ToolRegistry.Type<I, O> type, Supplier<ToolRegistry.Tool<I, O>> factory) {

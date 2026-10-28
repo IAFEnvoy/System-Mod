@@ -1,6 +1,6 @@
 # Agent 运行结构与扩展
 
-Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类型、单行为 Tool、组合流程的 `AgentModule`，以及工作流自己的入口信息；功能的服务端装配、平台指令、生命周期与客户端贡献由外层 `SystemModule` / `ClientModule` 统一组织，见[功能模块化](feature-modules.md)。指令解析器和路由器不包含模块 ID 的业务 switch。
+Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类型、单行为 Tool、组合流程的 `AgentModule`，以及工作流自己的入口信息；功能的服务端装配、平台指令、生命周期与客户端贡献由外层 `ServerModule` / `ClientModule` 统一组织，见[功能模块化](feature-modules.md)。指令解析器和路由器不包含模块 ID 的业务 switch。
 
 根包集中引擎、执行器、上下文、Module/Tool 契约、注册表、指令与请求结果。路由、模型、存储、商城和提示词分别归入 `routing`、`model`、`store`、`commerce`、`prompt`，各包同时包含自身的接口、数据与实现。内置工作流与工具位于 `builtin/<功能>`；共享类型键、输入及输出分别保留在 `builtin.tool`、`builtin.input`、`builtin.output`。共用 Codec、Schema 和 JSON 工具直接位于外层 `com.iafenvoy.system.util`，配置位于 `com.iafenvoy.system.config`。
 
@@ -35,7 +35,17 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 | `AgentModule<I>` | 在自己的策略内组合流程与多个工具 |
 | `ToolRegistry.Tool<I, O>` | 一个工具类型、一个 Handler、一个行为 |
 
-结构化按钮、精确指令、本地语义与模型选择最终都生成相同的 `TypedPayload<?>`。交互与事件共享 `AgentEngine.execute`，权限、策略选择与部分成功报告集中处理；事件恢复继续使用持久化策略和已完成操作回执。
+执行结果 `AgentResult` 复用 Saturn `ResultWithData<List<Card>>`：调用方统一用 `isSuccess()` / `isFailure()` 分支，Agent 自己保留文案、静默输出和部分完成状态。`partial()` 标记部分成功，但仍属于失败；`withPresentation(...)` 只生成展示副本。跨网络与存档继续使用 `AgentResult.CODEC`，不传输 Failure 的实现类。商城的 `CommerceCosts.Prepared` 同样复用 `ResultWithData<Price>`，同时保留原始定价失败原因与相关资源。搜索条目、模型回复及音频流解析状态属于数据载荷，不套用操作成功/失败契约。
+
+外层 ServerModule 注册工作流时记录 ownerId，ModuleManager 在模块成功激活后发布按玩家计算的权限快照；帮助、补全、语义候选、模型目录与执行器共用可用性过滤，ExecutionContext 在工具和模型入口再次检查权限。基础设施与无 owner 的独立扩展工作流不属于可选业务模块。结构化按钮、精确指令、本地语义与模型选择最终都生成相同的 `TypedPayload<?>`。交互与事件共享 `AgentEngine.execute`，权限、策略选择与部分成功报告集中处理；事件恢复继续使用持久化策略和已完成操作回执。
+
+## 玩家模块存储
+
+玩家私有记录位于 `<存档>/system-agent/<UUID>.json`。PlayerData.moduleData 使用 Saturn `DataStorageHolder<Identifier>`；Holder 键为 ServerModule ID，具体 Java 类型区分同一模块的多项存储，Codec 类型 ID 独立。
+
+存储由 `ServerModule.storages()` 返回 ModuleStorage 声明，包含 owner、Codec ID、Java 类型、MapCodec 和工厂；声明从正式的 `SystemRegistries.SERVER_MODULE` 注册表读取。内置 Codec 由 SystemDataStorages 的 DeferredRegister 注册到 Saturn DATA_STORAGE_TYPE，扩展的 Codec 需另行注册。不同模块可以复用同一类型与 Codec，各自持有独立数据。业务访问统一用 `ModuleData.get(data, SomeSystemModule.STORAGE)`，不要在 PlayerData 加功能访问器。完整声明与生命周期见[功能模块化](feature-modules.md#玩家生命周期)。
+
+ModuleManager 统一处理模块启停、Session 创建/初始化/ready/tick/close、Saturn DataStorage tick 与异步保存。只向 Agent 和客户端发布已初始化的模块；旧连接、旧系统代次或已移除模块的回调不能重新激活会话。主线程存储 tick 只尝试内存事务，文件写入在维护线程合并执行；普通业务写事务继续原子落盘。读取和事务结果不暴露可变缓存引用，失败事务不污染已提交内存数据。停用保留签到、订单和幂等记录；revoke/reset 删除玩家文件及缓存，用量 SavedData 独立保留。
 
 `TaskExecutor` 不改变各队列的规模：交互 4/32、事件 2/64、维护 2/32。队列满立即返回 `BUSY`，关闭时排队但尚未执行的 Future 返回 `CANCELLED`。这些队列不在游戏线程等待模型；游戏 API 继续由平台队列安排到主线程。
 

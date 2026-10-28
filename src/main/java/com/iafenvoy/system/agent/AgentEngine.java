@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent;
 
+
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.commerce.CommerceQuotes;
 import com.iafenvoy.system.agent.model.ModelClient;
@@ -16,6 +17,7 @@ import net.minecraft.resources.Identifier;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -44,6 +46,7 @@ public final class AgentEngine implements AutoCloseable {
     private final List<Consumer<UUID>> revokeListeners = new CopyOnWriteArrayList<>();
     private final ConversationService conversations = new ConversationService(this);
     private final QuestNarration questNarration;
+    private BiPredicate<UUID, Identifier> moduleAccess = (_, _) -> true;
 
     public AgentEngine(CommerceCatalog catalog, AgentStore store, ModelClient model) {
         this.store = store;
@@ -144,6 +147,21 @@ public final class AgentEngine implements AutoCloseable {
             }
 
             @Override
+            public boolean updateLoaded(UUID requested, java.util.function.Predicate<PlayerData> transaction) {
+                return AgentEngine.this.store.updateLoaded(requested, data -> {
+                    this.check(requested);
+                    return transaction.test(data);
+                });
+            }
+
+            @Override
+            public void flush(UUID requested) {
+                this.check(requested);
+                // Flush never loads missing data; deletion and flush share the underlying player lock.
+                AgentEngine.this.store.flush(requested);
+            }
+
+            @Override
             public void delete(UUID requested) {
                 throw new UnsupportedOperationException();
             }
@@ -158,11 +176,11 @@ public final class AgentEngine implements AutoCloseable {
         };
     }
 
-    public CompletionStage<AgentResult> grant(UUID player, Map<String, Set<String>> baselines) {
+    public CompletionStage<AgentResult> grant(UUID player, Consumer<PlayerData> initialize) {
         return this.personalMaintenance(player, () -> this.store.update(player, data -> {
             if (data.bound) return AgentResult.ok("system.result.already_bound");
             data.bound = true;
-            data.baselines.putAll(baselines);
+            initialize.accept(data);
             return AgentResult.ok("system.result.bound");
         }));
     }
@@ -192,7 +210,7 @@ public final class AgentEngine implements AutoCloseable {
      */
     public CompletionStage<AgentResult> reset(UUID player) {
         return this.revoke(player).thenApply(result ->
-                "SUCCEEDED".equals(result.status()) ? AgentResult.ok("system.result.reset") : result);
+                result.isSuccess() ? AgentResult.ok("system.result.reset") : result);
     }
 
     public ModelGateway model() {
@@ -235,6 +253,24 @@ public final class AgentEngine implements AutoCloseable {
         this.modules.register(module);
     }
 
+    public void registerModule(Identifier owner, AgentModule<?> module) {
+        this.modules.register(owner, module);
+    }
+
+    public void moduleAccess(BiPredicate<UUID, Identifier> moduleAccess) {
+        this.moduleAccess = Objects.requireNonNull(moduleAccess);
+    }
+
+    public boolean available(UUID player, Identifier workflow) {
+        Identifier owner = this.modules.owner(workflow);
+        return owner == null || this.moduleAccess.test(player, owner);
+    }
+
+    public void moduleAccessChanged(UUID player) {
+        this.router.clear(player);
+        this.commerceQuotes.clear(player);
+    }
+
     public Collection<AgentModule.Descriptor> descriptors() {
         return this.modules.descriptors();
     }
@@ -268,6 +304,7 @@ public final class AgentEngine implements AutoCloseable {
         try {
             ModuleRegistry.Call<?> call = this.modules.call(input);
             AgentModule.Descriptor descriptor = call.module().descriptor();
+            if (!this.available(context.player(), descriptor.id())) throw new AgentException("CAPABILITY_UNAVAILABLE");
             if (context.isEvent() ? !descriptor.event() : !descriptor.interactive())
                 throw new AgentException("CAPABILITY_UNAVAILABLE");
             if (!context.isEvent() && context.routeSource().automatic() && !this.modules.modelSelectable(descriptor.id()))
@@ -279,7 +316,7 @@ public final class AgentEngine implements AutoCloseable {
             return call.execute(context);
         } catch (Exception error) {
             AgentResult failure = AgentResult.error(errorCode(error));
-            return context.hasCompletedSteps() ? new AgentResult("PARTIALLY_SUCCEEDED", failure.messageKey(), "", List.of()) : failure;
+            return context.hasCompletedSteps() ? failure.partial() : failure;
         }
     }
 

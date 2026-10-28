@@ -7,7 +7,7 @@ import com.iafenvoy.system.command.client.AssistantClientCommands;
 import com.iafenvoy.system.config.file.ClientConfig;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
-import com.iafenvoy.system.registry.SystemDefinitions;
+import com.iafenvoy.system.registry.SystemDataPackRegistries;
 import com.iafenvoy.system.screen.AssistantMessages;
 import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
@@ -40,7 +40,7 @@ public final class AssistantClient {
 
     public static SystemDefinition system() {
         ClientPacketListener connection = Minecraft.getInstance().getConnection();
-        return connection == null ? SystemDefinition.DEFAULT : SystemDefinitions.current(connection.registryAccess());
+        return connection == null ? SystemDefinition.DEFAULT : SystemDataPackRegistries.current(connection.registryAccess());
     }
 
     public static long revision() {

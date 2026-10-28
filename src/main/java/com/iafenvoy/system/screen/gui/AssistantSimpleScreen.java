@@ -3,7 +3,7 @@ package com.iafenvoy.system.screen.gui;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
-import com.iafenvoy.system.module.client.ClientModules;
+import com.iafenvoy.system.module.client.ClientModuleBindings;
 import com.iafenvoy.system.screen.card.CardContext;
 import com.iafenvoy.system.screen.card.CardTemplates;
 import com.sighs.apricityui.init.Document;
@@ -69,7 +69,7 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
             speech.appendChild(element(document, "div", "message_text", String.join("\n\n", lines)));
             int index = 1;
             for (AgentResult.Card card : result.cards()) {
-                speech.appendChild(ClientModules.registry().cards().presentation(card, result.messageKey(), CardContext.Mode.SIMPLE, index - 1).render(document));
+                speech.appendChild(ClientModuleBindings.get().cards().presentation(card, result.messageKey(), CardContext.Mode.SIMPLE, index - 1).render(document));
                 index += card.actions().size();
             }
             if (index > 1) speech.appendChild(element(document, "div", "card_context", tr("system.ui.simple_actions")));

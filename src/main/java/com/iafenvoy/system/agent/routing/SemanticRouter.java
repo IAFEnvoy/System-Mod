@@ -88,11 +88,11 @@ public final class SemanticRouter implements AutoCloseable {
         String cached = key == null ? null : this.cache.get(key);
         if (cached != null && SemanticConfig.INSTANCE.get().mode() == SemanticConfig.Mode.ENFORCE) {
             RoutingProfile.Bound profile = this.profiles.get(cached);
-            TypedPayload<?> input = profile == null || !profile.direct() ? null : profile.arguments().parse(text);
+            TypedPayload<?> input = profile == null || !profile.direct() || !context.available(profile.moduleId()) ? null : profile.arguments().parse(text);
             if (input != null)
                 return new Attempt(new RouteDecision(input, RouteSource.ROUTE_CACHE), List.of(), "CACHE_HIT");
         }
-        SemanticIndex.Ranking ranking = current.search(text, language);
+        SemanticIndex.Ranking ranking = current.search(text, language, context::available);
         context.ensureMemoryCurrent();
         SemanticIndex.Match best = ranking.first();
         if (best == null) return Attempt.fallback("NO_CANDIDATE");
@@ -129,13 +129,13 @@ public final class SemanticRouter implements AutoCloseable {
         if (SemanticConfig.INSTANCE.get().mode() != SemanticConfig.Mode.ENFORCE || this.closed.get() || this.index == null || decision.source() != RouteSource.LLM)
             return;
         RoutingProfile.Bound profile = this.profiles.get(decision.moduleId());
-        if (profile == null || !profile.direct()) return;
+        if (profile == null || !profile.direct() || !context.available(profile.moduleId())) return;
         String language = context.language().split("_", 2)[0], text = LexicalEncoder.normalize(raw);
         if (this.guard(text, language) != null) return;
         TypedPayload<?> parsed = profile.arguments().parse(text);
         if (parsed == null || !parsed.equals(decision.input())) return;
         // Unknown or unmatched topic content must not be turned into an exact intent shortcut.
-        SemanticIndex.Ranking ranking = this.index.search(text, language);
+        SemanticIndex.Ranking ranking = this.index.search(text, language, context::available);
         if (ranking.writeRequest() || !ranking.hasTopic() || ranking.matches().stream().noneMatch(match -> match.profile().moduleId().toString().equals(decision.moduleId())
                 && match.topicsCovered() && match.coverage() + 1e-9 >= SemanticConfig.INSTANCE.get().minCoverage()))
             return;

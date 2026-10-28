@@ -39,7 +39,7 @@ FTB 启动概览的“查看任务”以及新手礼包的“领取礼包”“�
 
 设备打开与音频读取在一个有界守护录音执行器中执行，网络在独立识别执行器中执行，主线程仅操作界面和取消。连接期间音频仅在有界内存队列保存，不落盘；录音上限 60 秒 / 1,920,000 PCM 字节。不支持 16 kHz 单声道或被系统禁止访问时给出本地提示。单条响应最多 64 KiB，结果最多 2000 UTF-16 单元；连接 10 秒超时、整体 90 秒上限、停止后最多再等待 15 秒。失败不自动重试收费任务。
 
-`AsrProvider` 位于 api.speech，`AsrProviders` 位于 registry.speech，协议层不依赖 MC。供应商实现 `validate`、`recognize(Request, AudioSource, Consumer<String>)` 和 `close`，通过 `AsrProviders.register` 注册工厂；每次识别独占实例。当前配置凭据结构面向 NLS，增加不同鉴权方式的供应商时需扩展相应配置表单。可选供应商自己的单位计费也需单独适配，不套用 NLS 次数单价。
+`AsrProvider` 位于 `speech.asr`，`AsrProviders` 位于 `registry`，内置工厂通过 `AsrProviders.ALIYUN_NLS` 公开，协议层不依赖 MC。供应商实现 `validate`、`recognize(Request, AudioSource, Consumer<String>)` 和 `close`，通过 `AsrProviders.register` 注册工厂；每次识别独占实例。当前配置凭据结构面向 NLS，增加不同鉴权方式的供应商时需扩展相应配置表单。可选供应商自己的单位计费也需单独适配，不套用 NLS 次数单价。
 
 ## 用量与费用
 

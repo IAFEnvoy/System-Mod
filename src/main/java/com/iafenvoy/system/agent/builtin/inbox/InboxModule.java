@@ -9,6 +9,10 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.config.file.AgentConfig;
+import com.iafenvoy.system.module.CommerceDataStorage;
+import com.iafenvoy.system.module.inbox.InboxSystemModule;
+import com.iafenvoy.system.module.signin.SignInSystemModule;
+import com.iafenvoy.system.module.ModuleData;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -41,15 +45,16 @@ public final class InboxModule extends BuiltinModule<EmptyInput> {
         return context.store().read(context.player(), data -> {
             List<AgentResult.Card> cards = new ArrayList<>();
             // Payment-pending rewards stay private; unresolved transactions are shown by their order summaries below.
-            for (PlayerData.Delivery delivery : data.inbox.values().stream()
+            for (PlayerData.Delivery delivery : ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.values().stream()
                     .filter(value -> !Set.of("DELIVERED", "PAYMENT_PENDING", "PAYMENT_UNKNOWN").contains(value.state)).limit(32).toList()) {
                 List<AgentResult.Action> actions = "PENDING".equals(delivery.state)
                         ? List.of(new AgentResult.Action("system.action.deliver", ResultTypes.DELIVER_ACTION, new EntitlementInput(delivery.id))) : List.of();
                 cards.add(new AgentResult.Card("system.result.reward", ResultTypes.ENTITLEMENT.of(new CreditReceiptOutput(delivery.id, delivery.reward, delivery.state)), actions));
             }
-            cards.add(new AgentResult.Card("system.result.sign_in_status", ResultTypes.SIGN_IN_STATUS.of(new ResultTypes.SignInStatus(day, data.signIns.containsKey(day),
+            cards.add(new AgentResult.Card("system.result.sign_in_status", ResultTypes.SIGN_IN_STATUS.of(new ResultTypes.SignInStatus(day, ModuleData.get(data, SignInSystemModule.STORAGE).rewards.containsKey(day),
                     context.catalog().rewards(), data.saveHistory, data.externalModel)), List.of()));
-            for (PlayerData.Purchase purchase : data.purchases.values().stream().filter(value -> !"COMPLETED".equals(value.state) && !"FAILED".equals(value.state)).limit(8).toList())
+            for (PlayerData.Purchase purchase : ModuleData.values(data, CommerceDataStorage.class)
+                    .flatMap(storage -> storage.purchases.values().stream()).filter(value -> !"COMPLETED".equals(value.state) && !"FAILED".equals(value.state)).limit(8).toList())
                 cards.add(new AgentResult.Card("system.result.shop_order", ResultTypes.SHOP_ORDER.of(new ResultTypes.ShopOrder(purchase.id, purchase.order.label(), purchase.state, purchase.error)), List.of()));
             return new AgentResult("SUCCEEDED", "system.result.inbox", "", cards);
         });

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.module.client.ClientModules;
+import com.iafenvoy.system.module.client.ClientModuleBindings;
 
 import java.util.List;
 
@@ -15,11 +15,11 @@ public final class SpeechText {
     }
 
     public static String result(AgentResult result) {
-        return result.silent() ? "" : ClientModules.registry().speech(result);
+        return result.silent() ? "" : ClientModuleBindings.get().speech(result);
     }
 
     public static List<String> quests(AgentResult result) {
-        return result.cards().stream().flatMap(card -> ClientModules.registry().cards().quests(card).stream()).distinct().toList();
+        return result.cards().stream().flatMap(card -> ClientModuleBindings.get().cards().quests(card).stream()).distinct().toList();
     }
 
     public static String primary(AgentResult result) {

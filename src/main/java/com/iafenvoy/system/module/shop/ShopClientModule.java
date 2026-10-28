@@ -13,11 +13,6 @@ import static com.iafenvoy.system.screen.gui.AssistantView.priceParameters;
 
 public final class ShopClientModule implements ClientModule {
     @Override
-    public Identifier id() {
-        return ShopSystemModule.ID;
-    }
-
-    @Override
     public void register(ClientModuleContext module) {
         module.workspace("shop", "nav_shop", workspace -> {
             workspace.labels("nav_shop", "shop_search", "shop_refresh", "shop_text");

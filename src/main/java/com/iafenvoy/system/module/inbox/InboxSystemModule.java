@@ -6,18 +6,22 @@ import com.iafenvoy.system.agent.builtin.inbox.DeliverTool;
 import com.iafenvoy.system.agent.builtin.inbox.InboxModule;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.module.ModuleContext;
-import com.iafenvoy.system.module.SystemModule;
+import com.iafenvoy.system.module.ModuleStorage;
+import com.iafenvoy.system.module.PlayerModule;
+import com.iafenvoy.system.module.ServerModule;
+import com.iafenvoy.system.module.ModuleData;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
-import java.util.UUID;
 
-public final class InboxSystemModule implements SystemModule {
+public final class InboxSystemModule implements ServerModule {
     public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "inbox");
+    public static final ModuleStorage<InboxDataStorage> STORAGE = new ModuleStorage<>(ID,
+            Identifier.fromNamespaceAndPath("system", "inbox"), InboxDataStorage.class, InboxDataStorage.CODEC, InboxDataStorage::new);
 
     @Override
-    public Identifier id() {
-        return ID;
+    public List<ModuleStorage<?>> storages() {
+        return List.of(STORAGE);
     }
 
     @Override
@@ -26,20 +30,15 @@ public final class InboxSystemModule implements SystemModule {
     }
 
     @Override
-    public void installed(ModuleContext context) {
-        context.players(player -> {
-            UUID uuid = player.getUUID();
-            return data -> {
-                for (PlayerData.Delivery delivery : data.inbox.values())
-                    if ("DELIVERING".equals(delivery.state)) delivery.state = "DELIVERY_UNKNOWN";
-                for (PlayerData.Purchase purchase : data.purchases.values())
-                    if ("PREPARED".equals(purchase.state) && !context.commerce().active(uuid, purchase.id)) {
-                        purchase.state = "PAYMENT_UNKNOWN";
-                        purchase.error = "EFFECT_UNKNOWN";
-                        PlayerData.Delivery delivery = data.inbox.get(purchase.order.type().entitlement(purchase.id));
-                        if (delivery != null) delivery.state = "PAYMENT_UNKNOWN";
-                    }
-            };
-        });
+    public PlayerModule runtime(ModuleContext context) {
+        return new PlayerModule() {
+            @Override
+            public Session login(net.minecraft.server.level.ServerPlayer player) {
+                return data -> {
+                    for (PlayerData.Delivery delivery : ModuleData.get(data, STORAGE).deliveries.values())
+                        if ("DELIVERING".equals(delivery.state)) delivery.state = "DELIVERY_UNKNOWN";
+                };
+            }
+        };
     }
 }

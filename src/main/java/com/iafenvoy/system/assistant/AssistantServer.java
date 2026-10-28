@@ -10,9 +10,8 @@ import com.iafenvoy.system.data.CatalogReloadListener;
 import com.iafenvoy.system.data.PromptReloadListener;
 import com.iafenvoy.system.event.AssistantRegistrationEvent;
 import com.iafenvoy.system.module.ModuleContext;
-import com.iafenvoy.system.module.SystemModules;
+import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
@@ -26,7 +25,6 @@ import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -41,7 +39,7 @@ public final class AssistantServer {
     private final AssistantPlayers players;
     private final AssistantRequests requests;
     private final AssistantUsage usage;
-    private final List<Identifier> modules;
+    private final ModuleManager moduleManager;
     private final GameTaskQueue gameQueue = new GameTaskQueue();
     private CatalogReloadListener catalogListener;
     private PromptReloadListener promptListener;
@@ -57,11 +55,13 @@ public final class AssistantServer {
             MinecraftTools game = new MinecraftTools(server, this.gameQueue);
             CommerceTransactions transactions = new CommerceTransactions(this.engine, game);
             ModuleContext modules = new ModuleContext(this.engine, game, transactions);
-            this.modules = SystemModules.install(modules);
+            this.moduleManager = new ModuleManager(server, modules);
+            this.engine.moduleAccess(this.moduleManager::hasModule);
             NeoForge.EVENT_BUS.post(new AssistantRegistrationEvent(this.engine));
-            this.players = new AssistantPlayers(server, this.engine, modules.players(), this.usage);
+            this.players = new AssistantPlayers(server, this.engine, this.moduleManager, this.usage);
             this.players.validateModules();
-            this.requests = new AssistantRequests(server, this.engine, this.players, this.modules);
+            this.requests = new AssistantRequests(server, this.engine, this.players, this.moduleManager);
+            this.moduleManager.onChange(this.requests::syncState);
             this.engine.start();
         } catch (Exception e) {
             this.engine.close();
@@ -73,8 +73,8 @@ public final class AssistantServer {
         return SERVERS.get(server);
     }
 
-    public List<Identifier> modules() {
-        return this.modules;
+    public ModuleManager moduleManager() {
+        return this.moduleManager;
     }
 
     public AgentEngine engine() {
@@ -160,6 +160,7 @@ public final class AssistantServer {
             runtime.usage.drain();
             runtime.refreshCatalog();
             runtime.refreshPrompts();
+            runtime.moduleManager.tick();
             runtime.gameQueue.tick();
         }
     }

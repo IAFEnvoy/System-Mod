@@ -4,6 +4,7 @@ import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.iafenvoy.system.network.payload.*;
+import com.iafenvoy.system.module.quest.QuestSystemModule;
 import com.iafenvoy.system.util.codec.CodecIO;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -64,7 +65,8 @@ public final class ServerNetworkHandler {
         UUID connection = connectionId(player);
         MinecraftServer server = player.level().getServer();
         AssistantServer runtime = AssistantServer.get(server);
-        if (runtime == null || !runtime.players().notificationsEnabled(player)) return;
+        if (runtime == null || !runtime.players().notificationsEnabled(player)
+                || !runtime.moduleManager().hasModule(player.getUUID(), QuestSystemModule.ID)) return;
         long incarnation = runtime.engine().incarnation(player.getUUID());
         try {
             UUID.fromString(payload.id());

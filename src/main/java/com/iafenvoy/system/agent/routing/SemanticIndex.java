@@ -4,6 +4,8 @@ import com.iafenvoy.system.config.file.SemanticConfig;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Predicate;
+import net.minecraft.resources.Identifier;
 
 /**
  * Small immutable TF-IDF index; OOV features stay in the query norm and coverage denominator.
@@ -46,8 +48,13 @@ final class SemanticIndex {
     }
 
     Ranking search(String text, String language) {
+        return this.search(text, language, _ -> true);
+    }
+
+    Ranking search(String text, String language, Predicate<Identifier> available) {
         LexicalIndex.Ranking<RoutingProfile.Bound> ranking = this.index.search(text, language);
         return new Ranking(ranking.matches().stream().map(match -> new Match(match.value(), match.score(), match.coverage(), match.topicsCovered()))
+                .filter(match -> available.test(match.profile().moduleId()))
                 .sorted(Comparator.comparingDouble(Match::score).reversed().thenComparing(match -> match.profile().moduleId().toString()))
                 .limit(5).toList(), ranking.hasTopic(), ranking.writeRequest());
     }

@@ -1,5 +1,5 @@
 {
   "name": "system.definition.default.name",
   "description": "system.definition.default.description",
-  "modules": []
+  "modules": ["system:usage", "system:player", "system:items", "system:signin", "system:inbox", "system:shop", "system:lottery", "system:advancement"]
 }

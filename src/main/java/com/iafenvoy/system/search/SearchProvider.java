@@ -1,6 +1,6 @@
 package com.iafenvoy.system.search;
 
-import com.iafenvoy.system.util.codec.CodecIO;
+import com.iafenvoy.saturn.util.codec.MiscCodecs;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
@@ -20,7 +20,7 @@ public interface SearchProvider extends AutoCloseable {
     record Request(String query, int count, Optional<String> originalQuestion, String localization,
                    boolean needContent) {
         // These are provider API limits, counted as Unicode code points rather than UTF-16 units.
-        private static final Codec<String> QUERY = CodecIO.checked(Codec.STRING, value -> !value.isBlank()
+        private static final Codec<String> QUERY = MiscCodecs.checked(Codec.STRING, value -> !value.isBlank()
                 && value.codePointCount(0, value.length()) <= 128);
         public static final Codec<Request> CODEC = RecordCodecBuilder.create(i -> i.group(
                 QUERY.fieldOf("query").forGetter(Request::query),
@@ -66,7 +66,7 @@ public interface SearchProvider extends AutoCloseable {
     }
 
     record FetchRequest(String url) {
-        public static final Codec<FetchRequest> CODEC = CodecIO.checked(Codec.STRING, FetchRequest::validUrl)
+        public static final Codec<FetchRequest> CODEC = MiscCodecs.checked(Codec.STRING, FetchRequest::validUrl)
                 .fieldOf("url").xmap(FetchRequest::new, FetchRequest::url).codec();
 
         private static boolean validUrl(String value) {

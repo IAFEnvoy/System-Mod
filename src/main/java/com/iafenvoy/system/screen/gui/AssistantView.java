@@ -5,7 +5,7 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.module.client.ClientModules;
+import com.iafenvoy.system.module.client.ClientModuleBindings;
 import com.iafenvoy.system.screen.card.CardContext;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
@@ -25,7 +25,7 @@ public final class AssistantView {
     }
 
     public static String actionLabel(AgentResult.Card card, AgentResult.Action action) {
-        return ClientModules.registry().cards().label(card, action);
+        return ClientModuleBindings.get().cards().label(card, action);
     }
 
     public static String formatCard(AgentResult.Card card) {
@@ -33,11 +33,11 @@ public final class AssistantView {
     }
 
     public static String formatCard(AgentResult.Card card, boolean textItems) {
-        return ClientModules.registry().cards().format(card, textItems);
+        return ClientModuleBindings.get().cards().format(card, textItems);
     }
 
     public static Element renderCard(Document document, AgentResult.Card card, String messageKey) {
-        return ClientModules.registry().cards().presentation(card, messageKey, CardContext.Mode.FULL, 0).render(document);
+        return ClientModuleBindings.get().cards().presentation(card, messageKey, CardContext.Mode.FULL, 0).render(document);
     }
 
     public static String formatPrice(CommerceCatalog.Price price, boolean textItems) {

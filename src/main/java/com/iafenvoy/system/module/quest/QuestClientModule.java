@@ -10,12 +10,11 @@ import com.iafenvoy.system.agent.builtin.quest.StarterGiftModule;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.module.client.ClientCardRegistry;
 import com.iafenvoy.system.module.client.ClientModule;
+import com.iafenvoy.system.module.client.ClientModuleBindings;
 import com.iafenvoy.system.module.client.ClientModuleContext;
-import com.iafenvoy.system.module.client.ClientModuleRegistry;
 import com.iafenvoy.system.screen.card.CardContext;
 import com.iafenvoy.system.util.TypeDispatch;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Locale;
@@ -25,11 +24,6 @@ import static com.iafenvoy.system.screen.gui.AssistantView.tr;
 import static com.iafenvoy.system.speech.tts.SpeechText.primary;
 
 public final class QuestClientModule implements ClientModule {
-    @Override
-    public Identifier id() {
-        return QuestSystemModule.ID;
-    }
-
     @Override
     public void register(ClientModuleContext module) {
         module.workspace("quests", "nav_quests", workspace -> {
@@ -41,18 +35,15 @@ public final class QuestClientModule implements ClientModule {
             workspace.click("quest_refresh", () -> AssistantClient.send(ResultTypes.QUESTS_ACTION.of(new QuestQueryInput("", false)), ""));
             workspace.click("quest_claimable", () -> AssistantClient.send(ResultTypes.QUESTS_ACTION.of(new QuestQueryInput("", true)), ""));
         });
-        module.registry().notificationAction("system.action.quest_detail", new ClientModuleRegistry.NotificationAction(true, false, false));
-        module.registry().notificationAction("system.action.view_quests", new ClientModuleRegistry.NotificationAction(true, false, false));
-        module.registry().notificationAction("system.action.refresh_starter_gift", new ClientModuleRegistry.NotificationAction(true, false, true));
-        module.registry().notificationAction("system.action.claim_starter_gift", new ClientModuleRegistry.NotificationAction(false, true, false));
-        module.cards().refresh(StarterGiftOutput.class, gifts -> new ClientCardRegistry.Refresh(
-                StarterGiftOutput.class, StarterGiftModule.preview(gifts), !gifts.gifts().isEmpty()));
+        module.bindings().notificationAction("system.action.quest_detail", new ClientModuleBindings.NotificationAction(true, false, false));
+        module.bindings().notificationAction("system.action.view_quests", new ClientModuleBindings.NotificationAction(true, false, false));
+        module.bindings().notificationAction("system.action.refresh_starter_gift", new ClientModuleBindings.NotificationAction(true, false, true));
+        module.bindings().notificationAction("system.action.claim_starter_gift", new ClientModuleBindings.NotificationAction(false, true, false));
+        module.cards().refresh(StarterGiftOutput.class, gifts -> new ClientCardRegistry.Refresh(StarterGiftOutput.class, StarterGiftModule.preview(gifts), !gifts.gifts().isEmpty()));
         module.cards().summary(ResultTypes.QuestNotice.class, QuestClientModule::noticeSummary);
         module.cards().summary(StarterGiftOutput.class, (result, _) -> tr(result.messageKey()));
-        module.cards().summary(QuestStartupOutput.class, (_, value) ->
-                Component.translatable("system.tts.message.quest_startup", value.total()).getString());
-        module.cards().summary(QuestSubmitOutput.class, (_, value) ->
-                Component.translatable(value.changed() ? "system.ui.quest_submitted" : "system.ui.quest_submit_unchanged", value.title()).getString());
+        module.cards().summary(QuestStartupOutput.class, (_, value) -> Component.translatable("system.tts.message.quest_startup", value.total()).getString());
+        module.cards().summary(QuestSubmitOutput.class, (_, value) -> Component.translatable(value.changed() ? "system.ui.quest_submitted" : "system.ui.quest_submit_unchanged", value.title()).getString());
         module.cards().quests(QuestOutput.class, quest -> List.of(quest.id()));
         module.cards().quests(ResultTypes.QuestNotice.class, quest -> List.of(quest.id()));
         module.speech("system.result.quest_completed", result -> quest(result, "completed"));

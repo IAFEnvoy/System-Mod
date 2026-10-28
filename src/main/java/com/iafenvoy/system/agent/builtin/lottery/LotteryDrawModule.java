@@ -8,6 +8,8 @@ import com.iafenvoy.system.agent.builtin.input.LotteryPreviewInput;
 import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
+import com.iafenvoy.system.module.lottery.LotterySystemModule;
+import com.iafenvoy.system.module.ModuleData;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,7 +32,7 @@ public final class LotteryDrawModule extends BuiltinModule<LotteryDrawInput> {
     public AgentResult execute(ExecutionContext context, LotteryDrawInput input) throws Exception {
         PurchaseReceiptOutput receipt = context.tool(BuiltinTools.LOTTERY_DRAW, "draw", input);
         LotteryPreviewInput again = context.store().read(context.player(), data -> new LotteryPreviewInput(
-                data.purchases.get(receipt.orderId()).order.source(), 0, Optional.empty()));
+                ModuleData.get(data, LotterySystemModule.STORAGE).purchases.get(receipt.orderId()).order.source(), 0, Optional.empty()));
         return new AgentResult("SUCCEEDED", "system.result.lottery_drawn", "", List.of(
                 new AgentResult.Card("system.result.reward", ResultTypes.PURCHASE.of(receipt), List.of(
                         new AgentResult.Action("system.action.deliver", ResultTypes.DELIVER_ACTION, new EntitlementInput(receipt.entitlementId())),

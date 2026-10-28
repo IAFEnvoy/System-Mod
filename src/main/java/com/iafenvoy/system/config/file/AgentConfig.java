@@ -1,8 +1,8 @@
 package com.iafenvoy.system.config.file;
 
+import com.iafenvoy.saturn.util.codec.MiscCodecs;
 import com.iafenvoy.system.agent.ExecutionPolicy;
 import com.iafenvoy.system.config.ConfigInstance;
-import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.ExtraCodecs;
@@ -19,7 +19,7 @@ public record AgentConfig(String timeZone, int modelCallsPerPlayerDay, int concu
     public static final String FILE_NAME = "system-agent.json";
     private static final ExecutionPolicy DEFAULT_ROUTING = new ExecutionPolicy(1, 0, 4, 0, 16384, 512, 32768, 14500, 4000);
     public static final Codec<AgentConfig> CODEC = RecordCodecBuilder.create(i -> i.group(
-            Codec.STRING.comapFlatMap(value -> CodecIO.mapOrError(() -> ZoneId.of(value).getId()), Function.identity()).lenientOptionalFieldOf("timeZone", "Asia/Shanghai").forGetter(AgentConfig::timeZone),
+            Codec.STRING.comapFlatMap(value -> MiscCodecs.mapOrError(() -> ZoneId.of(value).getId()), Function.identity()).lenientOptionalFieldOf("timeZone", "Asia/Shanghai").forGetter(AgentConfig::timeZone),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("modelCallsPerPlayerDay", 100).forGetter(AgentConfig::modelCallsPerPlayerDay),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("concurrentModels", 4).forGetter(AgentConfig::concurrentModels),
             ExecutionPolicy.CODEC.lenientOptionalFieldOf("routingPolicy", DEFAULT_ROUTING).forGetter(AgentConfig::routingPolicy),

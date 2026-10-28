@@ -8,12 +8,15 @@ import com.iafenvoy.system.agent.routing.RouteSource;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.config.file.AgentConfig;
+import com.iafenvoy.system.module.core.CoreSystemModule;
+import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.resources.Identifier;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -63,7 +66,7 @@ public final class ExecutionContext {
         this.policy = initial;
         this.expires = started + initial.ttlMillis();
         if (eventKey != null) store.read(player, data -> {
-            PlayerData.EventTask task = data.tasks.get(eventKey);
+            PlayerData.EventTask task = ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.get(eventKey);
             this.models = task.modelCalls;
             this.tools = task.toolCalls;
             this.steps = task.workflowSteps;
@@ -143,11 +146,15 @@ public final class ExecutionContext {
     }
 
     public List<String> commandUsages() {
-        return this.engine.modules().commands().usages();
+        return this.engine.modules().commands().usages(this::available);
     }
 
     public List<AgentResult.Action> shortcuts() {
-        return this.engine.modules().shortcuts();
+        return this.engine.modules().shortcuts(this::available);
+    }
+
+    public boolean available(Identifier workflow) {
+        return this.engine.available(this.player, workflow);
     }
 
     public long remainingMillis() {
@@ -166,12 +173,13 @@ public final class ExecutionContext {
         if (this.cancelled.get() || this.engine.closed() || !this.engine.current(this.player, this.incarnation))
             throw new AgentException("CANCELLED");
         if (this.remainingMillis() == 0) throw new AgentException("EXPIRED");
+        if (this.module != null && !this.available(this.module.id())) throw new AgentException("CAPABILITY_UNAVAILABLE");
     }
 
     private void persist() {
         if (!this.isEvent()) return;
         this.store().update(this.player, data -> {
-            PlayerData.EventTask task = data.tasks.get(this.eventKey);
+            PlayerData.EventTask task = ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.get(this.eventKey);
             task.modelCalls = this.models;
             task.toolCalls = this.tools;
             task.workflowSteps = this.steps;
@@ -259,7 +267,7 @@ public final class ExecutionContext {
         // Replay completed writes by task/step; an unfinished non-idempotent write has an unknown effect.
         if (tool.write()) {
             Dynamic<?> previous = this.store().read(this.player, data -> {
-                PlayerData.Step receipt = data.operations.get(operationKey);
+                PlayerData.Step receipt = ModuleData.get(data, CoreSystemModule.JOURNAL).operations.get(operationKey);
                 if (receipt == null) return null;
                 if (!fingerprint.equals(receipt.fingerprint)) throw new AgentException("INVALID_INPUT");
                 if ("DONE".equals(receipt.state)) return receipt.result;
@@ -276,18 +284,18 @@ public final class ExecutionContext {
         this.persist();
         // Persist RUNNING before invoking a write so a crash cannot silently turn it into a fresh operation.
         if (tool.write()) this.store().update(this.player, data -> {
-            if (data.operations.size() >= 8192 && !data.operations.containsKey(operationKey))
+            if (ModuleData.get(data, CoreSystemModule.JOURNAL).operations.size() >= 8192 && !ModuleData.get(data, CoreSystemModule.JOURNAL).operations.containsKey(operationKey))
                 throw new AgentException("STORAGE_FULL");
             PlayerData.Step receipt = new PlayerData.Step();
             receipt.fingerprint = fingerprint;
-            data.operations.put(operationKey, receipt);
+            ModuleData.get(data, CoreSystemModule.JOURNAL).operations.put(operationKey, receipt);
             return null;
         });
         try {
             O result = tool.handler().execute(this, input).toCompletableFuture()
                     .get(this.remainingMillis(), TimeUnit.MILLISECONDS);
             if (tool.write()) this.store().update(this.player, data -> {
-                PlayerData.Step receipt = data.operations.get(operationKey);
+                PlayerData.Step receipt = ModuleData.get(data, CoreSystemModule.JOURNAL).operations.get(operationKey);
                 receipt.state = "DONE";
                 receipt.result = new Dynamic<>(JsonOps.INSTANCE, type.resultCodec().encodeStart(JsonOps.INSTANCE, result).getOrThrow());
                 return null;
@@ -317,6 +325,6 @@ public final class ExecutionContext {
     public boolean hasCompletedSteps() {
         if (!this.completedLocalSteps.isEmpty()) return true;
         // A resumed event may fail before reaching a write already completed in an earlier run.
-        return this.isEvent() && this.store().read(this.player, data -> data.hasCompletedOperation(this.taskId));
+        return this.isEvent() && this.store().read(this.player, data -> ModuleData.get(data, CoreSystemModule.JOURNAL).hasCompletedOperation(this.taskId));
     }
 }

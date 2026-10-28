@@ -18,11 +18,6 @@ import java.util.List;
 
 public final class ItemClientModule implements ClientModule {
     @Override
-    public Identifier id() {
-        return ItemSystemModule.ID;
-    }
-
-    @Override
     public void register(ClientModuleContext module) {
         module.workspace("items", "nav_items", workspace -> {
             workspace.labels("nav_items", "item_search");

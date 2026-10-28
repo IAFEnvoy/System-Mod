@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.store;
 
+import com.iafenvoy.saturn.data.storage.DataStorageHolder;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ExecutionPolicy;
 import com.iafenvoy.system.agent.ResultTypes;
@@ -7,6 +8,7 @@ import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.agent.commerce.CommerceOrder;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
+import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;
@@ -20,55 +22,39 @@ import java.util.*;
  */
 public final class PlayerData {
     public static final Codec<PlayerData> CODEC = RecordCodecBuilder.create(i -> i.group(
-            Codec.INT.optionalFieldOf("version", 1).forGetter(v -> v.version),
-            Codec.BOOL.optionalFieldOf("bound", false).forGetter(v -> v.bound),
-            Codec.BOOL.optionalFieldOf("saveHistory", true).forGetter(v -> v.saveHistory),
-            Codec.BOOL.optionalFieldOf("externalModel", true).forGetter(v -> v.externalModel),
+            Codec.INT.lenientOptionalFieldOf("version", 1).forGetter(v -> v.version),
+            Codec.BOOL.lenientOptionalFieldOf("bound", false).forGetter(v -> v.bound),
+            Codec.BOOL.lenientOptionalFieldOf("saveHistory", true).forGetter(v -> v.saveHistory),
+            Codec.BOOL.lenientOptionalFieldOf("externalModel", true).forGetter(v -> v.externalModel),
             Conversation.CODEC.forGetter(v -> v.conversation),
-            Codec.unboundedMap(Codec.STRING, Reward.CODEC).optionalFieldOf("signIns", Map.of()).forGetter(v -> v.signIns),
-            Codec.unboundedMap(Codec.STRING, Delivery.CODEC).optionalFieldOf("inbox", Map.of()).forGetter(v -> v.inbox),
-            Codec.unboundedMap(Codec.STRING, EventTask.CODEC).optionalFieldOf("tasks", Map.of()).forGetter(v -> v.tasks),
-            Codec.unboundedMap(Codec.STRING, Step.CODEC).optionalFieldOf("operations", Map.of()).forGetter(v -> v.operations),
-            Codec.unboundedMap(Codec.STRING, Purchase.CODEC).optionalFieldOf("purchases", Map.of()).forGetter(v -> v.purchases),
-            Codec.unboundedMap(Codec.STRING, Codec.STRING.listOf().<Set<String>>xmap(HashSet::new, List::copyOf)).optionalFieldOf("baselines", Map.of()).forGetter(v -> v.baselines),
-            Codec.STRING.listOf().optionalFieldOf("unlocked", List.of()).forGetter(v -> List.copyOf(v.unlocked)),
+            DataStorageHolder.codec(Identifier.CODEC).fieldOf("moduleData").forGetter(v -> v.moduleData),
             ModelQuota.CODEC.forGetter(v -> v.modelQuota)
     ).apply(i, PlayerData::new));
     public int version;
     public boolean bound, saveHistory, externalModel;
     public final Conversation conversation;
-    // Business entitlements and recovery journals survive forget; revoke deletes this entire player file.
-    public final Map<String, Reward> signIns;
-    public final Map<String, Delivery> inbox;
-    public final Map<String, EventTask> tasks;
-    public final Map<String, Step> operations;
-    public final Map<String, Purchase> purchases;
-    public final Map<String, Set<String>> baselines;
-    public final Set<String> unlocked;
+    public final DataStorageHolder<Identifier> moduleData;
     public final ModelQuota modelQuota;
 
     public PlayerData() {
-        this(1, false, true, true, new Conversation(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Set.of(), new ModelQuota());
+        this(1, false, true, true, new Conversation(), new DataStorageHolder<>(), new ModelQuota());
     }
 
     private PlayerData(int version, boolean bound, boolean saveHistory, boolean externalModel, Conversation conversation,
-                       Map<String, Reward> signIns, Map<String, Delivery> inbox, Map<String, EventTask> tasks,
-                       Map<String, Step> operations, Map<String, Purchase> purchases, Map<String, Set<String>> baselines,
-                       Collection<String> unlocked, ModelQuota modelQuota) {
+                       DataStorageHolder<Identifier> moduleData, ModelQuota modelQuota) {
         this.version = version;
         this.bound = bound;
         this.saveHistory = saveHistory;
         this.externalModel = externalModel;
         this.conversation = conversation;
-        this.signIns = new LinkedHashMap<>(signIns);
-        this.inbox = new LinkedHashMap<>(inbox);
-        this.tasks = new LinkedHashMap<>(tasks);
-        this.operations = new LinkedHashMap<>(operations);
-        this.purchases = new LinkedHashMap<>(purchases);
-        this.baselines = new LinkedHashMap<>();
-        baselines.forEach((key, value) -> this.baselines.put(key, new HashSet<>(value)));
-        this.unlocked = new HashSet<>(unlocked);
+        this.moduleData = moduleData;
         this.modelQuota = modelQuota;
+    }
+
+    public PlayerData copy() {
+        return new PlayerData(this.version, this.bound, this.saveHistory, this.externalModel,
+                new Conversation(this.conversation.memoryEpoch, this.conversation.history, this.conversation.requests, this.conversation.requestInputs),
+                this.moduleData.copy(), new ModelQuota(this.modelQuota.usageDate, this.modelQuota.usedModelCalls));
     }
 
     /**
@@ -179,11 +165,15 @@ public final class PlayerData {
             this.reward = reward;
             this.created = System.currentTimeMillis();
         }
-    }
 
-    public boolean hasCompletedOperation(String taskId) {
-        return this.operations.entrySet().stream().anyMatch(entry ->
-                entry.getKey().startsWith(taskId + ":") && "DONE".equals(entry.getValue().state));
+        public Delivery copy() {
+            Delivery copy = new Delivery();
+            copy.id = this.id;
+            copy.reward = this.reward;
+            copy.state = this.state;
+            copy.created = this.created;
+            return copy;
+        }
     }
 
     public static final class EventTask {
@@ -244,6 +234,12 @@ public final class PlayerData {
             this.state = result.messageKey().equals("system.error.player_offline") ? "WAITING" : result.status();
             this.result = result;
         }
+
+        public EventTask copy() {
+            return new EventTask(Optional.ofNullable(this.id), Optional.ofNullable(this.key), this.moduleVersion, this.call,
+                    this.ruleId, Optional.ofNullable(this.policy), this.created, this.expires, this.state, this.modelCalls,
+                    this.toolCalls, this.workflowSteps, this.writeSteps, this.tokens, Optional.ofNullable(this.result));
+        }
     }
 
     public static final class Step {
@@ -262,6 +258,12 @@ public final class PlayerData {
             this.state = state;
             this.fingerprint = fingerprint.orElse(null);
             this.result = result.orElse(null);
+        }
+
+        public Step copy() {
+            Dynamic<?> resultCopy = this.result == null ? null :
+                    new Dynamic<>(JsonOps.INSTANCE, this.result.convert(JsonOps.INSTANCE).getValue().deepCopy());
+            return new Step(this.state, Optional.ofNullable(this.fingerprint), Optional.ofNullable(resultCopy));
         }
     }
 
@@ -287,6 +289,10 @@ public final class PlayerData {
             this.state = state;
             this.error = error;
             this.created = created;
+        }
+
+        public Purchase copy() {
+            return new Purchase(Optional.ofNullable(this.id), this.order, this.state, this.error, this.created);
         }
     }
 }

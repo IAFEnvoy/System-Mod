@@ -36,7 +36,7 @@ public final class ModuleCommands {
         return result -> {
             if (context.getSource().getEntity() == target) return;
             Component message = Component.translatable("system.command.feedback", target.getName(), Component.translatable(result.messageKey()));
-            if (result.status().equals("SUCCEEDED")) context.getSource().sendSuccess(() -> message, true);
+            if (result.isSuccess()) context.getSource().sendSuccess(() -> message, true);
             else context.getSource().sendFailure(message);
         };
     }

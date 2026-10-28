@@ -1,7 +1,7 @@
 package com.iafenvoy.system.config.file;
 
+import com.iafenvoy.saturn.util.codec.MiscCodecs;
 import com.iafenvoy.system.config.ConfigInstance;
-import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.ExtraCodecs;
@@ -19,9 +19,15 @@ public record SemanticConfig(Mode mode, int maxCharacters, double minCoverage, T
                              int entriesPerPlayer) {
     public static final String FILE_NAME = "system-semantic.json";
     public static final String ALGORITHM = "lexical-tfidf-v1";
-    private static final Codec<Double> UNIT_INTERVAL = CodecIO.checked(Codec.doubleRange(0, 1), Double::isFinite);
-    private static final Codec<String> LANGUAGE = CodecIO.string("[a-z]{2,3}");
-    private static final Codec<String> MODULE_ID = CodecIO.string("[a-z0-9_.-]+:[a-z0-9_./-]+");
+    private static final Codec<Double> UNIT_INTERVAL;
+
+    static {
+        Codec<Double> codec = Codec.doubleRange(0, 1);
+        UNIT_INTERVAL = MiscCodecs.checked(codec, Double::isFinite);
+    }
+
+    private static final Codec<String> LANGUAGE = MiscCodecs.string("[a-z]{2,3}");
+    private static final Codec<String> MODULE_ID = MiscCodecs.string("[a-z0-9_.-]+:[a-z0-9_./-]+");
     public static final Codec<SemanticConfig> CODEC = RecordCodecBuilder.create(i -> i.group(
             Mode.CODEC.lenientOptionalFieldOf("mode", Mode.ENFORCE).forGetter(SemanticConfig::mode),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("maxCharacters", 240).forGetter(SemanticConfig::maxCharacters),
@@ -30,8 +36,8 @@ public record SemanticConfig(Mode mode, int maxCharacters, double minCoverage, T
             LANGUAGE.listOf()
                     .xmap(values -> Collections.unmodifiableSet(new LinkedHashSet<>(values)), List::copyOf)
                     .lenientOptionalFieldOf("languages", Set.of("zh", "en")).forGetter(SemanticConfig::languages),
-            Codec.unboundedMap(CodecIO.string("[a-z0-9_.-]+:[a-z0-9_./-]+(?:@[a-z]{2,3})?"), Threshold.CODEC).lenientOptionalFieldOf("lexicalThresholds", Map.of()).forGetter(SemanticConfig::lexicalThresholds),
-            Codec.unboundedMap(MODULE_ID, Codec.unboundedMap(LANGUAGE, CodecIO.NOT_BLANK_STRING.listOf())).lenientOptionalFieldOf("examples", Map.of()).forGetter(SemanticConfig::examples),
+            Codec.unboundedMap(MiscCodecs.string("[a-z0-9_.-]+:[a-z0-9_./-]+(?:@[a-z]{2,3})?"), Threshold.CODEC).lenientOptionalFieldOf("lexicalThresholds", Map.of()).forGetter(SemanticConfig::lexicalThresholds),
+            Codec.unboundedMap(MODULE_ID, Codec.unboundedMap(LANGUAGE, MiscCodecs.NOT_BLANK_STRING.listOf())).lenientOptionalFieldOf("examples", Map.of()).forGetter(SemanticConfig::examples),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("cacheEntries", 1024).forGetter(SemanticConfig::cacheEntries),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("cacheSeconds", 300).forGetter(SemanticConfig::cacheSeconds),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("entriesPerPlayer", 32).forGetter(SemanticConfig::entriesPerPlayer)

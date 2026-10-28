@@ -7,6 +7,7 @@ import com.mojang.serialization.Codec;
 import net.minecraft.resources.Identifier;
 
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -24,6 +25,10 @@ public final class ModuleRegistry {
     }
 
     public synchronized <I> void register(AgentModule<I> module) {
+        this.register(null, module);
+    }
+
+    public synchronized <I> void register(Identifier owner, AgentModule<I> module) {
         this.checkMutable();
         AgentModule.Descriptor descriptor = module.descriptor();
         Identifier id = descriptor.id();
@@ -49,7 +54,7 @@ public final class ModuleRegistry {
         RoutingProfile.Bound profile = routing.semantic().map(value -> value.bind(module.inputType(), readOnly && routing.modelSelectable())).orElse(null);
         // Every declaration is validated before any registry is changed; shared tools keep instance identity.
         this.tools.registerAll(operations);
-        this.modules.put(id, new Entry<>(module, routing, readOnly, shortcut));
+        this.modules.put(id, new Entry<>(owner, module, routing, readOnly, shortcut));
         this.commands.register(module.inputType(), routing.commands());
         if (profile != null) this.profiles.put(id, profile);
     }
@@ -83,6 +88,11 @@ public final class ModuleRegistry {
         return entry == null ? null : entry.module();
     }
 
+    public Identifier owner(Identifier workflow) {
+        Entry<?> entry = this.modules.get(workflow);
+        return entry == null ? null : entry.owner();
+    }
+
     public boolean readOnly(Identifier id) {
         Entry<?> entry = this.modules.get(id);
         return entry != null && entry.readOnly();
@@ -106,13 +116,22 @@ public final class ModuleRegistry {
     }
 
     public List<AgentResult.Action> shortcuts() {
-        return this.modules.values().stream().map(Entry::shortcut).filter(Objects::nonNull).toList();
+        return this.shortcuts(_ -> true);
+    }
+
+    public List<AgentResult.Action> shortcuts(Predicate<Identifier> available) {
+        return this.modules.entrySet().stream().filter(entry -> available.test(entry.getKey()))
+                .map(entry -> entry.getValue().shortcut()).filter(Objects::nonNull).toList();
     }
 
     public Map<String, ModelRoute.Capability> capabilities() {
+        return this.capabilities(_ -> true);
+    }
+
+    public Map<String, ModelRoute.Capability> capabilities(Predicate<Identifier> available) {
         Map<String, ModelRoute.Capability> capabilities = new LinkedHashMap<>();
         this.modules.forEach((id, entry) -> {
-            if (this.modelSelectable(id)) {
+            if (this.modelSelectable(id) && available.test(id)) {
                 AgentModule.Descriptor descriptor = entry.module().descriptor();
                 capabilities.put(id.toString(), new ModelRoute.Capability(descriptor.description(), descriptor.schema()));
             }
@@ -121,9 +140,14 @@ public final class ModuleRegistry {
     }
 
     public Codec<ModelRoute> modelCodec() {
+        return this.modelCodec(_ -> true);
+    }
+
+    public Codec<ModelRoute> modelCodec(Predicate<Identifier> available) {
         List<TypedPayload.Type<?>> capabilities = new ArrayList<>();
         for (Entry<?> entry : this.modules.values())
-            if (this.modelSelectable(entry.module().descriptor().id())) capabilities.add(entry.module().inputType());
+            if (this.modelSelectable(entry.module().descriptor().id()) && available.test(entry.module().descriptor().id()))
+                capabilities.add(entry.module().inputType());
         return ModelRoute.codec(capabilities);
     }
 
@@ -136,7 +160,7 @@ public final class ModuleRegistry {
         return new Call<>(typed, input.value());
     }
 
-    private record Entry<I>(AgentModule<I> module, ModuleRouting<I> routing, boolean readOnly,
+    private record Entry<I>(Identifier owner, AgentModule<I> module, ModuleRouting<I> routing, boolean readOnly,
                             AgentResult.Action shortcut) {
     }
 

@@ -2,13 +2,15 @@ package com.iafenvoy.system.agent;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import net.minecraft.resources.Identifier;
 
 /**
  * Exact parsing, help and completion share the same registered aliases and argument declarations.
  */
 public final class CommandRegistry {
     private final Map<String, Function<String, TypedPayload<?>>> commands = new LinkedHashMap<>();
-    private final List<String> suggestions = new ArrayList<>(), usages = new ArrayList<>();
+    private final Map<String, Identifier> suggestions = new LinkedHashMap<>(), usages = new LinkedHashMap<>();
     private TypedPayload<?> root;
 
     <I> void validate(List<AgentCommand<I>> commands) {
@@ -22,10 +24,10 @@ public final class CommandRegistry {
         for (AgentCommand<I> command : commands) {
             for (String name : command.names()) {
                 this.commands.put(name, argument -> type.of(command.parser().apply(argument)));
-                this.suggestions.add(name + (command.arguments().isBlank() ? "" : " "));
+                this.suggestions.put(name + (command.arguments().isBlank() ? "" : " "), type.id());
             }
-            this.usages.add(String.join(" | ", command.names().stream().map(name -> "/" + name).toList())
-                    + (command.arguments().isBlank() ? "" : " " + command.arguments()));
+            this.usages.put(String.join(" | ", command.names().stream().map(name -> "/" + name).toList())
+                    + (command.arguments().isBlank() ? "" : " " + command.arguments()), type.id());
         }
     }
 
@@ -35,11 +37,19 @@ public final class CommandRegistry {
     }
 
     public List<String> suggestions() {
-        return List.copyOf(this.suggestions);
+        return this.suggestions(_ -> true);
+    }
+
+    public List<String> suggestions(Predicate<Identifier> available) {
+        return this.suggestions.entrySet().stream().filter(entry -> available.test(entry.getValue())).map(Map.Entry::getKey).toList();
     }
 
     public List<String> usages() {
-        return List.copyOf(this.usages);
+        return this.usages(_ -> true);
+    }
+
+    public List<String> usages(Predicate<Identifier> available) {
+        return this.usages.entrySet().stream().filter(entry -> available.test(entry.getValue())).map(Map.Entry::getKey).toList();
     }
 
     public TypedPayload<?> parse(String text) {

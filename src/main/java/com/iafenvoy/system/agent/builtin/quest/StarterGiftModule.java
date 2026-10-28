@@ -38,6 +38,6 @@ public final class StarterGiftModule extends BuiltinModule<StarterGiftInput> {
     @Override
     public AgentResult execute(ExecutionContext context, StarterGiftInput input) throws Exception {
         AgentResult remaining = preview(context.tool(BuiltinTools.STARTER_GIFT, "claim", input));
-        return new AgentResult(remaining.status(), "system.result.starter_gift_updated", "", remaining.cards(), true);
+        return remaining.withPresentation("system.result.starter_gift_updated", "", remaining.cards(), true);
     }
 }

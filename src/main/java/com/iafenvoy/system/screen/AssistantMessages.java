@@ -8,8 +8,7 @@ import com.iafenvoy.system.command.client.NotificationVoiceCommands;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.event.client.AssistantRecognitionKeys;
 import com.iafenvoy.system.module.client.ClientCardRegistry;
-import com.iafenvoy.system.module.client.ClientModuleRegistry;
-import com.iafenvoy.system.module.client.ClientModules;
+import com.iafenvoy.system.module.client.ClientModuleBindings;
 import com.iafenvoy.system.screen.card.CardContext;
 import com.iafenvoy.system.screen.card.CardPresentation;
 import com.iafenvoy.system.screen.gui.AssistantItems;
@@ -153,7 +152,7 @@ public final class AssistantMessages {
         List<Row> rows = new ArrayList<>();
         for (AgentResult.Card card : result.cards()) {
             for (AgentResult.Action action : card.actions()) {
-                ClientModuleRegistry.NotificationAction policy = ClientModules.registry().notificationAction(action);
+                ClientModuleBindings.NotificationAction policy = ClientModuleBindings.get().notificationAction(action);
                 Button button = new Button(action.moduleId() + ":" + action.call().value(), action.labelKey(), true, policy.keepOpen(), policy.details(),
                         () -> {
                             if (policy.openWorkspace())
@@ -161,7 +160,7 @@ public final class AssistantMessages {
                             AssistantClient.send(action, "");
                         });
                 // Feature list rows do not consume the limited generic action footer.
-                String rowCss = ClientModules.registry().cards().notificationRows(card);
+                String rowCss = ClientModuleBindings.get().cards().notificationRows(card);
                 if (rowCss != null)
                     rows.add(new Row(actionLabel(card, action), button, rowCss));
                 else if (buttons.size() < 2) buttons.add(button);
@@ -173,15 +172,15 @@ public final class AssistantMessages {
                 AssistantClient.open(entry != null && entry.result() == result && AssistantClient.simpleMode(), "");
             }));
         String speechText = SpeechText.result(result);
-        Class<?> refreshType = ClientModules.registry().cards().refreshes(result).stream()
+        Class<?> refreshType = ClientModuleBindings.get().cards().refreshes(result).stream()
                 .map(ClientCardRegistry.Refresh::type).findFirst().orElse(null);
         CardBody body = new CardBody(preamble(result), result.cards().stream().map(card ->
-                ClientModules.registry().cards().presentation(card, result.messageKey(), CardContext.Mode.NOTIFICATION, 0)).toList());
+                ClientModuleBindings.get().cards().presentation(card, result.messageKey(), CardContext.Mode.NOTIFICATION, 0)).toList());
         return new Message(tr("system.ui.assistant"), summary, speechText, buttons, 160, List.of(), SpeechText.quests(result), rows, refreshType, body);
     }
 
     public static void refresh(AgentResult result) {
-        for (ClientCardRegistry.Refresh refresh : ClientModules.registry().cards().refreshes(result)) {
+        for (ClientCardRegistry.Refresh refresh : ClientModuleBindings.get().cards().refreshes(result)) {
             QUEUE.removeIf(pending -> pending.message().refreshType() == refresh.type());
             if (current != null && current.refreshType() == refresh.type()) {
                 if (!refresh.visible()) dismiss(current);
@@ -198,7 +197,7 @@ public final class AssistantMessages {
     }
 
     private static String preamble(AgentResult result) {
-        String custom = ClientModules.registry().cards().summary(result);
+        String custom = ClientModuleBindings.get().cards().summary(result);
         if (custom != null) return custom;
         return tr(result.messageKey()) + (result.text().isBlank() ? "" : "\n" + result.text());
     }
@@ -289,6 +288,10 @@ public final class AssistantMessages {
 
     private static void renderMessage() {
         displayedMessage = current;
+        // All message details share one scroll viewport; a new message always starts at its top.
+        Element scroll = document.getElementById("notification_scroll");
+        scroll.scrollTop = 0;
+        scroll.targetScrollTop = 0;
         text(document.getElementById("notification_title"), current.title());
         text(document.getElementById("notification_text"), current.body() == null ? current.text() : current.body().text());
         Element cards = document.getElementById("notification_cards");
@@ -384,8 +387,6 @@ public final class AssistantMessages {
         Element choices = document.getElementById("notification_choices");
         if (choices == null) return;
         choices.setInnerHTML("");
-        choices.scrollTop = 0;
-        choices.targetScrollTop = 0;
         choices.setInlineStyleProperty("display", shown.rows().isEmpty() ? "none" : "flex");
         for (Row row : shown.rows()) {
             Element button = element(document, "button", row.css(), row.label());

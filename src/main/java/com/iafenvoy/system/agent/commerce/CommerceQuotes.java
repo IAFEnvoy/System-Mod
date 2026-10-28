@@ -54,7 +54,7 @@ public final class CommerceQuotes {
         }
 
         public CommerceOrder select() {
-            return new CommerceOrder(this.type, this.source, this.label, LotteryPool.draw(this.entries), Optional.of(this.payment.price()));
+            return new CommerceOrder(this.type, this.source, this.label, LotteryPool.draw(this.entries), Optional.of(this.payment.getData()));
         }
     }
 }

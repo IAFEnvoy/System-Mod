@@ -6,14 +6,8 @@ import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
-import net.minecraft.resources.Identifier;
 
 public final class PlayerClientModule implements ClientModule {
-    @Override
-    public Identifier id() {
-        return PlayerSystemModule.ID;
-    }
-
     @Override
     public void register(ClientModuleContext module) {
         module.workspace("", "nav_player", workspace -> {

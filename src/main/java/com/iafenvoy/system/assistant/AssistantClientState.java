@@ -5,7 +5,7 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.module.client.ClientCardRegistry;
-import com.iafenvoy.system.module.client.ClientModules;
+import com.iafenvoy.system.module.client.ClientModuleBindings;
 import com.iafenvoy.system.util.codec.CodecIO;
 import net.minecraft.resources.Identifier;
 
@@ -90,7 +90,7 @@ public record AssistantClientState(List<ChatEntry> entries, Set<String> pending,
         AssistantClientState completed = this.complete(id);
         List<ChatEntry> entries = new ArrayList<>(completed.entries);
         ChatEntry current = completed.current;
-        for (ClientCardRegistry.Refresh refresh : ClientModules.registry().cards().refreshes(result)) {
+        for (ClientCardRegistry.Refresh refresh : ClientModuleBindings.get().cards().refreshes(result)) {
             for (int index = 0; index < entries.size(); index++) {
                 ChatEntry entry = entries.get(index);
                 if (refresh.matches(entry.result()))
@@ -108,7 +108,7 @@ public record AssistantClientState(List<ChatEntry> entries, Set<String> pending,
         AssistantClientState completed = this.complete(id);
         ResultTypes.ClientState serverState = completed.serverState;
         for (AgentResult.Card card : result.cards())
-            serverState = ClientModules.registry().cards().state(serverState, card);
+            serverState = ClientModuleBindings.get().cards().state(serverState, card);
         AssistantClientState updated = new AssistantClientState(completed.entries, completed.pending, serverState, completed.current);
         return RESULT_HANDLERS.getOrDefault(result.messageKey(), AssistantClientState::append).apply(updated, reception);
     }

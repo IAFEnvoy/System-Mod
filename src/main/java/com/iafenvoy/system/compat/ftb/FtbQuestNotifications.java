@@ -9,8 +9,8 @@ import com.iafenvoy.system.agent.builtin.output.QuestStartupOutput;
 import com.iafenvoy.system.agent.builtin.quest.QuestSubmitModule;
 import com.iafenvoy.system.agent.builtin.quest.StarterGiftModule;
 import com.iafenvoy.system.assistant.AssistantServer;
+import com.iafenvoy.system.module.quest.QuestSystemModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import com.iafenvoy.system.util.MiscUtil;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressEventData;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressType;
 import dev.ftb.mods.ftbquests.api.event.progress.QuestProgressEvent;
@@ -25,8 +25,6 @@ import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.server.ServerStoppingEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.util.*;
 
@@ -66,11 +64,23 @@ final class FtbQuestNotifications {
                 if (tracker != null) tracker.teams.clear();
             }
         });
-        NeoForge.EVENT_BUS.addListener(ServerTickEvent.Post.class, FtbQuestNotifications::tick);
-        NeoForge.EVENT_BUS.addListener(ServerStoppingEvent.class, event -> {
-            SERVERS.remove(event.getServer());
-            ACCESS.remove(event.getServer());
-        });
+    }
+
+    static void close(MinecraftServer server) {
+        SERVERS.remove(server);
+        ACCESS.remove(server);
+    }
+
+    static void remove(ServerPlayer player) {
+        FtbQuestNotifications tracker = SERVERS.get(player.level().getServer());
+        if (tracker == null) return;
+        for (TeamState state : tracker.teams.values()) {
+            Map<UUID, Recipient> recipients = new HashMap<>(state.recipients);
+            recipients.remove(player.getUUID());
+            state.recipients = Map.copyOf(recipients);
+            state.completed.replaceAll((_, completion) -> new Completion(completion.quest(),
+                    completion.recipients().stream().filter(recipient -> recipient.player() != player).toList()));
+        }
     }
 
     private static FtbQuestNotifications changed(ProgressEventData<?> data) {
@@ -102,8 +112,7 @@ final class FtbQuestNotifications {
         state.completed.putIfAbsent(quest.getId(), new Completion(quest, List.copyOf(recipients)));
     }
 
-    private static void tick(ServerTickEvent.Post event) {
-        MinecraftServer server = event.getServer();
+    static void tick(MinecraftServer server) {
         AssistantServer runtime = AssistantServer.get(server);
         if (runtime == null) {
             SERVERS.remove(server);
@@ -130,7 +139,7 @@ final class FtbQuestNotifications {
         Map<UUID, TeamData> onlineTeams = new LinkedHashMap<>();
         Map<UUID, Map<UUID, Recipient>> recipients = new HashMap<>();
         for (ServerPlayer player : this.file.server.getPlayerList().getPlayers()) {
-            if (!runtime.players().notificationsEnabled(player)) continue;
+            if (!runtime.players().notificationsEnabled(player) || !runtime.moduleManager().hasModule(player.getUUID(), QuestSystemModule.ID)) continue;
             this.file.getTeamData(player).ifPresent(team -> {
                 onlineTeams.put(team.getTeamId(), team);
                 recipients.computeIfAbsent(team.getTeamId(), ignored -> new LinkedHashMap<>()).put(player.getUUID(),
@@ -230,9 +239,11 @@ final class FtbQuestNotifications {
                 actions.add(new AgentResult.Action("system.action.claim", ResultTypes.QUEST_ACTION, QuestDetailInput.byId(id)));
         }
         actions.add(new AgentResult.Action("system.action.quest_detail", ResultTypes.QUEST_ACTION, QuestDetailInput.byId(id)));
+        String text = quest.getChapter().getTitle().getString();
+        String text1 = quest.getTitle().getString();
         return new AgentResult("SUCCEEDED", key, "", List.of(new AgentResult.Card(key,
-                ResultTypes.QUEST_NOTICE.of(new ResultTypes.QuestNotice(id, MiscUtil.clip(quest.getTitle().getString(), 256),
-                        MiscUtil.clip(quest.getChapter().getTitle().getString(), 128), quest.getRewards().stream()
+                ResultTypes.QUEST_NOTICE.of(new ResultTypes.QuestNotice(id, com.iafenvoy.saturn.util.MiscUtil.clip(text1, 256),
+                        com.iafenvoy.saturn.util.MiscUtil.clip(text, 128), quest.getRewards().stream()
                         .filter(reward -> !team.isRewardBlocked(reward) && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE)
                         .flatMap(reward -> FtbQuestAccess.previewItems(reward).stream()).toList(),
                         !completed && (!quest.getHideTextUntilComplete().get(quest.getChapter().isHideTextUntilComplete()) || team.isCompleted(quest))
@@ -249,7 +260,8 @@ final class FtbQuestNotifications {
         if (FtbQuestReader.kind(quest) != FtbQuestReader.Kind.NORMAL) return;
         AssistantServer runtime = AssistantServer.get(file.server);
         FtbQuestAccess access = ACCESS.get(file.server);
-        if (runtime == null || access == null || !runtime.players().notificationsEnabled(player)) return;
+        if (runtime == null || access == null || !runtime.players().notificationsEnabled(player)
+                || !runtime.moduleManager().hasModule(player.getUUID(), QuestSystemModule.ID)) return;
         FtbQuestNotifications tracker = SERVERS.computeIfAbsent(file.server, _ -> new FtbQuestNotifications(file, access));
         TeamState state = tracker.teams.computeIfAbsent(team.getTeamId(), _ -> new TeamState(team, tracker.available(team), Map.of()));
         Completion previous = state.completed.get(quest.getId());
@@ -262,7 +274,8 @@ final class FtbQuestNotifications {
 
     private record Recipient(ServerPlayer player, UUID connection, long incarnation) {
         boolean valid(AssistantServer runtime, ServerQuestFile file, UUID team) {
-            return runtime.players().notificationsEnabled(this.player) && runtime.engine().current(this.player.getUUID(), this.incarnation)
+            return runtime.players().notificationsEnabled(this.player) && runtime.moduleManager().hasModule(this.player.getUUID(), QuestSystemModule.ID)
+                    && runtime.engine().current(this.player.getUUID(), this.incarnation)
                     && this.connection.equals(ServerNetworkHandler.connectionId(this.player))
                     && file.getTeamData(this.player).map(data -> data.getTeamId().equals(team)).orElse(false);
         }

@@ -1,6 +1,5 @@
 package com.iafenvoy.system.event.client;
 
-import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.screen.AssistantMessages;
@@ -10,28 +9,25 @@ import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
 import com.iafenvoy.system.screen.gui.AssistantSimpleScreen;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.mojang.blaze3d.platform.InputConstants;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import org.lwjgl.glfw.GLFW;
+
+import static com.iafenvoy.system.registry.SystemKeyMappings.VOICE_INPUT;
 
 /**
  * One remappable hold key routes to the visible notification first, then to the assistant composer.
  */
 @EventBusSubscriber(Dist.CLIENT)
 public final class AssistantRecognitionKeys {
-    private static final KeyMapping.Category CATEGORY = new KeyMapping.Category(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "assistant"));
-    private static final KeyMapping RECORD = new KeyMapping("key.system.voice_input", GLFW.GLFW_KEY_F8, CATEGORY);
     private static Screen owner;
     private static AssistantRecognition.Session session;
     private static boolean held;
@@ -40,18 +36,12 @@ public final class AssistantRecognitionKeys {
     }
 
     public static Component translatedKey() {
-        return RECORD.getTranslatedKeyMessage();
-    }
-
-    @SubscribeEvent
-    public static void register(RegisterKeyMappingsEvent event) {
-        event.registerCategory(CATEGORY);
-        event.register(RECORD);
+        return VOICE_INPUT.getTranslatedKeyMessage();
     }
 
     @SubscribeEvent
     public static void key(InputEvent.Key event) {
-        if (!RECORD.matches(event.getKeyEvent())) return;
+        if (!VOICE_INPUT.matches(event.getKeyEvent())) return;
         if (event.getAction() == GLFW.GLFW_RELEASE) release();
         else if (event.getAction() == GLFW.GLFW_PRESS && Minecraft.getInstance().screen == null) press();
     }
@@ -60,13 +50,13 @@ public final class AssistantRecognitionKeys {
     public static void screenKey(ScreenEvent.KeyPressed.Pre event) {
         if (!(event.getScreen() instanceof AssistantScreen || event.getScreen() instanceof AssistantSimpleScreen
                 || event.getScreen() instanceof ChatScreen && AssistantMessages.hasVoiceTarget())
-                || !RECORD.matches(event.getKeyEvent()) || !RECORD.isConflictContextAndModifierActive()) return;
+                || !VOICE_INPUT.matches(event.getKeyEvent()) || !VOICE_INPUT.isConflictContextAndModifierActive()) return;
         if (press()) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public static void screenRelease(ScreenEvent.KeyReleased.Pre event) {
-        if (held && RECORD.matches(event.getKeyEvent())) {
+        if (held && VOICE_INPUT.matches(event.getKeyEvent())) {
             boolean consumed = ownsInput(event.getScreen());
             release();
             if (consumed) event.setCanceled(true);
@@ -80,7 +70,7 @@ public final class AssistantRecognitionKeys {
 
     @SubscribeEvent
     public static void mouse(InputEvent.MouseButton.Pre event) {
-        InputConstants.Key key = RECORD.getKey();
+        InputConstants.Key key = VOICE_INPUT.getKey();
         if (key.getType() != InputConstants.Type.MOUSE || key.getValue() != event.getButton()) return;
         if (event.getAction() == GLFW.GLFW_RELEASE && held) {
             boolean consumed = ownsInput(Minecraft.getInstance().screen);
@@ -93,7 +83,7 @@ public final class AssistantRecognitionKeys {
         Minecraft minecraft = Minecraft.getInstance();
         if (held) return ownsInput(minecraft.screen);
         if (minecraft.player == null || minecraft.getConnection() == null || !minecraft.isWindowActive()
-                || !RECORD.isConflictContextAndModifierActive()) return false;
+                || !VOICE_INPUT.isConflictContextAndModifierActive()) return false;
         if (AssistantMessages.hasVoiceTarget()) {
             session = AssistantMessages.startRecognition();
             if (session != null) {
@@ -139,7 +129,7 @@ public final class AssistantRecognitionKeys {
     @SubscribeEvent
     public static void tick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
-        while (RECORD.consumeClick()) {
+        while (VOICE_INPUT.consumeClick()) {
             // Input events own the edge; never replay a queued click after changing screens.
         }
         if (!held) return;
@@ -153,12 +143,12 @@ public final class AssistantRecognitionKeys {
             session = null;
             // A cancelled owner must not let key repeats start recording the next notification.
         }
-        InputConstants.Key key = RECORD.getKey();
+        InputConstants.Key key = VOICE_INPUT.getKey();
         boolean down = switch (key.getType()) {
             case KEYSYM -> InputConstants.isKeyDown(minecraft.getWindow(), key.getValue());
             case MOUSE -> GLFW.glfwGetMouseButton(minecraft.getWindow().handle(), key.getValue()) == GLFW.GLFW_PRESS;
             default -> true;
         };
-        if (!down || !RECORD.isConflictContextAndModifierActive()) release();
+        if (!down || !VOICE_INPUT.isConflictContextAndModifierActive()) release();
     }
 }

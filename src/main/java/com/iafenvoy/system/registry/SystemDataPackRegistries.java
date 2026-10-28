@@ -2,10 +2,10 @@ package com.iafenvoy.system.registry;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.data.SystemDefinition;
-import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.registries.DataPackRegistryEvent;
 
 import java.util.Optional;
@@ -13,20 +13,18 @@ import java.util.Optional;
 /**
  * Vanilla registry snapshots own server definitions and synchronize translation keys to each client.
  */
-public final class SystemDefinitions {
-    public static final ResourceKey<Registry<SystemDefinition>> REGISTRY = ResourceKey.createRegistryKey(
-            Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "system"));
+@SuppressWarnings("unused")
+@EventBusSubscriber
+public final class SystemDataPackRegistries {
     public static final Identifier DEFAULT = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "default");
 
-    private SystemDefinitions() {
-    }
-
+    @SubscribeEvent
     public static void register(DataPackRegistryEvent.NewRegistry event) {
-        event.dataPackRegistry(REGISTRY, SystemDefinition.CODEC, SystemDefinition.CODEC);
+        event.dataPackRegistry(SystemResourceKeys.SYSTEM, SystemDefinition.CODEC, SystemDefinition.CODEC);
     }
 
     public static Optional<SystemDefinition> get(RegistryAccess access, Identifier id) {
-        return access.lookup(REGISTRY).flatMap(registry -> registry.getOptional(id));
+        return access.lookup(SystemResourceKeys.SYSTEM).flatMap(registry -> registry.getOptional(id));
     }
 
     // Selection is currently server-wide; other entries are available for future binding/module selection.

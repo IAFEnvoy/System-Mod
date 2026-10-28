@@ -1,7 +1,6 @@
 package com.iafenvoy.system;
 
-import com.iafenvoy.system.registry.SystemDefinitions;
-import com.iafenvoy.system.speech.SystemSounds;
+import com.iafenvoy.system.registry.*;
 import com.mojang.logging.LogUtils;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -13,7 +12,11 @@ public final class SystemMod {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public SystemMod(IEventBus bus) {
-        bus.addListener(SystemDefinitions::register);
-        SystemSounds.REGISTRY.register(bus);
+        SystemClientModules.REGISTRY.register(bus);
+        SystemDataStorages.REGISTRY.register(bus);
+        SystemEntityActions.REGISTRY.register(bus);
+        SystemEntityConditions.REGISTRY.register(bus);
+        SystemServerModules.REGISTRY.register(bus);
+        SystemSoundEvents.REGISTRY.register(bus);
     }
 }

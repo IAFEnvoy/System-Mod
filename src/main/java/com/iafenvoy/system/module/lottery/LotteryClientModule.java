@@ -10,9 +10,7 @@ import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
 import com.iafenvoy.system.screen.card.CardContext;
-import com.iafenvoy.system.util.MiscUtil;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -22,11 +20,6 @@ import static com.iafenvoy.system.screen.gui.AssistantView.rewardParameters;
 import static com.iafenvoy.system.speech.tts.SpeechText.primary;
 
 public final class LotteryClientModule implements ClientModule {
-    @Override
-    public Identifier id() {
-        return LotterySystemModule.ID;
-    }
-
     @Override
     public void register(ClientModuleContext module) {
         module.workspace("lottery", "nav_lottery", workspace -> {
@@ -61,7 +54,7 @@ public final class LotteryClientModule implements ClientModule {
     private static String lottery(AgentResult result) {
         for (AgentResult.Card card : result.cards())
             if (card.data().value() instanceof PurchaseReceiptOutput receipt)
-                return Component.translatable("system.tts.message.lottery_drawn", MiscUtil.clip(receipt.reward().label(), 128)).getString();
+                return Component.translatable("system.tts.message.lottery_drawn", com.iafenvoy.saturn.util.MiscUtil.clip(receipt.reward().label(), 128)).getString();
         return primary(result);
     }
 }

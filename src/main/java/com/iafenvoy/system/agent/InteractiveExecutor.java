@@ -94,10 +94,10 @@ final class InteractiveExecutor implements AutoCloseable {
             context.routeSource(decision.source());
             context.ensureMemoryCurrent();
             if (moduleId.equals("clarify")) {
-                result = this.engine.router().clarify();
+                result = this.engine.router().clarify(context);
             } else {
                 result = this.engine.execute(context, input);
-                if (result.status().equals("SUCCEEDED")) this.engine.router().remember(context, decision, text);
+                if (result.isSuccess()) this.engine.router().remember(context, decision, text);
             }
         } catch (Exception error) {
             result = AgentResult.error(AgentEngine.errorCode(error));

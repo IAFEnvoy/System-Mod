@@ -151,7 +151,7 @@ python tools/voice_design.py --lang zh upload reference.wav --model voice-enroll
 
 ## 接口与边界
 
-- `com.iafenvoy.system.speech.tts.TtsProvider` 是无 MC 依赖的合成接口，保留 WAV 字节接口，并提供可选的流式 PCM 回调。`TtsProviders.register(id, factory)` 可在客户端初始化时注册其他供应商，再在本地配置选择该 provider；新供应商自行校验其协议参数。
+- `com.iafenvoy.system.speech.tts.TtsProvider` 是无 MC 依赖的合成接口，保留 WAV 字节接口，并提供可选的流式 PCM 回调。注册入口为 `com.iafenvoy.system.speech.TtsProviders`，内置工厂通过 `ALIYUN` 字段公开；`TtsProviders.register(id, factory)` 可在客户端初始化时注册其他供应商，再在本地配置选择该 provider；新供应商自行校验其协议参数。
 - `AliyunTtsProvider` 通过共享的 `HttpTransport` 实现两种阿里云 HTTP 协议，MC 默认使用上述 SSE 路径。保留的非流式接口总响应超时 45 秒，音频下载 25 秒；JSON 最大 12MiB，音频最大 8MiB。无重定向、无自动重试。非流式下载仅接受阿里云 OSS 音频域名，旧 HTTP URL 升级 HTTPS，下载不携带 Bearer。
 - `AssistantSpeech.Session` 由界面和当前通知持有；全局只保留当前朗读及一个待启动项，新朗读替换旧项，文字队列由 `AssistantMessages` 管理。关闭 session 同时取消在途 Future、PCM 和播放，已关闭的 session 不能重新提交。单个合成工作线程及单个工作等待槽保持有界；请求、SSE 解析及旧供应商 WAV 解码不占 MC 线程，旧代次结果不得重新开始播放。
 - `SpeechAudio` 保存有界的 16-bit 小端、单/双声道 PCM；`SpeechSound` 提供原版非阻塞读取，`SpeechPlayback` 管理原版优先/单次后备，`OpenAlSpeechPlayer` 按游标向循环 buffer 队列补充音频。仅有客户端声音生命周期 mixin，不需要资源包、外部播放器或音频库。

@@ -1,6 +1,6 @@
 package com.iafenvoy.system.speech.tts;
 
-import com.iafenvoy.system.speech.SystemSounds;
+import com.iafenvoy.system.registry.SystemSoundEvents;
 import com.mojang.blaze3d.audio.Channel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.AbstractSoundInstance;
@@ -14,7 +14,7 @@ final class NotificationSound extends AbstractSoundInstance implements AutoClose
     private volatile boolean cancelled;
 
     NotificationSound(int speechVolume) {
-        super(SystemSounds.NOTIFICATION.get(), SoundSource.VOICE, RandomSource.create());
+        super(SystemSoundEvents.NOTIFICATION.get(), SoundSource.VOICE, RandomSource.create());
         this.volume = speechVolume / 100.0F * 0.75F;
         this.relative = true;
         this.attenuation = Attenuation.NONE;

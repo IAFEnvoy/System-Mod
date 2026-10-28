@@ -16,7 +16,13 @@
 {
   "name": "example.system.sign_in.name",
   "description": "example.system.sign_in.description",
-  "modules": ["system:sign_in", "system:quest_query"]
+  "modules": [
+    "system:signin",
+    {
+      "id": "system:ftb_quests",
+      "condition": { "type": "system:has_system" }
+    }
+  ]
 }
 ```
 
@@ -31,7 +37,64 @@
 
 在 `assets/example/lang/en_us.json` 中提供相同的键，例如 `Daily Sign-in System` 与 `This system provides its host with items and resources every day.`。服务端数据包同步翻译键与模块 ID，不同步语言文件；仅在服务端添加语言文件无法让客户端获得翻译。也可以在默认 JSON 中保留内置键 `system.definition.default.name` / `system.definition.default.description`，通过资源包覆盖它们。
 
-`modules` 为可省略的 `Identifier` 列表，默认 `[]`。本次只保存、同步这些 ID，不用它们注册、卸载或限制实际功能；空列表也不会关闭功能。模块 ID 不解析成可选依赖类，未安装 FTB 时仍可读取保留的任务模块 ID。模型路由、命令和执行权限继续由已注册模块决定。
+`modules` 现在控制每个已绑定玩家可用的功能，省略时为 `[]`。条目可以是模块 ID 字符串，也可以是 `{ "id": "system:shop", "condition": ... }`；省略 condition 表示无条件启用，condition 使用 Saturn 的 EntityCondition Codec，可写单个对象或条件数组（数组全部成立）。同一个 ID 的多条定义只要有一条成立即可启用。未列出的可选功能关闭；`core`、`binding`、`usage` 是基础设施，保留聊天、绑定管理与独立用量账本，不能通过模块开关关闭。客户端设置、记忆控制和语音输入仍属于本地功能。
+
+模块 ID 是正式内置注册表 `SystemRegistries.SERVER_MODULE` 的条目 ID，`ServerModule.id()` 从注册表取得该值，并非 Agent 工作流 ID。客户端定义位于独立的 `SystemRegistries.Client.CLIENT_MODULE`，客户端入口通常使用对应服务端模块的同名 ID。例如：
+
+| 功能 | 模块 ID |
+| --- | --- |
+| 玩家查询 | `system:player` |
+| 物品查询 | `system:items` |
+| 签到 | `system:signin` |
+| 收件箱与交付 | `system:inbox` |
+| 商城（浏览、报价、购买） | `system:shop` |
+| 抽奖（浏览、预览、抽取） | `system:lottery` |
+| 成就工作流 | `system:advancement` |
+| FTB 任务（列表、详情、提交、领奖、新手礼包） | `system:ftb_quests` |
+
+发布默认定义启用全部必装的业务模块，FTB 由整合包显式加入；上述示例包含可选任务模块，未安装 FTB 时该条目不启用、不加载对应 API。开发源集的默认定义另外启用 FTB，不进入发布 JAR。
+
+条件在玩家初始化完成后、交互请求前及每 20 个服务端 tick 在主线程重新求值。变化后同步玩家实际模块与指令列表，刷新完整侧栏，清理路由缓存与交易报价。帮助、补全、本地语义候选、模型能力目录和实际执行共用权限过滤；旧卡片的结构化动作以及已经排入游戏线程的工具也会重新检查权限。功能定义和工具仍在服务器启动时注册，开关不卸载 Java 类或重新注册工作流。
+
+例如，让商城跟随签到模块是否启用：
+
+```json
+{
+  "id": "system:shop",
+  "condition": { "type": "system:has_module", "module": "system:signin" }
+}
+```
+
+条件异常或循环依赖会关闭涉及的模块并记入服务端日志，避免递归溢出。手动添加可覆盖条件、手动移除可禁用定义中默认提供的模块，基础设施和未安装模块均不接受覆盖。
+
+### 模块 action 与 condition
+
+以下类型注册到 Saturn 的实体 action / condition 注册表，可用于 Saturn 支持的触发、顺序动作及条件组合；不是交给模型执行的文本指令。
+
+| 类型 ID | 种类 | 字段与行为 |
+| --- | --- | --- |
+| `system:add_module` | EntityAction | `module`：为已绑定玩家持久添加一个已安装模块 |
+| `system:remove_module` | EntityAction | `module`：为已绑定玩家持久禁用一个已安装模块 |
+| `system:has_module` | EntityCondition | `module`：检查实际启用状态，解析模块条件时递归解析依赖 |
+| `system:has_system` | EntityCondition | 检查玩家是否已绑定且初始化完成；可选 `system` 指定当前系统 ID |
+
+```json
+{ "type": "system:add_module", "module": "system:lottery" }
+```
+
+```json
+{ "type": "system:remove_module", "module": "system:lottery" }
+```
+
+```json
+{ "type": "system:has_system", "system": "system:default" }
+```
+
+目前绑定对象统一为 `system:default`，其他 system ID 不会匹配。实体不是服务端玩家、运行时未就绪或玩家未绑定时，action 不改数据，condition 返回 false。手动增删通过主线程 API `AssistantServer.get(server).moduleManager().add/remove(player, moduleId)`，移除立即停止模块；添加会异步初始化存储，成功后才发布可用状态，顺序动作中的后续 has_module 对刚添加模块可能暂为 false。权限解析内部的依赖条件使用目标模块集合，避免初始化顺序影响条件计算。可通过 `hasModule(uuid, id)`、`hasSystem(uuid)`、`enabled(uuid)` 查询不可变状态。
+
+模块覆盖保存在玩家独立数据文件 `<存档>/system-agent/<玩家 UUID>.json` 的 `moduleData` 字段中，由 `system:module_access` DataStorage 持有。数据按玩家 UUID 隔离，登出与重登保留，成功 `revoke/reset` 删除整份玩家数据，`forget` 不清除；累计用量仍保存在单独的世界 SavedData 文件中。
+
+功能模块在 `ServerModule.storages()` 声明 ModuleStorage，Codec 通过 Saturn DATA_STORAGE_TYPE 独立注册，管理器统一创建数据和驱动生命周期；事务内使用 `ModuleData.get(data, SomeSystemModule.STORAGE)`。PlayerData.moduleData 使用 Saturn DataStorageHolder，以模块 ID 和 Java 类型寻址，Codec 类型 ID 独立。商城和抽奖持有独立交易存储，Core 持有权限和幂等日志。普通业务修改在 AgentStore.update 原子落盘；DataStorage.tick 在主线程内存事务中执行，变化需 markDirty，由管理器合并异步保存。不使用玩家附件，停用保留账本，revoke/reset 才清空。
 
 名称应用于助手标题、对话说话人和通知标题，介绍显示在欢迎区及首次绑定通知中；简约界面空闲时也展示介绍，绑定播报包含系统名称。定义从当前连接的原生注册表读取，不写入玩家附件或业务存档。该注册表在世界加载时读取，修改 JSON 后需要重开世界或重启服务器再连接；`/reload` 仍用于下述奖励、商品、奖池与提示词，不热更新系统定义。资源包的翻译文本可按客户端正常资源重载流程更新。
 

@@ -14,7 +14,7 @@
 | Java | `25`，toolchain 与字节码均使用 Java 25 | [build.gradle](build.gradle)、[Mixin 配置](src/main/resources/system.mixins.json) |
 | Gradle / ModDev | `9.2.1` / `2.0.148` | [Wrapper 配置](gradle/wrapper/gradle-wrapper.properties)、[build.gradle](build.gradle) |
 | ApricityUI | 开发配置 `1.2.6`；客户端依赖，需兼容 MC `26.1.2` | [gradle.properties](gradle.properties) 的 `apricityui_version` |
-| Saturn | `1.0-beta.1`，CurseMaven 文件 ID `9334739`；两端必装，提供 Cost 与 Codec 工具 | [build.gradle](build.gradle)、[开发与架构](docs/development.md) |
+| Saturn | `1.0-beta.3`，CurseMaven 文件 ID `9349648`；两端必装，提供 Cost、DataStorage 与 Codec 工具 | [build.gradle](build.gradle)、[开发与架构](docs/development.md) |
 | Simple Voice Chat | 开发适配 `2.6.26+26.1.2`，CurseMaven 文件 ID `9307181`；可选客户端录音后端，不打入发布 JAR，服务端不要求安装 | [gradle.properties](gradle.properties)、[build.gradle](build.gradle) |
 | FTB Quests | `26.1.2.8`；可选集成 | [gradle.properties](gradle.properties) 的 `ftb_quests_version` |
 | FTB Library / FTB Teams | `26.1.2.9` / `26.1.2.4`；FTB 集成配套依赖 | [gradle.properties](gradle.properties) |
@@ -32,16 +32,18 @@
 | 修改主题 / 查询内容 | 文档 |
 | --- | --- |
 | 安装、绑定 / 撤销 / 重置、指令、界面、任务、商城、抽奖、隐私 | [使用与配置](docs/usage.md) |
-| Agent 执行流程、Module / Tool 契约、注册表、类型化输入输出、扩展入口 | [Agent 运行结构与扩展](docs/agent-runtime.md) |
+| Agent 执行流程、Module / Tool 契约、注册表、类型化输入输出、玩家模块 DataStorage 扩展 | [Agent 运行结构与扩展](docs/agent-runtime.md) |
 | 包组织、依赖、配置、持久化、MC 桥接、实现边界 | [开发与架构](docs/development.md) |
-| 功能级装配、两端指令、玩家生命周期、卡片/通知/口播注册和可选集成 | [功能模块化](docs/feature-modules.md) |
+| 按键、声音、action/condition、模块目录、卡片节点与语音供应商注册；公开静态注册项 | [registry 包](src/main/java/com/iafenvoy/system/registry)、[目录与职责](docs/development.md#目录与职责) |
+| 功能级装配、三分类动态侧栏、玩家模块条件/手动覆盖、Saturn action/condition、两端指令、ModuleManager 生命周期与模块存储声明 | [功能模块化](docs/feature-modules.md) |
+| ServerModule / ClientModule 正式内置注册表、DeferredRegister 扩展及客户端贡献装配 | [SystemRegistries](src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)、[功能模块化](docs/feature-modules.md) |
 | assets 卡片 JSON、CardContext.Builder 三表与类型检查、CardNode 接口 / node 子包与 Codec 分派、平铺参数与回调、style 字符串/数组、通知主体与代码按钮 | [客户端 JSON 卡片](docs/cards.md) |
 | OpenAI 兼容接口、DeepSeek 特殊参数、模型连接与 Token 响应 | [模型接口](docs/model-api.md) |
 | 独立 DeepSeek Search / Fetch 客户端；当前未开放给 Agent | [网页搜索与抓取](docs/search-api.md) |
 | 模组和音色工具会请求哪些 API、触发条件、发送数据、客户端 / 服务端归属 | [外部 API 请求清单](docs/external-apis.md) |
 | 领域词表、稀疏 TF-IDF、阈值、玩家意图缓存、只读直达与模型兜底 | [本地意图路由](docs/semantic-routing.md) |
 | 10MB 分发约束、路由方案比较、校准与后续方向 | [路由选型与计划](docs/semantic-routing-plan.md) |
-| 系统定义、签到奖励、商城商品、抽奖奖池、提示词、成就规则、执行策略 | [数据包与扩展配置](docs/datapacks.md) |
+| 系统定义与模块开关/condition、模块增删 action、签到奖励、商城商品、抽奖奖池、提示词、成就规则 | [数据包与扩展配置](docs/datapacks.md) |
 | TTS 接口、流式播放、语种、音色、取消 session、Python 设计 / 复刻 / 临时上传 | [语音合成与音色设计](docs/tts.md) |
 | ASR、NLS 凭据、录音 session、可选 SVC、按键录音与按次估价 | [语音识别](docs/asr.md) |
 | AI / TTS / ASR 用量、字符与 Token、SavedData、计费配置、撤销后保留 | [用量统计](docs/token-usage.md) |

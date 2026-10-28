@@ -1,6 +1,10 @@
 {
+  "system.ui.sidebar.chat": "聊天",
+  "system.ui.sidebar.modules": "模块",
+  "system.ui.sidebar.settings": "设置",
   "key.category.system.assistant": "系统",
   "key.system.voice_input": "按住录制语音输入",
+  "key.system.toggle_interface": "打开/关闭系统界面",
   "system.action.choose": "选择奖励",
   "system.action.claim": "领取奖励",
   "system.action.claim_starter_gift": "领取礼包",

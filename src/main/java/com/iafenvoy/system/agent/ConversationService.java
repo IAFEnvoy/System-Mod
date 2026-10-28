@@ -2,7 +2,6 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.util.MiscUtil;
 import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.serialization.JsonOps;
 
@@ -62,12 +61,12 @@ final class ConversationService {
                     List<AgentResult.Card> cards = new ArrayList<>();
                     for (AgentResult.Card card : result.cards()) {
                         cards.add(card);
-                        if (CodecIO.write(AgentResult.CODEC, new AgentResult(result.status(), result.messageKey(), MiscUtil.clip(result.text(), 1000), cards, result.silent())).length() > 4096) {
+                        if (CodecIO.write(AgentResult.CODEC, result.withPresentation(result.messageKey(), com.iafenvoy.saturn.util.MiscUtil.clip(result.text(), 1000), cards, result.silent())).length() > 4096) {
                             cards.removeLast();
                             break;
                         }
                     }
-                    text = CodecIO.write(AgentResult.CODEC, new AgentResult(result.status(), result.messageKey(), MiscUtil.clip(result.text(), 1000), cards, result.silent()));
+                    text = CodecIO.write(AgentResult.CODEC, result.withPresentation(result.messageKey(), com.iafenvoy.saturn.util.MiscUtil.clip(result.text(), 1000), cards, result.silent()));
                 }
                 PlayerData.Message entry = new PlayerData.Message("", message.role(), message.time(), text);
                 size += ResultTypes.History.MESSAGE_CODEC.encodeStart(JsonOps.INSTANCE, entry).getOrThrow().toString().length();

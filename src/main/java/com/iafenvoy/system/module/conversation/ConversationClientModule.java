@@ -7,14 +7,8 @@ import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
-import net.minecraft.resources.Identifier;
 
 public final class ConversationClientModule implements ClientModule {
-    @Override
-    public Identifier id() {
-        return Identifier.fromNamespaceAndPath("system", "conversation");
-    }
-
     @Override
     public boolean serverRequired() {
         return false;

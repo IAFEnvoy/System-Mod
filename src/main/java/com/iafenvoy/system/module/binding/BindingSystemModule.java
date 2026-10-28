@@ -3,7 +3,7 @@ package com.iafenvoy.system.module.binding;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.ModuleCommands;
-import com.iafenvoy.system.module.SystemModule;
+import com.iafenvoy.system.module.ServerModule;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
@@ -16,13 +16,13 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.List;
 import java.util.function.Consumer;
 
-public final class BindingSystemModule implements SystemModule {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "binding");
-
+public final class BindingSystemModule implements ServerModule {
     @Override
-    public Identifier id() {
-        return ID;
+    public boolean required() {
+        return true;
     }
+
+    public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "binding");
 
     @Override
     public void commands(LiteralArgumentBuilder<CommandSourceStack> root) {

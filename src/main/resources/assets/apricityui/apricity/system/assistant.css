@@ -159,7 +159,7 @@ p {
     font-size: 42px;
 }
 
-#conversation, #sidebar, #speech, #usage_scroll, #settings_content, .quest_list, #notification_choices {
+#conversation, #sidebar, #speech, #usage_scroll, #settings_content, .quest_list, #notification_scroll {
     scrollbar-width: 6px;
     scrollbar-color: var(--assistant-accent-shadow) var(--assistant-surface-deep);
 }
@@ -245,7 +245,12 @@ p {
     margin: 5px 8px 10px;
 }
 
-.section_code:not(:first-child) {
+#sidebar_navigation, .navigation_group {
+    display: flex;
+    flex-direction: column;
+}
+
+.navigation_group:not(:first-child) {
     margin-top: 22px;
 }
 
@@ -927,6 +932,10 @@ html.message_hud, .notification, .notification * {
 #notification_content {
     display: flex;
     flex-direction: column;
+    flex: 0 1 auto;
+    width: 100%;
+    max-height: calc(64vh - 40px);
+    min-width: 0;
     min-height: 0;
     gap: 12px;
     opacity: 0;
@@ -958,11 +967,23 @@ html.message_hud, .notification, .notification * {
     font-size: 12px;
 }
 
-#notification_body {
+#notification_scroll {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    width: 100%;
+    min-width: 0;
     min-height: 0;
-    max-height: 50vh;
+    max-height: min(270px, calc(64vh - 175px));
     overflow-y: auto;
     overflow-x: hidden;
+    gap: 12px;
+}
+
+#notification_body {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
     color: #e3f4f8;
     font-size: 15px;
     line-height: 1.8;
@@ -970,14 +991,21 @@ html.message_hud, .notification, .notification * {
     word-break: break-all;
 }
 
+#notification_text, #notification_cards {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
 #notification_choices {
     display: none;
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     flex-direction: column;
+    width: 100%;
+    min-width: 0;
     min-height: 0;
-    max-height: 40vh;
-    overflow-y: auto;
-    overflow-x: hidden;
     gap: 6px;
 }
 
@@ -1000,10 +1028,9 @@ html.message_hud, .notification, .notification * {
 }
 
 #notification_items {
-    flex: 0 1 auto;
-    max-height: 16vh;
-    overflow-y: auto;
-    overflow-x: hidden;
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
     margin-top: 0;
     gap: 6px;
 }
@@ -1032,8 +1059,12 @@ html.message_hud, .notification, .notification * {
 
 #notification_hint, #notification_voice {
     flex: 0 0 auto;
+    min-width: 0;
     color: #b6cfd5;
     font-size: 12px;
+    line-height: 1.5;
+    white-space: normal;
+    word-break: break-all;
 }
 
 #notification_voice {

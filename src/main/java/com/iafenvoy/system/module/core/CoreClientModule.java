@@ -5,9 +5,9 @@ import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
+import com.iafenvoy.system.module.client.WorkspaceGroup;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.regex.Matcher;
@@ -16,11 +16,6 @@ import java.util.regex.Pattern;
 import static com.iafenvoy.system.screen.gui.AssistantView.tr;
 
 public final class CoreClientModule implements ClientModule {
-    @Override
-    public Identifier id() {
-        return Identifier.fromNamespaceAndPath("system", "core");
-    }
-
     @Override
     public boolean serverRequired() {
         return false;
@@ -35,7 +30,7 @@ public final class CoreClientModule implements ClientModule {
             if (screen != null) screen.onClose();
         }, "close", "关闭界面");
         module.pattern(CoreClientModule::select, "select ", "选择 ");
-        module.workspace("chat", "nav_chat", workspace -> {
+        module.workspace("chat", "nav_chat", WorkspaceGroup.CHAT, workspace -> {
             workspace.labels("nav_chat");
             workspace.click("nav_chat", () -> workspace.show("chat"));
         });

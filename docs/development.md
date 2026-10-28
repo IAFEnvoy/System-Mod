@@ -4,7 +4,7 @@
 
 ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充，`RecognitionUsage` 与 AI / TTS 共用 SavedData；当前网络协议 1。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
 
-语音供应商接口及客户端录音和播放分别位于 `speech.asr` 与 `speech.tts`，注册表位于 `registry.speech`，协议实现位于 `speech.aliyun`；配置集中在 `config`。阿里云默认使用 `qwen3-tts-flash`，额外兼容设计音色绑定的 Qwen-Audio-TTS HTTP 协议；复用 `HttpTransport`，没有新增依赖或模型文件。详见 [语音合成与音色设计](tts.md)。
+语音供应商接口及客户端录音和播放分别位于 `speech.asr` 与 `speech.tts`，供应商注册表位于 `registry`，协议实现位于 `speech.aliyun`；配置集中在 `config`。阿里云默认使用 `qwen3-tts-flash`，额外兼容设计音色绑定的 Qwen-Audio-TTS HTTP 协议；复用 `HttpTransport`，没有新增依赖或模型文件。详见 [语音合成与音色设计](tts.md)。
 
 | 组件 | 配置 |
 | --- | --- |
@@ -13,7 +13,7 @@ ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，�
 | Minecraft / NeoForge | 26.1.2 / 26.1.2.114 |
 | ApricityUI | 1.2.6 |
 | Jupiter | CurseMaven 8569832 |
-| Saturn | 1.0-beta.1 / CurseMaven 9334739；客户端和服务端均必装，统一 Cost 支付与 Codec 工具 |
+| Saturn | 1.0-beta.3 / CurseMaven 9349648；客户端和服务端均必装，统一 Cost、模块 DataStorage 与 Codec 工具 |
 | Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
 | Gson | 2.13.2；主项目直接声明依赖，Minecraft 提供运行时类 |
 | FTB Quests / Library / Teams | 26.1.2.8 / 26.1.2.9 / 26.1.2.4，可选 compileOnly |
@@ -36,8 +36,10 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | 路径 | 职责 |
 | --- | --- |
 | `agent` | 引擎与执行器、预算和授权上下文、Module/Tool 契约、类型/模块/工具/指令注册表、请求与结果 |
+| `registry、registry/module` | 系统定义、Saturn action/condition 与存储类型、按键、声音、两端模块内置注册表及 DeferredRegister 注册项 |
 | `module/<功能>` | 功能装配、平台指令、玩家生命周期、客户端页面/卡片/通知/口播贡献 |
-| `module/client` | 客户端功能、指令、工作台及类型化卡片注册表 |
+| `module` | 功能定义、装配、ModuleManager、玩家权限快照、模块存储声明和生命周期 |
+| `module/client` | 客户端功能契约、ClientModuleBindings 贡献装配、指令、三分类动态导航、工作台及类型化卡片映射 |
 | `agent/builtin` | 按功能分包的工作流、单行为工具和签到模型决策结构 |
 | `agent/builtin/input、agent/builtin/output` | 内置模块/工具参数及查询结果，一类一文件 |
 | `agent/builtin/tool` | 共享工具类型键；具体实现位于 `builtin/<功能>` |
@@ -54,19 +56,21 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | `assistant、screen/gui、screen` | 客户端不可变会话状态、导航及副作用、助手界面、设置、用量与通知队列 |
 | `screen/card` | CardNode 根接口 / dispatch Codec、平铺 Context、占位符与集合绑定、资源重载和通知快照 |
 | `screen/card/node` | 独立节点实现，各自提供 MapCodec、默认 CSS、render 与 text；文字及容器派生类复用实现 |
-| `speech/aliyun、speech/tts、speech/asr、registry/speech、data/speech` | 语音接口及供应商协议、工厂注册、报文、流式播放会话、缓存与可取消录音 |
+| `speech/aliyun、speech/tts、speech/asr` | 语音接口及供应商协议、报文、流式播放会话、缓存与可取消录音 |
 | `compat/ftb、compat/voicechat` | 可选 FTB 工具/事件和 SVC 收音，检测后才加载相关实现 |
 | `event、network、network/payload` | 扩展/按键事件、协议 1 注册、Handler 与有界载荷 |
 
 上表路径均相对于 `src/main/java/com/iafenvoy/system/`。Agent 与游戏接入代码处于同一主项目；模块、工具和服务接口仍保留职责划分，工具使用稳定逻辑 ID，方便后续扩展业务。
 
-`AssistantServer` 负责组装引擎、安装模块、转发游戏事件及资源刷新；`AssistantPlayers` 管理绑定与通用玩家会话，各功能通过 `PlayerModule` 注册登录事务和事件处理；成就基线与派发由成就模块管理，`AssistantRequests` 管理类型化请求分派与回复，`AssistantUsage` 管理用量查询及计量队列。命令、网络和可选桥接通过 `players()`、`requests()`、`usage()` 调用对应服务；异步回复仍核对连接代次，模型计量仍由服务端主线程写入 SavedData。
+注册项通过对应注册类的 `public static final` 字段公开，例如 `SystemKeyMappings.TOGGLE_INTERFACE`、`SystemSoundEvents.NOTIFICATION`、`SystemEntityActions.ADD_MODULE` 和 `ServerModules.SIGN_IN`。模块注册类使用类级别 `@SuppressWarnings("unused")`。`SystemRegistries.SERVER_MODULE` 与 `SystemRegistries.Client.CLIENT_MODULE` 是通过 `NewRegistryEvent` 加入原版根注册表的正式内置注册表；`registry.module.ServerModules` / `ClientModules` 用 DeferredRegister 注册条目，由 NeoForge 冻结。模块接口分别为 `ServerModule` 和 `ClientModule`，默认 `id()` 从注册表取得。客户端注册表及其入口 `SystemClientMod` 仅在物理客户端加载，客户端贡献由 `ClientModuleBindings.get()` 从冻结注册表装配；原模块 Map 目录与自定义模块注册事件已删除。按键事件处理、网络、指令、资源重载监听器保持原有位置，Agent 内部按实例管理的工作流目录与类型 Codec 继续位于独立的 `agent` 包。
+
+`AssistantServer` 负责组装引擎、安装模块、转发游戏事件及资源刷新；`AssistantPlayers` 管理绑定与连接，ModuleManager 根据 ServerModule.runtime 创建 PlayerModule 并统一管理模块会话、事件、tick 和关闭；成就基线与派发由成就模块管理，`AssistantRequests` 管理类型化请求分派与回复，`AssistantUsage` 管理用量查询及计量队列。命令、网络和可选桥接通过 `players()`、`requests()`、`usage()` 调用对应服务；异步回复仍核对连接代次，模型计量仍由服务端主线程写入 SavedData。
 
 `AssistantClientState` 统一保存对话、待响应请求、服务端偏好与能力、当前交互结果，每次更新生成不可变快照。`AssistantClient` 只持有一个状态引用并处理导航、网络和语音等副作用；登出或成功撤销时替换为 `AssistantClientState.EMPTY`。界面刷新版本号独立递增，不随状态清空归零。
 
 ## Codec 边界
 
-`data.SystemDefinition` 使用 `RecordCodecBuilder` 保存名称/介绍翻译键及预留模块 ID 列表。`registry.SystemDefinitions` 在 mod bus 的 `DataPackRegistryEvent.NewRegistry` 注册 `system:system`，加载与网络同步共用 `SystemDefinition.CODEC`；数据路径为 `data/<namespace>/system/system/<path>.json`。服务端通过 `SystemDefinitions.current(server.registryAccess())` 读取当前 `system:default`，客户端通过 `AssistantClient.system()` 从当前连接读取同步快照；未连接或缺少默认条目时使用内置元数据，不跨世界缓存。模块 ID 仅为元数据，不触发可选类加载或改变模块权限。该原生注册表随世界加载，不属于 `/reload` 的 retained listener；完整格式与资源包翻译见[系统定义](datapacks.md#系统定义)。
+`data.SystemDefinition` 使用 `RecordCodecBuilder` 保存名称/介绍翻译键及模块定义；`ModuleDefinition` 支持 ID 字符串或含 `id/condition` 的对象，条件使用 Saturn EntityCondition。`registry.SystemDefinitions` 在 mod bus 的 `DataPackRegistryEvent.NewRegistry` 注册 `system:system`，加载与网络同步共用 `SystemDefinition.CODEC`；数据路径为 `data/<namespace>/system/system/<path>.json`。服务端通过 `SystemDefinitions.current(server.registryAccess())` 读取当前 `system:default`，客户端通过 `AssistantClient.system()` 从当前连接读取同步快照；未连接或缺少默认条目时使用内置元数据，不跨世界缓存。模块 ID 不触发可选类加载；`module.ModuleManager` 管理运行时启停与 tick，内部 ModuleAccess 在主线程计算条件和手动覆盖，完成存储初始化后向 Agent 发布不可变可用模块快照。手动覆盖由 `ModuleAccessDataStorage` 保存于玩家独立文件的 `moduleData` 列表，成功撤销/重置会随玩家文件一起删除；用量存档独立保留。该原生注册表随世界加载，不属于 `/reload` 的 retained listener；完整格式与资源包翻译见[系统定义](datapacks.md#系统定义)。
 
 配置类各自声明 `FILE_NAME`、`CODEC` 和 `ConfigInstance<T> INSTANCE = ConfigInstance.of(...)`。容器首次初始化时从 `/defaults/<文件名>` 复制缺失的默认文件，再通过 Codec 读取；已有文件不覆盖，加载失败时记录错误并在内存中使用默认值。读取使用 `INSTANCE.get()`，提交不可变新值使用 `INSTANCE.set(next)`，实际变化由容器自动调用 `markDirty()`。若未来使用可变配置并原地修改，则必须显式调用 `INSTANCE.markDirty()`，不能绕过变更标记。
 
@@ -109,7 +113,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 每个 Tool 只负责一个行为，`ToolRegistry.Type<I, O>` 保存稳定 ID、参数 `MapCodec<I>` 和结果 `Codec<O>`，`Tool<I, O>` 保存写入、幂等、事件权限和单一 Handler。模块直接调用 `context.tool(type, stepId, typedInput)` 获得类型化结果；一个流程需要多个行为时使用模块的 `List.of(toolA, toolB)` 组合。同一工具被多个模块使用时共享同一实例，重复的不同实现或同 ID 不同类型键会被拒绝。
 
-功能级扩展通过 `SystemModuleRegistrationEvent` 注册 `SystemModule`，客户端贡献通过限定 `Dist.CLIENT` 的 `ClientModuleRegistrationEvent` 注册；只有工作流的扩展也可在原有 `AssistantRegistrationEvent` 中调用 `engine.registerModule(module)`：注册表核对描述白名单与工具列表，检查模块 ID、指令别名和工具实例冲突，再统一收集工具、指令、语义 profile 和快捷入口。不再提供先注册工具、再注册模块的两阶段入口。FTB 也使用此路径，查询、详情、普通领奖、新手礼包领取和明确任务提交各有独立 Tool 及对应模块，不需要专用服务接口。
+功能级扩展用标准 `DeferredRegister<ServerModule>` 注册到 `SystemResourceKeys.SERVER_MODULE`；客户端以相同方式注册到 `SystemResourceKeys.Client.CLIENT_MODULE`，注册入口限定 `Dist.CLIENT`。完整示例见[功能模块化](feature-modules.md)。只有工作流的扩展也可在原有 `AssistantRegistrationEvent` 中调用 `engine.registerModule(module)`：引擎的工作流目录核对描述白名单与工具列表，检查 ID、指令别名和工具实例冲突，再统一收集工具、指令、语义 profile 和快捷入口。不再提供先注册工具、再注册模块的两阶段入口。FTB 也使用此路径，查询、详情、普通领奖、新手礼包领取和明确任务提交各有独立 Tool 及对应模块，不需要专用服务接口。
 
 `PayloadRegistry` 参考原版 `Recipe` / `PlacementModifier` 的类型分派，统一使用 `Codec.dispatch` 按 `moduleId` 选择共享参数 Codec；调用封装为 `{"moduleId":"system:item_query","input":{"query":"stone"}}`。`ModuleRegistry.call` 根据同一类型键定位当前服务器已安装模块、校验参数并生成可执行调用，不再维护另一套输入 dispatch Codec。模型目录和模型返回值解码都由当前模块注册表约束；未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `TypedPayload<?>`。
 
@@ -154,6 +158,8 @@ public record Search(String query, int offset) {
 ### 结果卡片与动作
 
 `AgentResult`、`Card` 和 `Action` 各自提供 `CODEC`。`Card.data` 为 `TypedPayload<?>`，携带类型键及不可变 Java 值；`Action.call` 同样携带类型化模块参数，其类型键 ID 就是模块的 `Identifier`。`PayloadRegistry` 使用原版 `Codec.dispatch`：卡片按 `type` 选择结果 Codec，动作按 `moduleId` 选择输入 Codec。`titleKey` 仅用于本地化显示，不参与新结果的类型判断。
+
+`AgentResult` 继承 Saturn `ResultWithData<List<Card>>`，成功判断统一使用 `isSuccess()` / `isFailure()`，卡片由父类保存，`cards()` 是展示访问器。Agent 继续保留文案、静默标志与 `status`；`PARTIALLY_SUCCEEDED` 表示存在未完成操作，仍属于失败，不能写入成功路由缓存。失败通过文案键适配 `Failure`，网络与存档继续使用原有 Codec 字段，不序列化 Failure 实现类。`partial()` 与 `withPresentation(...)` 分别用于部分成功标记和展示副本，值相等语义保留。
 
 ```java
 AgentResult result = AgentResult.data("system.result.player", ResultTypes.PLAYER.of(snapshot));
@@ -203,9 +209,9 @@ AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", Res
 
 长期 AI / TTS / ASR 用量独立使用服务器全局 SavedData，保存在 `<存档>/data/system/token_usage.dat`，不进入上述业务文件或玩家附件，也不随 revoke 清理。所有 AI 请求统一经过 `ModelGateway`，按 API 实际 usage 累计；客户端 TTS 报告经 `SpeechAccounting` 归并，字符和 Token 分开累计，协议 4。详情见 [AI / TTS / ASR 用量统计](token-usage.md)。
 
-每玩家数据包含对话、独立每日唯一标记、收件箱、业务操作、事件任务及触发基线。对话清理不清除业务唯一标记。配置不进入玩家文件；密钥始终来自服务端环境变量。请用宿主机权限保护存档、临时文件和备份。
+每玩家文件包含对话、每日签到、收件箱、业务操作回执、事件任务、成就状态及模块覆盖，各业务状态分属独立 DataStorage。对话清理不清除业务唯一标记。配置不进入玩家文件；密钥始终来自服务端环境变量。请用宿主机权限保护存档、临时文件和备份。
 
-`PlayerData` 将记忆代次、聊天历史和请求回放缓存组合为 `Conversation`，每日模型额度组合为 `ModelQuota`，顶层 `RecordCodecBuilder` 只接收 13 项。两组使用内联 `MapCodec` 组合，字段仍在存档同一层，不增加旧格式迁移逻辑。所有玩家集合在构造时复制为独立可变容器；`Conversation.clear()` 统一清理历史和回放并推进记忆代次，额度与奖励账本有各自生命周期。内部交付、事件、步骤回执和订单也使用 `RecordCodecBuilder`，已移除无调用的 `ObjectCodec`。
+`PlayerData` 顶层 `RecordCodecBuilder` 只保存版本、绑定与偏好、`Conversation`、`DataStorageHolder<Identifier>` 和 `ModelQuota` 共 7 项。签到、收件箱、事件/操作回执、商城、成就状态和模块覆盖分别实现 Saturn `DataStorage`，由 ServerModule.storages 声明，内置 Codec 由 `SystemDataStorages` 注册，扩展 Codec 独立注册到 Saturn DATA_STORAGE_TYPE，并由 `DataStorageHolder.codec(Identifier.CODEC)` 分派；扩展模块可用自己的 DataStorage 避免继续扩大共享玩家记录。访问入口为 `ModuleData.get(data, SomeSystemModule.STORAGE)`，底层按 Holder 键和类型调用 `get` / `set`，与 DataStorage Codec 类型 ID 分开；复制必须隔离可变集合和其中的可变记录。玩家文件仍由 `AgentStore.update` 整体事务化写入，不属于玩家附件。对话历史和请求回放由 `Conversation` 管理，`Conversation.clear()` 统一清理并推进记忆代次；内部交付、事件、步骤回执和订单使用 `RecordCodecBuilder`。
 
 事件参数按 moduleId/input 分派，事件授权只使用任务自身保存的 ruleId。结果、语音统计和 ASR 统计按当前 Codec 结构读取，不从旧记录猜测或回退字段。
 
@@ -240,6 +246,8 @@ AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", Res
 奖池列表的 `LotteryPoolOutput.prizes` 通过 Codec 携带首个奖品页的公开奖励模板、权重及完整总权重，供共享物品投影显示图标和概率；列表与详情使用同一个 8 项分页常量。详情已发送独立 `LotteryPrizeOutput` 卡片，顶部摘要不重复携带奖品。预览不会生成抽奖结果、扣款或调用模型。单物品消耗统一由 `AssistantItems` 渲染，免费、资源及其他 Cost 使用文字；签到候选的物品卡片保留所属奖励包名称。
 
 商城 / 抽奖模块共用只读 `CommercePreviewTool`，由 `CommerceTransactions.preview` 在游戏线程按目录 ID 获取可信费用并生成 `CommerceCosts.Prepared`。Cost 只定价一次，短期报价保留绑定玩家实体、支付目标及金额的 Saturn `CostPayment`；确认沿用该账单，掉线 / 重生导致实体更换时拒绝旧账单。`CostContext` 包含 `origin=system:shop` / `system:lottery` 和 `system:source`，扩展 Cost 可读取。System 不再保留单独的系统币接口或自定义物品扣款器；币可由 Saturn 资源或扩展 Cost 表达。
+
+`Prepared` 继承 Saturn `ResultWithData<CommerceCatalog.Price>`，以 `getData()` 读取展示价格，以 `isSuccess()` 判断是否可生成报价，保留定价失败的原始 `Failure` 和 `failedResource`。失败说明在创建不可变价格快照前加入，并由 `Failure.message(failedResource)` 格式化；账单、支付玩家及扣款跟踪留在服务端，不进入客户端快照。客户端 DTO 中的 `available` 仅是上述成功状态的投影。
 
 支付全部通过 Saturn 的 `test()` / `pay()` 执行。当前依赖会在实际扣款出错后继续其他费用并可能返回成功，因此 `CommerceCosts` 包装绑定事务，额外追踪每项真实扣款的失败与异常；一旦出现部分 / 不确定扣款，订单和权益保持 `PAYMENT_UNKNOWN`，不发奖、不自动重试。Saturn 不统一预留重复 / 重叠费用，不保证跨费用回滚，数据包应合并同一种需求。扩展 Cost 必须遵守 `prepare`、`execute(true)` 只读的契约。
 

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.screen.card;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.module.client.ClientModules;
+import com.iafenvoy.system.module.client.ClientModuleBindings;
 import com.iafenvoy.system.util.codec.CodecIO;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
@@ -35,7 +35,7 @@ public enum CardTemplates implements ResourceManagerReloadListener {
     @Override
     public void onResourceManagerReload(ResourceManager manager) {
         // Complete extension registration before dispatch resolves the first template node.
-        ClientModules.registry();
+        ClientModuleBindings.get();
         Map<Identifier, CardTemplate> loaded = new LinkedHashMap<>();
         manager.listResources("cards", id -> id.getPath().endsWith(".json")).forEach((resourceId, resource) -> {
             String path = resourceId.getPath();

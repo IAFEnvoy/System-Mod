@@ -1,8 +1,8 @@
 package com.iafenvoy.system.config.file;
 
+import com.iafenvoy.saturn.util.codec.MiscCodecs;
 import com.iafenvoy.system.config.ConfigInstance;
 import com.iafenvoy.system.speech.tts.TtsProvider;
-import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -72,8 +72,12 @@ public final class SpeechPricingConfig {
         }
     }
 
-    private static final Codec<BigDecimal> PRICE = CodecIO.checked(
-            Codec.STRING.comapFlatMap(x -> CodecIO.mapOrError(() -> new BigDecimal(x)), BigDecimal::toString), value -> value.signum() >= 0);
+    private static final Codec<BigDecimal> PRICE;
+
+    static {
+        Codec<BigDecimal> codec = Codec.STRING.comapFlatMap(x -> MiscCodecs.mapOrError(() -> new BigDecimal(x)), BigDecimal::toString);
+        PRICE = MiscCodecs.checked(codec, value -> value.signum() >= 0);
+    }
 
     private record Entry(String provider, String model, String region, Optional<Unit> unit, int units,
                          Optional<BigDecimal> input, Optional<BigDecimal> output) {
@@ -98,7 +102,7 @@ public final class SpeechPricingConfig {
     private record Table(int version, String currency, String asOf, List<Entry> rates) {
         static final Codec<Table> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.INT.lenientOptionalFieldOf("version", 1).forGetter(Table::version),
-                CodecIO.checked(Codec.STRING, "CNY"::equals).lenientOptionalFieldOf("currency", "CNY").forGetter(Table::currency),
+                MiscCodecs.checked(Codec.STRING, "CNY"::equals).lenientOptionalFieldOf("currency", "CNY").forGetter(Table::currency),
                 Codec.STRING.lenientOptionalFieldOf("asOf", LocalDate.EPOCH.toString()).forGetter(Table::asOf),
                 Entry.CODEC.listOf().lenientOptionalFieldOf("rates", List.of()).forGetter(Table::rates)
         ).apply(i, Table::new));

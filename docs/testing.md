@@ -1,5 +1,21 @@
 # 编译与验收
 
+## 2026-10-28 两端模块内置注册表
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未执行测试或启动 Minecraft。
+
+源码核对确认：功能定义由 `ServerModule` / `ClientModule` 两个正式内置注册表管理，使用 `NewRegistryEvent` 和 `DeferredRegister`。旧模块 Map 目录与两种自定义模块注册事件已删除，模块 ID 从实际注册表取得。ModuleManager 从服务端注册表创建每服务器的工作流和运行时；ClientModuleBindings 从客户端注册表一次装配展示贡献。客户端入口、注册表及注册供应商位于只在物理客户端加载的类中；FTB 服务端条目仍按安装检测条件注册。实际注册加载、专用服务端隔离、可选依赖缺席和第三方模块扩展未在游戏中验收。
+
+## 2026-10-28 模块权限、数据条件与动态侧栏
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；没有执行测试、启动 Minecraft、创建存档或调用外部 API。
+
+阅读代码确认：完整侧栏的 10 个入口从 ClientModule.workspace 动态生成，按 CHAT/MODULES/SETTINGS 分组；SystemDefinition.modules 支持 ID 简写、带 condition 的定义及 Saturn 实体条件。ModuleAccess 在主线程求值并发布按玩家隔离的不可变模块快照，Agent 命令/帮助、本地语义候选与缓存、模型目录、执行器及游戏工具入口共享权限检查。FTB 通知与任务口播入口也检查任务功能开关。
+
+Saturn 新增 add_module/remove_module 实体动作及 has_module/has_system 实体条件；Java 主线程 API 使用同一持久覆盖服务，覆盖由 `system:module_access` DataStorage 保存于玩家文件，重登保留，成功 revoke/reset 随玩家文件清除。核心、绑定和独立用量保留为基础设施。开发源集的默认定义单独启用 FTB，发布默认定义只包含必装业务模块。
+
+静态检查通过：46 个资源 JSON 语法及键唯一性有效，双语各 454 个键且集合相同，动态导航 ID 唯一、默认模块 ID 有对应注册定义，可选 FTB 定义未进入主资源，更新文档链接与 diff 空白检查通过。README-zh.md 和原有 CommerceCosts 修改未调整。实际三分类布局、条件变化后的同步、Saturn 顺序动作、覆盖重登持久化、撤销清理、可选依赖缺席与任务通知尚未游戏内验收；编译与阅读结论不代表这些场景已实测。
+
 ## 2026-10-28 节点接口与独立实现
 
 执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未执行测试或启动 Minecraft，未调用外部 API。
@@ -222,7 +238,7 @@ TF-IDF 核心抽为 `LexicalIndex<T>`，服务端模块路由保留原领域别�
 
 ## 2026-10-26 PlayerData 与 RecordCodecBuilder
 
-执行 `compileJava testModClasses jar --console=plain`，主源码、开发源集编译与打包通过；`testModClasses` 只编译开发源集。阅读代码确认：对话状态及回放缓存归入 `Conversation`，每日模型调用额度归入 `ModelQuota`；顶层构建参数从 17 项缩减为 13 项，两个内联 MapCodec 使用原有字段名。交付、事件、步骤回执和订单同步改用 `RecordCodecBuilder`，已移除无调用的 `ObjectCodec`。静态检查确认中英文各 377 个语言键且集合一致，`git diff --check` 通过；发布 JAR 包含两个新分组，不含 `ObjectCodec` 或开发数据包资源。
+执行 `compileJava testModClasses jar --console=plain`，主源码、开发源集编译与打包通过；`testModClasses` 只编译开发源集。阅读代码确认：对话状态及回放缓存归入 `Conversation`，每日模型调用额度归入 `ModelQuota`；顶层 Codec 从 17 项缩减为 13 项，两个内联 MapCodec 使用原有字段名。交付、事件、步骤回执和订单同步改用 `RecordCodecBuilder`，已移除无调用的 `ObjectCodec`。静态检查确认中英文各 377 个语言键且集合一致，`git diff --check` 通过；发布 JAR 包含两个新分组，不含 `ObjectCodec` 或开发数据包资源。
 
 解码时为列表、映射、基线集合和解锁集合创建独立可变容器；清空对话和关闭历史复用 `Conversation.clear()` 推进记忆代次。相关读取、写入、保留策略、在途代次检查和每日额度判断已同步。这里只作静态检查与编译，没有运行测试、启动 Minecraft、创建存档或调用外部 API；存档读写与游戏内行为未作运行验收。
 

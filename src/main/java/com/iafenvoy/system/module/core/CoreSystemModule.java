@@ -8,9 +8,7 @@ import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.assistant.AssistantServer;
-import com.iafenvoy.system.module.ModuleCommands;
-import com.iafenvoy.system.module.ModuleContext;
-import com.iafenvoy.system.module.SystemModule;
+import com.iafenvoy.system.module.*;
 import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -22,12 +20,19 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 
-public final class CoreSystemModule implements SystemModule {
+public final class CoreSystemModule implements ServerModule {
+    @Override
+    public boolean required() {
+        return true;
+    }
+
     public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "core");
+    public static final ModuleStorage<AgentJournalDataStorage> JOURNAL = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath("system", "agent_journal"), AgentJournalDataStorage.class, AgentJournalDataStorage.CODEC, AgentJournalDataStorage::new);
+    public static final ModuleStorage<ModuleAccessDataStorage> ACCESS = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath("system", "module_access"), ModuleAccessDataStorage.class, ModuleAccessDataStorage.CODEC, ModuleAccessDataStorage::new);
 
     @Override
-    public Identifier id() {
-        return ID;
+    public List<ModuleStorage<?>> storages() {
+        return List.of(JOURNAL, ACCESS);
     }
 
     @Override

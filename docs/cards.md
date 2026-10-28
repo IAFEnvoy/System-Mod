@@ -218,9 +218,11 @@ public record BadgeNode(String value) implements CardNode {
 }
 ```
 
-随后在客户端模块或 `ClientModuleRegistrationEvent` 中登记 Codec：
+随后在客户端模块的 `register(context)` 中登记 Codec：
 
 ```java
+import com.iafenvoy.system.screen.card.CardNodeTypes;
+
 CardNodeTypes.register("example:badge", BadgeNode.CODEC);
 ```
 

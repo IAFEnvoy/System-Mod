@@ -7,7 +7,7 @@ import com.iafenvoy.system.agent.AgentResponse;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
-import com.iafenvoy.system.module.PlayerModule;
+import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -23,29 +23,29 @@ import java.util.function.Consumer;
 public final class AssistantPlayers {
     private final MinecraftServer server;
     private final AgentEngine engine;
-    private final List<PlayerModule> modules;
+    private final ModuleManager modules;
     private final AssistantUsage usage;
     private final Map<UUID, Long> lastRequest = new HashMap<>();
     private final Set<UUID> ready = new HashSet<>();
-    private final Map<UUID, List<PlayerModule.Session>> sessions = new HashMap<>();
     private final Map<UUID, UUID> initializations = new HashMap<>();
     private final Set<UUID> bindingChanges = new HashSet<>();
     private final Set<UUID> pendingBindingIntroductions = new HashSet<>();
 
-    AssistantPlayers(MinecraftServer server, AgentEngine engine, List<PlayerModule> modules, AssistantUsage usage) {
+    AssistantPlayers(MinecraftServer server, AgentEngine engine, ModuleManager modules, AssistantUsage usage) {
         this.server = server;
         this.engine = engine;
-        this.modules = List.copyOf(modules);
+        this.modules = modules;
         this.usage = usage;
     }
 
     void validateModules() {
-        this.modules.forEach(PlayerModule::validate);
+        this.modules.validate();
     }
 
     public void refreshPlayer(ServerPlayer player) {
         this.usage.rememberPlayer(player);
         this.engine.language(player.getUUID(), player.clientInformation().language());
+        this.modules.refresh(player);
     }
 
     boolean admitRequest(UUID player) {
@@ -85,20 +85,14 @@ public final class AssistantPlayers {
     public void grant(ServerPlayer player, Consumer<AgentResult> feedback) {
         if (!this.beginBindingChange(player, feedback)) return;
         UUID uuid = player.getUUID(), connection = ServerNetworkHandler.connectionId(player);
-        Map<String, Set<String>> baselines = new LinkedHashMap<>();
-        for (PlayerModule module : this.modules) {
-            for (Map.Entry<String, Set<String>> baseline : module.grantBaselines(player).entrySet())
-                if (baselines.putIfAbsent(baseline.getKey(), baseline.getValue()) != null)
-                    throw new IllegalArgumentException("Duplicate player baseline " + baseline.getKey());
-        }
-        this.engine.grant(uuid, baselines).whenComplete((result, error) -> this.server.execute(() -> {
+        this.engine.grant(uuid, this.modules.binding(player)).whenComplete((result, error) -> this.server.execute(() -> {
             this.bindingChanges.remove(uuid);
             AgentResult answer = error == null ? result : AgentResult.error(AgentEngine.errorCode(error));
             feedback.accept(answer);
             if (this.server.getPlayerList().getPlayer(uuid) != player || !connection.equals(ServerNetworkHandler.connectionId(player)))
                 return;
             boolean fresh = answer.messageKey().equals("system.result.bound");
-            if (answer.status().equals("SUCCEEDED") && fresh) {
+            if (answer.isSuccess() && fresh) {
                 ServerNetworkHandler.binding(player, AgentResponse.Change.BOUND, answer);
                 this.pendingBindingIntroductions.add(uuid);
                 this.login(player);
@@ -124,12 +118,15 @@ public final class AssistantPlayers {
         work.whenComplete((result, error) -> this.server.execute(() -> {
             this.bindingChanges.remove(uuid);
             AgentResult answer = error == null ? result : AgentResult.error(AgentEngine.errorCode(error));
-            if (answer.status().equals("SUCCEEDED")) this.clearSession(uuid);
+            if (answer.isSuccess()) {
+                this.clearSession(uuid);
+                this.modules.clear(uuid);
+            }
             feedback.accept(answer);
             if (this.server.getPlayerList().getPlayer(uuid) != player || !connection.equals(ServerNetworkHandler.connectionId(player)))
                 return;
-            if (!answer.status().equals("SUCCEEDED") && this.engine.incarnation(uuid) != previous) this.login(player);
-            if (answer.status().equals("SUCCEEDED"))
+            if (answer.isFailure() && this.engine.incarnation(uuid) != previous) this.login(player);
+            if (answer.isSuccess())
                 ServerNetworkHandler.binding(player, AgentResponse.Change.REVOKED, answer);
             else if (this.engine.incarnation(uuid) != previous)
                 ServerNetworkHandler.binding(player, AgentResponse.Change.INVALIDATED, answer);
@@ -152,17 +149,7 @@ public final class AssistantPlayers {
         UUID initialization = UUID.randomUUID();
         this.initializations.put(uuid, initialization);
         this.closeSession(uuid);
-        // Each feature snapshots game state now, before the asynchronous storage transaction.
-        List<PlayerModule.Session> sessions = this.modules.stream().map(module -> module.login(player)).toList();
-        this.sessions.put(uuid, sessions);
-        AgentStore store = this.engine.playerStore(uuid);
-        this.engine.maintenance(() -> {
-            if (!store.read(uuid, data -> data.bound)) return false;
-            return store.update(uuid, data -> {
-                sessions.forEach(session -> session.initialize(data));
-                return true;
-            });
-        }).whenComplete((bound, error) -> this.server.execute(() -> {
+        this.modules.login(player).whenComplete((bound, error) -> this.server.execute(() -> {
             if (this.server.getPlayerList().getPlayer(uuid) != player || !this.engine.current(uuid, incarnation) || !initialization.equals(this.initializations.get(uuid)))
                 return;
             this.initializations.remove(uuid);
@@ -180,23 +167,25 @@ public final class AssistantPlayers {
                 return;
             }
             this.ready.add(uuid);
-            sessions.forEach(PlayerModule.Session::ready);
             this.engine.resume(uuid);
         }));
     }
 
     void earned(ServerPlayer player, Identifier advancement) {
         this.refreshPlayer(player);
-        this.modules.forEach(module -> module.advancement(player, advancement));
+        this.modules.advancement(player, advancement);
     }
 
     private void closeSession(UUID player) {
-        List<PlayerModule.Session> sessions = this.sessions.remove(player);
-        if (sessions != null) sessions.forEach(PlayerModule.Session::close);
+        this.modules.logout(player);
     }
 
     void close() {
-        List.copyOf(this.sessions.keySet()).forEach(this::clearSession);
+        this.modules.close();
+        this.ready.clear();
+        this.initializations.clear();
+        this.pendingBindingIntroductions.clear();
+        this.lastRequest.clear();
     }
 
     void logout(ServerPlayer player) {
@@ -204,6 +193,7 @@ public final class AssistantPlayers {
         this.engine.cancel(uuid);
         this.engine.disconnected(uuid);
         this.clearSession(uuid);
+        this.engine.disableRules(uuid);
         this.usage.disconnected(uuid);
     }
 

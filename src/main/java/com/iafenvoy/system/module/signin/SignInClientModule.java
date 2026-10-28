@@ -7,14 +7,8 @@ import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
 import com.iafenvoy.system.screen.gui.AssistantView;
-import net.minecraft.resources.Identifier;
 
 public final class SignInClientModule implements ClientModule {
-    @Override
-    public Identifier id() {
-        return SignInSystemModule.ID;
-    }
-
     @Override
     public void register(ClientModuleContext module) {
         module.workspace("signin", "nav_signin", workspace -> {

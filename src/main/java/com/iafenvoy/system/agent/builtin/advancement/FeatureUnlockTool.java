@@ -6,6 +6,8 @@ import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.FeatureInput;
 import com.iafenvoy.system.agent.builtin.output.FeatureOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
+import com.iafenvoy.system.module.advancement.AdvancementSystemModule;
+import com.iafenvoy.system.module.ModuleData;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -23,7 +25,7 @@ public final class FeatureUnlockTool implements ToolRegistry.Handler<FeatureInpu
         String id = input.featureId();
         if (!id.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) throw new AgentException("INVALID_INPUT");
         return CompletableFuture.completedFuture(context.store().update(context.player(), data -> {
-            data.unlocked.add(id);
+            ModuleData.get(data, AdvancementSystemModule.STORAGE).unlocked.add(id);
             return new FeatureOutput(id, true);
         }));
     }

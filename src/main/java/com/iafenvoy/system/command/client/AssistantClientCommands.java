@@ -1,7 +1,7 @@
 package com.iafenvoy.system.command.client;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.module.client.ClientModules;
+import com.iafenvoy.system.module.client.ClientModuleBindings;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -23,15 +23,15 @@ public final class AssistantClientCommands {
     @SubscribeEvent
     public static void register(RegisterClientCommandsEvent event) {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal(SystemMod.MOD_ID);
-        ClientModules.registry().commands(root);
+        ClientModuleBindings.get().commands(root);
         event.getDispatcher().register(root);
     }
 
     public static List<String> suggestions() {
-        return ClientModules.registry().commands().suggestions();
+        return ClientModuleBindings.get().commands().suggestions();
     }
 
     public static boolean execute(String text) {
-        return ClientModules.registry().commands().execute(text);
+        return ClientModuleBindings.get().commands().execute(text);
     }
 }

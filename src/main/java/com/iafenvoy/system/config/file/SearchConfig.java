@@ -1,7 +1,7 @@
 package com.iafenvoy.system.config.file;
 
+import com.iafenvoy.saturn.util.codec.MiscCodecs;
 import com.iafenvoy.system.config.ConfigInstance;
-import com.iafenvoy.system.util.codec.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
@@ -13,12 +13,12 @@ import java.net.URI;
 public record SearchConfig(String baseUrl, String apiKeyEnvironment, int maxResponseBytes) {
     public static final String FILE_NAME = "system-search.json";
     public static final Codec<SearchConfig> CODEC = RecordCodecBuilder.create(i -> i.group(
-            Codec.STRING.comapFlatMap(value -> CodecIO.mapOrError(() -> {
-                endpoint(value, "search");
-                return value;
-            }), value -> value).lenientOptionalFieldOf("baseUrl", "https://api.deepseek.com/v1").forGetter(SearchConfig::baseUrl),
-            CodecIO.NOT_BLANK_STRING.lenientOptionalFieldOf("apiKeyEnvironment", "SYSTEM_DEEPSEEK_API_KEY").forGetter(SearchConfig::apiKeyEnvironment),
-            CodecIO.checked(Codec.INT, value -> value > 0).lenientOptionalFieldOf("maxResponseBytes", 4194304).forGetter(SearchConfig::maxResponseBytes)
+            Codec.STRING.comapFlatMap(value -> MiscCodecs.mapOrError(() -> {
+                    endpoint(value, "search");
+                    return value;
+                }), value -> value).lenientOptionalFieldOf("baseUrl", "https://api.deepseek.com/v1").forGetter(SearchConfig::baseUrl),
+            MiscCodecs.NOT_BLANK_STRING.lenientOptionalFieldOf("apiKeyEnvironment", "SYSTEM_DEEPSEEK_API_KEY").forGetter(SearchConfig::apiKeyEnvironment),
+            MiscCodecs.checked(Codec.INT, value1 -> value1 > 0).lenientOptionalFieldOf("maxResponseBytes", 4194304).forGetter(SearchConfig::maxResponseBytes)
     ).apply(i, SearchConfig::new));
     public static final ConfigInstance<SearchConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC,
             new SearchConfig("https://api.deepseek.com/v1", "SYSTEM_DEEPSEEK_API_KEY", 4194304));

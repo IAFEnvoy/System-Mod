@@ -1,13 +1,13 @@
 # 功能模块化
 
-功能装配入口在 `com.iafenvoy.system.module`。绑定、用量、玩家、物品、签到、收件箱、商城、抽奖、成就和 FTB 任务分别管理自己的贡献；Agent 执行代码继续位于 `com.iafenvoy.system.agent`。
+功能定义和装配契约在 `com.iafenvoy.system.module`。两端统一使用正式内置注册表：`SystemRegistries.SERVER_MODULE`（`system:server_module`，元素为 `ServerModule`）和 `SystemRegistries.Client.CLIENT_MODULE`（`system:client_module`，元素为 `ClientModule`）。后者仅在物理客户端创建；两者均不启用数字 ID 网络同步，玩家可用模块仍通过已有状态快照同步。内置项由 `registry.module.ServerModules` / `ClientModules` 的 `DeferredRegister` 注册，公开的 `DeferredHolder` 在注册完成后通过 `.get()` 取得对象，注册类使用类级别 `@SuppressWarnings("unused")`。绑定、用量、玩家、物品、签到、收件箱、商城、抽奖、成就和 FTB 任务分别管理自己的贡献；Agent 执行代码继续位于 `com.iafenvoy.system.agent`。
 
 ## 两层模块
 
 | 类型 | 生命周期与职责 |
 | --- | --- |
-| `SystemModule` | 无服务器状态的功能定义，声明工作流、游戏指令和安装钩子 |
-| `ModuleContext` | 每台服务器独立创建，提供引擎、游戏桥接、交易服务、共享工具和玩家生命周期注册 |
+| `ServerModule` | 无服务器状态的功能定义，声明工作流、游戏指令、存储和运行时工厂 |
+| `ModuleContext` | 每台服务器独立创建，提供引擎、游戏桥接、交易服务、共享工具；不再收集独立的玩家回调 |
 | `AgentModule<I>` | 一段有独立预算的工作流，声明指令别名、语义样例、参数提取、工具 List 和执行逻辑 |
 | `ClientModule` | 仅客户端加载，声明本地指令、页面绑定、卡片展示、通知和口播规则 |
 
@@ -17,9 +17,9 @@ Agent 内置工作流和工具按 `agent/builtin/<功能>` 归类。`builtin/inp
 
 ## 服务端装配与指令
 
-`SystemModules` 先注册内置功能，发布 `SystemModuleRegistrationEvent`，随后冻结注册表。功能 ID 重复会报错。定义只创建一次，不能把某台服务器的引擎、玩家或工具存到定义的静态字段。
+`SystemRegistries` 在 `NewRegistryEvent` 中登记内置目录，模块通过标准 `DeferredRegister` / `RegisterEvent` 注册，冻结时机由 NeoForge 管理。模块 `id()` 默认从实际注册表取得，无须在实现中重复声明；未知模块不会作为默认值回退。定义只创建一次，不能把某台服务器的引擎、玩家或工具存到定义的静态字段。
 
-每台服务器启动时调用各功能的 `workflows(context)`，统一注册返回的工作流，再调用 `installed(context)`。所有功能安装后仍发布原有的 `AssistantRegistrationEvent`，允许只需要添加工作流的扩展沿用原入口；同一工作流只能注册一次。
+每台服务器启动时，`ModuleManager` 遍历冻结的服务端注册表，调用各功能的 `workflows(context)`、注册返回的工作流并执行 `installed(context)`，随后创建各功能的服务器运行时。所有功能安装后仍发布原有的 `AssistantRegistrationEvent`，允许只需要添加工作流的扩展沿用原入口；工作流实例、路由与工具目录仍属于各自的 AgentEngine，同一工作流只能注册一次。
 
 共享 Tool 通过上下文取得，保证两个功能使用同一个实例：
 
@@ -30,64 +30,101 @@ return List.of(new ShopModule(preview), new ShopQuoteModule(preview),
         new ShopPurchaseModule(new ShopPurchaseTool(context.commerce()).tool()));
 ```
 
-`SystemCommand` 只创建 `/system` 根节点、收集 `SystemModule.commands(root)`，并转发通用的 Agent 指令参数。`grant/revoke/reset` 在绑定模块，`usage` 在用量模块，打开助手及 `ask/routing/simple/full` 在核心模块。权限继续声明在对应 Brigadier 节点上。Agent 文本指令与语义样例仍由工作流的 `routing()` 一次声明，帮助、补全、模型目录复用同一注册表。
+`SystemCommand` 只创建 `/system` 根节点、收集 `ServerModule.commands(root)`，并转发通用的 Agent 指令参数。`grant/revoke/reset` 在绑定模块，`usage` 在用量模块，打开助手及 `ask/routing/simple/full` 在核心模块。权限继续声明在对应 Brigadier 节点上。Agent 文本指令与语义样例仍由工作流的 `routing()` 一次声明，帮助、补全、模型目录复用同一注册表。
 
-添加功能的注册方式如下；`ExampleSystemModule` 是扩展自行实现的功能定义：
+添加功能的注册方式如下；`ExampleServerModule` 实现 `ServerModule`，扩展模组须声明对 System 的依赖：
 
 ```java
-@EventBusSubscriber
-public final class ExampleRegistration {
-    @SubscribeEvent
-    public static void register(SystemModuleRegistrationEvent event) {
-        event.registry().register(new ExampleSystemModule());
+@Mod("example")
+public final class ExampleMod {
+    public static final DeferredRegister<ServerModule> MODULES =
+            DeferredRegister.create(SystemResourceKeys.SERVER_MODULE, "example");
+    public static final DeferredHolder<ServerModule, ExampleServerModule> EXAMPLE =
+            MODULES.register("example", ExampleServerModule::new);
+
+    public ExampleMod(IEventBus bus) {
+        MODULES.register(bus);
     }
 }
 ```
 
 ## 玩家生命周期
 
-在功能的 `installed(context)` 中调用 `context.players(playerModule)`，注册每台服务器独立的 `PlayerModule`：
+功能通过 `ServerModule.runtime(context)` 返回每台服务器独立的 `PlayerModule`，统一由 `ModuleManager` 管理，不再调用 `context.players(...)` 或另挂 tick/服务器关闭监听：
 
 1. `validate()` 在全部工作流注册后检查跨工作流引用。
-2. `grantBaselines(player)` 在主线程收集首次绑定的基线；不同功能的基线键不能重复。
-3. `login(player)` 在主线程捕获游戏状态，返回该玩家本次连接的 `Session`。
-4. `Session.initialize(data)` 在玩家文件事务内更新数据，不能访问实时游戏对象。
-5. 事务成功且连接、初始化代次仍有效时，在主线程调用 `Session.ready()`。
-6. 重登、退出、撤销、重置或初始化失败时关闭会话；旧异步回调不能激活新会话。
+2. `binding(player)` 在主线程捕获首次绑定所需数据，返回只操作 PlayerData 的事务回调；引擎不再硬编码成就基线。
+3. 模块启用时，在主线程调用 `login(player)` 创建 Session，然后统一创建该模块声明的 DataStorage。
+4. `Session.initialize(data)` 在玩家文件事务内执行，不能访问实时游戏对象。
+5. 事务成功且连接、系统代次、模块激活实例均有效后，发布整批可用权限，再在主线程调用 `Session.ready()`。
+6. `Session.tick()` 只对该玩家已就绪的模块调用；`PlayerModule.tick()` 是每服务器一次的共享维护钩子，不能将它当作玩家授权入口。
+7. 动态移除、条件失效、重登、退出、撤销、重置或初始化失败时关闭 Session。停用保留账本，重新启用恢复数据，成功 revoke/reset 才清空文件。
+8. 服务器关闭时先关闭玩家 Session，再按相反安装顺序调用 `PlayerModule.close()`。
 
-成就模块通过该入口管理基线、登录期间的事件缓冲、规则授权和派发。收件箱模块负责恢复交付及付款的不确定状态。`AssistantPlayers` 保留绑定事务、连接检查、限流和通用会话调度，不再解释成就规则或订单状态。
+成就模块负责自己的基线、登录事件缓冲与派发；商城和抽奖各自恢复自己的订单，收件箱只恢复投递。FTB 通知的 tick 和服务端清理由任务模块 runtime 接管，FTB 进度事件仍留在可选适配层。AssistantPlayers 保留绑定、连接检查和限流，将模块生命周期交给管理器。
+
+新增存储由所属 ServerModule 声明，例如：
+
+```java
+public static final ModuleStorage<ExampleDataStorage> STORAGE = new ModuleStorage<>(
+        ID, Identifier.fromNamespaceAndPath("example", "state"),
+        ExampleDataStorage.class, ExampleDataStorage.CODEC, ExampleDataStorage::new);
+
+@Override
+public List<ModuleStorage<?>> storages() {
+    return List.of(STORAGE);
+}
+```
+
+存储 Codec 需另外注册到 Saturn 的 `DATA_STORAGE_TYPE`；内置项由 `SystemDataStorages.REGISTRY` 注册，扩展可使用自己的 `DeferredRegister<MapCodec<? extends DataStorage>>`，不能只声明 ModuleStorage 而遗漏 Codec 注册。事务内使用 `ModuleData.get(data, STORAGE)`，工具位于 `com.iafenvoy.system.module`。PlayerData 只保留通用字段和数据结构。管理器自动创建声明的存储，并检测存储是否重写 Saturn `tick(DataStorageContext)`；重写后自动纳入 tick，不需另注册事件。writtenAt 使用游戏 tick 时间，存储 tick 必须在状态变化时 markDirty，copy 必须深复制可变成员。
+
+存储 tick 使用内存事务和 tryLock：有文件事务进行时跳过本次，主线程不等待磁盘；下一次仍传入当前游戏时间，可用于时间差结算。脏数据每秒合并一次异步保存，退出时提交保存，存储关闭时最终刷盘。签到、购买、发奖等业务继续使用原子落盘事务。无 tick 的存储不会进入逐 tick 拷贝流程。
 
 ## 客户端贡献
 
-`ClientModules` 发布 `ClientModuleRegistrationEvent` 后冻结客户端注册表。订阅类必须限定为 `Dist.CLIENT`，公共功能定义不要引用 GUI、AUI 或客户端模块类：
+客户端模块同样通过标准内置注册表注册，注册入口须限定为 `Dist.CLIENT`。`SystemClientMod` 仅负责绑定内置 `ClientModules.REGISTRY`，专用服务端不会加载其实现。扩展可使用自己的客户端入口：
 
 ```java
-@EventBusSubscriber(Dist.CLIENT)
-public final class ExampleClientRegistration {
-    @SubscribeEvent
-    public static void register(ClientModuleRegistrationEvent event) {
-        event.registry().register(new ExampleClientModule());
+@Mod(value = "example", dist = Dist.CLIENT)
+public final class ExampleClientMod {
+    public static final DeferredRegister<ClientModule> MODULES =
+            DeferredRegister.create(SystemResourceKeys.Client.CLIENT_MODULE, "example");
+    public static final DeferredHolder<ClientModule, ExampleClientModule> EXAMPLE =
+            MODULES.register("example", ExampleClientModule::new);
+
+    public ExampleClientMod(IEventBus bus) {
+        MODULES.register(bus);
     }
 }
 ```
+
+首次使用客户端贡献时，`ClientModuleBindings.get()` 遍历已冻结的客户端注册表，调用所有模块的 `register(context)`，一次性装配命令、页面、卡片、口播与通知动作，然后冻结贡献表及卡片节点类型。它只保存这些贡献，不另维护模块目录；客户端命令树也直接遍历正式注册表。原来的两种自定义模块注册事件和模块 Map 目录已移除。
 
 `ClientModule.register(context)` 可贡献以下内容：
 
 | 入口 | 用途 |
 | --- | --- |
 | `command(action, aliases...)` / `pattern(handler, suggestions...)` | 助手内本地控制，执行和补全共用声明 |
-| `workspace(page, navigation, bind)` | 页面、导航和控件绑定；空页面/导航可用于工具栏 |
+| `workspace(page, navigation, group, bind)` | 页面、动态导航、分类与控件绑定；空页面/导航可用于工具栏；可另传翻译键 label |
 | `cards().register` | 每个输出只填一次 CardContext.Builder，统一提供平铺状态、对象参数与按钮回调；build 创建不可变副本 |
 | `cards().notificationRows` | 通知中的代码生成选择行及样式，不由模板定义按钮 |
 | `cards().summary` / `speech(key, handler)` | 通知开头提示与独立主文字口播；主体详情由卡片展示 |
 | `cards().state` | 从类型化卡片更新客户端状态快照 |
 | `cards().refresh` | 静默结果替换同类型卡片、更新或移除通知 |
-| `registry().notificationAction` | 动作是否提供详情、等待刷新时保留通知、先打开工作台 |
+| `bindings().notificationAction` | 动作是否提供详情、等待刷新时保留通知、先打开工作台 |
 | `ClientModule.commands(root)` | 游戏聊天栏中的本地 Brigadier 指令，例如 `/system settings` |
 
-页面 HTML 与共享 CSS 仍是资源文件。扩展页面需要提供对应模板元素，注册表不根据模型输出生成 HTML。`WorkspaceContext.input(id, placeholder, submit)` 声明 Enter 的目标按钮，输入框宿主不再硬编码每种查询框。
+完整侧栏按 `WorkspaceGroup.CHAT / MODULES / SETTINGS` 排列，分类标题来自双语语言键。导航按钮由注册表生成，无须在 HTML 手写；各功能决定自己的分类、标签和点击行为。默认 workspace 重载归入 MODULES，聊天入口显式归入 CHAT，设置与用量入口归入 SETTINGS。空分类自动隐藏，模块不可用时隐藏入口、移除本地补全并拦截控件调用；当前页面被禁用时回到聊天。
 
-卡片的正文、容器层次、条件、循环、物品/动作区位置及标签由 `assets/<namespace>/cards/<path>.json` 定义，按卡片数据类型 ID 选择。各节点在 `screen/card/node` 独立实现 `CardNode`，自己提供 codec/render/text/css；`CardNodeTypes` 只保存 ID 到 MapCodec 的映射，根接口通过 `type` 分派，`style` 等字段支持字符串或字符串数组，后者由 Codec 拼接。功能只填 `CardContext.Builder`，统一创建不可变的状态、参数与回调三表；循环只选择平铺键，不创建子 Context。分组标题、概率/状态说明和排列交给 JSON，不再编写业务卡片的正文渲染器。需要新布局类型时，在客户端注册事件或 ClientModule.register 中调用 `CardNodeTypes.register(id, NodeClass.CODEC)`；事件完成后冻结，资源重载前保证装配完成。完整格式见[客户端 JSON 卡片](cards.md)。
+```java
+module.workspace("example", "nav_example", "example.ui.open", WorkspaceGroup.MODULES, workspace -> {
+    workspace.click("nav_example", () -> workspace.show("example"));
+});
+```
+
+页面 HTML 与共享 CSS 仍是资源文件。扩展页面需要提供 `page_example` 等正文模板元素，导航按钮不再需要 HTML 元素；注册表不根据模型输出生成 HTML。`WorkspaceContext.input(id, placeholder, submit)` 声明 Enter 的目标按钮，输入框宿主不再硬编码每种查询框。
+
+卡片的正文、容器层次、条件、循环、物品/动作区位置及标签由 `assets/<namespace>/cards/<path>.json` 定义，按卡片数据类型 ID 选择。各节点在 `screen/card/node` 独立实现 `CardNode`，自己提供 codec/render/text/css；`CardNodeTypes` 只保存 ID 到 MapCodec 的映射，根接口通过 `type` 分派，`style` 等字段支持字符串或字符串数组，后者由 Codec 拼接。功能只填 `CardContext.Builder`，统一创建不可变的状态、参数与回调三表；循环只选择平铺键，不创建子 Context。分组标题、概率/状态说明和排列交给 JSON，不再编写业务卡片的正文渲染器。需要新布局类型时，在 ClientModule.register 中调用 `CardNodeTypes.register(id, NodeClass.CODEC)`；贡献装配完成后冻结，资源重载前保证装配完成。完整格式见[客户端 JSON 卡片](cards.md)。
 
 绑定消息由绑定客户端模块生成。任务模块管理任务列表标签、完成/解锁摘要、新手礼包静默刷新、口播和物品投影。通用工作台、简约界面、HUD 队列、物品渲染与 TTS 文本入口只调用注册后的处理器。
 
@@ -95,8 +132,16 @@ public final class ExampleClientRegistration {
 
 ## 可选依赖与可用功能
 
-服务端状态同步实际安装的功能 `Identifier` 列表，客户端按功能 ID 控制导航可用性，不再使用专门的 `questAvailable` 布尔值。客户端纯本地功能可声明 `serverRequired() == false`。
+服务端状态同步该玩家实际启用的功能 `Identifier` 列表，客户端按功能 ID 控制导航、本地别名与补全的可用性。`ModuleManager` 统一管理权限与运行时，内部 ModuleAccess 负责主线程条件求值和玩家持久覆盖，Agent 不在工作线程访问实时玩家或执行 Saturn 条件。客户端纯本地功能可声明 `serverRequired() == false`；独立用量账本继续在未绑定时可用。
 
 FTB 仅在检测到 `ftbquests` 后注册服务端任务功能；可选 API 工厂通过反射加载，公共定义和客户端卡片只引用自己的 DTO，不解析 FTB 类。FTB 任务 API、通知事件及播报数据源仍集中在 `compat/ftb`。适配器安装失败会报告初始化错误，不把未成功安装的任务功能标为可用。
 
-数据包 `SystemDefinition.modules` 仍只是预留元数据，本次不根据该字段启停功能。权限、执行预算、交易确认、数据包校验和玩家隔离继续由既有服务端入口执行。网络协议保持 `1`；项目未发布，两端需要一起更新，不迁移旧状态字段。
+`SystemDefinition.modules` 现在提供模块 ID 和可选 Saturn condition；完整格式、内置 ID 与 action/condition 见[数据包与扩展配置](datapacks.md#系统定义)。内置工作流注册时记录所属 ServerModule，功能包含多个工作流时统一受同一开关约束。`ServerModule.required()` 默认 false，核心、绑定与用量模块声明为基础设施。
+
+Java 扩展可用 `runtime.moduleManager().add/remove(player, id)` 在主线程持久调整玩家可用功能；模块本身须预先注册到 `SystemRegistries.SERVER_MODULE`，不能手动启用未注册的模块。新增模块完成存储初始化后才发布可用权限，移除立即关闭会话；初始化失败不宣称可用。FTB 通知与任务口播也检查任务模块开关。
+
+每个 ServerModule 通过 storages() 声明自己的 Saturn DataStorage，Codec 通过 Saturn 注册事件独立注册；`ModuleData` 从正式服务端模块注册表查找存储声明。`ModuleData.get(data, STORAGE)` 负责读取和创建；底层 Holder 键固定为所属模块 ID，Codec 类型 ID 独立。商城和抽奖复用 CommerceDataStorage 类型但分别存到 system:shop、system:lottery，不会串用交易记录。
+
+存储类靠近模块：签到 module/signin，收件箱 module/inbox，成就 module/advancement，共用交易类型 module/CommerceDataStorage。权限和 Agent 幂等日志由必需的 Core 模块声明，日志类位于 module/core，不随可选工作流停用清除。玩家文件仍为 `<存档>/system-agent/<UUID>.json`，不使用玩家附件，不提供未发布格式的旧档迁移。
+
+`engine.registerModule(ownerId, workflow)` 可为直接注册的工作流指定所属功能。仅使用原来无 owner 的 `engine.registerModule(workflow)` 注册的独立工作流不受 ServerModule 的开关约束；需要纳入数据包管理的扩展应提供 ServerModule 并在 workflows 中返回工作流。Tool 的单行为契约、工作流预算、交易确认与玩家隔离保持原入口。网络协议保持 `1`，两端一起更新。

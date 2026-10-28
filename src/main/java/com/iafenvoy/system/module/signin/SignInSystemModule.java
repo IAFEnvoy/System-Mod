@@ -9,17 +9,20 @@ import com.iafenvoy.system.agent.builtin.signin.SignInCreditTool;
 import com.iafenvoy.system.agent.builtin.signin.SignInModule;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.module.ModuleContext;
-import com.iafenvoy.system.module.SystemModule;
+import com.iafenvoy.system.module.ModuleStorage;
+import com.iafenvoy.system.module.ServerModule;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
 
-public final class SignInSystemModule implements SystemModule {
+public final class SignInSystemModule implements ServerModule {
     public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "signin");
+    public static final ModuleStorage<SignInDataStorage> STORAGE = new ModuleStorage<>(ID,
+            Identifier.fromNamespaceAndPath("system", "sign_in"), SignInDataStorage.class, SignInDataStorage.CODEC, SignInDataStorage::new);
 
     @Override
-    public Identifier id() {
-        return ID;
+    public List<ModuleStorage<?>> storages() {
+        return List.of(STORAGE);
     }
 
     @Override

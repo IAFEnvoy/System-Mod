@@ -2,10 +2,14 @@ package com.iafenvoy.system.module.client;
 
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.registry.SystemRegistries;
+import com.iafenvoy.system.screen.card.CardNodeTypes;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
+import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.speech.tts.SpeechText;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.sighs.apricityui.init.Document;
+import com.sighs.apricityui.init.Element;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.resources.Identifier;
 
@@ -16,8 +20,8 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public final class ClientModuleRegistry {
-    private final Map<Identifier, ClientModule> modules = new LinkedHashMap<>();
+/** Runtime presentation contributions are assembled once from the frozen client module registry. */
+public final class ClientModuleBindings {
     private final ClientCommandRegistry commands = new ClientCommandRegistry();
     private final ClientCardRegistry cards = new ClientCardRegistry();
     private final List<Workspace> workspace = new ArrayList<>();
@@ -25,25 +29,38 @@ public final class ClientModuleRegistry {
     private final Map<String, NotificationAction> notificationActions = new LinkedHashMap<>();
     private boolean frozen;
 
-    public void register(ClientModule module) {
-        this.checkMutable();
-        if (this.modules.putIfAbsent(module.id(), module) != null)
-            throw new IllegalArgumentException("Duplicate client module " + module.id());
-        module.register(new ClientModuleContext(this, module.id(), module.serverRequired()));
+    private ClientModuleBindings() {
+    }
+
+    private static final class Holder {
+        private static final ClientModuleBindings INSTANCE = create();
+    }
+
+    public static ClientModuleBindings get() {
+        return Holder.INSTANCE;
+    }
+
+    private static ClientModuleBindings create() {
+        ClientModuleBindings bindings = new ClientModuleBindings();
+        for (ClientModule module : SystemRegistries.Client.CLIENT_MODULE)
+            module.register(new ClientModuleContext(bindings, module.id(), module.serverRequired()));
+        CardNodeTypes.freeze();
+        bindings.freeze();
+        return bindings;
     }
 
     private void checkMutable() {
         if (this.frozen) throw new IllegalStateException("Client module registration has finished");
     }
 
-    void freeze() {
+    private void freeze() {
         this.frozen = true;
         this.commands.freeze();
         this.cards.freeze();
     }
 
     public void commands(LiteralArgumentBuilder<CommandSourceStack> root) {
-        this.modules.values().forEach(module -> module.commands(root));
+        SystemRegistries.Client.CLIENT_MODULE.forEach(module -> module.commands(root));
     }
 
     public ClientCommandRegistry commands() {
@@ -88,15 +105,28 @@ public final class ClientModuleRegistry {
     }
 
     public void bindWorkspace(AssistantScreen screen, Document document) {
-        WorkspaceContext context = new WorkspaceContext(screen, document);
-        this.workspace.forEach(entry -> entry.bind().accept(context));
+        Element navigation = document.getElementById("sidebar_navigation");
+        navigation.setInnerHTML("");
+        for (WorkspaceGroup category : WorkspaceGroup.values()) {
+            Element group = AssistantView.element(document, "div", "navigation_group", "");
+            group.setAttribute("id", "nav_group_" + category.id());
+            group.appendChild(AssistantView.element(document, "div", "section_code", AssistantView.tr(category.label())));
+            for (Workspace entry : this.workspace) {
+                if (entry.group() != category || entry.navigation().isBlank()) continue;
+                Element button = AssistantView.element(document, "button", "nav", AssistantView.tr(entry.label()));
+                button.setAttribute("id", entry.navigation());
+                group.appendChild(button);
+            }
+            navigation.appendChild(group);
+        }
+        this.workspace.forEach(entry -> entry.bind().accept(new WorkspaceContext(screen, document, entry::available)));
     }
 
     public List<Workspace> workspace() {
         return List.copyOf(this.workspace);
     }
 
-    public record Workspace(Identifier owner, boolean serverRequired, String page, String navigation,
+    public record Workspace(Identifier owner, boolean serverRequired, String page, String navigation, String label, WorkspaceGroup group,
                             Consumer<WorkspaceContext> bind) {
         public boolean available() {
             return !this.serverRequired || AssistantClient.state().hasModule(this.owner);

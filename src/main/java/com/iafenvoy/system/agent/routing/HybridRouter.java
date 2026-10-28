@@ -29,10 +29,10 @@ public final class HybridRouter implements AutoCloseable {
 
     public RouteDecision route(ExecutionContext context, TypedPayload<?> input, String text) throws Exception {
         // Structured actions -> registered commands -> local read intent/cache -> one bounded LLM decision.
-        if (input != null) return new RouteDecision(input, RouteSource.STRUCTURED);
+        if (input != null) return this.direct(context, input, RouteSource.STRUCTURED);
         if (text.isBlank()) throw new AgentException("INVALID_INPUT");
         TypedPayload<?> command = this.modules.commands().parse(text);
-        if (command != null) return new RouteDecision(command, RouteSource.COMMAND);
+        if (command != null) return this.direct(context, command, RouteSource.COMMAND);
         SemanticRouter.Attempt attempt;
         try {
             attempt = this.semantic.match(context, text);
@@ -40,15 +40,22 @@ public final class HybridRouter implements AutoCloseable {
             context.ensureMemoryCurrent();
             attempt = SemanticRouter.Attempt.fallback("SEMANTIC_ERROR");
         }
-        if (attempt.decision() != null && this.modules.readOnly(Identifier.tryParse(attempt.decision().moduleId())))
+        if (attempt.decision() != null && context.available(Identifier.tryParse(attempt.decision().moduleId()))
+                && this.modules.readOnly(Identifier.tryParse(attempt.decision().moduleId())))
             return attempt.decision();
         List<ModelRoute.Candidate> hints = attempt.hints().stream()
-                .filter(candidate -> this.modules.modelSelectable(Identifier.tryParse(candidate.moduleId()))).toList();
+                .filter(candidate -> this.modules.modelSelectable(Identifier.tryParse(candidate.moduleId()))
+                        && context.available(Identifier.tryParse(candidate.moduleId()))).toList();
         // The decoder accepts exactly the advertised catalogue, including confirmation-only exclusions.
         List<ConversationMemory.Entry> history = context.store().read(context.player(), data -> ConversationMemory.recent(data, context.taskId(), 1600));
-        ModelRoute route = context.model(context.prompt(SystemPrompts.ROUTING, Map.of("capabilities", CodecIO.write(ModelRoute.Capability.CATALOGUE, this.modules.capabilities()))),
-                ModelRoute.Input.CODEC, new ModelRoute.Input(text, history, hints), this.modules.modelCodec());
+        ModelRoute route = context.model(context.prompt(SystemPrompts.ROUTING, Map.of("capabilities", CodecIO.write(ModelRoute.Capability.CATALOGUE, this.modules.capabilities(context::available)))),
+                ModelRoute.Input.CODEC, new ModelRoute.Input(text, history, hints), this.modules.modelCodec(context::available));
         return new RouteDecision(route.call(), RouteSource.LLM);
+    }
+
+    private RouteDecision direct(ExecutionContext context, TypedPayload<?> input, RouteSource source) {
+        if (!context.available(input.type().id())) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        return new RouteDecision(input, source);
     }
 
     public void remember(ExecutionContext context, RouteDecision decision, String text) {
@@ -58,9 +65,9 @@ public final class HybridRouter implements AutoCloseable {
         } catch (Exception ignored) { /* An optional cache must not change a completed read result. */ }
     }
 
-    public AgentResult clarify() {
+    public AgentResult clarify(ExecutionContext context) {
         return new AgentResult("SUCCEEDED", "system.result.clarify", "", List.of(
-                new AgentResult.Card("system.result.clarify_choices", ResultTypes.EMPTY.of(EmptyInput.INSTANCE), this.modules.shortcuts())));
+                new AgentResult.Card("system.result.clarify_choices", ResultTypes.EMPTY.of(EmptyInput.INSTANCE), context.shortcuts())));
     }
 
     public void clear(UUID player) {

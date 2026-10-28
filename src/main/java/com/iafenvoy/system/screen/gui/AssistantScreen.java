@@ -3,8 +3,8 @@ package com.iafenvoy.system.screen.gui;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
-import com.iafenvoy.system.module.client.ClientModuleRegistry;
-import com.iafenvoy.system.module.client.ClientModules;
+import com.iafenvoy.system.module.client.ClientModuleBindings;
+import com.iafenvoy.system.module.client.WorkspaceGroup;
 import com.iafenvoy.system.screen.card.CardTemplates;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
@@ -39,7 +39,7 @@ public final class AssistantScreen extends AssistantInputScreen {
         document.getElementById("message").setAttribute("placeholder", tr("system.ui.message_placeholder"));
         bind(document, "close", this::onClose);
         bind(document, "send", this::sendMessage);
-        ClientModules.registry().bindWorkspace(this, document);
+        ClientModuleBindings.get().bindWorkspace(this, document);
         this.showPage(this.page);
         this.revision = -1;
         this.renderEntries();
@@ -49,9 +49,9 @@ public final class AssistantScreen extends AssistantInputScreen {
         this.page = next;
         Document document = this.getLinkedDocument();
         if (document == null) return;
-        boolean available = ClientModules.registry().workspace().stream().anyMatch(entry -> entry.page().equals(next) && entry.available());
+        boolean available = ClientModuleBindings.get().workspace().stream().anyMatch(entry -> entry.page().equals(next) && entry.available());
         if (!available) this.page = "chat";
-        for (ClientModuleRegistry.Workspace entry : ClientModules.registry().workspace()) {
+        for (ClientModuleBindings.Workspace entry : ClientModuleBindings.get().workspace()) {
             if (!entry.navigation().isBlank()) {
                 Element navigation = document.getElementById(entry.navigation());
                 navigation.setInlineStyleProperty("display", entry.available() ? "block" : "none");
@@ -59,6 +59,11 @@ public final class AssistantScreen extends AssistantInputScreen {
             }
             if (!entry.page().isBlank())
                 document.getElementById("page_" + entry.page()).setInlineStyleProperty("display", entry.available() && entry.page().equals(this.page) ? "flex" : "none");
+        }
+        for (WorkspaceGroup group : WorkspaceGroup.values()) {
+            boolean visible = ClientModuleBindings.get().workspace().stream()
+                    .anyMatch(entry -> entry.group() == group && !entry.navigation().isBlank() && entry.available());
+            document.getElementById("nav_group_" + group.id()).setInlineStyleProperty("display", visible ? "flex" : "none");
         }
         document.getElementById("conversation").setInlineStyleProperty("display", "block");
     }

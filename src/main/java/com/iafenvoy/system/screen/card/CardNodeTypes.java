@@ -10,22 +10,21 @@ import java.util.Map;
 /**
  * Only codec registration lives here; node behavior belongs to the CardNode implementations.
  */
+@SuppressWarnings("unused")
 public final class CardNodeTypes {
     private static Map<String, MapCodec<? extends CardNode>> types = new LinkedHashMap<>();
     private static boolean frozen;
 
-    static {
-        register("text", TextNode.CODEC);
-        register("header", HeaderNode.CODEC);
-        register("context", ContextNode.CODEC);
-        register("container", ContainerNode.CODEC);
-        register("row", RowNode.CODEC);
-        register("column", ColumnNode.CODEC);
-        register("divider", DividerNode.CODEC);
-        register("items", ItemsNode.CODEC);
-        register("actions", ActionsNode.CODEC);
-        register("button", ButtonNode.CODEC);
-    }
+    public static final MapCodec<TextNode> TEXT = register("text", TextNode.CODEC);
+    public static final MapCodec<HeaderNode> HEADER = register("header", HeaderNode.CODEC);
+    public static final MapCodec<ContextNode> CONTEXT = register("context", ContextNode.CODEC);
+    public static final MapCodec<ContainerNode> CONTAINER = register("container", ContainerNode.CODEC);
+    public static final MapCodec<RowNode> ROW = register("row", RowNode.CODEC);
+    public static final MapCodec<ColumnNode> COLUMN = register("column", ColumnNode.CODEC);
+    public static final MapCodec<DividerNode> DIVIDER = register("divider", DividerNode.CODEC);
+    public static final MapCodec<ItemsNode> ITEMS = register("items", ItemsNode.CODEC);
+    public static final MapCodec<ActionsNode> ACTIONS = register("actions", ActionsNode.CODEC);
+    public static final MapCodec<ButtonNode> BUTTON = register("button", ButtonNode.CODEC);
 
     private CardNodeTypes() {
     }
@@ -48,12 +47,12 @@ public final class CardNodeTypes {
         return Map.copyOf(types);
     }
 
-    static DataResult<MapCodec<? extends CardNode>> decode(String id) {
+    public static DataResult<MapCodec<? extends CardNode>> decode(String id) {
         MapCodec<? extends CardNode> codec = types.get(id);
         return codec == null ? DataResult.error(() -> "Unknown card node type " + id) : DataResult.success(codec);
     }
 
-    static DataResult<String> encode(MapCodec<? extends CardNode> codec) {
+    public static DataResult<String> encode(MapCodec<? extends CardNode> codec) {
         for (Map.Entry<String, MapCodec<? extends CardNode>> entry : types.entrySet())
             if (entry.getValue() == codec) return DataResult.success(entry.getKey());
         return DataResult.error(() -> "Unregistered card node codec " + codec);

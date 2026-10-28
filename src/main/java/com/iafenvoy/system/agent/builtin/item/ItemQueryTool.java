@@ -11,6 +11,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,9 +38,9 @@ public record ItemQueryTool(MinecraftTools game) implements ToolRegistry.Handler
                 if (!id.toString().contains(query) && !name.toLowerCase(Locale.ROOT).contains(query)) continue;
                 if (matches++ < input.offset()) continue;
                 if (items.size() == 20) break;
-                items.add(new ItemInfoOutput(id.toString(), name, new ItemStack(item).getMaxStackSize()));
+                items.add(new ItemInfoOutput(id.toString(), new ItemStack(item).getHoverName().copy(), new ItemStack(item).getMaxStackSize(), new ItemStackTemplate(item)));
             }
-            return new ItemPageOutput(items, input.offset() + items.size(), matches > input.offset() + items.size());
+            return new ItemPageOutput(input.query(), items, input.offset() + items.size(), matches > input.offset() + items.size());
         });
     }
 }

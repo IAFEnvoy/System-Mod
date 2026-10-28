@@ -9,7 +9,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Sign-in receipts belong to the sign-in module, not the shared player record schema. */
+/**
+ * Sign-in receipts belong to the sign-in module, not the shared player record schema.
+ */
 public final class SignInDataStorage extends DataStorage {
     public static final MapCodec<SignInDataStorage> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.unboundedMap(Codec.STRING, PlayerData.Reward.CODEC).optionalFieldOf("rewards", Map.of())

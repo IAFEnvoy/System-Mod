@@ -1,6 +1,9 @@
 package com.iafenvoy.system.agent.builtin.inbox;
 
-import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.ExecutionContext;
+import com.iafenvoy.system.agent.ExecutionPolicy;
+import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
 import com.iafenvoy.system.agent.builtin.input.EntitlementInput;
 import com.iafenvoy.system.agent.builtin.output.StateOutput;
@@ -23,6 +26,7 @@ public final class DeliverModule extends BuiltinModule<EntitlementInput> {
     @Override
     public ModuleRouting<EntitlementInput> routing() {
         return ModuleRouting.<EntitlementInput>defaults()
+                .button(a -> new EntitlementInput(a.required("entitlement", "entitlementId")))
                 .semantic(RoutingProfile.hints(
                         List.of("把收件箱的东西发给我", "领取我的奖励物品", "把补给放进背包", "给我发放已入账奖励"),
                         List.of("Deliver my inbox reward", "Put my supplies in my inventory", "Claim my reward items", "Give me the credited supplies")));

@@ -19,7 +19,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/** Personal voice usage stays on this installation, across server changes and binding resets. */
+/**
+ * Personal voice usage stays on this installation, across server changes and binding resets.
+ */
 public final class LocalSpeechUsage {
     private static final Map<UUID, Ledger> ACCOUNTS = new ConcurrentHashMap<>();
 
@@ -44,7 +46,9 @@ public final class LocalSpeechUsage {
         ).apply(i, Snapshot::new));
     }
 
-    /** Call trackers capture their ledger, so late completions cannot be charged to a different account. */
+    /**
+     * Call trackers capture their ledger, so late completions cannot be charged to a different account.
+     */
     public static final class Ledger {
         private final Path path;
         private Snapshot value = Snapshot.EMPTY;

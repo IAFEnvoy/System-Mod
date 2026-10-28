@@ -1,13 +1,16 @@
 package com.iafenvoy.system.agent.builtin.lottery;
 
-import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.ExecutionContext;
+import com.iafenvoy.system.agent.ExecutionPolicy;
+import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
-import com.iafenvoy.system.agent.builtin.input.EntitlementInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryDrawInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryPreviewInput;
 import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
+import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.lottery.LotterySystemModule;
 import com.iafenvoy.system.registry.SystemActionTypes;
@@ -26,7 +29,8 @@ public final class LotteryDrawModule extends BuiltinModule<LotteryDrawInput> {
 
     @Override
     public ModuleRouting<LotteryDrawInput> routing() {
-        return ModuleRouting.<LotteryDrawInput>defaults().structuredOnly();
+        return ModuleRouting.<LotteryDrawInput>defaults()
+                .button(a -> new LotteryDrawInput(a.required("quote", "quoteRef"))).structuredOnly();
     }
 
     @Override
@@ -34,9 +38,7 @@ public final class LotteryDrawModule extends BuiltinModule<LotteryDrawInput> {
         PurchaseReceiptOutput receipt = context.tool(BuiltinTools.LOTTERY_DRAW, "draw", input);
         LotteryPreviewInput again = context.store().read(context.player(), data -> new LotteryPreviewInput(
                 ModuleData.get(data, LotterySystemModule.STORAGE).purchases.get(receipt.orderId()).order.source(), 0, Optional.empty()));
-        return new AgentResult("SUCCEEDED", "system.result.lottery_drawn", "", List.of(
-                new AgentResult.Card("system.result.reward", receipt, List.of(
-                        new AgentResult.Action("system.action.deliver", SystemActionTypes.DELIVER_ACTION.get(), new EntitlementInput(receipt.entitlementId())),
-                        new AgentResult.Action("system.action.lottery_again", SystemActionTypes.LOTTERY_PREVIEW_ACTION.get(), again)))));
+        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.lottery_drawn", "", List.of(
+                CardUpdate.show(new PurchaseReceiptOutput(receipt.orderId(), receipt.entitlementId(), receipt.reward(), receipt.state(), Optional.of(again.poolId())))));
     }
 }

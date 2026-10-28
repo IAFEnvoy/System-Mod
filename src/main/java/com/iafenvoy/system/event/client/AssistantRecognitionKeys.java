@@ -50,7 +50,8 @@ public final class AssistantRecognitionKeys {
     public static void screenKey(ScreenEvent.KeyPressed.Pre event) {
         if (!(event.getScreen() instanceof AssistantScreen || event.getScreen() instanceof AssistantSimpleScreen
                 || event.getScreen() instanceof ChatScreen && AssistantMessages.hasVoiceTarget())
-                || !VOICE_INPUT.matches(event.getKeyEvent()) || !VOICE_INPUT.isConflictContextAndModifierActive()) return;
+                || !VOICE_INPUT.matches(event.getKeyEvent()) || !VOICE_INPUT.isConflictContextAndModifierActive())
+            return;
         if (press()) event.setCanceled(true);
     }
 

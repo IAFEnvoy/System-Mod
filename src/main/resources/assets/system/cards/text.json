@@ -1,0 +1,4 @@
+{
+  "show_title": false,
+  "body": [{"type": "system:text", "text": "{{summary}}"}]
+}

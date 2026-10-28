@@ -1,8 +1,0 @@
-{
-  "body": [
-    {
-      "type": "system:actions",
-      "actions": "{{result_actions}}"
-    }
-  ]
-}

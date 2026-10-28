@@ -1,13 +1,16 @@
 package com.iafenvoy.system.agent.builtin.shop;
 
-import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.ExecutionContext;
+import com.iafenvoy.system.agent.ExecutionPolicy;
+import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
-import com.iafenvoy.system.agent.builtin.input.EntitlementInput;
 import com.iafenvoy.system.agent.builtin.input.ShopPurchaseInput;
 import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
@@ -24,6 +27,7 @@ public final class ShopPurchaseModule extends BuiltinModule<ShopPurchaseInput> {
     @Override
     public ModuleRouting<ShopPurchaseInput> routing() {
         return ModuleRouting.<ShopPurchaseInput>defaults()
+                .button(a -> new ShopPurchaseInput(a.required("quote", "quoteRef")))
                 .structuredOnly()
                 .semantic(RoutingProfile.hints(
                         List.of("确认付款", "现在支付并兑换", "直接扣除材料购买", "确认购买这个商品"),
@@ -33,7 +37,6 @@ public final class ShopPurchaseModule extends BuiltinModule<ShopPurchaseInput> {
     @Override
     public AgentResult execute(ExecutionContext context, ShopPurchaseInput input) throws Exception {
         PurchaseReceiptOutput receipt = context.tool(BuiltinTools.SHOP_PURCHASE, "purchase", input);
-        return new AgentResult("SUCCEEDED", "system.result.shop_purchased", "", List.of(new AgentResult.Card("system.result.reward", receipt, List.of(
-                new AgentResult.Action("system.action.deliver", SystemActionTypes.DELIVER_ACTION.get(), new EntitlementInput(receipt.entitlementId()))))));
+        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.shop_purchased", "", List.of(CardUpdate.show(receipt)));
     }
 }

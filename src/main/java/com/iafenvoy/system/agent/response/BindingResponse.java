@@ -11,7 +11,9 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/** Binding changes update the client's session and presentation together. */
+/**
+ * Binding changes update the client's session and presentation together.
+ */
 public record BindingResponse(Change change, AgentResult result) implements AgentResponse {
     public static final MapCodec<BindingResponse> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Change.CODEC.fieldOf("change").forGetter(BindingResponse::change),

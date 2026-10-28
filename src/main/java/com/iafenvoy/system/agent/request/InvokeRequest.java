@@ -6,7 +6,9 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-/** Structured actions reuse the registered module input type and optional display text. */
+/**
+ * Structured actions reuse the registered module input type and optional display text.
+ */
 public record InvokeRequest(TypedPayload<?> call, String text) implements AgentRequest {
     public static final MapCodec<InvokeRequest> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             TypedPayload.ACTION_CODEC.codec().fieldOf("call").forGetter(InvokeRequest::call),

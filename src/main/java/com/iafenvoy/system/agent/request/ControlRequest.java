@@ -9,7 +9,9 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/** Session controls bypass chat routing and carry no conversation text. */
+/**
+ * Session controls bypass chat routing and carry no conversation text.
+ */
 public enum ControlRequest implements AgentRequest {
     STATE, HISTORY, FORGET, OPEN;
     private static final Map<String, ControlRequest> VALUES = Arrays.stream(values()).collect(Collectors.toMap(Enum::name, Function.identity()));

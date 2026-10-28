@@ -230,7 +230,7 @@ public final class PlayerData {
         }
 
         public void complete(AgentResult result) {
-            this.state = result.messageKey().equals("system.error.player_offline") ? "WAITING" : result.status();
+            this.state = result.messageKey().equals("system.error.player_offline") ? "WAITING" : result.status().name();
             this.result = result;
         }
 

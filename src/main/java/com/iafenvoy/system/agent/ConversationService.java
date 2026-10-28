@@ -1,7 +1,9 @@
 package com.iafenvoy.system.agent;
 
+import com.iafenvoy.saturn.util.MiscUtil;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.JsonOps;
 
@@ -42,13 +44,13 @@ final class ConversationService {
             this.engine.router().clear(player);
             if (!history) data.conversation.clear();
             else data.conversation.memoryEpoch++;
-            return AgentResult.data("system.result.preferences", new ResultTypes.Preferences(history, external));
+            return AgentResult.ok("system.result.preferences");
         }));
     }
 
-    public CompletionStage<AgentResult> history(UUID player) {
+    public CompletionStage<ResultTypes.History> history(UUID player) {
         AgentStore store = this.engine.playerStore(player);
-        return this.engine.personalMaintenance(player, () -> store.read(player, data -> {
+        return this.engine.maintenance(() -> store.read(player, data -> {
             if (!data.bound) throw new AgentException("NOT_BOUND");
             List<PlayerData.Message> selected = new ArrayList<>();
             int size = 0;
@@ -58,22 +60,22 @@ final class ConversationService {
                 if (message.role().equals("assistant") && text.length() > 4096) {
                     AgentResult result = CodecIO.parse(AgentResult.CODEC, text);
                     // Keep a complete JSON result; never truncate the middle of a card or action.
-                    List<AgentResult.Card> cards = new ArrayList<>();
-                    for (AgentResult.Card card : result.cards()) {
+                    List<CardUpdate> cards = new ArrayList<>();
+                    for (CardUpdate card : result.cards()) {
                         cards.add(card);
-                        if (CodecIO.write(AgentResult.CODEC, result.withPresentation(result.messageKey(), com.iafenvoy.saturn.util.MiscUtil.clip(result.text(), 1000), cards, result.silent())).length() > 4096) {
+                        if (CodecIO.write(AgentResult.CODEC, result.withPresentation(result.messageKey(), MiscUtil.clip(result.text(), 1000), cards, result.silent())).length() > 4096) {
                             cards.removeLast();
                             break;
                         }
                     }
-                    text = CodecIO.write(AgentResult.CODEC, result.withPresentation(result.messageKey(), com.iafenvoy.saturn.util.MiscUtil.clip(result.text(), 1000), cards, result.silent()));
+                    text = CodecIO.write(AgentResult.CODEC, result.withPresentation(result.messageKey(), MiscUtil.clip(result.text(), 1000), cards, result.silent()));
                 }
                 PlayerData.Message entry = new PlayerData.Message("", message.role(), message.time(), text);
                 size += ResultTypes.History.MESSAGE_CODEC.encodeStart(JsonOps.INSTANCE, entry).getOrThrow().toString().length();
                 if (size > 44000) break;
                 selected.add(entry);
             }
-            return AgentResult.data("system.result.history", new ResultTypes.History(selected.reversed()));
+            return new ResultTypes.History(selected.reversed());
         }));
     }
 

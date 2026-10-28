@@ -1,6 +1,8 @@
 package com.iafenvoy.system.module.client;
 
-/** The workspace owns category order; modules choose where their navigation entry belongs. */
+/**
+ * The workspace owns category order; modules choose where their navigation entry belongs.
+ */
 public enum WorkspaceGroup {
     CHAT("chat"), MODULES("modules"), SETTINGS("settings");
 

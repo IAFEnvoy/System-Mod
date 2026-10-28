@@ -100,7 +100,9 @@ public final class CommerceCosts {
         return Double.isFinite(value) ? BigDecimal.valueOf(value).stripTrailingZeros().toPlainString() : Double.toString(value);
     }
 
-    /** The result owns the immutable display price; the bound bill stays server-side for confirmation. */
+    /**
+     * The result owns the immutable display price; the bound bill stays server-side for confirmation.
+     */
     public static final class Prepared extends ResultWithData<CommerceCatalog.Price> {
         private final ServerPlayer payer;
         private final CostPayment bill;

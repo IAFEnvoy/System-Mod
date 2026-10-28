@@ -2,22 +2,19 @@ package com.iafenvoy.system.screen;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.CardContext;
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.assistant.AssistantClientState;
+import com.iafenvoy.system.card.*;
+import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.command.client.NotificationVoiceCommands;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.event.client.AssistantRecognitionKeys;
-import com.iafenvoy.system.module.client.ClientCardBindings;
 import com.iafenvoy.system.module.client.ClientMessage;
-import com.iafenvoy.system.module.client.ClientModuleBindings;
 import com.iafenvoy.system.screen.card.CardPresentation;
 import com.iafenvoy.system.screen.gui.AssistantItems;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
-import com.iafenvoy.system.speech.tts.SpeechText;
 import com.sighs.apricityui.client.gui.ApricityGuiLayers;
 import com.sighs.apricityui.event.MouseEvent;
 import com.sighs.apricityui.init.Document;
@@ -70,68 +67,18 @@ public final class AssistantMessages {
     private record Pending(Message message, boolean speak) {
     }
 
-    // Callbacks come from trusted client code, never from model-generated strings or commands.
-    public record Button(String id, String labelKey, boolean requiresIdle, boolean keepOpen, boolean details,
-                         Runnable action) {
-        public Button(String id, String labelKey, boolean requiresIdle, Runnable action) {
-            this(id, labelKey, requiresIdle, false, false, action);
-        }
-
-        public Button {
-            Objects.requireNonNull(id);
-            Objects.requireNonNull(labelKey);
-            Objects.requireNonNull(action);
-        }
-
+    // Callbacks are bound to the current card version by the shared controller.
+    public record Button(String id, String labelKey, boolean requiresIdle, boolean keepOpen, Runnable action) {
         public String label() {
-            return limit(tr(this.labelKey), 80, 1);
+            return tr(this.labelKey);
         }
     }
 
-    public record Row(String label, Button button, String css) {
-    }
-
-    public record CardBody(String text, List<CardPresentation> cards) {
-        public CardBody {
-            cards = List.copyOf(cards);
+    private record Message(String text, String speechText, List<Button> buttons, int durationTicks,
+                           UUID cardId, AgentResult result) {
+        private Message {
+            buttons = List.copyOf(buttons);
         }
-    }
-
-    // Visual details and spoken text are separate; direct notifications default to reading their body.
-    public record Message(String title, String text, String speechText, List<Button> buttons, int durationTicks,
-                          List<AssistantItems.Group> items, List<String> quests, List<Row> rows, Class<?> refreshType,
-                          CardBody body) {
-        public Message(String title, String text, List<Button> buttons, int durationTicks) {
-            this(title, text, text, buttons, durationTicks);
-        }
-
-        public Message(String title, String text, String speechText, List<Button> buttons, int durationTicks) {
-            this(title, text, speechText, buttons, durationTicks, List.of(), List.of(), List.of(), null, null);
-        }
-
-        public Message(String title, String text, String speechText, List<Button> buttons, int durationTicks, List<AssistantItems.Group> items) {
-            this(title, text, speechText, buttons, durationTicks, items, List.of(), List.of(), null, null);
-        }
-
-        public Message(String title, String text, String speechText, List<Button> buttons, int durationTicks,
-                       List<AssistantItems.Group> items, List<String> quests) {
-            this(title, text, speechText, buttons, durationTicks, items, quests, List.of(), null, null);
-        }
-
-        public Message {
-            title = tr("system.ui.assistant");
-            text = Objects.requireNonNull(text);
-            speechText = limit(Objects.requireNonNull(speechText), 500, 10);
-            buttons = List.copyOf(buttons).stream().limit(3).toList();
-            items = List.copyOf(items);
-            quests = List.copyOf(quests);
-            rows = List.copyOf(rows);
-            durationTicks = Math.clamp(durationTicks, 20, 1200);
-        }
-    }
-
-    public static void post(Message message) {
-        post(message, true);
     }
 
     private static void post(Message message, boolean speak) {
@@ -142,76 +89,73 @@ public final class AssistantMessages {
         QUEUE.addLast(new Pending(message, speak));
     }
 
-    public static void result(AgentResult result, boolean review) {
+    public static void result(AgentResult result) {
         if (result.silent()) return;
-        Message message = message(result, review);
-        post(message, !message.speechText().isBlank());
+        for (CardUpdate card : result.cards()) {
+            if (card.mode() != CardUpdate.Mode.SHOW || card.data().isEmpty()) continue;
+            Message message = message(result.withPresentation(result.messageKey(), result.text(), List.of(card), false));
+            post(message, !message.speechText().isBlank());
+        }
     }
 
-    private static Message message(AgentResult result, boolean review) {
-        ClientMessage message = ClientModuleBindings.get().cards().message(result);
-        String summary = summary(result, message.text());
+    private static Message message(AgentResult result) {
+        ClientMessage content = CardPresentation.message(result);
         List<Button> buttons = new ArrayList<>();
-        List<Row> rows = new ArrayList<>();
-        for (AgentResult.Card card : result.cards()) {
-            for (AgentResult.Action action : card.actions()) {
-                ClientModuleBindings.NotificationAction policy = ClientModuleBindings.get().notificationAction(action);
-                Button button = new Button(action.moduleId() + ":" + action.call().value(), action.labelKey(), true, policy.keepOpen(), policy.details(),
-                        () -> {
-                            if (policy.openWorkspace())
-                                AssistantClient.open(false, "");
-                            AssistantClient.send(action, "");
-                        });
-                // Feature list rows do not consume the limited generic action footer.
-                String rowCss = ClientModuleBindings.get().cards().notificationRows(card);
-                if (rowCss != null)
-                    rows.add(new Row(actionLabel(card, action), button, rowCss));
-                else if (buttons.size() < 2) buttons.add(button);
-            }
+        CardUpdate card = result.cards().getFirst();
+        for (ClientCards.Choice choice : ClientCards.choices(result)) {
+            CardButton button = choice.button();
+            if (button.placement() == CardButton.Placement.FOOTER) buttons.add(button(choice));
         }
-        if (review && buttons.stream().noneMatch(Button::details))
-            buttons.add(new Button("details", "system.ui.message_details", false, () -> {
-                AssistantClientState.ChatEntry entry = AssistantClient.state().current();
-                AssistantClient.open(entry != null && entry.result() == result && AssistantClient.simpleMode(), "");
-            }));
-        String speechText = result.silent() ? "" : message.speech();
-        Class<?> refreshType = ClientModuleBindings.get().cards().refreshes(result).stream()
-                .map(ClientCardBindings.Refresh::type).findFirst().orElse(null);
-        CardBody body = new CardBody(message.text(), result.cards().stream().map(card ->
-                CardPresentation.of(card, result.messageKey(), CardContext.Mode.NOTIFICATION, 0)).toList());
-        return new Message(tr("system.ui.assistant"), summary, speechText, buttons, 160, List.of(), SpeechText.quests(result), rows, refreshType, body);
+        return new Message(content.text(), content.speech(), buttons, 160, card.ref().id(), result);
+    }
+
+    private static Button button(ClientCards.Choice choice) {
+        CardButton button = choice.button();
+        return new Button(button.id(), button.labelKey(), button.action() instanceof CardAction.Server,
+                button.behavior() == CardButton.Behavior.WAIT, choice::execute);
     }
 
     public static void refresh(AgentResult result) {
-        for (ClientCardBindings.Refresh refresh : ClientModuleBindings.get().cards().refreshes(result)) {
-            QUEUE.removeIf(pending -> pending.message().refreshType() == refresh.type());
-            if (current != null && current.refreshType() == refresh.type()) {
-                if (!refresh.visible()) dismiss(current);
-                else {
-                    stopSpeech();
-                    current = message(refresh.result(), false);
-                    speakCurrent = false;
-                    speechStarted = true;
-                    remainingTicks = current.durationTicks();
-                    if (document != null && !document.isDisposed()) renderMessage();
-                }
-            } else if (refresh.visible()) post(message(refresh.result(), false), false);
+        for (CardUpdate update : result.cards()) {
+            if (update.mode() == CardUpdate.Mode.SHOW) continue;
+            List<Pending> queued = new ArrayList<>(QUEUE);
+            QUEUE.clear();
+            for (Pending pending : queued) {
+                if (!update.ref().id().equals(pending.message().cardId())) QUEUE.addLast(pending);
+                else if (update.mode() != CardUpdate.Mode.REMOVE)
+                    QUEUE.addLast(new Pending(message(ClientCards.latest(pending.message().result())), false));
+            }
+            if (current == null || !update.ref().id().equals(current.cardId())) continue;
+            if (update.mode() == CardUpdate.Mode.REMOVE) dismiss(current);
+            else {
+                stopRecognition();
+                stopSpeech();
+                current = message(ClientCards.latest(current.result()));
+                speakCurrent = false;
+                speechStarted = true;
+                remainingTicks = current.durationTicks();
+                if (document != null && !document.isDisposed()) renderMessage();
+            }
+        }
+    }
+
+    public static void dismissCard(UUID id) {
+        QUEUE.removeIf(pending -> id.equals(pending.message().cardId()));
+        if (current != null && id.equals(current.cardId())) dismiss(current);
+    }
+
+    public static void actionStarted(CardRef source, CardButton.Behavior behavior) {
+        if (current == null || !source.id().equals(current.cardId())) return;
+        if (behavior == CardButton.Behavior.CLOSE) dismiss(current);
+        else {
+            stopRecognition();
+            stopSpeech();
+            remainingTicks = current.durationTicks();
         }
     }
 
     public static String summary(AgentResult result) {
-        return summary(result, ClientModuleBindings.get().cards().message(result).text());
-    }
-
-    private static String summary(AgentResult result, String text) {
-        StringBuilder summary = new StringBuilder(text);
-        if (!result.cards().isEmpty() && !result.messageKey().equals("system.result.history")) {
-            AgentResult.Card card = result.cards().getFirst();
-            if (!card.titleKey().equals(result.messageKey())) summary.append("\n").append(tr(card.titleKey()));
-            String data = formatCard(card, false);
-            if (!data.isBlank()) summary.append("\n").append(data);
-        }
-        return summary.toString();
+        return CardPresentation.message(result).text();
     }
 
     @SubscribeEvent
@@ -238,7 +182,7 @@ public final class AssistantMessages {
             } catch (RuntimeException error) {
                 // A broken resource pack must not crash gameplay or retry the same notice every tick.
                 SystemMod.LOGGER.warn("Unable to create assistant HUD notification", error);
-                minecraft.player.sendSystemMessage(Component.literal(current.title() + "\n" + current.text()));
+                minecraft.player.sendSystemMessage(Component.literal(tr("system.ui.assistant") + "\n" + current.text()));
                 current = null;
                 unmount();
                 return;
@@ -273,7 +217,7 @@ public final class AssistantMessages {
                     : Component.translatable("system.ui.message_pending", displayedPending).getString());
         }
         if (phase == Phase.VISIBLE && !chatting && (recognition == null || recognition.finished())
-                && !(current.buttons().stream().anyMatch(Button::keepOpen) && AssistantClient.state().busy()))
+                && !(voiceButtons(current).stream().anyMatch(Button::keepOpen) && AssistantClient.state().busy()))
             remainingTicks--;
     }
 
@@ -293,15 +237,15 @@ public final class AssistantMessages {
         Element scroll = document.getElementById("notification_scroll");
         scroll.scrollTop = 0;
         scroll.targetScrollTop = 0;
-        text(document.getElementById("notification_title"), current.title());
-        text(document.getElementById("notification_text"), current.body() == null ? current.text() : current.body().text());
+        text(document.getElementById("notification_title"), tr("system.ui.assistant"));
+        text(document.getElementById("notification_text"), "");
         Element cards = document.getElementById("notification_cards");
         cards.setInnerHTML("");
-        if (current.body() != null)
-            for (CardPresentation card : current.body().cards()) cards.appendChild(card.render(document));
+        for (CardUpdate card : current.result().cards())
+            cards.appendChild(CardPresentation.of(card, current.result().messageKey(), CardContext.Mode.NOTIFICATION, 0).render(document));
         cards.setInlineStyleProperty("display", cards.children.isEmpty() ? "none" : "block");
-        renderRows();
-        AssistantItems.render(document, document.getElementById("notification_items"), current.items(), true);
+        document.getElementById("notification_choices").setInlineStyleProperty("display", "none");
+        document.getElementById("notification_items").setInlineStyleProperty("display", "none");
         renderButtons();
         interactive = null;
         displayedBusy = null;
@@ -325,8 +269,8 @@ public final class AssistantMessages {
         if (playCue || speakCurrent) {
             speech = new AssistantSpeech.Session();
             if (playCue)
-                speech.notification(speakCurrent ? current.speechText() : "", speakCurrent ? current.quests() : List.of());
-            else speech.say(current.speechText(), current.quests());
+                speech.notification(speakCurrent ? current.speechText() : "");
+            else speech.say(current.speechText());
         }
     }
 
@@ -383,21 +327,6 @@ public final class AssistantMessages {
             ApricityGuiLayers.submitUi(event.getGuiGraphics());
     }
 
-    private static void renderRows() {
-        Message shown = current;
-        Element choices = document.getElementById("notification_choices");
-        if (choices == null) return;
-        choices.setInnerHTML("");
-        choices.setInlineStyleProperty("display", shown.rows().isEmpty() ? "none" : "flex");
-        for (Row row : shown.rows()) {
-            Element button = element(document, "button", row.css(), row.label());
-            button.addEventListener("click", event -> {
-                if (canInteract(shown)) activate(shown, row.button());
-            });
-            choices.appendChild(button);
-        }
-    }
-
     private static void renderButtons() {
         Message shown = current;
         Element actions = document.getElementById("notification_actions");
@@ -414,13 +343,16 @@ public final class AssistantMessages {
 
     private static List<Button> buttons(Message shown) {
         List<Button> buttons = new ArrayList<>(shown.buttons());
-        buttons.add(new Button("confirm", "system.ui.message_confirm", false, () -> {
+        // Dismiss is always available, independently of the card's business actions and busy state.
+        buttons.add(new Button("confirm", "system.ui.message_confirm", false, false, () -> {
         }));
         return buttons;
     }
 
     private static List<Button> voiceButtons(Message shown) {
-        List<Button> buttons = new ArrayList<>(shown.rows().stream().map(Row::button).toList());
+        List<Button> buttons = new ArrayList<>();
+        for (ClientCards.Choice choice : ClientCards.choices(shown.result()))
+            if (choice.button().placement() == CardButton.Placement.BODY) buttons.add(button(choice));
         buttons.addAll(buttons(shown));
         return buttons;
     }
@@ -523,6 +455,10 @@ public final class AssistantMessages {
                 && minecraft.screen instanceof ChatScreen && !minecraft.options.hideGui;
     }
 
+    public static boolean canActivate(CardRef source) {
+        return canInteract(current) && current.result().cards().stream().anyMatch(card -> card.ref().equals(source));
+    }
+
     private static void dismiss(Message shown) {
         if (current != shown) return;
         stopRecognition();
@@ -552,17 +488,13 @@ public final class AssistantMessages {
             displayedBusy = busy;
             document.body.setClassName("notification" + (expanded ? " expanded" : "")
                     + (contentVisible ? " content_visible" : "") + (enabled ? " interactive" : ""));
-            Element choices = document.getElementById("notification_choices");
-            if (choices != null)
-                for (Element button : choices.children) {
-                    if (!enabled || busy) button.setAttribute("disabled", "");
-                    else button.removeAttribute("disabled");
-                }
+            for (Element button : document.querySelectorAll("#notification_cards button[data-requires-idle]"))
+                button.setDisabled(!enabled || busy);
             Element actions = document.getElementById("notification_actions");
             if (actions != null)
                 for (int index = 0; index < actions.children.size(); index++) {
                     Element button = actions.children.get(index);
-                    boolean disabled = !enabled || index < current.buttons().size() && current.buttons().get(index).requiresIdle() && busy;
+                    boolean disabled = !enabled || current != null && index < current.buttons().size() && current.buttons().get(index).requiresIdle() && busy;
                     if (disabled) button.setAttribute("disabled", "");
                     else button.removeAttribute("disabled");
                 }
@@ -603,27 +535,7 @@ public final class AssistantMessages {
     }
 
     private static boolean sameContent(Message first, Message second) {
-        if (second == null || !first.title().equals(second.title()) || !first.text().equals(second.text()) || !first.speechText().equals(second.speechText())
-                || !first.items().equals(second.items()) || !first.quests().equals(second.quests())
-                || first.durationTicks() != second.durationTicks() || first.buttons().size() != second.buttons().size()
-                || first.rows().size() != second.rows().size() || first.refreshType() != second.refreshType()
-                || !Objects.equals(first.body(), second.body()))
-            return false;
-        for (int index = 0; index < first.rows().size(); index++) {
-            Row left = first.rows().get(index), right = second.rows().get(index);
-            if (!left.label().equals(right.label()) || !left.css().equals(right.css()) || !sameButton(left.button(), right.button()))
-                return false;
-        }
-        for (int index = 0; index < first.buttons().size(); index++) {
-            Button left = first.buttons().get(index), right = second.buttons().get(index);
-            if (!sameButton(left, right)) return false;
-        }
-        return true;
-    }
-
-    private static boolean sameButton(Button left, Button right) {
-        return left.id().equals(right.id()) && left.label().equals(right.label()) && left.requiresIdle() == right.requiresIdle()
-                && left.keepOpen() == right.keepOpen() && left.details() == right.details();
+        return second != null && first.cardId().equals(second.cardId());
     }
 
     private static String limit(String value, int codePoints, int lines) {

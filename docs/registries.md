@@ -29,7 +29,7 @@
 
 ### 卡片数据与动作载荷
 
-卡片类型共 22 个：`empty`、`player`、`items`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`claim`、`preferences`、`client_state`、`history`、`sign_in_status`、`shop_offer`、`shop_order`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`。
+卡片类型共 22 个：`text`、`selection`、`binding`、`shop_offer`、`shop_quote`、`player`、`items`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`claim`、`sign_in_status`、`shop_order`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`。状态与历史不再注册为卡片。
 
 动作类型共 19 个：`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`。
 
@@ -40,7 +40,7 @@ CardData card = snapshot;
 TypedPayload<?> call = SystemActionTypes.QUEST_ACTION.get().of(QuestDetailInput.byId(id));
 ```
 
-`ResultTypes` 只保留共用 DTO，不再承担类型注册。卡片实现提供 `MapCodec`、`TEMPLATE`、`codec()` / `template()` 及 `buildContext(builder, formatting)`，根 `CardData.CODEC` 使用正式注册表的 `byNameCodec().dispatch("type", ...)`，数据字段平铺。`TypedPayload.ACTION_CODEC` 仍按 `moduleId` 分派模块动作：
+`ResultTypes` 只保留共用 DTO，不再承担类型注册。卡片实现提供 `MapCodec`、`codec()` 和 `buildCard()`，模板与展示内容由 CardBuilder 一次描述，根 `CardData.CODEC` 使用正式注册表的 `byNameCodec().dispatch("type", ...)`，数据字段平铺。`TypedPayload.ACTION_CODEC` 仍按 `moduleId` 分派模块动作：
 
 ```jsonl
 {"type":"system:player","name":"..."}
@@ -49,14 +49,14 @@ TypedPayload<?> call = SystemActionTypes.QUEST_ACTION.get().of(QuestDetailInput.
 
 动作类型已登记不代表可执行：`ModuleRegistry` 仍检查当前服务端是否安装对应工作流、类型键实例是否一致，以及玩家功能权限。FTB 的 DTO/Codec 两端始终登记，实际 FTB 工具与工作流依赖安装检测。
 
-`SystemCardDataTypes` 只负责卡片数据 Codec。`CardData.template()` 直接返回 `assets/<namespace>/cards/<path>.json` 对应的资源 ID，各数据实现通过 `TEMPLATE` 常量公开。客户端独立构建 `CardContext` 后，由 `CardPresentation.of(data, context)` 读取模板，不再登记渲染映射。扩展在 CardData 实现的 `buildContext(...)` 中填充参数并提供 JSON 资源；不需要登记参数构建器。功能模块仅按需调用 `module.cards().register(Output.class)` 声明消息、状态或通知行为。数据类型 ID 与资源 ID 可以不同，数据和布局可以分别调整，见[客户端 JSON 卡片](cards.md#数据与渲染绑定)。
+`SystemCardDataTypes` 只负责卡片数据 Codec。`CardData.buildCard()` 返回 CardBuilder，build 后得到包含 template、参数、按钮和播报的 CardView。客户端 CardPresentation 解析 Component/物品名称并读取 assets 模板，不登记渲染映射、参数构建器或客户端卡片行为。数据 ID 与资源 ID 可以不同，见[客户端 JSON 卡片](cards.md#数据与渲染绑定)。
 
 ### 协议类型
 
 | 注册表 | 内置条目 ID | 对应类型 |
 | --- | --- | --- |
-| `system:agent_request_type` | `system:chat`、`system:invoke`、`system:control`、`system:preferences` | `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest` |
-| `system:agent_response_type` | `system:reply`、`system:notice`、`system:open`、`system:binding` | `ReplyResponse`、`NoticeResponse`、`OpenResponse`、`BindingResponse` |
+| `system:agent_request_type` | `system:chat`、`system:invoke`、`system:control`、`system:preferences`、`system:card_action` | `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest`、`CardActionRequest` |
+| `system:agent_response_type` | `system:reply`、`system:notice`、`system:open`、`system:binding`、`system:state`、`system:history` | `ReplyResponse`、`NoticeResponse`、`OpenResponse`、`BindingResponse`、`StateResponse`、`HistoryResponse` |
 
 这些根接口通过 `codec()` 返回已注册的 MapCodec 实例；根 `CODEC` 从对应注册表的 `byNameCodec()` 按 `type` 分派。没有额外的 `DispatchRegistry.Type` 包装或 ID Map。未知 ID、未登记的 Codec 由原版注册表 Codec 拒绝，网络版本仍为 `1`。
 
@@ -110,7 +110,7 @@ public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<Exampl
 CARDS.register(bus);
 ```
 
-`ExampleOutput` 实现 `CardData`，`codec()` 返回登记的 `ExampleOutput.CODEC` 实例，`template()` 返回布局资源 ID，`buildContext(builder, formatting)` 填充参数；业务代码直接创建 `ExampleOutput`。动作类型则向 `SystemResourceKeys.ACTION_TYPE` 登记 `TypedPayload.Type<?>`，以 `id -> new TypedPayload.Type<>(id, Input.CODEC)` 构造。工作流、按钮和命令共用对应 Holder 的 `.get()`，不创建第二个同名 Type。
+`ExampleOutput` 实现 `CardData`，`codec()` 返回登记的 `ExampleOutput.CODEC` 实例，`buildCard()` 返回描述模板、参数和按钮的 CardBuilder；业务代码直接创建 `ExampleOutput`。动作类型则向 `SystemResourceKeys.ACTION_TYPE` 登记 `TypedPayload.Type<?>`，以 `id -> new TypedPayload.Type<>(id, Input.CODEC)` 构造。工作流、按钮和命令共用对应 Holder 的 `.get()`，不创建第二个同名 Type。
 
 ### 新卡片节点
 
@@ -148,10 +148,10 @@ var id = SystemRegistries.CARD_DATA_TYPE.getKey(SystemCardDataTypes.PLAYER.get()
 SystemRegistries.CARD_DATA_TYPE.forEach(entry -> { /* inspect registered types */ });
 ```
 
-协议扩展也使用相同 DeferredRegister 模式，泛型改为对应 `MapCodec<? extends Root>`，根对象的 `codec()` 返回登记的实例。登记 Codec 只解决序列化；新请求/响应仍须在对应 Handler 提供行为，新卡片通过自身 `buildContext(...)` 填充参数，并提供 assets 模板。
+协议扩展也使用相同 DeferredRegister 模式，泛型改为对应 `MapCodec<? extends Root>`，根对象的 `codec()` 返回登记的实例。登记 Codec 只解决序列化；新请求/响应仍须在对应 Handler 提供行为，新卡片通过自身 `buildCard()` 描述内容，并提供 assets 模板。
 
 ## 仍保留的运行时登记表
 
-`ModuleRegistry`、`ToolRegistry`、`CommandRegistry` 是每个 Agent 服务实例的工作流、工具和指令索引；`ClientCommandRegistry`、`ClientCardBindings`、`ClientModuleBindings` 是客户端贡献装配表；ClientCardBindings 只保存消息、状态、刷新与通知规则，上下文及图形/文本展示由 CardPresentation 负责。它们保存运行时处理器或从正式模块定义派生的数据，不承担协议类型或卡片节点类型的注册。ASR / TTS 使用按名称查询的普通工厂 Map。卡片布局直接按 `CardData.template()` 读取资源，不维护额外渲染登记表。
+`ModuleRegistry`、`ToolRegistry`、`CommandRegistry` 是每个 Agent 服务实例的工作流、工具和指令索引；`ClientCommandRegistry`、`ClientModuleBindings` 装配本地命令与页面。ModuleRouting.button 提供按钮字符串参数解码，CardController 的 Local Map 提供本地动作处理器。这些只负责运行行为，不承担 Codec 类型注册。ClientCards/ServerCards 保存连接内消息及版本，ASR/TTS 使用供应商工厂 Map。卡片布局直接取 CardView.template，不维护额外渲染或卡片行为登记表。
 
 `TypeDispatch` 是按 Java 类选择内部处理器的工具，资源模板 Map 是重载快照，玩家/session/缓存 Map 是业务状态。这些不属于 MC 的内置注册表，也不应随本次迁移冻结进全局注册表。

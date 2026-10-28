@@ -9,7 +9,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Durable event tasks and idempotent tool receipts belong to the Agent execution subsystem. */
+/**
+ * Durable event tasks and idempotent tool receipts belong to the Agent execution subsystem.
+ */
 public final class AgentJournalDataStorage extends DataStorage {
     public static final MapCodec<AgentJournalDataStorage> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.unboundedMap(Codec.STRING, PlayerData.EventTask.CODEC).optionalFieldOf("tasks", Map.of())

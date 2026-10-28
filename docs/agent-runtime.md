@@ -35,7 +35,7 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 | `AgentModule<I>` | 在自己的策略内组合流程与多个工具 |
 | `ToolRegistry.Tool<I, O>` | 一个工具类型、一个 Handler、一个行为 |
 
-执行结果 `AgentResult` 复用 Saturn `ResultWithData<List<Card>>`：调用方统一用 `isSuccess()` / `isFailure()` 分支，Agent 自己保留文案、静默输出和部分完成状态。`partial()` 标记部分成功，但仍属于失败；`withPresentation(...)` 只生成展示副本。跨网络与存档继续使用 `AgentResult.CODEC`，不传输 Failure 的实现类。商城的 `CommerceCosts.Prepared` 同样复用 `ResultWithData<Price>`，同时保留原始定价失败原因与相关资源。搜索条目、模型回复及音频流解析状态属于数据载荷，不套用操作成功/失败契约。
+执行结果 `AgentResult` 复用 Saturn `ResultWithData<List<CardUpdate>>`：调用方统一用 `isSuccess()` / `isFailure()` 分支，Agent 自己保留文案、静默输出和 Status 枚举；SUCCEEDED、FAILED、PARTIALLY_SUCCEEDED 按稳定小写字符串编码。`partial()` 标记部分成功，但仍属于失败；`withPresentation(...)` 只生成展示副本。跨网络与存档继续使用 `AgentResult.CODEC`，不传输 Failure 的实现类。商城的 `CommerceCosts.Prepared` 同样复用 `ResultWithData<Price>`，同时保留原始定价失败原因与相关资源。搜索条目、模型回复及音频流解析状态属于数据载荷，不套用操作成功/失败契约。
 
 外层 ServerModule 注册工作流时记录 ownerId，ModuleManager 在模块成功激活后发布按玩家计算的权限快照；帮助、补全、语义候选、模型目录与执行器共用可用性过滤，ExecutionContext 在工具和模型入口再次检查权限。基础设施与无 owner 的独立扩展工作流不属于可选业务模块。结构化按钮、精确指令、本地语义与模型选择最终都生成相同的 `TypedPayload<?>`。交互与事件共享 `AgentEngine.execute`，权限、策略选择与部分成功报告集中处理；事件恢复继续使用持久化策略和已完成操作回执。
 
@@ -102,9 +102,9 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 
 ## 请求、响应与类型分派
 
-`AgentRequest.CODEC` 与 `AgentResponse.CODEC` 从正式内置注册表 `SystemRegistries.AGENT_REQUEST_TYPE / AGENT_RESPONSE_TYPE` 的 `byNameCodec()` 按 `type` 分派；实例的 `codec()` 返回同一个已注册 MapCodec。内置条目通过 `SystemRequestTypes / SystemResponseTypes` 的 DeferredRegister 在两端登记，不再维护 DispatchRegistry 或自建类型 Map。未知 ID 和未注册的 Codec 由原版注册表 Codec 拒绝，定义中不能引用可选模组的类。卡片数据直接实现 `CardData`，根 `CardData.CODEC` 按同样方式分派各实现自己的 MapCodec，数据不再套 `TypedPayload`；`template()` 提供布局资源 ID，`buildContext(builder, formatting)` 负责类型自己的展示参数。CardContext 与 CardFormatting 位于公共 agent 包，不引用客户端 GUI；标题、显示模式和按钮回调由客户端补充。模块动作继续通过 `TypedPayload.ACTION_CODEC` 分派输入，条目列表及查询方式见[注册表速查](registries.md)。
+`AgentRequest.CODEC` 与 `AgentResponse.CODEC` 从正式内置注册表 `SystemRegistries.AGENT_REQUEST_TYPE / AGENT_RESPONSE_TYPE` 的 `byNameCodec()` 按 `type` 分派；实例的 `codec()` 返回同一个已注册 MapCodec。内置条目通过 `SystemRequestTypes / SystemResponseTypes` 的 DeferredRegister 在两端登记，不再维护 DispatchRegistry 或自建类型 Map。未知 ID 和未注册的 Codec 由原版注册表 Codec 拒绝，定义中不能引用可选模组的类。卡片数据实现公共 card 包的 `CardData`，根 Codec 按相同方式分派各实现的 MapCodec。buildCard 返回包含模板、参数、按钮和 SpeechContent 的 CardBuilder，客户端再 build 成 CardView；不查客户端模块表或业务服务。动作仍以 TypedPayload 执行，卡片按钮通过 CardActionRequest 携带来源 CardRef 与动作 ID/字符串参数，ModuleRouting.button 负责适配并校验原输入 Codec。条目列表见[注册表速查](registries.md)。
 
-请求实现为 `agent.request` 下的 `ChatRequest`、`InvokeRequest`、`ControlRequest` 和 `PreferencesRequest`，响应实现为 `agent.response` 下的 `ReplyResponse`、`NoticeResponse`、`OpenResponse` 和 `BindingResponse`。每个实现维护静态 MapCodec，`SystemRequestTypes` / `SystemResponseTypes` 只负责注册；根接口不再内联实现。`ControlRequest` 是枚举，其 Codec 保留 `action` 字段；导航与绑定枚举分别由对应响应持有。
+请求实现为 `agent.request` 下的 `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest` 和 `CardActionRequest`，响应实现为 `agent.response` 下的 `ReplyResponse`、`NoticeResponse`、`OpenResponse`、`BindingResponse`、`StateResponse` 和 `HistoryResponse`。每个实现维护静态 MapCodec，`SystemRequestTypes` / `SystemResponseTypes` 只负责注册；根接口不再内联实现。`ControlRequest` 是枚举，其 Codec 保留 `action` 字段；导航与绑定枚举分别由对应响应持有。
 
 以下 JSON 仅示意 Codec 结构；网络实际通过 `ByteBufCodecs.fromCodecWithRegistries` 编码类型对象：
 
@@ -115,9 +115,9 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 {"type":"system:preferences","history":true,"external":true}
 ```
 
-响应类型为 `system:reply`、`system:notice`、`system:open` 和 `system:binding`。回复关联请求 UUID，通知直接进入消息队列；导航携带 `CURRENT/SIMPLE/FULL`，绑定变更携带 `BOUND/REVOKED/INVALIDATED`。请求 ID 只作关联，不再传递 `bound/open/event/revoked` 等操作字符串。网络协议为 1，两端需一起更新。
+响应类型为 `system:reply`、`system:notice`、`system:open`、`system:binding`、`system:state` 和 `system:history`。状态与历史不占用卡片类型；历史恢复为只读，不播报、不执行按钮。回复关联请求 UUID，通知直接进入消息队列；导航携带 `CURRENT/SIMPLE/FULL`，绑定变更携带 `BOUND/REVOKED/INVALIDATED`。请求 ID 只作关联，不再传递 `bound/open/event/revoked` 等操作字符串。网络协议为 1，两端需一起更新。
 
-服务端请求执行、客户端响应处理、卡片状态更新、任务列表来源、摘要投影、展示和口播使用 `util.TypeDispatch` 的类型处理 Map；控制动作、消息文案和 NLS 事件使用显式 Map。它们负责运行行为，不承担编解码。未注册的请求处理器报 `UNSUPPORTED`；通用卡片展示沿用默认格式，摘要和口播标题提取只读取已登记的数据。UI 动画、按键和播放状态机继续使用自身状态判断。
+服务端请求和客户端响应使用 util.TypeDispatch 分派运行行为；控制动作和 NLS 事件使用 Map。卡片本身通过 buildCard 提供展示与播报，ClientCards 按 ID/版本处理 SHOW/REPLACE/REMOVE，不再登记按类型刷新或口播处理器。ReplyResponse 完成请求与是否含卡片无关；客户端跟踪页面归属和超时，迟到更新不能抢新页。详见[卡片数据流](card-flow-design.md)。
 
 FTB 查询 Tool 使用固定返回类型：`ftb.query` 列出当前可执行或可领奖任务、`ftb.find` 搜索可读任务，均返回 `List<QuestBriefOutput>`；`ftb.detail` 按 ID 或玩家上次列表编号返回一个 `QuestOutput`，不存在或不可查看时抛出业务错误。`QuestDetailModule` 负责名称搜索、歧义候选展示和单个详情读取；详情快照的 `starterGift` 只标记任务分类，遇到礼包时由 Module 再调用共享的礼包列表工具。不再为任务查询定义多态结果或类型注册表。任务对象和队伍进度只在兼容层的服务端线程读取，传给 Agent 的是带 Codec 的数据快照。
 

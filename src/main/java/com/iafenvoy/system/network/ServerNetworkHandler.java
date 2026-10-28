@@ -1,15 +1,19 @@
 package com.iafenvoy.system.network;
 
-import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.AgentEngine;
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentResponse;
+import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.response.BindingResponse;
 import com.iafenvoy.system.agent.response.NoticeResponse;
 import com.iafenvoy.system.agent.response.ReplyResponse;
 import com.iafenvoy.system.assistant.AssistantServer;
+import com.iafenvoy.system.assistant.ServerCards;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
-import com.iafenvoy.system.network.payload.*;
-import com.iafenvoy.system.module.quest.QuestSystemModule;
-import com.iafenvoy.system.util.CodecIO;
-import net.minecraft.server.MinecraftServer;
+import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
+import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
+import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
+import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -51,30 +55,6 @@ public final class ServerNetworkHandler {
         }
     }
 
-    public static void handleQuestNarrationRequest(QuestNarrationRequestC2SPayload payload, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer player)) return;
-        UUID connection = connectionId(player);
-        MinecraftServer server = player.level().getServer();
-        AssistantServer runtime = AssistantServer.get(server);
-        if (runtime == null || !runtime.players().notificationsEnabled(player)
-                || !runtime.moduleManager().hasModule(player.getUUID(), QuestSystemModule.ID)) return;
-        long incarnation = runtime.engine().incarnation(player.getUUID());
-        try {
-            UUID.fromString(payload.id());
-            runtime.players().refreshPlayer(player);
-            runtime.engine().questNarration().request(player.getUUID(), payload.request()).whenComplete((reply, error) -> server.execute(() -> {
-                if (server.getPlayerList().getPlayer(player.getUUID()) != player || !connection.equals(connectionId(player))
-                        || !runtime.engine().current(player.getUUID(), incarnation)) return;
-                QuestNarration.Reply answer = error == null ? reply : QuestNarration.Reply.empty();
-                if (CodecIO.write(QuestNarration.Reply.CODEC, answer).length() > 60000)
-                    answer = QuestNarration.Reply.empty();
-                player.connection.send(new QuestNarrationResponseS2CPayload(payload.id(), answer));
-            }));
-        } catch (RuntimeException error) {
-            player.connection.send(new QuestNarrationResponseS2CPayload(payload.id(), QuestNarration.Reply.empty()));
-        }
-    }
-
     public static void reply(ServerPlayer player, String requestId, AgentResult result) {
         send(player, new ReplyResponse(requestId, result));
     }
@@ -88,11 +68,15 @@ public final class ServerNetworkHandler {
     }
 
     public static void send(ServerPlayer player, AgentResponse response) {
+        if (response instanceof ReplyResponse reply) ServerCards.publish(player.getUUID(), reply.result());
+        else if (response instanceof NoticeResponse(AgentResult result)) ServerCards.publish(player.getUUID(), result);
+        else if (response instanceof BindingResponse binding) ServerCards.publish(player.getUUID(), binding.result());
         // NeoForge splits large server-built replies; quest lists must arrive without UI pagination.
         player.connection.send(new AssistantResponseS2CPayload(response));
     }
 
     public static void connected(ServerPlayer player) {
+        ServerCards.clear(player.getUUID());
         CONNECTIONS.put(player.getUUID(), UUID.randomUUID());
     }
 
@@ -109,6 +93,7 @@ public final class ServerNetworkHandler {
     }
 
     public static void disconnected(ServerPlayer player) {
+        ServerCards.clear(player.getUUID());
         CONNECTIONS.remove(player.getUUID());
     }
 

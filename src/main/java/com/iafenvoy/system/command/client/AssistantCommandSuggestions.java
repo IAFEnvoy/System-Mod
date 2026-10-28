@@ -1,9 +1,13 @@
 package com.iafenvoy.system.command.client;
 
+import com.iafenvoy.saturn.util.MiscUtil;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.card.CardButton;
+import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.screen.gui.AssistantView;
 
 import java.util.LinkedHashMap;
@@ -37,16 +41,17 @@ public final class AssistantCommandSuggestions {
         AgentResult result = AssistantClient.state().current() == null ? null : AssistantClient.state().current().result();
         if (result != null) {
             int index = 1;
-            for (AgentResult.Card card : result.cards()) {
-                for (AgentResult.Action action : card.actions()) {
+            for (CardUpdate card : result.cards()) {
+                for (CardButton action : ClientCards.view(card).buttons()) {
                     String text = AssistantView.actionLabel(card, action);
-                    String hint = com.iafenvoy.saturn.util.MiscUtil.clip(text, 96);
+                    String hint = MiscUtil.clip(text, 96);
                     add(candidates, input, prefix + "select " + index, hint);
                     add(candidates, input, prefix + "选择 " + index++, hint);
                 }
-                if (!(card.data() instanceof ResultTypes.QuestList(List<QuestBriefOutput> quests))) continue;
+                if (!(card.data().orElse(null) instanceof ResultTypes.QuestList(List<QuestBriefOutput> quests)))
+                    continue;
                 for (QuestBriefOutput quest : quests) {
-                    String number = Integer.toString(quest.number()), title = quest.title();
+                    String number = Integer.toString(quest.number()), title = quest.title().getString();
                     for (String command : List.of("view", "查看")) {
                         add(candidates, input, prefix + command + " " + number, title);
                         add(candidates, input, prefix + command + " " + title, "");
@@ -59,7 +64,7 @@ public final class AssistantCommandSuggestions {
 
     private static void add(Map<String, Suggestion> candidates, String input, String value, String hint) {
         value = value.replace('\r', ' ').replace('\n', ' ');
-        hint = com.iafenvoy.saturn.util.MiscUtil.clip(hint.replace('\r', ' ').replace('\n', ' '), 96);
+        hint = MiscUtil.clip(hint.replace('\r', ' ').replace('\n', ' '), 96);
         if (!value.equals(input) && value.toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
             candidates.putIfAbsent(value, new Suggestion(value, hint));
     }

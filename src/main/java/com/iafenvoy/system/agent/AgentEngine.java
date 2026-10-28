@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Agent execution engine; persistence, inference and workflow waits run off the game thread.
@@ -147,7 +148,7 @@ public final class AgentEngine implements AutoCloseable {
             }
 
             @Override
-            public boolean updateLoaded(UUID requested, java.util.function.Predicate<PlayerData> transaction) {
+            public boolean updateLoaded(UUID requested, Predicate<PlayerData> transaction) {
                 return AgentEngine.this.store.updateLoaded(requested, data -> {
                     this.check(requested);
                     return transaction.test(data);
@@ -291,7 +292,7 @@ public final class AgentEngine implements AutoCloseable {
         return this.conversations.preferences(player, history, external);
     }
 
-    public CompletionStage<AgentResult> history(UUID player) {
+    public CompletionStage<ResultTypes.History> history(UUID player) {
         return this.conversations.history(player);
     }
 

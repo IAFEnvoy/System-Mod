@@ -17,10 +17,13 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-/** Internal entitlement resolver; ModuleManager publishes only successfully activated modules. */
+/**
+ * Internal entitlement resolver; ModuleManager publishes only successfully activated modules.
+ */
 final class ModuleAccess implements PlayerModule {
     private final MinecraftServer server;
     private final AgentEngine engine;
@@ -31,7 +34,8 @@ final class ModuleAccess implements PlayerModule {
     private final Map<UUID, ServerPlayer> players = new HashMap<>();
     private final Set<String> reportedErrors = new HashSet<>();
     private Resolution resolving;
-    private Consumer<ServerPlayer> changed = _ -> {};
+    private Consumer<ServerPlayer> changed = _ -> {
+    };
     private int ticks;
 
     public ModuleAccess(MinecraftServer server, AgentEngine engine, List<Identifier> installed) {
@@ -75,7 +79,8 @@ final class ModuleAccess implements PlayerModule {
 
     private boolean set(ServerPlayer player, Identifier module, boolean value) {
         if (!this.server.isSameThread()) throw new IllegalStateException("Module overrides require the server thread");
-        if (!this.hasSystem(player.getUUID()) || !this.installed.contains(module) || this.required.contains(module)) return false;
+        if (!this.hasSystem(player.getUUID()) || !this.installed.contains(module) || this.required.contains(module))
+            return false;
         UUID uuid = player.getUUID();
         if (this.players.get(uuid) != player) return false;
         ModuleAccessDataStorage selection = this.overrides.get(uuid);
@@ -111,13 +116,14 @@ final class ModuleAccess implements PlayerModule {
         }
     }
 
+    @Override
     public void tick() {
         if (++this.ticks % 20 == 0) List.copyOf(this.players.values()).forEach(this::refresh);
     }
 
     @Override
     public Session login(ServerPlayer player) {
-        java.util.concurrent.atomic.AtomicReference<ModuleAccessDataStorage> saved = new java.util.concurrent.atomic.AtomicReference<>();
+        AtomicReference<ModuleAccessDataStorage> saved = new AtomicReference<>();
         return new Session() {
             @Override
             public void initialize(PlayerData data) {
@@ -153,7 +159,7 @@ final class ModuleAccess implements PlayerModule {
                 })).toCompletableFuture();
         this.pendingWrites.put(player, next);
         next.whenComplete((_, error) -> {
-            if (error != null) com.iafenvoy.system.SystemMod.LOGGER.warn("Unable to save module access for {}", player, error);
+            if (error != null) SystemMod.LOGGER.warn("Unable to save module access for {}", player, error);
             this.pendingWrites.remove(player, next);
         });
     }

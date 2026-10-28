@@ -1,6 +1,6 @@
 {
   "system.ui.message_confirm": {
-    "zh": ["确定", "确认", "好的", "知道了", "收到", "关闭", "关闭通知", "关闭消息", "忽略通知", "取消", "下一条", "确认这条通知"],
+    "zh": ["确定", "确认", "好的", "知道了", "收到", "关闭", "关闭通知", "关闭消息", "忽略通知", "取消", "下一条", "下一个", "下一页", "确认这条通知"],
     "en": ["OK", "okay", "confirm", "dismiss", "close", "close notification", "cancel", "next notification"]
   },
   "system.ui.message_details": {

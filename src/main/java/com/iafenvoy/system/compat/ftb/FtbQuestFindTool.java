@@ -13,7 +13,8 @@ import dev.ftb.mods.ftbquests.quest.TeamData;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
-import static com.iafenvoy.system.compat.ftb.FtbQuestAccess.*;
+import static com.iafenvoy.system.compat.ftb.FtbQuestAccess.brief;
+import static com.iafenvoy.system.compat.ftb.FtbQuestAccess.list;
 
 /**
  * Searches readable quests with exact-name preference and returns only candidate summaries.

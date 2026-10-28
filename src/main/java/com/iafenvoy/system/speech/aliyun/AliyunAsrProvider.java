@@ -4,8 +4,8 @@ import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.data.speech.AliyunAsrMessage;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AsrProvider;
-import com.iafenvoy.system.util.HttpTransport;
 import com.iafenvoy.system.util.CodecIO;
+import com.iafenvoy.system.util.HttpTransport;
 
 import java.io.IOException;
 import java.net.URI;

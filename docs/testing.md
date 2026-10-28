@@ -428,3 +428,24 @@ TTS / ASR 统计由本机 `LocalSpeechUsage` 按客户端账号 UUID 保存于 `
 阅读代码确认：原 ClientCardRegistry 改为 ClientCardBindings，仅登记与调用消息、客户端状态、静默刷新、任务引用及通知行规则。上下文组装、布局解析、图形展示、纯文本格式化和按钮标签统一由 CardPresentation 提供，完整界面、简约界面与 HUD 直接调用，普通卡片无需登记行为。动作仍在类型参数填充前写入 Builder，通用标题、模式和发送回调仍在填充后补充，模板缺失回退及通知快照保持原实现。
 
 静态检查确认源码没有旧类名或通过行为表调用展示方法的残留，ClientCardBindings 不引用 CardContext、渲染类或 AssistantClient；CardPresentation 不引用行为装配表。状态、消息、刷新及任务引用的调用方仍使用行为绑定。更新的 5 份架构文档及索引的本地链接有效，双语各 455 个键且集合一致，`git diff --check` 通过；未修改语言资源、布局 JSON、网络协议或 `README-zh.md`。
+
+
+## 2026-10-28 卡片数据流与普通文本约定
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过。没有执行测试、启动 Minecraft、创建存档、打开麦克风或调用模型/TTS/ASR API。
+
+阅读代码确认：CardData.buildCard 统一返回 CardBuilder，公共 card 包不引用客户端、AUI、服务端运行时或 FTB 类；客户端 CardPresentation 构建一次完整展示，原 ClientCardBindings、通知标签策略表、旧 Card 外壳和任务播报专用网络包已删除。卡片按钮明确区分本地/服务端动作，服务端按钮经 ModuleRouting.button 转成原类型化工作流输入；单 Tool 对应单行为，多个工作流共享同一 Tool 实例。
+
+消息使用 CardRef(UUID, revision) 与 SHOW/REPLACE/REMOVE，不再按 Java 类型刷新。状态、历史使用独立响应，历史恢复只读且不播报；等待关联请求和页面，失败、超时、无卡片响应都可解除。任务领取后由服务端查询完整任务是否还有可领奖励，不使用当前分页推断；礼包领取静默替换/移除。SpeechContent 随 DTO 下发，服务端后台缓存陌生任务及背景解释，首张卡片不等待 AI，也不追加迟到播报。
+
+普通消息的判定集中在 CardPresentation：只有单个 system:text 节点、没有 repeat、没有任何按钮或额外可见标题/摘要内容时省去卡片外框。文字带按钮、物品、容器、分割线、多节点等仍为卡片。单文本模板带按钮时自动补充操作区，通知 FOOTER 由代码生成。
+
+静态检查：主资源与开发资源共 44 个 JSON 文件语法及键唯一性通过；22 个 CardData 类型使用的 20 个布局均存在；中英文各 455 个键且集合一致；修改文档的本地链接和公共契约依赖检查通过，git diff --check 通过。移除不再使用的 client_state/history/preferences 模板，协议仍为 1，README-zh.md 未修改。
+
+尚未进行游戏内验收：普通文本与带按钮卡片的视觉差异、首次绑定队列、同类型消息独立更新、历史按钮只读、WAIT 失败/超时、资源重载、长任务列表、物品 tooltip 与语音切换。编译和静态检查不代表这些功能已实测通过。
+
+## 2026-10-28 通知确定按钮与语音别名
+
+阅读代码确认原逻辑只在没有业务底部按钮时补充“确定”，已改为始终追加，助手忙碌时仍可关闭通知。确认操作新增“下一个”“下一页”例句并保留“关闭”；实际按钮文案的精确匹配优先于别名，避免覆盖真正的翻页按钮。
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未运行测试或启动 Minecraft，通知按钮点击与实际语音识别尚未进行游戏内验收。静态检查确认别名完整且无重复，中英文各 455 个语言键且集合一致，`git diff --check` 通过。

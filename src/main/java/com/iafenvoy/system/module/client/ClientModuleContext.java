@@ -1,10 +1,12 @@
 package com.iafenvoy.system.module.client;
 
-import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.card.CardRef;
+import com.iafenvoy.system.card.client.CardController;
 import net.minecraft.resources.Identifier;
 
-import java.util.function.BiFunction;
+import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -33,15 +35,9 @@ public record ClientModuleContext(ClientModuleBindings bindings, Identifier id, 
         this.bindings.workspace(new ClientModuleBindings.Workspace(this.id, this.serverRequired, page, navigation, label, group, bind));
     }
 
-    public ClientCardBindings cards() {
-        return this.bindings.cards();
-    }
-
-    public void message(String key, Function<AgentResult, ClientMessage> handler) {
-        this.cards().message(key, handler);
-    }
-
-    public <T> void message(String key, Class<T> type, BiFunction<AgentResult.Card, T, ClientMessage> handler) {
-        this.cards().message(key, type, handler);
+    public void localAction(Identifier action, BiConsumer<CardRef, Map<String, String>> handler) {
+        CardController.register(action, (source, arguments) -> {
+            if (this.available()) handler.accept(source, arguments);
+        });
     }
 }

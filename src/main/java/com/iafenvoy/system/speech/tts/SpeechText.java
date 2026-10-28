@@ -1,9 +1,8 @@
 package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.module.client.ClientModuleBindings;
+import com.iafenvoy.system.screen.card.CardPresentation;
 
-import java.util.List;
 
 /**
  * Feature-owned narration is shared by assistant pages and HUD notifications.
@@ -13,10 +12,7 @@ public final class SpeechText {
     }
 
     public static String result(AgentResult result) {
-        return result.silent() ? "" : ClientModuleBindings.get().cards().message(result).speech();
+        return result.silent() ? "" : CardPresentation.message(result).speech();
     }
 
-    public static List<String> quests(AgentResult result) {
-        return result.cards().stream().flatMap(card -> ClientModuleBindings.get().cards().quests(card).stream()).distinct().toList();
-    }
 }

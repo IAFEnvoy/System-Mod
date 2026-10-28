@@ -5,35 +5,30 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.module.client.ClientCardBindings;
-import com.iafenvoy.system.module.client.ClientModuleBindings;
+import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.util.CodecIO;
 import net.minecraft.resources.Identifier;
 
 import java.util.*;
-import java.util.function.BiFunction;
 
 /**
- * Immutable connection-local conversation; EMPTY is reusable and never mutated by requests or notices.
+ * Immutable connection state; visual cards, history and nonvisual server state have separate paths.
  */
-public record AssistantClientState(List<ChatEntry> entries, Set<String> pending, ResultTypes.ClientState serverState,
-                                   ChatEntry current) {
-    public static final AssistantClientState EMPTY = new AssistantClientState(List.of(), Set.of(),
+public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending> pending,
+                                   ResultTypes.ClientState serverState, ChatEntry current) {
+    public static final AssistantClientState EMPTY = new AssistantClientState(List.of(), Map.of(),
             new ResultTypes.ClientState(true, true, List.of(), List.of()), null);
-    private static final Map<String, BiFunction<AssistantClientState, Reception, AssistantClientState>> RESULT_HANDLERS = Map.of(
-            "system.result.state", (state, a) -> state,
-            "system.result.forgotten", (state, reception) -> new AssistantClientState(List.of(), state.pending, state.serverState, state.current).append(reception),
-            "system.result.history", AssistantClientState::restoreHistory);
-
-    public AssistantClientState {
-        entries = List.copyOf(entries.subList(Math.max(0, entries.size() - 64), entries.size()));
-        pending = Set.copyOf(pending);
-    }
 
     public record ChatEntry(boolean player, String text, AgentResult result) {
     }
 
-    private record Reception(AgentResult result, boolean pending, boolean notification) {
+    public record Pending(long deadline, Object owner) {
+    }
+
+    public AssistantClientState {
+        entries = List.copyOf(entries.subList(Math.max(0, entries.size() - 64), entries.size()));
+        pending = Map.copyOf(pending);
     }
 
     public boolean busy() {
@@ -56,94 +51,90 @@ public record AssistantClientState(List<ChatEntry> entries, Set<String> pending,
         return this.serverState.commands();
     }
 
-    public List<AgentResult.Action> currentActions() {
-        return this.current == null || this.current.result() == null ? List.of() : this.current.result().cards().stream().flatMap(card -> card.actions().stream()).toList();
+    public List<ClientCards.Choice> currentActions() {
+        return this.current == null || this.current.result() == null ? List.of() : ClientCards.choices(this.current.result());
     }
 
     AssistantClientState local(AgentResult result) {
-        ChatEntry current = new ChatEntry(false, "", result);
-        List<ChatEntry> entries = new ArrayList<>(this.entries);
-        entries.add(current);
-        return new AssistantClientState(entries, this.pending, this.serverState, current);
+        return this.append(result, false, true);
     }
 
-    AssistantClientState requested(String id, AgentRequest request) {
+    AssistantClientState requested(String id, AgentRequest request, Object owner) {
         List<ChatEntry> entries = new ArrayList<>(this.entries);
         if (!request.text().isBlank()) entries.add(new ChatEntry(true, request.text(), null));
-        Set<String> pending = new HashSet<>(this.pending);
-        pending.add(id);
-        ChatEntry current = request == ControlRequest.STATE ? this.current : new ChatEntry(false, request.text(), null);
-        return new AssistantClientState(entries, pending, this.serverState, current);
+        Map<String, Pending> pending = new HashMap<>(this.pending);
+        pending.put(id, new Pending(System.currentTimeMillis() + 60000, owner));
+        return new AssistantClientState(entries, pending, this.serverState,
+                request == ControlRequest.STATE || request == ControlRequest.HISTORY || request.text().isBlank()
+                        ? this.current : new ChatEntry(false, request.text(), null));
     }
 
     AssistantClientState complete(String id) {
-        if (!this.pending.contains(id)) return this;
-        Set<String> pending = new HashSet<>(this.pending);
+        if (!this.pending.containsKey(id)) return this;
+        Map<String, Pending> pending = new HashMap<>(this.pending);
         pending.remove(id);
         return new AssistantClientState(this.entries, pending, this.serverState, this.current);
     }
 
     AssistantClientState withoutPending() {
-        return this.pending.isEmpty() ? this : new AssistantClientState(this.entries, Set.of(), this.serverState, this.current);
+        return new AssistantClientState(this.entries, Map.of(), this.serverState, this.current);
     }
 
-    AssistantClientState silent(String id, AgentResult result) {
-        AssistantClientState completed = this.complete(id);
-        List<ChatEntry> entries = new ArrayList<>(completed.entries);
-        ChatEntry current = completed.current;
-        for (ClientCardBindings.Refresh refresh : ClientModuleBindings.get().cards().refreshes(result)) {
-            for (int index = 0; index < entries.size(); index++) {
-                ChatEntry entry = entries.get(index);
-                if (refresh.matches(entry.result()))
-                    entries.set(index, new ChatEntry(false, entry.text(), refresh.result()));
-            }
-            current = new ChatEntry(false, current == null ? "" : current.text(), refresh.result());
-        }
-        if (current != null && current.result() == null && !completed.busy())
-            current = entries.stream().filter(entry -> !entry.player() && entry.result() != null).reduce((_, last) -> last).orElse(null);
-        return new AssistantClientState(entries, completed.pending, completed.serverState, current);
+    AssistantClientState synchronizedState(String id, ResultTypes.ClientState value) {
+        return new AssistantClientState(this.entries, this.complete(id).pending, value, this.current);
     }
 
-    AssistantClientState receive(String id, AgentResult result, boolean notification) {
-        Reception reception = new Reception(result, this.pending.contains(id), notification);
-        AssistantClientState completed = this.complete(id);
-        ResultTypes.ClientState serverState = completed.serverState;
-        for (AgentResult.Card card : result.cards())
-            serverState = ClientModuleBindings.get().cards().state(serverState, card);
-        AssistantClientState updated = new AssistantClientState(completed.entries, completed.pending, serverState, completed.current);
-        return RESULT_HANDLERS.getOrDefault(result.messageKey(), AssistantClientState::append).apply(updated, reception);
+    AssistantClientState updated(String id) {
+        List<ChatEntry> entries = this.entries.stream().map(AssistantClientState::latest).toList();
+        return new AssistantClientState(entries, this.complete(id).pending, this.serverState, visible(this.current));
     }
 
-    private AssistantClientState append(Reception reception) {
+    private static ChatEntry visible(ChatEntry entry) {
+        if (entry == null || entry.result == null) return entry;
+        List<CardUpdate> cards = entry.result.cards().stream().map(ClientCards::latest).filter(card -> ClientCards.active(card.ref())).toList();
+        return cards.isEmpty() ? null : new ChatEntry(entry.player, entry.text,
+                entry.result.withPresentation(entry.result.messageKey(), entry.result.text(), cards, entry.result.silent()));
+    }
+
+    private static ChatEntry latest(ChatEntry entry) {
+        return entry == null || entry.result == null ? entry : new ChatEntry(entry.player, entry.text, ClientCards.latest(entry.result));
+    }
+
+    AssistantClientState receive(String id, AgentResult result, boolean notification, boolean select) {
+        AssistantClientState completed = this.updated(id);
+        if (result.silent() || result.cards().stream().noneMatch(card -> card.mode() == CardUpdate.Mode.SHOW))
+            return completed;
+        if (result.messageKey().equals("system.result.forgotten"))
+            completed = new AssistantClientState(List.of(), completed.pending, completed.serverState, completed.current);
+        return completed.append(result, notification, select);
+    }
+
+    private AssistantClientState append(AgentResult result, boolean notification, boolean select) {
         List<ChatEntry> entries = new ArrayList<>(this.entries);
-        entries.add(new ChatEntry(false, "", reception.result()));
-        ChatEntry current = this.current;
-        // Event notices enter history without replacing the active reply or its numbered actions.
-        if (!reception.notification() && (reception.pending() || !this.busy()))
-            current = new ChatEntry(false, reception.pending() && current != null ? current.text() : "", reception.result());
+        ChatEntry entry = new ChatEntry(false, "", result);
+        entries.add(entry);
+        ChatEntry current = !notification && select ? new ChatEntry(false, this.current == null ? "" : this.current.text, result) : this.current;
         return new AssistantClientState(entries, this.pending, this.serverState, current);
     }
 
-    private AssistantClientState restoreHistory(Reception reception) {
+    AssistantClientState history(String id, ResultTypes.History history) {
         List<ChatEntry> entries = new ArrayList<>();
-        for (AgentResult.Card card : reception.result().cards()) {
-            if (!(card.data() instanceof ResultTypes.History(List<PlayerData.Message> messages))) continue;
-            for (PlayerData.Message message : messages) {
-                if (message.role().equals("user")) entries.add(new ChatEntry(true, message.text(), null));
-                else {
-                    try {
-                        AgentResult result = CodecIO.parse(AgentResult.CODEC, message.text());
-                        if (!result.silent()) entries.add(new ChatEntry(false, "", result));
-                    } catch (RuntimeException error) {
-                        entries.add(new ChatEntry(false, message.text(), null));
-                    }
-                }
+        for (PlayerData.Message message : history.messages()) {
+            if (message.role().equals("user")) entries.add(new ChatEntry(true, message.text(), null));
+            else try {
+                AgentResult result = CodecIO.parse(AgentResult.CODEC, message.text());
+                result.cards().forEach(card -> ClientCards.apply(card, true));
+                if (!result.silent()) entries.add(new ChatEntry(false, "", ClientCards.latest(result)));
+            } catch (RuntimeException error) {
+                entries.add(new ChatEntry(false, message.text(), null));
             }
         }
-        return new AssistantClientState(entries, this.pending, this.serverState, this.current);
-    }
-
-    public static ResultTypes.ClientState preferences(ResultTypes.ClientState previous, boolean history, boolean external) {
-        return new ResultTypes.ClientState(history, external, previous.modules(), previous.commands());
+        // Live notices received while history was in flight keep their active snapshots and order.
+        Set<UUID> loaded = new HashSet<>();
+        entries.stream().filter(e -> e.result != null).flatMap(e -> e.result.cards().stream()).forEach(c -> loaded.add(c.ref().id()));
+        for (ChatEntry entry : this.entries)
+            if (entry.result != null && entry.result.cards().stream().anyMatch(c -> !loaded.contains(c.ref().id())))
+                entries.add(entry);
+        return new AssistantClientState(entries, this.complete(id).pending, this.serverState, this.current);
     }
 }

@@ -1,69 +1,69 @@
 # 客户端 JSON 卡片
 
-资源位于 `assets/<namespace>/cards/<path>.json`，`CardData.template()` 直接返回布局资源 ID，不需要再登记渲染映射。内置 22 种卡片均有默认文件，支持客户端资源包覆盖和 F3+T 重载。节点统一实现根接口 `CardNode`，由 `CardNode.CODEC` 通过正式注册表 `SystemRegistries.CARD_NODE_TYPE.byNameCodec().dispatchMap("type", ...)` 分派。内置条目声明于 `registry.SystemCardNodeTypes`，序列化、默认样式、AUI 渲染和纯文本投影都由节点自己实现。注册键与扩展方式见[注册表速查](registries.md)。
+数据流为：服务端生成业务快照 → `CardUpdate` 携带 `CardData` → 客户端调用 `buildCard().build()` → `CardView` → JSON 布局 → 明确的本地或服务端按钮动作。完整模式、简约模式和 HUD 共用构建、版本和交互入口。架构说明见[卡片与消息数据流](card-flow-design.md)，注册入口见[注册表速查](registries.md)。
 
 ## 数据与渲染绑定
 
-`AgentResult.Card.data` 直接持有 `CardData`，不再套 `TypedPayload`。各实现提供自己的 `MapCodec`、`TEMPLATE` 常量、`codec()` / `template()` 方法和 `buildContext(builder, formatting)` 参数填充。`SystemCardDataTypes` 只登记这些 MapCodec，注册表为两端共用的 `system:card_data_type`。根 `CardData.CODEC` 按 `type` 分派，字段直接平铺在同一个对象中，例如 `{"type":"system:quest","id":"...","title":"..."}`。业务结果仍由服务端生成；公共数据不引用客户端类或加载布局资源。模块动作仍使用 `TypedPayload`。
+公共契约位于 `com.iafenvoy.system.card`：`CardData` 提供 `codec()` 和 `buildCard()`，不加载客户端、AUI、服务端运行时或可选模组类。业务 DTO 仍在原来的输出包；具体客户端处理位于 `card.client` 和 `screen.card`。
 
-`CardContext` 与 `CardFormatting` 位于公共 `agent` 包。类型自己的 `buildContext(...)` 负责字段、列表及动作展示参数，不再向 `ClientCardBindings` 注册参数构建器。`CardFormatting` 通过调用方提供的 `text(Component)` 解析文字，复用奖励、价格和物品名称格式化；客户端传入 `Component::getString`，按本地语言生成文本。公共实现不引用 `AssistantView`、GUI 或客户端单例。
-
-`CardPresentation` 统一负责客户端展示，不依赖行为登记表。`CardPresentation.context(...)` 先将卡片动作写入 Builder，再调用 `data.buildContext(builder, formatting)`；任务列表编号及奖励选项仍可通过 `builder.forActions(...)` 读取动作数据。随后客户端统一补充标题、显示模式、按钮标签及发送请求的回调，最终构建不可变快照。`CardPresentation.of(data, context)` 接收这个快照，直接调用 `CardTemplates.get(data.template())` 读取当前布局，没有额外的模板别名或渲染工厂表。数据 Codec 的注册 ID 与布局资源 ID 可以不同。
+`SystemCardDataTypes` 向两端共享的 `system:card_data_type` 注册每个实现自己的 MapCodec。根 `CardData.CODEC` 按 `type` 分派，数据直接平铺，没有 TypePayload 包装。数据 ID 与模板 ID 可以不同，不需要额外的渲染映射或客户端行为注册。
 
 ```java
-// In ExampleOutput, template() returns this resource ID:
-public static final Identifier TEMPLATE = Identifier.parse("example:compact_reward");
-
 @Override
-public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
-    builder.put("title", this.title());
+public CardBuilder buildCard() {
+    return CardBuilder.template(Identifier.parse("example:reward"))
+            .summary(this.title)
+            .put("result_items", this.items)
+            .speech(this.speech)
+            .serverButton("claim", "system.action.claim",
+                    Identifier.parse("example:claim"), Map.of("reference", this.reference));
 }
 ```
 
-以上渲染使用 `assets/example/cards/compact_reward.json`，与数据类型 ID 无关。多个数据实现可返回同一个资源 ID 共用布局；更换外观可以覆盖 JSON，无需修改数据 Codec 或业务处理。每次创建展示对象时读取最新模板，已入队的通知保留创建时的布局及上下文快照。图形卡片、纯文本投影和按钮标签共用同一条模板解析路径；缺少模板时使用通用回退展示，回退文字只加入上下文副本，不修改调用方传入的上下文。
+`buildCard()` 只读本 DTO 的字段，不查权限、背包、任务状态或模块表，不发包、请求模型或播放声音。服务端提前准备业务引用、下一页游标、报价及可操作状态。`CardBuilder.build()` 得到不可变 `CardView`：模板、标题翻译键、summary、Context、按钮列表和 SpeechContent。Component 保留翻译键及样式；实际翻译、物品堆创建和名称解析只发生在客户端。
+
+`ClientCards` 保存连接内按 ID 的最新数据、版本和活动状态。`CardPresentation.of(update, messageKey, mode, actionOffset)` 取最新快照，解析 Component 和 CardText，补充显示模式、按钮标签及受控 callback，然后读取 `assets/<namespace>/cards/<path>.json`。缺少模板时回退到 summary 和已有按钮，不展示 DTO 的原始 JSON。
+
+## 普通消息约定
+
+仅当模板正文恰好是一个 `system:text` 节点、没有 repeat、没有任何 CardButton、没有额外可见标题或独立摘要内容时，渲染成普通 `message_text`，不生成卡片外框。文字可以换行或带格式；无需单独登记普通文本渲染器。
+
+**有按钮仍然是卡片**，包括使用 `system:text` 模板的绑定提示。物品、容器、分割线、多个节点或其他布局元素也保留卡片。单文本模板携带按钮时，宿主自动补上动作区，按钮不会丢失。
+
+```json
+{
+  "show_title": false,
+  "body": [{"type": "system:text", "text": "{{summary}}"}]
+}
+```
+
+内置 `TextCardData` 使用上述 `system:text` 模板。判断集中在 `CardPresentation.plainText()`，各界面不再自行猜测消息类型。HUD 的统一确定按钮属于通知宿主控制，不改变数据本身的布局约定。
 
 ## 一个卡片，一份 Context
 
-`CardContext` 只有三个字段：
-
 | 字段 | 类型 | 用途 |
 | --- | --- | --- |
-| `states` | `Object2DoubleMap<String>` | 启用状态；0 为关闭，非 0 为开启，也可保存循环次数 |
-| `parameters` | `Map<String, Object>` | 所有文字、数值、布尔值、物品和动作参数 |
-| `callbacks` | `Map<String, Runnable>` | 由 Java 注册的按钮回调 |
+| states | `Object2DoubleMap<String>` | 0 为关闭，非 0 为开启；也可存循环次数 |
+| parameters | `Map<String, Object>` | 平铺的文字、数值、布尔、物品及其他展示参数 |
+| callbacks | `Map<String, Runnable>` | 客户端控制器绑定的可信操作 |
 
-整张卡片共用一个不可变 Context，没有子 Context、作用域覆盖或单独的物品/动作参数表。Builder 负责填充并在 `build()` 时复制三张表；`put` 收到 List 时也会复制列表。任意业务对象仍由调用方保证其使用期间稳定，不对 Object 作反射或序列化复制。
+整张卡片共用一份 Context，没有子 Context。`CardContext.Builder.build()` 复制三表为不可变快照，put 同时复制 List 和 Component；其他对象由调用者保证稳定。`get(id, Class<T>)` 只在类型匹配时返回，否则为 null。
 
-```java
-CardContext context = CardContext.builder()
-        .put("title", "奖励已就绪")
-        .put("result_items", previews)
-        .enable("can_claim", true)
-        .enable("full", true)
-        .callback("claim", this::claim)
-        .build();
+`CardBuilder.put/enable/list` 代理 Context 的同名能力。put 自动设置同名状态：布尔为 1/0，数值为自身，字符串按空白判定，集合取大小；enable 可覆盖。list 将数量写入根键，并通过 prefix 回调填充带下标的平铺参数。`reward/price` 保存延迟解析的 CardText，不在公共代码里创建物品堆。callback 仅由客户端绑定，DTO 和 JSON 不提供 Runnable。
 
-String title = context.get("title", String.class);
-Number count = context.get("title", Number.class); // null: the stored type does not match
-```
+## 主文案、播报与更新
 
-`public <T> T get(String id, Class<T> clazz)` 先取参数，只有 `clazz.isInstance(value)` 时返回 `clazz.cast(value)`，缺失或类型不符返回 null。集合取出时先检查 List 类型，再检查每个元素类型。
+summary 提供模板缺失时的回退和通知主句，模板正文已有相同文字时避免重复。`SpeechContent` 分 main、requirements、rewards、descriptions，客户端按个人开关组合。未设置 speech 时沿用 summary，显式 `SpeechContent.EMPTY` 表示不播报；TTS 不从模板、按钮或 Java 类型推断业务。
 
-Builder 的 `put` 保留实际 Java 类型，同时设置同名状态：布尔值为 1/0，数值为自身值，字符串按是否为空白设置 1/0，集合取大小，其余对象为 1。`enable(id, boolean/double)` 可单独覆盖启用状态。`callback` 只登记操作，不把回调混入参数表。
+`CardUpdate(ref, mode, data)` 与内容分离，ref 为 UUID + revision：
 
-`ClientCardBindings` 只登记客户端消息、状态更新、刷新、任务播报引用与通知行样式，不再包含上下文构建或渲染入口。功能模块只在需要这些行为时注册对应输出；普通卡片提供 CardData 实现和 JSON 模板即可展示。例如：
+| mode | 行为 |
+| --- | --- |
+| SHOW | 新增消息；按响应来源进入聊天或通知队列 |
+| REPLACE | 完整替换指定 ID；不新增历史、不重新入队或播报 |
+| REMOVE | 结束该 ID 的活动展示和语音；历史保留最后只读快照 |
 
-```java
-module.cards().register(ExampleOutput.class)
-        .message("example.result.ready", (_, value) -> new ClientMessage(
-                "奖励「" + value.title() + "」已准备就绪。"));
-```
-
-图形展示入口为 `CardPresentation.of(card, messageKey, mode, actionOffset)`；`format(card, textItems)` 和 `label(card, action)` 使用同一条模板及上下文构建路径，分别生成纯文本和动作标签。传入已建好的上下文时仍可用 `of(data, context)`。
-
-构建流程：客户端预填动作 → `CardData.buildContext(...)` 填参数 → 客户端补充通用展示状态和回调 → 构建不可变 Context → 模板解析/渲染。解析器不创建额外 Context；显示模式也存于同一份状态表。布局、分组标题、说明及按钮外观保留在 JSON，功能模块提供消息和交互行为。18 种普通展示数据分别覆盖构建方法；`EmptyCardData`、`ClientState`、`History`、`QuestClaimOutput` 沿用默认空填充，仍取得通用标题与动作上下文。
-
-`register` 返回的 `Registration<T>` 可继续链式声明 `message/quests/notificationRows/state/refresh`，不必为同一种输出重复传 Class。`message(key, (card, value) -> ...)` 直接取得对应卡片及 DTO，统一返回 `ClientMessage`：单参数构造让显示与播报共用文字；双参数构造可分别提供文字；`ClientMessage.speech(text)` 只覆盖播报。null 字段使用消息键与正文的默认文本，空字符串表示不显示或不播报。没有卡片的消息可用 `module.message(key, result -> ...)`；只需为某种输出声明消息时，可用 `module.message(key, Output.class, (card, value) -> ...)`，无需登记类型行为。通知和语音共用消息处理器，参数布局仍由模板独立控制。
+较旧或重复版本被忽略；关闭的通知收到 REPLACE 不再弹出。请求完成不依赖卡片数量，零卡片回复仍解除等待。状态和历史分别走 StateResponse、HistoryResponse；历史恢复不播报、不发包、不恢复旧按钮的执行权限。
 
 ## 布局与占位符
 
@@ -81,7 +81,7 @@ module.cards().register(ExampleOutput.class)
 }
 ```
 
-JSON 控制顺序、嵌套、样式和可见性，框架不在正文末尾自动添加物品或按钮。
+JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排按钮；单文本模板携带按钮时宿主补充动作区。
 
 | 根字段 | 默认值 | 含义 |
 | --- | --- | --- |
@@ -158,7 +158,7 @@ items 字段引用参数表中的 `List<ItemPreviewOutput>`，缺失、类型不
 
 button 的 text、callback 必填。callback 只查询已注册的 Runnable；缺失时禁用按钮，不执行任何字符串指令。完整模式可点击，简约模式只显示标签，纯文本和通知模式不生成该按钮。
 
-原有 actions 节点默认读取 `{{result_actions}}`，其按钮也通过同一张 callbacks 表执行。注册表给每个动作填 `actions.0.label/number` 等参数，并登记 `actions.0.click`；任务模块通过 Builder.forActions 给同一份表补充任务标题等标签字段。根 actions 的 container_style、button_style、numbered、label 继续控制外观：
+原有 actions 节点默认读取 `{{result_actions}}`，其按钮也通过同一张 callbacks 表执行。客户端给每个按钮填 `actions.0.label/number` 等参数，并登记 `actions.0.click`；CardData 构建时用 CardBuilder.actionParameter 给刚添加的按钮补充任务标题等字段。根 actions 的 container_style、button_style、numbered、label 继续控制外观：
 
 ```json
 {
@@ -177,11 +177,15 @@ button 的 text、callback 必填。callback 只查询已注册的 Runnable；�
 
 label 仅作纯文本投影。缺省使用动作原标签；简约模式按真实动作顺序显示编号，由输入执行选择。可信回调仍经过原有服务端权限、任务和交易校验。
 
-**通知的确认、关闭、详情、领取按钮和任务选择行继续由代码生成。通知模式忽略全部 actions/button 节点。** HUD 主体可使用卡片，JSON 不接管其交互策略。语音主文字来自同一个消息处理器返回的 ClientMessage.speech，不从卡片布局提取；任务要求、奖励与背景描述仍按原配置另行追加播报。
+CardButton 显式描述 Local/Server 动作、BODY/FOOTER 位置以及 CLOSE/WAIT 行为。actions 节点在通知正文只绘制 BODY 按钮，FOOTER 由通知宿主生成；宿主始终在业务按钮之后补充本地确定按钮，忙碌时仍可关闭通知。大任务列表直接放正文滚动区，不截断成少量底部按钮。
+
+点击、数字和语音选择都进入 CardController。Local 通过处理器 Map 执行；Server 发 CardActionRequest(source, action)，仅含来源 CardRef、动作 Identifier 和字符串参数。工作流在 ModuleRouting.button 中解码，继续经过原有权限、预算、引用、Cost 与发奖流程，不经过模型路由。labelKey 只决定标签和语音候选，不决定动作。
+
+CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并暂停关闭计时，服务端按钮在等待期间禁用。失败、超时和零卡片回复也解除等待。语音优先匹配当前版本的实际按钮，失败或歧义才进入主聊天。
 
 ## 通用参数与模块字段
 
-通用参数为 card_title/card_type/result_actions、`actions.<下标>.label/number`；状态为 show_card_title/full/simple/notification/text_items。回调为 `actions.<下标>.click`。纯文本模式的 full/simple/notification 均为 0。
+通用参数为 summary/card_title/result_actions、`actions.<下标>.label/number`；状态为 show_card_title/full/simple/notification/text_items。回调为 `actions.<下标>.click`。纯文本模式的 full/simple/notification 均为 0。
 
 | 模板 | 参数 |
 | --- | --- |
@@ -193,14 +197,14 @@ label 仅作纯文本投影。缺省使用动作原标签；简约模式按真�
 | shop_order | order_id/label/state/error |
 | lottery_pool | label/id/prize_count/preview_count/price/price_text/free/payment_available/price_items；prizes.<下标>.reward_label/chance/result_items |
 | lottery_prize | reward_label/reward_items/chance/result_items，概率数值不含百分号 |
-| preferences/delivery_state | history_saved/external_model 或 state |
+| delivery_state | state |
 | quest/quest_submit | title，tasks.<下标>.task_title/task_progress/task_required；详情另有 chapter/description/progress/completed/can_complete |
 | quest | rewards.<下标>.reward_title/reward_state/result_items，choices 使用 rewards.<下标>.choices.<下标>.choice_number/choice_title/result_items |
 | quest_notice | id/title/chapter/description/requirements/other_rewards/manual_submission/result_items |
 | quest_startup | total/remaining，quests.<下标>.title/progress |
 | starter_gift | gifts.<下标>.result_items/error |
 
-price 是非物品费用文字，price_text 包含物品文字。empty/claim/client_state/history 默认没有额外正文。
+price 是非物品费用文字，price_text 包含物品文字。text 使用 summary，selection 使用已声明的动作。状态和历史没有卡片模板。
 
 ## 类型扩展与重载
 
@@ -256,6 +260,6 @@ NODES.register(bus);
 
 JSON 使用 `"type":"example:badge"`。注册与冻结由 NeoForge 模组加载流程负责，不能在 `ClientModule.register(context)` 或 F3+T 重载时新增节点。重复 ID、重复使用同一个 Codec 实例、未知类型或未注册的编码节点都会拒绝。节点的 MapCodec 不应包含共用字段；递归 children/description 使用 `Codec.lazyInitialized(() -> CardTemplate.Node.CODEC)`，避免静态初始化引用环。扩展不应绕过通知的代码按钮约定。
 
-资源重载依次尝试高优先级资源包、低优先级资源包、上次有效模板；未知 type 或结构错误使整张模板回退，结构字段不作 lenient 吞错。删除资源会移除模板。完整/简约界面刷新已有内容；通知保留入队时模板和 Context，回调实例的身份不影响通知内容去重。
+资源重载依次尝试高优先级资源包、低优先级资源包、上次有效模板；未知 type 或结构错误使整张模板回退，结构字段不作 lenient 吞错。删除资源会移除模板。完整/简约界面刷新已有内容；通知在实际绘制时读取当前模板，队列保存卡片数据；已显示通知不因资源重载重新入队或播报。消息按卡片 ID 去重。
 
 资源只位于客户端 assets，不进入服务端 data、存档或模型请求；无新增依赖，网络协议仍为 1。

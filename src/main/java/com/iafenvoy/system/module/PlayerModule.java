@@ -14,17 +14,21 @@ public interface PlayerModule extends AutoCloseable {
     }
 
     default Consumer<PlayerData> binding(ServerPlayer player) {
-        return _ -> {};
+        return _ -> {
+        };
     }
 
     default Session login(ServerPlayer player) {
-        return _ -> {};
+        return _ -> {
+        };
     }
 
     default void advancement(ServerPlayer player, Identifier advancement) {
     }
 
-    /** Per-server housekeeping is also driven by ModuleManager, without separate game-event listeners. */
+    /**
+     * Per-server housekeeping is also driven by ModuleManager, without separate game-event listeners.
+     */
     default void tick() {
     }
 
@@ -44,7 +48,9 @@ public interface PlayerModule extends AutoCloseable {
         default void ready() {
         }
 
-        /** Main-thread hook, invoked only while this module is enabled for the player. */
+        /**
+         * Main-thread hook, invoked only while this module is enabled for the player.
+         */
         default void tick() {
         }
 

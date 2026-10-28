@@ -2,8 +2,8 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.module.core.CoreSystemModule;
 import com.iafenvoy.system.module.ModuleData;
+import com.iafenvoy.system.module.core.CoreSystemModule;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
@@ -48,8 +48,10 @@ final class EventExecutor implements AutoCloseable {
                             throw new AgentException("CAPABILITY_UNAVAILABLE");
                         PlayerData.EventTask task = store.update(player, data -> {
                             if (!data.bound) throw new AgentException("NOT_BOUND");
-                            if (ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.containsKey(key)) return ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.get(key);
-                            if (ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.size() >= 4096) throw new AgentException("STORAGE_FULL");
+                            if (ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.containsKey(key))
+                                return ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.get(key);
+                            if (ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.size() >= 4096)
+                                throw new AgentException("STORAGE_FULL");
                             PlayerData.EventTask value = new PlayerData.EventTask();
                             value.id = UUID.randomUUID().toString();
                             value.key = key;

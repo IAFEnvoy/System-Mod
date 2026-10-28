@@ -19,9 +19,9 @@ public record ModelConfig(String model, String baseUrl, String apiKeyEnvironment
     public static final Codec<ModelConfig> CODEC = RecordCodecBuilder.create(i -> i.group(
             MiscCodecs.checked(Codec.STRING, value1 -> !value1.isBlank()).lenientOptionalFieldOf("model", "deepseek-chat").forGetter(ModelConfig::model),
             Codec.STRING.comapFlatMap(value -> MiscCodecs.mapOrError(() -> {
-                    endpoint(value);
-                    return value;
-                }), value -> value).lenientOptionalFieldOf("baseUrl", "https://api.deepseek.com").forGetter(ModelConfig::baseUrl),
+                endpoint(value);
+                return value;
+            }), value -> value).lenientOptionalFieldOf("baseUrl", "https://api.deepseek.com").forGetter(ModelConfig::baseUrl),
             Codec.STRING.lenientOptionalFieldOf("apiKeyEnvironment", "SYSTEM_DEEPSEEK_API_KEY").forGetter(ModelConfig::apiKeyEnvironment),
             MiscCodecs.checked(Codec.STRING, Set.of("auto", "openai", "deepseek")::contains).lenientOptionalFieldOf("providerType", "auto").forGetter(ModelConfig::providerType),
             Codec.BOOL.lenientOptionalFieldOf("thinkingEnabled", false).forGetter(ModelConfig::thinkingEnabled),

@@ -1,11 +1,12 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.CardContext;
-import com.iafenvoy.system.agent.CardData;
-import com.iafenvoy.system.agent.CardFormatting;
+import com.iafenvoy.system.card.CardBuilder;
+import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
+
+import java.util.Locale;
 
 /**
  * Built-in result data and its serialization codec.
@@ -15,8 +16,10 @@ public record StateOutput(String state) implements CardData {
     public static final Identifier TEMPLATE = Identifier.parse("system:delivery_state");
 
     @Override
-    public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
+    public CardBuilder buildCard() {
+        CardBuilder builder = CardBuilder.template(TEMPLATE).summary("system.state." + this.state.toLowerCase(Locale.ROOT));
         builder.put("state", this.state());
+        return builder;
     }
 
     @Override
@@ -24,8 +27,4 @@ public record StateOutput(String state) implements CardData {
         return CODEC;
     }
 
-    @Override
-    public Identifier template() {
-        return TEMPLATE;
-    }
 }

@@ -25,6 +25,7 @@ public record SpeechUsage(long characters, TokenUsage tokens, long calls, long f
             Codec.LONG.fieldOf("estimated_nano_yuan").forGetter(SpeechUsage::estimatedNanoYuan),
             Codec.LONG.fieldOf("unpriced_calls").forGetter(SpeechUsage::unpricedCalls)
     ).apply(i, SpeechUsage::new));
+
     public SpeechUsage {
         Objects.requireNonNull(tokens);
         if (characters < 0 || failedCalls < 0 || failedCalls > calls || unreportedCalls < 0

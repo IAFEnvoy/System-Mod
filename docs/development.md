@@ -37,9 +37,9 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | --- | --- |
 | `agent` | 引擎与执行器、预算和授权上下文、Module/Tool 契约、每服务实例的模块/工具/指令索引、请求与结果 |
 | `registry` | 系统定义、Saturn action/condition 与存储类型、按键、声音、两端模块、协议/载荷类型、卡片节点的注册表及 DeferredRegister 注册项，以及语音供应商工厂 Map |
-| `module/<功能>` | 功能装配、平台指令、玩家生命周期、客户端页面/卡片/通知/口播贡献 |
+| `module/<功能>` | 功能装配、平台指令、玩家生命周期、客户端页面、本地指令及本地卡片动作 |
 | `module` | 功能定义、装配、ModuleManager、玩家权限快照、模块存储声明和生命周期 |
-| `module/client` | 客户端功能契约、ClientModuleBindings 贡献装配、指令、三分类动态导航、工作台及类型化卡片映射 |
+| `module/client` | 客户端功能契约、ClientModuleBindings 贡献装配、指令、三分类动态导航、工作台及本地动作装配 |
 | `agent/builtin` | 按功能分包的工作流、单行为工具和签到模型决策结构 |
 | `agent/builtin/input、agent/builtin/output` | 内置模块/工具参数及查询结果，一类一文件 |
 | `agent/builtin/tool` | 共享工具类型键；具体实现位于 `builtin/<功能>` |
@@ -55,7 +55,8 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | `assistant、data` | 服务端组装、绑定与玩家会话、请求分派、主线程队列及数据包重载 |
 | `assistant/usage、data/usage` | 用量服务、独立 SavedData、AI/TTS/ASR 归并与不可变快照，不随 revoke 删除 |
 | `assistant、screen/gui、screen` | 客户端不可变会话状态、导航及副作用、助手界面、设置、用量与通知队列 |
-| `screen/card` | CardNode 根接口 / dispatch Codec、平铺 Context、占位符与集合绑定、资源重载和通知快照 |
+| `card` / `card/client` | 公共 CardData/Builder/View/Update 与动作/播报描述；客户端快照和统一动作控制器 |
+| `screen/card` | CardNode dispatch Codec、模板、占位符、集合绑定、客户端展示与资源重载 |
 | `screen/card/node` | 独立节点实现，各自提供 MapCodec、默认 CSS、render 与 text；文字及容器派生类复用实现 |
 | `speech/aliyun、speech/tts、speech/asr` | 语音接口及供应商协议、报文、流式播放会话、缓存与可取消录音 |
 | `compat/ftb、compat/voicechat` | 可选 FTB 工具/事件和 SVC 收音，检测后才加载相关实现 |
@@ -85,7 +86,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 `CodecIO` 统一限长 JSON 解析及 Codec 编解码；HTTP 响应可通过 `Document` 一次解析后分别解码用量与正文，保证正文无效仍记录已计费用量。存档和恢复日志使用 `RecordCodecBuilder`，业务账本的可选字段通过严格的 `optionalFieldOf` 读取；可丢弃的 `Conversation.requests` 展示/请求回放缓存使用 `lenientOptionalFieldOf`，结果载荷过期或格式无效时仅将该缓存回退为空，不影响绑定、奖励、订单、写步骤和其他玩家数据，也不迁移旧载荷。配置使用不可变 record、`RecordCodecBuilder` 和 record getter，按字段以 `lenientOptionalFieldOf` 读取。范围与字段语义在子 Codec 校验，枚举及嵌套构造异常通过 `ConfigCodecs` 转为解析错误。配置中缺失、null、类型错误、无效枚举、越界值或嵌套 Codec 构造异常只回退该字段，其他有效配置保留；配置集合返回不可变快照，玩家文件仍使用 FileAgentStore 的原有 force/原子替换事务。
 
-`AgentRequest` 表达聊天、模块调用、控制请求和偏好，通过 `SystemRequestTypes` 向 `SystemRegistries.AGENT_REQUEST_TYPE` 登记 `MapCodec`；对象的 `codec()` 返回注册实例，根 Codec 按 `type` 分派。`AgentResponse` 使用对应的正式注册表分派，已删除旧 `DispatchRegistry`；任务查询按 Tool 声明固定返回单个数据对象或 List，不使用多态结果注册表。两端载荷通过原版 `ByteBufCodecs.fromCodecWithRegistries` 复用 Codec，直接传递类型对象；JSON 只用于文本边界。模型路由返回值按 `capabilityId` 从本次可选模块的 Codec Map 分派，签到仅接收 SignInDecision，发送的玩家投影不包含其他在线玩家。ConversationMemory 使用有界、允许字段组成的对象投影。
+`AgentRequest` 表达聊天、模块调用、卡片按钮、控制请求和偏好，通过 `SystemRequestTypes` 向 `SystemRegistries.AGENT_REQUEST_TYPE` 登记 `MapCodec`；对象的 `codec()` 返回注册实例，根 Codec 按 `type` 分派。`AgentResponse` 使用对应的正式注册表分派，已删除旧 `DispatchRegistry`；任务查询按 Tool 声明固定返回单个数据对象或 List，不使用多态结果注册表。两端载荷通过原版 `ByteBufCodecs.fromCodecWithRegistries` 复用 Codec，直接传递类型对象；JSON 只用于文本边界。模型路由返回值按 `capabilityId` 从本次可选模块的 Codec Map 分派，签到仅接收 SignInDecision，发送的玩家投影不包含其他在线玩家。ConversationMemory 使用有界、允许字段组成的对象投影。
 
 固定业务数据、配置、存档、模型与语音报文使用 Codec。JSON 只保留在动态 JSON Schema 与通用界面格式化边界；工具写入回执使用原版 Dynamic/PASSTHROUGH 保存暂不解释的结果，回放时由对应工具结果 Codec 解码，不在业务中按键取值。
 
@@ -102,7 +103,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | `TokenUsageRequestC2S` | `system:token_usage_request_c2s` |
 | `TokenUsageResponseS2C` | `system:token_usage_response_s2c` |
 
-当前协议版本为 **1**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航和绑定变更，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的 Codec 在网络解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
+当前协议版本为 **1**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航、绑定变更、状态与历史，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的 Codec 在网络解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
 
 ## 扩展模块
 
@@ -126,7 +127,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 - `InteractiveExecutor` 管理每玩家一个交互请求、取消代次、请求指纹与结果回放；入队、初始化和写回都检查取消代次。
 - `EventExecutor` 管理持久事件、规则授权、去重和恢复；恢复使用已保存策略、预算与工具回执。
 - `ConversationService` 负责历史读取、清空和偏好修改，不重复实现执行或队列逻辑。
-- `QuestNarration` 管理只读任务口播、短期同玩家并发约束、模型整理片段缓存及同批合并，不占用主聊天、不创建对话记录。`QuestBackgrounds` 按任务唯一 ID、语言和内容指纹持久化背景分类与文案（含无背景），存档根目录文件为 `system-quest-backgrounds.json`，不含玩家进度。FTB 的 `FtbQuestSpeech` 只提供主线程定义快照；命中缓存后仍复核当前权限，格式化和模型预算及客户端 session 边界见[语音合成](tts.md)。
+- `QuestNarration` 管理只读任务口播、短期同玩家并发约束、模型整理片段缓存及同批合并，不占用主聊天、不创建对话记录。`QuestBackgrounds` 按任务唯一 ID、语言和内容指纹持久化背景分类与文案（含无背景），存档根目录文件为 `system-quest-backgrounds.json`，不含玩家进度。FTB 的 `FtbQuestSpeech` 只提供主线程定义快照；卡片同步返回已有结构化段落，缓存未就绪时后台整理供后续卡片使用，不阻塞通知或重播当前消息；读取源复核当前权限，模型预算与客户端 session 边界见[语音合成](tts.md)。
 - `TaskExecutor` 统一有界调度、队列满错误、关闭和 Future 收尾；关闭后未执行的任务也得到 `CANCELLED`。
 - `HybridRouter` 只编排结构化调用 → 指令注册表 → 本地语义/缓存 → 一次模型回退。每个模块通过 `ModuleRouting<I>` 提供自己的指令、例句、参数提取和可选只读快捷入口。
 - `ExecutionContext` 是执行权限、预算、模型与工具调用的共同入口。Module 组合流程，Tool 每次只执行一个行为。
@@ -156,23 +157,17 @@ public record Search(String query, int offset) {
 
 ### 结果卡片与动作
 
-`AgentResult`、`Card` 和 `Action` 各自提供 `CODEC`。`Card.data` 直接持有 `CardData`，各数据实现提供 `MapCodec` 和模板标识，`codec()` 返回已登记的 MapCodec，`template()` 返回布局资源 ID，`buildContext(builder, formatting)` 填充自身展示参数。公共 CardContext 和 CardFormatting 不引用客户端 GUI，翻译由调用方传入的文字解析器提供。根 `CardData.CODEC` 从正式注册表 `CARD_DATA_TYPE` 按 `type` 分派；`Action.call` 仍为 `TypedPayload<?>`，其 `ACTION_CODEC` 从 `ACTION_TYPE` 按 `moduleId` 选择输入 Codec。`titleKey` 仅用于本地化显示，不参与结果的类型判断。
+AgentResult 继承 Saturn ResultWithData<List<CardUpdate>>。Status 为 SUCCEEDED/FAILED/PARTIALLY_SUCCEEDED，按稳定小写字符串编码，部分成功仍带 Failure，不能写成功缓存。CardUpdate 以 CardRef(UUID, revision) 标识一条消息，支持 SHOW、REPLACE、REMOVE；更新投递语义独立于业务成功状态。
 
-`AgentResult` 继承 Saturn `ResultWithData<List<Card>>`，成功判断统一使用 `isSuccess()` / `isFailure()`，卡片由父类保存，`cards()` 是展示访问器。Agent 继续保留文案、静默标志与 `status`；`PARTIALLY_SUCCEEDED` 表示存在未完成操作，仍属于失败，不能写入成功路由缓存。失败通过文案键适配 `Failure`，网络与存档继续使用原有 Codec 字段，不序列化 Failure 实现类。`partial()` 与 `withPresentation(...)` 分别用于部分成功标记和展示副本，值相等语义保留。
+公共 card 包定义 CardData、CardBuilder/CardView、CardButton/CardAction、CardContext 和 SpeechContent；不加载客户端、AUI、FTB 或服务端运行时。CardData 自己提供 MapCodec 和 buildCard，客户端调用后得到完整的模板、参数、主文案、按钮与播报。CardPresentation 负责本地翻译、CardText 延迟物品解析、通用模式和受控 callback，JSON 仅控制布局。仅一个纯文本节点且没有按钮或额外内容时显示为普通消息，文字带按钮继续作为卡片。
 
-```java
-AgentResult result = AgentResult.data("system.result.player", snapshot);
-AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", SystemActionTypes.DELIVER_ACTION.get(),
-        new EntitlementInput(entitlementId));
-```
+服务端 DTO 包含分页原查询词、目录版本、报价、领取引用及可操作状态，客户端不反查工作流或自行判断业务。CardAction.Server 发送动作 Identifier 和字符串参数，由 ModuleRouting.button 转成原类型化输入并校验，继续进入原 AgentModule/Tool。Local 由客户端控制器 Map 执行；labelKey 只用于显示与语音匹配。ClientCardBindings 和按标签推断行为的 notificationAction 已移除。
 
-卡片数据编码为 `{"type":"system:player","name":"...",...}`，没有 `value` 包装；动作编码为 `{"labelKey":"system.action.deliver","call":{"moduleId":"system:deliver","input":{"entitlementId":"..."}}}`。新业务直接创建输入/结果对象，不再为卡片或按钮手工拼接 `JsonObject`。客户端任务行、奖励选项、指令补全、设置状态和口播通过类型访问数据；`TypedPayload.json()` 仅用于模块动作的输入预算和指纹等需要文本的边界，C2S 直接传对象。历史压缩继续只提取允许字段及有限领奖引用，不把整个卡片序列化后塞进模型上下文。
+ClientCards 保存连接内最新消息、版本和活动状态，ServerCards 只保存已发布版本元数据，并在异步动作开始时预留版本。REPLACE 只修改同一 ID，不新入队或播报；REMOVE 停止该卡片的显示/语音，历史保留只读快照。WAIT 暂停通知计时并禁用服务端操作，失败、超时和零卡片回复都完成等待。状态与历史独立响应，历史恢复不发包、不播报，不恢复旧引用的交互能力。
 
-客户端先由 `CardPresentation.context(...)` 预填动作，调用 `CardData.buildContext(builder, formatting)` 填充类型参数，再补充通用标题、模式和按钮回调并构建不可变 `CardContext`，再由 `CardPresentation.of(data, context)` 按 `CardData.template()` 直接读取 `assets/<namespace>/cards/<path>.json`。没有额外渲染映射表；资源 ID 可与数据类型 ID 分别命名，缺失模板沿用通用回退展示。`CardNode` 根接口通过 Codec 按 `type` 分派，`SystemRegistries.CARD_NODE_TYPE` 通过正式注册表绑定节点 ID 与 MapCodec，JSON 节点类型使用 `system:text` 等完整 ID；`screen/card/node` 中的独立实现负责 codec/render/text/css，`CardTemplate.Node` 保留共用条件及样式；文字、容器、横排/竖排、分割线、物品与动作区可任意组合。JSON 的 style 接受字符串或字符串数组，Codec 将数组拼接为空格分隔的 AUI 类名。`ClientCardBindings` 仅按需登记客户端行为，Registration 链式组合任务引用、状态、刷新与消息，不负责上下文构建或渲染。图形、纯文本和按钮标签分别直接调用 `CardPresentation.of/format/label`；参数由数据实现构建，不再登记构建处理器。消息按键统一返回 ClientMessage 的显示和播报文字，不再维护独立摘要/口播表。参数使用 `CardContext.Builder` 构建不可变 `CardContext` 后再绑定模板；整张卡片共用状态、对象参数和回调三张表，重复条目使用带下标的平铺键，`items: "{{result_items}}"` 直接绑定物品对象，不经 JSON 字符串转换。完整/简约界面和 HUD 主体共用布局树；HUD 确认、关闭、领取和任务行继续由代码生成，模板动作节点在通知中忽略。资源重载刷新完整/简约界面，通知保留入队时的模板及数据快照。内置 22 种卡片均有默认资源，格式及类型扩展见[客户端 JSON 卡片](cards.md)。
+CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式 CARD_NODE_TYPE 按 type 分派；style 支持字符串或列表。Context 三表平铺且共享，items 直接绑定 List<ItemPreviewOutput>，不经 JSON 字符串传物品。通知正文 actions 只显示 BODY 按钮，FOOTER 仍由代码生成；大任务列表直接滚动。模板缺失使用 summary 和已有按钮回退，不显示原始 DTO。格式见[客户端 JSON 卡片](cards.md)，完整流程和 BuiltinTools 职责见[卡片数据流](card-flow-design.md)。
 
-新增结果类型实现 `CardData`，通过 DeferredRegister 向 `SystemResourceKeys.CARD_DATA_TYPE` 登记自身 `MapCodec`；业务直接创建结果对象，不再经 Holder 包装。内置条目由 `SystemCardDataTypes` 公开。新增模块按钮参数仍向 `SystemResourceKeys.ACTION_TYPE` 登记 `TypedPayload.Type<?>`，内置条目由 `SystemActionTypes` 公开，复用模块输入 Codec。请求、响应及客户端卡片节点也使用正式注册表；语音供应商使用普通工厂 Map，声明与查询入口见[注册表速查](registries.md)。注册必须在两端模组加载期间完成，类型 ID 唯一，未知 ID 或未注册的 Codec / 类型键在编解码时拒绝。共享结果定义不得引用可选模组类；FTB 的普通输入/结果 Codec 即使未安装 FTB 也能读取历史卡片，实际模块仍只在检测到 FTB 后注册，点击动作仍由服务端模块权限及引用校验约束。
-
-网络、历史和嵌入玩家存档的结果统一使用 `AgentResult.CODEC`，文本边界通过 `CodecIO.parse/write` 处理。项目尚未发布，已移除旧卡片形状、旧动作结构、旧事件授权字段和写回执格式的兼容分支；不提供历史开发存档迁移。结果类型 ID 和当前格式自身的任务恢复/写入去重机制保留。
+网络、历史和玩家存档的结果统一使用 AgentResult.CODEC，文本边界使用 CodecIO。协议保持 1；项目未发布，不提供旧卡片、网络或开发存档迁移。CardData 的 Codec 始终共用且不引用可选模组类，FTB 真实工具与工作流仅在安装后加载。TTS/ASR 私人密钥和用量不上传服务端。
 
 游戏访问继续通过受限主线程队列，禁止在主线程等待模型或工具 Future。扩展模块在 `routing()` 中声明 `ModuleRouting<I>`，由同一次模块注册自动建立指令与 `RoutingProfile`，参见 [轻量本地意图路由](semantic-routing.md)。
 
@@ -291,7 +286,7 @@ FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubm
 
 完成通知在发送时按接收玩家的可领奖励生成操作，与详情共用 `FtbQuestAccess.reference`。仅一项普通奖励可直接复用 `quest_claim`，多项或自选奖励先走 `quest_detail` 供选择；没有可领奖励则只保留详情。事件到达本身不发奖，领取时仍校验引用期限、玩家/队伍和对象版本。可选模块安装时把共用的访问对象按服务器传给通知桥接，停服时清理。
 
-物品参数由 `CardData.buildContext(...)` 填入公共 `CardContext.Builder`，JSON 的 items 节点选择来源、分组标题和说明，再交给客户端 `AssistantItems` 共享绘制，卡片、当前回复和通知使用同一个 AUI `Item` 组件及共享 CSS。物品数据来自已解码的业务对象，不扫描 JSON 或模型文字；新类型在自己的 `buildContext(...)` 中扩展。`ItemPreviewOutput` 使用 `RecordCodecBuilder` 保存物品模板与数量文本，`QuestChoiceOutput` 保存候选名称与预览；只有隔离的 FTB 适配器访问 `ItemReward`，核心载荷及客户端不引用可选模组类。FTB 使用数量 1 的模板保留组件，再用 `getButtonText()` 展示真实配置数量/随机范围，不构造超出模板范围的物品，也不改动 FTB 原始栈。客户端在渲染阶段创建实际栈；原版 tooltip 接收该栈，保留物品 tooltip 组件和模组事件。详见[界面与本地化](ui-localization.md)。
+物品参数由 `CardData.buildCard()` 填入公共 `CardContext.Builder`，JSON 的 items 节点选择来源、分组标题和说明，再交给客户端 `AssistantItems` 共享绘制，卡片、当前回复和通知使用同一个 AUI `Item` 组件及共享 CSS。物品数据来自已解码的业务对象，不扫描 JSON 或模型文字；新类型在自己的 `buildCard()` 中扩展。`ItemPreviewOutput` 使用 `RecordCodecBuilder` 保存物品模板与数量文本，`QuestChoiceOutput` 保存候选名称与预览；只有隔离的 FTB 适配器访问 `ItemReward`，核心载荷及客户端不引用可选模组类。FTB 使用数量 1 的模板保留组件，再用 `getButtonText()` 展示真实配置数量/随机范围，不构造超出模板范围的物品，也不改动 FTB 原始栈。客户端在渲染阶段创建实际栈；原版 tooltip 接收该栈，保留物品 tooltip 组件和模组事件。详见[界面与本地化](ui-localization.md)。
 
 客户端 `AssistantRecognition.Session` 通过 `BooleanSupplier` 接收所属 UI 的有效性判断，供输入界面与 HUD 通知共用录音、网络与计量；最终回调同时核对原连接。`AssistantRecognitionKeys` 优先将按住说话交给当前可见通知，再交给主输入界面。通知将按钮本地化键与回调分离，用共用 `LexicalIndex` 缓存固定例句向量；未命中时进入主聊天路由。资源包定义、匹配门槛和生命周期见[语音识别](asr.md)与[轻量路由](semantic-routing.md)。
 

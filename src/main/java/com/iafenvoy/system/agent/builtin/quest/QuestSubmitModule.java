@@ -9,6 +9,7 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Native manual submission requires an explicit command or button; automatic routing cannot invoke it.
@@ -21,19 +22,16 @@ public final class QuestSubmitModule extends BuiltinModule<QuestSubmitInput> {
 
     @Override
     public ModuleRouting<QuestSubmitInput> routing() {
-        return ModuleRouting.<QuestSubmitInput>defaults().explicitOnly()
+        return ModuleRouting.<QuestSubmitInput>defaults()
+                .button(a -> new QuestSubmitInput("", Optional.empty(), a.required("quest", "questId"), a.flag("complete", "checkmarkOnly"))).explicitOnly()
                 .command(AgentCommand.argument("<number|name>", QuestSubmitInput::parse, "submit", "提交", "提交任务"));
-    }
-
-    public static AgentResult.Action completeAction(String questId) {
-        return new AgentResult.Action("system.action.complete_quest", SystemActionTypes.QUEST_SUBMIT_ACTION.get(), QuestSubmitInput.complete(questId));
     }
 
     @Override
     public AgentResult execute(ExecutionContext context, QuestSubmitInput input) throws Exception {
         QuestSubmitOutput result = context.tool(BuiltinTools.QUEST_SUBMIT, "submit", input);
         if (result.completed())
-            return new AgentResult("SUCCEEDED", "system.result.quest_submit_completed", "", List.of(), true);
+            return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.quest_submit_completed", "", List.of(), true);
         return AgentResult.data(result.changed() ? "system.result.quest_submitted" : "system.result.quest_submit_unchanged", result);
     }
 }

@@ -1,11 +1,13 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.CardData;
+import com.iafenvoy.system.card.CardBuilder;
+import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -27,7 +29,7 @@ public record QuestClaimOutput(String state, Optional<String> questId, Optional<
     }
 
     @Override
-    public Identifier template() {
-        return TEMPLATE;
+    public CardBuilder buildCard() {
+        return CardBuilder.template(TEMPLATE).summary("system.state." + this.state.toLowerCase(Locale.ROOT)).put("state", this.state);
     }
 }

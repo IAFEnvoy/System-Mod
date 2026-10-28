@@ -23,6 +23,7 @@ public final class ItemQueryModule extends BuiltinModule<ItemQueryInput> {
     @Override
     public ModuleRouting<ItemQueryInput> routing() {
         return ModuleRouting.<ItemQueryInput>defaults()
+                .button(a -> new ItemQueryInput(a.text("query"), a.number(0, "offset")))
                 .command(AgentCommand.argument("<query>", text -> new ItemQueryInput(text, 0), "item", "物品"))
                 .semantic(RoutingProfile.read(text -> {
                             String id = CommandArguments.singleItemId(text);
@@ -35,8 +36,6 @@ public final class ItemQueryModule extends BuiltinModule<ItemQueryInput> {
     @Override
     public AgentResult execute(ExecutionContext context, ItemQueryInput input) throws Exception {
         ItemPageOutput result = context.tool(BuiltinTools.ITEMS, "items", input);
-        List<AgentResult.Action> actions = result.hasMore() ? List.of(
-                new AgentResult.Action("system.action.next", SystemActionTypes.ITEMS_ACTION.get(), new ItemQueryInput(input.query(), result.nextOffset()))) : List.of();
-        return new AgentResult("SUCCEEDED", "system.result.items", "", List.of(new AgentResult.Card("system.result.items", result, actions)));
+        return AgentResult.data("system.result.items", result);
     }
 }

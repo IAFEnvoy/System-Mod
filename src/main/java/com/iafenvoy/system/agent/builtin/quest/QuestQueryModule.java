@@ -2,7 +2,6 @@ package com.iafenvoy.system.agent.builtin.quest;
 
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
-import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.input.QuestQueryInput;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
@@ -10,7 +9,6 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.registry.SystemActionTypes;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -25,6 +23,7 @@ public final class QuestQueryModule extends BuiltinModule<QuestQueryInput> {
     @Override
     public ModuleRouting<QuestQueryInput> routing() {
         return ModuleRouting.<QuestQueryInput>defaults()
+                .button(a -> new QuestQueryInput(a.text("query"), a.flag("claimable")))
                 .command(AgentCommand.argument("[query]", text -> new QuestQueryInput(text, false), "quests", "任务"))
                 .command(AgentCommand.literal(new QuestQueryInput("", true), "claimable", "可领奖励"))
                 .semantic(RoutingProfile.read(text -> new QuestQueryInput("", false),
@@ -41,9 +40,6 @@ public final class QuestQueryModule extends BuiltinModule<QuestQueryInput> {
 
     static AgentResult questList(List<QuestBriefOutput> quests, String key) {
         if (quests.isEmpty()) return AgentResult.ok("system.result.empty");
-        List<AgentResult.Action> actions = new ArrayList<>();
-        for (QuestBriefOutput quest : quests)
-            actions.add(new AgentResult.Action("system.action.quest_detail", SystemActionTypes.QUEST_ACTION.get(), QuestDetailInput.byId(quest.id())));
-        return new AgentResult("SUCCEEDED", key, "", List.of(new AgentResult.Card(key, new ResultTypes.QuestList(quests), actions)));
+        return AgentResult.data(key, new ResultTypes.QuestList(quests));
     }
 }

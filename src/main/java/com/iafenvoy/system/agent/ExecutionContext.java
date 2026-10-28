@@ -8,8 +8,8 @@ import com.iafenvoy.system.agent.routing.RouteSource;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.config.file.AgentConfig;
-import com.iafenvoy.system.module.core.CoreSystemModule;
 import com.iafenvoy.system.module.ModuleData;
+import com.iafenvoy.system.module.core.CoreSystemModule;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
@@ -173,7 +173,8 @@ public final class ExecutionContext {
         if (this.cancelled.get() || this.engine.closed() || !this.engine.current(this.player, this.incarnation))
             throw new AgentException("CANCELLED");
         if (this.remainingMillis() == 0) throw new AgentException("EXPIRED");
-        if (this.module != null && !this.available(this.module.id())) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        if (this.module != null && !this.available(this.module.id()))
+            throw new AgentException("CAPABILITY_UNAVAILABLE");
     }
 
     private void persist() {

@@ -3,9 +3,9 @@ package com.iafenvoy.system.speech.tts;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.config.file.SpeechConfig;
-import com.iafenvoy.system.speech.TtsProviders;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.speech.SpeechException;
+import com.iafenvoy.system.speech.TtsProviders;
 import com.iafenvoy.system.util.LegacyText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.sounds.SoundEngine;
@@ -19,7 +19,6 @@ import net.neoforged.neoforge.client.event.sound.PlaySoundSourceEvent;
 import net.neoforged.neoforge.client.event.sound.PlayStreamingSourceEvent;
 
 import java.net.http.HttpTimeoutException;
-import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -46,7 +45,7 @@ public final class AssistantSpeech {
     private static long cooldownUntil;
     private static long deadline;
 
-    private record Utterance(Session source, String text, List<String> quests, boolean preview, boolean notification) {
+    private record Utterance(Session source, String text, boolean preview, boolean notification) {
     }
 
     // A closed UI session cannot enqueue again, including after a delayed streaming callback.
@@ -56,30 +55,22 @@ public final class AssistantSpeech {
         public void result(AgentResult result) {
             stop(this);
             String text = SpeechText.result(result);
-            if (!text.isBlank()) this.say(text, SpeechText.quests(result));
+            if (!text.isBlank()) this.say(text);
         }
 
         public void say(String text) {
-            this.say(text, List.of());
-        }
-
-        public void say(String text, List<String> quests) {
-            if (!this.closed) AssistantSpeech.say(this, text, quests, false);
+            if (!this.closed) AssistantSpeech.say(this, text, false);
         }
 
         public void notification(String text) {
-            this.notification(text, List.of());
-        }
-
-        public void notification(String text, List<String> quests) {
-            if (!this.closed) AssistantSpeech.say(this, text, quests, true);
+            if (!this.closed) AssistantSpeech.say(this, text, true);
         }
 
         public void preview(SpeechConfig current) throws SpeechException {
             if (this.closed) return;
             validate(current);
             stop();
-            start(new Utterance(this, AssistantView.tr("system.tts.preview_text"), List.of(), true, false), current);
+            start(new Utterance(this, AssistantView.tr("system.tts.preview_text"), true, false), current);
         }
 
         @Override
@@ -119,11 +110,11 @@ public final class AssistantSpeech {
         return SpeechConfig.INSTANCE.get().enabled() && SpeechConfig.INSTANCE.get().hasKey() && System.nanoTime() >= cooldownUntil;
     }
 
-    private static void say(Session source, String text, List<String> quests, boolean notification) {
+    private static void say(Session source, String text, boolean notification) {
         // The UI selects the current message; speech must never hold the next message behind old audio.
         stop();
         if (!notification && !canSpeak()) return;
-        queued = new Utterance(source, text, List.copyOf(quests), false, notification);
+        queued = new Utterance(source, text, false, notification);
         status = SpeechState.QUEUED;
     }
 
@@ -159,7 +150,6 @@ public final class AssistantSpeech {
         }
         // Local cues also work with automatic speech disabled, missing credentials or a cloud cooldown.
         if (normalized.isEmpty() || !utterance.preview() && !canSpeak()) return;
-        CompletableFuture<String> narration = QuestSpeechClient.request(utterance.quests(), current);
         String language = minecraft.options.languageCode;
         String providerId = current.provider();
         int volume = current.volume();
@@ -183,9 +173,8 @@ public final class AssistantSpeech {
         WORKER.purge();
         pending = WORKER.submit(() -> {
             try (TtsProvider provider = TtsProviders.create(providerId)) {
-                // Only this worker waits for optional model wording; UI state and the local cue remain responsive.
-                String details = narration.get();
-                TtsProvider.Request request = current.request(normalize(normalized + (details.isBlank() ? "" : "\n" + details)), language);
+                // Cards already carry server-prepared narration; synthesis starts without another quest request.
+                TtsProvider.Request request = current.request(normalized, language);
                 provider.validate(request);
                 if (Thread.currentThread().isInterrupted()) return;
                 String cacheKey = cacheEnabled ? SpeechAudioCache.key(providerId, request) : null;
@@ -264,7 +253,6 @@ public final class AssistantSpeech {
 
     private static void cancelCurrent() {
         generation++;
-        QuestSpeechClient.cancel();
         if (pending != null) pending.cancel(true);
         pending = null;
         if (audio != null) audio.cancel();

@@ -2,10 +2,13 @@ package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.agent.request.ChatRequest;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.request.InvokeRequest;
+import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.command.client.AssistantClientCommands;
 import com.iafenvoy.system.config.file.ClientConfig;
 import com.iafenvoy.system.data.SystemDefinition;
@@ -17,12 +20,16 @@ import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantSimpleScreen;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -50,6 +57,14 @@ public final class AssistantClient {
         return revision;
     }
 
+    private record ViewOwner(Object screen, String page) {
+    }
+
+    private static ViewOwner viewOwner() {
+        Screen screen = Minecraft.getInstance().screen;
+        return new ViewOwner(screen, screen instanceof AssistantScreen full ? full.page() : "");
+    }
+
     public static boolean simpleMode() {
         return ClientConfig.INSTANCE.get().simpleMode();
     }
@@ -74,6 +89,7 @@ public final class AssistantClient {
     }
 
     public static void local(AgentResult result) {
+        result.cards().forEach(card -> ClientCards.apply(card, false));
         state = state.local(result);
         revision++;
         if (Minecraft.getInstance().screen instanceof AssistantInputScreen screen) screen.speech().result(result);
@@ -105,23 +121,49 @@ public final class AssistantClient {
     }
 
     private static void receive(String requestId, AgentResult result, boolean notification) {
-        if (result.silent()) {
-            state = state.silent(requestId, result);
-            revision++;
-            AssistantMessages.refresh(result);
-            return;
+        AssistantClientState.Pending pending = state.pending().get(requestId);
+        if (!notification && pending == null) {
+            // Timed-out replies may finish an existing card, but cannot select a page or create a new message.
+            result = result.withPresentation(result.messageKey(), result.text(), result.cards().stream()
+                    .filter(card -> card.mode() != CardUpdate.Mode.SHOW).toList(), true);
         }
-        state = state.receive(requestId, result, notification);
+        boolean select = pending != null && pending.owner().equals(viewOwner());
+        boolean removesCurrent = state.current() != null && state.current().result() != null && result.cards().stream()
+                .anyMatch(update -> update.mode() == CardUpdate.Mode.REMOVE && state.current().result().cards().stream()
+                        .anyMatch(card -> card.ref().id().equals(update.ref().id())));
+        if (removesCurrent && Minecraft.getInstance().screen instanceof AssistantInputScreen screen) {
+            screen.stopSpeech();
+            screen.stopRecognition();
+        }
+        List<CardUpdate> updates = result.cards().stream().filter(card -> ClientCards.apply(card, false)).toList();
+        AgentResult accepted = result.withPresentation(result.messageKey(), result.text(), updates, result.silent());
+        state = state.receive(requestId, accepted, notification, select);
         revision++;
-        if (result.messageKey().equals("system.result.state")) return;
+        AssistantMessages.refresh(accepted);
+        if (accepted.silent() || updates.stream().noneMatch(card -> card.mode() == CardUpdate.Mode.SHOW)) return;
         Minecraft minecraft = Minecraft.getInstance();
-        if (notification || !(minecraft.screen instanceof AssistantScreen) && !(minecraft.screen instanceof AssistantSimpleScreen))
-            AssistantMessages.result(result, !result.messageKey().equals("system.error.not_bound"));
-        else if (minecraft.screen instanceof AssistantInputScreen screen) screen.speech().result(result);
+        if (notification || select && !(minecraft.screen instanceof AssistantInputScreen))
+            AssistantMessages.result(accepted);
+        else if (select && minecraft.screen instanceof AssistantInputScreen screen) screen.speech().result(accepted);
     }
 
-    public static void send(AgentResult.Action action, String message) {
-        send(action.call(), message);
+    public static void synchronizedState(String requestId, ResultTypes.ClientState value) {
+        if (!requestId.isEmpty() && !state.pending().containsKey(requestId)) return;
+        state = state.synchronizedState(requestId, value);
+        revision++;
+    }
+
+    public static void history(String requestId, ResultTypes.History value) {
+        if (!state.pending().containsKey(requestId)) return;
+        state = state.history(requestId, value);
+        revision++;
+    }
+
+    @SubscribeEvent
+    public static void tick(ClientTickEvent.Post event) {
+        long now = System.currentTimeMillis();
+        for (Map.Entry<String, AssistantClientState.Pending> pending : state.pending().entrySet())
+            if (pending.getValue().deadline() <= now) complete(pending.getKey());
     }
 
     public static void send(TypedPayload<?> call, String message) {
@@ -136,7 +178,7 @@ public final class AssistantClient {
             screen.stopSpeech();
             screen.stopRecognition();
         }
-        state = state.requested(id, request);
+        state = state.requested(id, request, viewOwner());
         revision++;
         connection.send(new AssistantRequestC2SPayload(id, request));
     }
@@ -150,6 +192,7 @@ public final class AssistantClient {
         AssistantSpeech.stop();
         if (Minecraft.getInstance().screen instanceof AssistantInputScreen screen) screen.stopRecognition();
         AssistantMessages.clear();
+        ClientCards.clear();
         state = AssistantClientState.EMPTY;
         revision++;
     }

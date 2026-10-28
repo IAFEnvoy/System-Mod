@@ -1,8 +1,7 @@
 package com.iafenvoy.system.screen.card;
 
-import com.iafenvoy.system.agent.CardContext;
+import com.iafenvoy.system.card.CardContext;
 import com.iafenvoy.system.screen.card.node.ActionsNode;
-import com.iafenvoy.system.screen.card.node.ItemsNode;
 import com.iafenvoy.system.screen.card.node.TextNode;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -21,8 +20,7 @@ public record CardTemplate(String css, boolean showTitle, List<Node> body, Actio
             Actions.CODEC.optionalFieldOf("actions", Actions.DEFAULT).forGetter(CardTemplate::actions)
     ).apply(i, CardTemplate::new));
     private static final CardTemplate FALLBACK = new CardTemplate("result_card", true, List.of(
-            Node.of(new TextNode("{{fallback_text}}", "", List.of(), false)),
-            Node.of(new ItemsNode("{{result_items}}", "", List.of(), Optional.empty(), true)),
+            Node.of(new TextNode("{{summary}}", "", List.of(), false)),
             Node.of(new ActionsNode("{{result_actions}}"))
     ), Actions.DEFAULT);
 
@@ -32,6 +30,11 @@ public record CardTemplate(String css, boolean showTitle, List<Node> body, Actio
 
     public static CardTemplate fallback() {
         return FALLBACK;
+    }
+
+    public boolean textOnly() {
+        return this.body.size() == 1 && this.body.getFirst().content().getClass() == TextNode.class
+                && this.body.getFirst().repeat().isEmpty();
     }
 
     public String label(CardContext context, int index) {

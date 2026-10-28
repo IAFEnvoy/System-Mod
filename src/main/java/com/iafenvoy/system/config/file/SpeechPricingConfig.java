@@ -119,7 +119,7 @@ public final class SpeechPricingConfig {
     private enum Unit implements StringRepresentable {
         CHARACTERS, TOKENS, CALLS;
         public static final Codec<Unit> CODEC = Codec.STRING.comapFlatMap(value -> MiscCodecs.mapOrError(
-                () -> Unit.valueOf(value.toUpperCase(Locale.ROOT))), Unit::getSerializedName);
+                () -> valueOf(value.toUpperCase(Locale.ROOT))), Unit::getSerializedName);
 
         @Override
         public @NonNull String getSerializedName() {

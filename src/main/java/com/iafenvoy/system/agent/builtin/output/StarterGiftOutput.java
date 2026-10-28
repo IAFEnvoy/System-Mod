@@ -1,15 +1,16 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.CardContext;
-import com.iafenvoy.system.agent.CardData;
-import com.iafenvoy.system.agent.CardFormatting;
+import com.iafenvoy.system.card.CardBuilder;
+import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -39,10 +40,16 @@ public record StarterGiftOutput(List<Gift> gifts) implements CardData {
     }
 
     @Override
-    public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
+    public CardBuilder buildCard() {
+        CardBuilder builder = CardBuilder.template(TEMPLATE);
         builder.list("gifts", this.gifts(), (prefix, gift) -> builder
                 .put(prefix + "result_items", gift.items())
-                .put(prefix + "error", gift.error().map(error -> formatting.tr("system.error." + error.toLowerCase(Locale.ROOT))).orElse("")));
+                .put(prefix + "error", gift.error().map(error -> Component.translatable("system.error." + error.toLowerCase(Locale.ROOT))).orElse(Component.empty())));
+        List<String> refs = this.gifts.stream().flatMap(gift -> gift.claimRef().stream()).toList();
+        if (!refs.isEmpty())
+            builder.serverButton("claim_gifts", "system.action.claim_starter_gift", Identifier.parse("system:starter_gift"), Map.of("references", String.join(",", refs)));
+        return builder.summary("system.result.starter_gift").speech(Component.translatable("system.tts.message.starter_gift"))
+                .serverButton("refresh_gifts", "system.action.refresh_starter_gift", Identifier.parse("system:starter_gifts"), Map.of());
     }
 
     @Override
@@ -50,8 +57,4 @@ public record StarterGiftOutput(List<Gift> gifts) implements CardData {
         return CODEC;
     }
 
-    @Override
-    public Identifier template() {
-        return TEMPLATE;
-    }
 }

@@ -1,8 +1,11 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.CardContext;
+import com.iafenvoy.system.card.CardBuilder;
+import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 
 import java.util.List;
 import java.util.Optional;
@@ -10,13 +13,13 @@ import java.util.Optional;
 /**
  * Built-in result data and its serialization codec.
  */
-public record QuestRewardOutput(String id, String title, boolean claimable, String state,
+public record QuestRewardOutput(String id, Component title, boolean claimable, String state,
                                 Optional<List<QuestChoiceOutput>> choices,
                                 int choiceOffset, boolean hasMoreChoices, Optional<String> claimRef,
                                 List<ItemPreviewOutput> items) {
     public static final Codec<QuestRewardOutput> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("id").forGetter(QuestRewardOutput::id),
-            Codec.STRING.fieldOf("title").forGetter(QuestRewardOutput::title),
+            ComponentSerialization.CODEC.fieldOf("title").forGetter(QuestRewardOutput::title),
             Codec.BOOL.fieldOf("claimable").forGetter(QuestRewardOutput::claimable),
             Codec.STRING.fieldOf("state").forGetter(QuestRewardOutput::state),
             QuestChoiceOutput.CODEC.listOf().optionalFieldOf("choices").forGetter(QuestRewardOutput::choices),
@@ -27,11 +30,13 @@ public record QuestRewardOutput(String id, String title, boolean claimable, Stri
     ).apply(i, QuestRewardOutput::new));
 
     public QuestRewardOutput {
+        title = LegacyText.snapshot(title);
+
         choices = choices.map(List::copyOf);
         items = List.copyOf(items);
     }
 
-    public void buildContext(CardContext.Builder builder, String prefix) {
+    public void fill(CardBuilder builder, String prefix) {
         List<QuestChoiceOutput> choices = this.choices().orElse(List.of());
         builder.put(prefix + "reward_title", this.title()).put(prefix + "reward_state", this.state()).put(prefix + "result_items", this.items());
         builder.put(prefix + "choices", choices.size());

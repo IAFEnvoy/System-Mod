@@ -7,8 +7,11 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.response.BindingResponse;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
+import com.iafenvoy.system.card.data.BindingCardData;
+import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
+import com.iafenvoy.system.registry.SystemDataPackRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -93,7 +96,9 @@ public final class AssistantPlayers {
                 return;
             boolean fresh = answer.messageKey().equals("system.result.bound");
             if (answer.isSuccess() && fresh) {
-                ServerNetworkHandler.binding(player, BindingResponse.Change.BOUND, answer);
+                SystemDefinition definition = SystemDataPackRegistries.current(this.server.registryAccess());
+                ServerNetworkHandler.binding(player, BindingResponse.Change.BOUND, AgentResult.data("system.result.bound",
+                        new BindingCardData(player.getName().getString(), definition.name(), definition.description())));
                 this.pendingBindingIntroductions.add(uuid);
                 this.login(player);
             } else ServerNetworkHandler.notice(player, answer);

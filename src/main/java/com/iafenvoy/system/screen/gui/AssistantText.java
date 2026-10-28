@@ -3,7 +3,6 @@ package com.iafenvoy.system.screen.gui;
 import com.iafenvoy.system.util.LegacyText;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.network.chat.Style;
-import net.minecraft.util.StringDecomposer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,24 +22,7 @@ public final class AssistantText {
             return;
         }
         List<Run> runs = new ArrayList<>();
-        boolean firstLine = true;
-        // Hard line breaks separate independent entries; soft wrapping still keeps the current style.
-        for (String line : value.split("\n", -1)) {
-            if (!firstLine) runs.add(new Run("\n", Style.EMPTY));
-            firstLine = false;
-            StringBuilder text = new StringBuilder();
-            Style[] current = {Style.EMPTY};
-            StringDecomposer.iterateFormatted(line, Style.EMPTY, (_, style, codePoint) -> {
-                if (!current[0].equals(style)) {
-                    if (!text.isEmpty()) runs.add(new Run(text.toString(), current[0]));
-                    text.setLength(0);
-                    current[0] = style;
-                }
-                text.appendCodePoint(codePoint);
-                return true;
-            });
-            if (!text.isEmpty()) runs.add(new Run(text.toString(), current[0]));
-        }
+        LegacyText.runs(value, Style.EMPTY, (text, style) -> runs.add(new Run(text, style)));
 
         element.setTextContent("");
         // Keep one flex item for buttons; spans inherit the page font, wrapping and reset colour.

@@ -19,7 +19,9 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-/** Owns module activation, player sessions and tick dispatch; workers see only ready module IDs. */
+/**
+ * Owns module activation, player sessions and tick dispatch; workers see only ready module IDs.
+ */
 public final class ModuleManager implements AutoCloseable {
     private final MinecraftServer server;
     private final AgentEngine engine;
@@ -28,7 +30,8 @@ public final class ModuleManager implements AutoCloseable {
     private final Map<UUID, PlayerSession> players = new HashMap<>();
     private final Map<UUID, Set<Identifier>> active = new ConcurrentHashMap<>();
     private final Set<UUID> flushing = ConcurrentHashMap.newKeySet();
-    private Consumer<ServerPlayer> changed = _ -> {};
+    private Consumer<ServerPlayer> changed = _ -> {
+    };
     private boolean closed;
 
     public ModuleManager(MinecraftServer server, ModuleContext context) {
@@ -89,7 +92,9 @@ public final class ModuleManager implements AutoCloseable {
         if (session != null && session.loaded) this.reconcile(session);
     }
 
-    /** Snapshot live game state before the binding transaction runs off the server thread. */
+    /**
+     * Snapshot live game state before the binding transaction runs off the server thread.
+     */
     public Consumer<PlayerData> binding(ServerPlayer player) {
         this.checkThread();
         List<Consumer<PlayerData>> initializers = this.installed.values().stream()

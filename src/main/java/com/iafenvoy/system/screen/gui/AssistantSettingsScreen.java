@@ -1,6 +1,5 @@
 package com.iafenvoy.system.screen.gui;
 
-import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.request.PreferencesRequest;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.config.file.ClientConfig;
@@ -311,9 +310,9 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         if (document == null) return;
         if (this.savingPreferences && !AssistantClient.state().busy()) {
             this.savingPreferences = false;
-            AgentResult result = AssistantClient.state().current() == null ? null : AssistantClient.state().current().result();
-            this.generalStatus = result == null ? tr("system.ui.settings_config_error")
-                    : tr(result.messageKey().equals("system.result.preferences") ? "system.ui.settings_saved" : result.messageKey());
+            boolean saved = this.saveHistory == AssistantClient.state().saveHistory()
+                    && this.externalModel == AssistantClient.state().externalModel();
+            this.generalStatus = tr(saved ? "system.ui.settings_saved" : "system.ui.settings_config_error");
             this.saveHistory = AssistantClient.state().saveHistory();
             this.externalModel = AssistantClient.state().externalModel();
             this.renderControls();

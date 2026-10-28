@@ -1,8 +1,8 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.card.client;
 
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.card.CardText;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -11,7 +11,9 @@ import net.minecraft.world.item.ItemStackTemplate;
 import java.util.ArrayList;
 import java.util.List;
 
-/** The caller supplies text resolution, so shared card data never needs to load client UI classes. */
+/**
+ * The caller supplies text resolution, so shared card data never needs to load client UI classes.
+ */
 @FunctionalInterface
 public interface CardFormatting {
     String text(Component component);
@@ -39,13 +41,14 @@ public interface CardFormatting {
         return lines.isEmpty() && price.items().isEmpty() ? this.tr("system.ui.lottery_no_cost") : String.join("\n", lines);
     }
 
-    default CardContext.Builder rewardParameters(CardContext.Builder builder, String prefix, PlayerData.Reward reward) {
-        return builder.put(prefix + "reward_label", reward.label()).put(prefix + "reward_items", this.items(reward.items()))
-                .put(prefix + "result_items", reward.items().stream().map(ItemPreviewOutput::of).toList());
-    }
-
-    default CardContext.Builder priceParameters(CardContext.Builder builder, CommerceCatalog.Price price) {
-        return builder.put("price", this.price(price, false)).put("price_text", this.price(price, true))
-                .put("price_items", price.items());
+    default String value(Object value) {
+        if (value instanceof Component component) return this.text(component);
+        if (value instanceof CardText.Items(List<ItemPreviewOutput> items1)) {
+            return String.join("\n", items1.stream().map(item -> this.text(Component.translatable("system.ui.item_amount", item.item().create().getHoverName(), item.amount()))).toList());
+        }
+        if (value instanceof CardText.Price(
+                CommerceCatalog.Price price1, boolean includeItems
+        )) return this.price(price1, includeItems);
+        return value == null ? "" : value.toString();
     }
 }

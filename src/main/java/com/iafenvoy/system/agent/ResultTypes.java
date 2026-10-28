@@ -1,19 +1,24 @@
 package com.iafenvoy.system.agent;
 
-import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
-import com.iafenvoy.system.agent.builtin.output.*;
-import com.iafenvoy.system.agent.commerce.CommerceCatalog;
+import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
+import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
 import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.card.CardBuilder;
+import com.iafenvoy.system.card.CardButton;
+import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.card.SpeechContent;
+import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.util.StringRepresentable;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -23,73 +28,30 @@ public final class ResultTypes {
     private ResultTypes() {
     }
 
-    public record Preferences(boolean historySaved, boolean externalModel) implements CardData {
-        public static final MapCodec<Preferences> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-                Codec.BOOL.fieldOf("historySaved").forGetter(Preferences::historySaved),
-                Codec.BOOL.fieldOf("externalModel").forGetter(Preferences::externalModel)
-        ).apply(i, Preferences::new));
-        public static final Identifier TEMPLATE = Identifier.parse("system:preferences");
-
-        @Override
-        public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
-            builder.put("history_saved", this.historySaved()).put("external_model", this.externalModel());
-        }
-
-        @Override
-        public MapCodec<Preferences> codec() {
-            return CODEC;
-        }
-
-        @Override
-        public Identifier template() {
-            return TEMPLATE;
-        }
-    }
-
     public record ClientState(boolean historySaved, boolean externalModel, List<Identifier> modules,
-                              List<String> commands) implements CardData {
+                              List<String> commands) {
         public static final MapCodec<ClientState> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 Codec.BOOL.fieldOf("historySaved").forGetter(ClientState::historySaved),
                 Codec.BOOL.fieldOf("externalModel").forGetter(ClientState::externalModel),
                 Identifier.CODEC.listOf().fieldOf("modules").forGetter(ClientState::modules),
                 Codec.STRING.listOf().fieldOf("commands").forGetter(ClientState::commands)
         ).apply(i, ClientState::new));
-        public static final Identifier TEMPLATE = Identifier.parse("system:client_state");
 
         public ClientState {
             modules = List.copyOf(modules);
             commands = List.copyOf(commands);
         }
 
-        @Override
-        public MapCodec<ClientState> codec() {
-            return CODEC;
-        }
-
-        @Override
-        public Identifier template() {
-            return TEMPLATE;
-        }
     }
 
-    public record History(List<PlayerData.Message> messages) implements CardData {
+    public record History(List<PlayerData.Message> messages) {
         public static final Codec<PlayerData.Message> MESSAGE_CODEC = PlayerData.Message.CODEC;
         public static final MapCodec<History> CODEC = MESSAGE_CODEC.listOf().fieldOf("messages").xmap(History::new, History::messages);
-        public static final Identifier TEMPLATE = Identifier.parse("system:history");
 
         public History {
             messages = List.copyOf(messages);
         }
 
-        @Override
-        public MapCodec<History> codec() {
-            return CODEC;
-        }
-
-        @Override
-        public Identifier template() {
-            return TEMPLATE;
-        }
     }
 
     public record SignInStatus(String date, boolean signedIn, List<PlayerData.Reward> candidates, boolean historySaved,
@@ -108,10 +70,12 @@ public final class ResultTypes {
         }
 
         @Override
-        public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
+        public CardBuilder buildCard() {
+            CardBuilder builder = CardBuilder.template(TEMPLATE).summary("system.result.sign_in_status");
             builder.put("date", this.date()).put("signed_in", this.signedIn())
                     .put("history_saved", this.historySaved()).put("external_model", this.externalModel())
-                    .list("candidates", this.candidates(), (prefix, reward) -> formatting.rewardParameters(builder, prefix, reward));
+                    .list("candidates", this.candidates(), builder::reward);
+            return builder;
         }
 
         @Override
@@ -119,45 +83,6 @@ public final class ResultTypes {
             return CODEC;
         }
 
-        @Override
-        public Identifier template() {
-            return TEMPLATE;
-        }
-    }
-
-    public record ShopOffer(Optional<Identifier> id, String label, List<ItemStackTemplate> items,
-                            CommerceCatalog.Price price,
-                            Optional<Boolean> paymentAvailable) implements CardData {
-        public static final MapCodec<ShopOffer> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-                Identifier.CODEC.optionalFieldOf("id").forGetter(ShopOffer::id),
-                Codec.STRING.fieldOf("label").forGetter(ShopOffer::label),
-                PlayerData.Reward.ITEMS_CODEC.fieldOf("items").forGetter(ShopOffer::items),
-                CommerceCatalog.Price.CODEC.fieldOf("price").forGetter(ShopOffer::price),
-                Codec.BOOL.optionalFieldOf("paymentAvailable").forGetter(ShopOffer::paymentAvailable)
-        ).apply(i, ShopOffer::new));
-        public static final Identifier TEMPLATE = Identifier.parse("system:shop_offer");
-
-        public ShopOffer {
-            items = List.copyOf(items);
-        }
-
-        @Override
-        public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
-            builder.put("label", this.label()).put("id", this.id().map(Identifier::toString).orElse(""))
-                    .put("items", formatting.items(this.items())).put("offer_items", this.items().stream().map(ItemPreviewOutput::of).toList())
-                    .put("payment_available", this.paymentAvailable().orElse(true));
-            formatting.priceParameters(builder, this.price());
-        }
-
-        @Override
-        public MapCodec<ShopOffer> codec() {
-            return CODEC;
-        }
-
-        @Override
-        public Identifier template() {
-            return TEMPLATE;
-        }
     }
 
     public record ShopOrder(String orderId, String label, String state, String error) implements CardData {
@@ -170,9 +95,11 @@ public final class ResultTypes {
         public static final Identifier TEMPLATE = Identifier.parse("system:shop_order");
 
         @Override
-        public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
+        public CardBuilder buildCard() {
+            CardBuilder builder = CardBuilder.template(TEMPLATE).summary(Component.literal(this.label));
             builder.put("order_id", this.orderId()).put("label", this.label()).put("state", this.state())
-                    .put("error", this.error().isBlank() ? "" : formatting.tr("system.error." + this.error().toLowerCase(Locale.ROOT)));
+                    .put("error", this.error().isBlank() ? "" : Component.translatable("system.error." + this.error().toLowerCase(Locale.ROOT)));
+            return builder;
         }
 
         @Override
@@ -180,10 +107,6 @@ public final class ResultTypes {
             return CODEC;
         }
 
-        @Override
-        public Identifier template() {
-            return TEMPLATE;
-        }
     }
 
     public record QuestList(List<QuestBriefOutput> quests) implements CardData {
@@ -195,16 +118,15 @@ public final class ResultTypes {
         }
 
         @Override
-        public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
-            builder.forActions((prefix, action) -> {
-                if (action.call().value() instanceof QuestDetailInput detail)
-                    for (QuestBriefOutput quest : this.quests())
-                        if (quest.id().equals(detail.questId())) {
-                            builder.put(prefix + "action_number", quest.number()).put(prefix + "action_title", quest.title()).put(prefix + "action_chapter", quest.chapter())
-                                    .put(prefix + "action_progress", (int) quest.progress());
-                            return;
-                        }
-            });
+        public CardBuilder buildCard() {
+            CardBuilder builder = CardBuilder.template(TEMPLATE).title("system.result.quests").summary("system.result.quests");
+            for (QuestBriefOutput quest : this.quests) {
+                builder.serverButton("quest_" + quest.id(), "system.action.quest_detail", Identifier.parse("system:quest_detail"),
+                                Map.of("quest", quest.id()), CardButton.Placement.BODY, CardButton.Behavior.CLOSE)
+                        .actionParameter("action_number", quest.number()).actionParameter("action_title", quest.title())
+                        .actionParameter("action_chapter", quest.chapter()).actionParameter("action_progress", (int) quest.progress());
+            }
+            return builder;
         }
 
         @Override
@@ -212,39 +134,55 @@ public final class ResultTypes {
             return CODEC;
         }
 
-        @Override
-        public Identifier template() {
-            return TEMPLATE;
-        }
     }
 
-    public record QuestNotice(String id, String title, String chapter, List<ItemPreviewOutput> items,
+    public record QuestNotice(String id, Component title, Component chapter, List<ItemPreviewOutput> items,
                               String description, List<Component> requirements, List<Component> otherRewards,
-                              boolean manualSubmission) implements CardData {
+                              boolean manualSubmission, QuestEvent event, boolean canSubmit, boolean rewardPending,
+                              Optional<String> claimRef, SpeechContent speech) implements CardData {
         public static final MapCodec<QuestNotice> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 Codec.STRING.fieldOf("id").forGetter(QuestNotice::id),
-                Codec.STRING.fieldOf("title").forGetter(QuestNotice::title),
-                Codec.STRING.fieldOf("chapter").forGetter(QuestNotice::chapter),
+                ComponentSerialization.CODEC.fieldOf("title").forGetter(QuestNotice::title),
+                ComponentSerialization.CODEC.fieldOf("chapter").forGetter(QuestNotice::chapter),
                 ItemPreviewOutput.CODEC.listOf().fieldOf("items").forGetter(QuestNotice::items),
                 Codec.STRING.fieldOf("description").forGetter(QuestNotice::description),
                 ComponentSerialization.CODEC.listOf().fieldOf("requirements").forGetter(QuestNotice::requirements),
                 ComponentSerialization.CODEC.listOf().fieldOf("otherRewards").forGetter(QuestNotice::otherRewards),
-                Codec.BOOL.fieldOf("manualSubmission").forGetter(QuestNotice::manualSubmission)
+                Codec.BOOL.fieldOf("manualSubmission").forGetter(QuestNotice::manualSubmission),
+                QuestEvent.CODEC.fieldOf("event").forGetter(QuestNotice::event),
+                Codec.BOOL.fieldOf("canSubmit").forGetter(QuestNotice::canSubmit),
+                Codec.BOOL.fieldOf("rewardPending").forGetter(QuestNotice::rewardPending),
+                Codec.STRING.optionalFieldOf("claimRef").forGetter(QuestNotice::claimRef),
+                SpeechContent.CODEC.fieldOf("speech").forGetter(QuestNotice::speech)
         ).apply(i, QuestNotice::new));
         public static final Identifier TEMPLATE = Identifier.parse("system:quest_notice");
 
         public QuestNotice {
+            title = LegacyText.snapshot(title);
+            chapter = LegacyText.snapshot(chapter);
             items = List.copyOf(items);
             requirements = List.copyOf(requirements);
             otherRewards = List.copyOf(otherRewards);
         }
 
         @Override
-        public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
+        public CardBuilder buildCard() {
+            CardBuilder builder = CardBuilder.template(TEMPLATE);
             builder.put("id", this.id()).put("title", this.title()).put("chapter", this.chapter()).put("description", this.description())
-                    .put("requirements", String.join("，", this.requirements().stream().map(formatting::text).toList()))
-                    .put("other_rewards", String.join("，", this.otherRewards().stream().map(formatting::text).toList()))
+                    .put("requirements", CardBuilder.join(this.requirements(), "，"))
+                    .put("other_rewards", CardBuilder.join(this.otherRewards(), "，"))
                     .put("manual_submission", this.manualSubmission()).put("result_items", this.items());
+            Component main = Component.translatable("system.tts.message.quest_" + this.event.getSerializedName(), this.title);
+            if (this.rewardPending)
+                main = main.copy().append("\n").append(Component.translatable("system.ui.quest_reward_pending"));
+            builder.summary(main).speech(this.speech);
+            if (this.canSubmit)
+                builder.serverButton("submit", "system.action.complete_quest", Identifier.parse("system:quest_submit"), Map.of("quest", this.id, "complete", "true"));
+            if (this.claimRef.isPresent())
+                builder.serverButton("claim", "system.action.claim", Identifier.parse("system:quest_claim"), Map.of("claim_ref", this.claimRef.get()));
+            else if (this.rewardPending)
+                builder.serverButton("rewards", "system.action.claim", Identifier.parse("system:quest_detail"), Map.of("quest", this.id));
+            return builder.serverButton("details", "system.action.quest_detail", Identifier.parse("system:quest_detail"), Map.of("quest", this.id), CardButton.Placement.FOOTER, CardButton.Behavior.CLOSE);
         }
 
         @Override
@@ -252,9 +190,15 @@ public final class ResultTypes {
             return CODEC;
         }
 
+    }
+
+    public enum QuestEvent implements StringRepresentable {
+        COMPLETED, UNLOCKED;
+        public static final Codec<QuestEvent> CODEC = StringRepresentable.fromEnum(QuestEvent::values);
+
         @Override
-        public Identifier template() {
-            return TEMPLATE;
+        public String getSerializedName() {
+            return this.name().toLowerCase(Locale.ROOT);
         }
     }
 }

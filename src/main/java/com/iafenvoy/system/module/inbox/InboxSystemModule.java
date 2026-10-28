@@ -5,12 +5,9 @@ import com.iafenvoy.system.agent.builtin.inbox.DeliverModule;
 import com.iafenvoy.system.agent.builtin.inbox.DeliverTool;
 import com.iafenvoy.system.agent.builtin.inbox.InboxModule;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.module.ModuleContext;
-import com.iafenvoy.system.module.ModuleStorage;
-import com.iafenvoy.system.module.PlayerModule;
-import com.iafenvoy.system.module.ServerModule;
-import com.iafenvoy.system.module.ModuleData;
+import com.iafenvoy.system.module.*;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 
@@ -33,7 +30,7 @@ public final class InboxSystemModule implements ServerModule {
     public PlayerModule runtime(ModuleContext context) {
         return new PlayerModule() {
             @Override
-            public Session login(net.minecraft.server.level.ServerPlayer player) {
+            public Session login(ServerPlayer player) {
                 return data -> {
                     for (PlayerData.Delivery delivery : ModuleData.get(data, STORAGE).deliveries.values())
                         if ("DELIVERING".equals(delivery.state)) delivery.state = "DELIVERY_UNKNOWN";

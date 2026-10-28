@@ -1,15 +1,16 @@
 package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.*;
-import com.iafenvoy.system.agent.request.ChatRequest;
-import com.iafenvoy.system.agent.request.ControlRequest;
-import com.iafenvoy.system.agent.request.InvokeRequest;
-import com.iafenvoy.system.agent.request.PreferencesRequest;
+import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
+import com.iafenvoy.system.agent.request.*;
+import com.iafenvoy.system.agent.response.HistoryResponse;
 import com.iafenvoy.system.agent.response.OpenResponse;
 import com.iafenvoy.system.agent.response.ReplyResponse;
+import com.iafenvoy.system.agent.response.StateResponse;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
+import com.iafenvoy.system.registry.SystemActionTypes;
 import com.iafenvoy.system.util.TypeDispatch;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -93,24 +94,39 @@ public final class AssistantRequests {
     private void registerRequests() {
         this.registerRequest(ChatRequest.class, (context, chat) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), null, chat.text())));
         this.registerRequest(InvokeRequest.class, (context, invoke) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), invoke.call(), invoke.text())));
-        this.registerRequest(PreferencesRequest.class, (context, preferences) -> answer(context, this.engine.preferences(context.uuid(), preferences.history(), preferences.external())));
+        this.registerRequest(CardActionRequest.class, (context, action) -> {
+            ServerCards.Ticket ticket = ServerCards.begin(context.uuid(), action.source());
+            TypedPayload<?> call = this.engine.modules().button(action.action().id(), action.action().arguments());
+            return answer(context, this.engine.submit(context.uuid(), context.requestId(), call, "")
+                    .thenApply(result -> {
+                        if (result.isSuccess() && action.action().id().equals(SystemActionTypes.STARTER_GIFTS_ACTION.get().id())) {
+                            boolean empty = result.cards().stream().flatMap(card -> card.data().stream())
+                                    .filter(StarterGiftOutput.class::isInstance).map(StarterGiftOutput.class::cast).allMatch(gifts -> gifts.gifts().isEmpty());
+                            result = result.withPresentation(result.messageKey(), result.text(), empty ? List.of() : result.cards(), true);
+                        }
+                        return ServerCards.finish(ticket, result);
+                    }));
+        });
+        this.registerRequest(PreferencesRequest.class, (context, preferences) ->
+                this.engine.preferences(context.uuid(), preferences.history(), preferences.external()).thenCompose(result ->
+                        result.isSuccess() ? this.state(context.uuid()).thenApply(state -> new StateResponse(context.requestId(), state))
+                                : CompletableFuture.completedFuture(new ReplyResponse(context.requestId(), result))));
         this.requestHandlers.register(ControlRequest.class, (context, control) -> this.controlHandlers.get(control).apply(context));
-        this.registerControl(ControlRequest.STATE, context -> answer(context, this.state(context.uuid())));
-        this.registerControl(ControlRequest.HISTORY, context -> answer(context, this.engine.history(context.uuid())));
+        this.registerControl(ControlRequest.STATE, context -> this.state(context.uuid()).thenApply(state -> new StateResponse(context.requestId(), state)));
+        this.registerControl(ControlRequest.HISTORY, context -> this.engine.history(context.uuid()).thenApply(history -> new HistoryResponse(context.requestId(), history)));
         this.registerControl(ControlRequest.FORGET, context -> answer(context, this.engine.forget(context.uuid())));
         // Navigation must not consume the interval needed by the client's immediate state refresh.
         this.controlHandlers.put(ControlRequest.OPEN, context -> this.players.requireBound(context.uuid())
                 .thenApply(_ -> new OpenResponse(OpenResponse.View.CURRENT, Optional.of(context.requestId()))));
     }
 
-    private CompletionStage<AgentResult> state(UUID player) {
+    private CompletionStage<ResultTypes.ClientState> state(UUID player) {
         AgentStore store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
             if (!data.bound) throw new AgentException("NOT_BOUND");
-            return AgentResult.data("system.result.state",
-                    new ResultTypes.ClientState(data.saveHistory, data.externalModel,
-                            this.modules.enabled(player),
-                            this.engine.modules().commands().suggestions(id -> this.engine.available(player, id))));
+            return new ResultTypes.ClientState(data.saveHistory, data.externalModel,
+                    this.modules.enabled(player),
+                    this.engine.modules().commands().suggestions(id -> this.engine.available(player, id)));
         }));
     }
 
@@ -120,7 +136,7 @@ public final class AssistantRequests {
         this.state(player.getUUID()).whenComplete((result, error) -> this.server.execute(() -> {
             if (error == null && this.server.getPlayerList().getPlayer(player.getUUID()) == player
                     && connection.equals(ServerNetworkHandler.connectionId(player)) && this.engine.current(player.getUUID(), incarnation))
-                ServerNetworkHandler.notice(player, result);
+                ServerNetworkHandler.send(player, new StateResponse("", result));
         }));
     }
 }

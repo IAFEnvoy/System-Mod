@@ -7,8 +7,8 @@ import com.iafenvoy.system.agent.builtin.input.RewardCreditInput;
 import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.module.inbox.InboxSystemModule;
 import com.iafenvoy.system.module.ModuleData;
+import com.iafenvoy.system.module.inbox.InboxSystemModule;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -26,7 +26,8 @@ public final class RewardCreditTool implements ToolRegistry.Handler<RewardCredit
         String id = input.entitlementId();
         PlayerData.Reward reward = input.reward();
         return CompletableFuture.completedFuture(context.store().update(context.player(), data -> {
-            if (ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.size() >= 4096 && !ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.containsKey(id)) throw new AgentException("STORAGE_FULL");
+            if (ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.size() >= 4096 && !ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.containsKey(id))
+                throw new AgentException("STORAGE_FULL");
             ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.putIfAbsent(id, new PlayerData.Delivery(id, reward));
             return new CreditReceiptOutput(id, ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.get(id).reward, ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.get(id).state);
         }));

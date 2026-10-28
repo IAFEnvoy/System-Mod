@@ -7,9 +7,11 @@ import net.minecraft.resources.Identifier;
 
 import java.util.function.Supplier;
 
-/** A module owns the holder key; the independently registered type ID selects its codec. */
+/**
+ * A module owns the holder key; the independently registered type ID selects its codec.
+ */
 public record ModuleStorage<T extends DataStorage>(Identifier owner, Identifier id, Class<T> type, MapCodec<T> codec,
-                                                    Supplier<T> factory) {
+                                                   Supplier<T> factory) {
     public boolean ticking() {
         try {
             return this.type.getMethod("tick", DataStorageContext.class).getDeclaringClass() != DataStorage.class;

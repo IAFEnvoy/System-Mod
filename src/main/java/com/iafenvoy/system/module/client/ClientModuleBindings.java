@@ -1,6 +1,5 @@
 package com.iafenvoy.system.module.client;
 
-import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.registry.SystemRegistries;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
@@ -12,17 +11,15 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 
-/** Runtime presentation contributions are assembled once from the frozen client module registry. */
+/**
+ * Runtime presentation contributions are assembled once from the frozen client module registry.
+ */
 public final class ClientModuleBindings {
     private final ClientCommandRegistry commands = new ClientCommandRegistry();
-    private final ClientCardBindings cards = new ClientCardBindings();
     private final List<Workspace> workspace = new ArrayList<>();
-    private final Map<String, NotificationAction> notificationActions = new LinkedHashMap<>();
     private boolean frozen;
 
     private ClientModuleBindings() {
@@ -51,7 +48,6 @@ public final class ClientModuleBindings {
     private void freeze() {
         this.frozen = true;
         this.commands.freeze();
-        this.cards.freeze();
     }
 
     public void commands(LiteralArgumentBuilder<CommandSourceStack> root) {
@@ -62,10 +58,6 @@ public final class ClientModuleBindings {
         return this.commands;
     }
 
-    public ClientCardBindings cards() {
-        return this.cards;
-    }
-
     void workspace(Workspace entry) {
         this.checkMutable();
         for (Workspace previous : this.workspace)
@@ -73,24 +65,6 @@ public final class ClientModuleBindings {
                     || !entry.navigation().isBlank() && previous.navigation().equals(entry.navigation()))
                 throw new IllegalArgumentException("Duplicate workspace entry " + entry);
         this.workspace.add(entry);
-    }
-
-    public record NotificationAction(boolean details, boolean keepOpen, boolean openWorkspace) {
-        public static final NotificationAction DEFAULT = new NotificationAction(false, false, false);
-        public static final NotificationAction DETAILS = new NotificationAction(true, false, false);
-        public static final NotificationAction DETAILS_IN_WORKSPACE = new NotificationAction(true, false, true);
-        public static final NotificationAction KEEP_OPEN = new NotificationAction(false, true, false);
-    }
-
-    public void notificationAction(NotificationAction action, String... labels) {
-        this.checkMutable();
-        for (String label : labels)
-            if (this.notificationActions.putIfAbsent(label, action) != null)
-                throw new IllegalArgumentException("Duplicate notification action " + label);
-    }
-
-    public NotificationAction notificationAction(AgentResult.Action action) {
-        return this.notificationActions.getOrDefault(action.labelKey(), NotificationAction.DEFAULT);
     }
 
     public void bindWorkspace(AssistantScreen screen, Document document) {
@@ -115,7 +89,8 @@ public final class ClientModuleBindings {
         return List.copyOf(this.workspace);
     }
 
-    public record Workspace(Identifier owner, boolean serverRequired, String page, String navigation, String label, WorkspaceGroup group,
+    public record Workspace(Identifier owner, boolean serverRequired, String page, String navigation, String label,
+                            WorkspaceGroup group,
                             Consumer<WorkspaceContext> bind) {
         public boolean available() {
             return !this.serverRequired || AssistantClient.state().hasModule(this.owner);

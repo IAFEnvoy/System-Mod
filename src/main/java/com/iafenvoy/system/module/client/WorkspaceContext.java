@@ -1,10 +1,11 @@
 package com.iafenvoy.system.module.client;
 
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantView;
-import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.agent.AgentResult;
 import com.sighs.apricityui.init.Document;
+
 import java.util.function.BooleanSupplier;
 
 public record WorkspaceContext(AssistantScreen screen, Document document, BooleanSupplier available) {

@@ -11,7 +11,9 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/** Navigation may complete a request or be initiated by a server command. */
+/**
+ * Navigation may complete a request or be initiated by a server command.
+ */
 public record OpenResponse(View view, Optional<String> requestId) implements AgentResponse {
     public static final MapCodec<OpenResponse> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             View.CODEC.fieldOf("view").forGetter(OpenResponse::view),

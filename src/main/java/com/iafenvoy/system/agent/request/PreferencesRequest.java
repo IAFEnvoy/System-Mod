@@ -5,7 +5,9 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-/** Player preferences update server-side history and external-model permissions. */
+/**
+ * Player preferences update server-side history and external-model permissions.
+ */
 public record PreferencesRequest(boolean history, boolean external) implements AgentRequest {
     public static final MapCodec<PreferencesRequest> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.BOOL.fieldOf("history").forGetter(PreferencesRequest::history),

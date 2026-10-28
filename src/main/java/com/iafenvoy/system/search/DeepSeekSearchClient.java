@@ -1,8 +1,8 @@
 package com.iafenvoy.system.search;
 
 import com.iafenvoy.system.config.file.SearchConfig;
-import com.iafenvoy.system.util.HttpTransport;
 import com.iafenvoy.system.util.CodecIO;
+import com.iafenvoy.system.util.HttpTransport;
 import com.mojang.serialization.Codec;
 
 import java.io.IOException;

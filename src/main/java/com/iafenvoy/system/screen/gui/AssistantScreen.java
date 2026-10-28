@@ -3,6 +3,7 @@ package com.iafenvoy.system.screen.gui;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
+import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.module.client.ClientModuleBindings;
 import com.iafenvoy.system.module.client.WorkspaceGroup;
 import com.iafenvoy.system.screen.card.CardTemplates;
@@ -77,6 +78,10 @@ public final class AssistantScreen extends AssistantInputScreen {
             this.renderEntries();
     }
 
+    public String page() {
+        return this.page;
+    }
+
     private void renderEntries() {
         Document document = this.getLinkedDocument();
         if (document == null) return;
@@ -95,9 +100,7 @@ public final class AssistantScreen extends AssistantInputScreen {
             if (!entry.text().isBlank()) row.appendChild(element(document, "div", "message_text", entry.text()));
             AgentResult result = entry.result();
             if (result != null) {
-                row.appendChild(element(document, "div", "message_text", tr(result.messageKey())));
-                if (!result.text().isBlank()) row.appendChild(element(document, "div", "message_text", result.text()));
-                for (AgentResult.Card card : result.cards())
+                for (CardUpdate card : result.cards())
                     row.appendChild(renderCard(document, card, result.messageKey()));
             }
             list.appendChild(row);

@@ -10,10 +10,14 @@ public interface AgentStore extends AutoCloseable {
 
     <T> T update(UUID player, Function<PlayerData, T> transaction);
 
-    /** Nonblocking, memory-only transaction for main-thread module ticks; false also means busy/not loaded. */
+    /**
+     * Nonblocking, memory-only transaction for main-thread module ticks; false also means busy/not loaded.
+     */
     boolean updateLoaded(UUID player, Predicate<PlayerData> transaction);
 
-    /** Persist pending in-memory mutations on a storage worker. */
+    /**
+     * Persist pending in-memory mutations on a storage worker.
+     */
     void flush(UUID player);
 
     void delete(UUID player);

@@ -1,10 +1,13 @@
 package com.iafenvoy.system.agent;
 
+import com.google.gson.JsonElement;
 import com.iafenvoy.system.agent.routing.ModelRoute;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.registry.SystemRegistries;
+import com.iafenvoy.system.util.ActionArguments;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.Identifier;
 
 import java.util.*;
@@ -159,6 +162,25 @@ public final class ModuleRegistry {
         // Registration ties this exact type key to I; keep the erased cast at this one boundary.
         @SuppressWarnings("unchecked") AgentModule<I> typed = (AgentModule<I>) module;
         return new Call<>(typed, input.value());
+    }
+
+    public TypedPayload<?> button(Identifier id, Map<String, String> arguments) {
+        Entry<?> entry = this.modules.get(id);
+        if (entry == null || !entry.module().descriptor().interactive())
+            throw new AgentException("CAPABILITY_UNAVAILABLE");
+        return this.button(entry, new ActionArguments(arguments));
+    }
+
+    private <I> TypedPayload<I> button(Entry<I> entry, ActionArguments arguments) {
+        try {
+            I input = entry.routing().buttonDecoder().apply(arguments);
+            // Apply the same codec validation used by structured/model requests before entering the workflow.
+            Codec<I> codec = entry.module().inputType().codec();
+            JsonElement encoded = codec.encodeStart(JsonOps.INSTANCE, input).getOrThrow();
+            return entry.module().inputType().of(codec.parse(JsonOps.INSTANCE, encoded).getOrThrow());
+        } catch (IllegalArgumentException | IllegalStateException error) {
+            throw new AgentException("INVALID_INPUT", error);
+        }
     }
 
     private record Entry<I>(Identifier owner, AgentModule<I> module, ModuleRouting<I> routing, boolean readOnly,

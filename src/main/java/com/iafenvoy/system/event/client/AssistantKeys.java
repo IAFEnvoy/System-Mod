@@ -14,7 +14,9 @@ import org.lwjgl.glfw.GLFW;
 
 import static com.iafenvoy.system.registry.SystemKeyMappings.TOGGLE_INTERFACE;
 
-/** A remappable, initially unbound key toggles the assistant interface in and out. */
+/**
+ * A remappable, initially unbound key toggles the assistant interface in and out.
+ */
 @EventBusSubscriber(Dist.CLIENT)
 public final class AssistantKeys {
     private static boolean held;
@@ -57,7 +59,7 @@ public final class AssistantKeys {
         if (held) return true;
         held = true;
         if (minecraft.screen instanceof AssistantPageScreen) minecraft.setScreen(null);
-        // The ordinary command checks binding and opens the player's configured interface.
+            // The ordinary command checks binding and opens the player's configured interface.
         else minecraft.getConnection().sendCommand("system");
         return true;
     }

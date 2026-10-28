@@ -9,7 +9,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Item entitlements and delivery receipts are owned by the inbox module. */
+/**
+ * Item entitlements and delivery receipts are owned by the inbox module.
+ */
 public final class InboxDataStorage extends DataStorage {
     public static final MapCodec<InboxDataStorage> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.unboundedMap(Codec.STRING, PlayerData.Delivery.CODEC).optionalFieldOf("deliveries", Map.of())

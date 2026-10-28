@@ -2,6 +2,11 @@
   "body": [
     {
       "type": "system:text",
+      "text": "{{reason}}",
+      "when": "reason"
+    },
+    {
+      "type": "system:text",
       "text": "{{reward_label}}"
     },
     {

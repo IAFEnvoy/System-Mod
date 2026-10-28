@@ -1,9 +1,10 @@
 package com.iafenvoy.system.agent.routing;
 
 import com.iafenvoy.system.agent.*;
-import com.iafenvoy.system.agent.builtin.output.EmptyCardData;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.store.ConversationMemory;
+import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.card.data.SelectionCardData;
 import com.iafenvoy.system.util.CodecIO;
 import net.minecraft.resources.Identifier;
 
@@ -66,8 +67,8 @@ public final class HybridRouter implements AutoCloseable {
     }
 
     public AgentResult clarify(ExecutionContext context) {
-        return new AgentResult("SUCCEEDED", "system.result.clarify", "", List.of(
-                new AgentResult.Card("system.result.clarify_choices", EmptyCardData.INSTANCE, context.shortcuts())));
+        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.clarify", "", List.of(
+                CardUpdate.show(SelectionCardData.shortcuts("system.result.clarify", "system.result.clarify", context.shortcuts()))));
     }
 
     public void clear(UUID player) {

@@ -1,12 +1,9 @@
 package com.iafenvoy.system.module.conversation;
 
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.request.PreferencesRequest;
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.assistant.AssistantClientState;
-import com.iafenvoy.system.module.client.ClientMessage;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
 
@@ -35,10 +32,6 @@ public final class ConversationClientModule implements ClientModule {
                 AssistantClient.send(ControlRequest.HISTORY);
             });
         });
-        module.cards().register(ResultTypes.Preferences.class)
-                .state((previous, value) -> AssistantClientState.preferences(previous, value.historySaved(), value.externalModel()));
-        module.message("system.result.history", _ -> ClientMessage.speech(""));
-        module.message("system.result.state", _ -> ClientMessage.speech(""));
     }
 
     private static void preferences(boolean history, boolean external) {

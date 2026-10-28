@@ -3,39 +3,48 @@ package com.iafenvoy.system.agent;
 import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.saturn.runtime.resulting.FailureSource;
 import com.iafenvoy.saturn.runtime.resulting.ResultWithData;
+import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.card.data.TextCardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.StringRepresentable;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-/** Saturn owns success/failure and card data; the Agent adds presentation and partial-completion state. */
-public final class AgentResult extends ResultWithData<List<AgentResult.Card>> {
+/**
+ * Saturn owns success/failure and card data; the Agent adds presentation and partial-completion state.
+ */
+public final class AgentResult extends ResultWithData<List<CardUpdate>> {
     public static final Codec<AgentResult> CODEC = RecordCodecBuilder.create(i -> i.group(
-            Codec.STRING.fieldOf("status").forGetter(AgentResult::status),
+            Status.CODEC.fieldOf("status").forGetter(AgentResult::status),
             Codec.STRING.fieldOf("messageKey").forGetter(AgentResult::messageKey),
             Codec.STRING.optionalFieldOf("text", "").forGetter(AgentResult::text),
-            Card.CODEC.listOf().optionalFieldOf("cards", List.of()).forGetter(AgentResult::cards),
+            CardUpdate.CODEC.listOf().optionalFieldOf("cards", List.of()).forGetter(AgentResult::cards),
             Codec.BOOL.optionalFieldOf("silent", false).forGetter(AgentResult::silent)
     ).apply(i, AgentResult::new));
-    private final String status, messageKey, text;
+    private final Status status;
+    private final String messageKey, text;
     private final boolean silent;
 
-    public AgentResult(String status, String messageKey, String text, List<Card> cards, boolean silent) {
-        super(List.copyOf(cards), status.equals("SUCCEEDED") ? null : new MessageFailure(messageKey), null);
+    public AgentResult(Status status, String messageKey, String text, List<CardUpdate> cards, boolean silent) {
+        super(List.copyOf(cards), status == Status.SUCCEEDED ? null : new MessageFailure(messageKey), null);
         this.status = Objects.requireNonNull(status);
         this.messageKey = Objects.requireNonNull(messageKey);
         this.text = Objects.requireNonNull(text);
         this.silent = silent;
     }
 
-    public AgentResult(String status, String messageKey, String text, List<Card> cards) {
-        this(status, messageKey, text, cards, false);
+    public AgentResult(Status status, String messageKey, String text, List<CardUpdate> cards) {
+        this(status, messageKey, text, content(messageKey, text, cards, false), false);
     }
 
-    public String status() {
+    public Status status() {
         return this.status;
     }
 
@@ -47,7 +56,7 @@ public final class AgentResult extends ResultWithData<List<AgentResult.Card>> {
         return this.text;
     }
 
-    public List<Card> cards() {
+    public List<CardUpdate> cards() {
         return this.getData();
     }
 
@@ -55,25 +64,48 @@ public final class AgentResult extends ResultWithData<List<AgentResult.Card>> {
         return this.silent;
     }
 
-    /** A partial result still has a failure, so it must not populate success-only route caches. */
+    /**
+     * A partial result still has a failure, so it must not populate success-only route caches.
+     */
     public AgentResult partial() {
-        return new AgentResult("PARTIALLY_SUCCEEDED", this.messageKey, this.text, this.cards(), this.silent);
+        return new AgentResult(Status.PARTIALLY_SUCCEEDED, this.messageKey, this.text, this.cards(), this.silent);
     }
 
-    public AgentResult withPresentation(String key, String text, List<Card> cards, boolean silent) {
+    public AgentResult withPresentation(String key, String text, List<CardUpdate> cards, boolean silent) {
         return new AgentResult(this.status, key, text, cards, silent);
     }
 
     public static AgentResult ok(String key) {
-        return new AgentResult("SUCCEEDED", key, "", List.of());
+        return new AgentResult(Status.SUCCEEDED, key, "", List.of());
     }
 
     public static AgentResult error(String code) {
-        return new AgentResult("FAILED", "system.error." + code.toLowerCase(Locale.ROOT), "", List.of());
+        return new AgentResult(Status.FAILED, "system.error." + code.toLowerCase(Locale.ROOT), "", List.of());
     }
 
     public static AgentResult data(String key, CardData data) {
-        return new AgentResult("SUCCEEDED", key, "", List.of(new Card(key, data, List.of())));
+        return new AgentResult(Status.SUCCEEDED, key, "", List.of(CardUpdate.show(data)));
+    }
+
+    public static AgentResult of(String key, CardData... cards) {
+        return new AgentResult(Status.SUCCEEDED, key, "", Arrays.stream(cards).map(CardUpdate::show).toList());
+    }
+
+    private static List<CardUpdate> content(String key, String text, List<CardUpdate> cards, boolean silent) {
+        if (!cards.isEmpty() || silent) return List.copyOf(cards);
+        Component main = text.isBlank() ? Component.translatable(key)
+                : Component.translatable(key).append("\n").append(text);
+        return List.of(CardUpdate.show(new TextCardData(main)));
+    }
+
+    public enum Status implements StringRepresentable {
+        SUCCEEDED, FAILED, PARTIALLY_SUCCEEDED;
+        public static final Codec<Status> CODEC = StringRepresentable.fromEnum(Status::values);
+
+        @Override
+        public String getSerializedName() {
+            return this.name().toLowerCase(Locale.ROOT);
+        }
     }
 
     @Override
@@ -94,7 +126,9 @@ public final class AgentResult extends ResultWithData<List<AgentResult.Card>> {
                 + ", cards=" + this.cards() + ", silent=" + this.silent + "]";
     }
 
-    /** Wire snapshots keep the translated refusal key without serializing a supplier's implementation class. */
+    /**
+     * Wire snapshots keep the translated refusal key without serializing a supplier's implementation class.
+     */
     private record MessageFailure(String key) implements Failure {
         private static final FailureSource SOURCE = new FailureSource(Identifier.fromNamespaceAndPath("system", "agent"));
 
@@ -106,20 +140,6 @@ public final class AgentResult extends ResultWithData<List<AgentResult.Card>> {
         @Override
         public FailureSource source() {
             return SOURCE;
-        }
-    }
-
-    public record Card(String titleKey, CardData data, List<Action> actions) {
-        public static final Codec<Card> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.fieldOf("titleKey").forGetter(Card::titleKey),
-                CardData.CODEC.fieldOf("data").forGetter(Card::data),
-                Action.CODEC.listOf().optionalFieldOf("actions", List.of()).forGetter(Card::actions)
-        ).apply(i, Card::new));
-
-        public Card {
-            Objects.requireNonNull(titleKey);
-            Objects.requireNonNull(data);
-            actions = List.copyOf(actions);
         }
     }
 

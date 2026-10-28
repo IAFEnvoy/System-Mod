@@ -2,8 +2,8 @@ package com.iafenvoy.system.registry;
 
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResponse;
-import com.iafenvoy.system.agent.CardData;
 import com.iafenvoy.system.agent.TypedPayload;
+import com.iafenvoy.system.card.CardData;
 import com.iafenvoy.system.module.ServerModule;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.screen.card.CardNode;
@@ -14,7 +14,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.registries.NewRegistryEvent;
 import net.neoforged.neoforge.registries.RegistryBuilder;
 
-/** Code-defined catalogs join the builtin root registry and freeze during mod loading. */
+/**
+ * Code-defined catalogs join the builtin root registry and freeze during mod loading.
+ */
 @SuppressWarnings("unused")
 @EventBusSubscriber
 public final class SystemRegistries {

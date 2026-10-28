@@ -14,9 +14,9 @@ public record SearchConfig(String baseUrl, String apiKeyEnvironment, int maxResp
     public static final String FILE_NAME = "system-search.json";
     public static final Codec<SearchConfig> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.comapFlatMap(value -> MiscCodecs.mapOrError(() -> {
-                    endpoint(value, "search");
-                    return value;
-                }), value -> value).lenientOptionalFieldOf("baseUrl", "https://api.deepseek.com/v1").forGetter(SearchConfig::baseUrl),
+                endpoint(value, "search");
+                return value;
+            }), value -> value).lenientOptionalFieldOf("baseUrl", "https://api.deepseek.com/v1").forGetter(SearchConfig::baseUrl),
             MiscCodecs.NOT_BLANK_STRING.lenientOptionalFieldOf("apiKeyEnvironment", "SYSTEM_DEEPSEEK_API_KEY").forGetter(SearchConfig::apiKeyEnvironment),
             MiscCodecs.checked(Codec.INT, value1 -> value1 > 0).lenientOptionalFieldOf("maxResponseBytes", 4194304).forGetter(SearchConfig::maxResponseBytes)
     ).apply(i, SearchConfig::new));

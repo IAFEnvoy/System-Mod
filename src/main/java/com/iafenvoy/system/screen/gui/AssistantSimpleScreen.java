@@ -1,9 +1,11 @@
 package com.iafenvoy.system.screen.gui;
 
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.CardContext;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
+import com.iafenvoy.system.card.CardContext;
+import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.screen.card.CardPresentation;
 import com.iafenvoy.system.screen.card.CardTemplates;
 import com.sighs.apricityui.init.Document;
@@ -64,13 +66,10 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
             if (!AssistantClient.state().busy()) lines.add(tr(AssistantClient.system().description()));
             lines.add(tr(AssistantClient.state().busy() ? "system.ui.simple_working" : "system.ui.simple_welcome"));
         } else {
-            lines.add(tr(result.messageKey()));
-            if (!result.text().isBlank()) lines.add(result.text());
-            speech.appendChild(element(document, "div", "message_text", String.join("\n\n", lines)));
             int index = 1;
-            for (AgentResult.Card card : result.cards()) {
+            for (CardUpdate card : result.cards()) {
                 speech.appendChild(CardPresentation.of(card, result.messageKey(), CardContext.Mode.SIMPLE, index - 1).render(document));
-                index += card.actions().size();
+                index += ClientCards.view(card).buttons().size();
             }
             if (index > 1) speech.appendChild(element(document, "div", "card_context", tr("system.ui.simple_actions")));
         }

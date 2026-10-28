@@ -1,6 +1,9 @@
 package com.iafenvoy.system.network;
 
-import com.iafenvoy.system.network.payload.*;
+import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
+import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
+import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
+import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -16,10 +19,8 @@ public final class NetworkManager {
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
         event.registrar("1")
-                .playToServer(QuestNarrationRequestC2SPayload.TYPE, QuestNarrationRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleQuestNarrationRequest))
                 .playToServer(AssistantRequestC2SPayload.TYPE, AssistantRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleAssistantRequest))
                 .playToServer(TokenUsageRequestC2SPayload.TYPE, TokenUsageRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleTokenUsageRequest))
-                .playToClient(QuestNarrationResponseS2CPayload.TYPE, QuestNarrationResponseS2CPayload.CODEC)
                 .playToClient(AssistantResponseS2CPayload.TYPE, AssistantResponseS2CPayload.CODEC)
                 .playToClient(TokenUsageResponseS2CPayload.TYPE, TokenUsageResponseS2CPayload.CODEC);
     }
@@ -31,7 +32,6 @@ public final class NetworkManager {
     public static final class ClientRegistration {
         @SubscribeEvent
         public static void register(RegisterClientPayloadHandlersEvent event) {
-            event.register(QuestNarrationResponseS2CPayload.TYPE, new MainThreadPayloadHandler<>(ClientNetworkHandler::handleQuestNarrationResponse));
             event.register(AssistantResponseS2CPayload.TYPE, new MainThreadPayloadHandler<>(ClientNetworkHandler::handleAssistantResponse));
             event.register(TokenUsageResponseS2CPayload.TYPE, new MainThreadPayloadHandler<>(ClientNetworkHandler::handleTokenUsageResponse));
         }

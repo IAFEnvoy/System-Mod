@@ -1,8 +1,8 @@
 package com.iafenvoy.system.module.client;
 
 import java.util.*;
-import java.util.function.Function;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
 /**
  * Local aliases and argument handlers are supplied by features; execution and completion use the same table.

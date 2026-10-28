@@ -12,7 +12,8 @@ import dev.ftb.mods.ftbquests.quest.TeamData;
 
 import java.util.concurrent.CompletionStage;
 
-import static com.iafenvoy.system.compat.ftb.FtbQuestAccess.*;
+import static com.iafenvoy.system.compat.ftb.FtbQuestAccess.detail;
+import static com.iafenvoy.system.compat.ftb.FtbQuestAccess.selected;
 
 /**
  * Reads exactly one quest by ID or a saved list index; name search belongs to the module workflow.

@@ -1,8 +1,9 @@
 package com.iafenvoy.system.screen.gui;
 
 import com.google.gson.JsonElement;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.CardContext;
+import com.iafenvoy.system.card.CardButton;
+import com.iafenvoy.system.card.CardContext;
+import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.screen.card.CardPresentation;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
@@ -18,19 +19,19 @@ public final class AssistantView {
     private AssistantView() {
     }
 
-    public static String actionLabel(AgentResult.Card card, AgentResult.Action action) {
+    public static String actionLabel(CardUpdate card, CardButton action) {
         return CardPresentation.label(card, action);
     }
 
-    public static String formatCard(AgentResult.Card card) {
+    public static String formatCard(CardUpdate card) {
         return formatCard(card, true);
     }
 
-    public static String formatCard(AgentResult.Card card, boolean textItems) {
+    public static String formatCard(CardUpdate card, boolean textItems) {
         return CardPresentation.format(card, textItems);
     }
 
-    public static Element renderCard(Document document, AgentResult.Card card, String messageKey) {
+    public static Element renderCard(Document document, CardUpdate card, String messageKey) {
         return CardPresentation.of(card, messageKey, CardContext.Mode.FULL, 0).render(document);
     }
 

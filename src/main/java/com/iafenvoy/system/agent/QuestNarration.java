@@ -2,12 +2,11 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.store.AgentStore;
+import com.iafenvoy.system.card.SpeechContent;
 import com.iafenvoy.system.config.file.ModelConfig;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.chat.MutableComponent;
 
 import java.nio.file.Path;
@@ -25,7 +24,16 @@ public final class QuestNarration implements AutoCloseable {
     private final QuestBackgrounds backgrounds = new QuestBackgrounds();
     private final TaskExecutor workers = new TaskExecutor("agent-quest-speech", 2, 32);
     private final Map<UUID, ExecutionContext> active = new ConcurrentHashMap<>();
-    private final Set<UUID> queued = ConcurrentHashMap.newKeySet();
+
+    private record SnapshotKey(String id, String language, String promptRevision, String endpoint, String model,
+                               Quest quest) {
+    }
+
+    private record Prepared(SpeechContent content, long expires) {
+    }
+
+    private final Map<SnapshotKey, Prepared> prepared = new ConcurrentHashMap<>();
+    private final Set<SnapshotKey> preparing = ConcurrentHashMap.newKeySet();
     private final Map<Key, Cached> cache = new LinkedHashMap<>(16, 0.75F, true);
     private final Map<Key, CompletableFuture<Map<String, String>>> loading = new ConcurrentHashMap<>();
     private volatile Source source;
@@ -36,7 +44,7 @@ public final class QuestNarration implements AutoCloseable {
 
     @FunctionalInterface
     public interface Source {
-        CompletionStage<Quest> load(ExecutionContext context, String questId, Request request);
+        CompletionStage<Quest> load(ExecutionContext context, String questId);
     }
 
     public void source(Source source) {
@@ -45,32 +53,6 @@ public final class QuestNarration implements AutoCloseable {
 
     public void cacheFile(Path file) {
         this.backgrounds.file(file);
-    }
-
-    public record Request(List<String> quests, boolean requirements, boolean rewards, boolean description) {
-        public static final Codec<Request> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.listOf().fieldOf("quests").forGetter(Request::quests),
-                Codec.BOOL.fieldOf("requirements").forGetter(Request::requirements),
-                Codec.BOOL.fieldOf("rewards").forGetter(Request::rewards),
-                Codec.BOOL.fieldOf("description").forGetter(Request::description)
-        ).apply(i, Request::new));
-
-        public Request {
-            quests = List.copyOf(quests);
-        }
-    }
-
-    public record Reply(List<Component> lines) {
-        public static final Codec<Reply> CODEC = ComponentSerialization.CODEC.listOf().fieldOf("lines")
-                .xmap(Reply::new, Reply::lines).codec();
-
-        public Reply {
-            lines = List.copyOf(lines);
-        }
-
-        public static Reply empty() {
-            return new Reply(List.of());
-        }
     }
 
     public record Line(Component text, Optional<String> unformatted) {
@@ -105,14 +87,33 @@ public final class QuestNarration implements AutoCloseable {
     private record Cached(Map<String, String> entries, long retryAfter) {
     }
 
-    public CompletionStage<Reply> request(UUID player, Request request) {
-        // A normal notice has one quest; the startup overview includes at most three samples.
-        if (request.quests().isEmpty() || request.quests().size() > 3 || this.source == null)
-            return CompletableFuture.completedFuture(Reply.empty());
-        if (!this.queued.add(player)) return CompletableFuture.completedFuture(Reply.empty());
+    /**
+     * Returns immediately; unfamiliar requirements and narrative classification warm the server cache.
+     */
+    public SpeechContent content(UUID player, String id, Quest quest, Component main) {
+        ModelConfig model = ModelConfig.INSTANCE.get();
+        SnapshotKey key = new SnapshotKey(id, this.engine.language(player), this.engine.prompts().revision(),
+                model.baseUrl(), model.model(), quest);
+        Prepared cached = this.prepared.get(key);
+        if (cached != null && cached.expires() > System.currentTimeMillis())
+            return new SpeechContent(main, cached.content().requirements(), cached.content().rewards(), cached.content().descriptions());
+        if (this.source != null && this.preparing.add(key)) this.warm(player, key);
+        return this.content(main, quest, Map.of(), "");
+    }
+
+    private SpeechContent content(Component main, Quest quest, Map<String, String> summaries, String background) {
+        List<Component> requirements = new ArrayList<>();
+        List<Component> rewards = new ArrayList<>();
+        append(requirements, summaries, "requirement.", "system.tts.quest.requirements", quest.requirements());
+        append(rewards, summaries, "reward.", "system.tts.quest.rewards", quest.rewards());
+        return new SpeechContent(main, requirements, rewards,
+                background.isBlank() ? List.of() : List.of(Component.literal(background)));
+    }
+
+    private void warm(UUID player, SnapshotKey key) {
         Source source = this.source;
         long incarnation = this.engine.incarnation(player);
-        return this.workers.submit(() -> {
+        this.workers.submit(() -> {
             AgentStore store = this.engine.playerStore(player, incarnation);
             long epoch = store.read(player, data -> {
                 if (!data.bound) throw new AgentException("NOT_BOUND");
@@ -120,41 +121,28 @@ public final class QuestNarration implements AutoCloseable {
             });
             ExecutionContext context = new ExecutionContext(this.engine, player, UUID.randomUUID().toString(), null,
                     System.currentTimeMillis(), epoch, new ExecutionPolicy(4, 0, 8, 0, 32768, 1024, 131072, 14500, 4000), store, incarnation);
-            if (this.active.putIfAbsent(player, context) != null) throw new AgentException("BUSY");
+            if (this.active.putIfAbsent(player, context) != null) return null;
             try {
-                List<String> ids = new ArrayList<>(new LinkedHashSet<>(request.quests()));
-                List<Quest> quests = new ArrayList<>();
-                for (String id : ids) {
-                    context.check();
-                    quests.add(source.load(context, id, request).toCompletableFuture().get(context.remainingMillis(), TimeUnit.MILLISECONDS));
-                }
+                Quest current = source.load(context, key.id()).toCompletableFuture().get(context.remainingMillis(), TimeUnit.MILLISECONDS);
+                if (!current.equals(key.quest())) return null;
                 Map<String, String> unknown = new LinkedHashMap<>();
-                for (int q = 0; q < quests.size(); q++) {
-                    collect(unknown, q + ".requirement.", quests.get(q).requirements());
-                    collect(unknown, q + ".reward.", quests.get(q).rewards());
-                }
+                collect(unknown, "requirement.", current.requirements());
+                collect(unknown, "reward.", current.rewards());
                 Map<String, String> summaries = unknown.isEmpty() ? Map.of() : this.summarize(context, new Input(unknown));
+                String background = this.backgrounds.resolve(context, key.id(), current.title().getString(), current.description());
                 context.ensureMemoryCurrent();
-                List<Component> lines = new ArrayList<>();
-                for (int q = 0; q < quests.size(); q++) {
-                    Quest quest = quests.get(q);
-                    String id = ids.get(q);
-                    String background = request.requirements() && request.description()
-                            ? this.backgrounds.resolve(context, id, quest.title().getString(), quest.description()) : "";
-                    Quest current = source.load(context, id, request).toCompletableFuture().get(context.remainingMillis(), TimeUnit.MILLISECONDS);
-                    // Cached text cannot bypass a later visibility change, task edit or description concealment.
-                    if (!current.equals(quest)) continue;
-                    if (quests.size() > 1) lines.add(Component.translatable("system.tts.quest.name", quest.title()));
-                    if (!background.isBlank()) lines.add(Component.literal(background));
-                    append(lines, summaries, q + ".requirement.", "system.tts.quest.requirements", quest.requirements());
-                    append(lines, summaries, q + ".reward.", "system.tts.quest.rewards", quest.rewards());
+                Quest checked = source.load(context, key.id()).toCompletableFuture().get(context.remainingMillis(), TimeUnit.MILLISECONDS);
+                if (checked.equals(current)) {
+                    if (this.prepared.size() >= 512) this.prepared.clear();
+                    // Fallbacks are not cached here: model failures may retry after their existing cooldown.
+                    if (unknown.isEmpty() || summaries.size() == unknown.size())
+                        this.prepared.put(key, new Prepared(this.content(Component.empty(), checked, summaries, background), System.currentTimeMillis() + 30000));
                 }
-                context.ensureMemoryCurrent();
-                return new Reply(lines);
             } finally {
                 this.active.remove(player, context);
             }
-        }).whenComplete((_, _) -> this.queued.remove(player));
+            return null;
+        }).whenComplete((_, _) -> this.preparing.remove(key));
     }
 
     private static void collect(Map<String, String> entries, String prefix, List<Line> lines) {
@@ -250,5 +238,7 @@ public final class QuestNarration implements AutoCloseable {
         synchronized (this.cache) {
             this.cache.clear();
         }
+        this.prepared.clear();
+        this.preparing.clear();
     }
 }

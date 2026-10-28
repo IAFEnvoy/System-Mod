@@ -4,19 +4,19 @@ import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
 import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
 import com.iafenvoy.system.agent.builtin.input.ShopQueryInput;
-import com.iafenvoy.system.agent.builtin.input.ShopQuoteInput;
 import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
-import com.iafenvoy.system.agent.builtin.output.EmptyCardData;
+import com.iafenvoy.system.agent.builtin.output.ShopOfferOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.card.data.SelectionCardData;
 import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 
 /**
  * Keeps shop browsing and quoting separate from the confirmed payment operation.
@@ -30,6 +30,7 @@ public final class ShopModule extends BuiltinModule<ShopQueryInput> {
     @Override
     public ModuleRouting<ShopQueryInput> routing() {
         return ModuleRouting.<ShopQueryInput>defaults()
+                .button(a -> new ShopQueryInput(a.text("query"), a.number(0, "offset")))
                 .command(AgentCommand.argument("[query]", text -> new ShopQueryInput(text, 0), "shop", "商城"))
                 .semantic(RoutingProfile.read(text -> new ShopQueryInput("", 0),
                         List.of("打开系统商城", "看看商店卖什么", "列出所有兑换商品", "查看系统商品和价格"),
@@ -45,7 +46,7 @@ public final class ShopModule extends BuiltinModule<ShopQueryInput> {
         List<CommerceCatalog.Offer> matches = catalog.offers().stream().filter(offer -> offer.id().toString().contains(query)
                 || offer.label().toLowerCase(Locale.ROOT).contains(query)
                 || offer.items().stream().anyMatch(item -> item.item().getRegisteredName().contains(query))).toList();
-        List<AgentResult.Card> cards = new ArrayList<>();
+        List<CardUpdate> cards = new ArrayList<>();
         List<CommerceCatalog.Offer> page = matches.stream().skip(offset).limit(8).toList();
         List<CommercePreviewOutput> prices = page.isEmpty() ? List.of() : context.tool(BuiltinTools.COMMERCE_PREVIEW, "prices",
                 new CommercePreviewInput(page.stream().map(CommerceCatalog.Offer::id).toList(), List.of(), false, catalog.revision()));
@@ -53,13 +54,12 @@ public final class ShopModule extends BuiltinModule<ShopQueryInput> {
             CommerceCatalog.Offer offer = page.get(index);
             CommercePreviewOutput price = prices.get(index);
             boolean available = price.available();
-            cards.add(new AgentResult.Card("system.result.shop_offer", new ResultTypes.ShopOffer(Optional.of(offer.id()), offer.label(),
-                    offer.items(), price.price(), Optional.of(available)), available ? List.of(
-                    new AgentResult.Action("system.action.shop_quote", SystemActionTypes.QUOTE_ACTION.get(), new ShopQuoteInput(offer.id(), Optional.of(catalog.revision())))) : List.of()));
+            cards.add(CardUpdate.show(new ShopOfferOutput(offer.id(), offer.label(),
+                    offer.items(), price.price(), available, catalog.revision())));
         }
         if (matches.size() - offset > 8)
-            cards.add(new AgentResult.Card("system.result.page", EmptyCardData.INSTANCE, List.of(
-                    new AgentResult.Action("system.action.next", SystemActionTypes.SHOP_ACTION.get(), new ShopQueryInput(query, offset + 8)))));
-        return new AgentResult("SUCCEEDED", cards.isEmpty() ? "system.result.shop_empty" : "system.result.shop", "", cards);
+            cards.add(CardUpdate.show(SelectionCardData.fromActions(List.of(
+                    new AgentResult.Action("system.action.next", SystemActionTypes.SHOP_ACTION.get(), new ShopQueryInput(query, offset + 8))))));
+        return new AgentResult(AgentResult.Status.SUCCEEDED, cards.isEmpty() ? "system.result.shop_empty" : "system.result.shop", "", cards);
     }
 }

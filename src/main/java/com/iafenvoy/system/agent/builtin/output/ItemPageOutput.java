@@ -1,48 +1,29 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.CardContext;
-import com.iafenvoy.system.agent.CardData;
-import com.iafenvoy.system.agent.CardFormatting;
+import com.iafenvoy.system.card.CardBuilder;
+import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Built-in result data and its serialization codec.
+ * Complete server snapshot; card construction only reads these fields.
  */
-public record ItemPageOutput(List<ItemInfoOutput> items, int nextOffset, boolean hasMore) implements CardData {
+public record ItemPageOutput(String query, List<ItemInfoOutput> items, int nextOffset,
+                             boolean hasMore) implements CardData {
     public static final MapCodec<ItemPageOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+            Codec.STRING.fieldOf("query").forGetter(ItemPageOutput::query),
             ItemInfoOutput.CODEC.listOf().fieldOf("items").forGetter(ItemPageOutput::items),
             Codec.INT.fieldOf("nextOffset").forGetter(ItemPageOutput::nextOffset),
             Codec.BOOL.fieldOf("hasMore").forGetter(ItemPageOutput::hasMore)
     ).apply(i, ItemPageOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:items");
 
     public ItemPageOutput {
         items = List.copyOf(items);
-    }
-
-    @Override
-    public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
-        builder.list("items", this.items(), (prefix, item) -> builder.put(prefix + "item_name", item.name())
-                .put(prefix + "item_id", item.id()).put(prefix + "max_stack", item.maxStack()));
-        List<ItemPreviewOutput> previews = new ArrayList<>();
-        for (ItemInfoOutput entry : this.items()) {
-            Identifier id = Identifier.tryParse(entry.id());
-            if (id == null) continue;
-            BuiltInRegistries.ITEM.getOptional(id).ifPresent(item -> {
-                if (!new ItemStack(item).isEmpty())
-                    previews.add(ItemPreviewOutput.of(new ItemStackTemplate(item)));
-            });
-        }
-        builder.put("result_items", previews);
     }
 
     @Override
@@ -51,7 +32,18 @@ public record ItemPageOutput(List<ItemInfoOutput> items, int nextOffset, boolean
     }
 
     @Override
-    public Identifier template() {
-        return TEMPLATE;
+    public CardBuilder buildCard() {
+        CardBuilder builder = CardBuilder.template(Identifier.parse("system:items")).title("system.result.items").summary("system.result.items")
+                .list("items", this.items, (prefix, item) -> {
+                })
+                .put("result_items", this.items.stream().map(item -> ItemPreviewOutput.of(item.item())).toList());
+        for (int i = 0; i < this.items.size(); i++) {
+            ItemInfoOutput item = this.items.get(i);
+            builder.put("items." + i + ".item_name", item.name()).put("items." + i + ".item_id", item.id())
+                    .put("items." + i + ".max_stack", item.maxStack());
+        }
+        if (this.hasMore) builder.serverButton("next", "system.action.next", Identifier.parse("system:item_query"),
+                Map.of("query", this.query, "offset", Integer.toString(this.nextOffset)));
+        return builder;
     }
 }

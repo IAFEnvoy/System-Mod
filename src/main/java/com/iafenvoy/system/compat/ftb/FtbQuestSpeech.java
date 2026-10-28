@@ -3,6 +3,9 @@ package com.iafenvoy.system.compat.ftb;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.QuestNarration;
+import com.iafenvoy.system.assistant.AssistantServer;
+import com.iafenvoy.system.card.SpeechContent;
+import com.iafenvoy.system.module.quest.QuestSystemModule;
 import com.iafenvoy.system.util.TypeDispatch;
 import dev.ftb.mods.ftbquests.integration.item_filtering.ItemMatchingSystem;
 import dev.ftb.mods.ftbquests.quest.Quest;
@@ -13,6 +16,7 @@ import dev.ftb.mods.ftbquests.quest.task.CheckmarkTask;
 import dev.ftb.mods.ftbquests.quest.task.ItemTask;
 import dev.ftb.mods.ftbquests.quest.task.Task;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 import java.util.concurrent.CompletionStage;
@@ -43,24 +47,38 @@ final class FtbQuestSpeech implements QuestNarration.Source {
     }
 
     @Override
-    public CompletionStage<QuestNarration.Quest> load(ExecutionContext context, String questId, QuestNarration.Request request) {
+    public CompletionStage<QuestNarration.Quest> load(ExecutionContext context, String questId) {
         return this.access.game.onPlayer(context, player -> {
+            AssistantServer runtime = AssistantServer.get(player.level().getServer());
+            if (runtime == null || !runtime.moduleManager().hasModule(player.getUUID(), QuestSystemModule.ID))
+                throw new AgentException("CAPABILITY_UNAVAILABLE");
             if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
             ServerQuestFile file = ServerQuestFile.getInstance();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));
             Quest quest = file.getQuest(Long.parseUnsignedLong(questId, 16));
             if (quest == null || !FtbQuestReader.detailAvailable(team, quest))
                 throw new AgentException("QUEST_UNAVAILABLE");
-            List<QuestNarration.Line> requirements = request.requirements() && FtbQuestReader.kind(quest) == FtbQuestReader.Kind.NORMAL ? quest.getTasksAsList().stream()
-                    .map(task -> requirement(team, task)).toList() : List.of();
-            List<QuestNarration.Line> rewards = request.rewards() ? quest.getRewards().stream()
-                    .filter(reward -> !team.isRewardBlocked(reward) && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE)
-                    .map(reward -> REWARDS.apply(null, reward)).toList() : List.of();
-            boolean showDescription = request.requirements() && request.description() && (!quest.getHideTextUntilComplete().get(quest.getChapter().isHideTextUntilComplete())
-                    || team.isCompleted(quest));
-            return new QuestNarration.Quest(quest.getTitle().copy(), requirements, rewards,
-                    showDescription ? String.join("\n", quest.getRawDescription()) : "");
+            return snapshot(team, quest);
+
         });
+    }
+
+    static QuestNarration.Quest snapshot(TeamData team, Quest quest) {
+        List<QuestNarration.Line> requirements = FtbQuestReader.kind(quest) == FtbQuestReader.Kind.NORMAL
+                ? quest.getTasksAsList().stream().map(task -> requirement(team, task)).toList() : List.of();
+        List<QuestNarration.Line> rewards = quest.getRewards().stream()
+                .filter(reward -> !team.isRewardBlocked(reward) && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE)
+                .map(reward -> REWARDS.apply(null, reward)).toList();
+        boolean visible = !quest.getHideTextUntilComplete().get(quest.getChapter().isHideTextUntilComplete()) || team.isCompleted(quest);
+        return new QuestNarration.Quest(quest.getTitle().copy(), requirements, rewards,
+                visible ? String.join("\n", quest.getRawDescription()) : "");
+    }
+
+    static SpeechContent content(ServerPlayer player, TeamData team, Quest quest, String event) {
+        Component main = Component.translatable("system.tts.message.quest_" + event, quest.getTitle());
+        AssistantServer runtime = AssistantServer.get(player.level().getServer());
+        return runtime == null ? SpeechContent.of(main)
+                : runtime.engine().questNarration().content(player.getUUID(), FtbQuestAccess.hex(quest.getId()), snapshot(team, quest), main);
     }
 
     private static QuestNarration.Line unknown(Task task) {

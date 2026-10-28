@@ -1,7 +1,10 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.card;
+
+import com.iafenvoy.system.util.LegacyText;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMaps;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
+import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
@@ -45,6 +48,7 @@ public record CardContext(Object2DoubleMap<String> states, Map<String, Object> p
         private final Map<String, Runnable> callbacks = new LinkedHashMap<>();
 
         public Builder put(String id, Object value) {
+            if (value instanceof Component component) value = LegacyText.snapshot(component);
             if (value instanceof List<?> list) value = List.copyOf(list);
             this.parameters.put(id, value);
             double state = switch (value) {
@@ -78,14 +82,6 @@ public record CardContext(Object2DoubleMap<String> states, Map<String, Object> p
             this.put(id, entries.size());
             for (int index = 0; index < entries.size(); index++)
                 parameters.accept(id + "." + index + ".", entries.get(index));
-            return this;
-        }
-
-        public Builder forActions(BiConsumer<String, AgentResult.Action> parameters) {
-            if (this.parameters.get(RESULT_ACTIONS) instanceof List<?> actions)
-                for (int index = 0; index < actions.size(); index++)
-                    if (actions.get(index) instanceof AgentResult.Action action)
-                        parameters.accept("actions." + index + ".", action);
             return this;
         }
 

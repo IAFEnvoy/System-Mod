@@ -106,12 +106,7 @@ public final class ExampleClientMod {
 | --- | --- |
 | `command(action, aliases...)` / `pattern(handler, suggestions...)` | 助手内本地控制，执行和补全共用声明 |
 | `workspace(page, navigation, group, bind)` | 页面、动态导航、分类与控件绑定；空页面/导航可用于工具栏；可另传翻译键 label |
-| `cards().register(type)` | 按需登记客户端消息、状态、刷新和通知行为，返回可链式配置的 Registration；参数由 CardData 自己构建 |
-| `Registration.message(key, handler)` | 同时生成显示主文字与播报文字；handler 直接接收卡片及其类型化数据 |
-| `Registration.quests(handler)` / `.notificationRows(css)` | 任务播报引用与通知选择行样式；选择按钮仍由代码生成 |
-| `Registration.state(handler)` / `.refresh(result, visible)` | 客户端状态快照更新；静默结果替换同类型卡片、更新或移除通知 |
-| `message(key, handler)` / `message(key, type, handler)` | 不附属于当前卡片注册的消息规则，例如无卡片提示、跨模块共用的购买回执 |
-| `bindings().notificationAction` | 动作是否提供详情、等待刷新时保留通知、先打开工作台 |
+| `localAction(id, handler)` | 扩展本地卡片动作，按模块可用性检查后执行；不负责业务结果构建 |
 | `ClientModule.commands(root)` | 游戏聊天栏中的本地 Brigadier 指令，例如 `/system settings` |
 
 完整侧栏按 `WorkspaceGroup.CHAT / MODULES / SETTINGS` 排列，分类标题来自双语语言键。导航按钮由注册表生成，无须在 HTML 手写；各功能决定自己的分类、标签和点击行为。默认 workspace 重载归入 MODULES，聊天入口显式归入 CHAT，设置与用量入口归入 SETTINGS。空分类自动隐藏，模块不可用时隐藏入口、移除本地补全并拦截控件调用；当前页面被禁用时回到聊天。
@@ -124,13 +119,13 @@ module.workspace("example", "nav_example", "example.ui.open", WorkspaceGroup.MOD
 
 页面 HTML 与共享 CSS 仍是资源文件。扩展页面需要提供 `page_example` 等正文模板元素，导航按钮不再需要 HTML 元素；注册表不根据模型输出生成 HTML。`WorkspaceContext.input(id, placeholder, submit)` 声明 Enter 的目标按钮，输入框宿主不再硬编码每种查询框。
 
-卡片的正文、容器层次、条件、循环、物品/动作区位置及标签由 `assets/<namespace>/cards/<path>.json` 定义，由 `CardData.template()` 提供资源 ID。各节点在 `screen/card/node` 独立实现 `CardNode`，自己提供 codec/render/text/css；`SystemRegistries.CARD_NODE_TYPE` 保存已注册的 MapCodec，根接口通过 `type` 分派，JSON 使用 `system:text` 等完整 ID。`style` 等字段支持字符串或字符串数组，后者由 Codec 拼接。各 CardData 实现填充公共 `CardContext.Builder`，CardPresentation 补充通用标题、模式及客户端回调，统一创建不可变的状态、参数与回调三表；循环只选择平铺键，不创建子 Context。分组标题、概率/状态说明和排列交给 JSON，不再编写业务卡片的正文渲染器。新增布局类型通过客户端 mod 入口的 DeferredRegister 登记，不能在 ClientModule.register 或资源重载阶段修改类型注册表。完整格式见[客户端 JSON 卡片](cards.md)。
+卡片 DTO 的 `buildCard()` 返回 CardBuilder，一处描述模板、参数、按钮、主文案和 SpeechContent；模板通过客户端 assets 加载。各实现只读服务端准备的快照，不访问模块装配、游戏状态、页面或模型。CardPresentation 补充本地翻译、模式和版本受控回调；普通卡片不需要在 ClientModule 里登记构建、文案、刷新或播报处理器。
 
-绑定消息由绑定客户端模块生成。任务模块管理任务列表标签、完成/解锁摘要、新手礼包静默刷新、口播和物品投影。工作台、简约界面及 HUD 主体直接使用 CardPresentation 展示，普通卡片不需要登记客户端行为；状态、消息与 TTS 文本入口通过 ClientCardBindings 调用可选的行为规则。
+JSON 节点仍在客户端 mod 入口通过 DeferredRegister 注册，不能在 ClientModule.register 或资源重载时增删类型。类型的 Codec 与资源 ID 独立，模板使用小写 {{参数}}、style 字符串/数组及 type 分派。仅单个纯文本节点且没有按钮/额外内容时显示为普通消息，带按钮仍为卡片。完整格式见[客户端 JSON 卡片](cards.md)。
 
-消息与语音不再各自登记、查找一遍卡片。`ClientCardBindings` 按消息键选择一个处理器，类型化重载统一找到对应输出后，将原卡片及 DTO 传入；返回的 `ClientMessage(text, speech)` 同时提供通知主文字和口播。`new ClientMessage(text)` 两者共用一句，`ClientMessage.speech(text)` 只覆盖口播；字段为 null 时沿用默认消息键及结果正文，空字符串则明确关闭该通道。默认播报保留正文去除首尾空白的原行为。HUD 构建一条通知时只解析一次消息，任务卡片的引用、消息、刷新规则集中在同一段链式声明中，参数填充则由对应 CardData 的 `buildContext(...)` 负责；同名消息键和同类型卡片重复注册会报错，贡献冻结后不可修改。
+绑定内容由服务端发送 BindingCardData；任务通知及礼包也是服务端完整 DTO。更新通过 CardRef + SHOW/REPLACE/REMOVE 定位到指定卡片，不按 Java 类型刷新。AgentResult.silent 显式控制是否新增提示/播报；请求完成不依赖是否有卡片。状态与历史分别使用 StateResponse、HistoryResponse，恢复历史不重新执行按钮。
 
-静默结果通过 `AgentResult.silent` 显式声明并随 Codec 编解码，不再由通用结果类按任务文案键推断。静默结果会结束等待，可按注册规则刷新已有卡片，不会新增一条提示或重复口播。
+卡片按钮显式区分本地和服务端动作。客户端处理 Local，Server 通过 CardActionRequest 进入 ModuleRouting.button 参数适配及原工作流；labelKey 仅用于标签和语音候选。所有扣款、发奖、引用与权限复核仍由服务端处理。ClientCardBindings 和 notificationAction 策略表已删除。
 
 ## 可选依赖与可用功能
 

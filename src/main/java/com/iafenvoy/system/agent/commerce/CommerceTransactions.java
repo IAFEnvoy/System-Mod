@@ -10,11 +10,12 @@ import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.module.CommerceDataStorage;
+import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.module.inbox.InboxSystemModule;
-import com.iafenvoy.system.module.ModuleData;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.*;
@@ -47,7 +48,7 @@ public final class CommerceTransactions {
             throw new IllegalArgumentException("Duplicate commerce module " + type);
         return new PlayerModule() {
             @Override
-            public Session login(net.minecraft.server.level.ServerPlayer player) {
+            public Session login(ServerPlayer player) {
                 UUID uuid = player.getUUID();
                 return data -> {
                     for (PlayerData.Purchase purchase : ModuleData.get(data, storage).purchases.values())
@@ -154,7 +155,8 @@ public final class CommerceTransactions {
                 } else {
                     order.state = touched.get() ? "PAYMENT_UNKNOWN" : "FAILED";
                     order.error = code;
-                    if (touched.get()) ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.get(type.entitlement(id)).state = "PAYMENT_UNKNOWN";
+                    if (touched.get())
+                        ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.get(type.entitlement(id)).state = "PAYMENT_UNKNOWN";
                     else ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.remove(type.entitlement(id));
                 }
                 return receipt(order);

@@ -7,7 +7,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import java.util.*;
 
-/** Advancement baselines and feature grants belong to the progression module. */
+/**
+ * Advancement baselines and feature grants belong to the progression module.
+ */
 public final class AdvancementDataStorage extends DataStorage {
     private static final Codec<Set<String>> STRING_SET_CODEC = Codec.STRING.listOf().xmap(HashSet::new, List::copyOf);
     public static final MapCodec<AdvancementDataStorage> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(

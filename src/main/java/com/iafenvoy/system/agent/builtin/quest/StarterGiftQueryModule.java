@@ -1,6 +1,9 @@
 package com.iafenvoy.system.agent.builtin.quest;
 
-import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.ExecutionContext;
+import com.iafenvoy.system.agent.ExecutionPolicy;
+import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
@@ -21,7 +24,8 @@ public final class StarterGiftQueryModule extends BuiltinModule<EmptyInput> {
 
     @Override
     public ModuleRouting<EmptyInput> routing() {
-        return ModuleRouting.<EmptyInput>defaults().structuredOnly();
+        return ModuleRouting.<EmptyInput>defaults()
+                .button(_ -> EmptyInput.INSTANCE).structuredOnly();
     }
 
     @Override

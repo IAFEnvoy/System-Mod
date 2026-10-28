@@ -55,7 +55,7 @@ final class FtbQuestClaimTool implements ToolRegistry.Handler<QuestClaimInput, Q
                     || !team.isCompleted(quest) || team.isRewardBlocked(reward) || reward.getAutoClaimType() == RewardAutoClaim.INVISIBLE)
                 throw new AgentException("NOT_AUTHORIZED");
             if (!"CAN_CLAIM".equals(team.getClaimType(player.getUUID(), reward).name()))
-                return new QuestClaimOutput("ALREADY_CLAIMED", Optional.empty(), Optional.empty(), Optional.empty());
+                return new QuestClaimOutput("ALREADY_CLAIMED", Optional.of(hex(questId)), Optional.of(hex(rewardId)), Optional.empty());
             if (reward instanceof ChoiceReward selectable) {
                 if (selectable.getTable() == null || choice < 0 || choice >= selectable.getTable().getWeightedRewards().size())
                     throw new AgentException("CHOICE_REQUIRED");

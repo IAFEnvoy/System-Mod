@@ -1,9 +1,10 @@
 package com.iafenvoy.system.agent;
 
+import net.minecraft.resources.Identifier;
+
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import net.minecraft.resources.Identifier;
 
 /**
  * Exact parsing, help and completion share the same registered aliases and argument declarations.

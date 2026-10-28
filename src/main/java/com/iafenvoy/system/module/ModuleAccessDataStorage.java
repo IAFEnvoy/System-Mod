@@ -5,9 +5,13 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;
 
-import java.util.*;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
-/** Explicit enable/disable overrides for installed system modules. */
+/**
+ * Explicit enable/disable overrides for installed system modules.
+ */
 public final class ModuleAccessDataStorage extends DataStorage {
     public static final MapCodec<ModuleAccessDataStorage> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Identifier.CODEC.listOf().optionalFieldOf("added", List.of()).forGetter(value -> List.copyOf(value.added)),

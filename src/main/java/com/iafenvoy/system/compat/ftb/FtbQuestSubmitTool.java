@@ -7,6 +7,7 @@ import com.iafenvoy.system.agent.builtin.input.QuestSubmitInput;
 import com.iafenvoy.system.agent.builtin.output.QuestSubmitOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestTaskOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
+import com.iafenvoy.system.util.LegacyText;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
@@ -63,8 +64,8 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
             boolean changed = !before.equals(tasks.stream().map(team::getProgress).toList()) || team.getCompletionCount(target) != completions;
             boolean completed = team.isCompleted(quest) || team.getCompletionCount(target) != completions;
             if (completed) FtbQuestNotifications.submitted(player, file, team, quest);
-            return new QuestSubmitOutput(FtbQuestAccess.hex(quest.getId()), quest.getTitle().getString(), tasks.stream()
-                    .map(task -> new QuestTaskOutput(task.getTitle().getString(), team.getProgress(task), task.getMaxProgress())).toList(), changed, completed);
+            return new QuestSubmitOutput(FtbQuestAccess.hex(quest.getId()), LegacyText.component(quest.getTitle()), tasks.stream()
+                    .map(task -> new QuestTaskOutput(LegacyText.component(task.getTitle()), team.getProgress(task), task.getMaxProgress())).toList(), changed, completed);
         });
     }
 }

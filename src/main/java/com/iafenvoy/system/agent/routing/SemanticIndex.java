@@ -1,11 +1,11 @@
 package com.iafenvoy.system.agent.routing;
 
 import com.iafenvoy.system.config.file.SemanticConfig;
+import net.minecraft.resources.Identifier;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Predicate;
-import net.minecraft.resources.Identifier;
 
 /**
  * Small immutable TF-IDF index; OOV features stay in the query norm and coverage denominator.

@@ -1,14 +1,14 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.CardContext;
-import com.iafenvoy.system.agent.CardData;
-import com.iafenvoy.system.agent.CardFormatting;
+import com.iafenvoy.system.card.CardBuilder;
+import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Startup notices contain a short sample; their view action queries the current full list.
@@ -25,9 +25,12 @@ public record QuestStartupOutput(int total, List<QuestBriefOutput> quests) imple
     }
 
     @Override
-    public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
+    public CardBuilder buildCard() {
+        CardBuilder builder = CardBuilder.template(TEMPLATE);
         builder.put("total", this.total()).put("remaining", Math.max(0, this.total() - this.quests().size()))
                 .list("quests", this.quests(), (prefix, quest) -> builder.put(prefix + "title", quest.title()).put(prefix + "progress", (int) quest.progress()));
+        return builder.summary("system.tts.message.quest_startup", this.total)
+                .serverButton("view_quests", "system.action.view_quests", Identifier.parse("system:quest_query"), Map.of());
     }
 
     @Override
@@ -35,8 +38,4 @@ public record QuestStartupOutput(int total, List<QuestBriefOutput> quests) imple
         return CODEC;
     }
 
-    @Override
-    public Identifier template() {
-        return TEMPLATE;
-    }
 }

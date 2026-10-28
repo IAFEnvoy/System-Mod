@@ -38,7 +38,8 @@
 | 功能级装配、三分类动态侧栏、玩家模块条件/手动覆盖、Saturn action/condition、两端指令、ModuleManager 生命周期与模块存储声明 | [功能模块化](docs/feature-modules.md) |
 | ServerModule / ClientModule 正式内置注册表、DeferredRegister 扩展及客户端贡献装配 | [SystemRegistries](src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)、[功能模块化](docs/feature-modules.md) |
 | 注册表 ID 与公开字段速查、协议/载荷/卡片节点注册表、语音工厂 Map、注册时序及扩展示例 | [注册表速查](docs/registries.md) |
-| CardData 的 Codec/template/buildContext、公共 CardContext 与 CardFormatting、SystemCardDataTypes、ClientCardBindings 行为登记、CardPresentation 上下文及图文展示、Builder 三表、CardNode Codec 分派、平铺参数与回调、通知主体与代码按钮 | [客户端 JSON 卡片](docs/cards.md) |
+| CardData.buildCard、公共 CardBuilder/CardView/CardUpdate、客户端 CardPresentation、纯文本无按钮约定、JSON 节点与平铺 Context、明确本地/服务端动作 | [客户端 JSON 卡片](docs/cards.md) |
+| 已实施卡片数据流：完整业务 DTO、消息 ID/版本、SHOW/REPLACE/REMOVE、状态与历史响应、Status 枚举和 BuiltinTools | [卡片与消息数据流](docs/card-flow-design.md) |
 | OpenAI 兼容接口、DeepSeek 特殊参数、模型连接与 Token 响应 | [模型接口](docs/model-api.md) |
 | 独立 DeepSeek Search / Fetch 客户端；当前未开放给 Agent | [网页搜索与抓取](docs/search-api.md) |
 | 模组和音色工具会请求哪些 API、触发条件、发送数据、客户端 / 服务端归属 | [外部 API 请求清单](docs/external-apis.md) |

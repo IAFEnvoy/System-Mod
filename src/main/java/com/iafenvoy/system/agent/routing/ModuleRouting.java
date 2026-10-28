@@ -1,17 +1,21 @@
 package com.iafenvoy.system.agent.routing;
 
 import com.iafenvoy.system.agent.AgentCommand;
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.util.ActionArguments;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * One declaration supplies commands, local intent matching, model visibility and clarification actions.
  */
 public record ModuleRouting<I>(List<AgentCommand<I>> commands, Optional<RoutingProfile<I>> semantic,
-                               Optional<Shortcut<I>> shortcut, boolean modelSelectable) {
+                               Optional<Shortcut<I>> shortcut, boolean modelSelectable,
+                               Function<ActionArguments, I> buttonDecoder) {
     public ModuleRouting {
         commands = List.copyOf(commands);
         Objects.requireNonNull(semantic);
@@ -19,21 +23,23 @@ public record ModuleRouting<I>(List<AgentCommand<I>> commands, Optional<RoutingP
     }
 
     public static <I> ModuleRouting<I> defaults() {
-        return new ModuleRouting<>(List.of(), Optional.empty(), Optional.empty(), true);
+        return new ModuleRouting<>(List.of(), Optional.empty(), Optional.empty(), true, _ -> {
+            throw new AgentException("UNSUPPORTED");
+        });
     }
 
     public ModuleRouting<I> command(AgentCommand<I> command) {
         List<AgentCommand<I>> commands = new ArrayList<>(this.commands);
         commands.add(command);
-        return new ModuleRouting<>(commands, this.semantic, this.shortcut, this.modelSelectable);
+        return new ModuleRouting<>(commands, this.semantic, this.shortcut, this.modelSelectable, this.buttonDecoder);
     }
 
     public ModuleRouting<I> semantic(RoutingProfile<I> semantic) {
-        return new ModuleRouting<>(this.commands, Optional.of(semantic), this.shortcut, this.modelSelectable);
+        return new ModuleRouting<>(this.commands, Optional.of(semantic), this.shortcut, this.modelSelectable, this.buttonDecoder);
     }
 
     public ModuleRouting<I> shortcut(String labelKey, I input) {
-        return new ModuleRouting<>(this.commands, this.semantic, Optional.of(new Shortcut<>(labelKey, input)), this.modelSelectable);
+        return new ModuleRouting<>(this.commands, this.semantic, Optional.of(new Shortcut<>(labelKey, input)), this.modelSelectable, this.buttonDecoder);
     }
 
     public ModuleRouting<I> structuredOnly() {
@@ -41,7 +47,11 @@ public record ModuleRouting<I>(List<AgentCommand<I>> commands, Optional<RoutingP
     }
 
     public ModuleRouting<I> explicitOnly() {
-        return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, false);
+        return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, false, this.buttonDecoder);
+    }
+
+    public ModuleRouting<I> button(Function<ActionArguments, I> decoder) {
+        return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, this.modelSelectable, decoder);
     }
 
     public record Shortcut<I>(String labelKey, I input) {

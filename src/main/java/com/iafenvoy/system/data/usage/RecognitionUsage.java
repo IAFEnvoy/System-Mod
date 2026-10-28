@@ -21,6 +21,7 @@ public record RecognitionUsage(long calls, long failedCalls, long unreportedCall
             Codec.LONG.fieldOf("estimated_nano_yuan").forGetter(RecognitionUsage::estimatedNanoYuan),
             Codec.LONG.fieldOf("unpriced_calls").forGetter(RecognitionUsage::unpricedCalls)
     ).apply(i, RecognitionUsage::new));
+
     public RecognitionUsage {
         if (failedCalls < 0 || failedCalls > calls || unreportedCalls < 0 || unreportedCalls > calls
                 || estimatedNanoYuan < 0 || unpricedCalls < 0 || unpricedCalls > calls)

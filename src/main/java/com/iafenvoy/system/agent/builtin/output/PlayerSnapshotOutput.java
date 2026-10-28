@@ -1,8 +1,7 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.CardContext;
-import com.iafenvoy.system.agent.CardData;
-import com.iafenvoy.system.agent.CardFormatting;
+import com.iafenvoy.system.card.CardBuilder;
+import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -31,11 +30,13 @@ public record PlayerSnapshotOutput(String name, float health, float maxHealth, i
     }
 
     @Override
-    public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
+    public CardBuilder buildCard() {
+        CardBuilder builder = CardBuilder.template(TEMPLATE).summary("system.result.player");
         builder.put("name", this.name()).put("health", this.health()).put("max_health", this.maxHealth())
                 .put("experience_level", this.experienceLevel()).put("dimension", this.dimension())
-                .put("language", this.language()).list("onlinePlayers", this.onlinePlayers(),
+                .put("language", this.language()).list("online_players", this.onlinePlayers(),
                         (prefix, name) -> builder.put(prefix + "player_name", name));
+        return builder;
     }
 
     @Override
@@ -43,8 +44,4 @@ public record PlayerSnapshotOutput(String name, float health, float maxHealth, i
         return CODEC;
     }
 
-    @Override
-    public Identifier template() {
-        return TEMPLATE;
-    }
 }

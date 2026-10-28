@@ -70,8 +70,10 @@ public final class NotificationVoiceCommands {
     public static List<Button> match(String text, List<Button> buttons, String language) {
         String normalized = normalize(text);
         Set<String> forms = forms(normalized);
-        List<Button> exact = buttons.stream().filter(button -> forms.contains(normalize(button.label()))
-                || examples.getOrDefault(button.labelKey(), Map.of()).getOrDefault(language, List.of()).stream()
+        // Visible labels take precedence when an alias also names another button, such as "next page".
+        List<Button> exact = buttons.stream().filter(button -> forms.contains(normalize(button.label()))).toList();
+        if (!exact.isEmpty()) return exact;
+        exact = buttons.stream().filter(button -> examples.getOrDefault(button.labelKey(), Map.of()).getOrDefault(language, List.of()).stream()
                 .anyMatch(example -> forms.contains(normalize(example)))).toList();
         if (!exact.isEmpty()) return exact;
         if (COMPLEX.matcher(text).find()) return List.of();

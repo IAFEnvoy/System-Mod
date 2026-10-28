@@ -1,12 +1,13 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.CardContext;
-import com.iafenvoy.system.agent.CardData;
-import com.iafenvoy.system.agent.CardFormatting;
 import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.card.CardBuilder;
+import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.card.SpeechContent;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import java.math.BigDecimal;
@@ -24,14 +25,16 @@ public record LotteryPrizeOutput(PlayerData.Reward reward, int weight, long tota
     public static final Identifier TEMPLATE = Identifier.parse("system:lottery_prize");
 
     @Override
-    public void buildContext(CardContext.Builder builder, CardFormatting formatting) {
-        this.buildContext(builder, "", formatting);
+    public CardBuilder buildCard() {
+        CardBuilder builder = CardBuilder.template(TEMPLATE).summary(Component.literal(this.reward.label())).speech(SpeechContent.EMPTY);
+        this.fill(builder, "");
+        return builder;
     }
 
-    public void buildContext(CardContext.Builder builder, String prefix, CardFormatting formatting) {
+    public void fill(CardBuilder builder, String prefix) {
         String chance = BigDecimal.valueOf(this.weight()).multiply(BigDecimal.valueOf(100))
                 .divide(BigDecimal.valueOf(this.totalWeight()), new MathContext(4)).stripTrailingZeros().toPlainString();
-        formatting.rewardParameters(builder, prefix, this.reward()).put(prefix + "chance", chance);
+        builder.reward(prefix, this.reward()).put(prefix + "chance", chance);
     }
 
     @Override
@@ -39,8 +42,4 @@ public record LotteryPrizeOutput(PlayerData.Reward reward, int weight, long tota
         return CODEC;
     }
 
-    @Override
-    public Identifier template() {
-        return TEMPLATE;
-    }
 }

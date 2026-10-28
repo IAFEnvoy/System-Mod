@@ -2,7 +2,13 @@ package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentModule;
+import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.builtin.input.EmptyInput;
+import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
+import com.iafenvoy.system.agent.builtin.output.QuestOutput;
+import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
 import com.iafenvoy.system.agent.builtin.quest.*;
+import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.module.PlayerModule;
 import net.minecraft.server.MinecraftServer;
@@ -24,7 +30,7 @@ public final class FtbQuestAdapter {
             public Session login(ServerPlayer player) {
                 return new Session() {
                     @Override
-                    public void initialize(com.iafenvoy.system.agent.store.PlayerData data) {
+                    public void initialize(PlayerData data) {
                     }
 
                     @Override
@@ -51,10 +57,11 @@ public final class FtbQuestAdapter {
         engine.questNarration().cacheFile(game.server().getWorldPath(LevelResource.ROOT).resolve("system-quest-backgrounds.json"));
         engine.questNarration().source(new FtbQuestSpeech(access));
         FtbQuestNotifications.install(game.server(), access);
-        var gifts = new FtbStarterGiftQueryTool(access).tool();
+        ToolRegistry.Tool<EmptyInput, StarterGiftOutput> gifts = new FtbStarterGiftQueryTool(access).tool();
+        ToolRegistry.Tool<QuestDetailInput, QuestOutput> detail = new FtbQuestDetailTool(access).tool();
         return List.of(new QuestQueryModule(new FtbQuestQueryTool(access).tool()),
-                new QuestDetailModule(new FtbQuestFindTool(access).tool(), new FtbQuestDetailTool(access).tool(), gifts),
-                new QuestClaimModule(new FtbQuestClaimTool(access).tool()),
+                new QuestDetailModule(new FtbQuestFindTool(access).tool(), detail, gifts),
+                new QuestClaimModule(new FtbQuestClaimTool(access).tool(), detail),
                 new QuestSubmitModule(new FtbQuestSubmitTool(access).tool()),
                 new StarterGiftModule(new FtbStarterGiftTool(access).tool()),
                 new StarterGiftQueryModule(gifts));

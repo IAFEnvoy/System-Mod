@@ -17,7 +17,9 @@ public interface ServerModule {
         return Objects.requireNonNull(SystemRegistries.SERVER_MODULE.getKey(this), "Unregistered server module");
     }
 
-    /** Infrastructure remains available to bound players even when a definition has no optional features. */
+    /**
+     * Infrastructure remains available to bound players even when a definition has no optional features.
+     */
     default boolean required() {
         return false;
     }
@@ -30,9 +32,12 @@ public interface ServerModule {
         return List.of();
     }
 
-    /** One per-server runtime; its player sessions are started and stopped by the module manager. */
+    /**
+     * One per-server runtime; its player sessions are started and stopped by the module manager.
+     */
     default PlayerModule runtime(ModuleContext context) {
-        return new PlayerModule() {};
+        return new PlayerModule() {
+        };
     }
 
     default void installed(ModuleContext context) {

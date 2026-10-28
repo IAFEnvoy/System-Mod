@@ -1,7 +1,8 @@
 package com.iafenvoy.system.screen.card.node;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.CardContext;
+import com.iafenvoy.system.card.CardAction;
+import com.iafenvoy.system.card.CardButton;
+import com.iafenvoy.system.card.CardContext;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.iafenvoy.system.screen.card.CardRenderer;
 import com.iafenvoy.system.screen.card.CardTemplate;
@@ -29,15 +30,15 @@ public record ActionsNode(String actions) implements CardNode {
     @Override
     public Element render(CardRenderer.Render view) {
         CardContext context = view.context();
-        if (!CardRenderer.enabled("full", context, List.of()) && !CardRenderer.enabled("simple", context, List.of()))
-            return null;
         List<?> actions = context.get(CardRenderer.binding(this.actions, view.indices()), List.class);
         if (actions == null || actions.isEmpty()) return null;
         Element element = view.element("div", "");
         CardTemplate.Actions layout = view.template().actions();
         if (!layout.containerCss().isBlank()) element.setClassName(view.css() + " " + layout.containerCss());
         for (int index = 0; index < actions.size(); index++) {
-            if (!(actions.get(index) instanceof AgentResult.Action)) continue;
+            if (!(actions.get(index) instanceof CardButton action)) continue;
+            if (CardRenderer.enabled("notification", context, List.of()) && action.placement() != CardButton.Placement.BODY)
+                continue;
             String id = "actions." + index + ".";
             String label = view.template().label(context, index);
             if (CardRenderer.enabled("simple", context, List.of())) {
@@ -46,6 +47,8 @@ public record ActionsNode(String actions) implements CardNode {
                         (layout.numbered() && number != null ? number + ". " : "") + label));
             } else {
                 Element button = AssistantView.element(view.document(), "button", layout.buttonCss(), label);
+                if (action.action() instanceof CardAction.Server)
+                    button.setAttribute("data-requires-idle", "true");
                 ButtonNode.bind(button, context.callbacks().get(id + "click"));
                 element.appendChild(button);
             }

@@ -138,7 +138,7 @@ DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的�
 - 用量统计与费用估算：AI 用量由服务端从模型响应记录；TTS / ASR 用量仅按客户端账号存本机，费率读取客户端 `config/system` 下的配置；不会请求供应商账单、余额或实时价格 API，也不向 MC 服务端报告语音用量。
 - 提示词与奖励数据包重载、配置加载、通知音效播放：读取本地资源或存档，不调用云端。
 
-客户端与服务端之间的助手请求、任务播报查询和 AI 用量查询使用 Minecraft 自定义网络载荷，不是新增的公开 HTTP API。TTS 密钥、NLS Token 及语音用量均保留在客户端，不发送给游戏服务端。
+客户端与服务端之间的助手请求、卡片动作与 AI 用量查询使用 Minecraft 自定义网络载荷，不是新增的公开 HTTP API。TTS 密钥、NLS Token 及语音用量均保留在客户端，不发送给游戏服务端。
 
 按当前内置源码，本模组没有额外的遥测、广告、更新检查或通用数据上传接口。外部请求实现集中于 `OpenAiCompatibleClient`、`AliyunTtsProvider`、`AliyunAsrProvider`、尚未挂接游戏流程的 `DeepSeekSearchClient` 和上述 Python 工具；新增提供商或其他第三方扩展后，应同步更新本清单。
 

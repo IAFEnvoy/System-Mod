@@ -1,0 +1,45 @@
+{
+  "body": [
+    {
+      "type": "row",
+      "style": "lottery_heading",
+      "text_separator": " · ",
+      "children": [
+        {
+          "type": "header",
+          "text": "{{reward_label}}",
+          "style": "lottery_name"
+        },
+        {
+          "type": "text",
+          "translate": "system.ui.lottery_chance",
+          "args": [
+            "{{chance}}%"
+          ],
+          "inline": true,
+          "style": "lottery_chance"
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "text": "{{reward_items}}",
+      "when": "text_items"
+    },
+    {
+      "type": "items",
+      "items": "{{result_items}}",
+      "label": "{{field:reward}}"
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ],
+  "style": [
+    "result_card",
+    "lottery_card",
+    "lottery_prize"
+  ],
+  "show_title": false
+}

@@ -2,8 +2,6 @@ package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.builtin.BuiltinModules;
-import com.iafenvoy.system.agent.builtin.tool.*;
 import com.iafenvoy.system.agent.commerce.CommerceTransactions;
 import com.iafenvoy.system.agent.model.OpenAiCompatibleClient;
 import com.iafenvoy.system.agent.store.FileAgentStore;
@@ -11,12 +9,14 @@ import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import com.iafenvoy.system.data.CatalogReloadListener;
 import com.iafenvoy.system.data.PromptReloadListener;
 import com.iafenvoy.system.event.AssistantRegistrationEvent;
+import com.iafenvoy.system.module.ModuleContext;
+import com.iafenvoy.system.module.SystemModules;
 import com.iafenvoy.system.network.ServerNetworkHandler;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.AddServerReloadListenersEvent;
@@ -41,6 +41,7 @@ public final class AssistantServer {
     private final AssistantPlayers players;
     private final AssistantRequests requests;
     private final AssistantUsage usage;
+    private final List<Identifier> modules;
     private final GameTaskQueue gameQueue = new GameTaskQueue();
     private CatalogReloadListener catalogListener;
     private PromptReloadListener promptListener;
@@ -51,15 +52,16 @@ public final class AssistantServer {
         this.engine = new AgentEngine(this.catalogListener.catalog(),
                 new FileAgentStore(server.getWorldPath(LevelResource.ROOT).resolve("system-agent")), new OpenAiCompatibleClient());
         try {
-            this.engine.questNarration().cacheFile(server.getWorldPath(LevelResource.ROOT).resolve("system-quest-backgrounds.json"));
             this.usage = new AssistantUsage(server, this.engine);
             this.refreshPrompts();
             MinecraftTools game = new MinecraftTools(server, this.gameQueue);
             CommerceTransactions transactions = new CommerceTransactions(this.engine, game);
-            this.installModules(game, transactions);
-            this.players = new AssistantPlayers(server, this.engine, transactions, this.usage);
-            this.players.validateRules();
-            this.requests = new AssistantRequests(server, this.engine, this.players);
+            ModuleContext modules = new ModuleContext(this.engine, game, transactions);
+            this.modules = SystemModules.install(modules);
+            NeoForge.EVENT_BUS.post(new AssistantRegistrationEvent(this.engine));
+            this.players = new AssistantPlayers(server, this.engine, modules.players(), this.usage);
+            this.players.validateModules();
+            this.requests = new AssistantRequests(server, this.engine, this.players, this.modules);
             this.engine.start();
         } catch (Exception e) {
             this.engine.close();
@@ -67,24 +69,12 @@ public final class AssistantServer {
         }
     }
 
-    private void installModules(MinecraftTools game, CommerceTransactions transactions) {
-        BuiltinModules.install(this.engine, List.of(new PlayerQueryTool(game).tool(), new ItemQueryTool(game).tool(),
-                new DeliverTool(this.engine, game).tool(), new ShopPurchaseTool(transactions).tool(), new LotteryDrawTool(transactions).tool(),
-                new CommercePreviewTool(transactions).tool()));
-        // Resolve optional adapters only after the mod check to keep their classes safe to omit.
-        if (ModList.get().isLoaded("ftbquests")) {
-            try {
-                Class.forName("com.iafenvoy.system.compat.ftb.FtbQuestAdapter")
-                        .getMethod("install", AgentEngine.class, MinecraftTools.class).invoke(null, this.engine, game);
-            } catch (ReflectiveOperationException | LinkageError e) {
-                SystemMod.LOGGER.error("FTB Quests assistant adapter is unavailable", e);
-            }
-        }
-        NeoForge.EVENT_BUS.post(new AssistantRegistrationEvent(this.engine));
-    }
-
     public static AssistantServer get(MinecraftServer server) {
         return SERVERS.get(server);
+    }
+
+    public List<Identifier> modules() {
+        return this.modules;
     }
 
     public AgentEngine engine() {
@@ -131,6 +121,7 @@ public final class AssistantServer {
     public static void stopping(ServerStoppingEvent event) {
         AssistantServer runtime = SERVERS.remove(event.getServer());
         if (runtime != null) {
+            runtime.players.close();
             runtime.engine.close();
             runtime.usage.drain();
         }

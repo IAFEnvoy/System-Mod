@@ -1,0 +1,48 @@
+{
+  "body": [
+    {
+      "type": "text",
+      "text": "{{label}}"
+    },
+    {
+      "type": "text",
+      "text": "{{id}}",
+      "when": "id"
+    },
+    {
+      "type": "text",
+      "text": "{{items}}",
+      "when": "text_items"
+    },
+    {
+      "type": "items",
+      "items": "{{offer_items}}",
+      "label": "{{field:items}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:price}}: {{price}}",
+      "when": "price",
+      "unless": "text_items"
+    },
+    {
+      "type": "text",
+      "text": "{{field:price}}: {{price_text}}",
+      "when": "text_items"
+    },
+    {
+      "type": "text",
+      "translate": "system.ui.lottery_unavailable",
+      "unless": "payment_available"
+    },
+    {
+      "type": "items",
+      "items": "{{price_items}}",
+      "label": "{{field:price}}"
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ]
+}

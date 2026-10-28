@@ -1,88 +1,22 @@
 package com.iafenvoy.system.screen.gui;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.builtin.output.*;
-import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.util.TypeDispatch;
+import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.sighs.apricityui.element.Item;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
-import static com.iafenvoy.system.screen.gui.AssistantView.*;
+import static com.iafenvoy.system.screen.gui.AssistantView.element;
 
 /**
  * Typed item projections shared by cards, the current exchange and queued HUD messages.
  */
 public final class AssistantItems {
-    private static final TypeDispatch<Void, List<Group>> GROUPS = new TypeDispatch<Void, List<Group>>((_, _) -> List.of())
-            .register(RewardOutput.class, (_, value) -> reward(value.reward()))
-            .register(CreditReceiptOutput.class, (_, value) -> reward(value.reward()))
-            .register(PurchaseReceiptOutput.class, (_, value) -> reward(value.reward()))
-            .register(StarterGiftOutput.class, (_, value) -> value.gifts().stream().map(gift -> new Group(tr("system.field.reward"), gift.items().stream()
-                    .map(item -> new Entry(item, gift.error().map(error -> tr("system.error." + error.toLowerCase(Locale.ROOT)))
-                            .orElse(""))).toList())).toList())
-            .register(LotteryPrizeOutput.class, (_, value) -> reward(value.reward()))
-            .register(LotteryPoolOutput.class, (_, value) -> {
-                List<Group> groups = new ArrayList<>(value.price().map(price -> price(tr("system.ui.lottery_cost"), price)).orElse(List.of()));
-                List<Entry> prizes = new ArrayList<>();
-                for (LotteryPrizeOutput prize : value.prizes())
-                    for (ItemStackTemplate item : prize.reward().items())
-                        prizes.add(new Entry(ItemPreviewOutput.of(item), prize.reward().label() + "\n" + lotteryChance(prize)));
-                groups.add(new Group(Component.translatable("system.ui.lottery_prize_preview", value.prizes().size(), value.prizeCount()).getString(), prizes));
-                return groups;
-            })
-            .register(ResultTypes.ShopOffer.class, (_, value) -> {
-                List<Group> groups = new ArrayList<>();
-                groups.add(templates(tr("system.field.items"), value.items()));
-                groups.addAll(price(value.price()));
-                return groups;
-            })
-            .register(ResultTypes.SignInStatus.class, (_, value) -> {
-                List<Entry> candidates = new ArrayList<>();
-                for (PlayerData.Reward reward : value.candidates())
-                    for (ItemStackTemplate item : reward.items())
-                        candidates.add(new Entry(ItemPreviewOutput.of(item), reward.label()));
-                return List.of(new Group(tr("system.field.candidates"), candidates));
-            })
-            .register(QuestOutput.class, (_, value) -> {
-                List<Group> groups = new ArrayList<>();
-                List<Entry> rewards = new ArrayList<>();
-                for (QuestRewardOutput reward : value.rewards()) {
-                    for (ItemPreviewOutput item : reward.items())
-                        rewards.add(new Entry(item, tr("system.state." + reward.state().toLowerCase(Locale.ROOT))));
-                    for (QuestChoiceOutput choice : reward.choices().orElse(List.of()))
-                        groups.add(group(reward.title() + " · " + choice.title(), choice.items()));
-                }
-                groups.addFirst(new Group(tr("system.field.reward"), rewards));
-                return groups;
-            })
-            .register(ResultTypes.QuestNotice.class, (_, value) -> List.of(group(tr("system.field.reward"), value.items())))
-            .register(ItemPageOutput.class, (_, value) -> {
-                List<ItemPreviewOutput> items = new ArrayList<>();
-                for (ItemInfoOutput entry : value.items()) {
-                    Identifier id = Identifier.tryParse(entry.id());
-                    if (id == null) continue;
-                    BuiltInRegistries.ITEM.getOptional(id).ifPresent(item -> {
-                        if (!new ItemStack(item).isEmpty())
-                            items.add(ItemPreviewOutput.of(new ItemStackTemplate(item)));
-                    });
-                }
-                return List.of(group(tr("system.field.items"), items));
-            });
-
     public record Entry(ItemPreviewOutput preview, String description) {
     }
 
@@ -95,41 +29,18 @@ public final class AssistantItems {
     private AssistantItems() {
     }
 
-    public static List<Group> groups(AgentResult.Card card) {
-        return GROUPS.apply(null, card.data().value()).stream().filter(group -> !group.items().isEmpty()).toList();
-    }
-
-    public static List<Group> groups(AgentResult result) {
-        return result.cards().stream().flatMap(card -> groups(card).stream()).toList();
-    }
-
-    private static List<Group> reward(PlayerData.Reward reward) {
-        return List.of(templates(tr("system.field.reward"), reward.items()));
-    }
-
-    private static Group templates(String label, List<ItemStackTemplate> items) {
-        return group(label, items.stream().map(ItemPreviewOutput::of).toList());
-    }
-
-    private static Group group(String label, List<ItemPreviewOutput> items) {
-        return new Group(label, items.stream().map(item -> new Entry(item, "")).toList());
-    }
-
-    private static List<Group> price(CommerceCatalog.Price price) {
-        return price(tr("system.field.price"), price);
-    }
-
-    private static List<Group> price(String label, CommerceCatalog.Price price) {
-        return price.items().isEmpty() ? List.of() : List.of(group(label, price.items()));
-    }
-
     public static void render(Document document, Element container, List<Group> groups, boolean compact) {
+        render(document, container, groups, compact, true);
+    }
+
+    public static void render(Document document, Element container, List<Group> groups, boolean compact, boolean showLabels) {
         if (container == null) return;
         container.setInnerHTML("");
         int count = 0;
         for (Group group : groups) {
             Element section = element(document, "div", "item_group", "");
-            section.appendChild(element(document, "div", "item_group_label", group.label() + ":"));
+            if (showLabels && !group.label().isBlank())
+                section.appendChild(element(document, "div", "item_group_label", group.label() + ":"));
             Element row = element(document, "div", "item_row", "");
             for (Entry value : group.items()) {
                 ItemPreviewOutput preview = value.preview();

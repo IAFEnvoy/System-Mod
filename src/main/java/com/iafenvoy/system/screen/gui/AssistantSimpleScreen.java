@@ -1,9 +1,11 @@
 package com.iafenvoy.system.screen.gui;
 
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
+import com.iafenvoy.system.module.client.ClientModules;
+import com.iafenvoy.system.screen.card.CardContext;
+import com.iafenvoy.system.screen.card.CardTemplates;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 
@@ -17,6 +19,7 @@ import static com.iafenvoy.system.screen.gui.AssistantView.*;
  */
 public final class AssistantSimpleScreen extends AssistantInputScreen {
     private long revision = -1;
+    private long templateRevision = -1;
 
     public AssistantSimpleScreen(String draft) {
         super("system/assistant-simple.html", draft);
@@ -39,19 +42,23 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
         super.tick();
         Document document = this.getLinkedDocument();
         if (document == null) return;
-        if (this.revision != AssistantClient.revision()) this.renderCurrent();
+        if (this.revision != AssistantClient.revision() || this.templateRevision != CardTemplates.revision())
+            this.renderCurrent();
     }
 
     private void renderCurrent() {
         Document document = this.getLinkedDocument();
         if (document == null) return;
         this.revision = AssistantClient.revision();
+        this.templateRevision = CardTemplates.revision();
         text(document.getElementById("speaker"), tr("system.ui.assistant"));
         AssistantClientState.ChatEntry current = AssistantClient.state().current();
         String request = current == null ? "" : current.text();
         text(document.getElementById("current_request"), request);
         document.getElementById("current_request").setInlineStyleProperty("display", request.isBlank() ? "none" : "block");
         AgentResult result = current == null ? null : current.result();
+        Element speech = document.getElementById("current_result");
+        speech.setInnerHTML("");
         List<String> lines = new ArrayList<>();
         if (result == null) {
             if (!AssistantClient.state().busy()) lines.add(tr(AssistantClient.system().description()));
@@ -59,23 +66,15 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
         } else {
             lines.add(tr(result.messageKey()));
             if (!result.text().isBlank()) lines.add(result.text());
+            speech.appendChild(element(document, "div", "message_text", String.join("\n\n", lines)));
             int index = 1;
             for (AgentResult.Card card : result.cards()) {
-                if (!card.titleKey().equals(result.messageKey())) lines.add(tr(card.titleKey()));
-                String data = formatCard(card, false);
-                if (!data.isBlank()) lines.add(data);
-                for (AgentResult.Action action : card.actions()) {
-                    boolean questRow = card.data().value() instanceof ResultTypes.QuestList && action.labelKey().equals("system.action.quest_detail");
-                    lines.add((questRow ? "" : index + ". ") + actionLabel(card, action));
-                    index++;
-                }
+                speech.appendChild(ClientModules.registry().cards().presentation(card, result.messageKey(), CardContext.Mode.SIMPLE, index - 1).render(document));
+                index += card.actions().size();
             }
-            if (index > 1) lines.add(tr("system.ui.simple_actions"));
+            if (index > 1) speech.appendChild(element(document, "div", "card_context", tr("system.ui.simple_actions")));
         }
-        Element speech = document.getElementById("current_result");
-        text(speech, String.join("\n\n", lines));
-        AssistantItems.render(document, document.getElementById("current_items"),
-                result == null ? List.of() : AssistantItems.groups(result), false);
+        if (result == null) text(speech, String.join("\n\n", lines));
         Element area = document.getElementById("speech");
         area.scrollTop = 0;
         area.targetScrollTop = 0;

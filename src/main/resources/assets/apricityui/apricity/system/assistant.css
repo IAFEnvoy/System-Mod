@@ -480,6 +480,54 @@ p {
     font-size: 13px;
 }
 
+/* Registered card primitives can be nested without fixed business-specific placement. */
+.card_container, .card_column, .card_row {
+    min-width: 0;
+}
+
+.card_column {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.card_row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 12px;
+}
+
+.card_row > * {
+    flex: 1 1 140px;
+    min-width: 0;
+}
+
+.card_context {
+    color: #b6cfd5;
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.card_divider {
+    border-top: 1px solid var(--assistant-line-soft);
+    margin: 10px 0;
+}
+
+.simple .result_card, .notification .result_card {
+    padding: 0;
+    margin: 8px 0 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+}
+
+.simple .result_card::after, .notification .result_card::after {
+    display: none;
+}
+
 /* Native item nodes share AUI layout/opacity and use vanilla item tooltips. */
 .item_groups {
     display: none;
@@ -910,9 +958,9 @@ html.message_hud, .notification, .notification * {
     font-size: 12px;
 }
 
-#notification_text {
+#notification_body {
     min-height: 0;
-    max-height: 42vh;
+    max-height: 50vh;
     overflow-y: auto;
     overflow-x: hidden;
     color: #e3f4f8;

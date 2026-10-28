@@ -62,12 +62,12 @@ final class ConversationService {
                     List<AgentResult.Card> cards = new ArrayList<>();
                     for (AgentResult.Card card : result.cards()) {
                         cards.add(card);
-                        if (CodecIO.write(AgentResult.CODEC, new AgentResult(result.status(), result.messageKey(), MiscUtil.clip(result.text(), 1000), cards)).length() > 4096) {
+                        if (CodecIO.write(AgentResult.CODEC, new AgentResult(result.status(), result.messageKey(), MiscUtil.clip(result.text(), 1000), cards, result.silent())).length() > 4096) {
                             cards.removeLast();
                             break;
                         }
                     }
-                    text = CodecIO.write(AgentResult.CODEC, new AgentResult(result.status(), result.messageKey(), MiscUtil.clip(result.text(), 1000), cards));
+                    text = CodecIO.write(AgentResult.CODEC, new AgentResult(result.status(), result.messageKey(), MiscUtil.clip(result.text(), 1000), cards, result.silent()));
                 }
                 PlayerData.Message entry = new PlayerData.Message("", message.role(), message.time(), text);
                 size += ResultTypes.History.MESSAGE_CODEC.encodeStart(JsonOps.INSTANCE, entry).getOrThrow().toString().length();

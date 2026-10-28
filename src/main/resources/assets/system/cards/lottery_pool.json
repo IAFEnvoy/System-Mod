@@ -1,0 +1,147 @@
+{
+  "body": [
+    {
+      "type": "row",
+      "style": "lottery_heading",
+      "text_separator": " · ",
+      "children": [
+        {
+          "type": "header",
+          "text": "{{label}}",
+          "style": "lottery_name"
+        },
+        {
+          "type": "text",
+          "translate": "system.ui.lottery_count",
+          "args": [
+            "{{prize_count}}"
+          ],
+          "inline": true,
+          "style": "lottery_count"
+        }
+      ]
+    },
+    {
+      "type": "context",
+      "text": "{{id}}",
+      "when": "full",
+      "style": "lottery_id"
+    },
+    {
+      "type": "row",
+      "when": "price",
+      "style": "lottery_cost",
+      "text_separator": ": ",
+      "children": [
+        {
+          "type": "text",
+          "translate": "system.ui.lottery_cost",
+          "inline": true,
+          "style": "lottery_cost_label"
+        },
+        {
+          "type": "text",
+          "text": "{{price}}",
+          "inline": true,
+          "style": "lottery_cost_value"
+        }
+      ],
+      "unless": "text_items"
+    },
+    {
+      "type": "row",
+      "when": "text_items",
+      "style": "lottery_cost",
+      "text_separator": ": ",
+      "children": [
+        {
+          "type": "text",
+          "translate": "system.ui.lottery_cost",
+          "inline": true,
+          "style": "lottery_cost_label"
+        },
+        {
+          "type": "text",
+          "text": "{{price_text}}",
+          "inline": true,
+          "style": "lottery_cost_value"
+        }
+      ],
+      "unless": "free"
+    },
+    {
+      "type": "row",
+      "when": "free",
+      "style": "lottery_cost",
+      "text_separator": ": ",
+      "children": [
+        {
+          "type": "text",
+          "translate": "system.ui.lottery_cost",
+          "inline": true,
+          "style": "lottery_cost_label"
+        },
+        {
+          "type": "text",
+          "inline": true,
+          "style": "lottery_cost_value",
+          "translate": "system.ui.lottery_no_cost"
+        }
+      ]
+    },
+    {
+      "type": "context",
+      "translate": "system.ui.lottery_unavailable",
+      "unless": "payment_available",
+      "style": "lottery_unavailable"
+    },
+    {
+      "type": "items",
+      "items": "{{price_items}}",
+      "label": "{{tr:system.ui.lottery_cost}}"
+    },
+    {
+      "type": "container",
+      "unless": "text_items",
+      "when": "prizes",
+      "children": [
+        {
+          "type": "context",
+          "translate": "system.ui.lottery_prize_preview",
+          "args": [
+            "{{preview_count}}",
+            "{{prize_count}}"
+          ],
+          "style": "item_group_label"
+        },
+        {
+          "type": "items",
+          "items": "{{prizes.*.result_items}}",
+          "repeat": "prizes",
+          "description": [
+            {
+              "type": "text",
+              "text": "{{prizes.*.reward_label}}"
+            },
+            {
+              "type": "text",
+              "translate": "system.ui.lottery_chance",
+              "args": [
+                "{{prizes.*.chance}}%"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ],
+  "style": [
+    "result_card",
+    "lottery_card"
+  ],
+  "show_title": false
+}

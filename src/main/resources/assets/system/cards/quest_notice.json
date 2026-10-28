@@ -1,0 +1,39 @@
+{
+  "body": [
+    {
+      "type": "text",
+      "text": "{{description}}",
+      "when": "description"
+    },
+    {
+      "type": "text",
+      "translate": "system.tts.quest.requirements",
+      "args": [
+        "{{requirements}}"
+      ],
+      "when": "requirements"
+    },
+    {
+      "type": "text",
+      "translate": "system.ui.quest_manual_submission",
+      "when": "manual_submission"
+    },
+    {
+      "type": "text",
+      "translate": "system.tts.quest.rewards",
+      "args": [
+        "{{other_rewards}}"
+      ],
+      "when": "other_rewards"
+    },
+    {
+      "type": "items",
+      "items": "{{result_items}}",
+      "label": "{{field:reward}}"
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ]
+}

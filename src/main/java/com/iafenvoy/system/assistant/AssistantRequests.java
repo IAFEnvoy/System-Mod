@@ -1,6 +1,5 @@
 package com.iafenvoy.system.assistant;
 
-import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.network.ServerNetworkHandler;
@@ -9,10 +8,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.BiFunction;
@@ -26,15 +22,17 @@ public final class AssistantRequests {
     private final MinecraftServer server;
     private final AgentEngine engine;
     private final AssistantPlayers players;
+    private final List<Identifier> modules;
     private final TypeDispatch<RequestContext, CompletionStage<AgentResponse>> requestHandlers = new TypeDispatch<>((_, _) -> {
         throw new AgentException("UNSUPPORTED");
     });
     private final Map<AgentRequest.Control, Function<RequestContext, CompletionStage<AgentResponse>>> controlHandlers = new EnumMap<>(AgentRequest.Control.class);
 
-    AssistantRequests(MinecraftServer server, AgentEngine engine, AssistantPlayers players) {
+    AssistantRequests(MinecraftServer server, AgentEngine engine, AssistantPlayers players, List<Identifier> modules) {
         this.server = server;
         this.engine = engine;
         this.players = players;
+        this.modules = List.copyOf(modules);
         this.registerRequests();
     }
 
@@ -105,7 +103,7 @@ public final class AssistantRequests {
             if (!data.bound) throw new AgentException("NOT_BOUND");
             return AgentResult.data("system.result.state",
                     ResultTypes.CLIENT_STATE.of(new ResultTypes.ClientState(data.saveHistory, data.externalModel,
-                            this.engine.modules().get(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_query")) != null,
+                            this.modules,
                             this.engine.modules().commands().suggestions())));
         }));
     }

@@ -1,0 +1,18 @@
+{
+  "body": [
+    {
+      "type": "text",
+      "text": "{{items.*.item_name}} · {{items.*.item_id}} · {{field:max_stack}}: {{items.*.max_stack}}",
+      "repeat": "items"
+    },
+    {
+      "type": "items",
+      "items": "{{result_items}}",
+      "label": "{{field:items}}"
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ]
+}

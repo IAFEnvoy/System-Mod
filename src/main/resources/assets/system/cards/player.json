@@ -1,0 +1,42 @@
+{
+  "body": [
+    {
+      "type": "text",
+      "text": "{{field:name}}: {{name}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:health}}: {{health}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:max_health}}: {{max_health}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:experience_level}}: {{experience_level}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:dimension}}: {{dimension}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:online_players}}:",
+      "when": "online_players"
+    },
+    {
+      "type": "text",
+      "text": "{{online_players.*.player_name}}",
+      "repeat": "online_players"
+    },
+    {
+      "type": "text",
+      "text": "{{field:language}}: {{language}}"
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ]
+}

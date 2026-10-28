@@ -2,12 +2,12 @@ package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.builtin.QuestSubmitModule;
-import com.iafenvoy.system.agent.builtin.StarterGiftModule;
 import com.iafenvoy.system.agent.builtin.input.QuestClaimInput;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.input.QuestQueryInput;
 import com.iafenvoy.system.agent.builtin.output.QuestStartupOutput;
+import com.iafenvoy.system.agent.builtin.quest.QuestSubmitModule;
+import com.iafenvoy.system.agent.builtin.quest.StarterGiftModule;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.util.MiscUtil;

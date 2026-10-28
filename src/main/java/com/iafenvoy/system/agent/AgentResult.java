@@ -8,13 +8,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-public record AgentResult(String status, String messageKey, String text, List<Card> cards) {
+public record AgentResult(String status, String messageKey, String text, List<Card> cards, boolean silent) {
     public static final Codec<AgentResult> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("status").forGetter(AgentResult::status),
             Codec.STRING.fieldOf("messageKey").forGetter(AgentResult::messageKey),
             Codec.STRING.optionalFieldOf("text", "").forGetter(AgentResult::text),
-            Card.CODEC.listOf().optionalFieldOf("cards", List.of()).forGetter(AgentResult::cards)
+            Card.CODEC.listOf().optionalFieldOf("cards", List.of()).forGetter(AgentResult::cards),
+            Codec.BOOL.optionalFieldOf("silent", false).forGetter(AgentResult::silent)
     ).apply(i, AgentResult::new));
+
+    public AgentResult(String status, String messageKey, String text, List<Card> cards) {
+        this(status, messageKey, text, cards, false);
+    }
 
     public AgentResult {
         Objects.requireNonNull(status);
@@ -25,11 +30,6 @@ public record AgentResult(String status, String messageKey, String text, List<Ca
 
     public static AgentResult ok(String key) {
         return new AgentResult("SUCCEEDED", key, "", List.of());
-    }
-
-    // These results finish a request without creating another visible or spoken notification.
-    public boolean silent() {
-        return this.messageKey.equals("system.result.quest_submit_completed") || this.messageKey.equals("system.result.starter_gift_updated");
     }
 
     public static AgentResult error(String code) {

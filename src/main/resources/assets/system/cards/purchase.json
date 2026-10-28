@@ -1,0 +1,34 @@
+{
+  "body": [
+    {
+      "type": "text",
+      "text": "{{reward_label}}"
+    },
+    {
+      "type": "text",
+      "text": "{{reward_items}}",
+      "when": "text_items"
+    },
+    {
+      "type": "text",
+      "text": "{{field:order_id}}: {{order_id}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:entitlement_id}}: {{entitlement_id}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:state}}: {{state:state}}"
+    },
+    {
+      "type": "items",
+      "items": "{{result_items}}",
+      "label": "{{field:reward}}"
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "body": [
+    {
+      "type": "text",
+      "text": "{{field:history_saved}}: {{bool:history_saved}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:external_model}}: {{bool:external_model}}"
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ]
+}

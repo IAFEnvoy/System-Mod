@@ -1,0 +1,32 @@
+{
+  "body": [
+    {
+      "type": "text",
+      "translate": "system.ui.quest_list_hint"
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ],
+  "actions": {
+    "container_style": "quest_list",
+    "button_style": [
+      "card_action",
+      "quest_row"
+    ],
+    "numbered": false,
+    "label": [
+      {
+        "type": "text",
+        "text": "{{actions.*.action_number}}. {{actions.*.action_title}} · {{actions.*.action_chapter}} · {{actions.*.action_progress}}%",
+        "when": "actions.*.action_title"
+      },
+      {
+        "type": "text",
+        "text": "{{actions.*.label}}",
+        "unless": "actions.*.action_title"
+      }
+    ]
+  }
+}

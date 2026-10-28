@@ -255,10 +255,8 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
             if (document == null) return;
             if (input == document.getElementById("message")) this.sendMessage();
             else {
-                String buttonId = input == document.getElementById("item_query") ? "item_search"
-                        : input == document.getElementById("shop_query") ? "shop_search"
-                        : input == document.getElementById("lottery_query") ? "lottery_search" : "";
-                Element button = buttonId.isEmpty() ? null : document.getElementById(buttonId);
+                String buttonId = input.getAttribute("data-submit");
+                Element button = buttonId == null || buttonId.isEmpty() ? null : document.getElementById(buttonId);
                 if (button != null) button.click();
             }
             return;

@@ -45,36 +45,34 @@ public final class CommerceCosts {
         List<Component> descriptions = new ArrayList<>();
         for (Cost cost : costs) {
             ResultWithData<Cost.Transaction> result = cost.prepare(context);
+            Prepared failedPrepared = new Prepared(player, bill, new CommerceCatalog.Price(items, descriptions), false, started, uncertain);
             if (result.isFailure()) {
                 descriptions.add(result.failure().message());
-                return new Prepared(player, bill, new CommerceCatalog.Price(items, descriptions), false, started, uncertain);
+                return failedPrepared;
             }
             Cost.Transaction transaction = result.getData();
             if (!Double.isFinite(transaction.amount()) || transaction.amount() < 0) {
                 descriptions.add(CostFailure.INVALID_AMOUNT.message());
-                return new Prepared(player, bill, new CommerceCatalog.Price(items, descriptions), false, started, uncertain);
+                return failedPrepared;
             }
             if (bill.price(List.of(new BoundCost(cost, new TrackedTransaction(transaction, started, uncertain)))).isPresent())
                 throw new AgentException("INVALID_COST");
             if (transaction.amount() == 0) continue;
-            if (transaction.target() instanceof CostTarget.Items target && target.entries().size() == 1
-                    && target.entries().getFirst() instanceof ItemEntry(Item item)) {
+            if (transaction.target() instanceof CostTarget.Items target && target.entries().size() == 1 && target.entries().getFirst() instanceof ItemEntry(
+                    Item item
+            ))
                 items.add(new ItemPreviewOutput(new ItemStackTemplate(item), number(Math.ceil(transaction.amount()))));
-            } else if (transaction.target() instanceof CostTarget.Account target) {
-                descriptions.add(Component.translatableWithFallback(DefinitionText.key(target.resource()),
-                                target.resource().unwrapKey().orElseThrow().identifier().toString())
-                        .append(" × " + number(transaction.amount())));
-            } else if (transaction.target() instanceof CostTarget.Items target) {
+            else if (transaction.target() instanceof CostTarget.Account target)
+                descriptions.add(Component.translatableWithFallback(DefinitionText.key(target.resource()), target.resource().unwrapKey().orElseThrow().identifier().toString()).append(" × " + number(transaction.amount())));
+            else if (transaction.target() instanceof CostTarget.Items target) {
                 MutableComponent alternatives = Component.empty();
                 for (ItemMatcher.Entry entry : target.entries()) {
                     if (!alternatives.getSiblings().isEmpty()) alternatives.append(" / ");
                     alternatives.append(describe(entry));
                 }
-                descriptions.add(Component.translatable("system.cost.any_of", alternatives)
-                        .append(" × " + number(Math.ceil(transaction.amount()))));
-            } else {
+                descriptions.add(Component.translatable("system.cost.any_of", alternatives).append(" × " + number(Math.ceil(transaction.amount()))));
+            } else
                 descriptions.add(Component.literal(transaction.target().label() + " × " + number(transaction.amount())));
-            }
         }
         return new Prepared(player, bill, new CommerceCatalog.Price(items, descriptions), true, started, uncertain);
     }

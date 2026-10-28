@@ -82,16 +82,17 @@ public final class ResultTypes {
         ).apply(i, Preferences::new));
     }
 
-    public record ClientState(boolean historySaved, boolean externalModel, boolean questAvailable,
+    public record ClientState(boolean historySaved, boolean externalModel, List<Identifier> modules,
                               List<String> commands) {
         public static final Codec<ClientState> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.BOOL.fieldOf("historySaved").forGetter(ClientState::historySaved),
                 Codec.BOOL.fieldOf("externalModel").forGetter(ClientState::externalModel),
-                Codec.BOOL.fieldOf("questAvailable").forGetter(ClientState::questAvailable),
+                Identifier.CODEC.listOf().fieldOf("modules").forGetter(ClientState::modules),
                 Codec.STRING.listOf().fieldOf("commands").forGetter(ClientState::commands)
         ).apply(i, ClientState::new));
 
         public ClientState {
+            modules = List.copyOf(modules);
             commands = List.copyOf(commands);
         }
     }

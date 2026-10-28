@@ -1,0 +1,29 @@
+{
+  "body": [
+    {
+      "type": "text",
+      "translate": "system.ui.quest_startup_count",
+      "unless": "notification",
+      "args": [
+        "{{total}}"
+      ]
+    },
+    {
+      "type": "text",
+      "text": "{{quests.*.title}} · {{quests.*.progress}}%",
+      "repeat": "quests"
+    },
+    {
+      "type": "text",
+      "translate": "system.ui.quest_startup_more",
+      "args": [
+        "{{remaining}}"
+      ],
+      "when": "remaining"
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "body": [
+    {
+      "type": "text",
+      "text": "{{field:date}}: {{date}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:signed_in}}: {{bool:signed_in}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:history_saved}}: {{bool:history_saved}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:external_model}}: {{bool:external_model}}"
+    },
+    {
+      "type": "container",
+      "when": "text_items",
+      "repeat": "candidates",
+      "children": [
+        {
+          "type": "text",
+          "text": "{{candidates.*.reward_label}}"
+        },
+        {
+          "type": "text",
+          "text": "{{candidates.*.reward_items}}",
+          "when": "text_items"
+        }
+      ]
+    },
+    {
+      "type": "container",
+      "when": "candidates",
+      "unless": "text_items",
+      "children": [
+        {
+          "type": "context",
+          "text": "{{field:candidates}}:",
+          "style": "item_group_label"
+        },
+        {
+          "type": "items",
+          "items": "{{candidates.*.result_items}}",
+          "repeat": "candidates",
+          "description": [
+            {
+              "type": "text",
+              "text": "{{candidates.*.reward_label}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResponse;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.module.binding.BindingClientModule;
 import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
 import com.iafenvoy.system.network.payload.QuestNarrationResponseS2CPayload;
 import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
@@ -68,7 +69,7 @@ public final class ClientNetworkHandler {
     private static void bound(AgentResult result) {
         Minecraft minecraft = Minecraft.getInstance();
         AssistantClient.local(result);
-        AssistantMessages.binding(minecraft.player == null ? "" : minecraft.player.getName().getString());
+        BindingClientModule.bound(minecraft.player == null ? "" : minecraft.player.getName().getString());
         AssistantClient.send(AgentRequest.Control.STATE);
     }
 

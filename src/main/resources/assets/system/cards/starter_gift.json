@@ -1,0 +1,21 @@
+{
+  "body": [
+    {
+      "type": "items",
+      "items": "{{gifts.*.result_items}}",
+      "repeat": "gifts",
+      "label": "{{field:reward}}",
+      "description": [
+        {
+          "type": "text",
+          "text": "{{gifts.*.error}}",
+          "when": "gifts.*.error"
+        }
+      ]
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ]
+}

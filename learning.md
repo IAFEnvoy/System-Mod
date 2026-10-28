@@ -34,6 +34,8 @@
 | 安装、绑定 / 撤销 / 重置、指令、界面、任务、商城、抽奖、隐私 | [使用与配置](docs/usage.md) |
 | Agent 执行流程、Module / Tool 契约、注册表、类型化输入输出、扩展入口 | [Agent 运行结构与扩展](docs/agent-runtime.md) |
 | 包组织、依赖、配置、持久化、MC 桥接、实现边界 | [开发与架构](docs/development.md) |
+| 功能级装配、两端指令、玩家生命周期、卡片/通知/口播注册和可选集成 | [功能模块化](docs/feature-modules.md) |
+| assets 卡片 JSON、CardContext.Builder 三表与类型检查、CardNode 接口 / node 子包与 Codec 分派、平铺参数与回调、style 字符串/数组、通知主体与代码按钮 | [客户端 JSON 卡片](docs/cards.md) |
 | OpenAI 兼容接口、DeepSeek 特殊参数、模型连接与 Token 响应 | [模型接口](docs/model-api.md) |
 | 独立 DeepSeek Search / Fetch 客户端；当前未开放给 Agent | [网页搜索与抓取](docs/search-api.md) |
 | 模组和音色工具会请求哪些 API、触发条件、发送数据、客户端 / 服务端归属 | [外部 API 请求清单](docs/external-apis.md) |

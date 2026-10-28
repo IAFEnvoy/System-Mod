@@ -21,13 +21,13 @@ ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，�
 | 本地意图路由 | `lexical-tfidf-v1`，JDK + 已有 Gson；无新增第三方依赖、native 或模型文件 |
 | 产物体积上限 | 完整 System JAR 不超过 10,000,000 字节，`jar` 任务强制检查 |
 
-Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎、执行器、执行上下文、模块/工具接口、注册表、指令与请求结果；`builtin`、`routing`、`model`、`store`、`commerce`、`prompt` 按职责组织，每个职责的接口、数据与实现放在一起。通用 Codec、Schema 和 JSON 工具直接归入外层 `com.iafenvoy.system.util`，配置统一位于外层 `config`。游戏生命周期、界面、网络、语音和可选模组桥接继续位于模组的对应包；所有代码共用主源码集、依赖和 Java 25 工具链，不单独发布 Agent 核心库。
+Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎、执行器、执行上下文、模块/工具接口、注册表、指令与请求结果；`builtin/<功能>` 包含该功能的工作流与单行为工具，`routing`、`model`、`store`、`commerce`、`prompt` 按职责组织。外层 `module/<功能>` 组织该功能的两端指令、装配、生命周期与界面贡献，详见[功能模块化](feature-modules.md)。通用 Codec、Schema 和 JSON 工具直接归入外层 `com.iafenvoy.system.util`，配置统一位于外层 `config`。游戏生命周期、界面、网络、语音和可选模组桥接继续位于模组的对应包；所有代码共用主源码集、依赖和 Java 25 工具链，不单独发布 Agent 核心库。
 
 ```powershell
 .\gradlew.bat compileJava testModClasses jar
 ```
 
-所有 Agent 类直接进入 `build/libs/system-1.0.0.jar`。FTB 查询、详情和领奖直接实现统一的类型化 Tool，没有独立的服务接口，也不经过 stdio、HTTP MCP 或模拟客户端包。可选传输适配器如需接入，也应复用同一 Tool 契约。
+所有 Agent 类直接进入 `build/libs/system-<mod_version>.jar`。FTB 查询、详情和领奖直接实现统一的类型化 Tool，没有独立的服务接口，也不经过 stdio、HTTP MCP 或模拟客户端包。可选传输适配器如需接入，也应复用同一 Tool 契约。
 
 模型请求统一使用 OpenAI Chat Completions 格式，默认保留 DeepSeek；专用思考参数按提供商隔离。配置与消息边界见 [模型接口与 DeepSeek 兼容](model-api.md)。
 
@@ -36,27 +36,31 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | 路径 | 职责 |
 | --- | --- |
 | `agent` | 引擎与执行器、预算和授权上下文、Module/Tool 契约、类型/模块/工具/指令注册表、请求与结果 |
-| `agent/builtin` | 内置 Module、安装入口和签到模型决策结构 |
+| `module/<功能>` | 功能装配、平台指令、玩家生命周期、客户端页面/卡片/通知/口播贡献 |
+| `module/client` | 客户端功能、指令、工作台及类型化卡片注册表 |
+| `agent/builtin` | 按功能分包的工作流、单行为工具和签到模型决策结构 |
 | `agent/builtin/input、agent/builtin/output` | 内置模块/工具参数及查询结果，一类一文件 |
-| `agent/builtin/tool` | 每个行为各自一个 Tool（含游戏适配与内部入账工具），以及共享工具类型 |
+| `agent/builtin/tool` | 共享工具类型键；具体实现位于 `builtin/<功能>` |
 | `agent/routing` | 混合路由、本地匹配与缓存、语义声明、路由结果及诊断 |
 | `agent/model` | 模型接口、统一请求与计量入口、OpenAI 兼容协议及报文 |
 | `search` | 独立 Search / Fetch 接口、DeepSeek 协议客户端和类型化结果，尚未注册为 Agent 能力 |
 | `agent/store` | 存储接口、文件事务存储、玩家业务记录与对话投影 |
 | `agent/commerce、agent/prompt` | 商城目录、Saturn Cost 账单、报价与订单；提示词快照与占位符模板 |
 | `config` | Agent/路由配置，以及模组客户端、语音和计费配置 |
-| `command/client、command/server` | 两端命令注册、分派与补全，调用 Agent 根包中的类型化指令声明与解析 |
+| `command、command/client` | 两端指令装配入口与补全桥接；具体指令由功能模块提供 |
 | `util、util/codec` | 类型处理 Map、Codec/Schema 工具、共享 HTTP/SSE；配置目录由 ConfigInstance 提供 |
-| `runtime/server、runtime/reload` | 服务端组装与生命周期、玩家绑定及成就初始化、请求分派、主线程队列和数据包重载 |
-| `runtime/usage、data/usage` | 用量服务、独立 SavedData、AI/TTS/ASR 归并与不可变快照，不随 revoke 删除 |
-| `runtime/client、screen/gui、screen` | 客户端不可变会话状态、导航及副作用、助手界面、设置、用量与通知队列 |
+| `assistant、data` | 服务端组装、绑定与玩家会话、请求分派、主线程队列及数据包重载 |
+| `assistant/usage、data/usage` | 用量服务、独立 SavedData、AI/TTS/ASR 归并与不可变快照，不随 revoke 删除 |
+| `assistant、screen/gui、screen` | 客户端不可变会话状态、导航及副作用、助手界面、设置、用量与通知队列 |
+| `screen/card` | CardNode 根接口 / dispatch Codec、平铺 Context、占位符与集合绑定、资源重载和通知快照 |
+| `screen/card/node` | 独立节点实现，各自提供 MapCodec、默认 CSS、render 与 text；文字及容器派生类复用实现 |
 | `speech/aliyun、speech/tts、speech/asr、registry/speech、data/speech` | 语音接口及供应商协议、工厂注册、报文、流式播放会话、缓存与可取消录音 |
 | `compat/ftb、compat/voicechat` | 可选 FTB 工具/事件和 SVC 收音，检测后才加载相关实现 |
-| `event、network、network/payload` | 扩展/按键事件、协议 6 注册、Handler 与有界载荷 |
+| `event、network、network/payload` | 扩展/按键事件、协议 1 注册、Handler 与有界载荷 |
 
 上表路径均相对于 `src/main/java/com/iafenvoy/system/`。Agent 与游戏接入代码处于同一主项目；模块、工具和服务接口仍保留职责划分，工具使用稳定逻辑 ID，方便后续扩展业务。
 
-`AssistantServer` 负责组装引擎、安装模块、转发游戏事件及资源刷新；`AssistantPlayers` 管理绑定、玩家会话和成就基线，`AssistantRequests` 管理类型化请求分派与回复，`AssistantUsage` 管理用量查询及计量队列。命令、网络和可选桥接通过 `players()`、`requests()`、`usage()` 调用对应服务；异步回复仍核对连接代次，模型计量仍由服务端主线程写入 SavedData。
+`AssistantServer` 负责组装引擎、安装模块、转发游戏事件及资源刷新；`AssistantPlayers` 管理绑定与通用玩家会话，各功能通过 `PlayerModule` 注册登录事务和事件处理；成就基线与派发由成就模块管理，`AssistantRequests` 管理类型化请求分派与回复，`AssistantUsage` 管理用量查询及计量队列。命令、网络和可选桥接通过 `players()`、`requests()`、`usage()` 调用对应服务；异步回复仍核对连接代次，模型计量仍由服务端主线程写入 SavedData。
 
 `AssistantClientState` 统一保存对话、待响应请求、服务端偏好与能力、当前交互结果，每次更新生成不可变快照。`AssistantClient` 只持有一个状态引用并处理导航、网络和语音等副作用；登出或成功撤销时替换为 `AssistantClientState.EMPTY`。界面刷新版本号独立递增，不随状态清空归零。
 
@@ -68,7 +72,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 `ConfigReloader` 在资源重载时调用 `reloadAll()`，客户端/服务端 tick 与关闭事件调用 `saveAll()`，只保存有标记的配置。检查标记、保存及加载使用同一实例锁；保存失败恢复标记以便重试，重载前先保存已提交的改动。所有生效配置从对应 `config.file.XxxConfig.INSTANCE.get()` 直接读取；引擎、路由、模型客户端和成就桥接不缓存配置对象，构造函数也不传递全局配置，删除 `settings()` 转发链。
 
-助手输入框的设置指令为 `/settings`，执行与补全共享 `AssistantClientCommands` 的入口表；游戏聊天栏通过客户端 `RegisterClientCommandsEvent` 注册 `/system settings`，复用同一设置入口，不发送服务端命令或模型请求，并与服务端 `/system` 的其他子命令合并补全。聊天命令打开设置后返回游戏，助手内打开则保留原页面与草稿。设置控件在 input/change/开关操作时提交本页配置，本地配置先 `INSTANCE.set(next)` 标记修改，再立即 `save()`；服务端偏好沿用请求及确认流程。TTS / ASR 允许先保存不完整凭据，完整参数在试听、合成或开始识别时校验；非法音量保留原值并提示错误，其他设置仍保存。语音页没有 JSON 导入、重新加载或手动保存按钮。TTS 队列只存文本和会话，启动播报时读取配置；模型与语音请求发出后保留该次调用的报文、供应商和计量信息，不因配置变化改写在途请求。模型连接地址、鉴权和请求体在配置实例锁内一起读取，网络请求在锁外执行。路由阈值、缓存容量和新条目 TTL 按当前配置读取；已生成的词法索引和模型并发信号量仍在启动时构建，修改索引例句、索引语言或并发容量后需重启。
+助手输入框的设置指令为 `/settings`，执行与补全共享各 `ClientModule` 贡献的本地指令表；游戏聊天栏通过客户端 `RegisterClientCommandsEvent` 注册 `/system settings`，复用同一设置入口，不发送服务端命令或模型请求，并与服务端 `/system` 的其他子命令合并补全。聊天命令打开设置后返回游戏，助手内打开则保留原页面与草稿。设置控件在 input/change/开关操作时提交本页配置，本地配置先 `INSTANCE.set(next)` 标记修改，再立即 `save()`；服务端偏好沿用请求及确认流程。TTS / ASR 允许先保存不完整凭据，完整参数在试听、合成或开始识别时校验；非法音量保留原值并提示错误，其他设置仍保存。语音页没有 JSON 导入、重新加载或手动保存按钮。TTS 队列只存文本和会话，启动播报时读取配置；模型与语音请求发出后保留该次调用的报文、供应商和计量信息，不因配置变化改写在途请求。模型连接地址、鉴权和请求体在配置实例锁内一起读取，网络请求在锁外执行。路由阈值、缓存容量和新条目 TTL 按当前配置读取；已生成的词法索引和模型并发信号量仍在启动时构建，修改索引例句、索引语言或并发容量后需重启。
 
 `ConfigInstance.getConfigFolder()` 提供所有配置共用的根目录，配置实例和 TTS 缓存分别在其下拼接文件名及固定 `tts-cache` 子目录，不再维护额外的 `SystemConfig` 路径工具。
 
@@ -95,7 +99,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | `SpeechUsageReportC2S` | `system:speech_usage_report_c2s` |
 | `RecognitionUsageReportC2S` | `system:recognition_usage_report_c2s` |
 
-当前协议版本为 **6**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航和绑定变更，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的 Codec 在网络解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
+当前协议版本为 **1**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航和绑定变更，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的 Codec 在网络解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
 
 ## 扩展模块
 
@@ -105,7 +109,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 每个 Tool 只负责一个行为，`ToolRegistry.Type<I, O>` 保存稳定 ID、参数 `MapCodec<I>` 和结果 `Codec<O>`，`Tool<I, O>` 保存写入、幂等、事件权限和单一 Handler。模块直接调用 `context.tool(type, stepId, typedInput)` 获得类型化结果；一个流程需要多个行为时使用模块的 `List.of(toolA, toolB)` 组合。同一工具被多个模块使用时共享同一实例，重复的不同实现或同 ID 不同类型键会被拒绝。
 
-扩展在 `AssistantRegistrationEvent` 中只需调用 `engine.registerModule(module)`：注册表核对描述白名单与工具列表，检查模块 ID、指令别名和工具实例冲突，再统一收集工具、指令、语义 profile 和快捷入口。不再提供先注册工具、再注册模块的两阶段入口。FTB 也使用此路径，查询、详情、普通领奖、新手礼包领取和明确任务提交各有独立 Tool 及对应模块，不需要专用服务接口。
+功能级扩展通过 `SystemModuleRegistrationEvent` 注册 `SystemModule`，客户端贡献通过限定 `Dist.CLIENT` 的 `ClientModuleRegistrationEvent` 注册；只有工作流的扩展也可在原有 `AssistantRegistrationEvent` 中调用 `engine.registerModule(module)`：注册表核对描述白名单与工具列表，检查模块 ID、指令别名和工具实例冲突，再统一收集工具、指令、语义 profile 和快捷入口。不再提供先注册工具、再注册模块的两阶段入口。FTB 也使用此路径，查询、详情、普通领奖、新手礼包领取和明确任务提交各有独立 Tool 及对应模块，不需要专用服务接口。
 
 `PayloadRegistry` 参考原版 `Recipe` / `PlacementModifier` 的类型分派，统一使用 `Codec.dispatch` 按 `moduleId` 选择共享参数 Codec；调用封装为 `{"moduleId":"system:item_query","input":{"query":"stone"}}`。`ModuleRegistry.call` 根据同一类型键定位当前服务器已安装模块、校验参数并生成可执行调用，不再维护另一套输入 dispatch Codec。模型目录和模型返回值解码都由当前模块注册表约束；未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `TypedPayload<?>`。
 
@@ -158,6 +162,8 @@ AgentResult.Action deliver = new AgentResult.Action("system.action.deliver", Res
 ```
 
 卡片数据编码为 `{"type":"system:player","value":{...}}`；动作编码为 `{"labelKey":"system.action.deliver","call":{"moduleId":"system:deliver","input":{"entitlementId":"..."}}}`。新业务直接创建输入/结果对象，不再为卡片或按钮手工拼接 `JsonObject`。客户端任务行、奖励选项、指令补全、设置状态和口播通过类型访问数据；`TypedPayload.json()` 只用于展示、输入预算和指纹等需要文本的边界，C2S 直接传对象。历史压缩继续只提取允许字段及有限领奖引用，不把整个卡片序列化后塞进模型上下文。
+
+客户端展示模板按数据类型 ID 从 `assets/<namespace>/cards/<path>.json` 选择。`CardNode` 根接口通过 Codec 按 `type` 分派，`CardNodeTypes` 的 Map 只绑定节点 ID 与 MapCodec；`screen/card/node` 中的独立实现负责 codec/render/text/css，`CardTemplate.Node` 保留共用条件及样式；文字、容器、横排/竖排、分割线、物品与动作区可任意组合。JSON 的 style 接受字符串或字符串数组，Codec 将数组拼接为空格分隔的 AUI 类名。`ClientCardRegistry` 每个类型只注册一个参数填充函数，使用 `CardContext.Builder` 构建不可变 `CardContext` 后再绑定模板；整张卡片共用状态、对象参数和回调三张表，重复条目使用带下标的平铺键，`items: "{{result_items}}"` 直接绑定物品对象，不经 JSON 字符串转换。完整/简约界面和 HUD 主体共用布局树；HUD 确认、关闭、领取和任务行继续由代码生成，模板动作节点在通知中忽略。资源重载刷新完整/简约界面，通知保留入队时的模板及数据快照。内置 22 种卡片均有默认资源，格式及类型扩展见[客户端 JSON 卡片](cards.md)。
 
 新增结果类型在公共初始化阶段调用 `ResultTypes.CARDS.register(identifier, codec)`，返回的类型键用 `.of(value)` 创建数据。新增模块按钮参数同样注册 `ResultTypes.ACTIONS`，复用模块输入 Codec。注册必须在两端、处理结果之前完成，类型 ID 唯一，未知 ID 或未注册的同名类型键在编解码时拒绝。共享结果定义不得引用可选模组类；FTB 的普通输入/结果 Codec 即使未安装 FTB 也能读取历史卡片，实际模块仍只在检测到 FTB 后注册，点击动作仍由服务端模块权限及引用校验约束。
 
@@ -267,7 +273,7 @@ FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubm
 
 完成通知在发送时按接收玩家的可领奖励生成操作，与详情共用 `FtbQuestAccess.reference`。仅一项普通奖励可直接复用 `quest_claim`，多项或自选奖励先走 `quest_detail` 供选择；没有可领奖励则只保留详情。事件到达本身不发奖，领取时仍校验引用期限、玩家/队伍和对象版本。可选模块安装时把共用的访问对象按服务器传给通知桥接，停服时清理。
 
-物品展示统一由客户端 `AssistantItems` 的类型分派处理，卡片、当前回复和通知使用同一个 AUI `Item` 组件及共享 CSS。物品数据来自已解码的业务对象，不扫描 JSON 或模型文字；新类型可在投影注册处扩展。`ItemPreviewOutput` 使用 `RecordCodecBuilder` 保存物品模板与数量文本，`QuestChoiceOutput` 保存候选名称与预览；只有隔离的 FTB 适配器访问 `ItemReward`，核心载荷及客户端不引用可选模组类。FTB 使用数量 1 的模板保留组件，再用 `getButtonText()` 展示真实配置数量/随机范围，不构造超出模板范围的物品，也不改动 FTB 原始栈。客户端在渲染阶段创建实际栈；原版 tooltip 接收该栈，保留物品 tooltip 组件和模组事件。详见[界面与本地化](ui-localization.md)。
+物品参数由功能模块填入 `CardContext.Builder`，JSON 的 items 节点选择来源、分组标题和说明，再交给客户端 `AssistantItems` 共享绘制，卡片、当前回复和通知使用同一个 AUI `Item` 组件及共享 CSS。物品数据来自已解码的业务对象，不扫描 JSON 或模型文字；新类型可在投影注册处扩展。`ItemPreviewOutput` 使用 `RecordCodecBuilder` 保存物品模板与数量文本，`QuestChoiceOutput` 保存候选名称与预览；只有隔离的 FTB 适配器访问 `ItemReward`，核心载荷及客户端不引用可选模组类。FTB 使用数量 1 的模板保留组件，再用 `getButtonText()` 展示真实配置数量/随机范围，不构造超出模板范围的物品，也不改动 FTB 原始栈。客户端在渲染阶段创建实际栈；原版 tooltip 接收该栈，保留物品 tooltip 组件和模组事件。详见[界面与本地化](ui-localization.md)。
 
 客户端 `AssistantRecognition.Session` 通过 `BooleanSupplier` 接收所属 UI 的有效性判断，供输入界面与 HUD 通知共用录音、网络与计量；最终回调同时核对原连接。`AssistantRecognitionKeys` 优先将按住说话交给当前可见通知，再交给主输入界面。通知将按钮本地化键与回调分离，用共用 `LexicalIndex` 缓存固定例句向量；未命中时进入主聊天路由。资源包定义、匹配门槛和生命周期见[语音识别](asr.md)与[轻量路由](semantic-routing.md)。
 

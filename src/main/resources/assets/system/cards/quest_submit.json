@@ -1,0 +1,18 @@
+{
+  "body": [
+    {
+      "type": "text",
+      "text": "{{title}}",
+      "unless": "notification"
+    },
+    {
+      "type": "text",
+      "text": "{{tasks.*.task_title}} · {{tasks.*.task_progress}}/{{tasks.*.task_required}}",
+      "repeat": "tasks"
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ]
+}

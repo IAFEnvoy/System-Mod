@@ -1,8 +1,8 @@
 # Agent 运行结构与扩展
 
-Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力只需要声明参数类型、单行为 Tool、组合流程的 Module，以及 Module 自己的入口信息。指令解析器和路由器不包含模块 ID 的业务 switch。
+Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类型、单行为 Tool、组合流程的 `AgentModule`，以及工作流自己的入口信息；功能的服务端装配、平台指令、生命周期与客户端贡献由外层 `SystemModule` / `ClientModule` 统一组织，见[功能模块化](feature-modules.md)。指令解析器和路由器不包含模块 ID 的业务 switch。
 
-根包集中引擎、执行器、上下文、Module/Tool 契约、注册表、指令与请求结果。路由、模型、存储、商城和提示词分别归入 `routing`、`model`、`store`、`commerce`、`prompt`，各包同时包含自身的接口、数据与实现。内置 Module 位于 `builtin`，单行为工具及输入输出分别位于 `builtin.tool`、`builtin.input`、`builtin.output`。共用 Codec、Schema 和 JSON 工具直接位于外层 `com.iafenvoy.system.util`，配置位于 `com.iafenvoy.system.config`。
+根包集中引擎、执行器、上下文、Module/Tool 契约、注册表、指令与请求结果。路由、模型、存储、商城和提示词分别归入 `routing`、`model`、`store`、`commerce`、`prompt`，各包同时包含自身的接口、数据与实现。内置工作流与工具位于 `builtin/<功能>`；共享类型键、输入及输出分别保留在 `builtin.tool`、`builtin.input`、`builtin.output`。共用 Codec、Schema 和 JSON 工具直接位于外层 `com.iafenvoy.system.util`，配置位于 `com.iafenvoy.system.config`。
 
 执行配置、模型连接、语义路由与成就绑定分别由 `AgentSettings`、`ModelSettings`、`SemanticSettings`、`AdvancementSettings` 管理，各配置类保存 `ConfigInstance<T> INSTANCE`。容器统一复制缺失的默认文件并解析，读取使用 `INSTANCE.get()`，提交使用 `INSTANCE.set(next)` 并自动 `markDirty()`，由 tick 或关闭事件保存。资源重载会更新容器；引擎、模型客户端与 MC 事件桥接仍持有启动时快照，完整应用其变化需要重启。引擎接收执行配置、语义配置和已经过数据包校验的 `CommerceCatalog`；模型客户端只接收 `ModelSettings`，不再通过 `AgentSettings` 访问业务定义。
 
@@ -88,7 +88,7 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 
 助手输入框通过状态快照取得服务端注册表的指令候选。`HelpModule` 从同一注册表生成模块指令说明，FTBQ 未安装时不会显示任务指令。客户端界面切换、设置、历史和当前动作选择仍由客户端处理；它们的执行与补全共用本地指令表。
 
-游戏聊天的 `/system <instruction>` 使用通用参数节点转发给同一 Agent 指令解析器，补全实时读取注册表。因此扩展不需要再改 Brigadier 指令树。平台仍单独负责 `grant`、`revoke`、`usage`、`routing`、`ask`、`simple` 和 `full`；扩展指令应避开这些名字及客户端本地控制别名。
+游戏聊天的 `/system <instruction>` 使用通用参数节点转发给同一 Agent 指令解析器，补全实时读取注册表。平台的 `grant/revoke/reset`、`usage`、`routing/ask/simple/full` 已分别收进绑定、用量及核心功能的 `commands(root)`。新增 Agent 指令只改工作流声明；需要独立的 Brigadier 节点时由所属功能贡献。客户端本地指令、补全及 `/system settings` 也从客户端功能装配，扩展应避开已有别名。
 
 ## 请求、响应与类型分派
 

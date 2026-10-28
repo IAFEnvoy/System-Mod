@@ -2,25 +2,22 @@ package com.iafenvoy.system.screen;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.builtin.StarterGiftModule;
-import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
-import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestStartupOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestSubmitOutput;
-import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.command.client.NotificationVoiceCommands;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.event.client.AssistantRecognitionKeys;
+import com.iafenvoy.system.module.client.ClientCardRegistry;
+import com.iafenvoy.system.module.client.ClientModuleRegistry;
+import com.iafenvoy.system.module.client.ClientModules;
+import com.iafenvoy.system.screen.card.CardContext;
+import com.iafenvoy.system.screen.card.CardPresentation;
 import com.iafenvoy.system.screen.gui.AssistantItems;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.iafenvoy.system.speech.tts.SpeechText;
-import com.iafenvoy.system.util.LegacyText;
 import com.sighs.apricityui.client.gui.ApricityGuiLayers;
 import com.sighs.apricityui.event.MouseEvent;
 import com.sighs.apricityui.init.Document;
@@ -74,7 +71,12 @@ public final class AssistantMessages {
     }
 
     // Callbacks come from trusted client code, never from model-generated strings or commands.
-    public record Button(String id, String labelKey, boolean requiresIdle, Runnable action) {
+    public record Button(String id, String labelKey, boolean requiresIdle, boolean keepOpen, boolean details,
+                         Runnable action) {
+        public Button(String id, String labelKey, boolean requiresIdle, Runnable action) {
+            this(id, labelKey, requiresIdle, false, false, action);
+        }
+
         public Button {
             Objects.requireNonNull(id);
             Objects.requireNonNull(labelKey);
@@ -86,27 +88,34 @@ public final class AssistantMessages {
         }
     }
 
-    public record Row(String label, Button button) {
+    public record Row(String label, Button button, String css) {
+    }
+
+    public record CardBody(String text, List<CardPresentation> cards) {
+        public CardBody {
+            cards = List.copyOf(cards);
+        }
     }
 
     // Visual details and spoken text are separate; direct notifications default to reading their body.
     public record Message(String title, String text, String speechText, List<Button> buttons, int durationTicks,
-                          List<AssistantItems.Group> items, List<String> quests, List<Row> rows) {
+                          List<AssistantItems.Group> items, List<String> quests, List<Row> rows, Class<?> refreshType,
+                          CardBody body) {
         public Message(String title, String text, List<Button> buttons, int durationTicks) {
             this(title, text, text, buttons, durationTicks);
         }
 
         public Message(String title, String text, String speechText, List<Button> buttons, int durationTicks) {
-            this(title, text, speechText, buttons, durationTicks, List.of(), List.of(), List.of());
+            this(title, text, speechText, buttons, durationTicks, List.of(), List.of(), List.of(), null, null);
         }
 
         public Message(String title, String text, String speechText, List<Button> buttons, int durationTicks, List<AssistantItems.Group> items) {
-            this(title, text, speechText, buttons, durationTicks, items, List.of(), List.of());
+            this(title, text, speechText, buttons, durationTicks, items, List.of(), List.of(), null, null);
         }
 
         public Message(String title, String text, String speechText, List<Button> buttons, int durationTicks,
                        List<AssistantItems.Group> items, List<String> quests) {
-            this(title, text, speechText, buttons, durationTicks, items, quests, List.of());
+            this(title, text, speechText, buttons, durationTicks, items, quests, List.of(), null, null);
         }
 
         public Message {
@@ -133,16 +142,6 @@ public final class AssistantMessages {
         QUEUE.addLast(new Pending(message, speak));
     }
 
-    public static void binding(String playerName) {
-        Component name = Component.translatable(AssistantClient.system().name());
-        Component description = Component.translatable(AssistantClient.system().description());
-        post(new Message(tr("system.ui.assistant"),
-                Component.translatable("system.ui.binding_text", playerName, name, description).getString(),
-                Component.translatable("system.tts.message.binding", name, description).getString(), List.of(
-                new Button("open", "system.ui.message_open_button", false,
-                        () -> AssistantClient.open(AssistantClient.simpleMode(), ""))), 240));
-    }
-
     public static void result(AgentResult result, boolean review) {
         if (result.silent()) return;
         post(message(result, review), !SpeechText.result(result).isBlank());
@@ -154,73 +153,58 @@ public final class AssistantMessages {
         List<Row> rows = new ArrayList<>();
         for (AgentResult.Card card : result.cards()) {
             for (AgentResult.Action action : card.actions()) {
-                Button button = new Button(action.moduleId() + ":" + action.call().value(), action.labelKey(), true,
+                ClientModuleRegistry.NotificationAction policy = ClientModules.registry().notificationAction(action);
+                Button button = new Button(action.moduleId() + ":" + action.call().value(), action.labelKey(), true, policy.keepOpen(), policy.details(),
                         () -> {
-                            if (action.labelKey().equals("system.action.refresh_starter_gift"))
+                            if (policy.openWorkspace())
                                 AssistantClient.open(false, "");
                             AssistantClient.send(action, "");
                         });
-                // Quest rows belong to the list body, not the limited generic action footer.
-                if (card.data().value() instanceof ResultTypes.QuestList && action.call().value() instanceof QuestDetailInput)
-                    rows.add(new Row(actionLabel(card, action), button));
+                // Feature list rows do not consume the limited generic action footer.
+                String rowCss = ClientModules.registry().cards().notificationRows(card);
+                if (rowCss != null)
+                    rows.add(new Row(actionLabel(card, action), button, rowCss));
                 else if (buttons.size() < 2) buttons.add(button);
             }
         }
-        if (review && buttons.stream().noneMatch(button -> Set.of("system.action.quest_detail", "system.action.refresh_starter_gift",
-                "system.action.view_quests").contains(button.labelKey())))
+        if (review && buttons.stream().noneMatch(Button::details))
             buttons.add(new Button("details", "system.ui.message_details", false, () -> {
                 AssistantClientState.ChatEntry entry = AssistantClient.state().current();
                 AssistantClient.open(entry != null && entry.result() == result && AssistantClient.simpleMode(), "");
             }));
         String speechText = SpeechText.result(result);
-        return new Message(tr("system.ui.assistant"), summary, speechText, buttons, 160, AssistantItems.groups(result), SpeechText.quests(result), rows);
+        Class<?> refreshType = ClientModules.registry().cards().refreshes(result).stream()
+                .map(ClientCardRegistry.Refresh::type).findFirst().orElse(null);
+        CardBody body = new CardBody(preamble(result), result.cards().stream().map(card ->
+                ClientModules.registry().cards().presentation(card, result.messageKey(), CardContext.Mode.NOTIFICATION, 0)).toList());
+        return new Message(tr("system.ui.assistant"), summary, speechText, buttons, 160, List.of(), SpeechText.quests(result), rows, refreshType, body);
     }
 
-    public static void updateGifts(AgentResult result) {
-        for (AgentResult.Card card : result.cards()) {
-            if (!(card.data().value() instanceof StarterGiftOutput gifts)) continue;
-            QUEUE.removeIf(pending -> giftMessage(pending.message()));
-            if (current != null && giftMessage(current)) {
-                if (gifts.gifts().isEmpty()) dismiss(current);
+    public static void refresh(AgentResult result) {
+        for (ClientCardRegistry.Refresh refresh : ClientModules.registry().cards().refreshes(result)) {
+            QUEUE.removeIf(pending -> pending.message().refreshType() == refresh.type());
+            if (current != null && current.refreshType() == refresh.type()) {
+                if (!refresh.visible()) dismiss(current);
                 else {
                     stopSpeech();
-                    current = message(StarterGiftModule.preview(gifts), false);
+                    current = message(refresh.result(), false);
                     speakCurrent = false;
                     speechStarted = true;
                     remainingTicks = current.durationTicks();
                     if (document != null && !document.isDisposed()) renderMessage();
                 }
-            } else if (!gifts.gifts().isEmpty())
-                post(message(StarterGiftModule.preview(gifts), false), false);
+            } else if (refresh.visible()) post(message(refresh.result(), false), false);
         }
     }
 
-    private static boolean giftMessage(Message message) {
-        return message.buttons().stream().anyMatch(button -> button.labelKey().equals("system.action.refresh_starter_gift"));
+    private static String preamble(AgentResult result) {
+        String custom = ClientModules.registry().cards().summary(result);
+        if (custom != null) return custom;
+        return tr(result.messageKey()) + (result.text().isBlank() ? "" : "\n" + result.text());
     }
 
     public static String summary(AgentResult result) {
-        for (AgentResult.Card card : result.cards()) {
-            if (card.data().value() instanceof ResultTypes.QuestNotice quest) {
-                String event = result.messageKey().equals("system.result.quest_completed") ? "completed" : "unlocked";
-                return Component.translatable("system.tts.message.quest_" + event, quest.title()).getString()
-                        + (formatCard(card, false).isBlank() ? "" : "\n" + formatCard(card, false))
-                        + (event.equals("completed") && card.actions().stream().anyMatch(action -> action.labelKey().equals("system.action.claim"))
-                        ? "\n" + tr("system.ui.quest_reward_pending") : "");
-            }
-            if (card.data().value() instanceof StarterGiftOutput) return tr(result.messageKey());
-            if (card.data().value() instanceof QuestStartupOutput(
-                    int total, List<QuestBriefOutput> quests
-            ))
-                return Component.translatable("system.tts.message.quest_startup", total).getString()
-                        + "\n" + String.join("\n", quests.stream().map(quest -> LegacyText.scoped(quest.title()) + " · " + (int) quest.progress() + "%").toList())
-                        + (total > quests.size() ? "\n" + Component.translatable("system.ui.quest_startup_more", total - quests.size()).getString() : "");
-            if (card.data().value() instanceof QuestSubmitOutput submit)
-                return Component.translatable(submit.changed() ? "system.ui.quest_submitted" : "system.ui.quest_submit_unchanged", submit.title()).getString()
-                        + "\n" + String.join("\n", submit.tasks().stream().map(task -> LegacyText.scoped(task.title()) + " · " + task.progress() + "/" + task.required()).toList());
-        }
-        StringBuilder summary = new StringBuilder(tr(result.messageKey()));
-        if (!result.text().isBlank()) summary.append("\n").append(result.text());
+        StringBuilder summary = new StringBuilder(preamble(result));
         if (!result.cards().isEmpty() && !result.messageKey().equals("system.result.history")) {
             AgentResult.Card card = result.cards().getFirst();
             if (!card.titleKey().equals(result.messageKey())) summary.append("\n").append(tr(card.titleKey()));
@@ -289,7 +273,8 @@ public final class AssistantMessages {
                     : Component.translatable("system.ui.message_pending", displayedPending).getString());
         }
         if (phase == Phase.VISIBLE && !chatting && (recognition == null || recognition.finished())
-                && !(giftMessage(current) && AssistantClient.state().busy())) remainingTicks--;
+                && !(current.buttons().stream().anyMatch(Button::keepOpen) && AssistantClient.state().busy()))
+            remainingTicks--;
     }
 
     private static void nextMessage() {
@@ -305,7 +290,12 @@ public final class AssistantMessages {
     private static void renderMessage() {
         displayedMessage = current;
         text(document.getElementById("notification_title"), current.title());
-        text(document.getElementById("notification_text"), current.text());
+        text(document.getElementById("notification_text"), current.body() == null ? current.text() : current.body().text());
+        Element cards = document.getElementById("notification_cards");
+        cards.setInnerHTML("");
+        if (current.body() != null)
+            for (CardPresentation card : current.body().cards()) cards.appendChild(card.render(document));
+        cards.setInlineStyleProperty("display", cards.children.isEmpty() ? "none" : "block");
         renderRows();
         AssistantItems.render(document, document.getElementById("notification_items"), current.items(), true);
         renderButtons();
@@ -398,7 +388,7 @@ public final class AssistantMessages {
         choices.targetScrollTop = 0;
         choices.setInlineStyleProperty("display", shown.rows().isEmpty() ? "none" : "flex");
         for (Row row : shown.rows()) {
-            Element button = element(document, "button", "quest_row", row.label());
+            Element button = element(document, "button", row.css(), row.label());
             button.addEventListener("click", event -> {
                 if (canInteract(shown)) activate(shown, row.button());
             });
@@ -435,7 +425,7 @@ public final class AssistantMessages {
 
     private static void activate(Message shown, Button option) {
         if (current != shown || option.requiresIdle() && AssistantClient.state().busy()) return;
-        if (giftMessage(shown) && option.labelKey().equals("system.action.claim_starter_gift")) {
+        if (option.keepOpen()) {
             stopRecognition();
             stopSpeech();
             remainingTicks = shown.durationTicks();
@@ -614,11 +604,13 @@ public final class AssistantMessages {
         if (second == null || !first.title().equals(second.title()) || !first.text().equals(second.text()) || !first.speechText().equals(second.speechText())
                 || !first.items().equals(second.items()) || !first.quests().equals(second.quests())
                 || first.durationTicks() != second.durationTicks() || first.buttons().size() != second.buttons().size()
-                || first.rows().size() != second.rows().size())
+                || first.rows().size() != second.rows().size() || first.refreshType() != second.refreshType()
+                || !Objects.equals(first.body(), second.body()))
             return false;
         for (int index = 0; index < first.rows().size(); index++) {
             Row left = first.rows().get(index), right = second.rows().get(index);
-            if (!left.label().equals(right.label()) || !sameButton(left.button(), right.button())) return false;
+            if (!left.label().equals(right.label()) || !left.css().equals(right.css()) || !sameButton(left.button(), right.button()))
+                return false;
         }
         for (int index = 0; index < first.buttons().size(); index++) {
             Button left = first.buttons().get(index), right = second.buttons().get(index);
@@ -628,7 +620,8 @@ public final class AssistantMessages {
     }
 
     private static boolean sameButton(Button left, Button right) {
-        return left.id().equals(right.id()) && left.label().equals(right.label()) && left.requiresIdle() == right.requiresIdle();
+        return left.id().equals(right.id()) && left.label().equals(right.label()) && left.requiresIdle() == right.requiresIdle()
+                && left.keepOpen() == right.keepOpen() && left.details() == right.details();
     }
 
     private static String limit(String value, int codePoints, int lines) {

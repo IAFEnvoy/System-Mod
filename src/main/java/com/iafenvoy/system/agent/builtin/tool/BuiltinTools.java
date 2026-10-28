@@ -44,10 +44,4 @@ public final class BuiltinTools {
     private BuiltinTools() {
     }
 
-    @SuppressWarnings("unchecked")
-    public static <I, O> ToolRegistry.Tool<I, O> require(List<ToolRegistry.Tool<?, ?>> tools, ToolRegistry.Type<I, O> type) {
-        for (ToolRegistry.Tool<?, ?> tool : tools)
-            if (tool.type() == type) return (ToolRegistry.Tool<I, O>) tool;
-        throw new IllegalArgumentException("Missing tool " + type.id());
-    }
 }

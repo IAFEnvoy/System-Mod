@@ -3,11 +3,11 @@ package com.iafenvoy.system.assistant;
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.builtin.StarterGiftModule;
-import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.util.TypeDispatch;
+import com.iafenvoy.system.module.client.ClientCardRegistry;
+import com.iafenvoy.system.module.client.ClientModules;
 import com.iafenvoy.system.util.codec.CodecIO;
+import net.minecraft.resources.Identifier;
 
 import java.util.*;
 import java.util.function.BiFunction;
@@ -18,12 +18,7 @@ import java.util.function.BiFunction;
 public record AssistantClientState(List<ChatEntry> entries, Set<String> pending, ResultTypes.ClientState serverState,
                                    ChatEntry current) {
     public static final AssistantClientState EMPTY = new AssistantClientState(List.of(), Set.of(),
-            new ResultTypes.ClientState(true, true, false, List.of()), null);
-    private static final TypeDispatch<ResultTypes.ClientState, ResultTypes.ClientState> CARD_UPDATES =
-            new TypeDispatch<ResultTypes.ClientState, ResultTypes.ClientState>((previous, _) -> previous)
-                    .register(ResultTypes.ClientState.class, (_, state) -> state)
-                    .register(ResultTypes.Preferences.class, (previous, preferences) -> preferences(previous, preferences.historySaved(), preferences.externalModel()))
-                    .register(ResultTypes.SignInStatus.class, (previous, status) -> preferences(previous, status.historySaved(), status.externalModel()));
+            new ResultTypes.ClientState(true, true, List.of(), List.of()), null);
     private static final Map<String, BiFunction<AssistantClientState, Reception, AssistantClientState>> RESULT_HANDLERS = Map.of(
             "system.result.state", (state, a) -> state,
             "system.result.forgotten", (state, reception) -> new AssistantClientState(List.of(), state.pending, state.serverState, state.current).append(reception),
@@ -52,8 +47,8 @@ public record AssistantClientState(List<ChatEntry> entries, Set<String> pending,
         return this.serverState.externalModel();
     }
 
-    public boolean questAvailable() {
-        return this.serverState.questAvailable();
+    public boolean hasModule(Identifier id) {
+        return this.serverState.modules().contains(id);
     }
 
     public List<String> commands() {
@@ -95,29 +90,25 @@ public record AssistantClientState(List<ChatEntry> entries, Set<String> pending,
         AssistantClientState completed = this.complete(id);
         List<ChatEntry> entries = new ArrayList<>(completed.entries);
         ChatEntry current = completed.current;
-        for (AgentResult.Card card : result.cards()) {
-            if (!(card.data().value() instanceof StarterGiftOutput gifts)) continue;
-            AgentResult refreshed = StarterGiftModule.preview(gifts);
+        for (ClientCardRegistry.Refresh refresh : ClientModules.registry().cards().refreshes(result)) {
             for (int index = 0; index < entries.size(); index++) {
                 ChatEntry entry = entries.get(index);
-                if (giftEntry(entry)) entries.set(index, new ChatEntry(false, entry.text(), refreshed));
+                if (refresh.matches(entry.result()))
+                    entries.set(index, new ChatEntry(false, entry.text(), refresh.result()));
             }
-            current = new ChatEntry(false, current == null ? "" : current.text(), refreshed);
+            current = new ChatEntry(false, current == null ? "" : current.text(), refresh.result());
         }
         if (current != null && current.result() == null && !completed.busy())
             current = entries.stream().filter(entry -> !entry.player() && entry.result() != null).reduce((_, last) -> last).orElse(null);
         return new AssistantClientState(entries, completed.pending, completed.serverState, current);
     }
 
-    private static boolean giftEntry(ChatEntry entry) {
-        return entry.result() != null && entry.result().cards().stream().anyMatch(card -> card.data().value() instanceof StarterGiftOutput);
-    }
-
     AssistantClientState receive(String id, AgentResult result, boolean notification) {
         Reception reception = new Reception(result, this.pending.contains(id), notification);
         AssistantClientState completed = this.complete(id);
         ResultTypes.ClientState serverState = completed.serverState;
-        for (AgentResult.Card card : result.cards()) serverState = CARD_UPDATES.apply(serverState, card.data().value());
+        for (AgentResult.Card card : result.cards())
+            serverState = ClientModules.registry().cards().state(serverState, card);
         AssistantClientState updated = new AssistantClientState(completed.entries, completed.pending, serverState, completed.current);
         return RESULT_HANDLERS.getOrDefault(result.messageKey(), AssistantClientState::append).apply(updated, reception);
     }
@@ -151,7 +142,7 @@ public record AssistantClientState(List<ChatEntry> entries, Set<String> pending,
         return new AssistantClientState(entries, this.pending, this.serverState, this.current);
     }
 
-    private static ResultTypes.ClientState preferences(ResultTypes.ClientState previous, boolean history, boolean external) {
-        return new ResultTypes.ClientState(history, external, previous.questAvailable(), previous.commands());
+    public static ResultTypes.ClientState preferences(ResultTypes.ClientState previous, boolean history, boolean external) {
+        return new ResultTypes.ClientState(history, external, previous.modules(), previous.commands());
     }
 }

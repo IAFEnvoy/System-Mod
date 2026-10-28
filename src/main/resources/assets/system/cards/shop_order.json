@@ -1,0 +1,25 @@
+{
+  "body": [
+    {
+      "type": "text",
+      "text": "{{field:order_id}}: {{order_id}}"
+    },
+    {
+      "type": "text",
+      "text": "{{label}}"
+    },
+    {
+      "type": "text",
+      "text": "{{field:state}}: {{state:state}}"
+    },
+    {
+      "type": "text",
+      "text": "{{error}}",
+      "when": "error"
+    },
+    {
+      "type": "actions",
+      "actions": "{{result_actions}}"
+    }
+  ]
+}

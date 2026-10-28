@@ -105,8 +105,7 @@ public final class AssistantClient {
         if (result.silent()) {
             state = state.silent(requestId, result);
             revision++;
-            if (result.messageKey().equals("system.result.starter_gift_updated"))
-                AssistantMessages.updateGifts(result);
+            AssistantMessages.refresh(result);
             return;
         }
         state = state.receive(requestId, result, notification);

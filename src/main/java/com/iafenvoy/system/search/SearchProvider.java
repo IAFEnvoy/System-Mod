@@ -2,6 +2,7 @@ package com.iafenvoy.system.search;
 
 import com.iafenvoy.saturn.util.codec.MiscCodecs;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import java.net.URI;
@@ -22,13 +23,14 @@ public interface SearchProvider extends AutoCloseable {
         // These are provider API limits, counted as Unicode code points rather than UTF-16 units.
         private static final Codec<String> QUERY = MiscCodecs.checked(Codec.STRING, value -> !value.isBlank()
                 && value.codePointCount(0, value.length()) <= 128);
-        public static final Codec<Request> CODEC = RecordCodecBuilder.create(i -> i.group(
+        public static final MapCodec<Request> MAP_CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 QUERY.fieldOf("query").forGetter(Request::query),
                 Codec.intRange(1, 50).optionalFieldOf("count", 10).forGetter(Request::count),
                 QUERY.optionalFieldOf("ori_question").forGetter(Request::originalQuestion),
                 Codec.STRING.optionalFieldOf("localization", "").forGetter(Request::localization),
                 Codec.BOOL.optionalFieldOf("need_content", false).forGetter(Request::needContent)
         ).apply(i, Request::new));
+        public static final Codec<Request> CODEC = MAP_CODEC.codec();
 
         public Request(String query) {
             this(query, 10, Optional.empty(), "", false);
@@ -66,8 +68,9 @@ public interface SearchProvider extends AutoCloseable {
     }
 
     record FetchRequest(String url) {
-        public static final Codec<FetchRequest> CODEC = MiscCodecs.checked(Codec.STRING, FetchRequest::validUrl)
-                .fieldOf("url").xmap(FetchRequest::new, FetchRequest::url).codec();
+        public static final MapCodec<FetchRequest> MAP_CODEC = MiscCodecs.checked(Codec.STRING, FetchRequest::validUrl)
+                .fieldOf("url").xmap(FetchRequest::new, FetchRequest::url);
+        public static final Codec<FetchRequest> CODEC = MAP_CODEC.codec();
 
         private static boolean validUrl(String value) {
             try {

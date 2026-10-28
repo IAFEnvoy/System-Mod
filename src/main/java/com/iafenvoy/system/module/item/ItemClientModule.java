@@ -4,7 +4,6 @@ import com.iafenvoy.system.agent.builtin.input.ItemQueryInput;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 public final class ItemClientModule implements ClientModule {
     @Override
@@ -16,7 +15,7 @@ public final class ItemClientModule implements ClientModule {
             workspace.click("item_search", () -> {
                 String query = workspace.query("item_query");
                 if (!query.isBlank())
-                    AssistantClient.send(SystemActionTypes.ITEMS_ACTION.get().of(new ItemQueryInput(query, 0)), "");
+                    AssistantClient.send(new ItemQueryInput(query, 0), "");
             });
         });
     }

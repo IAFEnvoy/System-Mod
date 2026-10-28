@@ -4,6 +4,7 @@ import com.iafenvoy.saturn.data.context.condition.EntityConditionContext;
 import com.iafenvoy.saturn.util.formula.FormulaContext;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentEngine;
+import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.data.ModuleDefinition;
@@ -31,6 +32,7 @@ final class ModuleAccess implements PlayerModule {
     private final Map<UUID, ModuleAccessDataStorage> overrides = new HashMap<>();
     private final Map<UUID, CompletableFuture<Void>> pendingWrites = new ConcurrentHashMap<>();
     private final Map<UUID, Set<Identifier>> enabled = new ConcurrentHashMap<>();
+    private final Map<UUID, Identifier> systems = new ConcurrentHashMap<>();
     private final Map<UUID, ServerPlayer> players = new HashMap<>();
     private final Set<String> reportedErrors = new HashSet<>();
     private Resolution resolving;
@@ -42,7 +44,8 @@ final class ModuleAccess implements PlayerModule {
         this.server = server;
         this.engine = engine;
         this.installed = Set.copyOf(installed);
-        this.required = SystemRegistries.SERVER_MODULE.stream().filter(ServerModule::required).map(ServerModule::id)
+        this.required = SystemRegistries.SERVER_MODULE.stream().filter(module -> this.installed.contains(module.id()))
+                .filter(ServerModule::required).map(ServerModule::id)
                 .collect(Collectors.toUnmodifiableSet());
     }
 
@@ -56,6 +59,10 @@ final class ModuleAccess implements PlayerModule {
 
     public boolean hasSystem(UUID player) {
         return this.enabled.containsKey(player) && this.engine.current(player, this.engine.incarnation(player));
+    }
+
+    public Optional<Identifier> system(UUID player) {
+        return this.hasSystem(player) ? Optional.ofNullable(this.systems.get(player)) : Optional.empty();
     }
 
     public boolean hasModule(UUID player, Identifier module) {
@@ -124,15 +131,21 @@ final class ModuleAccess implements PlayerModule {
     @Override
     public Session login(ServerPlayer player) {
         AtomicReference<ModuleAccessDataStorage> saved = new AtomicReference<>();
+        AtomicReference<Identifier> system = new AtomicReference<>();
         return new Session() {
             @Override
             public void initialize(PlayerData data) {
+                system.set(data.systems.current().orElseThrow(() -> new AgentException("NOT_BOUND")));
                 saved.set(ModuleData.get(data, CoreSystemModule.ACCESS).copy());
             }
 
             @Override
             public void ready() {
+                // A removed definition never falls back to a different system or grants its modules.
+                if (SystemDataPackRegistries.get(ModuleAccess.this.server.registryAccess(), system.get()).isEmpty())
+                    throw new AgentException("SYSTEM_UNAVAILABLE");
                 ModuleAccess.this.players.put(player.getUUID(), player);
+                ModuleAccess.this.systems.put(player.getUUID(), system.get());
                 ModuleAccess.this.overrides.putIfAbsent(player.getUUID(), saved.get());
                 ModuleAccess.this.enabled.put(player.getUUID(), Set.of());
                 ModuleAccess.this.refresh(player);
@@ -140,8 +153,10 @@ final class ModuleAccess implements PlayerModule {
 
             @Override
             public void close() {
-                if (ModuleAccess.this.players.remove(player.getUUID(), player))
+                if (ModuleAccess.this.players.remove(player.getUUID(), player)) {
                     ModuleAccess.this.enabled.remove(player.getUUID());
+                    ModuleAccess.this.systems.remove(player.getUUID());
+                }
             }
         };
     }
@@ -167,15 +182,16 @@ final class ModuleAccess implements PlayerModule {
     private final class Resolution {
         private final ServerPlayer player;
         private final ModuleAccessDataStorage.Selection selection;
-        private final Map<Identifier, List<ModuleDefinition>> definitions = new LinkedHashMap<>();
+        private final List<ModuleDefinition> definitions;
         private final Map<Identifier, Boolean> results = new HashMap<>();
         private final Set<Identifier> visiting = new LinkedHashSet<>(), cyclic = new HashSet<>();
 
         private Resolution(ServerPlayer player) {
             this.player = player;
             this.selection = ModuleAccess.this.overrides.getOrDefault(player.getUUID(), new ModuleAccessDataStorage()).selection();
-            for (ModuleDefinition definition : SystemDataPackRegistries.current(ModuleAccess.this.server.registryAccess()).modules())
-                this.definitions.computeIfAbsent(definition.id(), _ -> new ArrayList<>()).add(definition);
+            Identifier system = ModuleAccess.this.systems.get(player.getUUID());
+            this.definitions = SystemDataPackRegistries.get(ModuleAccess.this.server.registryAccess(), system)
+                    .orElseThrow(() -> new AgentException("SYSTEM_UNAVAILABLE")).modules();
         }
 
         private boolean test(Identifier module) {
@@ -196,7 +212,8 @@ final class ModuleAccess implements PlayerModule {
             boolean result = false;
             try {
                 EntityConditionContext context = new EntityConditionContext(this.player, FormulaContext.of(this.player));
-                result = this.definitions.getOrDefault(module, List.of()).stream().anyMatch(definition -> definition.condition().test(context));
+                result = this.definitions.stream().filter(definition -> definition.matches(module))
+                        .anyMatch(definition -> definition.condition().test(context));
             } catch (RuntimeException error) {
                 this.report(module, "Module condition failed", error);
             } finally {

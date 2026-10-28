@@ -1,42 +1,37 @@
 package com.iafenvoy.system.registry;
 
-import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.TypedPayload;
+import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.builtin.input.*;
+import com.mojang.serialization.MapCodec;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-import java.util.function.Supplier;
-
 /**
- * Shared payload definitions never reference optional-mod API classes.
+ * Shared action codecs never reference optional-mod API classes.
  */
 @SuppressWarnings("unused")
 public final class SystemActionTypes {
-    public static final DeferredRegister<TypedPayload.Type<?>> REGISTRY = DeferredRegister.create(SystemResourceKeys.ACTION_TYPE, SystemMod.MOD_ID);
+    public static final DeferredRegister<MapCodec<? extends AgentAction>> REGISTRY = DeferredRegister.create(SystemResourceKeys.ACTION_TYPE, SystemMod.MOD_ID);
 
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<EmptyInput>> HELP_ACTION = register("help", () -> EmptyInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<EmptyInput>> PLAYER_ACTION = register("player_query", () -> EmptyInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<EmptyInput>> INBOX_ACTION = register("inbox", () -> EmptyInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<EmptyInput>> SIGN_IN_ACTION = register("sign_in", () -> EmptyInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<ItemQueryInput>> ITEMS_ACTION = register("item_query", () -> ItemQueryInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<EntitlementInput>> DELIVER_ACTION = register("deliver", () -> EntitlementInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<ShopQueryInput>> SHOP_ACTION = register("shop", () -> ShopQueryInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<ShopQuoteInput>> QUOTE_ACTION = register("shop_quote", () -> ShopQuoteInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<ShopPurchaseInput>> PURCHASE_ACTION = register("shop_purchase", () -> ShopPurchaseInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<LotteryQueryInput>> LOTTERY_ACTION = register("lottery", () -> LotteryQueryInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<LotteryPreviewInput>> LOTTERY_PREVIEW_ACTION = register("lottery_preview", () -> LotteryPreviewInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<LotteryDrawInput>> LOTTERY_DRAW_ACTION = register("lottery_draw", () -> LotteryDrawInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<QuestQueryInput>> QUESTS_ACTION = register("quest_query", () -> QuestQueryInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<QuestDetailInput>> QUEST_ACTION = register("quest_detail", () -> QuestDetailInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<QuestClaimInput>> CLAIM_ACTION = register("quest_claim", () -> QuestClaimInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<StarterGiftInput>> STARTER_GIFT_ACTION = register("starter_gift", () -> StarterGiftInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<EmptyInput>> STARTER_GIFTS_ACTION = register("starter_gifts", () -> EmptyInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<QuestSubmitInput>> QUEST_SUBMIT_ACTION = register("quest_submit", () -> QuestSubmitInput.CODEC);
-    public static final DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<AdvancementInput>> ADVANCEMENT_ACTION = register("advancement_followup", () -> AdvancementInput.CODEC);
-
-    private static <T> DeferredHolder<TypedPayload.Type<?>, TypedPayload.Type<T>> register(String path, Supplier<SchemaMapCodec<T>> codec) {
-        return REGISTRY.register(path, id -> new TypedPayload.Type<>(id, codec.get()));
-    }
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<HelpInput>> HELP_ACTION = REGISTRY.register("help", () -> HelpInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<WebSearchInput>> SEARCH_ACTION = REGISTRY.register("web_search", () -> WebSearchInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<PlayerQueryInput>> PLAYER_ACTION = REGISTRY.register("player_query", () -> PlayerQueryInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<InboxInput>> INBOX_ACTION = REGISTRY.register("inbox", () -> InboxInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<SignInInput>> SIGN_IN_ACTION = REGISTRY.register("sign_in", () -> SignInInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ItemQueryInput>> ITEMS_ACTION = REGISTRY.register("item_query", () -> ItemQueryInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<EntitlementInput>> DELIVER_ACTION = REGISTRY.register("deliver", () -> EntitlementInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ShopQueryInput>> SHOP_ACTION = REGISTRY.register("shop", () -> ShopQueryInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ShopQuoteInput>> QUOTE_ACTION = REGISTRY.register("shop_quote", () -> ShopQuoteInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ShopPurchaseInput>> PURCHASE_ACTION = REGISTRY.register("shop_purchase", () -> ShopPurchaseInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<LotteryQueryInput>> LOTTERY_ACTION = REGISTRY.register("lottery", () -> LotteryQueryInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<LotteryPreviewInput>> LOTTERY_PREVIEW_ACTION = REGISTRY.register("lottery_preview", () -> LotteryPreviewInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<LotteryDrawInput>> LOTTERY_DRAW_ACTION = REGISTRY.register("lottery_draw", () -> LotteryDrawInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<QuestQueryInput>> QUESTS_ACTION = REGISTRY.register("quest_query", () -> QuestQueryInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<QuestDetailInput>> QUEST_ACTION = REGISTRY.register("quest_detail", () -> QuestDetailInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<QuestClaimInput>> CLAIM_ACTION = REGISTRY.register("quest_claim", () -> QuestClaimInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<StarterGiftInput>> STARTER_GIFT_ACTION = REGISTRY.register("starter_gift", () -> StarterGiftInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<StarterGiftsInput>> STARTER_GIFTS_ACTION = REGISTRY.register("starter_gifts", () -> StarterGiftsInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<QuestSubmitInput>> QUEST_SUBMIT_ACTION = REGISTRY.register("quest_submit", () -> QuestSubmitInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<AdvancementInput>> ADVANCEMENT_ACTION = REGISTRY.register("advancement_followup", () -> AdvancementInput.CODEC);
 }

@@ -22,6 +22,7 @@ public final class SystemCardDataTypes {
     public static final DeferredRegister<MapCodec<? extends CardData>> REGISTRY = DeferredRegister.create(SystemResourceKeys.CARD_DATA_TYPE, SystemMod.MOD_ID);
 
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<TextCardData>> TEXT = REGISTRY.register("text", () -> TextCardData.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<WebSearchOutput>> WEB_SEARCH = REGISTRY.register("web_search", () -> WebSearchOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<SelectionCardData>> SELECTION = REGISTRY.register("selection", () -> SelectionCardData.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<BindingCardData>> BINDING = REGISTRY.register("binding", () -> BindingCardData.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ShopOfferOutput>> SHOP_OFFER = REGISTRY.register("shop_offer", () -> ShopOfferOutput.CODEC);

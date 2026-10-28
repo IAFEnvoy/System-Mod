@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.routing;
 
-import com.iafenvoy.system.agent.TypedPayload;
+import com.iafenvoy.system.agent.AgentAction;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 
 import java.util.*;
@@ -8,7 +9,8 @@ import java.util.*;
 /**
  * Examples and argument extraction belong to the module; registration supplies identity and read authority.
  */
-public record RoutingProfile<I>(Map<String, List<String>> examples, boolean direct, Arguments<I> arguments) {
+public record RoutingProfile<I extends AgentAction>(Map<String, List<String>> examples, boolean direct,
+                                                    Arguments<I> arguments) {
     public RoutingProfile {
         Map<String, List<String>> copy = new LinkedHashMap<>();
         examples.forEach((language, texts) -> {
@@ -20,22 +22,20 @@ public record RoutingProfile<I>(Map<String, List<String>> examples, boolean dire
         Objects.requireNonNull(arguments);
     }
 
-    public static <I> RoutingProfile<I> read(Arguments<I> parser, List<String> chinese, List<String> english) {
+    public static <I extends AgentAction> RoutingProfile<I> read(Arguments<I> parser, List<String> chinese, List<String> english) {
         return new RoutingProfile<>(Map.of("zh", chinese, "en", english), true, parser);
     }
 
-    public static <I> RoutingProfile<I> hints(List<String> chinese, List<String> english) {
+    public static <I extends AgentAction> RoutingProfile<I> hints(List<String> chinese, List<String> english) {
         return new RoutingProfile<>(Map.of("zh", chinese, "en", english), false, text -> null);
     }
 
-    public Bound bind(TypedPayload.Type<I> type, boolean readOnly) {
-        return new Bound(type.id(), this.examples, this.direct && readOnly, text -> {
+    public Bound bind(Identifier id, MapCodec<I> codec, boolean readOnly) {
+        return new Bound(id, this.examples, this.direct && readOnly, text -> {
             try {
                 I input = this.arguments.parse(text);
                 if (input == null) return null;
-                TypedPayload<I> payload = type.of(input);
-                payload.json();
-                return payload;
+                return AgentAction.validate(codec, input);
             } catch (RuntimeException ignored) {
                 return null;
             }
@@ -43,7 +43,7 @@ public record RoutingProfile<I>(Map<String, List<String>> examples, boolean dire
     }
 
     public record Bound(Identifier moduleId, Map<String, List<String>> examples, boolean direct,
-                        Arguments<TypedPayload<?>> arguments) {
+                        Arguments<AgentAction> arguments) {
     }
 
     @FunctionalInterface

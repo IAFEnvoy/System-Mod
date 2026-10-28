@@ -11,6 +11,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.StringRepresentable;
+import org.jspecify.annotations.NonNull;
 
 import java.util.Arrays;
 import java.util.List;
@@ -103,7 +104,7 @@ public final class AgentResult extends ResultWithData<List<CardUpdate>> {
         public static final Codec<Status> CODEC = StringRepresentable.fromEnum(Status::values);
 
         @Override
-        public String getSerializedName() {
+        public @NonNull String getSerializedName() {
             return this.name().toLowerCase(Locale.ROOT);
         }
     }
@@ -143,10 +144,10 @@ public final class AgentResult extends ResultWithData<List<CardUpdate>> {
         }
     }
 
-    public record Action(String labelKey, TypedPayload<?> call) {
+    public record Action(String labelKey, AgentAction call) {
         public static final Codec<Action> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("labelKey").forGetter(Action::labelKey),
-                TypedPayload.ACTION_CODEC.codec().fieldOf("call").forGetter(Action::call)
+                AgentAction.CODEC.fieldOf("call").forGetter(Action::call)
         ).apply(i, Action::new));
 
         public Action {
@@ -154,12 +155,8 @@ public final class AgentResult extends ResultWithData<List<CardUpdate>> {
             Objects.requireNonNull(call);
         }
 
-        public <T> Action(String labelKey, TypedPayload.Type<T> type, T input) {
-            this(labelKey, type.of(input));
-        }
-
         public Identifier moduleId() {
-            return this.call.type().id();
+            return this.call.id();
         }
     }
 }

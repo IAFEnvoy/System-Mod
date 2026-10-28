@@ -8,9 +8,11 @@
 config/system/
 ├── system-agent.json           # 服务端执行预算、并发、时区
 ├── system-model.json           # 服务端模型连接与提供商选项
+├── system-search.json          # 服务端搜索连接，默认共享 DeepSeek 环境变量
+├── system-search-pricing.json  # 服务端 Search / Fetch 价格
 ├── system-semantic.json        # 服务端本地路由、阈值与缓存
 ├── system-advancements.json    # 服务端成就规则
-├── system-speech-pricing.json  # 服务端 TTS / ASR 价格
+├── system-speech-pricing.json  # 客户端 TTS / ASR 价格
 ├── system-client.json          # 客户端界面模式
 ├── system-speech.json          # 客户端语音设置
 └── system-asr.json             # 客户端语音识别设置
@@ -36,8 +38,10 @@ config/system/
 
 Minecraft 26.1.2 / NeoForge 26.1.2.114。服务端与客户端均安装 System；客户端安装 ApricityUI 1.2.6 及其依赖。FTB Quests 为可选集成，具体版本见开发文档。
 
-- `/system grant [玩家]`：管理员授予系统；省略玩家时操作自己。首次成功后通过 HUD 显示“宿主检测 → 连接建立 → 绑定成功”提示，不打开界面；重复授予只显示已绑定通知。
+- `/system grant <系统ID> [玩家]`：管理员授予数据包定义的系统；也可用 `/system grant <系统ID>` 操作自己。系统 ID 从当前存档的 `system:system` 注册表补全与校验，例如 `/system grant system:default Steve`。首次成功后通过 HUD 显示“宿主检测 → 连接建立 → 绑定成功”提示，不打开界面；重复授予同一系统只显示已绑定通知，另一系统会被拒绝，需先 revoke。
 - `/system revoke [玩家]`：管理员撤销系统并清空该玩家的业务记录，保留累计 AI / TTS / ASR 用量；省略玩家时操作自己。
+- `/system module add <玩家> <模块ID>`、`/system module remove <玩家> <模块ID>`：管理员为已绑定的在线玩家手动启用或禁用模块，覆盖数据包的默认状态和条件，重登后保留；核心、绑定、用量等必需模块不允许手动修改。玩家和可增删模块 ID 支持补全。
+- `/system module list [玩家]`：管理员查看模块列表；不指定玩家时列出服务端所有已注册模块，指定玩家时列出该玩家当前实际启用的模块。支持控制台执行；新增模块需初始化完成后才进入玩家列表。
 - `/system`：打开已绑定系统，使用本机上次选择的界面。
 - `/system simple`、`/system full`：分别打开简约界面和完整工作台。
 - `/system settings`：客户端直接打开统一设置页，默认进入“常规”，无需管理员权限或绑定；返回时回到游戏。助手内的 `/settings` 仍保留原页面和草稿。
@@ -46,23 +50,24 @@ Minecraft 26.1.2 / NeoForge 26.1.2.114。服务端与客户端均安装 System�
 - `/system usage`：打开个人 AI / TTS / ASR 用量账本；管理员可切换“所有玩家”，或用 `/system usage all` 直接查看全服。统计独立于绑定，撤销后仍可查看。
 - `/system ask <内容>`：提交自然语言请求；回复进入当前说话区域或工作台，界面关闭时显示 HUD 摘要，不主动打开窗口。
 - `/system help`、`/system player`、`/system item <查询>`、`/system quests [查询]`、`/system view <编号或名称>`、`/system claimable`、`/system signin`、`/system inbox`、`/system shop [查询]`、`/system buy <商品ID>`：确定性指令入口。
+- `/system search <问题>`：明确发起付费联网搜索，普通提问不会搜索；也可在助手中输入 `/search <问题>` 或“帮我联网搜索……”。
 - `/system lottery [查询]`：列出或搜索奖池；`/system draw <奖池ID>`：查看奖品、概率及费用，单独选择确认按钮后才执行一次抽奖。
 
-默认未绑定。`grant/revoke` 需要游戏管理员权限（`COMMANDS_GAMEMASTER`）；指定目标时只能选择一个在线玩家，控制台应显式提供目标。未绑定时，助手界面、业务请求与成就奖励均不开放，独立用量账本仍可查看。已有玩家 JSON 缺少 `bound` 字段时也视为未绑定；授予保留其已有记录，撤销才清空业务记录。
+默认未绑定。`grant/revoke` 需要游戏管理员权限（`COMMANDS_GAMEMASTER`）；指定目标时只能选择一个在线玩家，控制台应显式提供目标。当前每名玩家最多绑定一个系统；存档使用独立 `SystemBindings` 集合预留多系统扩展，当前指令、事务与 Codec 均限制最多一项。未绑定时，助手界面、业务请求与成就奖励均不开放，独立用量账本仍可查看。授予保留其已有记录，撤销才清空业务记录。
 
-系统名称与介绍可由服务端数据包覆盖 `system:default` 定义，正文填写翻译键，由客户端资源包提供各语言文本。绑定通知、助手标题与欢迎区会显示对应内容，绑定播报也使用系统名称；详见[系统定义](datapacks.md#系统定义)。可选模块列表目前仅预留和同步，不限制功能。修改定义后需重开世界或重启服务器。
+系统名称与介绍可由服务端数据包覆盖 `system:default` 或新增其他定义，正文填写翻译键，由客户端资源包提供各语言文本。玩家绑定的系统 ID 会持久保存；绑定通知、助手标题、欢迎区、模块条件与入口使用该玩家选中的定义，详见[系统定义](datapacks.md#系统定义)。修改定义后需重开世界或重启服务器；定义被移除时不会自动改绑默认系统。
 
 `revoke` 删除该 UUID 的服务端玩家文件，包括绑定、对话、偏好、签到唯一标记、收件箱、订单、模型日额度、业务回执、事件任务与成就基线，并清空当前客户端系统会话。旧报价和 FTB 领取引用失效，在途任务不得在清理后回写；删除失败时返回失败，不提示清理成功。重新 `grant` 后从全新系统状态开始，绑定时已完成的成就不会补发奖励。已经进入 MC 背包的物品、MC/FTB 自身进度及已经发生的外部支付不会回滚；因此这组管理命令可用于测试重置，也会清除未领取权益与待核对订单。
 
-旧 `/system give` 和系统 ID 选择不再使用，不自动迁移旧架构权益。
+旧 `/system give` 不再使用，不自动迁移旧架构权益。
 
-累计 AI / TTS / ASR 用量保存在独立的 `<存档>/data/system/token_usage.dat`，不使用玩家附件，不受 `revoke`、`forget`、关闭记忆或重新绑定影响。同页显示 AI 实际 Token、客户端回报的 TTS 计费字符/Token 和 TTS 估算费用；未返回用量单独计数，不用估算填充实际单位。完整工作台侧栏或简约模式的 `/usage` 均可进入，详见 [AI / TTS / ASR 用量统计](token-usage.md)。
+服务端累计 AI / 联网用量保存在独立的 `<存档>/data/system/token_usage.dat`，不使用玩家附件，不受 `revoke`、`forget`、关闭记忆或重新绑定影响。同页显示 AI 实际 Token、Search/Fetch 次数与估价，以及当前账号仅存本机的 TTS/ASR 用量；未知用量单独计数，不用估算填充实际单位。完整工作台侧栏或简约模式的 `/usage` 均可进入，详见 [AI / TTS / ASR 用量统计](token-usage.md)。
 
-TTS 收费标准从服务端 `config/system/system-speech-pricing.json` 读取，文件缺失时先复制 JAR 中的 `defaults/system-speech-pricing.json` 再加载。已有配置不会被覆盖；修改后通过服务端 `/reload` 或重启生效，不重算历史费用。配置格式及读取失败时的行为见[收费标准配置](token-usage.md#收费标准配置)。
+TTS 收费标准从客户端 `config/system/system-speech-pricing.json` 读取，文件缺失时先复制 JAR 中的 `defaults/system-speech-pricing.json` 再加载。已有配置不会被覆盖；修改后通过客户端资源重载或重启生效，不重算历史费用。配置格式及读取失败时的行为见[收费标准配置](token-usage.md#收费标准配置)。
 
 ## 模型接口（默认 DeepSeek）
 
-首次正常初始化会生成上述四份服务端配置。模型连接与环境变量名称配置在 `system-model.json`，预算在 `system-agent.json`。服务端进程从 `SYSTEM_DEEPSEEK_API_KEY` 环境变量读取密钥；配置中只保存环境变量名称，不保存密钥，不同步到客户端。
+配置按所属功能首次使用时生成。模型连接与环境变量名称配置在 `system-model.json`，预算在 `system-agent.json`。服务端进程从 `SYSTEM_DEEPSEEK_API_KEY` 环境变量读取密钥；配置中只保存环境变量名称，不保存密钥，不同步到客户端。
 
 先在服务端启动环境中设置密钥，再正常启动服务器。引擎与模型客户端使用启动时配置快照，调整模型 JSON 后仍需要正常重启。`baseUrl` 支持固定 HTTPS API 前缀以及回环地址的 HTTP，自动追加 `/chat/completions`，拒绝跳转和任意模型指定 URL。
 
@@ -155,4 +160,10 @@ FTB 回执只证明已通过 FTB 校验并执行对应奖励处理器，不能�
 
 ## 可选功能与侧栏
 
-完整模式左侧按“聊天 / 模块 / 设置”分类，各功能自行提供入口；被禁用的模块隐藏入口，当前页面若失去权限则回到聊天。服务器数据包的系统定义可按玩家 condition 决定模块是否启用，详见[系统定义与模块开关](datapacks.md#系统定义)。手动增删覆盖在重登后保留，撤销或重置时清除；独立用量账本与客户端设置不受业务模块开关影响。默认发布定义启用必装业务模块，使用 FTB 任务时需在整合包的 modules 中加入 system:ftb_quests。
+完整模式左侧按“聊天 / 模块 / 设置”分类，各功能自行提供入口；被禁用的模块隐藏入口，当前页面若失去权限则回到聊天。服务器数据包的系统定义可按玩家 condition 决定模块是否启用，详见[系统定义与模块开关](datapacks.md#系统定义)。手动增删覆盖在重登后保留，撤销或重置时清除；独立用量账本与客户端设置不受业务模块开关影响。默认发布定义包含 FTB 任务模块，只有安装 FTB Quests 才装配任务功能；未安装时保留定义和已有数据，不显示任务入口，也不能手动启用。
+
+## 联网搜索
+
+完整模式“模块”分类增加“联网搜索”，填写问题后 Enter 或点击按钮才执行；打开页签不请求网络。也支持 `/search <问题>`、`/system search <问题>`，及明确的“请帮我联网搜索……”表达。没有模糊匹配和模型自动决定搜索，聊天历史不延续授权；不确定时用 `/search`。
+
+默认复用服务端 `SYSTEM_DEEPSEEK_API_KEY`，连接配置为 `system-search.json`，换成其他聊天模型后仍可单独使用 DeepSeek 搜索。Search/Fetch 各为 5 元/千次成功且有结果的请求（0.005 元/次），模型 Token 另计；价格在 `system-search-pricing.json`。关闭“外部 AI”同时禁止搜索。默认最多 6 次模型、5 次 Search/Fetch，总期限 55 秒；用 `system-agent.json` 的 `policies["system:web_search"]` 独立调整。返回卡片包含回答与来源，播报只读回答。详见[搜索配置、授权和预算](search-api.md)。

@@ -10,6 +10,7 @@ import com.iafenvoy.system.module.item.ItemClientModule;
 import com.iafenvoy.system.module.lottery.LotteryClientModule;
 import com.iafenvoy.system.module.player.PlayerClientModule;
 import com.iafenvoy.system.module.quest.QuestClientModule;
+import com.iafenvoy.system.module.search.SearchClientModule;
 import com.iafenvoy.system.module.settings.SettingsClientModule;
 import com.iafenvoy.system.module.shop.ShopClientModule;
 import com.iafenvoy.system.module.signin.SignInClientModule;
@@ -38,4 +39,5 @@ public final class SystemClientModules {
     public static final DeferredHolder<ClientModule, ShopClientModule> SHOP = REGISTRY.register("shop", ShopClientModule::new);
     public static final DeferredHolder<ClientModule, LotteryClientModule> LOTTERY = REGISTRY.register("lottery", LotteryClientModule::new);
     public static final DeferredHolder<ClientModule, QuestClientModule> FTB_QUESTS = REGISTRY.register("ftb_quests", QuestClientModule::new);
+    public static final DeferredHolder<ClientModule, SearchClientModule> SEARCH = REGISTRY.register("search", SearchClientModule::new);
 }

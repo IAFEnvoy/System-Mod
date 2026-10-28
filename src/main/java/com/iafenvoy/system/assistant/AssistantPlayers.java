@@ -80,15 +80,22 @@ public final class AssistantPlayers {
     CompletionStage<AgentResult> requireBound(UUID player) {
         AgentStore store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
-            if (!data.bound) throw new AgentException("NOT_BOUND");
+            if (!data.bound()) throw new AgentException("NOT_BOUND");
             return AgentResult.ok("system.result.ready");
         }));
     }
 
-    public void grant(ServerPlayer player, Consumer<AgentResult> feedback) {
+    public void grant(ServerPlayer player, Identifier system, Consumer<AgentResult> feedback) {
+        SystemDefinition definition = SystemDataPackRegistries.get(this.server.registryAccess(), system).orElse(null);
+        if (definition == null) {
+            AgentResult answer = AgentResult.error("SYSTEM_UNAVAILABLE");
+            feedback.accept(answer);
+            ServerNetworkHandler.notice(player, answer);
+            return;
+        }
         if (!this.beginBindingChange(player, feedback)) return;
         UUID uuid = player.getUUID(), connection = ServerNetworkHandler.connectionId(player);
-        this.engine.grant(uuid, this.modules.binding(player)).whenComplete((result, error) -> this.server.execute(() -> {
+        this.engine.grant(uuid, system, this.modules.binding(player)).whenComplete((result, error) -> this.server.execute(() -> {
             this.bindingChanges.remove(uuid);
             AgentResult answer = error == null ? result : AgentResult.error(AgentEngine.errorCode(error));
             feedback.accept(answer);
@@ -96,7 +103,6 @@ public final class AssistantPlayers {
                 return;
             boolean fresh = answer.messageKey().equals("system.result.bound");
             if (answer.isSuccess() && fresh) {
-                SystemDefinition definition = SystemDataPackRegistries.current(this.server.registryAccess());
                 ServerNetworkHandler.binding(player, BindingResponse.Change.BOUND, AgentResult.data("system.result.bound",
                         new BindingCardData(player.getName().getString(), definition.name(), definition.description())));
                 this.pendingBindingIntroductions.add(uuid);

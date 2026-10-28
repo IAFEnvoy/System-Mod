@@ -14,7 +14,6 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.card.data.SelectionCardData;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,8 +24,7 @@ import java.util.Optional;
  */
 public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInput> {
     public LotteryPreviewModule(ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
-        super(SystemActionTypes.LOTTERY_PREVIEW_ACTION.get(), "Preview one lottery pool's prizes, odds and cost. The player must separately confirm one draw.",
-                LotteryPreviewInput.CODEC, List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
+        super(LotteryPreviewInput.CODEC, "Preview one lottery pool's prizes, odds and cost. The player must separately confirm one draw.", List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
     }
 
     @Override
@@ -56,7 +54,7 @@ public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInpu
             cards.add(CardUpdate.show(new LotteryPrizeOutput(entry.reward(), entry.weight(), totalWeight)));
         if (pool.entries().size() - input.offset() > LotteryModule.PAGE_SIZE)
             cards.add(CardUpdate.show(SelectionCardData.fromActions(List.of(
-                    new AgentResult.Action("system.action.next", SystemActionTypes.LOTTERY_PREVIEW_ACTION.get(),
+                    new AgentResult.Action("system.action.next",
                             new LotteryPreviewInput(pool.id(), input.offset() + LotteryModule.PAGE_SIZE, Optional.of(catalog.revision())))))));
         return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.lottery_preview", "", cards);
     }

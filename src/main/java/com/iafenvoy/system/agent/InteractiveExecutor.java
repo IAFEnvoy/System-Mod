@@ -30,12 +30,12 @@ final class InteractiveExecutor implements AutoCloseable {
         this.engine = engine;
     }
 
-    public CompletionStage<AgentResult> submit(UUID player, String requestId, TypedPayload<?> input, String text) {
+    public CompletionStage<AgentResult> submit(UUID player, String requestId, AgentAction input, String text) {
         if (this.engine.closed()) return CompletableFuture.completedFuture(AgentResult.error("CANCELLED"));
         try {
             UUID.fromString(requestId);
             if (text == null || text.codePointCount(0, text.length()) > 2000 || text.getBytes(StandardCharsets.UTF_8).length > 8192
-                    || input != null && input.json().toString().length() > 4096)
+                    || input != null && CodecIO.write(AgentAction.CODEC, input).length() > 4096)
                 throw new AgentException("INVALID_INPUT");
         } catch (RuntimeException error) {
             return CompletableFuture.completedFuture(AgentResult.error("INVALID_INPUT"));
@@ -61,14 +61,14 @@ final class InteractiveExecutor implements AutoCloseable {
         if (generation != this.generations.getOrDefault(player, 0L)) throw new AgentException("CANCELLED");
     }
 
-    private AgentResult runInteractive(UUID player, String id, TypedPayload<?> input, String text, long received, AgentStore store, long incarnation, long generation) throws Exception {
-        String moduleId = input == null ? "" : input.type().id().toString();
+    private AgentResult runInteractive(UUID player, String id, AgentAction input, String text, long received, AgentStore store, long incarnation, long generation) throws Exception {
+        String moduleId = input == null ? "" : input.id().toString();
         // A retained request ID may replay its result only when its original input fingerprint matches.
         String fingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                .digest((moduleId + "\n" + (input == null ? "{}" : input.json()) + "\n" + text).getBytes(StandardCharsets.UTF_8)));
+                .digest((moduleId + "\n" + (input == null ? "{}" : CodecIO.write(AgentAction.CODEC, input)) + "\n" + text).getBytes(StandardCharsets.UTF_8)));
         AgentResult previous = store.read(player, data -> {
             this.checkGeneration(player, generation);
-            if (!data.bound) throw new AgentException("NOT_BOUND");
+            if (!data.bound()) throw new AgentException("NOT_BOUND");
             if (data.conversation.requestInputs.containsKey(id) && !fingerprint.equals(data.conversation.requestInputs.get(id)))
                 throw new AgentException("INVALID_INPUT");
             return data.conversation.requests.get(id);

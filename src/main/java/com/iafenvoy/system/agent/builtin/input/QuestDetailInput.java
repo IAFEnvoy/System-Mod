@@ -2,7 +2,9 @@ package com.iafenvoy.system.agent.builtin.input;
 
 import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
+import com.iafenvoy.system.agent.AgentAction;
 import com.mojang.serialization.DataResult;
+import com.mojang.serialization.MapCodec;
 
 import java.util.Optional;
 
@@ -10,7 +12,8 @@ import java.util.Optional;
  * Built-in parameters with boundary validation.
  */
 public record QuestDetailInput(String query, Optional<Integer> index, String questId,
-                               int rewardOffset, int choiceOffset, int descriptionOffset, int taskOffset) {
+                               int rewardOffset, int choiceOffset, int descriptionOffset,
+                               int taskOffset) implements AgentAction {
     public static final SchemaMapCodec<QuestDetailInput> CODEC = SchemaCodecs.<QuestDetailInput>record((i, f) -> i.group(
             f.optional("query", SchemaCodecs.STRING.described("Quest name or ID; one of query, index and questId must select a quest."), "").forGetter(QuestDetailInput::query),
             f.optional("index", SchemaCodecs.intRange(1, Integer.MAX_VALUE).described("One-based index in the player's last complete quest list.")).forGetter(QuestDetailInput::index),
@@ -27,5 +30,10 @@ public record QuestDetailInput(String query, Optional<Integer> index, String que
 
     public static QuestDetailInput byId(String id) {
         return new QuestDetailInput("", Optional.empty(), id, 0, 0, 0, 0);
+    }
+
+    @Override
+    public MapCodec<QuestDetailInput> codec() {
+        return CODEC;
     }
 }

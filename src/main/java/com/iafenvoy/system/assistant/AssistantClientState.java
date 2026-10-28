@@ -18,7 +18,7 @@ import java.util.*;
 public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending> pending,
                                    ResultTypes.ClientState serverState, ChatEntry current) {
     public static final AssistantClientState EMPTY = new AssistantClientState(List.of(), Map.of(),
-            new ResultTypes.ClientState(true, true, List.of(), List.of()), null);
+            new ResultTypes.ClientState(Optional.empty(), true, true, List.of(), List.of(), 60000), null);
 
     public record ChatEntry(boolean player, String text, AgentResult result) {
     }
@@ -63,7 +63,7 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         List<ChatEntry> entries = new ArrayList<>(this.entries);
         if (!request.text().isBlank()) entries.add(new ChatEntry(true, request.text(), null));
         Map<String, Pending> pending = new HashMap<>(this.pending);
-        pending.put(id, new Pending(System.currentTimeMillis() + 60000, owner));
+        pending.put(id, new Pending(System.currentTimeMillis() + this.serverState.requestTimeoutMillis(), owner));
         return new AssistantClientState(entries, pending, this.serverState,
                 request == ControlRequest.STATE || request == ControlRequest.HISTORY || request.text().isBlank()
                         ? this.current : new ChatEntry(false, request.text(), null));

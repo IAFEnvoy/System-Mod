@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public final class AssistantUsage {
     private final TokenUsageData tokenUsage;
     private final Queue<UsageRecord> pendingUsage = new ConcurrentLinkedQueue<>();
+    private final Queue<SearchRecord> pendingSearch = new ConcurrentLinkedQueue<>();
     private final Map<UUID, String> usageNames = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastUsageRequest = new HashMap<>();
 
@@ -30,9 +31,15 @@ public final class AssistantUsage {
         this.tokenUsage = server.getDataStorage().computeIfAbsent(TokenUsageData.TYPE);
         engine.onModelUsage((player, usage, successful, time) -> this.pendingUsage.add(new UsageRecord(
                 player, this.usageNames.getOrDefault(player, player.toString()), usage, successful, time)));
+        engine.search().onUsage((player, fetch, successful, billable, unknown, nanoYuan, time) -> this.pendingSearch.add(new SearchRecord(
+                player, this.usageNames.getOrDefault(player, player.toString()), fetch, successful, billable, unknown, nanoYuan, time)));
     }
 
     private record UsageRecord(UUID player, String name, ModelClient.Usage usage, boolean successful, long time) {
+    }
+
+    private record SearchRecord(UUID player, String name, boolean fetch, boolean successful, boolean billable,
+                                boolean unknown, long nanoYuan, long time) {
     }
 
     public void rememberPlayer(ServerPlayer player) {
@@ -46,6 +53,10 @@ public final class AssistantUsage {
         UsageRecord record;
         while ((record = this.pendingUsage.poll()) != null)
             this.tokenUsage.record(record.player(), this.usageNames.getOrDefault(record.player(), record.name()), record.usage(), record.successful(), record.time());
+        SearchRecord search;
+        while ((search = this.pendingSearch.poll()) != null)
+            this.tokenUsage.recordSearch(search.player(), this.usageNames.getOrDefault(search.player(), search.name()), search.fetch(),
+                    search.successful(), search.billable(), search.unknown(), search.nanoYuan(), search.time());
     }
 
     private TokenUsageSnapshot usageSnapshot(ServerPlayer player, boolean all, int offset) {

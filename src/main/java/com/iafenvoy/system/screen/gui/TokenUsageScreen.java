@@ -1,6 +1,7 @@
 package com.iafenvoy.system.screen.gui;
 
 import com.iafenvoy.system.data.usage.RecognitionUsage;
+import com.iafenvoy.system.data.usage.SearchUsage;
 import com.iafenvoy.system.data.usage.SpeechUsage;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
@@ -29,13 +30,18 @@ import static com.iafenvoy.system.screen.gui.AssistantView.*;
 public final class TokenUsageScreen extends AssistantPageScreen {
     private static final int PAGE_SIZE = TokenUsageSnapshot.PAGE_SIZE;
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
-    // AI is server-observed; voice metrics always come from the current local account.
+    // Inference and web requests are server-observed; voice metrics belong to the local account.
     private static final List<MetricGroup> GROUPS = List.of(
             new MetricGroup("ai", "usage_counts", List.of(
                     new Metric("totalTokens", usage -> usage.ai().tokens().totalTokens()),
                     new Metric("inputTokens", usage -> usage.ai().tokens().inputTokens()),
                     new Metric("outputTokens", usage -> usage.ai().tokens().outputTokens()),
                     new Metric("cachedInputTokens", usage -> usage.ai().tokens().cachedInputTokens()))),
+            new MetricGroup("search", "usage_search_counts", List.of(
+                    new Metric("webSearchCalls", usage -> usage.ai().search().search().billableCalls()),
+                    new Metric("webSearchCost", usage -> usage.ai().search().search().estimatedNanoYuan()),
+                    new Metric("webFetchCalls", usage -> usage.ai().search().fetch().billableCalls()),
+                    new Metric("webFetchCost", usage -> usage.ai().search().fetch().estimatedNanoYuan()))),
             new MetricGroup("tts", "usage_speech_counts", List.of(
                     new Metric("speechCost", usage -> usage.speech().estimatedNanoYuan()),
                     new Metric("speechCharacters", usage -> usage.speech().characters()),
@@ -78,7 +84,7 @@ public final class TokenUsageScreen extends AssistantPageScreen {
     @Override
     protected void initPage(Document document) {
         text(document.getElementById("brand"), tr("system.ui.usage_title"));
-        for (String id : List.of("usage_mine", "usage_all", "usage_refresh", "usage_back", "usage_prev", "usage_next", "usage_note", "usage_speech_note", "usage_recognition_note", "close"))
+        for (String id : List.of("usage_mine", "usage_all", "usage_refresh", "usage_back", "usage_prev", "usage_next", "usage_note", "usage_search_note", "usage_speech_note", "usage_recognition_note", "close"))
             text(document.getElementById(id), tr("system.ui." + id));
         this.createSummary(document);
         bind(document, "close", this::onClose);
@@ -181,8 +187,10 @@ public final class TokenUsageScreen extends AssistantPageScreen {
         document.getElementById("usage_prev").setDisabled(loading || this.offset == 0);
         document.getElementById("usage_next").setDisabled(loading || this.snapshot == null || !this.snapshot.hasMore());
         DisplayUsage totals = new DisplayUsage(this.snapshot == null ? null : this.snapshot.totals(), this.localUsage.speech(), this.localUsage.recognition());
-        for (Metric metric : GROUPS.getFirst().metrics())
-            text(document.getElementById("value_" + metric.key()), this.snapshot == null ? "—" : metric.format(totals));
+        for (MetricGroup group : GROUPS.subList(0, 2))
+            for (Metric metric : group.metrics())
+                text(document.getElementById("value_" + metric.key()), this.snapshot == null ? "—" : metric.format(totals));
+        text(document.getElementById("usage_search_counts"), this.snapshot == null ? "—" : searchCounts(this.snapshot.totals().search()));
         this.renderVoiceUsage(document);
         Element list = document.getElementById("usage_players");
         list.setInnerHTML("");
@@ -204,21 +212,22 @@ public final class TokenUsageScreen extends AssistantPageScreen {
             identity.appendChild(element(document, "div", "usage_last_call", Component.translatable("system.ui.usage_last_call",
                     lastCall == 0 ? tr("system.ui.usage_never") : TIME.format(Instant.ofEpochMilli(lastCall))).getString()));
             row.appendChild(identity);
-            // Player rows only expose server AI records, including when an administrator views all players.
+            // Player rows expose only server-owned inference and web-request records.
             DisplayUsage data = new DisplayUsage(player.usage(), SpeechUsage.EMPTY, RecognitionUsage.EMPTY);
-            MetricGroup group = GROUPS.getFirst();
-            Element section = element(document, "div", "usage_section usage_section_" + group.key(), "");
-            section.appendChild(element(document, "div", "usage_section_title", tr("system.ui.usage_group_" + group.key())));
-            Element metrics = element(document, "div", "usage_metrics", "");
-            for (Metric field : group.metrics()) {
-                Element metric = element(document, "div", "usage_metric", "");
-                metric.appendChild(element(document, "span", "usage_label", tr("system.usage." + field.key())));
-                metric.appendChild(element(document, "span", "usage_value", field.format(data)));
-                metrics.appendChild(metric);
+            for (MetricGroup group : GROUPS.subList(0, 2)) {
+                Element section = element(document, "div", "usage_section usage_section_" + group.key(), "");
+                section.appendChild(element(document, "div", "usage_section_title", tr("system.ui.usage_group_" + group.key())));
+                Element metrics = element(document, "div", "usage_metrics", "");
+                for (Metric field : group.metrics()) {
+                    Element metric = element(document, "div", "usage_metric", "");
+                    metric.appendChild(element(document, "span", "usage_label", tr("system.usage." + field.key())));
+                    metric.appendChild(element(document, "span", "usage_value", field.format(data)));
+                    metrics.appendChild(metric);
+                }
+                section.appendChild(metrics);
+                section.appendChild(element(document, "div", "usage_counts", group.key().equals("search") ? searchCounts(player.usage().search()) : counts(player.usage())));
+                row.appendChild(section);
             }
-            section.appendChild(metrics);
-            section.appendChild(element(document, "div", "usage_counts", counts(player.usage())));
-            row.appendChild(section);
             list.appendChild(row);
         }
         if (playerCount == 0) list.appendChild(element(document, "p", "", tr("system.ui.usage_empty")));
@@ -229,7 +238,7 @@ public final class TokenUsageScreen extends AssistantPageScreen {
 
     private void renderVoiceUsage(Document document) {
         DisplayUsage local = new DisplayUsage(null, this.localUsage.speech(), this.localUsage.recognition());
-        for (MetricGroup group : GROUPS.subList(1, GROUPS.size()))
+        for (MetricGroup group : GROUPS.subList(2, GROUPS.size()))
             for (Metric metric : group.metrics())
                 text(document.getElementById("value_" + metric.key()), metric.format(local));
         text(document.getElementById("usage_speech_counts"), speechCounts(this.localUsage.speech()));
@@ -238,6 +247,12 @@ public final class TokenUsageScreen extends AssistantPageScreen {
 
     private static String counts(TokenUsageSnapshot.Usage data) {
         return Component.translatable("system.ui.usage_counts", number(data.calls()), number(data.failedCalls()), number(data.unreportedCalls())).getString();
+    }
+
+    private static String searchCounts(SearchUsage data) {
+        return Component.translatable("system.ui.usage_search_counts", number(data.search().calls()), number(data.fetch().calls()),
+                number(data.search().calls() - data.search().successfulCalls()), number(data.fetch().calls() - data.fetch().successfulCalls()),
+                number(data.search().unknownCalls()), number(data.fetch().unknownCalls())).getString();
     }
 
     private static String speechCounts(SpeechUsage data) {

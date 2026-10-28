@@ -3,7 +3,6 @@ package com.iafenvoy.system.data.condition;
 import com.iafenvoy.saturn.data.condition.EntityCondition;
 import com.iafenvoy.saturn.data.context.condition.EntityConditionContext;
 import com.iafenvoy.system.assistant.AssistantServer;
-import com.iafenvoy.system.registry.SystemDataPackRegistries;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -24,6 +23,6 @@ public record HasSystemCondition(Optional<Identifier> system) implements EntityC
         if (!(context.entity() instanceof ServerPlayer player)) return false;
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
         return runtime != null && runtime.moduleManager().hasSystem(player.getUUID())
-                && this.system.map(SystemDataPackRegistries.DEFAULT::equals).orElse(true);
+                && this.system.map(id -> runtime.moduleManager().system(player.getUUID()).filter(id::equals).isPresent()).orElse(true);
     }
 }

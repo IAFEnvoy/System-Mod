@@ -2,13 +2,12 @@ package com.iafenvoy.system.module.core;
 
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.builtin.core.HelpModule;
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
+import com.iafenvoy.system.agent.builtin.input.HelpInput;
 import com.iafenvoy.system.agent.response.OpenResponse;
 import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.*;
-import com.iafenvoy.system.registry.SystemActionTypes;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -42,7 +41,7 @@ public final class CoreSystemModule implements ServerModule {
 
     @Override
     public void installed(ModuleContext context) {
-        context.engine().modules().root(SystemActionTypes.HELP_ACTION.get().of(EmptyInput.INSTANCE));
+        context.engine().modules().root(HelpInput.INSTANCE);
         context.engine().modules().reject(Identifier.fromNamespaceAndPath("system", "semantic_reject"), RoutingProfile.hints(
                 List.of("不要替我签到", "签到奖励有哪些", "如果签到会怎么样", "查询配方如何合成", "帮我建造房子", "我想问一个游戏攻略"),
                 List.of("Do not sign me in", "Explain daily sign-in rewards", "What happens if I sign in?", "How do I craft this recipe?", "Build me a house", "Tell me a game strategy")));
@@ -50,6 +49,7 @@ public final class CoreSystemModule implements ServerModule {
 
     @Override
     public void commands(LiteralArgumentBuilder<CommandSourceStack> root) {
+        ModuleManagementCommands.register(root);
         root.executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.CURRENT))
                 .then(Commands.literal("simple").executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.SIMPLE)))
                 .then(Commands.literal("full").executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.FULL)))

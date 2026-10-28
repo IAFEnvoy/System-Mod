@@ -8,7 +8,9 @@
 
 ## 系统定义
 
-系统参数使用 NeoForge 同步数据包注册表 `system:system`，文件路径为 `data/<namespace>/system/system/<path>.json`，条目 ID 为 `<namespace>:<path>`。当前所有玩家使用 `system:default`；JAR 内默认文件是 `data/system/system/system/default.json`，在数据包中覆盖同路径文件即可定制。也可新增其他 ID，供 Java 扩展读取，但本次尚未加入玩家选择或绑定其他系统的功能。
+系统参数使用 NeoForge 同步数据包注册表 `system:system`，文件路径为 `data/<namespace>/system/system/<path>.json`，条目 ID 为 `<namespace>:<path>`。JAR 内默认文件是 `data/system/system/system/default.json`，在数据包中覆盖同路径文件即可定制；也可新增其他 ID，通过 `/system grant <系统ID> [玩家]` 为玩家选定，例如 `/system grant example:daily Steve`。自己绑定使用 `/system grant example:daily`；系统 ID 从该存档注册表补全和校验，玩家不必共用同一个定义。
+
+每名玩家当前最多绑定一个系统，重复授予同一个 ID 不重新初始化，授予另一 ID 被拒绝，须先 `/system revoke <玩家>`。绑定状态以不可变 `SystemBindings` 集合保存于玩家文件的 `systems` 字段，集合形式为后续多系统保留位置，当前 Codec 最多接受一项；客户端状态同步当前系统 ID。绑定授予在同一玩家事务内检查与写入，未知 ID 不写入存档；定义后来被移除时保留原 ID 并停止初始化，不自动切换到默认系统。
 
 例如，将默认系统改成“签到系统”：
 
@@ -37,7 +39,39 @@
 
 在 `assets/example/lang/en_us.json` 中提供相同的键，例如 `Daily Sign-in System` 与 `This system provides its host with items and resources every day.`。服务端数据包同步翻译键与模块 ID，不同步语言文件；仅在服务端添加语言文件无法让客户端获得翻译。也可以在默认 JSON 中保留内置键 `system.definition.default.name` / `system.definition.default.description`，通过资源包覆盖它们。
 
-`modules` 现在控制每个已绑定玩家可用的功能，省略时为 `[]`。条目可以是模块 ID 字符串，也可以是 `{ "id": "system:shop", "condition": ... }`；省略 condition 表示无条件启用，condition 使用 Saturn 的 EntityCondition Codec，可写单个对象或条件数组（数组全部成立）。同一个 ID 的多条定义只要有一条成立即可启用。未列出的可选功能关闭；`core`、`binding`、`usage` 是基础设施，保留聊天、绑定管理与独立用量账本，不能通过模块开关关闭。客户端设置、记忆控制和语音输入仍属于本地功能。
+`modules` 控制每个已绑定玩家可用的功能，省略时为 `[]`。条目支持模块 ID（`"system:signin"`）、模块 tag（`"#example:basic"`），或带条件的对象 `{ "id": "#example:basic", "condition": ... }`；对象的 `id` 也可填单个模块 ID。省略 condition 表示无条件启用，condition 使用 Saturn 的 EntityCondition Codec，可写单个对象或条件数组（数组全部成立）。tag 中每个模块分别求值，同一模块被 ID 或多个 tag 引用时，任一匹配条目的条件成立即可启用。未列出的可选功能关闭；`core`、`binding`、`usage` 是基础设施，保留聊天、绑定管理与独立用量账本，不能通过模块开关关闭。客户端设置、记忆控制和语音输入仍属于本地功能。
+
+### 模块 tag
+
+tag 来自正式的服务端功能注册表 `system:server_module`，不是客户端模块或 Agent 工作流注册表。文件路径为 `data/<namespace>/tags/system/server_module/<path>.json`。例如 `data/example/tags/system/server_module/basic.json` 定义 `#example:basic`：
+
+```json
+{
+  "replace": false,
+  "values": ["system:player", "system:items", "system:signin", "system:inbox"]
+}
+```
+
+系统定义可以将 ID、tag 和带条件的 tag 混用：
+
+```json
+{
+  "name": "system.definition.default.name",
+  "description": "system.definition.default.description",
+  "modules": [
+    "#example:basic",
+    "system:search",
+    {
+      "id": "#example:commerce",
+      "condition": { "type": "system:has_module", "module": "system:signin" }
+    }
+  ]
+}
+```
+
+上例的 `#example:commerce` 可另建 `data/example/tags/system/server_module/commerce.json`，其 `values` 为 `["system:shop", "system:lottery"]`。tag 合并、`replace`、嵌套 `#tag` 和 `{ "id": "...", "required": false }` 均使用原版 tag 加载规则。未知或空 tag 不启用任何额外模块，依赖缺席的模块仍被安装检查排除。手动移除优先于 tag，手动添加仍可覆盖条件，基础设施规则不变。
+
+`ModuleDefinition` 复用 Saturn `RegistryCodecs.keyOrTag` 编解码符号引用，通过 `matchesKeys` 在权限求值时读取已加载的注册表 tag；不在系统定义解码阶段展开或固定 tag 成员。原版 tag 重载后的成员变化会在后续模块权限刷新时生效；系统定义本身仍按下文的注册表加载规则更新。
 
 模块 ID 是正式内置注册表 `SystemRegistries.SERVER_MODULE` 的条目 ID，`ServerModule.id()` 从注册表取得该值，并非 Agent 工作流 ID。客户端定义位于独立的 `SystemRegistries.CLIENT_MODULE`，客户端入口通常使用对应服务端模块的同名 ID。例如：
 
@@ -49,10 +83,11 @@
 | 收件箱与交付 | `system:inbox` |
 | 商城（浏览、报价、购买） | `system:shop` |
 | 抽奖（浏览、预览、抽取） | `system:lottery` |
+| 联网搜索（需玩家明确要求） | `system:search` |
 | 成就工作流 | `system:advancement` |
 | FTB 任务（列表、详情、提交、领奖、新手礼包） | `system:ftb_quests` |
 
-发布默认定义启用全部必装的业务模块，FTB 由整合包显式加入；上述示例包含可选任务模块，未安装 FTB 时该条目不启用、不加载对应 API。开发源集的默认定义另外启用 FTB，不进入发布 JAR。
+默认系统的 `modules` 仅引用 `["#system:default"]`，Java 展示备用定义也引用同一 tag。模块清单集中在 `data/system/tags/system/server_module/default.json`，数据包可在同路径追加或用 `replace: true` 替换成员，无需覆盖整个系统定义。当前清单保持原有功能，`system:ftb_quests` 以 `required: false` 的 tag 条目提供。模块定义与公共 Codec 始终注册，实际装配由 `ServerModule.available()` 决定；未安装 FTB 时不会启用任务功能或加载对应 API，缺失条目也不会让默认 tag 加载失败。玩家条件和手动覆盖均无法启用依赖缺席的模块。
 
 条件在玩家初始化完成后、交互请求前及每 20 个服务端 tick 在主线程重新求值。变化后同步玩家实际模块与指令列表，刷新完整侧栏，清理路由缓存与交易报价。帮助、补全、本地语义候选、模型能力目录和实际执行共用权限过滤；旧卡片的结构化动作以及已经排入游戏线程的工具也会重新检查权限。功能定义和工具仍在服务器启动时注册，开关不卸载 Java 类或重新注册工作流。
 
@@ -66,6 +101,8 @@
 ```
 
 条件异常或循环依赖会关闭涉及的模块并记入服务端日志，避免递归溢出。手动添加可覆盖条件、手动移除可禁用定义中默认提供的模块，基础设施和未安装模块均不接受覆盖。
+
+管理员可使用 `/system module add <玩家> <模块ID>`、`/system module remove <玩家> <模块ID>` 调整已绑定在线玩家的持久覆盖，例如 `/system module add Steve system:lottery`。`/system module list` 列出全部已注册模块（含依赖缺席的安全定义），`/system module list Steve` 列出该玩家实际启用的模块；新增模块初始化完成后才出现在玩家列表。玩家参数使用原版在线玩家补全，模块参数从正式服务端注册表补全且排除必需模块和 `available()` 为 false 的模块；即使当前条件已启用或禁用，也可以明确写入手动覆盖。
 
 ### 模块 action 与 condition
 
@@ -90,7 +127,7 @@
 { "type": "system:has_system", "system": "system:default" }
 ```
 
-目前绑定对象统一为 `system:default`，其他 system ID 不会匹配。实体不是服务端玩家、运行时未就绪或玩家未绑定时，action 不改数据，condition 返回 false。手动增删通过主线程 API `AssistantServer.get(server).moduleManager().add/remove(player, moduleId)`，移除立即停止模块；添加会异步初始化存储，成功后才发布可用状态，顺序动作中的后续 has_module 对刚添加模块可能暂为 false。权限解析内部的依赖条件使用目标模块集合，避免初始化顺序影响条件计算。可通过 `hasModule(uuid, id)`、`hasSystem(uuid)`、`enabled(uuid)` 查询不可变状态。
+`has_system` 未提供 `system` 时匹配任意已绑定且就绪的系统，提供时与该玩家当前绑定的 ID 比较。实体不是服务端玩家、运行时未就绪或玩家未绑定时，action 不改数据，condition 返回 false。手动增删通过主线程 API `AssistantServer.get(server).moduleManager().add/remove(player, moduleId)`，移除立即停止模块；添加会异步初始化存储，成功后才发布可用状态，顺序动作中的后续 has_module 对刚添加模块可能暂为 false。权限解析内部的依赖条件使用目标模块集合，避免初始化顺序影响条件计算。可通过 `hasModule(uuid, id)`、`hasSystem(uuid)`、`system(uuid)`、`enabled(uuid)` 查询不可变状态。
 
 模块覆盖保存在玩家独立数据文件 `<存档>/system-agent/<玩家 UUID>.json` 的 `moduleData` 字段中，由 `system:module_access` DataStorage 持有。数据按玩家 UUID 隔离，登出与重登保留，成功 `revoke/reset` 删除整份玩家数据，`forget` 不清除；累计用量仍保存在单独的世界 SavedData 文件中。
 
@@ -105,6 +142,7 @@
 | 数据包文件 | 模板 ID | 可用占位符 |
 | --- | --- | --- |
 | `data/system/system/prompts/routing.txt` | `system:routing` | `{{player_language}}`、`{{capabilities}}` |
+| `data/system/system/prompts/web_search.txt` | `system:web_search` | `{{player_language}}` |
 | `data/system/system/prompts/sign_in.txt` | `system:sign_in` | `{{player_language}}` |
 | `data/system/system/prompts/quest_narration.txt` | `system:quest_narration` | `{{player_language}}` |
 | `data/system/system/prompts/quest_background.txt` | `system:quest_background` | `{{player_language}}` |
@@ -227,12 +265,23 @@ Saturn 逐项模拟后按列表顺序扣款，不合并重复或重叠的需求�
 | --- | --- |
 | `id` | 稳定规则 ID，普通调整不要换 ID 来重复发奖 |
 | `advancementId` | Minecraft 成就 ID；只监听全部条件完成 |
-| `moduleId` | 已注册且允许事件入口的模块 ID |
-| `input` | 受信管理员配置的模块输入 |
+| `action` | 完整 AgentAction 对象，`moduleId` 指定已注册且允许事件入口的工作流，其余键为动作自身参数 |
 
 `AdvancementRule.id` 和 `advancementId` 在 Java 中使用 `Identifier`，由原版 `Identifier.CODEC` 解析，JSON 仍写资源 ID 字符串。服务端直接用该类型查询和比较成就；持久化基线、事件任务与模块文本参数在边界转为字符串。
 
-内置 `system:advancement_followup` 接受 `featureId` 与 `rewardId`，执行确保解锁标记存在、将候选目录中的固定奖励入账。适配器另外注入 `ruleId` 与 `advancementId`，不接受玩家伪造事件。
+内置 `system:advancement_followup` 接受 `featureId` 与 `rewardId`，执行确保解锁标记存在、将候选目录中的固定奖励入账。适配器另外注入 `ruleId` 与 `advancementId`，不接受玩家伪造事件。完整调用单独嵌套到 action，避免动作参数与规则元数据重名，不保留旧 moduleId/input 结构的兼容解析：
+
+```json
+{
+  "id": "system:first_diamond",
+  "advancementId": "minecraft:story/mine_diamond",
+  "action": {
+    "moduleId": "system:advancement_followup",
+    "featureId": "system:diamond_milestone",
+    "rewardId": "system:mining"
+  }
+}
+```
 
 已有成就默认只建立基线，不追溯补发。规则/成就去重记录不随聊天删除，也不随重启清除。更改规则目标、移除规则或删除去重记录会改变业务语义，需要管理员审查；当前无自动历史补发和热重载。
 

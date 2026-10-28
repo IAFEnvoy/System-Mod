@@ -50,9 +50,7 @@ public final class ClientCards {
         } else {
             if (previous == null) return false;
             CardData data = update.data().orElse(previous.data);
-            CARDS.put(update.ref().id(), new Entry(update.ref(), data,
-                    update.data().isPresent() ? data.buildCard().build() : previous.view,
-                    previous.active && update.mode() != CardUpdate.Mode.REMOVE));
+            CARDS.put(update.ref().id(), new Entry(update.ref(), data, update.data().isPresent() ? data.buildCard().build() : previous.view, previous.active));
         }
         return true;
     }

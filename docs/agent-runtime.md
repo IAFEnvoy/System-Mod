@@ -10,14 +10,14 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 
 `ModuleRegistry` 是当前服务器能力的来源。`engine.registerModule(module)` 同时处理：
 
-1. 核对已共享注册的 `TypedPayload.Type<I>`、模块 Identifier 与工具白名单。
+1. 核对已共享注册的 `MapCodec<I>`、模块 Identifier 与工具白名单。
 2. 校验所有指令别名和工具实例冲突，然后注册 Module 的工具 List。
 3. 绑定指令参数解析器、语义样例和参数提取器，不再重复填写模块 ID。
 4. 记录模型可见性和只读快捷入口，供模型目录、澄清提示与帮助使用。
 
 `engine.start()` 校验策略和事件引用，冻结注册表并建立语义索引。启动后禁止继续注册工具、模块或 profile。未安装的可选模块不注册，因此不会出现在指令、帮助、补全、语义可执行候选或模型目录中。
 
-普通模块先通过 DeferredRegister 在 `SystemResourceKeys.ACTION_TYPE` 注册类型键；内置键由 `SystemActionTypes` 公开，注册后通过 `.get()` 访问。按钮、模型和 Module 复用同一键。类型与 Codec 必须在两端可用，定义不得引用未安装的可选模组类，详见[注册表速查](registries.md)。
+动作输入实现 `AgentAction`，`codec()` 返回本类 MapCodec；先通过 DeferredRegister 在 `SystemResourceKeys.ACTION_TYPE` 注册这个 Codec，内置声明由 `SystemActionTypes` 公开。Module 的 `inputCodec()` 返回同一实例；按钮、指令和模型路由都直接生成输入对象。类型与 Codec 必须在两端可用，定义不得引用未安装的可选模组类，详见[注册表速查](registries.md)。
 
 ## 职责边界
 
@@ -37,7 +37,7 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 
 执行结果 `AgentResult` 复用 Saturn `ResultWithData<List<CardUpdate>>`：调用方统一用 `isSuccess()` / `isFailure()` 分支，Agent 自己保留文案、静默输出和 Status 枚举；SUCCEEDED、FAILED、PARTIALLY_SUCCEEDED 按稳定小写字符串编码。`partial()` 标记部分成功，但仍属于失败；`withPresentation(...)` 只生成展示副本。跨网络与存档继续使用 `AgentResult.CODEC`，不传输 Failure 的实现类。商城的 `CommerceCosts.Prepared` 同样复用 `ResultWithData<Price>`，同时保留原始定价失败原因与相关资源。搜索条目、模型回复及音频流解析状态属于数据载荷，不套用操作成功/失败契约。
 
-外层 ServerModule 注册工作流时记录 ownerId，ModuleManager 在模块成功激活后发布按玩家计算的权限快照；帮助、补全、语义候选、模型目录与执行器共用可用性过滤，ExecutionContext 在工具和模型入口再次检查权限。基础设施与无 owner 的独立扩展工作流不属于可选业务模块。结构化按钮、精确指令、本地语义与模型选择最终都生成相同的 `TypedPayload<?>`。交互与事件共享 `AgentEngine.execute`，权限、策略选择与部分成功报告集中处理；事件恢复继续使用持久化策略和已完成操作回执。
+外层 ServerModule 注册工作流时记录 ownerId，ModuleManager 在模块成功激活后发布按玩家计算的权限快照；帮助、补全、语义候选、模型目录与执行器共用可用性过滤，ExecutionContext 在工具和模型入口再次检查权限。基础设施与无 owner 的独立扩展工作流不属于可选业务模块。结构化按钮、精确指令、本地语义与模型选择最终都生成相同的 `AgentAction`。交互与事件共享 `AgentEngine.execute`，权限、策略选择与部分成功报告集中处理；事件恢复继续使用持久化策略和已完成操作回执。
 
 ## 玩家模块存储
 
@@ -68,7 +68,7 @@ public ModuleRouting<ItemQueryInput> routing() {
 }
 ```
 
-无参数指令使用 `AgentCommand.literal(input, aliases...)`。指令解析器返回 Java 参数对象，由注册表绑定到所属 Module 的类型键并校验 Codec。参数缺失、歧义或非法时，明确指令返回输入错误；语义提取器返回 `null` 时回退到模型。
+无参数指令使用 `AgentCommand.literal(input, aliases...)`。指令解析器直接返回实现 AgentAction 的 Java 对象，由 AgentAction.validate 核对所属 Module 的 Codec 并校验参数。参数缺失、歧义或非法时，明确指令返回输入错误；语义提取器返回 `null` 时回退到模型。
 
 `RoutingProfile.read` 是本地直达申请，注册表还要求模块可交互、写预算为零、所有声明工具只读，并通过相似度、分差、覆盖率和语句保护。相似度不是正确概率。写流程使用 `RoutingProfile.hints` 提供样例，仍由模型决定或由明确入口调用。
 
@@ -102,7 +102,7 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 
 ## 请求、响应与类型分派
 
-`AgentRequest.CODEC` 与 `AgentResponse.CODEC` 从正式内置注册表 `SystemRegistries.AGENT_REQUEST_TYPE / AGENT_RESPONSE_TYPE` 的 `byNameCodec()` 按 `type` 分派；实例的 `codec()` 返回同一个已注册 MapCodec。内置条目通过 `SystemRequestTypes / SystemResponseTypes` 的 DeferredRegister 在两端登记，不再维护 DispatchRegistry 或自建类型 Map。未知 ID 和未注册的 Codec 由原版注册表 Codec 拒绝，定义中不能引用可选模组的类。卡片数据实现公共 card 包的 `CardData`，根 Codec 按相同方式分派各实现的 MapCodec。buildCard 返回包含模板、参数、按钮和 SpeechContent 的 CardBuilder，客户端再 build 成 CardView；不查客户端模块表或业务服务。动作仍以 TypedPayload 执行，卡片按钮通过 CardActionRequest 携带来源 CardRef 与动作 ID/字符串参数，ModuleRouting.button 负责适配并校验原输入 Codec。条目列表见[注册表速查](registries.md)。
+`AgentRequest.CODEC` 与 `AgentResponse.CODEC` 从正式内置注册表 `SystemRegistries.AGENT_REQUEST_TYPE / AGENT_RESPONSE_TYPE` 的 `byNameCodec()` 按 `type` 分派；实例的 `codec()` 返回同一个已注册 MapCodec。内置条目通过 `SystemRequestTypes / SystemResponseTypes` 的 DeferredRegister 在两端登记，不再维护 DispatchRegistry 或自建类型 Map。未知 ID 和未注册的 Codec 由原版注册表 Codec 拒绝，定义中不能引用可选模组的类。卡片数据实现公共 card 包的 `CardData`，根 Codec 按相同方式分派各实现的 MapCodec。buildCard 返回包含模板、参数、按钮和 SpeechContent 的 CardBuilder，客户端再 build 成 CardView；不查客户端模块表或业务服务。动作同样实现 AgentAction 并由注册 MapCodec 分派，卡片按钮通过 CardActionRequest 携带来源 CardRef 与动作 ID/字符串参数，ModuleRouting.button 负责适配并校验原输入 Codec。条目列表见[注册表速查](registries.md)。
 
 请求实现为 `agent.request` 下的 `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest` 和 `CardActionRequest`，响应实现为 `agent.response` 下的 `ReplyResponse`、`NoticeResponse`、`OpenResponse`、`BindingResponse`、`StateResponse` 和 `HistoryResponse`。每个实现维护静态 MapCodec，`SystemRequestTypes` / `SystemResponseTypes` 只负责注册；根接口不再内联实现。`ControlRequest` 是枚举，其 Codec 保留 `action` 字段；导航与绑定枚举分别由对应响应持有。
 
@@ -110,7 +110,7 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 
 ```jsonl
 {"type":"system:chat","text":"查看我的背包"}
-{"type":"system:invoke","call":{"moduleId":"system:player_query","input":{}}}
+{"type":"system:invoke","call":{"moduleId":"system:player_query"}}
 {"type":"system:control","action":"STATE"}
 {"type":"system:preferences","history":true,"external":true}
 ```
@@ -124,3 +124,11 @@ FTB 查询 Tool 使用固定返回类型：`ftb.query` 列出当前可执行或�
 模型路由仍保留对外的 `capabilityId` 字段，解码 Map 只包含当前可选择的 Module 与 `clarify`，不会因共享输入类型存在就开放未安装模块。
 
 新增业务能力继续通过 Module 注册。若要新增协议请求，增加请求类型及其 `MapCodec` 注册，再在 `AssistantRequests.registerRequests()` 登记执行处理器；新增响应时同步登记类型 Codec 和客户端处理器，不再增加字符串判断或类型 switch。类型实现保持无默认方法的接口，Codec 声明在实现类，注册集中于 `registry` 包，根 Codec 延迟访问注册表，避免子类静态初始化时递归读取尚未赋值的 Codec。
+
+## 明确授权的联网工作流
+
+`SearchSystemModule` 装配一个 WebSearchModule 与两个独立的只读 Tool。ModuleRouting 新增模块自带的 explicit 解析器：路由在指令解析后、语义匹配前检查当前消息，通过统一 AgentAction 校验得到明确输入。搜索声明 explicitOnly，并且不提供语义档案、快捷推荐或缓存样例，因此不能由路由模型、历史或事件自行启用。
+
+工作流持有紧凑的 SearchObservation 列表，模型经 SearchStep 的 Codec dispatch 选择 Search、Fetch 或 Answer。只有本次 Search 得到的 URL 可 Fetch，重复检索终止，最终引用编号由服务器核对。预算共用 ExecutionContext，搜索默认 6 次模型/5 次工具/55 秒，可按 system:web_search 独立覆盖；模型还受通用每日额度和并发限制。会话有效时，预算或整理失败保留已取得的来源。
+
+收费工具每次调用前检查取消、模块访问和外部服务偏好，经 SearchGateway 统一记录次数及价格；ModelGateway 继续负责模型 Token。客户端状态同步可用工作流的最大请求期限，避免自定义较长预算被本机等待上限提前丢弃。连接、计费与来源边界见[联网搜索](search-api.md)。

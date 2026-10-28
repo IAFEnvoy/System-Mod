@@ -1,10 +1,9 @@
 package com.iafenvoy.system.module.signin;
 
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
+import com.iafenvoy.system.agent.builtin.input.SignInInput;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 public final class SignInClientModule implements ClientModule {
     @Override
@@ -14,7 +13,7 @@ public final class SignInClientModule implements ClientModule {
             workspace.click("nav_signin", () -> workspace.show("signin"));
             workspace.click("signin_action", () -> {
                 workspace.show("chat");
-                AssistantClient.send(SystemActionTypes.SIGN_IN_ACTION.get().of(EmptyInput.INSTANCE), "");
+                AssistantClient.send(SignInInput.INSTANCE, "");
             });
         });
     }

@@ -1,6 +1,7 @@
 package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.builtin.input.StarterGiftsInput;
 import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
 import com.iafenvoy.system.agent.request.*;
 import com.iafenvoy.system.agent.response.HistoryResponse;
@@ -10,7 +11,6 @@ import com.iafenvoy.system.agent.response.StateResponse;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import com.iafenvoy.system.registry.SystemActionTypes;
 import com.iafenvoy.system.util.TypeDispatch;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -96,10 +96,10 @@ public final class AssistantRequests {
         this.registerRequest(InvokeRequest.class, (context, invoke) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), invoke.call(), invoke.text())));
         this.registerRequest(CardActionRequest.class, (context, action) -> {
             ServerCards.Ticket ticket = ServerCards.begin(context.uuid(), action.source());
-            TypedPayload<?> call = this.engine.modules().button(action.action().id(), action.action().arguments());
+            AgentAction call = this.engine.modules().button(action.action().id(), action.action().arguments());
             return answer(context, this.engine.submit(context.uuid(), context.requestId(), call, "")
                     .thenApply(result -> {
-                        if (result.isSuccess() && action.action().id().equals(SystemActionTypes.STARTER_GIFTS_ACTION.get().id())) {
+                        if (result.isSuccess() && action.action().id().equals(StarterGiftsInput.INSTANCE.id())) {
                             boolean empty = result.cards().stream().flatMap(card -> card.data().stream())
                                     .filter(StarterGiftOutput.class::isInstance).map(StarterGiftOutput.class::cast).allMatch(gifts -> gifts.gifts().isEmpty());
                             result = result.withPresentation(result.messageKey(), result.text(), empty ? List.of() : result.cards(), true);
@@ -123,10 +123,11 @@ public final class AssistantRequests {
     private CompletionStage<ResultTypes.ClientState> state(UUID player) {
         AgentStore store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
-            if (!data.bound) throw new AgentException("NOT_BOUND");
-            return new ResultTypes.ClientState(data.saveHistory, data.externalModel,
+            if (!data.bound()) throw new AgentException("NOT_BOUND");
+            return new ResultTypes.ClientState(data.systems.current(), data.saveHistory, data.externalModel,
                     this.modules.enabled(player),
-                    this.engine.modules().commands().suggestions(id -> this.engine.available(player, id)));
+                    this.engine.modules().commands().suggestions(id -> this.engine.available(player, id)),
+                    this.engine.requestTimeoutMillis(player));
         }));
     }
 

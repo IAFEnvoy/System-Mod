@@ -10,14 +10,12 @@ import com.iafenvoy.system.module.item.ItemSystemModule;
 import com.iafenvoy.system.module.lottery.LotterySystemModule;
 import com.iafenvoy.system.module.player.PlayerSystemModule;
 import com.iafenvoy.system.module.quest.QuestSystemModule;
+import com.iafenvoy.system.module.search.SearchSystemModule;
 import com.iafenvoy.system.module.shop.ShopSystemModule;
 import com.iafenvoy.system.module.signin.SignInSystemModule;
 import com.iafenvoy.system.module.usage.UsageSystemModule;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
-
-import java.util.Optional;
 
 /**
  * Builtin feature definitions are registered once; workflows and player runtimes are per server.
@@ -36,5 +34,6 @@ public final class SystemServerModules {
     public static final DeferredHolder<ServerModule, ShopSystemModule> SHOP = REGISTRY.register("shop", ShopSystemModule::new);
     public static final DeferredHolder<ServerModule, LotterySystemModule> LOTTERY = REGISTRY.register("lottery", LotterySystemModule::new);
     public static final DeferredHolder<ServerModule, AdvancementSystemModule> ADVANCEMENT = REGISTRY.register("advancement", AdvancementSystemModule::new);
-    public static final Optional<DeferredHolder<ServerModule, QuestSystemModule>> FTB_QUESTS = ModList.get().isLoaded("ftbquests") ? Optional.of(REGISTRY.register("ftb_quests", QuestSystemModule::new)) : Optional.empty();
+    public static final DeferredHolder<ServerModule, QuestSystemModule> FTB_QUESTS = REGISTRY.register("ftb_quests", QuestSystemModule::new);
+    public static final DeferredHolder<ServerModule, SearchSystemModule> SEARCH = REGISTRY.register("search", SearchSystemModule::new);
 }

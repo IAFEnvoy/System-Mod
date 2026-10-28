@@ -18,6 +18,13 @@ public interface ServerModule {
     }
 
     /**
+     * Keep the definition and codecs registered; check dependencies before loading any feature hooks.
+     */
+    default boolean available() {
+        return true;
+    }
+
+    /**
      * Infrastructure remains available to bound players even when a definition has no optional features.
      */
     default boolean required() {

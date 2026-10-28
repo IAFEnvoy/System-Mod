@@ -37,12 +37,13 @@ public final class ModuleManager implements AutoCloseable {
     public ModuleManager(MinecraftServer server, ModuleContext context) {
         this.server = server;
         this.engine = context.engine();
+        List<ServerModule> modules = SystemRegistries.SERVER_MODULE.stream().filter(ServerModule::available).toList();
         // Static definitions create fresh workflows before any per-server runtime is constructed.
-        for (ServerModule module : SystemRegistries.SERVER_MODULE) {
+        for (ServerModule module : modules) {
             for (AgentModule<?> workflow : module.workflows(context)) this.engine.registerModule(module.id(), workflow);
             module.installed(context);
         }
-        for (ServerModule module : SystemRegistries.SERVER_MODULE)
+        for (ServerModule module : modules)
             this.installed.put(module.id(), new Installed(module, module.runtime(context),
                     module.storages().stream().anyMatch(ModuleStorage::ticking)));
         this.access = new ModuleAccess(server, this.engine, List.copyOf(this.installed.keySet()));
@@ -66,6 +67,10 @@ public final class ModuleManager implements AutoCloseable {
 
     public boolean hasSystem(UUID player) {
         return this.access.hasSystem(player);
+    }
+
+    public Optional<Identifier> system(UUID player) {
+        return this.access.system(player);
     }
 
     public boolean hasModule(UUID player, Identifier module) {
@@ -109,7 +114,7 @@ public final class ModuleManager implements AutoCloseable {
         this.players.put(player.getUUID(), session);
         AgentStore store = this.engine.playerStore(player.getUUID());
         this.engine.maintenance(() -> {
-            if (!store.read(player.getUUID(), data -> data.bound)) return false;
+            if (!store.read(player.getUUID(), PlayerData::bound)) return false;
             return store.update(player.getUUID(), data -> {
                 session.access.initialize(data);
                 return true;
@@ -172,7 +177,7 @@ public final class ModuleManager implements AutoCloseable {
         AgentStore store = this.engine.playerStore(uuid);
         long gameTime = player.player.level().getGameTime();
         this.engine.maintenance(() -> store.update(uuid, data -> {
-            if (!data.bound) throw new IllegalStateException("Player system is no longer bound");
+            if (!data.bound()) throw new IllegalStateException("Player system is no longer bound");
             for (Activation activation : additions) {
                 if (!activation.valid) continue;
                 ModuleData.initialize(data, activation.module.definition, gameTime);

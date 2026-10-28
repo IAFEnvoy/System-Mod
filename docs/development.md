@@ -107,15 +107,15 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 ## 扩展模块
 
-实现 `AgentModule<I>`，提供已注册的 `TypedPayload.Type<I>`、描述信息和 `List<ToolRegistry.Tool<?, ?>> tools()`，在 `execute` 中处理不可变参数。内置模块继承 `BuiltinModule<I>`：构造时传入共享输入类型键 `TypedPayload.Type<I>`、`SchemaMapCodec<I>` 和工具列表，描述中的输入 schema 从 Codec 获取，工具白名单从列表生成，避免重复声明。模块是受信 Java 代码，Codec 不替代业务授权，也不是同 JVM 沙箱。
+实现 `AgentModule<I extends AgentAction>`，通过 `inputCodec()` 提供已注册的 `MapCodec<I>`，另声明描述信息和 `List<ToolRegistry.Tool<?, ?>> tools()`；`execute` 直接接收动作对象。动作实现的 `codec()` 返回自己的 MapCodec。内置模块继承 `BuiltinModule<I>`：构造时只传 `SchemaMapCodec<I>`、描述和工具列表，注册 ID 与输入 Schema 从同一个 Codec 获取，工具白名单从列表生成，避免重复声明。模块是受信 Java 代码，Codec 不替代业务授权，也不是同 JVM 沙箱。
 
-模块 ID 使用原版 `Identifier`：`Descriptor.id`、输入类型键 `TypedPayload.Type.id` 及模块注册表的键均为该类型。先通过 DeferredRegister 向 `SystemResourceKeys.ACTION_TYPE` 登记共享类型键，内置键由 `SystemActionTypes` 提供。模块的 `inputType()`、按钮、指令与路由必须复用这个键；引擎拒绝 ID 不一致或未注册的类型键。`BuiltinModule` 从传入类型键取得 Identifier。配置和网络仍编码为 `namespace:path` 字符串。
+模块 ID 使用原版 `Identifier`：`Descriptor.id`、`AgentAction.id()` 及模块注册表的键均为该类型。先通过 DeferredRegister 向 `SystemResourceKeys.ACTION_TYPE` 登记动作 MapCodec，内置定义由 `SystemActionTypes` 提供。模块的 `inputCodec()` 和动作的 `codec()` 必须复用同一实例；引擎拒绝注册 ID 不一致或未注册的 Codec。无参数动作使用独立类型与 Codec，不能将同一个 EmptyInput Codec 注册为多个动作。配置和网络仍编码为 `namespace:path` 字符串。
 
 每个 Tool 只负责一个行为，`ToolRegistry.Type<I, O>` 保存稳定 ID、参数 `MapCodec<I>` 和结果 `Codec<O>`，`Tool<I, O>` 保存写入、幂等、事件权限和单一 Handler。模块直接调用 `context.tool(type, stepId, typedInput)` 获得类型化结果；一个流程需要多个行为时使用模块的 `List.of(toolA, toolB)` 组合。同一工具被多个模块使用时共享同一实例，重复的不同实现或同 ID 不同类型键会被拒绝。
 
 功能级扩展用标准 `DeferredRegister<ServerModule>` 注册到 `SystemResourceKeys.SERVER_MODULE`；客户端以相同方式注册到 `SystemResourceKeys.CLIENT_MODULE`，注册入口限定 `Dist.CLIENT`。完整示例见[功能模块化](feature-modules.md)。只有工作流的扩展也可在原有 `AssistantRegistrationEvent` 中调用 `engine.registerModule(module)`：引擎的工作流目录核对描述白名单与工具列表，检查 ID、指令别名和工具实例冲突，再统一收集工具、指令、语义 profile 和快捷入口。不再提供先注册工具、再注册模块的两阶段入口。FTB 也使用此路径，查询、详情、普通领奖、新手礼包领取和明确任务提交各有独立 Tool 及对应模块，不需要专用服务接口。
 
-`TypedPayload.ACTION_CODEC` 通过正式 `SystemRegistries.ACTION_TYPE` 的 `byNameCodec().dispatchMap(...)` 按 `moduleId` 选择共享参数 Codec；调用封装为 `{"moduleId":"system:item_query","input":{"query":"stone"}}`。`ModuleRegistry.call` 根据同一类型键定位当前服务器已安装模块、校验参数并生成可执行调用，不再维护另一套输入 dispatch Codec。模型目录和模型返回值解码都由当前模块注册表约束；未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `TypedPayload<?>`。
+`AgentAction.CODEC` 通过正式 `SystemRegistries.ACTION_TYPE` 的 `byNameCodec().dispatch(...)` 按 `moduleId` 选择实例返回的 MapCodec；参数平铺为 `{"moduleId":"system:item_query","query":"stone"}`。`ModuleRegistry.call` 根据 Codec 注册 ID 定位当前服务器已安装模块并核对实例身份。指令、语义提取和按钮解码共用 `AgentAction.validate` 校验 Java 创建的动作；模型只接受当前可用目录中的动作。未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `AgentAction`，没有额外的 type/value 包装。
 
 `AgentCodecs.strict` 在原版 Codec 基础上额外拒绝未知键和显式 null；精确整数 Codec 拒绝小数和溢出值，避免原版 `Codec.INT` 的截断行为影响索引。业务参数的缺省值由严格 `optionalFieldOf` 提供，类型错误不静默回退；配置字段统一使用 `lenientOptionalFieldOf` 回退默认值，两者互不影响。Codec 解析失败不接受部分结果。写工具回放要求指纹完全一致，再由对应工具的结果 Codec 恢复对象；不匹配时拒绝执行，不归一旧格式，也不重新执行已完成写操作。
 
@@ -175,7 +175,7 @@ CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式
 
 ## 独立策略
 
-`AgentSettings.policies()` 按模块 ID 覆盖整个 `ExecutionPolicy` 对象。路由单独用 `routingPolicy`，已消耗的模型调用与 tokens 转入被选模块；模块总期限从最初收到请求计时。
+`AgentConfig.INSTANCE.get().policies()` 按模块 ID 覆盖整个 `ExecutionPolicy` 对象。路由单独用 `routingPolicy`，已消耗的模型调用与 tokens 转入被选模块；模块总期限从最初收到请求计时。
 
 | 字段 | 含义 / 有效值 |
 | --- | --- |
@@ -207,11 +207,13 @@ CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式
 
 `PlayerData` 顶层 `RecordCodecBuilder` 只保存版本、绑定与偏好、`Conversation`、`DataStorageHolder<Identifier>` 和 `ModelQuota` 共 7 项。签到、收件箱、事件/操作回执、商城、成就状态和模块覆盖分别实现 Saturn `DataStorage`，由 ServerModule.storages 声明，内置 Codec 由 `SystemDataStorages` 注册，扩展 Codec 独立注册到 Saturn DATA_STORAGE_TYPE，并由 `DataStorageHolder.codec(Identifier.CODEC)` 分派；扩展模块可用自己的 DataStorage 避免继续扩大共享玩家记录。访问入口为 `ModuleData.get(data, SomeSystemModule.STORAGE)`，底层按 Holder 键和类型调用 `get` / `set`，与 DataStorage Codec 类型 ID 分开；复制必须隔离可变集合和其中的可变记录。玩家文件仍由 `AgentStore.update` 整体事务化写入，不属于玩家附件。对话历史和请求回放由 `Conversation` 管理，`Conversation.clear()` 统一清理并推进记忆代次；内部交付、事件、步骤回执和订单使用 `RecordCodecBuilder`。
 
-事件参数按 moduleId/input 分派，事件授权只使用任务自身保存的 ruleId。结果、语音统计和 ASR 统计按当前 Codec 结构读取，不从旧记录猜测或回退字段。
+成就规则与事件存档将完整动作保存在 `action` 字段中，动作内部按 moduleId 分派并平铺参数，避免与规则的 advancementId、事件任务的 ruleId 重名；事件授权只使用任务自身保存的 ruleId。结果、语音统计和 ASR 统计按当前 Codec 结构读取，不从旧记录猜测或回退字段。
 
 ## 绑定与撤销
 
-`PlayerData.bound` 默认 `false`。平台在鉴权后的管理员命令中调用 `engine.grant(UUID, baselines)`；只有新绑定落盘成功才发送绑定 HUD 消息，重复授予发送普通通知，不自动打开界面、不清空记录。未绑定的交互任务与事件任务在读取或创建业务状态前被拒绝。MC 适配器在绑定时建立已完成成就基线，不补发绑定前的奖励。
+`PlayerData.systems` 默认 `SystemBindings.EMPTY`，`bound()` 从集合推导，不再单独存储布尔状态。集合以不可变副本为后续多系统预留结构，当前 Codec 与授予入口最多允许一个 ID。管理员通过 `/system grant <系统ID> [玩家]` 或对自己的 `/system grant <系统ID>` 授予，类型从存档的数据包注册表补全并在服务层检查，再调用 `engine.grant(UUID, systemId, initialize)`。事务锁内核对是否已有绑定：同 ID 返回已绑定，不同 ID 拒绝；只有新绑定落盘成功才发送绑定 HUD 消息，不自动打开界面、不清空记录。未绑定的交互任务与事件任务在读取或创建业务状态前被拒绝。MC 适配器在绑定时建立已完成成就基线，不补发绑定前的奖励。
+
+ModuleAccess 在登录事务中取得绑定 ID，在主线程确认定义仍存在，再按该玩家选定的定义求值模块条件；`ModuleManager.system(uuid)` 暴露当前就绪系统，`has_system` 的可选 ID 参数也据此匹配。ClientState 同步当前系统 ID，客户端从同步数据包注册表读取对应翻译键和介绍；不使用全服固定默认定义。被移除的定义不会隐式改绑，恢复定义或显式撤销后可重新操作。业务账本目前仍按玩家保存，多系统的独立账本与同时运行逻辑尚未启用。
 
 `engine.revoke(UUID)` 先切换该玩家的运行代次，取消活动交互、禁用事件规则并清空短期报价；在维护线程通知 `onRevoke` 监听器后，用 `AgentStore.delete(UUID)` 删除玩家 JSON 与临时文件。FTB 适配器通过监听器清理该玩家的领取引用。成功回包会关闭系统界面并清空客户端会话；失败会报告真实错误。
 
@@ -249,7 +251,7 @@ CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式
 
 ## FTB 适配与边界
 
-只有 `ModList.isLoaded("ftbquests")` 为真才反射加载 `FtbQuestAdapter`；该类内部直接调用 Java API，反射只用于隔离加载，业务不走 MCP 传输。先检查 `ServerQuestFile.exists()`，再访问不可空的 `getInstance()`。
+FTB 的安全模块定义始终注册，`QuestSystemModule.available()` 在内部检查 `ModList.get().isLoaded("ftbquests")`；ModuleManager、指令装配与存储枚举先过滤不可用定义，只有依赖存在才反射加载 `FtbQuestAdapter`。公共 DTO 和存储 Codec 的登记不随依赖改变，保留数据包与存档解析所需类型。适配器内部直接调用 Java API，反射只用于隔离加载，业务不走 MCP 传输。先检查 `ServerQuestFile.exists()`，再访问不可空的 `getInstance()`。
 
 读取 Tool 各自返回固定类型，FTB 原生 `Quest` 和 `TeamData` 只在游戏线程内使用，对外返回可序列化的数据快照：
 
@@ -301,3 +303,13 @@ FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubm
 原设计稿是目标，不应把所有章节都当作已经实现。当前未包含：配方/整合包加工链、任意他人私有资料查询、多助手/多会话、模型摘要、通用工具自动规划循环、逐模块可配置公平权重/重试、模型供应商故障熔断、事件热重载、数据库迁移、严格一次背包交付、完整观测后端与 MCP 端点。
 
 本轮验证仅为编译、打包与静态检查；没有实际调用模型服务、启动客户端/服务端或验证游戏内布局/领奖。
+
+## 联网搜索实现入口
+
+- `module/search`：功能装配、工作台入口；注册 ID system:search。
+- `agent/builtin/search`：模块自身的明确输入解析、类型化 ReAct 决策和两个独立 Tool；工作流 ID system:web_search。
+- `search`：SearchProvider、DeepSeekSearchClient 与统一玩家计量 SearchGateway；复用 HttpTransport。
+- `config/file/SearchConfig`、`SearchPricingConfig`：默认共享 SYSTEM_DEEPSEEK_API_KEY，分别管理连接与按千次价格。
+- `data/usage/SearchUsage`：不可变计数，合入现有世界 SavedData 与 StreamCodec 快照；客户端语音账本不上传。
+
+该工作流默认 6 次模型、5 次网络工具、55 秒，独立于快速模块。ModuleRouting.explicit 作为通用扩展钩子，搜索不放入语义或自动模型路由。详见[搜索配置与流程](search-api.md)。

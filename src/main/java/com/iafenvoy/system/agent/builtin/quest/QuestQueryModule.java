@@ -7,7 +7,6 @@ import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 
@@ -16,8 +15,7 @@ import java.util.List;
  */
 public final class QuestQueryModule extends BuiltinModule<QuestQueryInput> {
     public QuestQueryModule(ToolRegistry.Tool<QuestQueryInput, List<QuestBriefOutput>> query) {
-        super(SystemActionTypes.QUESTS_ACTION.get(), "List active FTB quests: visible, unlocked, actionable and incomplete. Returns brief numbered summaries only. Set claimable=true to list completed quests with unclaimed rewards.",
-                QuestQueryInput.CODEC, List.of(query), true, false, ExecutionPolicy.quick(2, 0));
+        super(QuestQueryInput.CODEC, "List active FTB quests: visible, unlocked, actionable and incomplete. Returns brief numbered summaries only. Set claimable=true to list completed quests with unclaimed rewards.", List.of(query), true, false, ExecutionPolicy.quick(2, 0));
     }
 
     @Override

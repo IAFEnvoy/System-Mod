@@ -161,6 +161,22 @@ public final class ExecutionContext {
         return Math.max(0, this.expires - System.currentTimeMillis());
     }
 
+    /**
+     * Billable network tools obey the same external-service opt-out as inference, before each call.
+     */
+    public void requireExternalServices() {
+        this.ensureMemoryCurrent();
+        if (!this.store.read(this.player, data -> data.externalModel)) throw new AgentException("MODEL_DISABLED");
+    }
+
+    public int remainingModelCalls() {
+        return Math.max(0, this.policy.modelCalls() - this.models);
+    }
+
+    public int remainingToolCalls() {
+        return Math.max(0, this.policy.toolCalls() - this.tools);
+    }
+
     public void cancel() {
         this.cancelled.set(true);
     }

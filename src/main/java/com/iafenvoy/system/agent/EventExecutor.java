@@ -27,8 +27,8 @@ final class EventExecutor implements AutoCloseable {
         this.engine = engine;
     }
 
-    public CompletionStage<AgentResult> trigger(UUID player, String key, String ruleId, TypedPayload<?> input) {
-        Identifier moduleId = input.type().id();
+    public CompletionStage<AgentResult> trigger(UUID player, String key, String ruleId, AgentAction input) {
+        Identifier moduleId = input.id();
         // Event keys identify durable workflows; resuming reuses the saved policy, budget and step receipts.
         long incarnation = this.engine.incarnation(player);
         AgentStore store = this.engine.playerStore(player, incarnation);
@@ -47,7 +47,7 @@ final class EventExecutor implements AutoCloseable {
                         if (module == null || !module.descriptor().event())
                             throw new AgentException("CAPABILITY_UNAVAILABLE");
                         PlayerData.EventTask task = store.update(player, data -> {
-                            if (!data.bound) throw new AgentException("NOT_BOUND");
+                            if (!data.bound()) throw new AgentException("NOT_BOUND");
                             if (ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.containsKey(key))
                                 return ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.get(key);
                             if (ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.size() >= 4096)
@@ -67,7 +67,7 @@ final class EventExecutor implements AutoCloseable {
                         if (!task.pending()) {
                             return task.result;
                         }
-                        if (!task.call.type().id().equals(moduleId) || task.moduleVersion != module.descriptor().version())
+                        if (!task.call.id().equals(moduleId) || task.moduleVersion != module.descriptor().version())
                             throw new AgentException("CAPABILITY_UNAVAILABLE");
                         if (!this.enabledRules.getOrDefault(player, Set.of()).contains(task.ruleId))
                             throw new AgentException("NOT_AUTHORIZED");

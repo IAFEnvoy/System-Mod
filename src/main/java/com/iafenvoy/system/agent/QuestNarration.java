@@ -116,7 +116,7 @@ public final class QuestNarration implements AutoCloseable {
         this.workers.submit(() -> {
             AgentStore store = this.engine.playerStore(player, incarnation);
             long epoch = store.read(player, data -> {
-                if (!data.bound) throw new AgentException("NOT_BOUND");
+                if (!data.bound()) throw new AgentException("NOT_BOUND");
                 return data.conversation.memoryEpoch;
             });
             ExecutionContext context = new ExecutionContext(this.engine, player, UUID.randomUUID().toString(), null,

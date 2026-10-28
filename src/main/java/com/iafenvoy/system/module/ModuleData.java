@@ -36,7 +36,7 @@ public final class ModuleData {
      * Read existing values across declaring modules without creating disabled modules' data.
      */
     public static <T extends DataStorage> Stream<T> values(PlayerData data, Class<T> type) {
-        return SystemRegistries.SERVER_MODULE.stream().flatMap(module -> module.storages().stream())
+        return SystemRegistries.SERVER_MODULE.stream().filter(ServerModule::available).flatMap(module -> module.storages().stream())
                 .filter(storage -> storage.type() == type)
                 .flatMap(storage -> data.moduleData.get(storage.owner(), type).stream());
     }

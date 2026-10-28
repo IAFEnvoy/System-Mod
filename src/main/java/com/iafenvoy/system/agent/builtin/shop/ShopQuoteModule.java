@@ -11,7 +11,6 @@ import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.card.CardUpdate;
-import com.iafenvoy.system.registry.SystemActionTypes;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
@@ -22,8 +21,7 @@ import java.util.Optional;
  */
 public final class ShopQuoteModule extends BuiltinModule<ShopQuoteInput> {
     public ShopQuoteModule(ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
-        super(SystemActionTypes.QUOTE_ACTION.get(), "Preview ONE shop purchase; player must then explicitly select the returned confirmation action.",
-                ShopQuoteInput.CODEC, List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
+        super(ShopQuoteInput.CODEC, "Preview ONE shop purchase; player must then explicitly select the returned confirmation action.", List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
     }
 
     @Override

@@ -449,3 +449,51 @@ TTS / ASR 统计由本机 `LocalSpeechUsage` 按客户端账号 UUID 保存于 `
 阅读代码确认原逻辑只在没有业务底部按钮时补充“确定”，已改为始终追加，助手忙碌时仍可关闭通知。确认操作新增“下一个”“下一页”例句并保留“关闭”；实际按钮文案的精确匹配优先于别名，避免覆盖真正的翻页按钮。
 
 执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未运行测试或启动 Minecraft，通知按钮点击与实际语音识别尚未进行游戏内验收。静态检查确认别名完整且无重复，中英文各 455 个语言键且集合一致，`git diff --check` 通过。
+
+## 2026-10-28 玩家模块管理指令
+
+核心模块装配 `/system module add/remove <玩家> <模块ID>` 和 `list [玩家]`，节点要求管理员权限，支持控制台与单个在线玩家选择器。静态阅读确认：增删只调用现有 ModuleManager，沿用持久覆盖、会话启停、异步初始化和状态同步；模块补全来自正式服务端注册表，排除必需模块，未安装的可选模块不会出现在候选中。无目标的 list 显示注册目录，有目标时显示已完成激活的玩家模块。重复覆盖、未知模块、必需模块和未绑定玩家有明确反馈。
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；中英文各 463 个键且集合一致，`git diff --check` 通过。没有运行测试或启动 Minecraft；权限、在线补全、客户端即时刷新、重登持久化与控制台执行尚未作游戏内验收。未修改 README-zh.md。
+
+## 2026-10-28 动作接口与 MapCodec 注册
+
+阅读代码确认：19 个动作输入均实现 AgentAction，codec() 返回本类注册的 MapCodec；SystemActionTypes、SystemResourceKeys 和 SystemRegistries 的 ACTION_TYPE 直接保存这些 Codec。移除 TypedPayload 及 Type 包装，工作流 inputCodec() 与动作实例核对同一个 Codec；BuiltinModule 从 SchemaMapCodec 获取注册 ID 和模型 Schema。指令、语义提取和按钮解码共享 AgentAction.validate，模型解码仍只接受当前可用目录，不开放事件或仅结构化操作。5 个无参数动作各用独立单例类型，工具内部保留共享 EmptyInput。
+
+成就配置和事件任务使用独立 action 字段保存完整动作，内部按 moduleId 分派并平铺参数，避免与顶层 advancementId / ruleId 冲突；示例已同步，无旧字段迁移。客户端直接发送动作对象，卡片仍通过动作 ID 与字符串参数提交，服务端继续进行工作流权限校验。
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过。静态检查：19 个注册 ID 与 Codec 类型各自唯一，实现均返回自身 CODEC；主源码无旧包装引用，玩家查询、签到和礼包查询的底层 Tool 仍接收 EmptyInput；57 个资源与示例 JSON 语法及键唯一性通过，双语各 463 个键且集合一致，`git diff --check` 通过。
+
+未运行测试、启动 Minecraft 或调用外部 API。动作网络编解码、成就配置加载、事件恢复、模型路由和卡片按钮的实际交互尚未进行游戏内验收。协议保持 1，README-zh.md 未修改。
+
+## 2026-10-28 模块内部可用性与可选依赖
+
+阅读代码确认：ServerModule 新增默认 true 的 available()，QuestSystemModule 自行检查 FTB Quests；SystemServerModules 始终以普通 DeferredHolder 注册安全定义。ModuleManager 在创建工作流、安装钩子、运行时及访问存储声明前统一筛选，指令装配、存储枚举和模块增删补全也跳过不可用定义；必需模块仅从实际装配集合中收集，手动覆盖及 Saturn action 无法启用缺少依赖的模块。list 保留完整注册目录，玩家列表只显示成功激活的功能。
+
+模块 ID、动作 / 卡片 Codec 和 DataStorage Codec 不随依赖缺席而取消注册，数据包模块引用与保存的数据继续解码，FTB 适配器仍只通过检查后的反射入口加载。现有默认定义中的 FTB 条目保留；未安装依赖时跳过装配，不删除手动覆盖或历史数据。
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过。未运行测试、启动 Minecraft、创建存档或调用外部 API；FTB 缺席时的实际类加载、数据包加载和移除 / 恢复依赖后的存档读写尚未运行验收。
+
+## 2026-10-28 按玩家绑定数据包系统
+
+阅读代码确认：`/system grant <系统ID> [玩家]` 和自己的 `/system grant <系统ID>` 从当前存档的数据包注册表补全 ID，服务层拒绝不存在的定义。无参数命令显示用法，不进入模型路由；管理员权限、单个在线玩家选择和控制台目标限制保持。AgentEngine 在同一玩家事务内检查已有绑定并写入：同 ID 只返回已绑定，不同 ID 拒绝且不覆盖；绑定变更和维护锁阻止并发授予绕过检查。
+
+玩家数据以不可变 SystemBindings 集合预留多系统结构，当前公开工厂、授予事务与 Codec 最多保存一个 ID，bound() 从集合推导。登录缓存系统 ID，模块求值使用该玩家选定的 SystemDefinition，has_system 的指定 ID 与实际绑定比较。绑定通知使用选中定义，ClientState 同步当前 ID，客户端从同步数据包注册表读取名称与介绍；定义被移除时不会自动改绑默认系统。revoke/reset 仍删除绑定与业务记录，独立用量保留。
+
+执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过。未运行测试、启动 Minecraft、创建存档或调用外部 API；注册表实际补全、不同系统的多人隔离、并发授予、重登、定义移除及客户端显示尚未游戏内验收。协议保持 1，README-zh.md 未修改。
+
+## 2026-10-28 明确授权的联网搜索模块
+
+已执行 `compileJava testModClasses --console=plain`，主源码和开发源集编译通过。没有执行测试或启动 Minecraft，没有请求收费 Search/Fetch、模型、TTS 或 ASR API。
+
+静态检查：主资源、开发资源和示例共 59 个 JSON 语法及键唯一性通过；中英文各 486 个语言键，集合和格式化参数数量一致。搜索动作/卡片、客户端节点、页面元素、提示词占位符及默认价格文件对应完整，本地 Markdown 链接与 `git diff --check` 通过，README-zh.md 未修改。
+
+阅读代码确认：搜索只有明确指令、保守的当前消息解析或主动页面操作才能启动；不声明语义档案、快捷动作或自动模型入口。Search/Fetch 的独立工具只读、禁止事件调用；循环受模块预算约束，禁止重复查询和未知 URL 抓取，来源编号来自本次结果。每次付费调用检查生命周期、功能权限与外部服务偏好，网关计量脱离可撤销业务存档；未知结果不会被描述为保证免费。整理失败且会话有效时保留已经取得的来源。
+
+尚未验收：实际 DeepSeek 响应兼容性和时延、游戏内页面与卡片排版、服务器重启后用量恢复、配置重载、权限变化和取消时序，以及供应商实际扣费。编译与静态检查不代表这些行为已经实测通过。
+
+## 2026-10-28 系统定义的模块 tag
+
+已读取当前 Saturn 依赖 JAR 的 RegistryCodecs 签名及对应源码，模块引用复用 keyOrTag / matchesKeys，支持单个模块 ID、#tag 及带 condition 的对象形式。权限求值时读取注册表当前 tag 成员，继续保留重复引用任一条件成立、手动覆盖、必需模块及可选依赖检查。客户端仍同步实际模块 ID，不依赖 tag 展开。
+
+执行 `compileJava testModClasses --console=plain` 编译通过；新增文档中的两个 JSON 示例、文档本地链接、双语语言键集合及 `git diff --check` 检查通过。未运行测试、启动 Minecraft、创建临时数据包或调用收费 API；tag 实际加载、资源重载和条件切换尚未游戏内验收。README-zh.md 未修改。

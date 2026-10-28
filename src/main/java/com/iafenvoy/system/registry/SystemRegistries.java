@@ -1,8 +1,8 @@
 package com.iafenvoy.system.registry;
 
+import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResponse;
-import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.card.CardData;
 import com.iafenvoy.system.module.ServerModule;
 import com.iafenvoy.system.module.client.ClientModule;
@@ -22,15 +22,12 @@ import net.neoforged.neoforge.registries.RegistryBuilder;
 public final class SystemRegistries {
     public static final Registry<ServerModule> SERVER_MODULE = new RegistryBuilder<>(SystemResourceKeys.SERVER_MODULE).create();
     public static final Registry<MapCodec<? extends CardData>> CARD_DATA_TYPE = new RegistryBuilder<>(SystemResourceKeys.CARD_DATA_TYPE).create();
-    public static final Registry<TypedPayload.Type<?>> ACTION_TYPE = new RegistryBuilder<>(SystemResourceKeys.ACTION_TYPE).create();
+    public static final Registry<MapCodec<? extends AgentAction>> ACTION_TYPE = new RegistryBuilder<>(SystemResourceKeys.ACTION_TYPE).create();
     public static final Registry<MapCodec<? extends AgentRequest>> AGENT_REQUEST_TYPE = new RegistryBuilder<>(SystemResourceKeys.AGENT_REQUEST_TYPE).create();
     public static final Registry<MapCodec<? extends AgentResponse>> AGENT_RESPONSE_TYPE = new RegistryBuilder<>(SystemResourceKeys.AGENT_RESPONSE_TYPE).create();
     // Generic value types do not initialize client implementations; only the client entrypoint registers them.
     public static final Registry<ClientModule> CLIENT_MODULE = new RegistryBuilder<>(SystemResourceKeys.CLIENT_MODULE).create();
     public static final Registry<MapCodec<? extends CardNode>> CARD_NODE_TYPE = new RegistryBuilder<>(SystemResourceKeys.CARD_NODE_TYPE).create();
-
-    private SystemRegistries() {
-    }
 
     @SubscribeEvent
     public static void register(NewRegistryEvent event) {

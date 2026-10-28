@@ -10,7 +10,6 @@ import com.iafenvoy.system.agent.builtin.output.StateOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 
@@ -19,8 +18,7 @@ import java.util.List;
  */
 public final class DeliverModule extends BuiltinModule<EntitlementInput> {
     public DeliverModule(ToolRegistry.Tool<EntitlementInput, StateOutput> deliver) {
-        super(SystemActionTypes.DELIVER_ACTION.get(), "Deliver an existing reward entitlement obtained from the inbox; never invent entitlement IDs.",
-                EntitlementInput.CODEC, List.of(deliver), true, false, ExecutionPolicy.quick(1, 1));
+        super(EntitlementInput.CODEC, "Deliver an existing reward entitlement obtained from the inbox; never invent entitlement IDs.", List.of(deliver), true, false, ExecutionPolicy.quick(1, 1));
     }
 
     @Override

@@ -10,7 +10,6 @@ import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.card.CardUpdate;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 
@@ -19,8 +18,7 @@ import java.util.List;
  */
 public final class StarterGiftModule extends BuiltinModule<StarterGiftInput> {
     public StarterGiftModule(ToolRegistry.Tool<StarterGiftInput, StarterGiftOutput> claim) {
-        super(SystemActionTypes.STARTER_GIFT_ACTION.get(), "Claim the displayed starter gifts only after explicit player confirmation.",
-                StarterGiftInput.CODEC, List.of(claim), true, false, ExecutionPolicy.quick(0, 1));
+        super(StarterGiftInput.CODEC, "Claim the displayed starter gifts only after explicit player confirmation.", List.of(claim), true, false, ExecutionPolicy.quick(0, 1));
     }
 
     @Override

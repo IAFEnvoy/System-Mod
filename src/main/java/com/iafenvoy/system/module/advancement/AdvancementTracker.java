@@ -1,7 +1,7 @@
 package com.iafenvoy.system.module.advancement;
 
+import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.agent.builtin.input.AdvancementInput;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
@@ -10,7 +10,6 @@ import com.iafenvoy.system.config.file.AdvancementConfig;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import com.iafenvoy.system.registry.SystemActionTypes;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
@@ -38,7 +37,7 @@ final class AdvancementTracker implements PlayerModule {
         for (AdvancementRule rule : AdvancementConfig.INSTANCE.get().rules()) {
             if (!this.engine.modules().call(rule.call()).module().descriptor().event())
                 throw new IllegalArgumentException("Unknown event module " + rule.moduleId());
-            if (rule.call().value() instanceof AdvancementInput input && (input.advancementId().isPresent() || input.ruleId().isPresent()))
+            if (rule.call() instanceof AdvancementInput input && (input.advancementId().isPresent() || input.ruleId().isPresent()))
                 throw new IllegalArgumentException("Event metadata is supplied by the server");
         }
     }
@@ -77,17 +76,17 @@ final class AdvancementTracker implements PlayerModule {
     }
 
     private void dispatch(UUID player, AdvancementRule rule) {
-        if (!this.engine.available(player, rule.call().type().id())) return;
+        if (!this.engine.available(player, rule.call().id())) return;
         long incarnation = this.engine.incarnation(player);
         AgentStore store = this.engine.playerStore(player);
         this.engine.maintenance(() -> store.read(player, data ->
                         ModuleData.get(data, AdvancementSystemModule.STORAGE).baselines.getOrDefault(rule.id() + "|" + rule.advancementId(), Set.of()).contains(rule.advancementId().toString())))
                 .thenAccept(baseline -> {
                     if (baseline || !this.engine.current(player, incarnation)) return;
-                    TypedPayload<?> input = rule.call();
-                    if (input.value() instanceof AdvancementInput value)
-                        input = SystemActionTypes.ADVANCEMENT_ACTION.get().of(new AdvancementInput(value.featureId(), value.rewardId(),
-                                Optional.of(rule.advancementId().toString()), Optional.of(rule.id().toString())));
+                    AgentAction input = rule.call();
+                    if (input instanceof AdvancementInput value)
+                        input = new AdvancementInput(value.featureId(), value.rewardId(),
+                                Optional.of(rule.advancementId().toString()), Optional.of(rule.id().toString()));
                     this.engine.trigger(player, rule.id() + "|" + rule.advancementId(), rule.id().toString(), input).thenAccept(result -> {
                         if (result != null && result.isSuccess()) this.server.execute(() -> {
                             ServerPlayer online = this.server.getPlayerList().getPlayer(player);

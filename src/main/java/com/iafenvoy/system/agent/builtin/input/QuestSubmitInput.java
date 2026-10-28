@@ -2,14 +2,17 @@ package com.iafenvoy.system.agent.builtin.input;
 
 import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
+import com.iafenvoy.system.agent.AgentAction;
 import com.mojang.serialization.DataResult;
+import com.mojang.serialization.MapCodec;
 
 import java.util.Optional;
 
 /**
  * Explicit submission selects one quest; indices use the same player-scoped list as quest details.
  */
-public record QuestSubmitInput(String query, Optional<Integer> index, String questId, boolean checkmarkOnly) {
+public record QuestSubmitInput(String query, Optional<Integer> index, String questId,
+                               boolean checkmarkOnly) implements AgentAction {
     public static final SchemaMapCodec<QuestSubmitInput> CODEC = SchemaCodecs.<QuestSubmitInput>record((i, f) -> i.group(
             f.optional("query", SchemaCodecs.STRING, "").forGetter(QuestSubmitInput::query),
             f.optional("index", SchemaCodecs.intRange(1, Integer.MAX_VALUE)).forGetter(QuestSubmitInput::index),
@@ -33,5 +36,10 @@ public record QuestSubmitInput(String query, Optional<Integer> index, String que
         String text = argument.strip();
         return text.matches("[0-9]+") ? new QuestSubmitInput("", Optional.of(Integer.parseInt(text)), "")
                 : new QuestSubmitInput(text, Optional.empty(), "");
+    }
+
+    @Override
+    public MapCodec<QuestSubmitInput> codec() {
+        return CODEC;
     }
 }

@@ -27,7 +27,7 @@ final class ConversationService {
         this.engine.cancel(player);
         AgentStore store = this.engine.playerStore(player);
         return this.engine.personalMaintenance(player, () -> store.update(player, data -> {
-            if (!data.bound) throw new AgentException("NOT_BOUND");
+            if (!data.bound()) throw new AgentException("NOT_BOUND");
             data.conversation.clear();
             this.engine.router().clear(player);
             return AgentResult.ok("system.result.forgotten");
@@ -38,7 +38,7 @@ final class ConversationService {
         this.engine.cancel(player);
         AgentStore store = this.engine.playerStore(player);
         return this.engine.personalMaintenance(player, () -> store.update(player, data -> {
-            if (!data.bound) throw new AgentException("NOT_BOUND");
+            if (!data.bound()) throw new AgentException("NOT_BOUND");
             data.saveHistory = history;
             data.externalModel = external;
             this.engine.router().clear(player);
@@ -51,7 +51,7 @@ final class ConversationService {
     public CompletionStage<ResultTypes.History> history(UUID player) {
         AgentStore store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
-            if (!data.bound) throw new AgentException("NOT_BOUND");
+            if (!data.bound()) throw new AgentException("NOT_BOUND");
             List<PlayerData.Message> selected = new ArrayList<>();
             int size = 0;
             for (int index = data.conversation.history.size() - 1; index >= 0 && selected.size() < 24; index--) {

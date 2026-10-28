@@ -2,7 +2,7 @@ package com.iafenvoy.system.agent.builtin.inbox;
 
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
+import com.iafenvoy.system.agent.builtin.input.InboxInput;
 import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
@@ -13,7 +13,6 @@ import com.iafenvoy.system.module.CommerceDataStorage;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.inbox.InboxSystemModule;
 import com.iafenvoy.system.module.signin.SignInSystemModule;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -24,25 +23,24 @@ import java.util.Set;
 /**
  * Builds reward delivery actions together with daily sign-in and pending order status.
  */
-public final class InboxModule extends BuiltinModule<EmptyInput> {
+public final class InboxModule extends BuiltinModule<InboxInput> {
     public InboxModule() {
-        super(SystemActionTypes.INBOX_ACTION.get(), "Read sign-in status, available reward packages and my reward inbox.",
-                EmptyInput.CODEC, List.of(), true, false, ExecutionPolicy.quick(2, 0));
+        super(InboxInput.CODEC, "Read sign-in status, available reward packages and my reward inbox.", List.of(), true, false, ExecutionPolicy.quick(2, 0));
     }
 
     @Override
-    public ModuleRouting<EmptyInput> routing() {
-        return ModuleRouting.<EmptyInput>defaults()
-                .button(_ -> EmptyInput.INSTANCE)
-                .command(AgentCommand.literal(EmptyInput.INSTANCE, "inbox", "收件箱"))
-                .semantic(RoutingProfile.read(text -> EmptyInput.INSTANCE,
+    public ModuleRouting<InboxInput> routing() {
+        return ModuleRouting.<InboxInput>defaults()
+                .button(_ -> InboxInput.INSTANCE)
+                .command(AgentCommand.literal(InboxInput.INSTANCE, "inbox", "收件箱"))
+                .semantic(RoutingProfile.read(text -> InboxInput.INSTANCE,
                         List.of("我今天签到了吗", "查看我的收件箱", "现在有哪些待领取奖励", "看一下签到状态和补给", "查看收件箱", "查看签到状态"),
                         List.of("Have I signed in today?", "Show my reward inbox", "What rewards are waiting for me?", "Check my daily sign-in status", "Show inbox", "Show my inbox")))
-                .shortcut("system.action.view_inbox", EmptyInput.INSTANCE);
+                .shortcut("system.action.view_inbox", InboxInput.INSTANCE);
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, EmptyInput input) {
+    public AgentResult execute(ExecutionContext context, InboxInput input) {
         String day = LocalDate.now(ZoneId.of(AgentConfig.INSTANCE.get().timeZone())).toString();
         return context.store().read(context.player(), data -> {
             List<CardUpdate> cards = new ArrayList<>();

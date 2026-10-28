@@ -1,9 +1,9 @@
 package com.iafenvoy.system.agent.store;
 
 import com.iafenvoy.saturn.data.storage.DataStorageHolder;
+import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.agent.commerce.CommerceOrder;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
@@ -22,7 +22,7 @@ import java.util.*;
 public final class PlayerData {
     public static final Codec<PlayerData> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.INT.lenientOptionalFieldOf("version", 1).forGetter(v -> v.version),
-            Codec.BOOL.lenientOptionalFieldOf("bound", false).forGetter(v -> v.bound),
+            SystemBindings.CODEC.optionalFieldOf("systems", SystemBindings.EMPTY).forGetter(v -> v.systems),
             Codec.BOOL.lenientOptionalFieldOf("saveHistory", true).forGetter(v -> v.saveHistory),
             Codec.BOOL.lenientOptionalFieldOf("externalModel", true).forGetter(v -> v.externalModel),
             Conversation.CODEC.forGetter(v -> v.conversation),
@@ -30,19 +30,20 @@ public final class PlayerData {
             ModelQuota.CODEC.forGetter(v -> v.modelQuota)
     ).apply(i, PlayerData::new));
     public int version;
-    public boolean bound, saveHistory, externalModel;
+    public boolean saveHistory, externalModel;
+    public SystemBindings systems;
     public final Conversation conversation;
     public final DataStorageHolder<Identifier> moduleData;
     public final ModelQuota modelQuota;
 
     public PlayerData() {
-        this(1, false, true, true, new Conversation(), new DataStorageHolder<>(), new ModelQuota());
+        this(1, SystemBindings.EMPTY, true, true, new Conversation(), new DataStorageHolder<>(), new ModelQuota());
     }
 
-    private PlayerData(int version, boolean bound, boolean saveHistory, boolean externalModel, Conversation conversation,
+    private PlayerData(int version, SystemBindings systems, boolean saveHistory, boolean externalModel, Conversation conversation,
                        DataStorageHolder<Identifier> moduleData, ModelQuota modelQuota) {
         this.version = version;
-        this.bound = bound;
+        this.systems = systems;
         this.saveHistory = saveHistory;
         this.externalModel = externalModel;
         this.conversation = conversation;
@@ -51,9 +52,13 @@ public final class PlayerData {
     }
 
     public PlayerData copy() {
-        return new PlayerData(this.version, this.bound, this.saveHistory, this.externalModel,
+        return new PlayerData(this.version, this.systems, this.saveHistory, this.externalModel,
                 new Conversation(this.conversation.memoryEpoch, this.conversation.history, this.conversation.requests, this.conversation.requestInputs),
                 this.moduleData.copy(), new ModelQuota(this.modelQuota.usageDate, this.modelQuota.usedModelCalls));
+    }
+
+    public boolean bound() {
+        return this.systems.bound();
     }
 
     /**
@@ -64,8 +69,7 @@ public final class PlayerData {
                 Codec.LONG.optionalFieldOf("memoryEpoch", 0L).forGetter(v -> v.memoryEpoch),
                 Message.CODEC.listOf().optionalFieldOf("history", List.of()).forGetter(v -> v.history),
                 // Discard an invalid display/replay cache without weakening authoritative operation journals.
-                Codec.unboundedMap(Codec.STRING, Codec.lazyInitialized(() -> AgentResult.CODEC))
-                        .lenientOptionalFieldOf("requests", Map.of()).forGetter(v -> v.requests),
+                Codec.unboundedMap(Codec.STRING, Codec.lazyInitialized(() -> AgentResult.CODEC)).lenientOptionalFieldOf("requests", Map.of()).forGetter(v -> v.requests),
                 Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("requestInputs", Map.of()).forGetter(v -> v.requestInputs)
         ).apply(i, Conversation::new));
         public long memoryEpoch;
@@ -180,7 +184,7 @@ public final class PlayerData {
                 Codec.STRING.optionalFieldOf("id").forGetter(v -> Optional.ofNullable(v.id)),
                 Codec.STRING.optionalFieldOf("key").forGetter(v -> Optional.ofNullable(v.key)),
                 Codec.INT.optionalFieldOf("moduleVersion", 0).forGetter(v -> v.moduleVersion),
-                TypedPayload.ACTION_CODEC.forGetter(v -> v.call),
+                AgentAction.CODEC.fieldOf("action").forGetter(v -> v.call),
                 Codec.STRING.optionalFieldOf("ruleId", "").forGetter(v -> v.ruleId),
                 ExecutionPolicy.CODEC.optionalFieldOf("policy").forGetter(v -> Optional.ofNullable(v.policy)),
                 Codec.LONG.optionalFieldOf("created", 0L).forGetter(v -> v.created),
@@ -195,7 +199,7 @@ public final class PlayerData {
         ).apply(i, EventTask::new));
         public String id, key, ruleId = "";
         public int moduleVersion;
-        public TypedPayload<?> call;
+        public AgentAction call;
         public ExecutionPolicy policy;
         public long created, expires;
         public String state = "QUEUED";
@@ -205,7 +209,7 @@ public final class PlayerData {
         public EventTask() {
         }
 
-        private EventTask(Optional<String> id, Optional<String> key, int moduleVersion, TypedPayload<?> call, String ruleId,
+        private EventTask(Optional<String> id, Optional<String> key, int moduleVersion, AgentAction call, String ruleId,
                           Optional<ExecutionPolicy> policy, long created, long expires, String state, int modelCalls,
                           int toolCalls, int workflowSteps, int writeSteps, int tokens, Optional<AgentResult> result) {
             this.id = id.orElse(null);

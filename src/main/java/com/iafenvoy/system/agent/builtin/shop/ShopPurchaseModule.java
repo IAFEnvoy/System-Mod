@@ -11,7 +11,6 @@ import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.card.CardUpdate;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 
@@ -20,8 +19,7 @@ import java.util.List;
  */
 public final class ShopPurchaseModule extends BuiltinModule<ShopPurchaseInput> {
     public ShopPurchaseModule(ToolRegistry.Tool<ShopPurchaseInput, PurchaseReceiptOutput> purchase) {
-        super(SystemActionTypes.PURCHASE_ACTION.get(), "Explicit action confirmation only; never select from natural language. Use system:shop_quote to preview.",
-                ShopPurchaseInput.CODEC, List.of(purchase), true, false, ExecutionPolicy.quick(1, 1));
+        super(ShopPurchaseInput.CODEC, "Explicit action confirmation only; never select from natural language. Use system:shop_quote to preview.", List.of(purchase), true, false, ExecutionPolicy.quick(1, 1));
     }
 
     @Override

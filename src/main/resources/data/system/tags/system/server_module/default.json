@@ -1,0 +1,18 @@
+{
+  "replace": false,
+  "values": [
+    "system:usage",
+    "system:player",
+    "system:items",
+    "system:signin",
+    "system:inbox",
+    "system:shop",
+    "system:lottery",
+    "system:advancement",
+    {
+      "id": "system:ftb_quests",
+      "required": false
+    },
+    "system:search"
+  ]
+}

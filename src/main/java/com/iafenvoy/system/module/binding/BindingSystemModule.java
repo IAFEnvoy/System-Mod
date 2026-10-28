@@ -4,11 +4,15 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.ModuleCommands;
 import com.iafenvoy.system.module.ServerModule;
+import com.iafenvoy.system.registry.SystemDataPackRegistries;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,8 +30,15 @@ public final class BindingSystemModule implements ServerModule {
 
     @Override
     public void commands(LiteralArgumentBuilder<CommandSourceStack> root) {
+        root.then(Commands.literal("grant").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                .executes(context -> {
+                    context.getSource().sendFailure(Component.translatable("system.command.grant_usage"));
+                    return 0;
+                })
+                .then(systemArgument().executes(context -> grant(context, context.getSource().getPlayerOrException()))
+                        .then(Commands.argument("player", EntityArgument.player())
+                                .executes(context -> grant(context, EntityArgument.getPlayer(context, "player"))))));
         for (Operation operation : List.of(
-                new Operation("grant", (runtime, target, feedback) -> runtime.players().grant(target, feedback)),
                 new Operation("revoke", (runtime, target, feedback) -> runtime.players().revoke(target, feedback)),
                 new Operation("reset", (runtime, target, feedback) -> runtime.players().reset(target, feedback)))) {
             root.then(Commands.literal(operation.name()).requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
@@ -35,6 +46,18 @@ public final class BindingSystemModule implements ServerModule {
                     .then(Commands.argument("player", EntityArgument.player())
                             .executes(context -> execute(context, EntityArgument.getPlayer(context, "player"), operation))));
         }
+    }
+
+    private static RequiredArgumentBuilder<CommandSourceStack, Identifier> systemArgument() {
+        return Commands.argument("system", IdentifierArgument.id()).suggests((context, builder) ->
+                SharedSuggestionProvider.suggestResource(SystemDataPackRegistries.ids(context.getSource().getServer().registryAccess()), builder));
+    }
+
+    private static int grant(CommandContext<CommandSourceStack> context, ServerPlayer target) {
+        AssistantServer runtime = ModuleCommands.runtime(context.getSource());
+        if (runtime == null) return 0;
+        runtime.players().grant(target, IdentifierArgument.getId(context, "system"), ModuleCommands.feedback(context, target));
+        return 1;
     }
 
     private static int execute(CommandContext<CommandSourceStack> context, ServerPlayer target, Operation operation) {

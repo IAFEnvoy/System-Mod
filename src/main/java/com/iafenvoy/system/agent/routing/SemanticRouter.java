@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.routing;
 
+import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.config.file.SemanticConfig;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
@@ -88,7 +88,7 @@ public final class SemanticRouter implements AutoCloseable {
         String cached = key == null ? null : this.cache.get(key);
         if (cached != null && SemanticConfig.INSTANCE.get().mode() == SemanticConfig.Mode.ENFORCE) {
             RoutingProfile.Bound profile = this.profiles.get(cached);
-            TypedPayload<?> input = profile == null || !profile.direct() || !context.available(profile.moduleId()) ? null : profile.arguments().parse(text);
+            AgentAction input = profile == null || !profile.direct() || !context.available(profile.moduleId()) ? null : profile.arguments().parse(text);
             if (input != null)
                 return new Attempt(new RouteDecision(input, RouteSource.ROUTE_CACHE), List.of(), "CACHE_HIT");
         }
@@ -100,7 +100,7 @@ public final class SemanticRouter implements AutoCloseable {
                 .map(match -> new ModelRoute.Candidate(match.profile().moduleId().toString(), match.score())).toList();
         SemanticConfig.Threshold threshold = SemanticConfig.INSTANCE.get().threshold(best.profile().moduleId().toString(), language);
         String reason;
-        TypedPayload<?> input = null;
+        AgentAction input = null;
         // Similarity is not a calibrated probability; direct routing requires every safety/coverage gate.
         if (ranking.writeRequest()) reason = "WRITE_REQUEST";
         else if (!ranking.hasTopic()) reason = "NO_TOPIC";
@@ -132,7 +132,7 @@ public final class SemanticRouter implements AutoCloseable {
         if (profile == null || !profile.direct() || !context.available(profile.moduleId())) return;
         String language = context.language().split("_", 2)[0], text = LexicalEncoder.normalize(raw);
         if (this.guard(text, language) != null) return;
-        TypedPayload<?> parsed = profile.arguments().parse(text);
+        AgentAction parsed = profile.arguments().parse(text);
         if (parsed == null || !parsed.equals(decision.input())) return;
         // Unknown or unmatched topic content must not be turned into an exact intent shortcut.
         SemanticIndex.Ranking ranking = this.index.search(text, language, context::available);

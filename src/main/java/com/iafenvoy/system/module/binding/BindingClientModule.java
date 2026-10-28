@@ -14,6 +14,11 @@ public final class BindingClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
         module.command(() -> AssistantClient.command("grant"), "grant");
+        module.pattern(command -> {
+            if (!command.regionMatches(true, 0, "grant ", 0, 6)) return false;
+            AssistantClient.command(command);
+            return true;
+        }, "grant ");
         module.command(() -> AssistantClient.command("revoke"), "revoke");
         module.command(() -> AssistantClient.command("reset"), "reset");
     }

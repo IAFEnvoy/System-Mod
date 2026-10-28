@@ -9,7 +9,6 @@ import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
 import com.iafenvoy.system.agent.builtin.output.FeatureOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.registry.SystemActionTypes;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
@@ -19,8 +18,7 @@ import java.util.List;
  */
 public final class AdvancementFollowupModule extends BuiltinModule<AdvancementInput> {
     public AdvancementFollowupModule(ToolRegistry.Tool<FeatureInput, FeatureOutput> unlock, ToolRegistry.Tool<RewardCreditInput, CreditReceiptOutput> credit) {
-        super(SystemActionTypes.ADVANCEMENT_ACTION.get(), "Trusted advancement workflow; event entry only.",
-                AdvancementInput.CODEC, List.of(unlock, credit), false, true, ExecutionPolicy.event());
+        super(AdvancementInput.CODEC, "Trusted advancement workflow; event entry only.", List.of(unlock, credit), false, true, ExecutionPolicy.event());
     }
 
     @Override

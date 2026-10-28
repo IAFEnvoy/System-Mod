@@ -1,9 +1,9 @@
 package com.iafenvoy.system.assistant;
 
+import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.agent.request.ChatRequest;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.request.InvokeRequest;
@@ -50,7 +50,8 @@ public final class AssistantClient {
 
     public static SystemDefinition system() {
         ClientPacketListener connection = Minecraft.getInstance().getConnection();
-        return connection == null ? SystemDefinition.DEFAULT : SystemDataPackRegistries.current(connection.registryAccess());
+        return connection == null ? SystemDefinition.DEFAULT : state.serverState().system()
+                .flatMap(id -> SystemDataPackRegistries.get(connection.registryAccess(), id)).orElse(SystemDefinition.DEFAULT);
     }
 
     public static long revision() {
@@ -166,7 +167,7 @@ public final class AssistantClient {
             if (pending.getValue().deadline() <= now) complete(pending.getKey());
     }
 
-    public static void send(TypedPayload<?> call, String message) {
+    public static void send(AgentAction call, String message) {
         send(new InvokeRequest(call, message));
     }
 

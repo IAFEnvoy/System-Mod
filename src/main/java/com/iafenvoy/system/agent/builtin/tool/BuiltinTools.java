@@ -3,6 +3,7 @@ package com.iafenvoy.system.agent.builtin.tool;
 import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.*;
 import com.iafenvoy.system.agent.builtin.output.*;
+import com.iafenvoy.system.search.SearchProvider;
 
 import java.util.List;
 
@@ -10,6 +11,8 @@ import java.util.List;
  * Stable typed keys shared by workflows and platform implementations; no game classes are referenced.
  */
 public final class BuiltinTools {
+    public static final ToolRegistry.Type<SearchProvider.Request, SearchProvider.Response> WEB_SEARCH = new ToolRegistry.Type<>("web.search", SearchProvider.Request.MAP_CODEC, SearchProvider.Response.CODEC);
+    public static final ToolRegistry.Type<SearchProvider.FetchRequest, SearchProvider.Page> WEB_FETCH = new ToolRegistry.Type<>("web.fetch", SearchProvider.FetchRequest.MAP_CODEC, SearchProvider.Page.CODEC);
     public static final ToolRegistry.Type<CommercePreviewInput, List<CommercePreviewOutput>> COMMERCE_PREVIEW = new ToolRegistry.Type<>("game.commerce.preview", CommercePreviewInput.CODEC, CommercePreviewOutput.CODEC.listOf());
     public static final ToolRegistry.Type<EmptyInput, PlayerSnapshotOutput> PLAYER = new ToolRegistry.Type<>("game.player", EmptyInput.CODEC, PlayerSnapshotOutput.CODEC.codec());
     public static final ToolRegistry.Type<ItemQueryInput, ItemPageOutput> ITEMS = new ToolRegistry.Type<>("game.items", ItemQueryInput.CODEC, ItemPageOutput.CODEC.codec());

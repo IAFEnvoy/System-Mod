@@ -13,7 +13,6 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.lottery.LotterySystemModule;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,8 +22,7 @@ import java.util.Optional;
  */
 public final class LotteryDrawModule extends BuiltinModule<LotteryDrawInput> {
     public LotteryDrawModule(ToolRegistry.Tool<LotteryDrawInput, PurchaseReceiptOutput> draw) {
-        super(SystemActionTypes.LOTTERY_DRAW_ACTION.get(), "Explicit action confirmation only; never select from natural language. Preview a pool first.",
-                LotteryDrawInput.CODEC, List.of(draw), true, false, ExecutionPolicy.quick(0, 1));
+        super(LotteryDrawInput.CODEC, "Explicit action confirmation only; never select from natural language. Preview a pool first.", List.of(draw), true, false, ExecutionPolicy.quick(0, 1));
     }
 
     @Override

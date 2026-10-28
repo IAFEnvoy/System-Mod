@@ -11,7 +11,6 @@ import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,8 +22,7 @@ public final class QuestDetailModule extends BuiltinModule<QuestDetailInput> {
     public QuestDetailModule(ToolRegistry.Tool<QuestFindInput, List<QuestBriefOutput>> find,
                              ToolRegistry.Tool<QuestDetailInput, QuestOutput> detail,
                              ToolRegistry.Tool<EmptyInput, StarterGiftOutput> gifts) {
-        super(SystemActionTypes.QUEST_ACTION.get(), "View one FTB quest's description, objectives, progress and rewards. Ambiguous names return a brief candidate list. Never invent IDs or indices.",
-                QuestDetailInput.CODEC, List.of(find, detail, gifts), true, false, ExecutionPolicy.quick(2, 0));
+        super(QuestDetailInput.CODEC, "View one FTB quest's description, objectives, progress and rewards. Ambiguous names return a brief candidate list. Never invent IDs or indices.", List.of(find, detail, gifts), true, false, ExecutionPolicy.quick(2, 0));
     }
 
     @Override

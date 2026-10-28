@@ -19,7 +19,7 @@ Agent 内置工作流和工具按 `agent/builtin/<功能>` 归类。`builtin/inp
 
 `SystemRegistries` 在 `NewRegistryEvent` 中登记内置目录，模块通过标准 `DeferredRegister` / `RegisterEvent` 注册，冻结时机由 NeoForge 管理。模块 `id()` 默认从实际注册表取得，无须在实现中重复声明；未知模块不会作为默认值回退。定义只创建一次，不能把某台服务器的引擎、玩家或工具存到定义的静态字段。
 
-每台服务器启动时，`ModuleManager` 遍历冻结的服务端注册表，调用各功能的 `workflows(context)`、注册返回的工作流并执行 `installed(context)`，随后创建各功能的服务器运行时。所有功能安装后仍发布原有的 `AssistantRegistrationEvent`，允许只需要添加工作流的扩展沿用原入口；工作流实例、路由与工具目录仍属于各自的 AgentEngine，同一工作流只能注册一次。
+每台服务器启动时，`ModuleManager` 从冻结的服务端注册表筛选 `available()` 为 true 的定义，调用这些功能的 `workflows(context)`、注册返回的工作流并执行 `installed(context)`，随后创建其服务器运行时。不可用定义不调用这些钩子，也不访问 `storages()`；服务端指令装配同样先检查可用性。所有可用功能安装后仍发布原有的 `AssistantRegistrationEvent`，允许只需要添加工作流的扩展沿用原入口；工作流实例、路由与工具目录仍属于各自的 AgentEngine，同一工作流只能注册一次。
 
 共享 Tool 通过上下文取得，保证两个功能使用同一个实例：
 
@@ -30,7 +30,7 @@ return List.of(new ShopModule(preview), new ShopQuoteModule(preview),
         new ShopPurchaseModule(new ShopPurchaseTool(context.commerce()).tool()));
 ```
 
-`SystemCommand` 只创建 `/system` 根节点、收集 `ServerModule.commands(root)`，并转发通用的 Agent 指令参数。`grant/revoke/reset` 在绑定模块，`usage` 在用量模块，打开助手及 `ask/routing/simple/full` 在核心模块。权限继续声明在对应 Brigadier 节点上。Agent 文本指令与语义样例仍由工作流的 `routing()` 一次声明，帮助、补全、模型目录复用同一注册表。
+`SystemCommand` 只创建 `/system` 根节点、收集 `ServerModule.commands(root)`，并转发通用的 Agent 指令参数。`grant/revoke/reset` 在绑定模块，`usage` 在用量模块，打开助手及 `ask/routing/simple/full` 在核心模块。模块管理的 `/system module add/remove <玩家> <模块ID>` 与 `list [玩家]` 由核心模块的 `ModuleManagementCommands` 装配，复用 ModuleManager，不进入 Agent 路由。权限继续声明在对应 Brigadier 节点上。Agent 文本指令与语义样例仍由工作流的 `routing()` 一次声明，帮助、补全、模型目录复用同一注册表。
 
 添加功能的注册方式如下；`ExampleServerModule` 实现 `ServerModule`，扩展模组须声明对 System 的依赖：
 
@@ -131,9 +131,15 @@ JSON 节点仍在客户端 mod 入口通过 DeferredRegister 注册，不能在 
 
 服务端状态同步该玩家实际启用的功能 `Identifier` 列表，客户端按功能 ID 控制导航、本地别名与补全的可用性。`ModuleManager` 统一管理权限与运行时，内部 ModuleAccess 负责主线程条件求值和玩家持久覆盖，Agent 不在工作线程访问实时玩家或执行 Saturn 条件。客户端纯本地功能可声明 `serverRequired() == false`；独立用量账本继续在未绑定时可用。
 
-FTB 仅在检测到 `ftbquests` 后注册服务端任务功能；可选 API 工厂通过反射加载，公共定义和客户端卡片只引用自己的 DTO，不解析 FTB 类。FTB 任务 API、通知事件及播报数据源仍集中在 `compat/ftb`。适配器安装失败会报告初始化错误，不把未成功安装的任务功能标为可用。
+`ServerModule.available()` 默认 true，表示当前安装环境是否满足该模块的依赖，与玩家级的模块开关及 `required()` 分开。可选模块也始终使用普通 `DeferredHolder` 注册安全定义，在模块内部重写此方法检查依赖；定义的构造、静态字段、方法签名和 Codec 必须不引用可选 API，检查结果应在模组加载后保持稳定。不可用模块不创建工作流、运行时或玩家会话，不注册指令，也不进入模块增删补全；手动添加和 Saturn action 均无法绕过检查。`/system module list` 仍显示完整注册目录，带玩家参数时只显示实际已激活的模块。
+
+FTB 的 `QuestSystemModule.available()` 检查 `ModList.get().isLoaded("ftbquests")`，注册类不再处理条件注册或 `Optional<DeferredHolder>`。通过检查后才反射加载 `FtbQuestAdapter`，公共定义和客户端卡片只引用自己的 DTO。FTB 任务 API、通知事件及播报数据源仍集中在 `compat/ftb`。适配器安装失败会报告初始化错误，不把未成功安装的任务功能标为可用。
+
+模块 ID、动作 / 卡片 Codec 和存储 Codec 的登记不依赖 `available()`，持久化数据也不在停用时删除。数据包中的模块引用、保存的手动覆盖与任务卡片 / 动作仍可解析，依赖缺席时只跳过实际执行；恢复依赖后沿用原定义和覆盖。扩展新增存储时，同样应始终登记不依赖可选 API 的 Codec，而将实际依赖访问留在可用性检查后的运行时。
 
 `SystemDefinition.modules` 现在提供模块 ID 和可选 Saturn condition；完整格式、内置 ID 与 action/condition 见[数据包与扩展配置](datapacks.md#系统定义)。内置工作流注册时记录所属 ServerModule，功能包含多个工作流时统一受同一开关约束。`ServerModule.required()` 默认 false，核心、绑定与用量模块声明为基础设施。
+
+`/system grant <系统ID> [玩家]` 从数据包注册表选择系统并持久保存，省略玩家时使用 `/system grant <系统ID>`。ModuleAccess 根据该玩家的绑定 ID 读取 SystemDefinition，不再全服固定使用默认定义；`has_system` 可精确匹配此 ID。当前只允许一个绑定，SystemBindings 的集合结构为后续多系统预留；同 ID 重复授予不会再次初始化，其他 ID 必须先 revoke。
 
 Java 扩展可用 `runtime.moduleManager().add/remove(player, id)` 在主线程持久调整玩家可用功能；模块本身须预先注册到 `SystemRegistries.SERVER_MODULE`，不能手动启用未注册的模块。新增模块完成存储初始化后才发布可用权限，移除立即关闭会话；初始化失败不宣称可用。FTB 通知与任务口播也检查任务模块开关。
 
@@ -142,3 +148,9 @@ Java 扩展可用 `runtime.moduleManager().add/remove(player, id)` 在主线程�
 存储类靠近模块：签到 module/signin，收件箱 module/inbox，成就 module/advancement，共用交易类型 module/CommerceDataStorage。权限和 Agent 幂等日志由必需的 Core 模块声明，日志类位于 module/core，不随可选工作流停用清除。玩家文件仍为 `<存档>/system-agent/<UUID>.json`，不使用玩家附件，不提供未发布格式的旧档迁移。
 
 `engine.registerModule(ownerId, workflow)` 可为直接注册的工作流指定所属功能。仅使用原来无 owner 的 `engine.registerModule(workflow)` 注册的独立工作流不受 ServerModule 的开关约束；需要纳入数据包管理的扩展应提供 ServerModule 并在 workflows 中返回工作流。Tool 的单行为契约、工作流预算、交易确认与玩家隔离保持原入口。网络协议保持 `1`，两端一起更新。
+
+## 联网搜索模块
+
+`system:search` 同时登记服务端 SearchSystemModule 和客户端 SearchClientModule，默认系统启用它。服务端贡献 system:web_search 工作流和独立 Search/Fetch 工具；客户端贡献“模块 → 联网搜索”页面、标签和搜索提交按钮。游戏内 `/system search` 沿用通用指令转发与注册表补全，不新增中央业务 switch。
+
+仅明确联网输入或主动按钮触发该工作流；禁用模块后入口隐藏、请求被拒绝，移除和重加无需改变独立用量账本。执行中关闭外部 AI、取消、撤销或失去模块权限会阻止后续请求，已经发出的调用仍计量。独立 ReAct 策略和按次费用见[搜索模块](search-api.md)。

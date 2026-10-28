@@ -14,7 +14,6 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.card.data.SelectionCardData;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,8 +27,7 @@ public final class LotteryModule extends BuiltinModule<LotteryQueryInput> {
     static final int PAGE_SIZE = 8;
 
     public LotteryModule(ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
-        super(SystemActionTypes.LOTTERY_ACTION.get(), "Browse lottery pools and their single-draw costs. Viewing never draws or pays.",
-                LotteryQueryInput.CODEC, List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
+        super(LotteryQueryInput.CODEC, "Browse lottery pools and their single-draw costs. Viewing never draws or pays.", List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
     }
 
     @Override
@@ -67,7 +65,7 @@ public final class LotteryModule extends BuiltinModule<LotteryQueryInput> {
         }
         if (matches.size() - input.offset() > PAGE_SIZE)
             cards.add(CardUpdate.show(SelectionCardData.fromActions(List.of(
-                    new AgentResult.Action("system.action.next", SystemActionTypes.LOTTERY_ACTION.get(), new LotteryQueryInput(query, input.offset() + PAGE_SIZE))))));
+                    new AgentResult.Action("system.action.next", new LotteryQueryInput(query, input.offset() + PAGE_SIZE))))));
         return new AgentResult(AgentResult.Status.SUCCEEDED, cards.isEmpty() ? "system.result.lottery_empty" : "system.result.lottery", "", cards);
     }
 }

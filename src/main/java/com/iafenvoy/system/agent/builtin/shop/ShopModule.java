@@ -12,7 +12,6 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.card.data.SelectionCardData;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,8 +22,7 @@ import java.util.Locale;
  */
 public final class ShopModule extends BuiltinModule<ShopQueryInput> {
     public ShopModule(ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
-        super(SystemActionTypes.SHOP_ACTION.get(), "Browse the system shop and prices.",
-                ShopQueryInput.CODEC, List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
+        super(ShopQueryInput.CODEC, "Browse the system shop and prices.", List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
     }
 
     @Override
@@ -59,7 +57,7 @@ public final class ShopModule extends BuiltinModule<ShopQueryInput> {
         }
         if (matches.size() - offset > 8)
             cards.add(CardUpdate.show(SelectionCardData.fromActions(List.of(
-                    new AgentResult.Action("system.action.next", SystemActionTypes.SHOP_ACTION.get(), new ShopQueryInput(query, offset + 8))))));
+                    new AgentResult.Action("system.action.next", new ShopQueryInput(query, offset + 8))))));
         return new AgentResult(AgentResult.Status.SUCCEEDED, cards.isEmpty() ? "system.result.shop_empty" : "system.result.shop", "", cards);
     }
 }

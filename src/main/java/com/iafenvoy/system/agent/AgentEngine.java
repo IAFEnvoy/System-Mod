@@ -11,7 +11,10 @@ import com.iafenvoy.system.agent.routing.RouteSource;
 import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.SystemBindings;
 import com.iafenvoy.system.config.file.AgentConfig;
+import com.iafenvoy.system.search.DeepSeekSearchClient;
+import com.iafenvoy.system.search.SearchGateway;
 import net.minecraft.resources.Identifier;
 
 import java.util.*;
@@ -28,6 +31,7 @@ import java.util.function.Predicate;
 public final class AgentEngine implements AutoCloseable {
     private final AgentStore store;
     private final ModelGateway model;
+    private final SearchGateway search = new SearchGateway(new DeepSeekSearchClient());
     private final ToolRegistry tools = new ToolRegistry();
     private final ModuleRegistry modules = new ModuleRegistry(this.tools);
     private final InteractiveExecutor interactive = new InteractiveExecutor(this);
@@ -177,10 +181,13 @@ public final class AgentEngine implements AutoCloseable {
         };
     }
 
-    public CompletionStage<AgentResult> grant(UUID player, Consumer<PlayerData> initialize) {
+    public CompletionStage<AgentResult> grant(UUID player, Identifier system, Consumer<PlayerData> initialize) {
+        Objects.requireNonNull(system);
         return this.personalMaintenance(player, () -> this.store.update(player, data -> {
-            if (data.bound) return AgentResult.ok("system.result.already_bound");
-            data.bound = true;
+            // Check and assign under the same player transaction, including concurrent administrator requests.
+            if (data.bound()) return data.systems.current().filter(system::equals).isPresent()
+                    ? AgentResult.ok("system.result.already_bound") : AgentResult.error("SYSTEM_ALREADY_BOUND");
+            data.systems = SystemBindings.single(system);
             initialize.accept(data);
             return AgentResult.ok("system.result.bound");
         }));
@@ -224,6 +231,18 @@ public final class AgentEngine implements AutoCloseable {
 
     public void onModelUsage(ModelClient.UsageListener listener) {
         this.model.onUsage(listener);
+    }
+
+    public SearchGateway search() {
+        return this.search;
+    }
+
+    public long requestTimeoutMillis(UUID player) {
+        long timeout = this.modules.descriptors().stream().filter(AgentModule.Descriptor::interactive)
+                .filter(value -> this.available(player, value.id()))
+                .mapToLong(value -> this.policy(this.modules.get(value.id())).ttlMillis()).max().orElse(50000);
+        // Include a transport margin so a configured slow workflow is not discarded by the client.
+        return Math.max(60000, timeout + 10000);
     }
 
     public ToolRegistry tools() {
@@ -280,7 +299,7 @@ public final class AgentEngine implements AutoCloseable {
         return AgentConfig.INSTANCE.get().policies().getOrDefault(module.descriptor().id().toString(), module.descriptor().policy());
     }
 
-    public CompletionStage<AgentResult> submit(UUID player, String requestId, TypedPayload<?> input, String text) {
+    public CompletionStage<AgentResult> submit(UUID player, String requestId, AgentAction input, String text) {
         return this.interactive.submit(player, requestId, input, text);
     }
 
@@ -297,11 +316,11 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     // All entry points share module selection, authority checks and partial-write reporting.
-    AgentResult execute(ExecutionContext context, TypedPayload<?> input) {
+    AgentResult execute(ExecutionContext context, AgentAction input) {
         return this.execute(context, input, null);
     }
 
-    AgentResult execute(ExecutionContext context, TypedPayload<?> input, ExecutionPolicy policy) {
+    AgentResult execute(ExecutionContext context, AgentAction input, ExecutionPolicy policy) {
         try {
             ModuleRegistry.Call<?> call = this.modules.call(input);
             AgentModule.Descriptor descriptor = call.module().descriptor();
@@ -335,7 +354,7 @@ public final class AgentEngine implements AutoCloseable {
         this.interactive.cancel(player);
     }
 
-    public CompletionStage<AgentResult> trigger(UUID player, String key, String ruleId, TypedPayload<?> input) {
+    public CompletionStage<AgentResult> trigger(UUID player, String key, String ruleId, AgentAction input) {
         return this.events.trigger(player, key, ruleId, input);
     }
 
@@ -367,6 +386,7 @@ public final class AgentEngine implements AutoCloseable {
         this.router.close();
         this.playerLanguages.clear();
         this.model.close();
+        this.search.close();
         this.store.close();
     }
 }

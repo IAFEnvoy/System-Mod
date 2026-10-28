@@ -15,6 +15,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.StringRepresentable;
+import org.jspecify.annotations.NonNull;
 
 import java.util.List;
 import java.util.Locale;
@@ -28,13 +29,16 @@ public final class ResultTypes {
     private ResultTypes() {
     }
 
-    public record ClientState(boolean historySaved, boolean externalModel, List<Identifier> modules,
-                              List<String> commands) {
+    public record ClientState(Optional<Identifier> system, boolean historySaved, boolean externalModel,
+                              List<Identifier> modules,
+                              List<String> commands, long requestTimeoutMillis) {
         public static final MapCodec<ClientState> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+                Identifier.CODEC.optionalFieldOf("system").forGetter(ClientState::system),
                 Codec.BOOL.fieldOf("historySaved").forGetter(ClientState::historySaved),
                 Codec.BOOL.fieldOf("externalModel").forGetter(ClientState::externalModel),
                 Identifier.CODEC.listOf().fieldOf("modules").forGetter(ClientState::modules),
-                Codec.STRING.listOf().fieldOf("commands").forGetter(ClientState::commands)
+                Codec.STRING.listOf().fieldOf("commands").forGetter(ClientState::commands),
+                Codec.LONG.fieldOf("requestTimeoutMillis").forGetter(ClientState::requestTimeoutMillis)
         ).apply(i, ClientState::new));
 
         public ClientState {
@@ -197,7 +201,7 @@ public final class ResultTypes {
         public static final Codec<QuestEvent> CODEC = StringRepresentable.fromEnum(QuestEvent::values);
 
         @Override
-        public String getSerializedName() {
+        public @NonNull String getSerializedName() {
             return this.name().toLowerCase(Locale.ROOT);
         }
     }

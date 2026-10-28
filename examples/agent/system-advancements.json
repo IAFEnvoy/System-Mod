@@ -3,8 +3,8 @@
     {
       "id": "system:first_diamond",
       "advancementId": "minecraft:story/mine_diamond",
-      "moduleId": "system:advancement_followup",
-      "input": {
+      "action": {
+        "moduleId": "system:advancement_followup",
         "featureId": "system:diamond_milestone",
         "rewardId": "system:mining"
       }

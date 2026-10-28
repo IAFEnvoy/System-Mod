@@ -25,6 +25,12 @@ public final class ModuleCommands {
         return runtime;
     }
 
+    public static AssistantServer runtime(CommandSourceStack source) {
+        AssistantServer runtime = AssistantServer.get(source.getServer());
+        if (runtime == null) source.sendFailure(Component.translatable("system.error.capability_unavailable"));
+        return runtime;
+    }
+
     public static int ask(ServerPlayer player, String text) {
         AssistantServer runtime = runtime(player);
         if (runtime == null) return 0;

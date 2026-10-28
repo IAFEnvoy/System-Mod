@@ -28,12 +28,14 @@ public final class HybridRouter implements AutoCloseable {
         this.semantic.start(this.modules.profiles());
     }
 
-    public RouteDecision route(ExecutionContext context, TypedPayload<?> input, String text) throws Exception {
+    public RouteDecision route(ExecutionContext context, AgentAction input, String text) throws Exception {
         // Structured actions -> registered commands -> local read intent/cache -> one bounded LLM decision.
         if (input != null) return this.direct(context, input, RouteSource.STRUCTURED);
         if (text.isBlank()) throw new AgentException("INVALID_INPUT");
-        TypedPayload<?> command = this.modules.commands().parse(text);
+        AgentAction command = this.modules.commands().parse(text);
         if (command != null) return this.direct(context, command, RouteSource.COMMAND);
+        AgentAction explicit = this.modules.explicit(text, context::available);
+        if (explicit != null) return this.direct(context, explicit, RouteSource.COMMAND);
         SemanticRouter.Attempt attempt;
         try {
             attempt = this.semantic.match(context, text);
@@ -54,8 +56,8 @@ public final class HybridRouter implements AutoCloseable {
         return new RouteDecision(route.call(), RouteSource.LLM);
     }
 
-    private RouteDecision direct(ExecutionContext context, TypedPayload<?> input, RouteSource source) {
-        if (!context.available(input.type().id())) throw new AgentException("CAPABILITY_UNAVAILABLE");
+    private RouteDecision direct(ExecutionContext context, AgentAction input, RouteSource source) {
+        if (!context.available(input.id())) throw new AgentException("CAPABILITY_UNAVAILABLE");
         return new RouteDecision(input, source);
     }
 

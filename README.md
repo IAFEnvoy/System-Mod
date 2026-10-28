@@ -14,6 +14,9 @@ and HUD notifications that keep gameplay uninterrupted, with optional speech out
   by
   number or name, then explicitly select and claim rewards. Quest completion and newly unlocked quests appear as queued
   System notifications.
+- **Explicit web research:** use `/system search <question>` or the Web search page. Ordinary questions never trigger
+  browsing. Search and Fetch share the default DeepSeek key, have a separately configurable loop and are billed
+  separately at CNY 5 per 1,000 successful requests with results; model tokens are additional.
 - **AI daily check-in:** the model selects rewards from a server-approved pool. Rewards enter an inbox for manual
   collection; the model cannot invent items or change quantities.
 - **System shop:** browse offers, review quotes and confirm payment through Saturn Costs, including item exchanges,
@@ -28,7 +31,7 @@ and HUD notifications that keep gameplay uninterrupted, with optional speech out
   streaming
   TTS reads message bodies; closing a view, dismissing a notification or switching messages ends the corresponding
   speech session.
-- **Usage and privacy controls:** server AI usage by player, private local TTS / ASR usage, history management,
+- **Usage and privacy controls:** server AI and web usage by player, private local TTS / ASR usage, history management,
   external-AI opt-out,
   UUID-isolated
   data and limits on model and tool execution.
@@ -40,7 +43,8 @@ and HUD notifications that keep gameplay uninterrupted, with optional speech out
    `config/system/`.
 3. To use AI, set `SYSTEM_DEEPSEEK_API_KEY` in the server process's startup environment, then restart. In single-player,
    the Minecraft process must inherit the variable. Configuration stores the environment-variable name, not the key.
-4. An administrator grants access with `/system grant <player>`. Players are unbound by default.
+4. An administrator binds a data-pack system with `/system grant <system ID> [player]`, for example
+   `/system grant system:default Steve`. Use `/system grant <system ID>` for yourself. Each player can currently bind one system.
 5. Run `/system`, `/system full` or `/system simple`, then use the controls or type a request.
 
 For example, set the variable in PowerShell, then launch the server from the same environment:
@@ -85,9 +89,11 @@ The following commands run in Minecraft chat:
 | `/system full` / `/system simple`                    | Open the full / minimal view                                                                 |
 | `/system settings`                                   | Open unified client settings directly; no binding required                                   |
 | `/system ask <text>`                                 | Submit a natural-language request                                                            |
+| `/system search <question>`                        | Explicitly start paid web research; no automatic browsing                                     |
 | `/system player`                                     | View your own status                                                                         |
-| `/system usage` / `/system usage all`                | View personal usage / server AI usage as an administrator; voice totals always stay personal |
-| `/system grant [player]` / `/system revoke [player]` | Grant access / revoke access and clear System records as an administrator                    |
+| `/system usage` / `/system usage all`                | View personal usage / server AI and web usage as an administrator; voice totals always stay personal |
+| `/system grant <system ID> [player]`                | Bind one data-pack system as an administrator; omit the player to bind yourself               |
+| `/system revoke [player]`                           | Revoke access and clear System records as an administrator                                   |
 | `/system reset [player]`                             | Clear old-format System records and binding; cumulative usage is retained, then grant again  |
 | `/system routing`                                    | View routing diagnostics as an administrator                                                 |
 | `/system help`                                       | Show available actions                                                                       |

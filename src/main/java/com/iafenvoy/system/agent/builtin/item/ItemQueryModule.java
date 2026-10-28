@@ -7,7 +7,6 @@ import com.iafenvoy.system.agent.builtin.output.ItemPageOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 
@@ -16,8 +15,7 @@ import java.util.List;
  */
 public final class ItemQueryModule extends BuiltinModule<ItemQueryInput> {
     public ItemQueryModule(ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> items) {
-        super(SystemActionTypes.ITEMS_ACTION.get(), "Search item name or registry ID.",
-                ItemQueryInput.CODEC, List.of(items), true, false, ExecutionPolicy.quick(2, 0));
+        super(ItemQueryInput.CODEC, "Search item name or registry ID.", List.of(items), true, false, ExecutionPolicy.quick(2, 0));
     }
 
     @Override

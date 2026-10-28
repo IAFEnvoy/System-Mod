@@ -1,8 +1,8 @@
 package com.iafenvoy.system.util;
 
 import com.google.gson.JsonObject;
+import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.TypedPayload;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.Identifier;
 
@@ -61,8 +61,9 @@ public record ActionArguments(Map<String, String> values) {
     /**
      * Only trusted Java-generated shortcut/page DTOs are encoded here.
      */
-    public static <T> Map<String, String> encode(TypedPayload<T> call) {
-        JsonObject encoded = call.type().codec().encodeStart(JsonOps.INSTANCE, call.value()).getOrThrow().getAsJsonObject();
+    public static Map<String, String> encode(AgentAction call) {
+        JsonObject encoded = AgentAction.CODEC.encodeStart(JsonOps.INSTANCE, call).getOrThrow().getAsJsonObject();
+        encoded.remove("moduleId");
         Map<String, String> values = new LinkedHashMap<>();
         encoded.entrySet().forEach(entry -> {
             if (!entry.getValue().isJsonPrimitive())

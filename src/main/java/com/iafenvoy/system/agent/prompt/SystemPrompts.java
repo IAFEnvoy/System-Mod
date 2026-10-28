@@ -13,6 +13,7 @@ public final class SystemPrompts {
     public static final String SIGN_IN = "system:sign_in";
     public static final String QUEST_NARRATION = "system:quest_narration";
     public static final String QUEST_BACKGROUND = "system:quest_background";
+    public static final String WEB_SEARCH = "system:web_search";
     private final Map<String, PromptTemplate> templates;
     private final String revision = UUID.randomUUID().toString();
 
@@ -38,6 +39,7 @@ public final class SystemPrompts {
         validate(templates, SIGN_IN, Set.of("player_language"), Set.of());
         validate(templates, QUEST_NARRATION, Set.of("player_language"), Set.of());
         validate(templates, QUEST_BACKGROUND, Set.of("player_language"), Set.of());
+        validate(templates, WEB_SEARCH, Set.of("player_language"), Set.of());
         return new SystemPrompts(templates);
     }
 

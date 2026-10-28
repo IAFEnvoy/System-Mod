@@ -2,6 +2,7 @@ package com.iafenvoy.system.agent;
 
 import com.google.gson.JsonObject;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
@@ -11,10 +12,10 @@ import java.util.Set;
 /**
  * Modules are trusted Java extensions. This interface is not a sandbox.
  */
-public interface AgentModule<I> {
+public interface AgentModule<I extends AgentAction> {
     Descriptor descriptor();
 
-    TypedPayload.Type<I> inputType();
+    MapCodec<I> inputCodec();
 
     List<ToolRegistry.Tool<?, ?>> tools();
 

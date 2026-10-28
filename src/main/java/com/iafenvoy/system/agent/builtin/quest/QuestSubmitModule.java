@@ -6,7 +6,6 @@ import com.iafenvoy.system.agent.builtin.input.QuestSubmitInput;
 import com.iafenvoy.system.agent.builtin.output.QuestSubmitOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.registry.SystemActionTypes;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,8 +15,7 @@ import java.util.Optional;
  */
 public final class QuestSubmitModule extends BuiltinModule<QuestSubmitInput> {
     public QuestSubmitModule(ToolRegistry.Tool<QuestSubmitInput, QuestSubmitOutput> submit) {
-        super(SystemActionTypes.QUEST_SUBMIT_ACTION.get(), "Submit supported manual tasks for exactly one quest explicitly selected by the player.",
-                QuestSubmitInput.CODEC, List.of(submit), true, false, ExecutionPolicy.quick(0, 1));
+        super(QuestSubmitInput.CODEC, "Submit supported manual tasks for exactly one quest explicitly selected by the player.", List.of(submit), true, false, ExecutionPolicy.quick(0, 1));
     }
 
     @Override

@@ -42,7 +42,9 @@ public final class CommerceTransactions {
         return Objects.requireNonNull(this.storages.get(type), "Unregistered commerce module " + type);
     }
 
-    /** Each commerce module restores only its own journal; disabling a module never discards orders. */
+    /**
+     * Each commerce module restores only its own journal; disabling a module never discards orders.
+     */
     public PlayerModule runtime(PurchaseType type, ModuleStorage<CommerceDataStorage> storage) {
         if (this.storages.putIfAbsent(type, storage) != null)
             throw new IllegalArgumentException("Duplicate commerce module " + type);

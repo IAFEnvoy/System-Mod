@@ -1,9 +1,9 @@
 package com.iafenvoy.system.registry;
 
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResponse;
-import com.iafenvoy.system.agent.TypedPayload;
 import com.iafenvoy.system.card.CardData;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.module.ServerModule;
@@ -18,7 +18,7 @@ import net.minecraft.resources.ResourceKey;
 public final class SystemResourceKeys {
     public static final ResourceKey<Registry<ServerModule>> SERVER_MODULE = create("server_module");
     public static final ResourceKey<Registry<MapCodec<? extends CardData>>> CARD_DATA_TYPE = create("card_data_type");
-    public static final ResourceKey<Registry<TypedPayload.Type<?>>> ACTION_TYPE = create("action_type");
+    public static final ResourceKey<Registry<MapCodec<? extends AgentAction>>> ACTION_TYPE = create("action_type");
     public static final ResourceKey<Registry<MapCodec<? extends AgentRequest>>> AGENT_REQUEST_TYPE = create("agent_request_type");
     public static final ResourceKey<Registry<MapCodec<? extends AgentResponse>>> AGENT_RESPONSE_TYPE = create("agent_response_type");
     public static final ResourceKey<Registry<ClientModule>> CLIENT_MODULE = create("client_module");

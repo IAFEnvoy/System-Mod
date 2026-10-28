@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | `system:server_module` | `SERVER_MODULE` | `ServerModule` | [`SystemServerModules`](../src/main/java/com/iafenvoy/system/registry/SystemServerModules.java) |
 | `system:card_data_type` | `CARD_DATA_TYPE` | `MapCodec<? extends CardData>` | [`SystemCardDataTypes`](../src/main/java/com/iafenvoy/system/registry/SystemCardDataTypes.java) |
-| `system:action_type` | `ACTION_TYPE` | `TypedPayload.Type<?>` | [`SystemActionTypes`](../src/main/java/com/iafenvoy/system/registry/SystemActionTypes.java) |
+| `system:action_type` | `ACTION_TYPE` | `MapCodec<? extends AgentAction>` | [`SystemActionTypes`](../src/main/java/com/iafenvoy/system/registry/SystemActionTypes.java) |
 | `system:agent_request_type` | `AGENT_REQUEST_TYPE` | `MapCodec<? extends AgentRequest>` | [`SystemRequestTypes`](../src/main/java/com/iafenvoy/system/registry/SystemRequestTypes.java) |
 | `system:agent_response_type` | `AGENT_RESPONSE_TYPE` | `MapCodec<? extends AgentResponse>` | [`SystemResponseTypes`](../src/main/java/com/iafenvoy/system/registry/SystemResponseTypes.java) |
 | `system:client_module` | `CLIENT_MODULE` | `ClientModule` | [`SystemClientModules`](../src/main/java/com/iafenvoy/system/registry/SystemClientModules.java) |
@@ -22,32 +22,32 @@
 
 ### 内置模块
 
-- 服务端：`core`、`binding`、`usage`、`player`、`items`、`signin`、`inbox`、`shop`、`lottery`、`advancement`；检测到 FTB Quests 后才注册 `ftb_quests`。
-- 客户端：`core`、`binding`、`conversation`、`settings`、`usage`、`speech`、`player`、`items`、`signin`、`inbox`、`shop`、`lottery`、`ftb_quests`。
+- 服务端：`core`、`binding`、`usage`、`player`、`items`、`signin`、`inbox`、`shop`、`lottery`、`advancement`、`ftb_quests`、`search`。
+- 客户端：`core`、`binding`、`conversation`、`settings`、`usage`、`speech`、`player`、`items`、`signin`、`inbox`、`shop`、`lottery`、`ftb_quests`、`search`。
 
-以上条目均属于 `system` 命名空间。客户端任务模块只使用本模组 DTO；没有 FTB 时可以保留卡片展示定义，实际服务端工作流和可选 API 类不加载。模块装配、玩家启停及生命周期见[功能模块化](feature-modules.md)。
+以上条目均属于 `system` 命名空间，使用普通 `DeferredHolder` 始终登记。`ServerModule.available()` 在定义内部声明依赖是否满足；任务模块检测 FTB Quests，缺席时保留模块 ID 与公共 Codec，跳过指令、工作流和运行时。客户端任务模块只使用本模组 DTO，仍可保留卡片展示定义。模块装配、玩家启停及生命周期见[功能模块化](feature-modules.md)。
 
 ### 卡片数据与动作载荷
 
-卡片类型共 22 个：`text`、`selection`、`binding`、`shop_offer`、`shop_quote`、`player`、`items`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`claim`、`sign_in_status`、`shop_order`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`。状态与历史不再注册为卡片。
+卡片类型共 23 个：`text`、`selection`、`binding`、`shop_offer`、`shop_quote`、`player`、`items`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`claim`、`sign_in_status`、`shop_order`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`。状态与历史不再注册为卡片。
 
-动作类型共 19 个：`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`。
+动作类型共 20 个：`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`web_search`。
 
-内置条目均以 `public static DeferredHolder` 暴露。卡片实现 `CardData`，直接传数据对象；动作注册完成后通过 `.get()` 取得同一个类型键：
+内置条目均以 `public static DeferredHolder` 暴露。卡片实现 `CardData`，动作实现 `AgentAction`，都直接创建和传递数据对象；各实现的 `codec()` 返回自己的已注册 MapCodec：
 
 ```java
 CardData card = snapshot;
-TypedPayload<?> call = SystemActionTypes.QUEST_ACTION.get().of(QuestDetailInput.byId(id));
+AgentAction call = QuestDetailInput.byId(id);
 ```
 
-`ResultTypes` 只保留共用 DTO，不再承担类型注册。卡片实现提供 `MapCodec`、`codec()` 和 `buildCard()`，模板与展示内容由 CardBuilder 一次描述，根 `CardData.CODEC` 使用正式注册表的 `byNameCodec().dispatch("type", ...)`，数据字段平铺。`TypedPayload.ACTION_CODEC` 仍按 `moduleId` 分派模块动作：
+`ResultTypes` 只保留共用 DTO，不再承担类型注册。卡片实现提供 `MapCodec`、`codec()` 和 `buildCard()`，模板与展示内容由 CardBuilder 一次描述，根 `CardData.CODEC` 使用正式注册表的 `byNameCodec().dispatch("type", ...)`，数据字段平铺。`AgentAction.CODEC` 从 ACTION_TYPE 按 `moduleId` 分派动作自己的 MapCodec，参数直接平铺：
 
 ```jsonl
 {"type":"system:player","name":"..."}
-{"moduleId":"system:quest_detail","input":{"questId":"..."}}
+{"moduleId":"system:quest_detail","questId":"0123456789abcdef"}
 ```
 
-动作类型已登记不代表可执行：`ModuleRegistry` 仍检查当前服务端是否安装对应工作流、类型键实例是否一致，以及玩家功能权限。FTB 的 DTO/Codec 两端始终登记，实际 FTB 工具与工作流依赖安装检测。
+动作类型已登记不代表可执行：`ModuleRegistry` 仍检查当前服务端是否安装对应工作流、MapCodec 实例是否一致，以及玩家功能权限。FTB 的 DTO/Codec 两端始终登记，实际 FTB 工具与工作流依赖安装检测。
 
 `SystemCardDataTypes` 只负责卡片数据 Codec。`CardData.buildCard()` 返回 CardBuilder，build 后得到包含 template、参数、按钮和播报的 CardView。客户端 CardPresentation 解析 Component/物品名称并读取 assets 模板，不登记渲染映射、参数构建器或客户端卡片行为。数据 ID 与资源 ID 可以不同，见[客户端 JSON 卡片](cards.md#数据与渲染绑定)。
 
@@ -94,6 +94,10 @@ JSON 使用完整 ID，例如 `{"type":"system:items","items":"{{result_items}}"
 
 系统定义通过 `RegistryAccess` 查询，随服务端资源重载和同步更新；不能用静态 `SystemRegistries` 查询世界数据包条目。文件路径为 `data/<条目命名空间>/system/system/<路径>.json`，格式见[数据包文档](datapacks.md)。
 
+系统定义的 `modules` 可引用 `SERVER_MODULE` 条目或 tag，例如 `"system:signin"`、`"#example:basic"`、`{ "id": "#example:basic", "condition": ... }`。模块 tag 文件位于 `data/<namespace>/tags/system/server_module/<path>.json`；复用 Saturn `RegistryCodecs.keyOrTag` / `matchesKeys`，解码保留 ID/tag，服务端权限求值时读取成员。客户端继续接收实际启用的模块 ID 列表，不自行展开 tag。格式与覆盖规则见[模块 tag](datapacks.md#模块-tag)。
+
+`SystemDataPackRegistries.ids(access)` 提供当前存档的系统 ID 列表，`get(access, id)` 查找指定定义；`/system grant <系统ID> [玩家]` 使用前者补全、后者校验。玩家保存自己的绑定 ID，模块求值和客户端展示均按该 ID 读取，不再提供固定默认选择的 `current(access)`。
+
 ## 扩展注册方式
 
 ### 新卡片或动作类型
@@ -110,7 +114,19 @@ public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<Exampl
 CARDS.register(bus);
 ```
 
-`ExampleOutput` 实现 `CardData`，`codec()` 返回登记的 `ExampleOutput.CODEC` 实例，`buildCard()` 返回描述模板、参数和按钮的 CardBuilder；业务代码直接创建 `ExampleOutput`。动作类型则向 `SystemResourceKeys.ACTION_TYPE` 登记 `TypedPayload.Type<?>`，以 `id -> new TypedPayload.Type<>(id, Input.CODEC)` 构造。工作流、按钮和命令共用对应 Holder 的 `.get()`，不创建第二个同名 Type。
+`ExampleOutput` 实现 `CardData`，`codec()` 返回登记的 `ExampleOutput.CODEC` 实例，`buildCard()` 返回描述模板、参数和按钮的 CardBuilder；业务代码直接创建 `ExampleOutput`。动作类型实现 `AgentAction`，向 `SystemResourceKeys.ACTION_TYPE` 直接登记实现类的 MapCodec：
+
+```java
+public static final DeferredRegister<MapCodec<? extends AgentAction>> ACTIONS =
+        DeferredRegister.create(SystemResourceKeys.ACTION_TYPE, "example");
+public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ExampleInput>> EXAMPLE_ACTION =
+        ACTIONS.register("example", () -> ExampleInput.CODEC);
+
+// In the common mod constructor:
+ACTIONS.register(bus);
+```
+
+工作流 `inputCodec()` 与输入对象 `codec()` 必须返回同一个已注册实例；业务调用直接传 `new ExampleInput(...)`。`BuiltinModule` 从传入的 SchemaMapCodec 同时取得注册 ID 与输入 Schema，不再额外传类型包装。无参数动作也各自定义 Codec，内置使用 HelpInput、PlayerQueryInput、InboxInput、SignInInput、StarterGiftsInput；工具内部仍可共享未注册为动作的 EmptyInput。
 
 ### 新卡片节点
 
@@ -155,3 +171,9 @@ SystemRegistries.CARD_DATA_TYPE.forEach(entry -> { /* inspect registered types *
 `ModuleRegistry`、`ToolRegistry`、`CommandRegistry` 是每个 Agent 服务实例的工作流、工具和指令索引；`ClientCommandRegistry`、`ClientModuleBindings` 装配本地命令与页面。ModuleRouting.button 提供按钮字符串参数解码，CardController 的 Local Map 提供本地动作处理器。这些只负责运行行为，不承担 Codec 类型注册。ClientCards/ServerCards 保存连接内消息及版本，ASR/TTS 使用供应商工厂 Map。卡片布局直接取 CardView.template，不维护额外渲染或卡片行为登记表。
 
 `TypeDispatch` 是按 Java 类选择内部处理器的工具，资源模板 Map 是重载快照，玩家/session/缓存 Map 是业务状态。这些不属于 MC 的内置注册表，也不应随本次迁移冻结进全局注册表。
+
+## 搜索模块入口
+
+服务端 `SystemServerModules.SEARCH` 和客户端 `SystemClientModules.SEARCH` 注册 ID 均为 `system:search`。动作 `SystemActionTypes.SEARCH_ACTION` 与卡片 `SystemCardDataTypes.WEB_SEARCH` 的 ID 均为 `system:web_search`，分别对应 WebSearchInput / WebSearchOutput；模板为 `assets/system/cards/web_search.json`。工具键 `BuiltinTools.WEB_SEARCH` / `WEB_FETCH` 对应 `web.search` / `web.fetch`，只执行一种操作。
+
+搜索内部 SearchStep 以本地 Map 存三个 MapCodec，按 `type=search|fetch|answer` dispatch；它是单个工作流的模型决策协议，不是 MC 注册表或全局 AgentAction。ModuleRouting.explicit 声明保守的当前消息解析器，ModuleRegistry 统一解析并校验；该工作流 explicitOnly，不进入自动模型目录。

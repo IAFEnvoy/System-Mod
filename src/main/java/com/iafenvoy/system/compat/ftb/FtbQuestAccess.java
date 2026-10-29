@@ -15,6 +15,8 @@ import dev.ftb.mods.ftbquests.quest.reward.ChoiceReward;
 import dev.ftb.mods.ftbquests.quest.reward.ItemReward;
 import dev.ftb.mods.ftbquests.quest.reward.Reward;
 import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
+import dev.ftb.mods.ftbquests.quest.task.ItemTask;
+import dev.ftb.mods.ftbquests.quest.task.Task;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStackTemplate;
 
@@ -110,7 +112,7 @@ final class FtbQuestAccess {
                     previewItems(reward)));
         }
         List<QuestTaskOutput> tasks = quest.getTasksAsList().stream().skip(taskOffset).limit(12)
-                .map(task -> new QuestTaskOutput(LegacyText.component(task.getTitle()), team.getProgress(task), task.getMaxProgress())).toList();
+                .map(task -> new QuestTaskOutput(LegacyText.component(task.getTitle()), team.getProgress(task), task.getMaxProgress(), previewItems(task))).toList();
         String description = quest.getHideTextUntilComplete().get(quest.getChapter().isHideTextUntilComplete()) && !team.isCompleted(quest)
                 ? "" : String.join("\n", quest.getRawDescription());
         int start = Math.min(descriptionOffset, description.length());
@@ -133,6 +135,12 @@ final class FtbQuestAccess {
         if (!(reward instanceof ItemReward item) || item.getItem().isEmpty()) return List.of();
         // FTB keeps the base stack separate from its count/range; never mutate that configured stack.
         return List.of(new ItemPreviewOutput(ItemStackTemplate.fromNonEmptyStack(item.getItem()).withCount(1), item.getButtonText()));
+    }
+
+    static List<ItemPreviewOutput> previewItems(Task task) {
+        if (!(task instanceof ItemTask item) || item.getItemStack().isEmpty()) return List.of();
+        return List.of(new ItemPreviewOutput(ItemStackTemplate.fromNonEmptyStack(item.getItemStack()).withCount(1),
+                Long.toString(item.getMaxProgress())));
     }
 
     static String hex(long value) {

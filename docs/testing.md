@@ -1,5 +1,29 @@
 # 编译与验收
 
+## 2026-10-29 通知取消自动关闭与切换
+
+阅读 AssistantMessages 确认原实现以 160 个可见客户端 tick 倒计时，到期 dismiss 并显示下一条，与 TTS 是否结束无关。删除倒计时、消息时长及仅用于暂停计时的按钮字段，可见阶段持续保留通知。确认、关闭、业务按钮的原位替换、服务端 REPLACE/REMOVE 和断线清理继续使用原有流程；中英文提示移除自动收起与暂停计时的描述，相关使用、界面和语音文档同步。
+
+执行 `compileJava testModClasses --console=plain` 编译通过；未运行测试或启动 Minecraft。播报后的持续显示、鼠标/语音确认与队列接续尚未进行游戏内验收。
+
+## 2026-10-29 通知按钮回复原位替换
+
+阅读请求与 HUD 队列调用链确认，原逻辑把通知按钮的 SHOW 回复当作普通消息放到队尾，查看任务等操作会被既有通知阻挡。新增 CardButton.Behavior.REPLACE，服务端按钮默认使用；客户端 pending 记录 HUD 操作的来源 CardRef，直接回复只替换仍为当前项的来源通知，其他排队通知顺序保持。正文、底部和语音按钮统一进入 CardController，页面按钮不关联 HUD。替换沿用淡出/淡入并停止旧语音与录音；隐藏或资源重载时保留新内容。手动确认/关闭后迟到的回复不重新弹出；独立推送和静默业务更新保持各自原有语义。
+
+执行 `compileJava testModClasses --console=plain` 编译通过；未运行测试或启动 Minecraft。通知按钮连续查看、排队顺序、确认后的迟到回复及动画/语音的实际交互尚未进行游戏内验收。
+
+## 2026-10-29 任务完成状态改为标题标记
+
+任务详情移除“已完成：是/否”一行，使用服务端提供的 completed 状态在标题前添加绿色 ✓ 或红色 ✗；任务名称原有颜色与样式保留。CardData 的标题参数与 summary 共用相同组件，沿用卡片现有摘要去重逻辑；SpeechContent 不包含状态符号。
+
+执行 `compileJava testModClasses --console=plain` 编译通过，任务模板 JSON 解析和 `git diff --check` 通过；未运行测试或启动 Minecraft，颜色与布局尚未进行游戏内验收。
+
+## 2026-10-29 查看任务的物品目标显示
+
+阅读 FTB Quests 的 `ItemTask` 源码确认任务目标的物品堆可从 `getItemStack()` 读取，原实现只把 `Task.getTitle()` 写入 `QuestTaskOutput`，因此详情卡片中的“铁锭”只能显示为文字。现在任务输出额外携带 `task_items`，使用现有 `ItemStackTemplate` 和 `ItemsNode` 渲染目标图标及原版 tooltip；数量仍由目标进度文本显示，标签过滤或缺失物品无法生成图标时保留原标题。
+
+`quest` 和 `quest_submit` 模板已统一使用物品节点，奖励和任务目标共用客户端物品渲染路径。执行 `compileJava testModClasses --console=plain` 编译通过，未启动 Minecraft，任务详情的实际视觉布局和 tooltip 尚未运行验收。
+
 ## 2026-10-29 重进世界后客户端模块入口恢复
 
 只读检查现有存档确认系统绑定与模块存储仍保留。对照当前 NeoForge TagsUpdatedEvent 源码、Saturn RegistryCache 实现和本项目 ModDev 的 MC 26.1.2 补丁源码，确认共享静态缓存跳过单人连接的 ClientPacketReceived，世界加载的 disconnect 又会触发客户端登出清理；原 get 使用 RegistryAccess.EMPTY 惰性装配后不再纠正，造成已绑定但模块入口消失。

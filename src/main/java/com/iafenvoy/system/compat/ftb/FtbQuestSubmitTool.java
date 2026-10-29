@@ -65,7 +65,7 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
             boolean completed = team.isCompleted(quest) || team.getCompletionCount(target) != completions;
             if (completed) FtbQuestNotifications.submitted(player, file, team, quest);
             return new QuestSubmitOutput(FtbQuestAccess.hex(quest.getId()), LegacyText.component(quest.getTitle()), tasks.stream()
-                    .map(task -> new QuestTaskOutput(LegacyText.component(task.getTitle()), team.getProgress(task), task.getMaxProgress())).toList(), changed, completed);
+                    .map(task -> new QuestTaskOutput(LegacyText.component(task.getTitle()), team.getProgress(task), task.getMaxProgress(), FtbQuestAccess.previewItems(task))).toList(), changed, completed);
         });
     }
 }

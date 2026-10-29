@@ -7,6 +7,7 @@ import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.request.ChatRequest;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.request.InvokeRequest;
+import com.iafenvoy.system.card.CardRef;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.command.client.AssistantClientCommands;
@@ -33,6 +34,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -149,8 +151,12 @@ public final class AssistantClient {
         AgentResult accepted = result.withPresentation(result.messageKey(), result.text(), updates, result.silent());
         state = state.receive(requestId, accepted, notification, select);
         revision++;
-        AssistantMessages.refresh(accepted);
+        // Only this request's reply can replace its source notice; unrelated pushes retain FIFO order.
+        if (pending != null && pending.notification().isPresent())
+            AssistantMessages.reply(accepted, pending.notification().get());
+        else AssistantMessages.refresh(accepted);
         if (accepted.silent() || updates.stream().noneMatch(card -> card.mode() == CardUpdate.Mode.SHOW)) return;
+        if (pending != null && pending.notification().isPresent()) return;
         Minecraft minecraft = Minecraft.getInstance();
         if (notification || select && !(minecraft.screen instanceof AssistantInputScreen))
             AssistantMessages.result(accepted);
@@ -190,6 +196,10 @@ public final class AssistantClient {
     }
 
     public static void send(AgentRequest request) {
+        send(request, Optional.empty());
+    }
+
+    public static void send(AgentRequest request, Optional<CardRef> notification) {
         ClientPacketListener connection = Minecraft.getInstance().getConnection();
         if (connection == null || state.busy()) return;
         String id = UUID.randomUUID().toString();
@@ -197,7 +207,7 @@ public final class AssistantClient {
             screen.stopSpeech();
             screen.stopRecognition();
         }
-        state = state.requested(id, request, viewOwner());
+        state = state.requested(id, request, viewOwner(), notification);
         revision++;
         connection.send(new AssistantRequestC2SPayload(id, request));
     }

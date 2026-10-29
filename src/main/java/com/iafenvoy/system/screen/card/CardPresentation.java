@@ -47,7 +47,7 @@ public record CardPresentation(CardTemplate template, CardContext context) {
             builder.put(prefix + "label", AssistantView.tr(button.labelKey())).put(prefix + "number", actionOffset + i + 1);
             if (ClientCards.active(update.ref())) builder.callback(prefix + "click", () -> {
                 if (mode != CardContext.Mode.NOTIFICATION || AssistantMessages.canActivate(update.ref()))
-                    CardController.activate(update.ref(), button);
+                    CardController.activate(update.ref(), button, mode == CardContext.Mode.NOTIFICATION);
             });
         }
         CardTemplate template = CardTemplates.get(view.template());

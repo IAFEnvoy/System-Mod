@@ -5,6 +5,7 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.card.CardRef;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.util.CodecIO;
@@ -23,7 +24,7 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
     public record ChatEntry(boolean player, String text, AgentResult result) {
     }
 
-    public record Pending(long deadline, Object owner) {
+    public record Pending(long deadline, Object owner, Optional<CardRef> notification) {
     }
 
     public AssistantClientState {
@@ -59,11 +60,11 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return this.append(result, false, true);
     }
 
-    AssistantClientState requested(String id, AgentRequest request, Object owner) {
+    AssistantClientState requested(String id, AgentRequest request, Object owner, Optional<CardRef> notification) {
         List<ChatEntry> entries = new ArrayList<>(this.entries);
         if (!request.text().isBlank()) entries.add(new ChatEntry(true, request.text(), null));
         Map<String, Pending> pending = new HashMap<>(this.pending);
-        pending.put(id, new Pending(System.currentTimeMillis() + this.serverState.requestTimeoutMillis(), owner));
+        pending.put(id, new Pending(System.currentTimeMillis() + this.serverState.requestTimeoutMillis(), owner, notification));
         return new AssistantClientState(entries, pending, this.serverState,
                 request == ControlRequest.STATE || request == ControlRequest.HISTORY || request.text().isBlank()
                         ? this.current : new ChatEntry(false, request.text(), null));

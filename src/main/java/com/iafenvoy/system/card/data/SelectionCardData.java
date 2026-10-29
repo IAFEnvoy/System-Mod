@@ -60,7 +60,7 @@ public record SelectionCardData(Component summary, Component speech, List<Choice
         for (int i = 0; i < this.choices.size(); i++) {
             Choice choice = this.choices.get(i);
             builder.serverButton("choice_" + i, choice.labelKey(), choice.action.id(), choice.action.arguments(),
-                    CardButton.Placement.BODY, CardButton.Behavior.CLOSE);
+                    CardButton.Placement.BODY, CardButton.Behavior.REPLACE);
         }
         return builder;
     }

@@ -4,9 +4,11 @@
 
 ## 客户端模块绑定缓存
 
-公开入口为 `module.client.ClientModuleCaches.BINDINGS` 和 `COMMAND`。`ClientModuleBindingsCache` 继承 Saturn `RegistryCache<ClientModuleBindingsCache>`，直接保存 Workspace 列表与本地卡片动作 Map；`ClientCommandCache` 直接保存命令声明和编译后的树。SystemClientMod 在客户端构造阶段调用 `ClientModuleCaches.init()`，使绑定缓存赶在首次标签事件前加入 Saturn 维护列表，不提前读取模块注册表。
+公开入口为 `module.client.ClientModuleCaches.BINDINGS` 和 `COMMAND`。`ClientModuleBindingsCache` 直接保存 Workspace 列表与本地卡片动作 Map；`ClientCommandCache` 直接保存命令声明和编译后的树。SystemClientMod 在客户端构造阶段调用 `ClientModuleCaches.init()`，提前创建缓存，不提前读取模块注册表。
 
-绑定缓存统一协调两份数据的生命周期：首次读取按需装配，满足 shouldUpdateStaticData 的标签更新清空后重建，客户端登出同时清空；每轮只遍历模块一次，命令树编译后释放临时节点 Builder，Workspace 和本地动作发布为不可变集合。缓存不再包装另一个 Bindings / Registry 对象；旧 ClientModuleBindings 和 ClientCommandRegistry 已删除。内置本地卡片动作在对应 ClientModule.register 中通过 localAction 声明，扩展也使用同一入口；CardController 只执行分派。玩家状态与界面 Document 不属于此缓存，资源包 JSON 继续由 CardTemplates 的资源重载监听器维护。
+绑定缓存统一协调两份数据的生命周期：收到 `TagsUpdatedEvent.ClientPacketReceived` 时按客户端注册表重建，客户端登出同时清空。这里不继承 Saturn 的共享静态 RegistryCache：其 shouldUpdateStaticData 过滤会跳过单人连接的客户端同步，服务端加载时提前构建的内容又可能被世界切换清空。客户端贡献只监听客户端事件，不能依赖服务端标签事件代为初始化。
+
+首次读取优先使用当前连接的 registryAccess；无连接、也尚未收到标签同步时才装配本地常驻功能。标签包已提供注册表、但本地玩家尚未创建时保留该快照；连接的注册表实例变化会按需重建，避免空注册表缓存一直占用。每轮只遍历模块一次，命令树编译后释放临时节点 Builder，Workspace 和本地动作发布为不可变集合。缓存不再包装另一个 Bindings / Registry 对象；旧 ClientModuleBindings 和 ClientCommandRegistry 已删除。内置本地卡片动作在对应 ClientModule.register 中通过 localAction 声明，扩展也使用同一入口；CardController 只执行分派。玩家状态与界面 Document 不属于此缓存，资源包 JSON 继续由 CardTemplates 的资源重载监听器维护。
 
 ## System 自有内置注册表
 

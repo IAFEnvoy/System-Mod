@@ -93,7 +93,7 @@ SystemClientModules.register(Identifier.parse("example:daily"), new ExampleClien
 
 ClientModuleCaches.BINDINGS 按同步的动态条目对 client ID 分组，每种 UI 装配一次。ClientModuleContext 保存关联的配置 ID 列表，任一 ID 在当前玩家同步状态中启用即允许操作。Workspace、文本命令、补全和本地动作复用该权限判断。常驻本地目录使用空关联列表，保持进入世界前的设置、关闭通知及基础界面操作可用。
 
-绑定和命令数据均直接保存在各自 Cache 类。Saturn RegistryCache 在静态数据标签更新时重建、退出时清空；首次读取按需装配。客户端游戏命令从 ClientCommandCache 复制，异步补全按 revision 丢弃旧结果。资源模板继续由自己的资源重载监听器维护。
+绑定和命令数据均直接保存在各自 Cache 类。ClientModuleBindingsCache 监听客户端标签同步（含单人连接）重建、客户端退出清空，不再使用 Saturn RegistryCache 的共享静态数据过滤；服务端加载事件不构建客户端贡献。首次读取优先使用当前连接的注册表，无连接时才装配本地功能，并保留配置阶段已收到的注册表；连接注册表变化后按需重建。客户端游戏命令从 ClientCommandCache 复制，异步补全按 revision 丢弃旧结果。资源模板继续由自己的资源重载监听器维护。
 
 完整侧栏按 CHAT / MODULES / SETTINGS 分组。模块声明 workspace、文案、按钮与回调，界面绑定与显示只遍历缓存，不硬编码功能 switch。本地卡片动作从绑定缓存分派，服务端动作仍发送结构化请求。
 

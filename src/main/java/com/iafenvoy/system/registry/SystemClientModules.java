@@ -33,7 +33,7 @@ public final class SystemClientModules {
     }
 
     public static void init() {
-        // The client entrypoint initializes this class before RegistryCache consumes its definitions.
+        // The client entrypoint initializes this class before the binding cache consumes its definitions.
     }
 
     private static <T extends ClientModule> T register(String id, T module) {

@@ -1,5 +1,13 @@
 # 编译与验收
 
+## 2026-10-29 重进世界后客户端模块入口恢复
+
+只读检查现有存档确认系统绑定与模块存储仍保留。对照当前 NeoForge TagsUpdatedEvent 源码、Saturn RegistryCache 实现和本项目 ModDev 的 MC 26.1.2 补丁源码，确认共享静态缓存跳过单人连接的 ClientPacketReceived，世界加载的 disconnect 又会触发客户端登出清理；原 get 使用 RegistryAccess.EMPTY 惰性装配后不再纠正，造成已绑定但模块入口消失。
+
+ClientModuleBindingsCache 改为仅按客户端标签同步和登出事件维护自身与命令缓存，包含单人连接，不再继承共享静态 RegistryCache。首次访问优先使用当前连接注册表，配置阶段已收到标签但本地玩家尚未创建时保留快照；连接注册表改变会按需重建。存档与服务端模块权限逻辑无需改动。
+
+执行 `compileJava testModClasses --console=plain` 编译通过，`git diff --check` 无差异空白错误。未执行测试、启动 Minecraft 或修改现有存档；重新进入单人存档、远程重连和界面交互尚未实际运行验收。
+
 ## 2026-10-29 可提交任务列表与通知动作
 
 `QuestQueryInput.view` 改为 ACTIVE / CLAIMABLE / SUBMITTABLE，新增 `/submittable [query]`、中文别名、只读语义样本和任务页入口。`FtbQuestReader.submittable` 排除未解锁、暂停、已完成、仅 FTB 界面操作及被目标顺序阻塞的项目；列表不预扣材料，不保证一次完成。详情与通知统一保存 `QuestSubmission` 枚举，由同一方法构建勾选或提交按钮；新增提交按钮的中英文语音别名。执行继续走原生提交并检查当前状态，查询不触发写操作。

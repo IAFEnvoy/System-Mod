@@ -176,7 +176,7 @@ items 字段引用参数表中的 `List<ItemPreviewOutput>`，缺失、类型不
 
 可选字段：label 默认空，使用占位符设置分组标题；description 默认 []，使用相同节点语法生成物品说明；compact 缺省时通知为紧凑模式；show_labels 默认 true。物品绘制复用 `AssistantItems` 和 AUI 原生 Item，悬停使用原版 tooltip。
 
-商城提供 offer_items、price_items；奖励提供 result_items。奖池奖品、签到候选和任务奖励各自用平铺的带下标键，分组与概率/状态说明均由 JSON 决定。物品节点不输出纯文本，文字导出使用 text_items 状态及对应文字参数。
+商城提供 offer_items、price_items；奖励提供 result_items。奖池奖品、签到候选和任务奖励各自用平铺的带下标键，分组与概率/状态说明均由 JSON 决定。物品节点不输出纯文本，文字导出使用 text_items 状态及对应文字参数。FTB 物品任务同时提供 `task_items`，详情卡片会把目标物品作为原版图标渲染并保留进度文字；无法确定具体物品的任务仍只显示标题。
 
 ## 按钮与动作
 
@@ -205,11 +205,13 @@ button 的 text、callback 必填。callback 只查询已注册的 Runnable；�
 
 label 仅作纯文本投影。缺省使用动作原标签；简约模式按真实动作顺序显示编号，由输入执行选择。可信回调仍经过原有服务端权限、任务和交易校验。
 
-CardButton 显式描述 Local/Server 动作、BODY/FOOTER 位置以及 CLOSE/WAIT 行为。actions 节点在通知正文只绘制 BODY 按钮，FOOTER 由通知宿主生成；宿主始终在业务按钮之后补充本地确定按钮，忙碌时仍可关闭通知。大任务列表直接放正文滚动区，不截断成少量底部按钮。
+CardButton 显式描述 Local/Server 动作、BODY/FOOTER 位置以及 CLOSE/WAIT/REPLACE 行为。actions 节点在通知正文只绘制 BODY 按钮，FOOTER 由通知宿主生成；宿主始终在业务按钮之后补充本地确定按钮，忙碌时仍可关闭通知。大任务列表直接放正文滚动区，不截断成少量底部按钮。
 
 点击、数字和语音选择都进入 CardController。Local 从 ClientModuleCaches.BINDINGS 的处理器 Map 分派；Map 和登记、分派、清理逻辑直接位于 ClientModuleBindingsCache，由模块通过 localAction 声明，随 Saturn RegistryCache 重建和退出清理。Controller 不单独保存永久动作表。Server 发 CardActionRequest(source, action)，仅含来源 CardRef、动作 Identifier 和字符串参数。工作流在 ModuleRouting.button 中解码，继续经过原有权限、预算、引用、Cost 与发奖流程，不经过模型路由。labelKey 只决定标签和语音候选，不决定动作。
 
-CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并暂停关闭计时，服务端按钮在等待期间禁用。失败、超时和零卡片回复也解除等待。语音优先匹配当前版本的实际按钮，失败或歧义才进入主聊天。
+CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并等待回复。REPLACE 同样等待，但把直接回复的新 SHOW 卡片放到当前通知的位置，旧内容淡出后新内容淡入，不收起面板或重复播放提示音；其余排队通知保持顺序。CardBuilder.serverButton 默认使用 REPLACE，任务列表、详情和选择按钮使用此行为。通知没有自动关闭计时，播报结束也不会切换到下一条；玩家明确操作或服务端更新才能关闭或替换当前项。
+
+仅从 HUD 激活的 REPLACE 按钮会在客户端 pending 中记录来源 CardRef，并按 requestId 关联回复；完整/简约页面中的同一按钮仍按页面流程处理。原通知已确认或关闭时，迟到回复不重新弹出，也不替换其他通知。独立推送继续入队；业务 CardUpdate.REPLACE/REMOVE 仍沿用静默更新语义。等待期间禁用服务端按钮，失败、超时和零卡片回复也解除等待。语音优先匹配当前版本的实际按钮，失败或歧义才进入主聊天。
 
 ## 通用参数与模块字段
 
@@ -226,11 +228,13 @@ CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并暂停关�
 | lottery_pool | label/id/prize_count/preview_count/price/price_text/free/payment_available/price_items；prizes.<下标>.reward_label/chance/result_items |
 | lottery_prize | reward_label/reward_items/chance/result_items，概率数值不含百分号 |
 | delivery_state | state |
-| quest/quest_submit | title，tasks.<下标>.task_title/task_progress/task_required；详情另有 chapter/description/progress/completed；submission 枚举由 CardData 构建提交或勾选按钮 |
+| quest/quest_submit | title，tasks.<下标>.task_title/task_progress/task_required/task_items；详情另有 chapter/description/progress/completed；submission 枚举由 CardData 构建提交或勾选按钮 |
 | quest | rewards.<下标>.reward_title/reward_state/result_items，choices 使用 rewards.<下标>.choices.<下标>.choice_number/choice_title/result_items |
 | quest_notice | id/title/chapter/description/requirements/other_rewards/manual_submission/result_items |
 | quest_startup | total/remaining，quests.<下标>.title/progress |
 | starter_gift | gifts.<下标>.result_items/error |
+
+任务详情的 `title` 在任务名称前追加绿色 ✓（已完成）或红色 ✗（未完成），只给符号着色，保留原任务名称的样式。summary 与标题使用同一份组件，避免自动摘要重复显示任务名；模板不再单独显示“已完成”一行，语音仍读取原有 SpeechContent。
 
 price 是非物品费用文字，price_text 包含物品文字。text 使用 summary，selection 使用已声明的动作。状态和历史没有卡片模板。
 

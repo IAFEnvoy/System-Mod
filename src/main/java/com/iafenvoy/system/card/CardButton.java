@@ -6,5 +6,6 @@ package com.iafenvoy.system.card;
 public record CardButton(String id, String labelKey, CardAction action, Placement placement, Behavior behavior) {
     public enum Placement {BODY, FOOTER}
 
-    public enum Behavior {CLOSE, WAIT}
+    // REPLACE waits for a direct reply and uses the originating notification's display slot.
+    public enum Behavior {CLOSE, WAIT, REPLACE}
 }

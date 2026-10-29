@@ -4,6 +4,7 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.card.*;
+import com.iafenvoy.system.card.client.CardController;
 import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.command.client.NotificationVoiceCommands;
 import com.iafenvoy.system.config.file.RecognitionConfig;
@@ -43,10 +44,10 @@ public final class AssistantMessages {
     private static final int MAX_PENDING = 32;
     private static final Deque<Pending> QUEUE = new ArrayDeque<>();
     private static Message current;
+    private static Pending replacement;
     private static AssistantSpeech.Session speech;
     private static boolean speakCurrent;
     private static boolean speechStarted;
-    private static int remainingTicks;
     private static Document document;
     private static Message displayedMessage;
     private static Phase phase = Phase.HIDDEN;
@@ -68,14 +69,13 @@ public final class AssistantMessages {
     }
 
     // Callbacks are bound to the current card version by the shared controller.
-    public record Button(String id, String labelKey, boolean requiresIdle, boolean keepOpen, Runnable action) {
+    public record Button(String id, String labelKey, boolean requiresIdle, Runnable action) {
         public String label() {
             return tr(this.labelKey);
         }
     }
 
-    private record Message(String text, String speechText, List<Button> buttons, int durationTicks,
-                           UUID cardId, AgentResult result) {
+    private record Message(String text, String speechText, List<Button> buttons, UUID cardId, AgentResult result) {
         private Message {
             buttons = List.copyOf(buttons);
         }
@@ -83,7 +83,8 @@ public final class AssistantMessages {
 
     private static void post(Message message, boolean speak) {
         Objects.requireNonNull(message);
-        if (sameContent(message, current) || QUEUE.stream().anyMatch(queued -> sameContent(message, queued.message())))
+        if (sameContent(message, current) || replacement != null && sameContent(message, replacement.message())
+                || QUEUE.stream().anyMatch(queued -> sameContent(message, queued.message())))
             return;
         if (QUEUE.size() >= MAX_PENDING) QUEUE.removeFirst();
         QUEUE.addLast(new Pending(message, speak));
@@ -98,6 +99,30 @@ public final class AssistantMessages {
         }
     }
 
+    /**
+     * Direct action replies replace the active slot; a dismissed source cannot reopen or displace another notice.
+     */
+    public static void reply(AgentResult result, CardRef source) {
+        boolean active = current != null && source.id().equals(current.cardId());
+        refresh(result);
+        if (!active || result.silent()) return;
+        List<Pending> replies = result.cards().stream()
+                .filter(card -> card.mode() == CardUpdate.Mode.SHOW && card.data().isPresent())
+                .map(card -> message(result.withPresentation(result.messageKey(), result.text(), List.of(card), false)))
+                .map(message -> new Pending(message, !message.speechText().isBlank())).toList();
+        if (replies.isEmpty()) return;
+        replacement = replies.getFirst();
+        // Extra reply cards follow the replacement without evicting notices that were already waiting.
+        int count = Math.min(replies.size() - 1, Math.max(0, MAX_PENDING - QUEUE.size()));
+        for (int index = count; index > 0; index--) QUEUE.addFirst(replies.get(index));
+        stopRecognition();
+        stopSpeech();
+        if (document == null || document.isDisposed() || displayedMessage == null) {
+            nextMessage();
+            phase = Phase.HIDDEN;
+        } else animate(Phase.FADING_OUT, Minecraft.getInstance().screen instanceof ChatScreen);
+    }
+
     private static Message message(AgentResult result) {
         ClientMessage content = CardPresentation.message(result);
         List<Button> buttons = new ArrayList<>();
@@ -106,18 +131,21 @@ public final class AssistantMessages {
             CardButton button = choice.button();
             if (button.placement() == CardButton.Placement.FOOTER) buttons.add(button(choice));
         }
-        return new Message(content.text(), content.speech(), buttons, 160, card.ref().id(), result);
+        return new Message(content.text(), content.speech(), buttons, card.ref().id(), result);
     }
 
     private static Button button(ClientCards.Choice choice) {
         CardButton button = choice.button();
         return new Button(button.id(), button.labelKey(), button.action() instanceof CardAction.Server,
-                button.behavior() == CardButton.Behavior.WAIT, choice::execute);
+                () -> CardController.activate(choice.source(), button, true));
     }
 
     public static void refresh(AgentResult result) {
         for (CardUpdate update : result.cards()) {
             if (update.mode() == CardUpdate.Mode.SHOW) continue;
+            if (replacement != null && update.ref().id().equals(replacement.message().cardId()))
+                replacement = update.mode() == CardUpdate.Mode.REMOVE ? null
+                        : new Pending(message(ClientCards.latest(replacement.message().result())), false);
             List<Pending> queued = new ArrayList<>(QUEUE);
             QUEUE.clear();
             for (Pending pending : queued) {
@@ -133,7 +161,6 @@ public final class AssistantMessages {
                 current = message(ClientCards.latest(current.result()));
                 speakCurrent = false;
                 speechStarted = true;
-                remainingTicks = current.durationTicks();
                 if (document != null && !document.isDisposed()) renderMessage();
             }
         }
@@ -141,17 +168,18 @@ public final class AssistantMessages {
 
     public static void dismissCard(UUID id) {
         QUEUE.removeIf(pending -> id.equals(pending.message().cardId()));
+        if (replacement != null && id.equals(replacement.message().cardId())) replacement = null;
         if (current != null && id.equals(current.cardId())) dismiss(current);
     }
 
-    public static void actionStarted(CardRef source, CardButton.Behavior behavior) {
-        if (current == null || !source.id().equals(current.cardId())) return;
+    public static boolean actionStarted(CardRef source, CardButton.Behavior behavior) {
+        if (!hasVoiceTarget() || !source.id().equals(current.cardId())) return false;
         if (behavior == CardButton.Behavior.CLOSE) dismiss(current);
         else {
             stopRecognition();
             stopSpeech();
-            remainingTicks = current.durationTicks();
         }
+        return true;
     }
 
     public static String summary(AgentResult result) {
@@ -190,7 +218,7 @@ public final class AssistantMessages {
         }
         if (generation != document.getRefreshGeneration()) {
             generation = document.getRefreshGeneration();
-            if (current == null) nextMessage();
+            if (current == null || replacement != null) nextMessage();
             if (current == null) {
                 unmount();
                 return;
@@ -216,19 +244,16 @@ public final class AssistantMessages {
             text(document.getElementById("notification_pending"), displayedPending == 0 ? ""
                     : Component.translatable("system.ui.message_pending", displayedPending).getString());
         }
-        if (phase == Phase.VISIBLE && !chatting && (recognition == null || recognition.finished())
-                && !(voiceButtons(current).stream().anyMatch(Button::keepOpen) && AssistantClient.state().busy()))
-            remainingTicks--;
     }
 
     private static void nextMessage() {
         stopRecognition();
         stopSpeech();
-        Pending next = QUEUE.pollFirst();
+        Pending next = replacement == null ? QUEUE.pollFirst() : replacement;
+        replacement = null;
         current = next == null ? null : next.message();
         speakCurrent = next != null && next.speak();
         speechStarted = false;
-        remainingTicks = current == null ? 0 : current.durationTicks();
     }
 
     private static void renderMessage() {
@@ -285,7 +310,7 @@ public final class AssistantMessages {
                     animate(Phase.VISIBLE, chatting);
             }
             case VISIBLE -> {
-                if (remainingTicks <= 0) dismiss(current);
+                // Narration completion and elapsed time never advance the notification queue.
             }
             case FADING_OUT -> {
                 if (Transition.isActive(document.getElementById("notification_content"))) return;
@@ -298,7 +323,7 @@ public final class AssistantMessages {
                 }
             }
             case COLLAPSING -> {
-                if (!QUEUE.isEmpty()) {
+                if (replacement != null || !QUEUE.isEmpty()) {
                     nextMessage();
                     renderMessage();
                     animate(Phase.EXPANDING, chatting);
@@ -344,8 +369,7 @@ public final class AssistantMessages {
     private static List<Button> buttons(Message shown) {
         List<Button> buttons = new ArrayList<>(shown.buttons());
         // Dismiss is always available, independently of the card's business actions and busy state.
-        buttons.add(new Button("confirm", "system.ui.message_confirm", false, false, () -> {
-        }));
+        buttons.add(new Button("confirm", "system.ui.message_confirm", false, () -> dismiss(shown)));
         return buttons;
     }
 
@@ -359,11 +383,7 @@ public final class AssistantMessages {
 
     private static void activate(Message shown, Button option) {
         if (current != shown || option.requiresIdle() && AssistantClient.state().busy()) return;
-        if (option.keepOpen()) {
-            stopRecognition();
-            stopSpeech();
-            remainingTicks = shown.durationTicks();
-        } else dismiss(shown);
+        // CardController owns business-button lifecycle; closing here would lose the reply's source.
         option.action().run();
     }
 
@@ -464,7 +484,6 @@ public final class AssistantMessages {
         stopRecognition();
         stopSpeech();
         current = null;
-        remainingTicks = 0;
         // A claim can finish while another screen has temporarily unmounted the HUD.
         if (document == null || document.isDisposed()) {
             displayedMessage = null;
@@ -512,13 +531,15 @@ public final class AssistantMessages {
         stopSpeech();
         QUEUE.clear();
         current = null;
-        remainingTicks = 0;
+        replacement = null;
         unmount();
     }
 
     private static void unmount() {
         stopRecognition();
         stopSpeech();
+        // Finish an in-flight swap before hiding the document, so reopening cannot restore the old content.
+        if (replacement != null) nextMessage();
         if (document != null) document.remove();
         document = null;
         displayedMessage = null;

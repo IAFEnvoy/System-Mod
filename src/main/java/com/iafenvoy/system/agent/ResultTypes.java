@@ -127,7 +127,7 @@ public final class ResultTypes {
             CardBuilder builder = CardBuilder.template(TEMPLATE).title("system.result.quests").summary("system.result.quests");
             for (QuestBriefOutput quest : this.quests) {
                 builder.serverButton("quest_" + quest.id(), "system.action.quest_detail", Identifier.parse("system:quest_detail"),
-                                Map.of("quest", quest.id()), CardButton.Placement.BODY, CardButton.Behavior.CLOSE)
+                                Map.of("quest", quest.id()), CardButton.Placement.BODY, CardButton.Behavior.REPLACE)
                         .actionParameter("action_number", quest.number()).actionParameter("action_title", quest.title())
                         .actionParameter("action_chapter", quest.chapter()).actionParameter("action_progress", (int) quest.progress());
             }
@@ -186,7 +186,7 @@ public final class ResultTypes {
                 builder.serverButton("claim", "system.action.claim", Identifier.parse("system:quest_claim"), Map.of("claim_ref", this.claimRef.get()));
             else if (this.rewardPending)
                 builder.serverButton("rewards", "system.action.claim", Identifier.parse("system:quest_detail"), Map.of("quest", this.id));
-            return builder.serverButton("details", "system.action.quest_detail", Identifier.parse("system:quest_detail"), Map.of("quest", this.id), CardButton.Placement.FOOTER, CardButton.Behavior.CLOSE);
+            return builder.serverButton("details", "system.action.quest_detail", Identifier.parse("system:quest_detail"), Map.of("quest", this.id), CardButton.Placement.FOOTER, CardButton.Behavior.REPLACE);
         }
 
         @Override

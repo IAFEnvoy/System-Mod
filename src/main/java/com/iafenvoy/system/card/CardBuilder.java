@@ -89,7 +89,7 @@ public final class CardBuilder {
     }
 
     public CardBuilder serverButton(String id, String label, Identifier action, Map<String, String> arguments) {
-        return this.serverButton(id, label, action, arguments, CardButton.Placement.FOOTER, CardButton.Behavior.WAIT);
+        return this.serverButton(id, label, action, arguments, CardButton.Placement.FOOTER, CardButton.Behavior.REPLACE);
     }
 
     public CardBuilder serverButton(String id, String label, Identifier action, Map<String, String> arguments,

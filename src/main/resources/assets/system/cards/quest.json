@@ -14,17 +14,24 @@
     },
     {
       "type": "system:text",
-      "text": "{{field:completed}}: {{bool:completed}}"
-    },
-    {
-      "type": "system:text",
       "text": "{{description}}",
       "when": "description"
     },
     {
-      "type": "system:text",
-      "text": "{{tasks.*.task_title}} · {{tasks.*.task_progress}}/{{tasks.*.task_required}}",
-      "repeat": "tasks"
+      "type": "system:container",
+      "repeat": "tasks",
+      "children": [
+        {
+          "type": "system:items",
+          "items": "{{tasks.*.task_items}}",
+          "compact": true,
+          "show_labels": false
+        },
+        {
+          "type": "system:text",
+          "text": "{{tasks.*.task_title}} · {{tasks.*.task_progress}}/{{tasks.*.task_required}}"
+        }
+      ]
     },
     {
       "type": "system:container",

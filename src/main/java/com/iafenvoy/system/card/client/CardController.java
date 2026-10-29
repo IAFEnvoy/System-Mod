@@ -10,6 +10,7 @@ import com.iafenvoy.system.screen.AssistantMessages;
 import net.minecraft.resources.Identifier;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * One checked entry point serves template buttons, notification buttons and voice/number choices.
@@ -19,12 +20,17 @@ public final class CardController {
     }
 
     public static void activate(CardRef source, CardButton button) {
+        activate(source, button, false);
+    }
+
+    public static void activate(CardRef source, CardButton button, boolean notification) {
         if (!ClientCards.active(source) || button.action() instanceof CardAction.Server && AssistantClient.state().busy())
             return;
-        AssistantMessages.actionStarted(source, button.behavior());
+        if (notification && !AssistantMessages.actionStarted(source, button.behavior())) return;
         if (button.action() instanceof CardAction.Local(Identifier id, Map<String, String> arguments)) {
             ClientModuleCaches.BINDINGS.get().localAction(id, source, arguments);
         } else if (button.action() instanceof CardAction.Server server)
-            AssistantClient.send(new CardActionRequest(source, server));
+            AssistantClient.send(new CardActionRequest(source, server),
+                    notification && button.behavior() == CardButton.Behavior.REPLACE ? Optional.of(source) : Optional.empty());
     }
 }

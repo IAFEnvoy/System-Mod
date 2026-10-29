@@ -168,7 +168,7 @@ AgentResult 继承 Saturn ResultWithData<List<CardUpdate>>。Status 为 SUCCEEDE
 
 服务端 DTO 包含分页原查询词、目录版本、报价、领取引用及可操作状态，客户端不反查工作流或自行判断业务。CardAction.Server 发送动作 Identifier 和字符串参数，由 ModuleRouting.button 转成原类型化输入并校验，继续进入原 AgentModule/Tool。Local 由客户端控制器 Map 执行；labelKey 只用于显示与语音匹配。ClientCardBindings 和按标签推断行为的 notificationAction 已移除。
 
-ClientCards 保存连接内最新消息、版本和活动状态，ServerCards 只保存已发布版本元数据，并在异步动作开始时预留版本。REPLACE 只修改同一 ID，不新入队或播报；REMOVE 停止该卡片的显示/语音，历史保留只读快照。WAIT 暂停通知计时并禁用服务端操作，失败、超时和零卡片回复都完成等待。状态与历史独立响应，历史恢复不发包、不播报，不恢复旧引用的交互能力。
+ClientCards 保存连接内最新消息、版本和活动状态，ServerCards 只保存已发布版本元数据，并在异步动作开始时预留版本。REPLACE 只修改同一 ID，不新入队或播报；REMOVE 停止该卡片的显示/语音，历史保留只读快照。通知不按时长或播报结束自动切换；WAIT 保留当前通知并禁用服务端操作，失败、请求超时和零卡片回复都完成等待。状态与历史独立响应，历史恢复不发包、不播报，不恢复旧引用的交互能力。
 
 CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式 CARD_NODE_TYPE 按 type 分派；style 支持字符串或列表。Context 三表平铺且共享，items 直接绑定 List<ItemPreviewOutput>，不经 JSON 字符串传物品。通知正文 actions 只显示 BODY 按钮，FOOTER 仍由代码生成；大任务列表直接滚动。模板缺失使用 summary 和已有按钮回退，不显示原始 DTO。格式见[客户端 JSON 卡片](cards.md)，完整流程和 BuiltinTools 职责见[卡片数据流](card-flow-design.md)。
 

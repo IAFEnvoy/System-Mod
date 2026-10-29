@@ -7,6 +7,7 @@ import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
@@ -50,8 +51,12 @@ public record QuestOutput(String id, Component title, Component chapter, String 
 
     @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(TEMPLATE).summary(this.title);
-        builder.put("title", this.title()).put("chapter", this.chapter()).put("description", this.description())
+        // Share the decorated heading with the summary; speech keeps its separate, undecorated content.
+        Component heading = Component.empty()
+                .append(Component.literal(this.completed ? "✓ " : "✗ ").withStyle(this.completed ? ChatFormatting.GREEN : ChatFormatting.RED))
+                .append(this.title);
+        CardBuilder builder = CardBuilder.template(TEMPLATE).summary(heading);
+        builder.put("title", heading).put("chapter", this.chapter()).put("description", this.description())
                 .put("progress", (int) this.progress()).put("completed", this.completed())
                 .list("tasks", this.tasks(), (prefix, task) -> task.fill(builder, prefix))
                 .list("rewards", this.rewards(), (prefix, reward) -> reward.fill(builder, prefix));

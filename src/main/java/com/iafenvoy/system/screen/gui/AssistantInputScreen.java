@@ -3,11 +3,13 @@ package com.iafenvoy.system.screen.gui;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
 import com.iafenvoy.system.config.file.RecognitionConfig;
+import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.screen.AssistantPages;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.iafenvoy.system.speech.tts.AssistantSpeech.Session;
+import com.mojang.brigadier.CommandDispatcher;
 import com.sighs.apricityui.element.AbstractText;
 import com.sighs.apricityui.event.KeyEvent;
 import com.sighs.apricityui.init.Document;
@@ -16,6 +18,7 @@ import com.sighs.apricityui.layout.Position;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.IMEPreeditOverlay;
 import net.minecraft.client.input.PreeditEvent;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
@@ -47,7 +50,8 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
     }
 
     private record SuggestionState(String value, int cursor, int selectionStart, int selectionEnd, long revision,
-                                   boolean eligible) {
+                                   boolean eligible, long commandRevision,
+                                   @Nullable CommandDispatcher<?> serverCommands) {
     }
 
     private record SuggestionArea(int left, int bottom, int width, int maxHeight) {
@@ -289,14 +293,31 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         if (document == null || !(document.getElementById("message") instanceof AbstractText message)) return;
         this.draft = message.getValue();
         boolean eligible = document.getFocusedElement() == message && !this.imeOwnsKeys();
-        SuggestionState state = new SuggestionState(this.draft, message.getCursor(), message.getSelectionStart(), message.getSelectionEnd(), AssistantClient.revision(), eligible);
+        ClientPacketListener connection = this.minecraft.getConnection();
+        SuggestionState state = new SuggestionState(this.draft, message.getCursor(), message.getSelectionStart(), message.getSelectionEnd(),
+                AssistantClient.revision(), eligible, ClientModuleCaches.COMMAND.get().revision(), connection == null ? null : connection.getCommands());
         if (state.equals(this.suggestionState)) return;
         this.suggestionState = state;
-        this.suggestions = eligible && message.getCursor() == this.draft.length() && !message.hasSelection() && !this.draft.equals(this.dismissedDraft)
-                ? AssistantCommandSuggestions.find(this.draft) : List.of();
+        this.suggestions = List.of();
+        boolean complete = eligible && message.getCursor() == this.draft.length() && !message.hasSelection() && !this.draft.equals(this.dismissedDraft);
         if (!this.draft.equals(this.dismissedDraft)) this.dismissedDraft = null;
         this.selectedSuggestion = 0;
         this.renderSuggestions();
+        if (!complete) return;
+        AssistantCommandSuggestions.find(this.draft, result -> this.minecraft.execute(() -> {
+            // Server completions may arrive after editing, IME composition, reconnecting or rebuilding the page.
+            if (this.minecraft.screen != this || this.getLinkedDocument() != document || this.minecraft.getConnection() != connection
+                    || this.suggestionState != state || !message.getValue().equals(state.value())
+                    || ClientModuleCaches.COMMAND.get().revision() != state.commandRevision()
+                    || connection != null && connection.getCommands() != state.serverCommands()
+                    || message.getCursor() != state.cursor() || message.hasSelection() || this.imeOwnsKeys()
+                    || document.getFocusedElement() != message || AssistantClient.revision() != state.revision())
+                return;
+            if (this.suggestions.equals(result)) return;
+            this.suggestions = result;
+            this.selectedSuggestion = 0;
+            this.renderSuggestions();
+        }));
     }
 
     private void renderSuggestions() {

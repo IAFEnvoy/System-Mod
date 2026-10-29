@@ -58,7 +58,7 @@ public final class ModuleRegistry {
         // Every declaration is validated before any registry is changed; shared tools keep instance identity.
         this.tools.registerAll(operations);
         this.modules.put(id, new Entry<>(owner, module, routing, readOnly, shortcut));
-        this.commands.register(id, module.inputCodec(), routing.commands());
+        this.commands.register(id, routing.commands());
         if (profile != null) this.profiles.put(id, profile);
     }
 

@@ -9,13 +9,16 @@ HUD 通知，并可选用语音播报。
 
 - **玩家与物品查询**：查看本人状态、公开在线玩家名称，按名称或注册 ID 搜索物品。
 - **FTB Quests 集成**：用简表展示可见、已解锁、可推进且未完成的任务，按编号或名称展开详情，再明确选择奖励与领取。完成与新解锁任务通过系统通知依次提示。
-- **明确触发的联网搜索**：使用 `/system search <问题>` 或联网搜索页主动检索，普通提问不会自动联网。默认共享 DeepSeek 密钥，循环预算独立配置，Search 和 Fetch 分别按次计费。
+- **明确触发的联网搜索**：使用 `/system search <问题>` 或联网搜索页主动检索，普通提问不会自动联网。默认共享 DeepSeek
+  密钥，循环预算独立配置，Search 和 Fetch 分别按次计费。
 - **AI 签到**：模型从服务端批准的奖励池中选择奖励，成功后进入收件箱，玩家手动领取；模型不能编造物品或修改数量。
 - **系统商城**：浏览商品、查看报价，通过 Saturn Cost 确认以物易物、资源或扩展支付。模组本身不提供系统币经济系统。
 - **数据驱动抽奖**：浏览奖池、查看奖品权重与单次消耗，确认后单抽一次，奖励存入收件箱。数据包通过 Saturn Cost 定义消耗，也可设置免费抽奖。
-- **内容配置与工作流**：数据包定义系统名称、介绍、启用模块、签到奖励、商城商品和抽奖奖池；模块支持 ID、tag 和条件，服务端规则可在玩家完成成就后触发有界工作流。
+- **内容配置与工作流**：数据包定义系统名称、介绍、启用模块、签到奖励、商城商品和抽奖奖池；模块支持 ID、tag
+  和条件，服务端规则可在玩家完成成就后触发有界工作流。
 - **HUD 通知与语音**：提示不抢鼠标或键盘；可选阿里云流式 TTS 朗读正文，界面关闭、通知结束或切换时掐断对应语音 session。
-- **用量与隐私控制**：服务端按玩家统计 AI 与联网用量，TTS / ASR 用量仅存当前账号本机。支持管理历史、关闭外部 AI，按 UUID 隔离数据并限制模型与工具执行。
+- **用量与隐私控制**：服务端按玩家统计 AI 与联网用量，TTS / ASR 用量仅存当前账号本机。支持管理历史、关闭外部 AI，按 UUID
+  隔离数据并限制模型与工具执行。
 
 ## 快速开始
 
@@ -56,41 +59,27 @@ $env:SYSTEM_DEEPSEEK_API_KEY = "<你的 API Key>"
 `baseUrl` 填 API 前缀，不含 `/chat/completions`，适配器会自动追加。切换其他兼容服务时修改地址、模型 ID 和密钥环境变量名，必要时显式设置
 `providerType: "openai"`。`auto` 只为 DeepSeek 官方域名启用专用参数；通过代理调用 DeepSeek 时可显式设置为 `deepseek`。
 
-### 联网搜索
-
-在系统定义中启用 `system:web_search` 后，可在完整工作台的“模块 → 联网搜索”填写问题，也可使用
-`/system search <问题>`、助手内的 `/search <问题>`，或说“帮我查一下，红石比较器的两个模式分别是什么”。模糊表达由路由模型理解，无需包含“联网”；本地任务和状态优先走本地查询。提示词要求普通提问与历史不作为搜索授权，打开页面和任务事件不触发搜索；关闭“外部 AI”也会禁止搜索。
-
-搜索默认读取服务端环境变量 `SYSTEM_DEEPSEEK_API_KEY`，与默认 DeepSeek 模型共享密钥；连接独立配置在
-`config/system/system-search.json`，切换其他聊天模型后仍可使用 DeepSeek 搜索。
-
-默认最多 **6 次模型调用、5 次 Search/Fetch 调用、90 秒总期限**，单次模型最多 20 秒，可在 `system-agent.json` 的
-`policies["system:web_search"]` 中独立调整。结果包含回答和来源，语音只朗读回答。
-
-Search 和 Fetch 均按 **5 元 / 1,000 次成功且有结果的请求**估价，即各 **0.005 元/次**，模型 Token 另计。
-单价由服务端 `system-search-pricing.json` 控制，修改后不重算历史费用。完整配置见[联网搜索文档](docs/search-api.md)。
-
 ## 指令与交互
 
 以下指令在 Minecraft 聊天栏执行：
 
-| 指令 | 用途 |
-| --- | --- |
-| `/system` | 打开上次选择的界面 |
-| `/system full` / `/system simple` | 打开完整 / 简约界面 |
-| `/system settings` | 直接打开统一设置，无需绑定或管理员权限 |
-| `/system ask <内容>` | 提交自然语言请求 |
-| `/system search <问题>` | 明确发起付费联网检索 |
-| `/system player` | 查看本人状态 |
+| 指令                                    | 用途                                    |
+|---------------------------------------|---------------------------------------|
+| `/system`                             | 打开上次选择的界面                             |
+| `/system full` / `/system simple`     | 打开完整 / 简约界面                           |
+| `/system settings`                    | 直接打开统一设置，无需绑定或管理员权限                   |
+| `/system ask <内容>`                    | 提交自然语言请求                              |
+| `/system search <问题>`                 | 明确发起付费联网检索                            |
+| `/system player`                      | 查看本人状态                                |
 | `/system usage` / `/system usage all` | 查看个人用量 / 管理员查看全服 AI 与联网用量；语音统计始终仅显示自己 |
-| `/system grant <系统ID> [玩家]` | 管理员绑定一个数据包系统，省略玩家时绑定自己 |
-| `/system revoke [玩家]` | 管理员撤销系统并清除业务记录，保留累计用量 |
-| `/system reset [玩家]` | 清除旧格式系统记录和绑定；累计用量保留，完成后需再次 `grant` |
-| `/system module add <玩家> <模块ID>` | 管理员为玩家额外启用模块 |
-| `/system module remove <玩家> <模块ID>` | 管理员为玩家禁用模块 |
-| `/system module list [玩家]` | 管理员查看注册模块或指定玩家已启用的模块 |
-| `/system routing` | 管理员查看路由诊断 |
-| `/system help` | 查看功能帮助 |
+| `/system grant <系统ID> [玩家]`           | 管理员绑定一个数据包系统，省略玩家时绑定自己                |
+| `/system revoke [玩家]`                 | 管理员撤销系统并清除业务记录，保留累计用量                 |
+| `/system reset [玩家]`                  | 清除旧格式系统记录和绑定；累计用量保留，完成后需再次 `grant`    |
+| `/system module add <玩家> <模块ID>`      | 管理员为玩家额外启用模块                          |
+| `/system module remove <玩家> <模块ID>`   | 管理员为玩家禁用模块                            |
+| `/system module list [玩家]`            | 管理员查看注册模块或指定玩家已启用的模块                  |
+| `/system routing`                     | 管理员查看路由诊断                             |
+| `/system help`                        | 查看功能帮助                                |
 
 系统 ID、玩家和模块参数支持补全。重新授予同一系统不会重置玩家；改绑另一个系统需先撤销。
 模块手动增删会覆盖数据包条件并持久保存，`revoke/reset` 时清除；核心、绑定和用量等必需模块不能手动移除。
@@ -106,7 +95,7 @@ Search 和 Fetch 均按 **5 元 / 1,000 次成功且有结果的请求**估价�
 
 ### 语音输入
 
-**此功能需要独立的阿里云 NLS 项目 AppKey 与临时 Token。**
+**此功能需要独立的阿里云 NLS 项目 AppKey 与 AccessKey ID / Secret；临时 Token 由程序自动获取、缓存并按需刷新。**
 
 **建议安装 Simple Voice Chat 获得更好的效果。**
 
@@ -143,7 +132,10 @@ python tools/voice_design.py --lang zh --help
 {
   "name": "system.definition.default.name",
   "description": "system.definition.default.description",
-  "modules": ["#example:basic", "system:web_search"]
+  "modules": [
+    "#example:basic",
+    "system:web_search"
+  ]
 }
 ```
 
@@ -152,12 +144,20 @@ python tools/voice_design.py --lang zh --help
 ```json
 {
   "replace": false,
-  "values": ["system:player", "system:items", "system:signin", "system:inbox", "system:shop", "system:lottery"]
+  "values": [
+    "system:player",
+    "system:items",
+    "system:signin",
+    "system:inbox",
+    "system:shop",
+    "system:lottery"
+  ]
 }
 ```
 
 模块列表也支持带 `condition` 的对象，`id` 可填单个模块或 `#tag`。同一模块被多个条目匹配时，任一条件成立即可启用。
-模块开关控制工作台入口、指令和实际执行权限，FTB 功能还要求安装对应依赖。详见[系统定义与模块 tag](docs/datapacks.md#系统定义)。
+模块开关控制工作台入口、指令和实际执行权限，FTB
+功能还要求安装对应依赖。详见[系统定义与模块 tag](docs/datapacks.md#系统定义)。
 
 签到奖励、商城商品和抽奖奖池完全由数据包定义，默认内容也包含在模组内置数据包中：
 
@@ -173,21 +173,21 @@ data/<命名空间>/system/lottery_pools/<路径>.json
 
 ### 配置文件
 
-| 位置 | 内容 |
-| --- | --- |
-| 服务端 `config/system/system-agent.json` | 执行预算、并发、每日模型上限与时区 |
-| 服务端 `config/system/system-model.json` | 模型连接与提供商选项 |
-| 服务端 `config/system/system-search.json` | DeepSeek 搜索连接，默认与模型共享密钥环境变量 |
-| 服务端 `config/system/system-search-pricing.json` | Search / Fetch 按千次计费的单价 |
-| 服务端 `config/system/system-semantic.json` | 本地意图路由、阈值、例句与缓存 |
-| 服务端 `config/system/system-advancements.json` | 受信成就规则 |
-| `<存档>/system-agent/<UUID>.json` | 绑定、对话、偏好、奖励、订单与工作流记录 |
-| `<存档>/data/system/token_usage.dat` | 独立持久化的玩家 AI / 联网用量，不随撤销或清空记忆删除 |
-| 客户端 `config/system/speech-usage/<UUID>.json` | 当前本地账号的 TTS / ASR 累计，跨服务器保留，不上传 |
-| 客户端 `config/system/system-speech-pricing.json` | 本机 TTS / ASR 单价，缺失时复制内置默认文件 |
-| 客户端 `config/system/system-client.json` | 界面模式偏好 |
-| 客户端 `config/system/system-speech.json` | 本地语音设置及界面中填写的密钥 |
-| 客户端 `config/system/system-asr.json` | 本地识别开关、NLS AppKey、临时 Token 与地域 |
+| 位置                                             | 内容                                          |
+|------------------------------------------------|---------------------------------------------|
+| 服务端 `config/system/system-agent.json`          | 执行预算、并发、每日模型上限与时区                           |
+| 服务端 `config/system/system-model.json`          | 模型连接与提供商选项                                  |
+| 服务端 `config/system/system-search.json`         | DeepSeek 搜索连接，默认与模型共享密钥环境变量                 |
+| 服务端 `config/system/system-search-pricing.json` | Search / Fetch 按千次计费的单价                     |
+| 服务端 `config/system/system-semantic.json`       | 本地意图路由、阈值、例句与缓存                             |
+| 服务端 `config/system/system-advancements.json`   | 受信成就规则                                      |
+| `<存档>/system-agent/<UUID>.json`                | 绑定、对话、偏好、奖励、订单与工作流记录                        |
+| `<存档>/data/system/token_usage.dat`             | 独立持久化的玩家 AI / 联网用量，不随撤销或清空记忆删除              |
+| 客户端 `config/system/speech-usage/<UUID>.json`   | 当前本地账号的 TTS / ASR 累计，跨服务器保留，不上传             |
+| 客户端 `config/system/system-speech-pricing.json` | 本机 TTS / ASR 单价，缺失时复制内置默认文件                 |
+| 客户端 `config/system/system-client.json`         | 界面模式偏好                                      |
+| 客户端 `config/system/system-speech.json`         | 本地语音设置及界面中填写的密钥                             |
+| 客户端 `config/system/system-asr.json`            | 本地识别开关、NLS AppKey、AccessKey ID / Secret 与地域 |
 
 配置文件不会在客户端和服务端之间直接同步。系统定义与实际可用模块通过 Minecraft 网络同步；存档内的玩家业务文件由服务端管理，客户端无法直接修改。
 

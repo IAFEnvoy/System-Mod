@@ -2,6 +2,7 @@ package com.iafenvoy.system.speech.aliyun;
 
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.data.speech.AliyunAsrMessage;
+import com.iafenvoy.system.data.speech.AliyunNlsTokenMessage;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AsrProvider;
 import com.iafenvoy.system.util.CodecIO;
@@ -28,47 +29,75 @@ public final class AliyunAsrProvider implements AsrProvider {
             40000005, "rate_limit", 40000010, "quota", 40270002, "empty", 41010105, "empty");
     private final HttpTransport transport = new HttpTransport();
     private volatile WebSocket socket;
+    private AliyunNlsTokenMessage.Token token;
 
     @Override
     public void validate(Request request) throws SpeechException {
         if (!request.appKey().matches("[A-Za-z0-9_-]{1,128}")) throw new SpeechException("appkey");
-        if (request.token().isBlank() || request.token().length() > 2000
-                || request.token().chars().anyMatch(c -> c <= 32 || c >= 127)) throw new SpeechException("token");
+        if (request.accessKeyId().isBlank() || request.accessKeySecret().isBlank()
+                || request.accessKeyId().chars().anyMatch(c -> c <= 32 || c >= 127)
+                || request.accessKeySecret().chars().anyMatch(c -> c <= 32 || c >= 127))
+            throw new SpeechException("accesskey");
         if (!RecognitionConfig.REGIONS.contains(request.region())) throw new SpeechException("region");
     }
 
     @Override
-    public String recognize(Request request, AudioSource audio, Consumer<String> intermediate) throws Exception {
+    public String recognize(Request request, AudioSource audio, Consumer<String> intermediate, Runnable requestStarted) throws Exception {
         this.validate(request);
         String task = id();
-        Events events = new Events(task, intermediate);
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(90);
         try {
-            this.socket = this.transport.webSocket(URI.create("wss://nls-gateway-cn-" + request.region() + ".aliyuncs.com/ws/v1"), Map.of("X-NLS-Token", request.token()), Duration.ofSeconds(10), events);
-        } catch (WebSocketHandshakeException error) {
-            int status = error.getResponse().statusCode();
-            throw new SpeechException(status == 401 || status == 403 ? "token" : status == 429 ? "rate_limit" : "network");
-        }
-        AliyunAsrMessage.Parameters payload = AliyunAsrMessage.Parameters.DEFAULT;
-        await(this.socket.sendText(command(request, task, "StartRecognition", payload), true), deadline);
-        await(events.started, Math.min(deadline, System.nanoTime() + TimeUnit.SECONDS.toNanos(10)));
-        audio.start();
-        byte[] buffer = new byte[3200];
-        int sent = 0;
-        while (!events.completed.isDone() && sent < 16000 * 2 * 60) {
+            Events events = this.connect(request, task, intermediate);
             if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
             if (System.nanoTime() >= deadline) throw new TimeoutException();
-            int count = audio.read(buffer);
-            if (count < 0) break;
-            if (count == 0) continue;
-            if (count > buffer.length || count % 2 != 0) throw new SpeechException("audio");
-            count = Math.min(count, 16000 * 2 * 60 - sent);
-            await(this.socket.sendBinary(ByteBuffer.wrap(buffer, 0, count), true), deadline);
-            sent += count;
+            // Credential exchange and handshake failures are not recognition attempts in the usage ledger.
+            requestStarted.run();
+            AliyunAsrMessage.Parameters payload = AliyunAsrMessage.Parameters.DEFAULT;
+            await(this.socket.sendText(command(request, task, "StartRecognition", payload), true), deadline);
+            await(events.started, Math.min(deadline, System.nanoTime() + TimeUnit.SECONDS.toNanos(10)));
+            audio.start();
+            byte[] buffer = new byte[3200];
+            int sent = 0;
+            while (!events.completed.isDone() && sent < 16000 * 2 * 60) {
+                if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+                if (System.nanoTime() >= deadline) throw new TimeoutException();
+                int count = audio.read(buffer);
+                if (count < 0) break;
+                if (count == 0) continue;
+                if (count > buffer.length || count % 2 != 0) throw new SpeechException("audio");
+                count = Math.min(count, 16000 * 2 * 60 - sent);
+                await(this.socket.sendBinary(ByteBuffer.wrap(buffer, 0, count), true), deadline);
+                sent += count;
+            }
+            if (!events.completed.isDone())
+                await(this.socket.sendText(command(request, task, "StopRecognition", null), true), deadline);
+            return await(events.completed, Math.min(deadline, System.nanoTime() + TimeUnit.SECONDS.toNanos(15)));
+        } catch (SpeechException error) {
+            if (error.code().equals("token") && this.token != null) AliyunNlsToken.invalidate(this.token);
+            throw error;
         }
-        if (!events.completed.isDone())
-            await(this.socket.sendText(command(request, task, "StopRecognition", null), true), deadline);
-        return await(events.completed, Math.min(deadline, System.nanoTime() + TimeUnit.SECONDS.toNanos(15)));
+    }
+
+    private Events connect(Request request, String task, Consumer<String> intermediate) throws Exception {
+        for (int attempt = 0; ; attempt++) {
+            this.token = AliyunNlsToken.get(request, this.transport);
+            if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
+            Events events = new Events(task, intermediate);
+            try {
+                this.socket = this.transport.webSocket(URI.create("wss://nls-gateway-cn-" + request.region() + ".aliyuncs.com/ws/v1"),
+                        Map.of("X-NLS-Token", this.token.id()), Duration.ofSeconds(10), events);
+                return events;
+            } catch (WebSocketHandshakeException error) {
+                int status = error.getResponse().statusCode();
+                if (status == 401 || status == 403) {
+                    AliyunNlsToken.invalidate(this.token);
+                    // No StartRecognition has been sent; refreshing once cannot duplicate a billable task.
+                    if (attempt == 0) continue;
+                    throw new SpeechException("token");
+                }
+                throw new SpeechException(status == 429 ? "rate_limit" : "network");
+            }
+        }
     }
 
     private static String command(Request request, String task, String name, AliyunAsrMessage.Parameters payload) {

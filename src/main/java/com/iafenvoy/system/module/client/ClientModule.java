@@ -19,6 +19,9 @@ public interface ClientModule {
         return true;
     }
 
+    /**
+     * Declare repeatable contributions; defer UI changes and network requests to the registered callbacks.
+     */
     void register(ClientModuleContext module);
 
     default void commands(LiteralArgumentBuilder<CommandSourceStack> root) {

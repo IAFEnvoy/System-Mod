@@ -4,7 +4,8 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.card.CardUpdate;
-import com.iafenvoy.system.module.client.ClientModuleBindings;
+import com.iafenvoy.system.module.client.ClientModuleBindingsCache;
+import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.module.client.WorkspaceGroup;
 import com.iafenvoy.system.screen.card.CardTemplates;
 import com.sighs.apricityui.init.Document;
@@ -40,7 +41,7 @@ public final class AssistantScreen extends AssistantInputScreen {
         document.getElementById("message").setAttribute("placeholder", tr("system.ui.message_placeholder"));
         bind(document, "close", this::onClose);
         bind(document, "send", this::sendMessage);
-        ClientModuleBindings.get().bindWorkspace(this, document);
+        ClientModuleCaches.BINDINGS.get().bindWorkspace(this, document);
         this.showPage(this.page);
         this.revision = -1;
         this.renderEntries();
@@ -50,9 +51,9 @@ public final class AssistantScreen extends AssistantInputScreen {
         this.page = next;
         Document document = this.getLinkedDocument();
         if (document == null) return;
-        boolean available = ClientModuleBindings.get().workspace().stream().anyMatch(entry -> entry.page().equals(next) && entry.available());
+        boolean available = ClientModuleCaches.BINDINGS.get().workspace().stream().anyMatch(entry -> entry.page().equals(next) && entry.available());
         if (!available) this.page = "chat";
-        for (ClientModuleBindings.Workspace entry : ClientModuleBindings.get().workspace()) {
+        for (ClientModuleBindingsCache.Workspace entry : ClientModuleCaches.BINDINGS.get().workspace()) {
             if (!entry.navigation().isBlank()) {
                 Element navigation = document.getElementById(entry.navigation());
                 navigation.setInlineStyleProperty("display", entry.available() ? "block" : "none");
@@ -62,7 +63,7 @@ public final class AssistantScreen extends AssistantInputScreen {
                 document.getElementById("page_" + entry.page()).setInlineStyleProperty("display", entry.available() && entry.page().equals(this.page) ? "flex" : "none");
         }
         for (WorkspaceGroup group : WorkspaceGroup.values()) {
-            boolean visible = ClientModuleBindings.get().workspace().stream()
+            boolean visible = ClientModuleCaches.BINDINGS.get().workspace().stream()
                     .anyMatch(entry -> entry.group() == group && !entry.navigation().isBlank() && entry.available());
             document.getElementById("nav_group_" + group.id()).setInlineStyleProperty("display", visible ? "flex" : "none");
         }

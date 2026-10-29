@@ -1,5 +1,27 @@
 # 编译与验收
 
+## 2026-10-29 缓存数据与维护逻辑归位
+
+阅读调用链后，将页面列表、本地卡片动作及登记/绑定/分派逻辑合入 ClientModuleBindingsCache；将命令声明、树编译、权限过滤补全及清理逻辑合入 ClientCommandCache。删除 ClientModuleBindings、ClientCommandRegistry 和 Commands 包装记录，缓存直接持有实际数据。绑定缓存接入 Saturn 生命周期并统一协调命令缓存，每轮只遍历客户端模块一次；完成后冻结页面/动作集合并释放临时 Builder，失败同时清空，首次使用仍支持惰性装配。界面异步补全改为核对命令缓存 revision，避免 Cache 本身不再换对象后漏掉失效检查。
+
+执行 `compileJava testModClasses --console=plain` 编译通过；静态检查确认源码无旧类和 Commands 包装记录引用，`git diff --check` 通过。未运行测试或启动 Minecraft；标签重载、登出重连、本地按钮与异步补全的实际交互尚未游戏内验收。
+
+## 2026-10-29 NLS 自动鉴权
+
+阅读阿里云官方 HTTP / HTTPS 获取 Token 文档，按 POP 参数字典序、RFC 3986 编码、UTC 秒时间戳、唯一 nonce 和 HMAC-SHA1 实现 CreateToken，无新增依赖。Token 响应用 RecordCodecBuilder 解析，签发端点和 RegionId 固定上海；识别网关仍使用玩家所选地域。Token 跨 session 仅内存缓存，凭据指纹隔离，提前两分钟按需刷新，同步合并签发；握手 401 / 403 时仅在尚未发送识别命令前重取、重连一次。已提交的识别任务不自动重试。
+
+静态阅读确认：本地校验不联网，签发沿用 HttpTransport 的响应上限、超时和中断取消；旧 session 仅能清除自己使用的 Token。表单移除临时 Token，改为 AccessKey ID / Secret，Secret 遮挡显示；配置 RecordCodecBuilder 全部使用 lenientOptionalFieldOf，三个凭据分别支持环境变量。配置和请求的 toString 不输出密钥，鉴权失败仅显示本地错误码。ASR 计量移至鉴权及握手后、首次识别命令前，签发失败不计 ASR 尝试。
+
+执行 `compileJava testModClasses --console=plain` 编译通过；双语各 490 个语言键无重复且集合一致，ASR 默认 JSON 与七个 lenient 配置字段一致，设置表单 ID / 标签 / 密码控件及 ASR / API 文档本地链接检查通过，`git diff --check` 通过。未运行测试、启动 Minecraft、打开麦克风或请求真实鉴权 / 语音接口；云端签名受理、Token 到期刷新和实际转写尚未运行验收。
+
+## 2026-10-29 客户端模块贡献的 RegistryCache 生命周期
+
+阅读当前依赖 Saturn 文件 9349648 的 RegistryCache 字节码，并对照本地源码，确认构造即加入维护列表、shouldUpdateStaticData 的标签更新触发 rebuild、客户端退出触发 clear。新增客户端专用 ClientModuleBindingsCache，提前从 SystemClientMod 注册，首次读取可惰性装配；标签更新整体替换冻结快照、退出清空，无重复事件监听、计时器或逐 tick 扫描。同步保护重建和惰性初始化，发布完整实例后才供后续读取。
+
+本地命令、页面声明和卡片动作属于同一快照。CardController 不再持有永久动作表，四个内置本地动作移入 Core / Settings 模块；模块通过 localAction 在每次装配时登记到新快照，避免重复注册和旧回调累积。Workspace 列表复用只读视图，玩家可用性继续实时读取，不缓存已打开的 Document。CardTemplates 移除初始化绑定的副作用，仍独立按客户端资源重载 JSON。文档同步更新模块装配、注册表速查与卡片动作流。
+
+执行 `compileJava testModClasses --console=plain` 编译通过；静态检查确认四个内置本地动作均由模块提供，CardController 无永久 Map 或残留 register 调用，双语各 487 个语言键集合一致，`git diff --check` 通过。未运行测试或启动 Minecraft；标签重载、单人 / 多人重连、退出清理和按钮交互的实际事件时序尚未运行验收。
+
 ## 2026-10-28 ASR / TTS 工厂恢复普通 Map
 
 执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未执行测试、启动 Minecraft 或调用语音 API。
@@ -533,3 +555,11 @@ web_search.txt 要求提炼相关事实、合并重复内容、先给结论和�
 搜索功能模块在两端统一注册为 system:web_search，工作流、动作与卡片继续使用同名 ID，各自属于不同注册表；命令 /search 和页面内部标识不变。默认系统及 #system:default 模块 tag 移到 src/test-mod/resources/data/system，主源集不再提供这两份数据文件。发布环境须由服务端数据包定义可绑定系统，Java DEFAULT 仅作客户端展示备用。
 
 执行 `compileJava testModClasses --console=plain` 和 `jar --console=plain` 均通过。直接读取新发布 JAR，确认默认系统 JSON 和默认模块 tag 均不在包中，搜索实现、提示词与卡片资源仍包含；开发资源输出包含两份默认数据。静态检查确认旧模块 ID 无残留，双语键集合一致，git diff --check 通过。未启动游戏、执行测试或调用收费 API；README-zh.md 未修改。
+
+## 2026-10-29 助手原生命令树与独立缓存
+
+阅读当前 Minecraft / NeoForge sources JAR 确认：客户端配置完成先发布 TagsUpdatedEvent.ClientPacketReceived，之后登录与命令包处理中的 mergeServerCommands 才触发 RegisterClientCommandsEvent。服务端 ReloadableServerResources 构造 Commands 则早于 updateComponentsAndStaticRegistryTags 发布 ServerDataLoad；客户端注册可复用缓存，服务端不能依赖相同顺序。Saturn RegistryCache 的 JAR 字节码确认标签更新重建和客户端登出清理。
+
+AgentCommand、CommandRegistry 与客户端命令声明已接入 Brigadier；ClientCommandCache 缓存声明，游戏客户端注册复制缓存节点。助手异步合并原生服务端建议，任务和选择按钮的候选由对应模块实时提供；补全前显式过滤 requires，模块变更及 revoke/reset 后同步游戏命令树。普通文本语法未完整匹配时继续语义/模型路由，未知斜杠指令和明确语法错误不调用模型，参数构造及 Codec 失败仍直接拒绝。英文 literal 忽略大小写，选择1、选择 1、select 1 和裸数字保留。
+
+执行 `compileJava testModClasses --console=plain` 编译通过；中英文各 490 个语言键且集合相同，更新文档的本地链接存在，`git diff --check` 通过。没有执行测试、启动 Minecraft、创建临时世界/数据包或请求模型服务。游戏内 Tab/IME、任务候选、模块切换、重载与重连仍需人工验收。

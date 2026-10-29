@@ -2,21 +2,25 @@ package com.iafenvoy.system.module.client;
 
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.card.CardRef;
-import com.iafenvoy.system.card.client.CardController;
+import com.iafenvoy.system.command.AssistantCommandSource;
+import com.mojang.brigadier.builder.ArgumentBuilder;
 import net.minecraft.resources.Identifier;
 
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
-public record ClientModuleContext(ClientModuleBindings bindings, Identifier id, boolean serverRequired) {
+public record ClientModuleContext(ClientModuleBindingsCache bindings, Identifier id, boolean serverRequired) {
     public void command(Runnable action, String... aliases) {
-        this.bindings.commands().register(this::available, action, aliases);
+        ClientModuleCaches.COMMAND.register(this::available, action, aliases);
     }
 
-    public void pattern(Function<String, Boolean> handler, String... suggestions) {
-        this.bindings.commands().pattern(this::available, handler, suggestions);
+    public void command(ArgumentBuilder<AssistantCommandSource, ?> node) {
+        ClientModuleCaches.COMMAND.register(this::available, node);
+    }
+
+    public void suggest(ArgumentBuilder<AssistantCommandSource, ?> node) {
+        ClientModuleCaches.COMMAND.suggest(this::available, node);
     }
 
     public boolean available() {
@@ -32,11 +36,11 @@ public record ClientModuleContext(ClientModuleBindings bindings, Identifier id, 
     }
 
     public void workspace(String page, String navigation, String label, WorkspaceGroup group, Consumer<WorkspaceContext> bind) {
-        this.bindings.workspace(new ClientModuleBindings.Workspace(this.id, this.serverRequired, page, navigation, label, group, bind));
+        this.bindings.workspace(new ClientModuleBindingsCache.Workspace(this.id, this.serverRequired, page, navigation, label, group, bind));
     }
 
     public void localAction(Identifier action, BiConsumer<CardRef, Map<String, String>> handler) {
-        CardController.register(action, (source, arguments) -> {
+        this.bindings.localAction(action, (source, arguments) -> {
             if (this.available()) handler.accept(source, arguments);
         });
     }

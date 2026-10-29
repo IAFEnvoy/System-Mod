@@ -68,7 +68,11 @@ public ModuleRouting<ItemQueryInput> routing() {
 }
 ```
 
-无参数指令使用 `AgentCommand.literal(input, aliases...)`。指令解析器直接返回实现 AgentAction 的 Java 对象，由 AgentAction.validate 核对所属 Module 的 Codec 并校验参数。参数缺失、歧义或非法时，明确指令返回输入错误；语义提取器返回 `null` 时回退到模型。
+无参数指令使用 `AgentCommand.literal(input, aliases...)`，资源 ID 参数使用 `AgentCommand.identifier(name, parser, aliases...)`；`argument` 把必选 `<query>` / 可选 `[query]` 转为原生 greedyString 节点。复杂命令可直接构造 `new AgentCommand<>(aliases, name -> LiteralArgumentBuilder.<AssistantCommandSource>literal(name).then(...))`，由原生 ArgumentType、requires 和 suggests 描述参数与权限。指令回调只把实现 AgentAction 的输入交给 `source.action(input)`，不在解析时执行业务；CommandRegistry 核对动作归属和 Codec，再进入原来的工作流执行。
+
+CommandRegistry 每服务实例只构建一棵 Brigadier CommandDispatcher，解析、帮助和同步给 `/system` 的节点共用声明。服务端原生命令早于 AgentRuntime 构建，初次启动后由 `SystemCommand.install` 附加工作流节点，资源重载的 RegisterCommandsEvent 使用已有 runtime 装配；平台管理指令优先。同步到客户端的参数须使用 MC 已登记的 ArgumentType，助手专用自定义参数不自动登记为网络类型。模块启用变化和 revoke/reset 后重新发送按当前权限过滤的原生命令树。
+
+`/view`、`/system view` 等明确指令语法错误会返回输入错误，未知斜杠指令不触发模型；普通文本未完整匹配时继续进入语义和模型路由。英文 literal 别名忽略大小写，任务名称和参数保持原文。客户端本地指令与补全树通过独立 `ClientCommandCache` 缓存，任务候选和按钮仍实时取当前结果，见[功能模块化](feature-modules.md)。
 
 `RoutingProfile.read` 是本地直达申请，注册表还要求模块可交互、写预算为零、所有声明工具只读，并通过相似度、分差、覆盖率和语句保护。相似度不是正确概率。写流程使用 `RoutingProfile.hints` 提供样例，仍由模型决定或由明确入口调用。
 

@@ -4,6 +4,8 @@
 
 ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充。TTS / ASR 用量由 `LocalSpeechUsage` 按客户端账号 UUID 独立保存，不向服务端上报；服务端 SavedData 只记录 AI。当前网络协议 1。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
 
+NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通过 JDK HMAC-SHA1 签名调用 CreateToken，跨 session 复用内存缓存并在有效期不足两分钟时按需刷新。设置保存和 `validate` 不联网，签发随识别工作线程取消；`AsrProvider.recognize` 的 `requestStarted` 回调在发送首次识别命令前启动计量，鉴权和握手失败不计 ASR 尝试。
+
 语音供应商接口及客户端录音和播放分别位于 `speech.asr` 与 `speech.tts`，供应商工厂 `TtsProviders` / `AsrProviders` 位于 `speech`，协议实现位于 `speech.aliyun`；配置集中在 `config`。阿里云默认使用 `qwen3-tts-flash`，额外兼容设计音色绑定的 Qwen-Audio-TTS HTTP 协议；复用 `HttpTransport`，没有新增依赖或模型文件。详见 [语音合成与音色设计](tts.md)。
 
 | 组件 | 配置 |
@@ -36,10 +38,10 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | 路径 | 职责 |
 | --- | --- |
 | `agent` | 引擎与执行器、预算和授权上下文、Module/Tool 契约、每服务实例的模块/工具/指令索引、请求与结果 |
-| `registry` | 系统定义、Saturn action/condition 与存储类型、按键、声音、两端模块、协议/载荷类型、卡片节点的注册表及 DeferredRegister 注册项，以及语音供应商工厂 Map |
+| `registry` | 系统定义、Saturn action/condition 与存储类型、按键、声音、两端模块、协议/载荷类型、卡片节点的注册表及 DeferredRegister 注册项，客户端绑定与命令 RegistryCache，以及语音供应商工厂 Map |
 | `module/<功能>` | 功能装配、平台指令、玩家生命周期、客户端页面、本地指令及本地卡片动作 |
 | `module` | 功能定义、装配、ModuleManager、玩家权限快照、模块存储声明和生命周期 |
-| `module/client` | 客户端功能契约、ClientModuleBindings 贡献装配、指令、三分类动态导航、工作台及本地动作装配 |
+| `module/client` | 客户端功能契约、ClientModuleBindingsCache 页面/动作缓存、ClientCommandCache 命令缓存、三分类动态导航与工作台 |
 | `agent/builtin` | 按功能分包的工作流、单行为工具和签到模型决策结构 |
 | `agent/builtin/input、agent/builtin/output` | 内置模块/工具参数及查询结果，一类一文件 |
 | `agent/builtin/tool` | 共享工具类型键；具体实现位于 `builtin/<功能>` |
@@ -64,11 +66,13 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 上表路径均相对于 `src/main/java/com/iafenvoy/system/`。Agent 与游戏接入代码处于同一主项目；模块、工具和服务接口仍保留职责划分，工具使用稳定逻辑 ID，方便后续扩展业务。
 
-注册项通过对应注册类的 `public static final` 字段公开，例如 `SystemKeyMappings.TOGGLE_INTERFACE`、`SystemSoundEvents.NOTIFICATION`、`SystemEntityActions.ADD_MODULE` 和 `SystemServerModules.SIGN_IN`。注册类使用类级别 `@SuppressWarnings("unused")`。`SystemRegistries` 的正式内置注册表在两端统一创建，通过 `NewRegistryEvent` 加入原版根注册表，由对应的 DeferredRegister 注册条目，再由 NeoForge 冻结；完整 ID、字段与扩展入口见[注册表速查](registries.md)。模块由 `SystemServerModules` / `SystemClientModules` 注册，接口分别为 `ServerModule` 和 `ClientModule`，默认 `id()` 从注册表取得。客户端实现的条目由仅在物理客户端加载的 `SystemClientMod` 绑定，专用服务端保留对应空表；公共协议与卡片载荷在两端登记。客户端贡献由 `ClientModuleBindings.get()` 从冻结注册表装配。按键事件处理、网络、指令、资源重载监听器保持原有位置，Agent 内部按实例管理的工作流、工具与指令索引继续位于独立的 `agent` 包。
+注册项通过对应注册类的 `public static final` 字段公开，例如 `SystemKeyMappings.TOGGLE_INTERFACE`、`SystemSoundEvents.NOTIFICATION`、`SystemEntityActions.ADD_MODULE` 和 `SystemServerModules.SIGN_IN`。注册类使用类级别 `@SuppressWarnings("unused")`。`SystemRegistries` 的正式内置注册表在两端统一创建，通过 `NewRegistryEvent` 加入原版根注册表，由对应的 DeferredRegister 注册条目，再由 NeoForge 冻结；完整 ID、字段与扩展入口见[注册表速查](registries.md)。模块由 `SystemServerModules` / `SystemClientModules` 注册，接口分别为 `ServerModule` 和 `ClientModule`，默认 `id()` 从注册表取得。客户端实现的条目由仅在物理客户端加载的 `SystemClientMod` 绑定，专用服务端保留对应空表；公共协议与卡片载荷在两端登记。客户端贡献由 `ClientModuleCaches.BINDINGS.get()` 从冻结注册表装配。按键事件处理、网络、指令、资源重载监听器保持原有位置，Agent 内部按实例管理的工作流、工具与指令索引继续位于独立的 `agent` 包。
 
 `AssistantServer` 负责组装引擎、安装模块、转发游戏事件及资源刷新；`AssistantPlayers` 管理绑定与连接，ModuleManager 根据 ServerModule.runtime 创建 PlayerModule 并统一管理模块会话、事件、tick 和关闭；成就基线与派发由成就模块管理，`AssistantRequests` 管理类型化请求分派与回复，`AssistantUsage` 管理用量查询及计量队列。命令、网络和可选桥接通过 `players()`、`requests()`、`usage()` 调用对应服务；异步回复仍核对连接代次，模型计量仍由服务端主线程写入 SavedData。
 
 `AssistantClientState` 统一保存对话、待响应请求、服务端偏好与能力、当前交互结果，每次更新生成不可变快照。`AssistantClient` 只持有一个状态引用并处理导航、网络和语音等副作用；登出或成功撤销时替换为 `AssistantClientState.EMPTY`。界面刷新版本号独立递增，不随状态清空归零。
+
+客户端缓存统一由 `ClientModuleCaches` 暴露：`BINDINGS` 直接持有页面声明和本地卡片动作，`COMMAND` 直接持有命令声明与编译树，原来的 Bindings / Registry 中转对象已删除。绑定缓存接入 Saturn RegistryCache 并协调两份数据：客户端入口提前注册，首次使用惰性装配，静态标签更新重建，退出同时清空；每轮只遍历模块一次，完成后冻结页面/动作集合并释放命令 Builder，异步补全按命令缓存版本排除旧结果。模块 register 应可重复执行，只声明贡献。玩家权限仍实时读取，已打开页面的 Document 不进入缓存；CardTemplates 仅负责资源 JSON 重载，与绑定缓存解耦。无定时或逐 tick 扫描，详见[客户端贡献](feature-modules.md#客户端贡献)。
 
 ## Codec 边界
 

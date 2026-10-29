@@ -207,7 +207,7 @@ label 仅作纯文本投影。缺省使用动作原标签；简约模式按真�
 
 CardButton 显式描述 Local/Server 动作、BODY/FOOTER 位置以及 CLOSE/WAIT 行为。actions 节点在通知正文只绘制 BODY 按钮，FOOTER 由通知宿主生成；宿主始终在业务按钮之后补充本地确定按钮，忙碌时仍可关闭通知。大任务列表直接放正文滚动区，不截断成少量底部按钮。
 
-点击、数字和语音选择都进入 CardController。Local 通过处理器 Map 执行；Server 发 CardActionRequest(source, action)，仅含来源 CardRef、动作 Identifier 和字符串参数。工作流在 ModuleRouting.button 中解码，继续经过原有权限、预算、引用、Cost 与发奖流程，不经过模型路由。labelKey 只决定标签和语音候选，不决定动作。
+点击、数字和语音选择都进入 CardController。Local 从 ClientModuleCaches.BINDINGS 的处理器 Map 分派；Map 和登记、分派、清理逻辑直接位于 ClientModuleBindingsCache，由模块通过 localAction 声明，随 Saturn RegistryCache 重建和退出清理。Controller 不单独保存永久动作表。Server 发 CardActionRequest(source, action)，仅含来源 CardRef、动作 Identifier 和字符串参数。工作流在 ModuleRouting.button 中解码，继续经过原有权限、预算、引用、Cost 与发奖流程，不经过模型路由。labelKey 只决定标签和语音候选，不决定动作。
 
 CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并暂停关闭计时，服务端按钮在等待期间禁用。失败、超时和零卡片回复也解除等待。语音优先匹配当前版本的实际按钮，失败或歧义才进入主聊天。
 

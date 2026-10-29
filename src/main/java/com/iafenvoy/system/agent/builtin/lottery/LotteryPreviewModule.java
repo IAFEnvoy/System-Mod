@@ -31,7 +31,7 @@ public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInpu
     public ModuleRouting<LotteryPreviewInput> routing() {
         return ModuleRouting.<LotteryPreviewInput>defaults()
                 .button(a -> new LotteryPreviewInput(a.identifier("pool", "poolId"), a.number(0, "offset"), a.optional("revision", "catalogRevision")))
-                .command(AgentCommand.argument("<pool_id>", text -> new LotteryPreviewInput(CommandArguments.identifier(text), 0, Optional.empty()), "draw", "单抽"))
+                .command(AgentCommand.identifier("pool_id", id -> new LotteryPreviewInput(id, 0, Optional.empty()), "draw", "单抽"))
                 .semantic(RoutingProfile.hints(
                         List.of("查看这个奖池的概率", "我要单抽这个奖池", "预览抽奖费用"),
                         List.of("Show this pool's odds", "Draw once from this pool", "Preview the lottery cost")));

@@ -10,6 +10,7 @@ import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.resources.Identifier;
 
 public final class SettingsClientModule implements ClientModule {
     @Override
@@ -19,6 +20,10 @@ public final class SettingsClientModule implements ClientModule {
 
     @Override
     public void register(ClientModuleContext module) {
+        module.localAction(Identifier.parse("system:settings"), (_, _) -> {
+            Minecraft minecraft = Minecraft.getInstance();
+            minecraft.setScreen(new AssistantSettingsScreen(minecraft.screen, AssistantSettingsScreen.Tab.GENERAL));
+        });
         module.command(SettingsClientModule::open, "settings", "设置", "系统设置");
         module.workspace("", "nav_settings", WorkspaceGroup.SETTINGS, workspace -> {
             workspace.labels("nav_settings");

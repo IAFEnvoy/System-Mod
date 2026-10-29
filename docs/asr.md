@@ -2,10 +2,10 @@
 
 ## 使用
 
-在助手输入框输入 `/settings` 打开统一设置，再选择“语音输入”标签。识别默认关闭，各控件修改后立即自动保存于客户端 `config/system/system-asr.json`，与百炼 TTS 配置分开；切换标签或关闭设置无需额外保存。AppKey 与 Token 可以逐项填写，开始识别时才校验完整凭据。
+在助手输入框输入 `/settings` 打开统一设置，再选择“语音输入”标签。识别默认关闭，各控件修改后立即自动保存于客户端 `config/system/system-asr.json`，与百炼 TTS 配置分开；切换标签或关闭设置无需额外保存。AppKey、AccessKey ID 与 Secret 可以逐项填写，开始识别时才校验完整凭据。
 
 1. 在阿里云智能语音交互控制台创建项目，取得 **AppKey**，选择支持 **16 kHz** 的一句话识别模型。识别语种与方言在项目控制台设置，API 不接收游戏语言作为模型选择参数。
-2. 获取有效的 **NLS Token**，填写项目 AppKey、Token 和地域（上海 / 北京 / 深圳），开启即可，修改自动保存。这里不能使用百炼 `DASHSCOPE_API_KEY`。Token 过期后需重新获取并更新，当前不保存 AccessKey，也不自动申请 Token。
+2. 填写项目 **AppKey**、有 NLS 权限的阿里云 **AccessKey ID / AccessKey Secret** 和识别地域（上海 / 北京 / 深圳），开启即可，修改自动保存。这里不能使用百炼 `DASHSCOPE_API_KEY`。临时 Token 由程序自动获取，不再手动填写。
 3. 按住 **F8** 录音，松开结束；可在游戏“控制 → 系统助手”改键，支持键盘/鼠标及修饰键。有可见通知时优先录入通知指令，无通知时打开当前模式的助手；在完整或简约助手内按下则保留草稿。原版聊天栏里有通知时也可录入通知指令，其他页面不触发。也可继续点击“语音输入”或输入 `/listen` /“语音输入”，再点击结束。看到“正在录音”后说话，中间结果在输入框上方或通知底部显示。
 4. 松开按键或点击“结束录音”等待最终识别，结果追加到输入框草稿；默认确认后按 Enter 发送。可在语音识别设置中开启“识别后立即发送”，最终识别成功后自动发送合并后的草稿，按键、按钮和 `/listen` 均适用；中间识别结果不发送。录音最多 60 秒，到时自动结束。识别本身不调用聊天模型，发送草稿后才进入已有路由。
 
@@ -13,7 +13,29 @@
 
 按键自动重复不会创建新任务，松开只结束自己启动的录音。尚未开启语音输入时按键打开设置页，不录音、不发起收费请求。“取消”、关闭界面、切换页面、窗口失焦、发送其他请求、断线或撤销绑定都会取消当前识别 session 并关闭麦克风。迟到回调不写入其他界面或新连接。识别期间如果手动修改草稿，不覆盖修改后的内容，需重新发起语音输入。开始识别会停止当前朗读，后续到达的通知仍按原有 TTS 逻辑处理。
 
-凭据留空时分别读取客户端进程的 `ALIYUN_NLS_APP_KEY`、`ALIYUN_NLS_TOKEN`；环境变量值不写回配置。页面填写的凭据以明文保存，Token 控件遮挡显示。配置、音频与识别结果不作为用量报告发给 MC 服务端；只有发送到主聊天的文字或匹配通知按钮后的结构化操作才进入正常助手请求。录音只在内存中分片流转，不保存 WAV 或上传到 OSS。
+凭据留空时分别读取客户端进程的 `ALIYUN_NLS_APP_KEY`、`ALIYUN_AK_ID`、`ALIYUN_AK_SECRET`；环境变量值不写回配置。页面填写的凭据以明文保存，Secret 控件遮挡显示。配置、音频与识别结果不作为用量报告发给 MC 服务端；只有发送到主聊天的文字或匹配通知按钮后的结构化操作才进入正常助手请求。录音只在内存中分片流转，不保存 WAV 或上传到 OSS。
+
+配置字段如下，留空字段可由上述环境变量补齐：
+
+```json
+{
+  "enabled": false,
+  "provider": "aliyun-nls",
+  "appKey": "",
+  "accessKeyId": "",
+  "accessKeySecret": "",
+  "region": "shanghai",
+  "autoSend": false
+}
+```
+
+## 自动鉴权
+
+依据[官方 HTTP / HTTPS Token 签发协议](https://help.aliyun.com/zh/isi/user-guide/use-http-or-https-to-obtain-an-access-token)，客户端在实际识别的工作线程中调用 `GET https://nls-meta.cn-shanghai.aliyuncs.com/` 的 `CreateToken`，使用 `2019-02-28` 版本、UTC 时间、唯一 nonce 和 POP HMAC-SHA1 签名。签发地域固定为 `cn-shanghai`，与所选识别网关地域无关。打开设置、逐字保存配置和本地凭据检查均不会签发 Token。
+
+`AliyunNlsToken` 跨识别 session 共享一份内存缓存，读取 `Token.Id` 与 Unix 秒单位的 `Token.ExpireTime`，剩余有效期不足两分钟时在下次识别前重新签发。缓存只保存凭据指纹和 Token，不保留多份旧凭据；凭据变化后重新获取，刷新请求串行合并。Token 不写配置、存档或网络包，签名 URL、Secret、Token 和上游响应正文不记录到日志。该实现仅使用 JDK 网络与加密 API，不增加 SDK 依赖。
+
+签发请求 10 秒超时、响应最多 64 KiB，随录音 session 中断取消。若识别 WebSocket 握手返回 401 / 403，清除对应 Token 并重新签发、连接一次；此时尚未发送 `StartRecognition`。已经提交的识别任务失败时不会自动重试，Token 被拒则使其缓存失效，下一次录音重新获取。凭据、权限、时钟或签发错误显示本地化提示，不把上游响应中的敏感信息直接展示。
 
 ## 通知语音操作
 
@@ -39,7 +61,7 @@ FTB 启动概览的“查看任务”以及新手礼包的“领取礼包”“�
 
 设备打开与音频读取在一个有界守护录音执行器中执行，网络在独立识别执行器中执行，主线程仅操作界面和取消。连接期间音频仅在有界内存队列保存，不落盘；录音上限 60 秒 / 1,920,000 PCM 字节。不支持 16 kHz 单声道或被系统禁止访问时给出本地提示。单条响应最多 64 KiB，结果最多 2000 UTF-16 单元；连接 10 秒超时、整体 90 秒上限、停止后最多再等待 15 秒。失败不自动重试收费任务。
 
-`AsrProvider` 位于 `speech.asr`，协议层不依赖 MC。供应商由 `speech.AsrProviders` 的普通工厂 Map 管理，内置键为 `aliyun-nls`。扩展在客户端初始化时调用 `AsrProviders.register(name, factory)`，不参与 MC 注册表生命周期，`AsrProviders.create(provider)` 按配置字符串精确查找并创建独占实例，不自动补命名空间。供应商实现 `validate`、`recognize(Request, AudioSource, Consumer<String>)` 和 `close`，详见[注册表速查](registries.md)。当前配置凭据结构面向 NLS，增加不同鉴权方式的供应商时需扩展相应配置表单。可选供应商自己的单位计费也需单独适配，不套用 NLS 次数单价。
+`AsrProvider` 位于 `speech.asr`，协议层不依赖 MC。供应商由 `speech.AsrProviders` 的普通工厂 Map 管理，内置键为 `aliyun-nls`。扩展在客户端初始化时调用 `AsrProviders.register(name, factory)`，不参与 MC 注册表生命周期，`AsrProviders.create(provider)` 按配置字符串精确查找并创建独占实例，不自动补命名空间。供应商实现纯本地的 `validate`、`recognize(Request, AudioSource, Consumer<String>, Runnable requestStarted)` 和 `close`；`requestStarted` 在鉴权、连接完成后、首次发送识别命令前调用，开始统计本次识别，详见[注册表速查](registries.md)。当前配置凭据结构面向 NLS，增加不同鉴权方式的供应商时需扩展相应配置表单。可选供应商自己的单位计费也需单独适配，不套用 NLS 次数单价。
 
 ## 用量与费用
 
@@ -61,7 +83,7 @@ FTB 启动概览的“查看任务”以及新手礼包的“领取礼包”“�
 }
 ```
 
-修改价格后通过客户端 F3+T 或重启客户端加载，不重算历史金额。调用前本地记账，完成回调只归并一次，取消或换服后的迟到结果仍属于原账号；未收到完成的尝试维持“未完成”。同账号的 TTS / ASR 更新串行写入，不再经过网络报告与服务端限流。详见[个人语音数据边界](token-usage.md#个人语音数据边界)。
+修改价格后通过客户端 F3+T 或重启客户端加载，不重算历史金额。首次发送识别命令前本地记账，Token 签发与握手失败不计 ASR 尝试；完成回调只归并一次，取消或换服后的迟到结果仍属于原账号；未收到完成的尝试维持“未完成”。同账号的 TTS / ASR 更新串行写入，不再经过网络报告与服务端限流。详见[个人语音数据边界](token-usage.md#个人语音数据边界)。
 
 ## 验证边界
 

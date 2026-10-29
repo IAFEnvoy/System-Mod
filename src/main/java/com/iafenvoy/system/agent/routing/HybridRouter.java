@@ -32,7 +32,7 @@ public final class HybridRouter implements AutoCloseable {
         // Structured actions -> registered commands -> local read intent/cache -> one bounded LLM decision.
         if (input != null) return this.direct(context, input, RouteSource.STRUCTURED);
         if (text.isBlank()) throw new AgentException("INVALID_INPUT");
-        AgentAction command = this.modules.commands().parse(text);
+        AgentAction command = this.modules.commands().parse(text, context::available);
         if (command != null) return this.direct(context, command, RouteSource.COMMAND);
         AgentAction explicit = this.modules.explicit(text, context::available);
         if (explicit != null) return this.direct(context, explicit, RouteSource.COMMAND);

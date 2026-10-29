@@ -1,6 +1,6 @@
 # 语音合成与音色设计
 
-语音输入另外使用 NLS 一句话识别，通过 `/settings` 打开统一设置后选择“语音输入”标签，需要独立 AppKey / NLS Token，详见[语音识别](asr.md)。
+语音输入另外使用 NLS 一句话识别，通过 `/settings` 打开统一设置后选择“语音输入”标签，需要独立 AppKey 与阿里云 AccessKey ID / Secret，NLS Token 自动签发，详见[语音识别](asr.md)。
 
 ## 模组内使用
 

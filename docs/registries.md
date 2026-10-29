@@ -2,6 +2,12 @@
 
 所有正式注册表的键集中在 [`SystemResourceKeys`](../src/main/java/com/iafenvoy/system/registry/SystemResourceKeys.java)，实例集中在 [`SystemRegistries`](../src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)。代码定义通过 NeoForge `NewRegistryEvent` 加入内置根注册表，通过 `DeferredRegister` 登记条目，由模组加载流程统一冻结。协议类型与卡片节点使用正式注册表；ASR / TTS 使用独立的普通工厂 Map，见下文。
 
+## 客户端模块绑定缓存
+
+公开入口为 `module.client.ClientModuleCaches.BINDINGS` 和 `COMMAND`。`ClientModuleBindingsCache` 继承 Saturn `RegistryCache<ClientModuleBindingsCache>`，直接保存 Workspace 列表与本地卡片动作 Map；`ClientCommandCache` 直接保存命令声明和编译后的树。SystemClientMod 在客户端构造阶段调用 `ClientModuleCaches.init()`，使绑定缓存赶在首次标签事件前加入 Saturn 维护列表，不提前读取模块注册表。
+
+绑定缓存统一协调两份数据的生命周期：首次读取按需装配，满足 shouldUpdateStaticData 的标签更新清空后重建，客户端登出同时清空；每轮只遍历模块一次，命令树编译后释放临时节点 Builder，Workspace 和本地动作发布为不可变集合。缓存不再包装另一个 Bindings / Registry 对象；旧 ClientModuleBindings 和 ClientCommandRegistry 已删除。内置本地卡片动作在对应 ClientModule.register 中通过 localAction 声明，扩展也使用同一入口；CardController 只执行分派。玩家状态与界面 Document 不属于此缓存，资源包 JSON 继续由 CardTemplates 的资源重载监听器维护。
+
 ## System 自有内置注册表
 
 下表字段名同时对应 `SystemResourceKeys` 的键与 `SystemRegistries` 的实例。所有注册表都在两端创建并统一登记到根注册表，声明不再按物理端拆分；客户端实现类的加载隔离放在条目装配入口。
@@ -170,7 +176,9 @@ SystemRegistries.CARD_DATA_TYPE.forEach(entry -> { /* inspect registered types *
 
 ## 仍保留的运行时登记表
 
-`ModuleRegistry`、`ToolRegistry`、`CommandRegistry` 是每个 Agent 服务实例的工作流、工具和指令索引；`ClientCommandRegistry`、`ClientModuleBindings` 装配本地命令与页面。ModuleRouting.button 提供按钮字符串参数解码，CardController 的 Local Map 提供本地动作处理器。这些只负责运行行为，不承担 Codec 类型注册。ClientCards/ServerCards 保存连接内消息及版本，ASR/TTS 使用供应商工厂 Map。卡片布局直接取 CardView.template，不维护额外渲染或卡片行为登记表。
+`ModuleRegistry`、`ToolRegistry`、`CommandRegistry` 是每个 Agent 服务实例的工作流、工具和指令索引。客户端命令由 `ClientCommandCache` 装配，页面和本地动作由 `ClientModuleBindingsCache` 装配。ModuleRouting.button 提供按钮字符串参数解码，CardController 从绑定缓存分派本地动作。这些只负责运行行为，不承担 Codec 类型注册。ClientCards/ServerCards 保存连接内消息及版本，ASR/TTS 使用供应商工厂 Map。卡片布局直接取 CardView.template，不维护额外渲染或卡片行为登记表。
+
+`ClientModuleCaches.COMMAND` 保存助手执行树、补全树与游戏客户端 `/system` 节点，注册、编译、访问和清理逻辑均在 `ClientCommandCache` 内。绑定缓存负责调用 begin / finish / clear，避免两个独立 Saturn 回调重复装配或依赖事件先后；get 确保整轮绑定装配完成，revision 在清理和重建时递增，界面以版本号拒绝旧异步补全。RegisterClientCommandsEvent 从此缓存复制节点，不再重新遍历模块。缓存只存声明和回调，权限、按钮与任务候选实时求值。MC 26.1.2 客户端配置完成时先应用标签并发布 TagsUpdatedEvent.ClientPacketReceived，随后登录/命令包合并触发客户端指令注册；服务端命令构造则早于 ServerDataLoad 标签事件，不能假设两端顺序相同。
 
 `TypeDispatch` 是按 Java 类选择内部处理器的工具，资源模板 Map 是重载快照，玩家/session/缓存 Map 是业务状态。这些不属于 MC 的内置注册表，也不应随本次迁移冻结进全局注册表。
 

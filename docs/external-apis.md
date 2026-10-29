@@ -1,6 +1,6 @@
 # 本模组会请求哪些 API
 
-本文根据当前仓库代码整理，核对日期：2026-10-28。描述的是本模组内置实现发出的外部请求，不包含 Minecraft、加载器或其他模组自身的联网行为，也不包含第三方扩展自行注册的模型、TTS、ASR 或支付实现。
+本文根据当前仓库代码整理，核对日期：2026-10-29。描述的是本模组内置实现发出的外部请求，不包含 Minecraft、加载器或其他模组自身的联网行为，也不包含第三方扩展自行注册的模型、TTS、ASR 或支付实现。
 
 ## 总览
 
@@ -10,6 +10,7 @@
 | 网页搜索与抓取 | Minecraft 服务端工作线程 | 独立配置的 DeepSeek Search / Fetch API | 当前玩家主动查资料（允许路由模型理解自然表达）、明确指令或搜索页按钮 | 由系统定义启用，开发默认示例包含；普通提问不代表授权，复用 DeepSeek 环境变量 |
 | 文字转语音（TTS） | Minecraft 客户端 | 阿里云百炼 / DashScope | 开启自动朗读后播报当前消息，或手动试听 | 自动朗读默认关闭 |
 | 语音转文字（ASR） | Minecraft 客户端 | 阿里云智能语音交互 NLS | 玩家开启语音输入并主动录音 | 默认关闭 |
+| NLS 临时 Token 签发 | Minecraft 客户端 | 阿里云 NLS Meta `CreateToken` | 主动识别时没有可复用 Token、即将到期或鉴权缓存失效 | 随语音输入按需触发，不在设置保存时请求 |
 | 非流式 TTS 音频下载 | Minecraft 客户端 | TTS 响应中指定的阿里云 OSS 地址 | 调用非流式合成且返回音频 URL 时 | 正常游戏播报使用流式 PCM，不需要这次下载 |
 | 音色设计、复刻、查询、删除和临时上传 | 独立 Python 工具 | 阿里云百炼及 OSS | 手动执行 `tools/voice_design.py` 的对应子命令 | 不随模组运行自动执行 |
 
@@ -90,17 +91,19 @@ DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的�
 
 - 协议：WebSocket over TLS，地址 `wss://nls-gateway-cn-<region>.aliyuncs.com/ws/v1`。
 - 当前支持地域：`shanghai`、`beijing`、`shenzhen`，默认上海；例如 `wss://nls-gateway-cn-shanghai.aliyuncs.com/ws/v1`。
-- 配置：客户端 `config/system/system-asr.json`，使用独立的 NLS 项目 `AppKey` 和临时 `Token`，不是百炼 TTS API Key。
-- 配置为空时分别读取 `ALIYUN_NLS_APP_KEY`、`ALIYUN_NLS_TOKEN`。Token 放在握手请求头 `X-NLS-Token`，AppKey 放在识别命令头。
+- 配置：客户端 `config/system/system-asr.json`，使用独立的 NLS 项目 `appKey` 和阿里云 `accessKeyId` / `accessKeySecret`，不是百炼 TTS API Key。
+- 配置为空时分别读取 `ALIYUN_NLS_APP_KEY`、`ALIYUN_AK_ID`、`ALIYUN_AK_SECRET`。自动签发的 Token 放在握手请求头 `X-NLS-Token`，AppKey 放在识别命令头。
+- 签发：`GET https://nls-meta.cn-shanghai.aliyuncs.com/`，Action 为 `CreateToken`，Version 为 `2019-02-28`，RegionId 固定为 `cn-shanghai`。发送 AccessKey ID、UTC 时间戳、唯一 nonce、格式与签名参数；AccessKey Secret 仅在本地计算 HMAC-SHA1，不直接放入请求。
+- Token 仅内存缓存，实际识别时检查 `ExpireTime`，剩余有效期不超过两分钟则重新签发；凭据变化后重新获取。握手 401 / 403 时清缓存并重新签发、连接一次，尚未提交识别命令；不重试已经开始的收费任务。签发失败和握手失败不计 ASR 尝试。
 - 同一连接发送 `SpeechRecognizer.StartRecognition`、PCM 音频帧和 `StopRecognition`，接收中间结果及最终识别文本。
 
 语音输入默认关闭；开启后，只有玩家主动启动语音输入才打开录音 session。发送本次麦克风录音（16 kHz、16-bit、单声道 PCM），以及识别所需的 AppKey、任务 ID、消息 ID 和参数，不发送整个聊天历史。当前单次最长录音 60 秒，关闭所属界面或通知会取消 session。
 
 识别成功后，文字填入输入框，或按“识别后立即发送”设置继续提交；通知语音先匹配当前通知按钮，匹配失败才进入主聊天处理。后续若需要 AI 意图判断，还可能产生第 1 节的服务端模型请求，ASR 本身不是模型路由请求。
 
-当前代码不请求阿里云 Token 签发或自动刷新接口，临时 Token 需要外部获取并配置。Simple Voice Chat 只作为可选录音设备适配来源，未安装时使用 Java Sound；ASR 音频由本模组客户端直接上传 NLS。只有玩家发送识别文字或执行通知操作时，才进入正常助手请求；ASR / TTS 用量不上传 Minecraft 服务端。
+Token 签发只发生在玩家主动启动的识别 session 中，打开设置或保存凭据不会联网；签名 URL、Secret、Token 和上游正文均不记录到日志。Simple Voice Chat 只作为可选录音设备适配来源，未安装时使用 Java Sound；ASR 音频由本模组客户端直接上传 NLS。只有玩家发送识别文字或执行通知操作时，才进入正常助手请求；AccessKey、Token 和 ASR / TTS 用量不上传 Minecraft 服务端。
 
-实现入口：[阿里云 ASR 适配器](../src/main/java/com/iafenvoy/system/speech/aliyun/AliyunAsrProvider.java)、[ASR 配置](../src/main/java/com/iafenvoy/system/config/file/RecognitionConfig.java)、[录音与识别 session](../src/main/java/com/iafenvoy/system/speech/asr/AssistantRecognition.java)。
+实现入口：[Token 签发与缓存](../src/main/java/com/iafenvoy/system/speech/aliyun/AliyunNlsToken.java)、[阿里云 ASR 适配器](../src/main/java/com/iafenvoy/system/speech/aliyun/AliyunAsrProvider.java)、[ASR 配置](../src/main/java/com/iafenvoy/system/config/file/RecognitionConfig.java)、[录音与识别 session](../src/main/java/com/iafenvoy/system/speech/asr/AssistantRecognition.java)。
 
 ## 4. 独立音色工具使用的 API
 
@@ -140,9 +143,9 @@ DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的�
 - 用量统计与费用估算：AI 用量由服务端从模型响应记录，Search/Fetch 次数与估价由服务端网关记录；TTS / ASR 用量仅按客户端账号存本机，费率读取客户端 `config/system` 下的配置；不会请求供应商账单、余额或实时价格 API，也不向 MC 服务端报告语音用量。
 - 提示词与奖励数据包重载、配置加载、通知音效播放：读取本地资源或存档，不调用云端。
 
-客户端与服务端之间的助手请求、卡片动作与 AI 用量查询使用 Minecraft 自定义网络载荷，不是新增的公开 HTTP API。TTS 密钥、NLS Token 及语音用量均保留在客户端，不发送给游戏服务端。
+客户端与服务端之间的助手请求、卡片动作与 AI 用量查询使用 Minecraft 自定义网络载荷，不是新增的公开 HTTP API。TTS 密钥、NLS AccessKey / Token 及语音用量均保留在客户端，不发送给游戏服务端。
 
-按当前内置源码，本模组没有额外的遥测、广告、更新检查或通用数据上传接口。外部请求实现集中于 `OpenAiCompatibleClient`、`AliyunTtsProvider`、`AliyunAsrProvider`、`DeepSeekSearchClient` 和上述 Python 工具；新增提供商或其他第三方扩展后，应同步更新本清单。
+按当前内置源码，本模组没有额外的遥测、广告、更新检查或通用数据上传接口。外部请求实现集中于 `OpenAiCompatibleClient`、`AliyunTtsProvider`、`AliyunNlsToken`、`AliyunAsrProvider`、`DeepSeekSearchClient` 和上述 Python 工具；新增提供商或其他第三方扩展后，应同步更新本清单。
 
 ## 核对范围
 

@@ -19,7 +19,7 @@
 | [界面与本地化](ui-localization.md) | 新工作台、AUI 文本安全、语言键约定 |
 | [AI / 联网 / TTS / ASR 用量统计](token-usage.md) | 服务端 AI/联网账本、本地语音用量、按次估价与撤销后保留 |
 | [语音合成与音色设计](tts.md) | 阿里云 TTS、客户端密钥与语种、音色配置、Python 设计/临时上传工具 |
-| [语音识别](asr.md) | NLS 一句话流式识别、麦克风 session、临时 Token 与按次估价 |
+| [语音识别](asr.md) | NLS 一句话流式识别、AccessKey 自动鉴权、Token 缓存刷新、麦克风 session 与按次估价 |
 | [文案与提示词](system-voice.md) | 系统流公开参考、语气规则与模型/模板边界 |
 | [编译与验收](testing.md) | 本次已执行检查、尚未执行的验收和可选开发依赖 |
 | [原始设计稿](agent-design.md) | 完整目标架构；其中未落地的部分以开发文档中的实现范围为准 |

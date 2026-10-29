@@ -87,7 +87,7 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         for (String id : List.of("speech_note", "speech_key_step", "speech_voice_step", "speech_key_label", "speech_workspace_label",
                 "speech_model_label", "speech_voice_label", "speech_volume_label", "speech_hint", "speech_preview", "speech_stop"))
             text(document.getElementById(id), tr("system.tts.ui." + id));
-        for (String id : List.of("asr_note", "asr_key_step", "asr_appkey_label", "asr_token_label", "asr_hint"))
+        for (String id : List.of("asr_note", "asr_key_step", "asr_appkey_label", "asr_access_key_id_label", "asr_access_key_secret_label", "asr_hint"))
             text(document.getElementById(id), tr("system.asr.ui." + id));
         document.getElementById("speech_key").setAttribute("placeholder", tr("system.tts.ui.key_placeholder"));
         Element languageSelect = document.getElementById("speech_language");
@@ -99,7 +99,8 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         }
         this.fillSpeechForm(document);
         document.getElementById("asr_appkey").setValue(this.asrForm.appKey());
-        document.getElementById("asr_token").setValue(this.asrForm.token());
+        document.getElementById("asr_access_key_id").setValue(this.asrForm.accessKeyId());
+        document.getElementById("asr_access_key_secret").setValue(this.asrForm.accessKeySecret());
         text(document.getElementById("asr_backend"), tr(RecognitionCapture.voicechatInstalled()
                 ? "system.asr.ui.backend_voicechat" : "system.asr.ui.backend_java"));
         for (Element input : document.querySelectorAll("#settings_page_tts input:not([type=checkbox])"))
@@ -205,7 +206,7 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
 
     private void readAsrForm(Document document) {
         this.asrForm = new RecognitionConfig(this.asrForm.enabled(), this.asrForm.provider(), document.getElementById("asr_appkey").getValue().strip(),
-                document.getElementById("asr_token").getValue().strip(), this.asrForm.region(), this.asrForm.autoSend());
+                document.getElementById("asr_access_key_id").getValue().strip(), document.getElementById("asr_access_key_secret").getValue().strip(), this.asrForm.region(), this.asrForm.autoSend());
     }
 
     private void changeSpeech(boolean enabled, String region, String language) {
@@ -222,7 +223,7 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         Document document = this.getLinkedDocument();
         if (document == null) return;
         this.readAsrForm(document);
-        this.asrForm = new RecognitionConfig(enabled, this.asrForm.provider(), this.asrForm.appKey(), this.asrForm.token(), region, autoSend);
+        this.asrForm = new RecognitionConfig(enabled, this.asrForm.provider(), this.asrForm.appKey(), this.asrForm.accessKeyId(), this.asrForm.accessKeySecret(), region, autoSend);
         this.saveAsr();
     }
 

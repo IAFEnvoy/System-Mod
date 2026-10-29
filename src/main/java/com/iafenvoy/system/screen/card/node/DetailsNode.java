@@ -73,7 +73,7 @@ public record DetailsNode(String summary, List<CardTemplate.Node> children, bool
     public String text(CardRenderer.Text view) {
         // Plain-text exports retain the contents; speech continues to use the card's separate SpeechContent.
         return String.join(view.separator(), Stream.of(CardRenderer.value(this.summary, view.context(), view.indices()),
-                CardRenderer.text(this.children, view.template(), view.context(), view.indices(), view.separator()))
+                        CardRenderer.text(this.children, view.template(), view.context(), view.indices(), view.separator()))
                 .filter(value -> !value.isBlank()).toList());
     }
 }

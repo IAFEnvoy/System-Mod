@@ -28,7 +28,7 @@ public final class ShopQuoteModule extends BuiltinModule<ShopQuoteInput> {
     public ModuleRouting<ShopQuoteInput> routing() {
         return ModuleRouting.<ShopQuoteInput>defaults()
                 .button(a -> new ShopQuoteInput(a.identifier("offer", "offerId"), a.optional("revision", "catalogRevision")))
-                .command(AgentCommand.argument("<offer_id>", text -> new ShopQuoteInput(CommandArguments.identifier(text), Optional.empty()), "buy", "兑换"))
+                .command(AgentCommand.identifier("offer_id", id -> new ShopQuoteInput(id, Optional.empty()), "buy", "兑换"))
                 .semantic(RoutingProfile.hints(
                         List.of("我要兑换火把", "购买这个商品", "查看兑换这个的价格", "拿圆石换一些火把"),
                         List.of("I want to exchange for torches", "Buy this shop offer", "Preview this purchase", "Trade cobblestone for torches")));

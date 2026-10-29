@@ -6,6 +6,7 @@ import com.iafenvoy.system.agent.commerce.CommerceTransactions;
 import com.iafenvoy.system.agent.model.OpenAiCompatibleClient;
 import com.iafenvoy.system.agent.store.FileAgentStore;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
+import com.iafenvoy.system.command.SystemCommand;
 import com.iafenvoy.system.data.CatalogReloadListener;
 import com.iafenvoy.system.data.PromptReloadListener;
 import com.iafenvoy.system.event.AssistantRegistrationEvent;
@@ -61,7 +62,10 @@ public final class AssistantServer {
             this.players = new AssistantPlayers(server, this.engine, this.moduleManager, this.usage);
             this.players.validateModules();
             this.requests = new AssistantRequests(server, this.engine, this.players, this.moduleManager);
-            this.moduleManager.onChange(this.requests::syncState);
+            this.moduleManager.onChange(player -> {
+                this.requests.syncState(player);
+                this.server.getCommands().sendCommands(player);
+            });
             this.engine.start();
         } catch (Exception e) {
             this.engine.close();
@@ -112,6 +116,7 @@ public final class AssistantServer {
     public static void started(ServerStartedEvent event) {
         try {
             SERVERS.put(event.getServer(), new AssistantServer(event.getServer()));
+            SystemCommand.install(event.getServer());
         } catch (Exception e) {
             SystemMod.LOGGER.error("Assistant failed to initialize; reward writes are disabled", e);
         }

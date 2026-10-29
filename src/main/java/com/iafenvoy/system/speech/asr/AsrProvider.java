@@ -11,7 +11,10 @@ import java.util.function.Consumer;
 public interface AsrProvider extends AutoCloseable {
     void validate(Request request) throws SpeechException;
 
-    String recognize(Request request, AudioSource audio, Consumer<String> intermediate) throws Exception;
+    /**
+     * Signal requestStarted just before submitting recognition, after any credential exchange and connection setup.
+     */
+    String recognize(Request request, AudioSource audio, Consumer<String> intermediate, Runnable requestStarted) throws Exception;
 
     interface AudioSource {
         void start() throws Exception;
@@ -22,7 +25,7 @@ public interface AsrProvider extends AutoCloseable {
         int read(byte[] buffer) throws Exception;
     }
 
-    record Request(String appKey, String token, String region) {
+    record Request(String appKey, String accessKeyId, String accessKeySecret, String region) {
         @Override
         public @NonNull String toString() {
             return "AsrRequest[region=" + this.region + "]";

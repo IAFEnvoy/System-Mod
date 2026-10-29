@@ -132,6 +132,8 @@ public final class AssistantPlayers {
             if (answer.isSuccess()) {
                 this.clearSession(uuid);
                 this.modules.clear(uuid);
+                if (this.server.getPlayerList().getPlayer(uuid) == player)
+                    this.server.getCommands().sendCommands(player);
             }
             feedback.accept(answer);
             if (this.server.getPlayerList().getPlayer(uuid) != player || !connection.equals(ServerNetworkHandler.connectionId(player)))

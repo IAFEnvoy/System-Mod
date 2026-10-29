@@ -1,22 +1,26 @@
 package com.iafenvoy.system.command.client;
 
 import com.iafenvoy.saturn.util.MiscUtil;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.card.CardButton;
-import com.iafenvoy.system.card.CardUpdate;
-import com.iafenvoy.system.card.client.ClientCards;
-import com.iafenvoy.system.screen.gui.AssistantView;
+import com.iafenvoy.system.command.AssistantCommandInput;
+import com.iafenvoy.system.command.AssistantCommandSource;
+import com.iafenvoy.system.module.client.ClientModuleCaches;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.LiteralMessage;
+import com.mojang.brigadier.ParseResults;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.client.multiplayer.ClientSuggestionProvider;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
- * Local command and current-result completions; selecting a suggestion only edits the draft.
+ * Providers read only current trusted results; the popup consumes Brigadier replacement ranges.
  */
 public final class AssistantCommandSuggestions {
     private AssistantCommandSuggestions() {
@@ -28,44 +32,62 @@ public final class AssistantCommandSuggestions {
         }
     }
 
-    public static List<Suggestion> find(String draft) {
-        String input = draft.stripLeading();
-        if (input.isEmpty()) return List.of();
-        String lower = input.toLowerCase(Locale.ROOT);
-        String prefix = lower.startsWith("/system ") ? "/system " : input.startsWith("/") ? "/" : "";
-        Map<String, Suggestion> candidates = new LinkedHashMap<>();
-        if (!prefix.equals("/system ") && "/system ".startsWith(lower)) add(candidates, input, "/system ", "");
-        for (String command : AssistantClient.state().commands()) add(candidates, input, prefix + command, "");
-        for (String command : AssistantClientCommands.suggestions()) add(candidates, input, prefix + command, "");
-        // Dynamic arguments come only from the current code-created result, never from inferred commands.
-        AgentResult result = AssistantClient.state().current() == null ? null : AssistantClient.state().current().result();
-        if (result != null) {
-            int index = 1;
-            for (CardUpdate card : result.cards()) {
-                for (CardButton action : ClientCards.view(card).buttons()) {
-                    String text = AssistantView.actionLabel(card, action);
-                    String hint = MiscUtil.clip(text, 96);
-                    add(candidates, input, prefix + "select " + index, hint);
-                    add(candidates, input, prefix + "选择 " + index++, hint);
-                }
-                if (!(card.data().orElse(null) instanceof ResultTypes.QuestList(List<QuestBriefOutput> quests)))
-                    continue;
-                for (QuestBriefOutput quest : quests) {
-                    String number = Integer.toString(quest.number()), title = quest.title().getString();
-                    for (String command : List.of("view", "查看")) {
-                        add(candidates, input, prefix + command + " " + number, title);
-                        add(candidates, input, prefix + command + " " + title, "");
-                    }
-                }
-            }
+    public static void find(String draft, Consumer<List<Suggestion>> receive) {
+        if (draft.isBlank()) {
+            receive.accept(List.of());
+            return;
         }
-        return candidates.values().stream().limit(64).toList();
+        if (draft.stripLeading().equalsIgnoreCase("/system")) {
+            find(draft + " ", receive);
+            return;
+        }
+        AssistantCommandInput input = AssistantCommandInput.of(draft);
+        AssistantCommandSource source = new AssistantCommandSource(draft, AssistantClient.state()::hasModule);
+        CommandDispatcher<AssistantCommandSource> dispatcher = ClientModuleCaches.COMMAND.get().suggestions(source);
+        CompletableFuture<List<Suggestion>> local = dispatcher.getCompletionSuggestions(dispatcher.parse(input.reader(dispatcher.getRoot()), source))
+                .thenApply(result -> values(result, draft));
+        // Local candidates remain usable even when a new vanilla suggestion request cancels an older one.
+        local.thenAccept(receive);
+        ClientPacketListener connection = Minecraft.getInstance().getConnection();
+        if (connection == null || connection.getCommands().getRoot().getChild("system") == null) return;
+        String serverInput = "system " + draft.substring(input.start());
+        // Use the received permission-filtered tree and its native server suggestion providers.
+        CommandDispatcher<ClientSuggestionProvider> server = connection.getCommands();
+        CompletableFuture<Suggestions> remote = server.getCompletionSuggestions(server.parse(new AssistantCommandInput(serverInput, 0, false).reader(server.getRoot()), connection.getSuggestionsProvider()));
+        Set<String> workflows = AssistantClient.state().commands().stream().map(String::strip).collect(Collectors.toSet());
+        local.thenCombine(remote, (result, serverResult) -> {
+            Map<String, Suggestion> candidates = new LinkedHashMap<>();
+            result.forEach(suggestion -> candidates.put(suggestion.value(), suggestion));
+            for (com.mojang.brigadier.suggestion.Suggestion suggestion : serverResult.getList()) {
+                String applied = suggestion.apply(serverInput);
+                if (!applied.startsWith("system ")) continue;
+                String value = draft.substring(0, input.start()) + applied.substring(7);
+                if (!supported(value, dispatcher, source, workflows)) continue;
+                String hint = suggestion.getTooltip() == null ? "" : suggestion.getTooltip().getString();
+                if (!value.equals(draft)) candidates.putIfAbsent(value, new Suggestion(value, hint));
+            }
+            return List.copyOf(candidates.values());
+        }).thenAccept(receive);
     }
 
-    private static void add(Map<String, Suggestion> candidates, String input, String value, String hint) {
+    private static boolean supported(String value, CommandDispatcher<AssistantCommandSource> dispatcher,
+                                     AssistantCommandSource source, Set<String> workflows) {
+        AssistantCommandInput input = AssistantCommandInput.of(value);
+        if (workflows.contains(input.name().toLowerCase(Locale.ROOT))) return true;
+        // Do not advertise platform commands which the assistant has no execution path for.
+        ParseResults<AssistantCommandSource> parsed = dispatcher.parse(input.reader(dispatcher.getRoot()), source);
+        return !parsed.getContext().getNodes().isEmpty() && !parsed.getReader().canRead();
+    }
+
+    private static List<Suggestion> values(Suggestions suggestions, String input) {
+        return suggestions.getList().stream().map(suggestion -> new Suggestion(suggestion.apply(input),
+                        suggestion.getTooltip() == null ? "" : suggestion.getTooltip().getString()))
+                .filter(suggestion -> !suggestion.value().equals(input)).toList();
+    }
+
+    public static void suggest(SuggestionsBuilder builder, String value, String hint) {
         value = value.replace('\r', ' ').replace('\n', ' ');
-        hint = MiscUtil.clip(hint.replace('\r', ' ').replace('\n', ' '), 96);
-        if (!value.equals(input) && value.toLowerCase(Locale.ROOT).startsWith(input.toLowerCase(Locale.ROOT)))
-            candidates.putIfAbsent(value, new Suggestion(value, hint));
+        if (value.toLowerCase(Locale.ROOT).startsWith(builder.getRemainingLowerCase()))
+            builder.suggest(value, new LiteralMessage(MiscUtil.clip(hint.replace('\r', ' ').replace('\n', ' '), 96)));
     }
 }

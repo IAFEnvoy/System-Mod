@@ -76,7 +76,6 @@ public final class AssistantRecognition {
                     capture.open();
                     if (this.closed || Thread.currentThread().isInterrupted()) return;
                     this.update(() -> this.status = this.stopping ? "recognizing" : "recording");
-                    accounting.begin();
                     String recognized = provider.recognize(request, new AsrProvider.AudioSource() {
                         @Override
                         public void start() throws Exception {
@@ -89,7 +88,7 @@ public final class AssistantRecognition {
                             if (count < 0) Session.this.update(() -> Session.this.status = "recognizing");
                             return count;
                         }
-                    }, text -> this.update(() -> this.intermediate = text));
+                    }, text -> this.update(() -> this.intermediate = text), accounting::begin);
                     accounting.complete(true);
                     this.update(() -> {
                         this.finished = true;

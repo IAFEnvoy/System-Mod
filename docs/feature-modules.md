@@ -98,16 +98,23 @@ public final class ExampleClientMod {
 }
 ```
 
-首次使用客户端贡献时，`ClientModuleBindings.get()` 遍历已冻结的客户端注册表，调用所有模块的 `register(context)`，一次性装配命令、页面、卡片、口播与通知动作，然后冻结贡献表。它只保存这些贡献，不另维护模块目录；客户端命令树也直接遍历正式注册表。卡片节点类型和协议类型的正式注册与冻结由 NeoForge 模组加载流程负责；ASR / TTS 工厂使用普通 Map，完整入口见[注册表速查](registries.md)。原来的两种自定义模块注册事件和模块 Map 目录已移除。
+`ClientModuleCaches.BINDINGS.get()` 确保客户端贡献已装配；Workspace 列表和本地动作 Map 直接放在 `ClientModuleBindingsCache`，命令声明及编译树直接放在 `ClientModuleCaches.COMMAND` 对应的 `ClientCommandCache`。绑定缓存继承 Saturn `RegistryCache` 并统一协调两者重建和清理，从物理客户端入口提前初始化，构造时只加入 Saturn 的生命周期列表，不读取尚未冻结的模块条目。首次实际读取时按需装配；`TagsUpdatedEvent.shouldUpdateStaticData()` 为 true 时重建，客户端退出时清空，下次使用再建。它按注册表生命周期维护，没有定时器或逐 tick 重扫；集成服务端下沿用 Saturn 对静态数据更新事件的筛选。
+
+每次装配清空旧数据，遍历已冻结客户端注册表一次并调用 `register(context)` 与 `commands(root)`，结束后冻结页面和动作集合并编译命令树；临时命令 Builder 随即释放。旧 ClientModuleBindings / ClientCommandRegistry 中转类已删除，数据和维护代码都收进对应 Cache 类。装配失败同时清空两份缓存，后续读取可重新构建。`register` 应只声明贡献，可以重复执行，不应修改游戏状态、发请求或向外部静态表注册回调。页面绑定函数仍在每次创建页面时接收当前 Document，不把已打开页面或玩家业务状态存进缓存；模块可用性在调用时读取当前玩家快照，不缓存成布尔值。
+
+本地卡片动作通过 `module.localAction` 装配进绑定缓存，CardController 只负责检查来源、处理按钮状态并从当前缓存分派动作，不再持有永久处理器 Map。关闭、打开助手、工作台跳转属于 CoreClientModule，设置动作属于 SettingsClientModule。模板资源重载只加载 JSON，不再顺带初始化模块绑定。正式注册表仍是模块目录，RegisterClientCommandsEvent 直接复制命令缓存中的游戏命令节点，避免合并修改缓存；异步补全以缓存 revision 排除重建前的迟到结果。卡片节点类型和协议类型由 NeoForge 登记和冻结，ASR / TTS 工厂仍使用普通 Map，见[注册表速查](registries.md)。
 
 `ClientModule.register(context)` 可贡献以下内容：
 
 | 入口 | 用途 |
 | --- | --- |
-| `command(action, aliases...)` / `pattern(handler, suggestions...)` | 助手内本地控制，执行和补全共用声明 |
+| `command(action, aliases...)` / `command(node)` | 助手内本地控制；简单别名或完整 Brigadier 节点，执行与补全共用声明 |
+| `suggest(node)` | 仅提供助手补全，如当前任务序号和名称，不拦截服务端命令执行 |
 | `workspace(page, navigation, group, bind)` | 页面、动态导航、分类与控件绑定；空页面/导航可用于工具栏；可另传翻译键 label |
 | `localAction(id, handler)` | 扩展本地卡片动作，按模块可用性检查后执行；不负责业务结果构建 |
 | `ClientModule.commands(root)` | 游戏聊天栏中的本地 Brigadier 指令，例如 `/system settings` |
+
+命令回调通过当前玩家快照判断模块权限；补全前过滤不可用节点，因为 Brigadier.getCompletionSuggestions 本身不会检查 requires。任务模块负责当前任务列表的候选，核心模块负责当前按钮序号，均不把候选存进缓存。原生服务端补全来自连接已同步的 `/system` 树，仅展示助手有执行入口的工作流和本地代理；模块管理等仅有聊天栏入口的指令不混入助手候选。ClientState.commands 仅提供工作流别名范围，不再充当字符串补全列表。
 
 完整侧栏按 `WorkspaceGroup.CHAT / MODULES / SETTINGS` 排列，分类标题来自双语语言键。导航按钮由注册表生成，无须在 HTML 手写；各功能决定自己的分类、标签和点击行为。默认 workspace 重载归入 MODULES，聊天入口显式归入 CHAT，设置与用量入口归入 SETTINGS。空分类自动隐藏，模块不可用时隐藏入口、移除本地补全并拦截控件调用；当前页面被禁用时回到聊天。
 

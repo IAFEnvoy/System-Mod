@@ -2,7 +2,8 @@
   "enabled": false,
   "provider": "aliyun-nls",
   "appKey": "",
-  "token": "",
+  "accessKeyId": "",
+  "accessKeySecret": "",
   "region": "shanghai",
   "autoSend": false
 }

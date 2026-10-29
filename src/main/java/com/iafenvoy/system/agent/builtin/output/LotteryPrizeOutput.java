@@ -8,7 +8,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -22,7 +22,7 @@ public record LotteryPrizeOutput(PlayerData.Reward reward, int weight, long tota
             Codec.INT.fieldOf("weight").forGetter(LotteryPrizeOutput::weight),
             Codec.LONG.fieldOf("totalWeight").forGetter(LotteryPrizeOutput::totalWeight)
     ).apply(i, LotteryPrizeOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:lottery_prize");
+    public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:lottery_prize");
 
     @Override
     public CardBuilder buildCard() {

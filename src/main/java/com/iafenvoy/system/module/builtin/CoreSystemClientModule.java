@@ -20,7 +20,7 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -28,9 +28,9 @@ import java.util.concurrent.CompletableFuture;
 public final class CoreSystemClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
-        module.localAction(Identifier.parse("system:close"), (source, _) -> AssistantMessages.dismissCard(source.id()));
-        module.localAction(Identifier.parse("system:open"), (_, _) -> AssistantClient.open(AssistantClient.simpleMode(), ""));
-        module.localAction(Identifier.parse("system:workspace"), (_, arguments) -> {
+        module.localAction(ResourceLocation.parse("system:close"), (source, unused1) -> AssistantMessages.dismissCard(source.id()));
+        module.localAction(ResourceLocation.parse("system:open"), (unused1, unused2) -> AssistantClient.open(AssistantClient.simpleMode(), ""));
+        module.localAction(ResourceLocation.parse("system:workspace"), (unused1, arguments) -> {
             AssistantClient.open(false, "");
             if (Minecraft.getInstance().screen instanceof AssistantScreen screen)
                 screen.showPage(arguments.getOrDefault("page", "chat"));

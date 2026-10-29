@@ -14,9 +14,9 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.StringRepresentable;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Locale;
@@ -30,14 +30,14 @@ public final class ResultTypes {
     private ResultTypes() {
     }
 
-    public record ClientState(Optional<Identifier> system, boolean historySaved, boolean externalModel,
-                              List<Identifier> modules,
+    public record ClientState(Optional<ResourceLocation> system, boolean historySaved, boolean externalModel,
+                              List<ResourceLocation> modules,
                               List<String> commands, long requestTimeoutMillis) {
         public static final MapCodec<ClientState> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-                Identifier.CODEC.optionalFieldOf("system").forGetter(ClientState::system),
+                ResourceLocation.CODEC.optionalFieldOf("system").forGetter(ClientState::system),
                 Codec.BOOL.fieldOf("historySaved").forGetter(ClientState::historySaved),
                 Codec.BOOL.fieldOf("externalModel").forGetter(ClientState::externalModel),
-                Identifier.CODEC.listOf().fieldOf("modules").forGetter(ClientState::modules),
+                ResourceLocation.CODEC.listOf().fieldOf("modules").forGetter(ClientState::modules),
                 Codec.STRING.listOf().fieldOf("commands").forGetter(ClientState::commands),
                 Codec.LONG.fieldOf("requestTimeoutMillis").forGetter(ClientState::requestTimeoutMillis)
         ).apply(i, ClientState::new));
@@ -68,7 +68,7 @@ public final class ResultTypes {
                 Codec.BOOL.fieldOf("historySaved").forGetter(SignInStatus::historySaved),
                 Codec.BOOL.fieldOf("externalModel").forGetter(SignInStatus::externalModel)
         ).apply(i, SignInStatus::new));
-        public static final Identifier TEMPLATE = Identifier.parse("system:sign_in_status");
+        public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:sign_in_status");
 
         public SignInStatus {
             candidates = List.copyOf(candidates);
@@ -97,7 +97,7 @@ public final class ResultTypes {
                 Codec.STRING.fieldOf("state").forGetter(ShopOrder::state),
                 Codec.STRING.optionalFieldOf("error", "").forGetter(ShopOrder::error)
         ).apply(i, ShopOrder::new));
-        public static final Identifier TEMPLATE = Identifier.parse("system:shop_order");
+        public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:shop_order");
 
         @Override
         public CardBuilder buildCard() {
@@ -116,7 +116,7 @@ public final class ResultTypes {
 
     public record QuestList(List<QuestBriefOutput> quests) implements CardData {
         public static final MapCodec<QuestList> CODEC = QuestBriefOutput.CODEC.listOf().fieldOf("quests").xmap(QuestList::new, QuestList::quests);
-        public static final Identifier TEMPLATE = Identifier.parse("system:quest_list");
+        public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:quest_list");
 
         public QuestList {
             quests = List.copyOf(quests);
@@ -126,7 +126,7 @@ public final class ResultTypes {
         public CardBuilder buildCard() {
             CardBuilder builder = CardBuilder.template(TEMPLATE).title("system.result.quests").summary("system.result.quests");
             for (QuestBriefOutput quest : this.quests) {
-                builder.serverButton("quest_" + quest.id(), "system.action.quest_detail", Identifier.parse("system:quest_detail"),
+                builder.serverButton("quest_" + quest.id(), "system.action.quest_detail", ResourceLocation.parse("system:quest_detail"),
                                 Map.of("quest", quest.id()), CardButton.Placement.BODY, CardButton.Behavior.REPLACE)
                         .actionParameter("action_number", quest.number()).actionParameter("action_title", quest.title())
                         .actionParameter("action_chapter", quest.chapter()).actionParameter("action_progress", (int) quest.progress());
@@ -160,7 +160,7 @@ public final class ResultTypes {
                 Codec.STRING.optionalFieldOf("claimRef").forGetter(QuestNotice::claimRef),
                 SpeechContent.CODEC.fieldOf("speech").forGetter(QuestNotice::speech)
         ).apply(i, QuestNotice::new));
-        public static final Identifier TEMPLATE = Identifier.parse("system:quest_notice");
+        public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:quest_notice");
 
         public QuestNotice {
             title = LegacyText.snapshot(title);
@@ -183,10 +183,10 @@ public final class ResultTypes {
             builder.summary(main).speech(this.speech);
             this.submission.addButton(builder, this.id);
             if (this.claimRef.isPresent())
-                builder.serverButton("claim", "system.action.claim", Identifier.parse("system:quest_claim"), Map.of("claim_ref", this.claimRef.get()));
+                builder.serverButton("claim", "system.action.claim", ResourceLocation.parse("system:quest_claim"), Map.of("claim_ref", this.claimRef.get()));
             else if (this.rewardPending)
-                builder.serverButton("rewards", "system.action.claim", Identifier.parse("system:quest_detail"), Map.of("quest", this.id));
-            return builder.serverButton("details", "system.action.quest_detail", Identifier.parse("system:quest_detail"), Map.of("quest", this.id), CardButton.Placement.FOOTER, CardButton.Behavior.REPLACE);
+                builder.serverButton("rewards", "system.action.claim", ResourceLocation.parse("system:quest_detail"), Map.of("quest", this.id));
+            return builder.serverButton("details", "system.action.quest_detail", ResourceLocation.parse("system:quest_detail"), Map.of("quest", this.id), CardButton.Placement.FOOTER, CardButton.Behavior.REPLACE);
         }
 
         @Override
@@ -201,7 +201,7 @@ public final class ResultTypes {
         public static final Codec<QuestEvent> CODEC = StringRepresentable.fromEnum(QuestEvent::values);
 
         @Override
-        public @NonNull String getSerializedName() {
+        public @NotNull String getSerializedName() {
             return this.name().toLowerCase(Locale.ROOT);
         }
     }

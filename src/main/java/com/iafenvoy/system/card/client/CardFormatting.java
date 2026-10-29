@@ -6,7 +6,7 @@ import com.iafenvoy.system.card.CardText;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
+import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.ArrayList;
 import java.util.List;

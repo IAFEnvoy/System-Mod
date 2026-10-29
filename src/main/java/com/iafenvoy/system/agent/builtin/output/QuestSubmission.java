@@ -4,7 +4,7 @@ import com.iafenvoy.system.agent.builtin.input.QuestSubmitInput;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.util.ActionArguments;
 import com.mojang.serialization.Codec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.StringRepresentable;
 
 import java.util.Locale;
@@ -20,7 +20,7 @@ public enum QuestSubmission implements StringRepresentable {
         if (this == NONE) return;
         QuestSubmitInput input = new QuestSubmitInput("", Optional.empty(), questId, this == CHECKMARK);
         builder.serverButton("submit", this == CHECKMARK ? "system.action.complete_quest" : "system.action.submit_quest",
-                Identifier.parse("system:quest_submit"), ActionArguments.encode(input));
+                ResourceLocation.parse("system:quest_submit"), ActionArguments.encode(input));
     }
 
     @Override

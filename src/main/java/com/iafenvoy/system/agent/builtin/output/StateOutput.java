@@ -4,7 +4,7 @@ import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Locale;
 
@@ -13,7 +13,7 @@ import java.util.Locale;
  */
 public record StateOutput(String state) implements CardData {
     public static final MapCodec<StateOutput> CODEC = Codec.STRING.fieldOf("state").xmap(StateOutput::new, StateOutput::state);
-    public static final Identifier TEMPLATE = Identifier.parse("system:delivery_state");
+    public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:delivery_state");
 
     @Override
     public CardBuilder buildCard() {

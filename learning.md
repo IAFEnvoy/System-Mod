@@ -8,16 +8,16 @@
 
 | 项目 | 当前配置 / 要求 | 核对入口 |
 | --- | --- | --- |
-| System | `1.0-alpha.1`；客户端与服务端均安装 | [gradle.properties](gradle.properties) 的 `mod_version` |
-| Minecraft | `26.1.2` | [gradle.properties](gradle.properties) 的 `minecraft_version` |
-| NeoForge | 开发配置 `26.1.2.114`；README 要求同一 MC 版本的此版本或更高版本 | [gradle.properties](gradle.properties) 的 `neo_version` |
-| Java | `25`，toolchain 与字节码均使用 Java 25 | [build.gradle](build.gradle)、[Mixin 配置](src/main/resources/system.mixins.json) |
+| System | `1.0-alpha.3`；客户端与服务端均安装 | [gradle.properties](gradle.properties) 的 `mod_version` |
+| Minecraft | `1.21.1` | [gradle.properties](gradle.properties) 的 `minecraft_version` |
+| NeoForge | 开发配置 `21.1.262`；README 要求同一 MC 版本的此版本或更高版本 | [gradle.properties](gradle.properties) 的 `neo_version` |
+| Java | `21`，toolchain 与字节码均使用 Java 21 | [build.gradle](build.gradle)、[Mixin 配置](src/main/resources/system.mixins.json) |
 | Gradle / ModDev | `9.2.1` / `2.0.148` | [Wrapper 配置](gradle/wrapper/gradle-wrapper.properties)、[build.gradle](build.gradle) |
-| ApricityUI | 开发配置 `1.2.6`；客户端依赖，需兼容 MC `26.1.2` | [gradle.properties](gradle.properties) 的 `apricityui_version` |
-| Saturn | `1.0-beta.3`，CurseMaven 文件 ID `9349648`；两端必装，提供 Cost、DataStorage 与 Codec 工具 | [build.gradle](build.gradle)、[开发与架构](docs/development.md) |
-| Simple Voice Chat | 开发适配 `2.6.26+26.1.2`，CurseMaven 文件 ID `9307181`；可选客户端录音后端，不打入发布 JAR，服务端不要求安装 | [gradle.properties](gradle.properties)、[build.gradle](build.gradle) |
-| FTB Quests | `26.1.2.8`；可选集成 | [gradle.properties](gradle.properties) 的 `ftb_quests_version` |
-| FTB Library / FTB Teams | `26.1.2.9` / `26.1.2.4`；FTB 集成配套依赖 | [gradle.properties](gradle.properties) |
+| ApricityUI | 开发配置 `1.2.6`；客户端依赖，需兼容 MC `1.21.1` | [gradle.properties](gradle.properties) 的 `apricityui_version` |
+| Saturn | 已内联并裁剪到 318 个文件；保留 Cost、DataStorage、Trigger、公式与 Codec 工具 | [src/main/java/com/iafenvoy/saturn](src/main/java/com/iafenvoy/saturn)、[开发与架构](docs/development.md) |
+| Simple Voice Chat | CurseMaven 文件 ID `9350472`；可选客户端录音后端，不打入发布 JAR，服务端不要求安装 | [gradle.properties](gradle.properties)、[build.gradle](build.gradle) |
+| FTB Quests | `2101.1.37`；可选集成 | [gradle.properties](gradle.properties) 的 `ftb_quests_version` |
+| FTB Library / FTB Teams | `2101.1.39` / `2101.1.11`；FTB 集成配套依赖 | [gradle.properties](gradle.properties) |
 | 网络协议 | `1`；客户端和服务端必须匹配 | [NetworkManager.java](src/main/java/com/iafenvoy/system/network/NetworkManager.java) 的 `event.registrar(...)` |
 | 音色工具 Python | `3.10+`；标准库实现 | [tools/voice_design.py](tools/voice_design.py)、[语音文档](docs/tts.md) |
 

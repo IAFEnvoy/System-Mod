@@ -14,9 +14,9 @@ import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
 import com.iafenvoy.system.module.builtin.storage.CommerceDataStorage;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.ItemStackTemplate;
+import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -74,7 +74,7 @@ public final class CommerceTransactions {
             CommerceCatalog catalog = this.engine.catalog();
             if (!catalog.revision().equals(input.revision())) throw new AgentException("STALE_QUOTE");
             List<CommercePreviewOutput> previews = new ArrayList<>();
-            for (Identifier id : input.offers()) {
+            for (ResourceLocation id : input.offers()) {
                 CommerceCatalog.Offer offer = catalog.offers().stream().filter(value -> value.id().equals(id)).findFirst()
                         .orElseThrow(() -> new AgentException("STALE_QUOTE"));
                 CommerceCosts.Prepared payment = CommerceCosts.prepare(offer.costs(), player, PurchaseType.SHOP, id);
@@ -82,7 +82,7 @@ public final class CommerceTransactions {
                         ? Optional.of(this.engine.commerceQuotes().create(context.player(), catalog, offer, payment).id()) : Optional.empty();
                 previews.add(new CommercePreviewOutput(id, payment.getData(), payment.isSuccess(), reference));
             }
-            for (Identifier id : input.lotteries()) {
+            for (ResourceLocation id : input.lotteries()) {
                 LotteryPool pool = catalog.lotteries().stream().filter(value -> value.id().equals(id)).findFirst()
                         .orElseThrow(() -> new AgentException("STALE_QUOTE"));
                 CommerceCosts.Prepared payment = CommerceCosts.prepare(pool.costs(), player, PurchaseType.LOTTERY, id);

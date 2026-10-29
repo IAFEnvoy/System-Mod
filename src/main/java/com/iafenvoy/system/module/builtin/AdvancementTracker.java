@@ -11,7 +11,7 @@ import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import net.minecraft.advancements.AdvancementHolder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -63,7 +63,7 @@ final class AdvancementTracker implements PlayerModule {
     }
 
     @Override
-    public void advancement(ServerPlayer player, Identifier advancement) {
+    public void advancement(ServerPlayer player, ResourceLocation advancement) {
         TrackingSession session = this.sessions.get(player.getUUID());
         if (session == null) return;
         if (!session.ready) {
@@ -100,9 +100,9 @@ final class AdvancementTracker implements PlayerModule {
     private final class TrackingSession implements Session {
         private final UUID player;
         private final List<AdvancementRule> rules = AdvancementConfig.INSTANCE.get().rules();
-        private final Map<Identifier, Boolean> completed = new HashMap<>();
-        private final Set<Identifier> delayed = new HashSet<>();
-        private final Set<Identifier> fresh = new HashSet<>();
+        private final Map<ResourceLocation, Boolean> completed = new HashMap<>();
+        private final Set<ResourceLocation> delayed = new HashSet<>();
+        private final Set<ResourceLocation> fresh = new HashSet<>();
         private boolean ready;
 
         private TrackingSession(ServerPlayer player) {

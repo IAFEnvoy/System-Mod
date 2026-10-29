@@ -1,7 +1,7 @@
 package com.iafenvoy.system.speech.asr;
 
 import com.iafenvoy.system.speech.SpeechException;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Consumer;
 
@@ -27,7 +27,7 @@ public interface AsrProvider extends AutoCloseable {
 
     record Request(String appKey, String accessKeyId, String accessKeySecret, String region) {
         @Override
-        public @NonNull String toString() {
+        public @NotNull String toString() {
             return "AsrRequest[region=" + this.region + "]";
         }
     }

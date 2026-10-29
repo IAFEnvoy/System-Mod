@@ -16,7 +16,6 @@ import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
-import com.sighs.apricityui.client.gui.ApricityGuiLayers;
 import com.sighs.apricityui.event.MouseEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
@@ -344,12 +343,11 @@ public final class AssistantMessages {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void tooltip(ScreenEvent.Render.Foreground event) {
+    public static void tooltip(ScreenEvent.Render.Post event) {
         if (document == null || !canInteract(current) || !(event.getScreen() instanceof ChatScreen))
             return;
-        if (AssistantItems.tooltip(document, event.getGuiGraphics(), event.getMouseX(), event.getMouseY()))
-            // AUI deduplicates this submission; vanilla then flushes tooltips/IME once above the HUD.
-            ApricityGuiLayers.submitUi(event.getGuiGraphics());
+        // AUI 1.21.1 renders in a single pass inside ApricityScreen#render, so the tooltip is the whole job here.
+        AssistantItems.tooltip(document, event.getGuiGraphics(), event.getMouseX(), event.getMouseY());
     }
 
     private static void renderButtons() {

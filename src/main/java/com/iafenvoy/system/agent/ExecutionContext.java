@@ -16,7 +16,7 @@ import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -46,8 +46,8 @@ public final class ExecutionContext {
     private final AtomicBoolean cancelled = new AtomicBoolean();
     private final Set<String> completedLocalSteps = new HashSet<>();
     private AgentModule.Descriptor module;
-    private Identifier owner;
-    private Optional<Identifier> eventOwner = Optional.empty();
+    private ResourceLocation owner;
+    private Optional<ResourceLocation> eventOwner = Optional.empty();
     private ExecutionPolicy policy;
     private long expires;
     private int models, tools, steps, writes, tokens;
@@ -80,7 +80,7 @@ public final class ExecutionContext {
         });
     }
 
-    void select(Identifier owner, AgentModule.Descriptor descriptor, ExecutionPolicy value) {
+    void select(ResourceLocation owner, AgentModule.Descriptor descriptor, ExecutionPolicy value) {
         if (this.isEvent() && !this.eventOwner.equals(Optional.ofNullable(owner)))
             throw new AgentException("CAPABILITY_UNAVAILABLE");
         this.owner = owner;
@@ -159,7 +159,7 @@ public final class ExecutionContext {
         return this.engine.modules().shortcuts(this::available);
     }
 
-    public boolean available(Identifier workflow) {
+    public boolean available(ResourceLocation workflow) {
         return this.engine.available(this.player, workflow);
     }
 
@@ -304,7 +304,7 @@ public final class ExecutionContext {
             });
             if (previous != null) {
                 this.completedLocalSteps.add(stepId);
-                return type.resultCodec().parse(previous).getOrThrow(_ -> new AgentException("INVALID_INPUT"));
+                return type.resultCodec().parse(previous).getOrThrow(unused -> new AgentException("INVALID_INPUT"));
             }
         }
         if (++this.steps > this.policy.steps() || ++this.tools > this.policy.toolCalls() || (tool.write() && ++this.writes > this.policy.writeSteps()))

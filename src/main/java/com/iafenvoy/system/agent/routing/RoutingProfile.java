@@ -2,7 +2,7 @@ package com.iafenvoy.system.agent.routing;
 
 import com.iafenvoy.system.agent.AgentAction;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.*;
 
@@ -30,7 +30,7 @@ public record RoutingProfile<I extends AgentAction>(Map<String, List<String>> ex
         return new RoutingProfile<>(Map.of("zh", chinese, "en", english), false, text -> null);
     }
 
-    public Bound bind(Identifier id, MapCodec<I> codec, boolean readOnly) {
+    public Bound bind(ResourceLocation id, MapCodec<I> codec, boolean readOnly) {
         return new Bound(id, this.examples, this.direct && readOnly, text -> {
             try {
                 I input = this.arguments.parse(text);
@@ -42,7 +42,7 @@ public record RoutingProfile<I extends AgentAction>(Map<String, List<String>> ex
         });
     }
 
-    public record Bound(Identifier moduleId, Map<String, List<String>> examples, boolean direct,
+    public record Bound(ResourceLocation moduleId, Map<String, List<String>> examples, boolean direct,
                         Arguments<AgentAction> arguments) {
     }
 

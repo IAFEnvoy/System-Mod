@@ -97,7 +97,7 @@ final class FtbStarterGifts {
                 || reference.completedAt() != 0 && reference.completedAt() != completed)
             throw new AgentException("STALE_REFERENCE");
         if (FtbQuestReader.kind(quest) != FtbQuestReader.Kind.STARTER_GIFT || !FtbQuestReader.readable(team, quest)
-                || team.isLocked() || !team.isCompleted(quest) && (!team.canStartTasks(quest) || team.isProgressionPaused(player)))
+                || team.isLocked() || !team.isCompleted(quest) && !team.canStartTasks(quest))
             throw new AgentException("NOT_AUTHORIZED");
         List<Reward> rewards = rewards(team, quest);
         if (rewards.isEmpty()) throw new AgentException("NOT_AUTHORIZED");

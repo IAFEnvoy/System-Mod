@@ -8,7 +8,7 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
@@ -21,7 +21,7 @@ public record QuestSubmitOutput(String questId, Component title, List<QuestTaskO
             Codec.BOOL.fieldOf("changed").forGetter(QuestSubmitOutput::changed),
             Codec.BOOL.fieldOf("completed").forGetter(QuestSubmitOutput::completed)
     ).apply(i, QuestSubmitOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:quest_submit");
+    public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:quest_submit");
 
     public QuestSubmitOutput {
         title = LegacyText.snapshot(title);

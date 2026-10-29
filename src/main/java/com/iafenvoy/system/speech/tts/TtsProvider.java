@@ -1,7 +1,7 @@
 package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.speech.SpeechException;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Consumer;
 
@@ -63,7 +63,7 @@ public interface TtsProvider extends AutoCloseable {
     record Request(String text, String apiKey, String region, String workspace, String model, String voice,
                    String language) {
         @Override
-        public @NonNull String toString() {
+        public @NotNull String toString() {
             return "TtsRequest[model=" + this.model + ", voice=" + this.voice + "]";
         }
     }

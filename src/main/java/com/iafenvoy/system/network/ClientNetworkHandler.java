@@ -34,26 +34,26 @@ public final class ClientNetworkHandler {
                 AssistantClient.clear();
                 AssistantClient.notice(result);
             });
-    private static final TypeDispatch<Minecraft, Void> RESPONSES = new TypeDispatch<Minecraft, Void>((_, _) -> {
+    private static final TypeDispatch<Minecraft, Void> RESPONSES = new TypeDispatch<Minecraft, Void>((unused1, unused2) -> {
         throw new IllegalArgumentException("Unregistered assistant response handler");
-    }).register(ReplyResponse.class, (_, reply) -> {
+    }).register(ReplyResponse.class, (unused1, reply) -> {
         AssistantClient.receive(reply.requestId(), reply.result());
         return null;
-    }).register(StateResponse.class, (_, response) -> {
+    }).register(StateResponse.class, (unused1, response) -> {
         AssistantClient.synchronizedState(response.requestId(), response.state());
         return null;
-    }).register(HistoryResponse.class, (_, response) -> {
+    }).register(HistoryResponse.class, (unused1, response) -> {
         AssistantClient.history(response.requestId(), response.history());
         return null;
-    }).register(NoticeResponse.class, (_, notice) -> {
+    }).register(NoticeResponse.class, (unused1, notice) -> {
         AssistantClient.notice(notice.result());
         return null;
-    }).register(OpenResponse.class, (_, open) -> {
+    }).register(OpenResponse.class, (unused1, open) -> {
         open.requestId().ifPresent(AssistantClient::complete);
         AssistantClient.open(VIEWS.get(open.view()).getAsBoolean(), "");
         AssistantClient.send(ControlRequest.STATE);
         return null;
-    }).register(BindingResponse.class, (_, binding) -> {
+    }).register(BindingResponse.class, (unused1, binding) -> {
         BINDING.get(binding.change()).accept(binding.result());
         return null;
     });

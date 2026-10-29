@@ -7,7 +7,7 @@ import com.iafenvoy.system.registry.SystemRegistries;
 import com.iafenvoy.system.util.ActionArguments;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -19,9 +19,9 @@ import java.util.stream.Collectors;
 public final class ModuleRegistry {
     private final ToolRegistry tools;
     private final CommandRegistry commands = new CommandRegistry();
-    private final Map<Identifier, Entry<?>> modules = new LinkedHashMap<>();
-    private final Map<Identifier, Map<Identifier, AgentModule<?>>> variants = new LinkedHashMap<>();
-    private final Map<Identifier, RoutingProfile.Bound> profiles = new LinkedHashMap<>();
+    private final Map<ResourceLocation, Entry<?>> modules = new LinkedHashMap<>();
+    private final Map<ResourceLocation, Map<ResourceLocation, AgentModule<?>>> variants = new LinkedHashMap<>();
+    private final Map<ResourceLocation, RoutingProfile.Bound> profiles = new LinkedHashMap<>();
     private boolean frozen;
 
     public ModuleRegistry(ToolRegistry tools) {
@@ -32,10 +32,10 @@ public final class ModuleRegistry {
         this.register(null, module);
     }
 
-    public synchronized <I extends AgentAction> void register(Identifier owner, AgentModule<I> module) {
+    public synchronized <I extends AgentAction> void register(ResourceLocation owner, AgentModule<I> module) {
         this.checkMutable();
         AgentModule.Descriptor descriptor = module.descriptor();
-        Identifier id = descriptor.id();
+        ResourceLocation id = descriptor.id();
         if (this.modules.containsKey(id)) {
             Entry<?> previous = this.modules.get(id);
             if (owner == null || this.variants.get(id).containsKey(owner)
@@ -55,7 +55,7 @@ public final class ModuleRegistry {
         }
         if (this.profiles.containsKey(id))
             throw new IllegalArgumentException("Duplicate module " + id);
-        if (SystemRegistries.ACTION_TYPE.getValue(id) != module.inputCodec())
+        if (SystemRegistries.ACTION_TYPE.get(id) != module.inputCodec())
             throw new IllegalArgumentException("Module input type must be registered under its descriptor ID");
         List<ToolRegistry.Tool<?, ?>> operations = List.copyOf(module.tools());
         if (!operations.stream().map(ToolRegistry.Tool::id).collect(Collectors.toSet()).equals(descriptor.tools()))
@@ -76,14 +76,14 @@ public final class ModuleRegistry {
         // Every declaration is validated before any registry is changed; shared tools keep instance identity.
         this.tools.registerVariant(owner, operations);
         this.modules.put(id, new Entry<>(module, routing, readOnly, shortcut));
-        Map<Identifier, AgentModule<?>> alternatives = new LinkedHashMap<>();
+        Map<ResourceLocation, AgentModule<?>> alternatives = new LinkedHashMap<>();
         alternatives.put(owner, module);
         this.variants.put(id, alternatives);
         this.commands.register(id, routing.commands());
         if (profile != null) this.profiles.put(id, profile);
     }
 
-    public synchronized void reject(Identifier id, RoutingProfile<?> profile) {
+    public synchronized void reject(ResourceLocation id, RoutingProfile<?> profile) {
         this.checkMutable();
         if (profile.direct() || this.modules.containsKey(id) || this.profiles.containsKey(id))
             throw new IllegalArgumentException("Rejection examples require a unique non-callable ID");
@@ -107,34 +107,34 @@ public final class ModuleRegistry {
         if (this.frozen) throw new IllegalStateException("Agent registration has finished");
     }
 
-    public AgentModule<?> get(Identifier id) {
+    public AgentModule<?> get(ResourceLocation id) {
         Entry<?> entry = this.modules.get(id);
         return entry == null ? null : entry.module();
     }
 
-    public AgentModule<?> get(Identifier id, Predicate<Identifier> available) {
-        Map.Entry<Identifier, AgentModule<?>> variant = this.variant(id, available);
+    public AgentModule<?> get(ResourceLocation id, Predicate<ResourceLocation> available) {
+        Map.Entry<ResourceLocation, AgentModule<?>> variant = this.variant(id, available);
         return variant == null ? null : variant.getValue();
     }
 
-    private Map.Entry<Identifier, AgentModule<?>> variant(Identifier id, Predicate<Identifier> available) {
-        Map<Identifier, AgentModule<?>> alternatives = this.variants.get(id);
+    private Map.Entry<ResourceLocation, AgentModule<?>> variant(ResourceLocation id, Predicate<ResourceLocation> available) {
+        Map<ResourceLocation, AgentModule<?>> alternatives = this.variants.get(id);
         if (alternatives == null) return null;
         return alternatives.entrySet().stream().filter(entry -> entry.getKey() == null || available.test(entry.getKey()))
                 .findFirst().orElse(null);
     }
 
-    public boolean readOnly(Identifier id) {
+    public boolean readOnly(ResourceLocation id) {
         Entry<?> entry = this.modules.get(id);
         return entry != null && entry.readOnly();
     }
 
-    public boolean modelSelectable(Identifier id) {
+    public boolean modelSelectable(ResourceLocation id) {
         Entry<?> entry = this.modules.get(id);
         return entry != null && entry.module().descriptor().interactive() && entry.routing().modelSelectable();
     }
 
-    public boolean semanticSelectable(Identifier id) {
+    public boolean semanticSelectable(ResourceLocation id) {
         Entry<?> entry = this.modules.get(id);
         return entry != null && entry.readOnly() && entry.routing().semanticSelectable();
     }
@@ -143,7 +143,7 @@ public final class ModuleRegistry {
         return this.commands;
     }
 
-    public AgentAction explicit(String text, Predicate<Identifier> available) {
+    public AgentAction explicit(String text, Predicate<ResourceLocation> available) {
         for (Entry<?> entry : this.modules.values()) {
             if (!available.test(entry.module().descriptor().id())) continue;
             AgentAction input = explicit(entry, text);
@@ -166,19 +166,19 @@ public final class ModuleRegistry {
     }
 
     public List<AgentResult.Action> shortcuts() {
-        return this.shortcuts(_ -> true);
+        return this.shortcuts(unused -> true);
     }
 
-    public List<AgentResult.Action> shortcuts(Predicate<Identifier> available) {
+    public List<AgentResult.Action> shortcuts(Predicate<ResourceLocation> available) {
         return this.modules.entrySet().stream().filter(entry -> available.test(entry.getKey()))
                 .map(entry -> entry.getValue().shortcut()).filter(Objects::nonNull).toList();
     }
 
     public Map<String, ModelRoute.Capability> capabilities() {
-        return this.capabilities(_ -> true);
+        return this.capabilities(unused -> true);
     }
 
-    public Map<String, ModelRoute.Capability> capabilities(Predicate<Identifier> available) {
+    public Map<String, ModelRoute.Capability> capabilities(Predicate<ResourceLocation> available) {
         Map<String, ModelRoute.Capability> capabilities = new LinkedHashMap<>();
         this.modules.forEach((id, entry) -> {
             if (this.modelSelectable(id) && available.test(id)) {
@@ -191,10 +191,10 @@ public final class ModuleRegistry {
     }
 
     public Codec<ModelRoute> modelCodec() {
-        return this.modelCodec(_ -> true);
+        return this.modelCodec(unused -> true);
     }
 
-    public Codec<ModelRoute> modelCodec(Predicate<Identifier> available) {
+    public Codec<ModelRoute> modelCodec(Predicate<ResourceLocation> available) {
         List<MapCodec<? extends AgentAction>> capabilities = new ArrayList<>();
         for (Entry<?> entry : this.modules.values())
             if (this.modelSelectable(entry.module().descriptor().id()) && available.test(entry.module().descriptor().id()))
@@ -203,11 +203,11 @@ public final class ModuleRegistry {
     }
 
     public <I extends AgentAction> Call<I> call(I input) {
-        return this.call(input, _ -> true);
+        return this.call(input, unused -> true);
     }
 
-    public <I extends AgentAction> Call<I> call(I input, Predicate<Identifier> available) {
-        Map.Entry<Identifier, AgentModule<?>> variant = this.variant(input.id(), available);
+    public <I extends AgentAction> Call<I> call(I input, Predicate<ResourceLocation> available) {
+        Map.Entry<ResourceLocation, AgentModule<?>> variant = this.variant(input.id(), available);
         if (variant == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
         AgentModule<?> module = variant.getValue();
         if (module.inputCodec() != input.codec()) throw new AgentException("INVALID_INPUT");
@@ -216,7 +216,7 @@ public final class ModuleRegistry {
         return new Call<>(variant.getKey(), typed, input);
     }
 
-    public AgentAction button(Identifier id, Map<String, String> arguments) {
+    public AgentAction button(ResourceLocation id, Map<String, String> arguments) {
         Entry<?> entry = this.modules.get(id);
         if (entry == null || !entry.module().descriptor().interactive())
             throw new AgentException("CAPABILITY_UNAVAILABLE");
@@ -237,7 +237,7 @@ public final class ModuleRegistry {
                                                 AgentResult.Action shortcut) {
     }
 
-    public record Call<I extends AgentAction>(Identifier owner, AgentModule<I> module, I input) {
+    public record Call<I extends AgentAction>(ResourceLocation owner, AgentModule<I> module, I input) {
         public AgentResult execute(ExecutionContext context) throws Exception {
             return this.module.execute(context, this.input);
         }

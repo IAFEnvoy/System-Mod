@@ -12,7 +12,7 @@ import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
 import com.iafenvoy.system.module.builtin.SignInSystemModule;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -30,7 +30,7 @@ public final class SignInCreditTool implements ToolRegistry.Handler<SignInCredit
     @Override
     public CompletionStage<RewardOutput> execute(ExecutionContext context, SignInCreditInput input) {
         String day = input.date();
-        Identifier rewardId = input.rewardId();
+        ResourceLocation rewardId = input.rewardId();
         CommerceCatalog catalog = context.catalog();
         if (!catalog.revision().equals(input.catalogRevision()))
             throw new AgentException("CATALOG_CHANGED");

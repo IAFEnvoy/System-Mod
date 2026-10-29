@@ -17,16 +17,16 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 
 public final class CoreSystemModule implements CoreModule {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "core");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("system", "core");
     public static final MapCodec<CoreSystemModule> CODEC = MapCodec.unit(new CoreSystemModule());
-    public static final ModuleStorage<AgentJournalDataStorage> JOURNAL = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath("system", "agent_journal"), AgentJournalDataStorage.class, AgentJournalDataStorage.CODEC, AgentJournalDataStorage::new);
-    public static final ModuleStorage<ModuleAccessDataStorage> ACCESS = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath("system", "module_access"), ModuleAccessDataStorage.class, ModuleAccessDataStorage.CODEC, ModuleAccessDataStorage::new);
+    public static final ModuleStorage<AgentJournalDataStorage> JOURNAL = new ModuleStorage<>(ID, ResourceLocation.fromNamespaceAndPath("system", "agent_journal"), AgentJournalDataStorage.class, AgentJournalDataStorage.CODEC, AgentJournalDataStorage::new);
+    public static final ModuleStorage<ModuleAccessDataStorage> ACCESS = new ModuleStorage<>(ID, ResourceLocation.fromNamespaceAndPath("system", "module_access"), ModuleAccessDataStorage.class, ModuleAccessDataStorage.CODEC, ModuleAccessDataStorage::new);
 
     @Override
     public MapCodec<CoreSystemModule> codec() {
@@ -46,7 +46,7 @@ public final class CoreSystemModule implements CoreModule {
     @Override
     public void installed(ModuleContext context) {
         context.engine().modules().root(HelpInput.INSTANCE);
-        context.engine().modules().reject(Identifier.fromNamespaceAndPath("system", "semantic_reject"), RoutingProfile.hints(
+        context.engine().modules().reject(ResourceLocation.fromNamespaceAndPath("system", "semantic_reject"), RoutingProfile.hints(
                 List.of("不要替我签到", "签到奖励有哪些", "如果签到会怎么样", "查询配方如何合成", "帮我建造房子", "我想问一个游戏攻略"),
                 List.of("Do not sign me in", "Explain daily sign-in rewards", "What happens if I sign in?", "How do I craft this recipe?", "Build me a house", "Tell me a game strategy")));
     }
@@ -59,7 +59,7 @@ public final class CoreSystemModule implements CoreModule {
                 .then(Commands.literal("full").executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.FULL)))
                 .then(Commands.literal("ask").then(Commands.argument("message", StringArgumentType.greedyString()).executes(context ->
                         ModuleCommands.ask(context.getSource().getPlayerOrException(), StringArgumentType.getString(context, "message")))))
-                .then(Commands.literal("routing").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS)).executes(context -> {
+                .then(Commands.literal("routing").requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS)).executes(context -> {
                     AssistantServer runtime = AssistantServer.get(context.getSource().getServer());
                     if (runtime == null) {
                         context.getSource().sendFailure(Component.translatable("system.error.capability_unavailable"));

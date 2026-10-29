@@ -5,7 +5,7 @@ import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Locale;
 import java.util.Optional;
@@ -21,7 +21,7 @@ public record QuestClaimOutput(String state, Optional<String> questId, Optional<
             Codec.STRING.optionalFieldOf("rewardId").forGetter(QuestClaimOutput::rewardId),
             Codec.BOOL.optionalFieldOf("deliveryVerified").forGetter(QuestClaimOutput::deliveryVerified)
     ).apply(i, QuestClaimOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:claim");
+    public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:claim");
 
     @Override
     public MapCodec<QuestClaimOutput> codec() {

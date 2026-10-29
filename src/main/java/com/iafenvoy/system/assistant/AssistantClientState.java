@@ -9,7 +9,7 @@ import com.iafenvoy.system.card.CardRef;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.util.CodecIO;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.*;
 
@@ -44,7 +44,7 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return this.serverState.externalModel();
     }
 
-    public boolean hasModule(Identifier id) {
+    public boolean hasModule(ResourceLocation id) {
         return this.serverState.modules().contains(id);
     }
 

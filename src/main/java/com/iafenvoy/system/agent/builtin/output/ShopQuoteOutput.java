@@ -8,8 +8,8 @@ import com.iafenvoy.system.card.CardText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.Identifier;
-import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.resources.ResourceLocation;
+import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -37,9 +37,9 @@ public record ShopQuoteOutput(String quoteRef, String label, List<ItemStackTempl
 
     @Override
     public CardBuilder buildCard() {
-        return CardBuilder.template(Identifier.parse("system:shop_offer")).title("system.result.shop_offer").summary("system.result.shop_confirm")
+        return CardBuilder.template(ResourceLocation.parse("system:shop_offer")).title("system.result.shop_offer").summary("system.result.shop_confirm")
                 .put("label", this.label).put("id", "").put("items", new CardText.Items(this.items.stream().map(ItemPreviewOutput::of).toList()))
                 .put("offer_items", this.items.stream().map(ItemPreviewOutput::of).toList()).put("payment_available", true).price(this.price)
-                .serverButton("purchase", "system.action.shop_confirm", Identifier.parse("system:shop_purchase"), Map.of("quote", this.quoteRef));
+                .serverButton("purchase", "system.action.shop_confirm", ResourceLocation.parse("system:shop_purchase"), Map.of("quote", this.quoteRef));
     }
 }

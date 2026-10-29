@@ -10,7 +10,7 @@ import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.data.SystemModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -27,23 +27,23 @@ public final class ModuleManager implements AutoCloseable {
     private final MinecraftServer server;
     private final AgentEngine engine;
     private final ModuleAccess access;
-    private final Map<Identifier, Installed> installed = new LinkedHashMap<>();
+    private final Map<ResourceLocation, Installed> installed = new LinkedHashMap<>();
     private final Map<UUID, PlayerSession> players = new HashMap<>();
-    private final Map<UUID, Set<Identifier>> active = new ConcurrentHashMap<>();
+    private final Map<UUID, Set<ResourceLocation>> active = new ConcurrentHashMap<>();
     private final Set<UUID> flushing = ConcurrentHashMap.newKeySet();
-    private Consumer<ServerPlayer> changed = _ -> {
+    private Consumer<ServerPlayer> changed = unused -> {
     };
     private boolean closed;
 
     public ModuleManager(MinecraftServer server, ModuleContext context) {
         this.server = server;
         this.engine = context.engine();
-        Map<Identifier, SystemModule> modules = new LinkedHashMap<>();
+        Map<ResourceLocation, SystemModule> modules = new LinkedHashMap<>();
         context.modules().keySet().stream().sorted().forEach(id -> {
-            SystemModule definition = context.modules().getValue(id);
+            SystemModule definition = context.modules().get(id);
             if (definition.available()) modules.put(id, definition);
         });
-        Map<Identifier, ModuleContext> contexts = new LinkedHashMap<>();
+        Map<ResourceLocation, ModuleContext> contexts = new LinkedHashMap<>();
         modules.keySet().forEach(id -> contexts.put(id, context.forModule(id)));
         // Tool modules export operations before workflows resolve their typed dependencies.
         modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
@@ -79,7 +79,7 @@ public final class ModuleManager implements AutoCloseable {
         this.changed = Objects.requireNonNull(changed);
     }
 
-    public List<Identifier> enabled(UUID player) {
+    public List<ResourceLocation> enabled(UUID player) {
         return this.active.getOrDefault(player, Set.of()).stream().sorted().toList();
     }
 
@@ -87,11 +87,11 @@ public final class ModuleManager implements AutoCloseable {
         return this.access.hasSystem(player);
     }
 
-    public Optional<Identifier> system(UUID player) {
+    public Optional<ResourceLocation> system(UUID player) {
         return this.access.system(player);
     }
 
-    public boolean hasModule(UUID player, Identifier module) {
+    public boolean hasModule(UUID player, ResourceLocation module) {
         if (this.server.isSameThread() && this.access.resolving(player)) return this.access.hasModule(player, module);
         return this.active.getOrDefault(player, Set.of()).contains(module);
     }
@@ -101,13 +101,13 @@ public final class ModuleManager implements AutoCloseable {
                 .anyMatch(module -> module.definition.server().filter(server -> server.codec() == type).isPresent());
     }
 
-    public boolean add(ServerPlayer player, Identifier module) {
+    public boolean add(ServerPlayer player, ResourceLocation module) {
         boolean changed = this.access.add(player, module);
         if (changed) this.refresh(player);
         return changed;
     }
 
-    public boolean remove(ServerPlayer player, Identifier module) {
+    public boolean remove(ServerPlayer player, ResourceLocation module) {
         boolean changed = this.access.remove(player, module);
         if (changed) this.refresh(player);
         return changed;
@@ -164,15 +164,15 @@ public final class ModuleManager implements AutoCloseable {
 
     private void reconcile(PlayerSession player) {
         if (!this.current(player)) return;
-        Set<Identifier> desired = Set.copyOf(this.access.enabled(player.player.getUUID()));
+        Set<ResourceLocation> desired = Set.copyOf(this.access.enabled(player.player.getUUID()));
         player.failed.retainAll(desired);
-        for (Identifier id : List.copyOf(player.modules.keySet()))
+        for (ResourceLocation id : List.copyOf(player.modules.keySet()))
             if (!desired.contains(id)) this.stop(player, id);
         this.publish(player);
         List<Activation> additions = new ArrayList<>();
         try {
             for (Installed module : this.installed.values()) {
-                Identifier id = module.id();
+                ResourceLocation id = module.id();
                 if (!desired.contains(id) || player.modules.containsKey(id) || player.failed.contains(id)) continue;
                 PlayerModule.Session session;
                 try {
@@ -207,10 +207,10 @@ public final class ModuleManager implements AutoCloseable {
                 activation.session.initialize(data);
             }
             return null;
-        })).whenComplete((_, error) -> this.server.execute(() -> {
+        })).whenComplete((unused1, error) -> this.server.execute(() -> {
             if (!this.current(player)) return;
             for (Activation activation : additions) {
-                Identifier id = activation.module.id();
+                ResourceLocation id = activation.module.id();
                 // A removed/re-added module owns a different activation; stale callbacks cannot restart it.
                 if (player.modules.get(id) != activation) continue;
                 if (error != null) {
@@ -228,7 +228,7 @@ public final class ModuleManager implements AutoCloseable {
                 return;
             }
             for (Activation activation : additions) {
-                Identifier id = activation.module.id();
+                ResourceLocation id = activation.module.id();
                 if (player.modules.get(id) != activation || !activation.ready) continue;
                 try {
                     activation.session.ready();
@@ -252,18 +252,18 @@ public final class ModuleManager implements AutoCloseable {
     }
 
     private void publish(PlayerSession player) {
-        Set<Identifier> next = new LinkedHashSet<>();
+        Set<ResourceLocation> next = new LinkedHashSet<>();
         player.modules.forEach((id, activation) -> {
             if (activation.ready) next.add(id);
         });
-        Set<Identifier> previous = this.active.put(player.player.getUUID(), Set.copyOf(next));
+        Set<ResourceLocation> previous = this.active.put(player.player.getUUID(), Set.copyOf(next));
         if (!next.equals(previous)) {
             this.engine.moduleAccessChanged(player.player.getUUID());
             this.changed.accept(player.player);
         }
     }
 
-    private void stop(PlayerSession player, Identifier id) {
+    private void stop(PlayerSession player, ResourceLocation id) {
         Activation activation = player.modules.remove(id);
         if (activation == null) return;
         activation.valid = false;
@@ -289,7 +289,7 @@ public final class ModuleManager implements AutoCloseable {
         }
         for (PlayerSession player : List.copyOf(this.players.values())) {
             if (!this.current(player)) continue;
-            List<Identifier> ticking = player.modules.entrySet().stream()
+            List<ResourceLocation> ticking = player.modules.entrySet().stream()
                     .filter(entry -> entry.getValue().ready && entry.getValue().module.storages.stream().anyMatch(ModuleStorage::ticking))
                     .map(Map.Entry::getKey).toList();
             if (!ticking.isEmpty()) {
@@ -299,9 +299,9 @@ public final class ModuleManager implements AutoCloseable {
                 try {
                     store.updateLoaded(uuid, data -> {
                         boolean dirty = false;
-                        Set<Identifier> owners = new LinkedHashSet<>();
+                        Set<ResourceLocation> owners = new LinkedHashSet<>();
                         ticking.forEach(id -> this.installed.get(id).storages.forEach(storage -> owners.add(storage.owner())));
-                        for (Identifier owner : owners) {
+                        for (ResourceLocation owner : owners) {
                             data.moduleData.tick(owner, context);
                             dirty |= data.moduleData.isDirty(owner);
                         }
@@ -332,7 +332,7 @@ public final class ModuleManager implements AutoCloseable {
         }
     }
 
-    public void advancement(ServerPlayer player, Identifier advancement) {
+    public void advancement(ServerPlayer player, ResourceLocation advancement) {
         this.checkThread();
         PlayerSession session = this.players.get(player.getUUID());
         if (session == null || !this.current(session)) return;
@@ -352,7 +352,7 @@ public final class ModuleManager implements AutoCloseable {
         this.active.remove(player);
         if (session == null) return;
         this.engine.moduleAccessChanged(player);
-        List<Identifier> reverse = new ArrayList<>(session.modules.keySet());
+        List<ResourceLocation> reverse = new ArrayList<>(session.modules.keySet());
         Collections.reverse(reverse);
         reverse.forEach(id -> this.stop(session, id));
         session.access.close();
@@ -367,7 +367,7 @@ public final class ModuleManager implements AutoCloseable {
         this.engine.maintenance(() -> {
             store.flush(player);
             return null;
-        }).whenComplete((_, error) -> {
+        }).whenComplete((unused1, error) -> {
             this.flushing.remove(player);
             if (error != null && this.engine.current(player, incarnation))
                 SystemMod.LOGGER.warn("Unable to flush player module data for {}", player, error);
@@ -407,7 +407,7 @@ public final class ModuleManager implements AutoCloseable {
         }
     }
 
-    private record Installed(Identifier id, SystemModule definition, PlayerModule runtime, List<ModuleStorage<?>> storages) {
+    private record Installed(ResourceLocation id, SystemModule definition, PlayerModule runtime, List<ModuleStorage<?>> storages) {
     }
 
     private static final class Activation {
@@ -427,8 +427,8 @@ public final class ModuleManager implements AutoCloseable {
         private final UUID connection;
         private final long incarnation;
         private final PlayerModule.Session access;
-        private final Map<Identifier, Activation> modules = new LinkedHashMap<>();
-        private final Set<Identifier> failed = new HashSet<>();
+        private final Map<ResourceLocation, Activation> modules = new LinkedHashMap<>();
+        private final Set<ResourceLocation> failed = new HashSet<>();
         private final CompletableFuture<Boolean> initialized = new CompletableFuture<>();
         private boolean loaded;
 

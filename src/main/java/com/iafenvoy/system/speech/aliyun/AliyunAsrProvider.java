@@ -142,10 +142,10 @@ public final class AliyunAsrProvider implements AsrProvider {
             this.task = task;
             this.intermediate = intermediate;
             this.handlers = Map.of(
-                    "RecognitionStarted", _ -> this.started.complete(null),
+                    "RecognitionStarted", unused -> this.started.complete(null),
                     "RecognitionCompleted", message -> this.completed.complete(text(message).strip()),
                     "RecognitionResultChanged", message -> this.intermediate.accept(text(message)),
-                    "TaskFailed", _ -> {
+                    "TaskFailed", unused -> {
                         throw new SpeechException("response");
                     });
         }

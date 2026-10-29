@@ -18,7 +18,7 @@ public final class VoicechatRecognitionPlugin implements VoicechatPlugin {
 
     @Override
     public void registerEvents(EventRegistration registration) {
-        if (!FMLEnvironment.getDist().isClient()) return;
+        if (!FMLEnvironment.dist.isClient()) return;
         try {
             Class.forName("com.iafenvoy.system.compat.voicechat.VoicechatRecognitionCapture")
                     .getMethod("registerEvents", EventRegistration.class).invoke(null, registration);

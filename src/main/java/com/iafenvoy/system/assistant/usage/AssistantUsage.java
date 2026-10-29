@@ -8,7 +8,6 @@ import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.Permissions;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,7 +27,8 @@ public final class AssistantUsage {
     private final Map<UUID, Long> lastUsageRequest = new HashMap<>();
 
     public AssistantUsage(MinecraftServer server, AgentEngine engine) {
-        this.tokenUsage = server.getDataStorage().computeIfAbsent(TokenUsageData.TYPE);
+        // 1.21.1 stores saved data on the overworld's storage, keyed by factory and file name.
+        this.tokenUsage = server.overworld().getDataStorage().computeIfAbsent(TokenUsageData.FACTORY, TokenUsageData.FILE_ID);
         engine.onModelUsage((player, usage, successful, time) -> this.pendingUsage.add(new UsageRecord(
                 player, this.usageNames.getOrDefault(player, player.toString()), usage, successful, time)));
         engine.search().onUsage((player, fetch, successful, billable, unknown, nanoYuan, time) -> this.pendingSearch.add(new SearchRecord(
@@ -43,7 +43,7 @@ public final class AssistantUsage {
     }
 
     public void rememberPlayer(ServerPlayer player) {
-        String name = player.getGameProfile().name();
+        String name = player.getGameProfile().getName();
         this.usageNames.put(player.getUUID(), name);
         this.tokenUsage.rename(player.getUUID(), name);
     }
@@ -60,12 +60,12 @@ public final class AssistantUsage {
     }
 
     private TokenUsageSnapshot usageSnapshot(ServerPlayer player, boolean all, int offset) {
-        boolean canViewAll = player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+        boolean canViewAll = player.hasPermissions(2);
         if (all && !canViewAll) throw new AgentException("NOT_AUTHORIZED");
         if (offset < 0 || offset > Integer.MAX_VALUE - TokenUsageData.PAGE_SIZE)
             throw new AgentException("INVALID_INPUT");
         this.drain();
-        return this.tokenUsage.snapshot(player.getUUID(), player.getGameProfile().name(), all, canViewAll, offset);
+        return this.tokenUsage.snapshot(player.getUUID(), player.getGameProfile().getName(), all, canViewAll, offset);
     }
 
     public void openUsage(ServerPlayer player, boolean all) {

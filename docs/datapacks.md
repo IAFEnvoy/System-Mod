@@ -182,7 +182,7 @@ AI 只返回候选奖励 ID，不能修改条目数量。入账保存完整奖�
 
 ## 数据包目录
 
-完整可复制的示例位于 [examples/commerce-pack](../examples/commerce-pack)。把该目录复制到服务器存档的 `datapacks/` 下，使用正常的数据包加载流程或 `/reload`。示例不会自动安装，不进入发布 JAR。`pack.mcmeta` 格式根据当前依赖的 Minecraft 26.1.2 `version.json` 设置为 101.1。
+完整可复制的示例位于 [examples/commerce-pack](../examples/commerce-pack)。把该目录复制到服务器存档的 `datapacks/` 下，使用正常的数据包加载流程或 `/reload`。示例不会自动安装，不进入发布 JAR。`pack.mcmeta` 按 1.21.1 的 `SharedConstants.DATA_PACK_FORMAT` 写成 `pack_format: 48`。
 
 | 文件路径 | 条目 ID | 用途 |
 | --- | --- | --- |
@@ -213,25 +213,13 @@ AI 只返回候选奖励 ID，不能修改条目数量。入账保存完整奖�
 }
 ```
 
-`costs` 通过 Saturn 的 Cost 类型注册表分派，可以混合物品、资源及其他已注册的费用；列表各项都需要支付。启用的商品必须显式提供 `costs`，空列表 `[]` 表示免费。`saturn:item.items` 中的匹配项是可替代关系，例如 `["minecraft:cobblestone", "#minecraft:planks"]` 表示总计消耗 `amount` 个圆石或木板，不是每种各扣一次。普通物品 ID 只匹配物品类型，可能消耗带名称、附魔或其他组件的同类物品；组件条件使用 Saturn 注册的 matcher。实际读取玩家 `Inventory` 暴露的槽位，匹配、跨槽位选材和数量取整由 Saturn 执行。
+`costs` 通过 Saturn 的 Cost 类型注册表分派，可以混合物品及其他已注册的费用；列表各项都需要支付。启用的商品必须显式提供 `costs`，空列表 `[]` 表示免费。`saturn:item.items` 中的匹配项是可替代关系，例如 `["minecraft:cobblestone", "#minecraft:planks"]` 表示总计消耗 `amount` 个圆石或木板，不是每种各扣一次。普通物品 ID 只匹配物品类型，可能消耗带名称、附魔或其他组件的同类物品；组件条件使用 Saturn 注册的 matcher。实际读取玩家 `Inventory` 暴露的槽位，匹配、跨槽位选材和数量取整由 Saturn 执行。
 
-系统币使用 Saturn 资源费用，例如：
-
-```json
-{
-  "label": "系统币补给",
-  "items": [{ "id": "minecraft:bread", "count": 6 }],
-  "costs": [
-    { "type": "saturn:resource", "resource": "example:system_coin", "amount": 20 }
-  ]
-}
-```
-
-资源需要先在 `data/example/saturn/resource/system_coin.json` 定义，例如 `{"default_value":0,"max":1000000000}`；示例包已附带该资源和 `system:coin_food` 商品，初始余额为 0，不会自动发币。资源注册表在世界加载时读取，添加或修改资源定义需重开世界 / 重启服务器，不能只 `/reload`。已有资源的商品费用可随商品正常重载。资源名称使用 Saturn 的翻译键格式，例如 `saturn.resource.example.system_coin`；客户端资源包未翻译时显示资源 ID。
+资源费用（`saturn:resource`）与能力、资源条一并移除；商品请使用 `saturn:item` 或其他已注册的费用类型。示例包中的 `system:coin_food` 已改为物品费用。
 
 `amount` 交由 Saturn `NumberProvider` 解析，支持其常量、公式和注册类型。浏览及生成报价均在服务端游戏线程求值，确认报价保留本次求值后的账单，两分钟内确认不会重新计算动态金额；确认仍会重新检查当前支付条件。客户端和模型只收到展示快照及报价引用，不能提供可执行 Cost。新增费用类型在 Saturn 注册，无需修改 System 的支付分支。
 
-Saturn 逐项模拟后按列表顺序扣款，不合并重复或重叠的需求。因此同一种材料 / 资源尽量合并成一条 Cost，避免多个独立费用共享同一份余额导致部分扣款。若真实扣款失败或抛出异常，System 将订单标为 `PAYMENT_UNKNOWN` 并锁住奖励，不自动重试或退款，需管理员核对；不保证跨多个 Cost 的原子回滚。
+Saturn 逐项模拟后按列表顺序扣款，不合并重复或重叠的需求。因此同一种材料尽量合并成一条 Cost，避免多个独立费用共享同一份余额导致部分扣款。若真实扣款失败或抛出异常，System 将订单标为 `PAYMENT_UNKNOWN` 并锁住奖励，不自动重试或退款，需管理员核对；不保证跨多个 Cost 的原子回滚。
 
 标签为非空纯文本；无效物品 ID、不在原版范围内的数量、无法解析的组件、产出列表不在 1～36 项范围内或缺失价格都会拒绝本轮重载，不发布半份目录。依赖最终物品组件的校验留到运行时；商品产出无法创建时会在扣款前失败，奖励无法创建时保留为待领取。未知字段遵循原版 Codec 行为忽略。成功重载会更换目录版本，旧报价失效；正在推理的签到决策提交前需要校验版本。已入账的签到/商城奖励、订单和当日唯一标记均保留。
 

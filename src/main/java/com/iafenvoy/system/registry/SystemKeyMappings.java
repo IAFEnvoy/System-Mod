@@ -2,7 +2,6 @@ package com.iafenvoy.system.registry;
 
 import com.iafenvoy.system.SystemMod;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -14,13 +13,13 @@ import org.lwjgl.glfw.GLFW;
  */
 @EventBusSubscriber(Dist.CLIENT)
 public final class SystemKeyMappings {
-    public static final KeyMapping.Category CATEGORY = new KeyMapping.Category(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "assistant"));
+    // 1.21.1 still identifies a key category by its translation key string; it matches the existing lang entries.
+    public static final String CATEGORY = "key.category." + SystemMod.MOD_ID + ".assistant";
     public static final KeyMapping TOGGLE_INTERFACE = new KeyMapping("key.system.toggle_interface", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
     public static final KeyMapping VOICE_INPUT = new KeyMapping("key.system.voice_input", GLFW.GLFW_KEY_F8, CATEGORY);
 
     @SubscribeEvent
     public static void register(RegisterKeyMappingsEvent event) {
-        event.registerCategory(CATEGORY);
         event.register(TOGGLE_INTERFACE);
         event.register(VOICE_INPUT);
     }

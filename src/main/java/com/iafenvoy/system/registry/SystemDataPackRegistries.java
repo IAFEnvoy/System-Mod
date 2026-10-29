@@ -4,8 +4,7 @@ import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.SystemModule;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.registries.DataPackRegistryEvent;
@@ -24,21 +23,22 @@ public final class SystemDataPackRegistries {
         event.dataPackRegistry(SystemResourceKeys.SYSTEM_MODULE, SystemModule.CODEC, SystemModule.CODEC);
     }
 
-    public static Optional<SystemDefinition> get(RegistryAccess access, Identifier id) {
-        return access.lookup(SystemResourceKeys.SYSTEM).flatMap(registry -> registry.getOptional(id));
+    public static Optional<SystemDefinition> get(RegistryAccess access, ResourceLocation id) {
+        // 1.21.1 hands out a plain Registry here; an unknown id yields null rather than an empty Optional.
+        return access.registry(SystemResourceKeys.SYSTEM).map(registry -> registry.get(id)).filter(java.util.Objects::nonNull);
     }
 
-    public static List<Identifier> ids(RegistryAccess access) {
-        return access.lookup(SystemResourceKeys.SYSTEM).map(registry -> registry.listElementIds()
-                .map(ResourceKey::identifier).sorted().toList()).orElse(List.of());
+    public static List<ResourceLocation> ids(RegistryAccess access) {
+        return access.registry(SystemResourceKeys.SYSTEM)
+                .map(registry -> registry.keySet().stream().sorted().toList())
+                .orElse(List.of());
     }
 
     public static Optional<Registry<SystemModule>> modules(RegistryAccess access) {
-        return access.lookup(SystemResourceKeys.SYSTEM_MODULE);
+        return access.registry(SystemResourceKeys.SYSTEM_MODULE);
     }
 
-    public static List<Identifier> moduleIds(RegistryAccess access) {
-        return modules(access).map(registry -> registry.listElementIds()
-                .map(ResourceKey::identifier).sorted().toList()).orElse(List.of());
+    public static List<ResourceLocation> moduleIds(RegistryAccess access) {
+        return modules(access).map(registry -> registry.keySet().stream().sorted().toList()).orElse(List.of());
     }
 }

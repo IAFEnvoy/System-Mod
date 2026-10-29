@@ -30,7 +30,7 @@ public final class AssistantRequests {
     private final AgentEngine engine;
     private final AssistantPlayers players;
     private final ModuleManager modules;
-    private final TypeDispatch<RequestContext, CompletionStage<AgentResponse>> requestHandlers = new TypeDispatch<>((_, _) -> {
+    private final TypeDispatch<RequestContext, CompletionStage<AgentResponse>> requestHandlers = new TypeDispatch<>((unused1, unused2) -> {
         throw new AgentException("UNSUPPORTED");
     });
     private final Map<ControlRequest, Function<RequestContext, CompletionStage<AgentResponse>>> controlHandlers = new EnumMap<>(ControlRequest.class);
@@ -117,7 +117,7 @@ public final class AssistantRequests {
         this.registerControl(ControlRequest.FORGET, context -> answer(context, this.engine.forget(context.uuid())));
         // Navigation must not consume the interval needed by the client's immediate state refresh.
         this.controlHandlers.put(ControlRequest.OPEN, context -> this.players.requireBound(context.uuid())
-                .thenApply(_ -> new OpenResponse(OpenResponse.View.CURRENT, Optional.of(context.requestId()))));
+                .thenApply(unused -> new OpenResponse(OpenResponse.View.CURRENT, Optional.of(context.requestId()))));
     }
 
     private CompletionStage<ResultTypes.ClientState> state(UUID player) {

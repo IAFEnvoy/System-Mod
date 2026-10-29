@@ -6,7 +6,7 @@ import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * Plain messages and failures use the same card pipeline as business snapshots.
@@ -25,6 +25,6 @@ public record TextCardData(Component text) implements CardData {
 
     @Override
     public CardBuilder buildCard() {
-        return CardBuilder.template(Identifier.parse("system:text")).summary(this.text);
+        return CardBuilder.template(ResourceLocation.parse("system:text")).summary(this.text);
     }
 }

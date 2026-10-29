@@ -10,9 +10,9 @@ import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.ItemStackTemplate;
+import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.*;
 
@@ -26,14 +26,14 @@ public final class PlayerData {
             Codec.BOOL.lenientOptionalFieldOf("saveHistory", true).forGetter(v -> v.saveHistory),
             Codec.BOOL.lenientOptionalFieldOf("externalModel", true).forGetter(v -> v.externalModel),
             Conversation.CODEC.forGetter(v -> v.conversation),
-            DataStorageHolder.codec(Identifier.CODEC).fieldOf("moduleData").forGetter(v -> v.moduleData),
+            DataStorageHolder.codec(ResourceLocation.CODEC).fieldOf("moduleData").forGetter(v -> v.moduleData),
             ModelQuota.CODEC.forGetter(v -> v.modelQuota)
     ).apply(i, PlayerData::new));
     public int version;
     public boolean saveHistory, externalModel;
     public SystemBindings systems;
     public final Conversation conversation;
-    public final DataStorageHolder<Identifier> moduleData;
+    public final DataStorageHolder<ResourceLocation> moduleData;
     public final ModelQuota modelQuota;
 
     public PlayerData() {
@@ -41,7 +41,7 @@ public final class PlayerData {
     }
 
     private PlayerData(int version, SystemBindings systems, boolean saveHistory, boolean externalModel, Conversation conversation,
-                       DataStorageHolder<Identifier> moduleData, ModelQuota modelQuota) {
+                       DataStorageHolder<ResourceLocation> moduleData, ModelQuota modelQuota) {
         this.version = version;
         this.systems = systems;
         this.saveHistory = saveHistory;
@@ -127,11 +127,11 @@ public final class PlayerData {
         ).apply(i, Message::new));
     }
 
-    public record Reward(Identifier id, String label, List<ItemStackTemplate> items) {
+    public record Reward(ResourceLocation id, String label, List<ItemStackTemplate> items) {
         // Delivery reserves one main-inventory slot per template before inserting any items.
         public static final Codec<List<ItemStackTemplate>> ITEMS_CODEC = ItemStackTemplate.CODEC.listOf(1, Inventory.INVENTORY_SIZE);
         public static final Codec<Reward> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Identifier.CODEC.fieldOf("id").forGetter(Reward::id),
+                ResourceLocation.CODEC.fieldOf("id").forGetter(Reward::id),
                 Codec.STRING.fieldOf("label").forGetter(Reward::label),
                 ITEMS_CODEC.fieldOf("items").forGetter(Reward::items)
         ).apply(i, Reward::new));
@@ -183,7 +183,7 @@ public final class PlayerData {
         public static final Codec<EventTask> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.optionalFieldOf("id").forGetter(v -> Optional.ofNullable(v.id)),
                 Codec.STRING.optionalFieldOf("key").forGetter(v -> Optional.ofNullable(v.key)),
-                Identifier.CODEC.optionalFieldOf("owner").forGetter(v -> v.owner),
+                ResourceLocation.CODEC.optionalFieldOf("owner").forGetter(v -> v.owner),
                 Codec.INT.optionalFieldOf("moduleVersion", 0).forGetter(v -> v.moduleVersion),
                 AgentAction.CODEC.fieldOf("action").forGetter(v -> v.call),
                 Codec.STRING.optionalFieldOf("ruleId", "").forGetter(v -> v.ruleId),
@@ -199,7 +199,7 @@ public final class PlayerData {
                 Codec.lazyInitialized(() -> AgentResult.CODEC).optionalFieldOf("result").forGetter(v -> Optional.ofNullable(v.result))
         ).apply(i, EventTask::new));
         public String id, key, ruleId = "";
-        public Optional<Identifier> owner = Optional.empty();
+        public Optional<ResourceLocation> owner = Optional.empty();
         public int moduleVersion;
         public AgentAction call;
         public ExecutionPolicy policy;
@@ -211,7 +211,7 @@ public final class PlayerData {
         public EventTask() {
         }
 
-        private EventTask(Optional<String> id, Optional<String> key, Optional<Identifier> owner, int moduleVersion, AgentAction call, String ruleId,
+        private EventTask(Optional<String> id, Optional<String> key, Optional<ResourceLocation> owner, int moduleVersion, AgentAction call, String ruleId,
                           Optional<ExecutionPolicy> policy, long created, long expires, String state, int modelCalls,
                           int toolCalls, int workflowSteps, int writeSteps, int tokens, Optional<AgentResult> result) {
             this.id = id.orElse(null);

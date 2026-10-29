@@ -6,7 +6,7 @@ import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Map;
 
@@ -19,7 +19,7 @@ public record CreditReceiptOutput(String entitlementId, PlayerData.Reward reward
             PlayerData.Reward.CODEC.fieldOf("reward").forGetter(CreditReceiptOutput::reward),
             Codec.STRING.fieldOf("state").forGetter(CreditReceiptOutput::state)
     ).apply(i, CreditReceiptOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:entitlement");
+    public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:entitlement");
 
     @Override
     public CardBuilder buildCard() {
@@ -27,7 +27,7 @@ public record CreditReceiptOutput(String entitlementId, PlayerData.Reward reward
         builder.reward("", this.reward())
                 .put("entitlement_id", this.entitlementId()).put("state", this.state());
         if (this.state.equals("PENDING"))
-            builder.serverButton("deliver", "system.action.deliver", Identifier.parse("system:deliver"), Map.of("entitlement", this.entitlementId));
+            builder.serverButton("deliver", "system.action.deliver", ResourceLocation.parse("system:deliver"), Map.of("entitlement", this.entitlementId));
         return builder;
     }
 

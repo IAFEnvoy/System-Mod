@@ -12,7 +12,7 @@ import com.iafenvoy.system.module.builtin.CoreSystemModule;
 import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
 import com.iafenvoy.system.registry.SystemDataPackRegistries;
 import com.iafenvoy.system.registry.SystemResourceKeys;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -29,24 +29,24 @@ import java.util.stream.Collectors;
 final class ModuleAccess implements PlayerModule {
     private final MinecraftServer server;
     private final AgentEngine engine;
-    private final Set<Identifier> installed, required;
+    private final Set<ResourceLocation> installed, required;
     private final Map<UUID, ModuleAccessDataStorage> overrides = new HashMap<>();
     private final Map<UUID, CompletableFuture<Void>> pendingWrites = new ConcurrentHashMap<>();
-    private final Map<UUID, Set<Identifier>> enabled = new ConcurrentHashMap<>();
-    private final Map<UUID, Identifier> systems = new ConcurrentHashMap<>();
+    private final Map<UUID, Set<ResourceLocation>> enabled = new ConcurrentHashMap<>();
+    private final Map<UUID, ResourceLocation> systems = new ConcurrentHashMap<>();
     private final Map<UUID, ServerPlayer> players = new HashMap<>();
     private final Set<String> reportedErrors = new HashSet<>();
     private Resolution resolving;
-    private Consumer<ServerPlayer> changed = _ -> {
+    private Consumer<ServerPlayer> changed = unused -> {
     };
     private int ticks;
 
-    public ModuleAccess(MinecraftServer server, AgentEngine engine, List<Identifier> installed) {
+    public ModuleAccess(MinecraftServer server, AgentEngine engine, List<ResourceLocation> installed) {
         this.server = server;
         this.engine = engine;
         this.installed = Set.copyOf(installed);
         var registry = SystemDataPackRegistries.modules(server.registryAccess()).orElseThrow();
-        this.required = registry.keySet().stream().filter(id -> registry.getValue(id).server()
+        this.required = registry.keySet().stream().filter(id -> registry.get(id).server()
                         .filter(CoreModule.class::isInstance).isPresent()).filter(this.installed::contains)
                 .collect(Collectors.toUnmodifiableSet());
     }
@@ -55,7 +55,7 @@ final class ModuleAccess implements PlayerModule {
         this.changed = changed;
     }
 
-    public List<Identifier> enabled(UUID player) {
+    public List<ResourceLocation> enabled(UUID player) {
         return this.enabled.getOrDefault(player, Set.of()).stream().sorted().toList();
     }
 
@@ -63,11 +63,11 @@ final class ModuleAccess implements PlayerModule {
         return this.enabled.containsKey(player) && this.engine.current(player, this.engine.incarnation(player));
     }
 
-    public Optional<Identifier> system(UUID player) {
+    public Optional<ResourceLocation> system(UUID player) {
         return this.hasSystem(player) ? Optional.ofNullable(this.systems.get(player)) : Optional.empty();
     }
 
-    public boolean hasModule(UUID player, Identifier module) {
+    public boolean hasModule(UUID player, ResourceLocation module) {
         Resolution resolution = this.server.isSameThread() ? this.resolving : null;
         if (resolution != null && resolution.player.getUUID().equals(player)) return resolution.test(module);
         return this.enabled.getOrDefault(player, Set.of()).contains(module);
@@ -78,15 +78,15 @@ final class ModuleAccess implements PlayerModule {
     }
 
     // Only ModuleManager changes entitlements, so player sessions follow the same lifecycle.
-    public boolean add(ServerPlayer player, Identifier module) {
+    public boolean add(ServerPlayer player, ResourceLocation module) {
         return this.set(player, module, true);
     }
 
-    public boolean remove(ServerPlayer player, Identifier module) {
+    public boolean remove(ServerPlayer player, ResourceLocation module) {
         return this.set(player, module, false);
     }
 
-    private boolean set(ServerPlayer player, Identifier module, boolean value) {
+    private boolean set(ServerPlayer player, ResourceLocation module, boolean value) {
         if (!this.server.isSameThread()) throw new IllegalStateException("Module overrides require the server thread");
         if (!this.hasSystem(player.getUUID()) || !this.installed.contains(module) || this.required.contains(module))
             return false;
@@ -111,15 +111,15 @@ final class ModuleAccess implements PlayerModule {
         if (this.players.get(player.getUUID()) != player) return;
         Resolution resolution = new Resolution(player);
         this.resolving = resolution;
-        Set<Identifier> next;
+        Set<ResourceLocation> next;
         try {
-            Set<Identifier> result = new LinkedHashSet<>();
+            Set<ResourceLocation> result = new LinkedHashSet<>();
             this.installed.stream().sorted().filter(resolution::test).forEach(result::add);
             next = Set.copyOf(result);
         } finally {
             this.resolving = null;
         }
-        Set<Identifier> previous = this.enabled.put(player.getUUID(), next);
+        Set<ResourceLocation> previous = this.enabled.put(player.getUUID(), next);
         if (!next.equals(previous)) {
             this.changed.accept(player);
         }
@@ -133,7 +133,7 @@ final class ModuleAccess implements PlayerModule {
     @Override
     public Session login(ServerPlayer player) {
         AtomicReference<ModuleAccessDataStorage> saved = new AtomicReference<>();
-        AtomicReference<Identifier> system = new AtomicReference<>();
+        AtomicReference<ResourceLocation> system = new AtomicReference<>();
         return new Session() {
             @Override
             public void initialize(PlayerData data) {
@@ -166,7 +166,7 @@ final class ModuleAccess implements PlayerModule {
     private void persist(UUID player, ModuleAccessDataStorage snapshot) {
         AgentStore store = this.engine.playerStore(player);
         CompletableFuture<Void> previous = this.pendingWrites.getOrDefault(player, CompletableFuture.completedFuture(null));
-        CompletableFuture<Void> next = previous.handle((_, error) -> null).thenCompose(_ ->
+        CompletableFuture<Void> next = previous.handle((unused1, error) -> null).thenCompose(unused ->
                 this.engine.<Void>maintenance(() -> {
                     store.update(player, data -> {
                         ModuleData.get(data, CoreSystemModule.ACCESS).replace(snapshot.selection());
@@ -175,7 +175,7 @@ final class ModuleAccess implements PlayerModule {
                     return null;
                 })).toCompletableFuture();
         this.pendingWrites.put(player, next);
-        next.whenComplete((_, error) -> {
+        next.whenComplete((unused1, error) -> {
             if (error != null) SystemMod.LOGGER.warn("Unable to save module access for {}", player, error);
             this.pendingWrites.remove(player, next);
         });
@@ -185,18 +185,18 @@ final class ModuleAccess implements PlayerModule {
         private final ServerPlayer player;
         private final ModuleAccessDataStorage.Selection selection;
         private final List<ModuleDefinition> definitions;
-        private final Map<Identifier, Boolean> results = new HashMap<>();
-        private final Set<Identifier> visiting = new LinkedHashSet<>(), cyclic = new HashSet<>();
+        private final Map<ResourceLocation, Boolean> results = new HashMap<>();
+        private final Set<ResourceLocation> visiting = new LinkedHashSet<>(), cyclic = new HashSet<>();
 
         private Resolution(ServerPlayer player) {
             this.player = player;
             this.selection = ModuleAccess.this.overrides.getOrDefault(player.getUUID(), new ModuleAccessDataStorage()).selection();
-            Identifier system = ModuleAccess.this.systems.get(player.getUUID());
+            ResourceLocation system = ModuleAccess.this.systems.get(player.getUUID());
             this.definitions = SystemDataPackRegistries.get(ModuleAccess.this.server.registryAccess(), system)
                     .orElseThrow(() -> new AgentException("SYSTEM_UNAVAILABLE")).modules();
         }
 
-        private boolean test(Identifier module) {
+        private boolean test(ResourceLocation module) {
             if (!ModuleAccess.this.installed.contains(module)) return false;
             if (ModuleAccess.this.required.contains(module)) return true;
             if (this.selection.removed().contains(module)) return false;
@@ -204,7 +204,7 @@ final class ModuleAccess implements PlayerModule {
             if (this.results.containsKey(module)) return this.results.get(module);
             if (!this.visiting.add(module)) {
                 boolean cycle = false;
-                for (Identifier entry : this.visiting) {
+                for (ResourceLocation entry : this.visiting) {
                     cycle |= entry.equals(module);
                     if (cycle) this.cyclic.add(entry);
                 }
@@ -215,7 +215,7 @@ final class ModuleAccess implements PlayerModule {
             try {
                 EntityConditionContext context = new EntityConditionContext(this.player, FormulaContext.of(this.player));
                 result = this.definitions.stream().filter(definition -> definition.matches(
-                                ModuleAccess.this.server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE), module))
+                                ModuleAccess.this.server.registryAccess().registryOrThrow(SystemResourceKeys.SYSTEM_MODULE), module))
                         .anyMatch(definition -> definition.condition().test(context));
             } catch (RuntimeException error) {
                 this.report(module, "Module condition failed", error);
@@ -227,7 +227,7 @@ final class ModuleAccess implements PlayerModule {
             return result;
         }
 
-        private void report(Identifier module, String message, Throwable error) {
+        private void report(ResourceLocation module, String message, Throwable error) {
             if (ModuleAccess.this.reportedErrors.add(message + ":" + module))
                 SystemMod.LOGGER.warn("{}: {}", message, module, error);
         }

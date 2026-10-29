@@ -10,7 +10,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 import java.util.Map;
@@ -40,7 +40,7 @@ public record QuestOutput(String id, Component title, Component chapter, String 
             SectionPageOutput.codec("description").forGetter(QuestOutput::descriptionPage),
             SpeechContent.CODEC.fieldOf("speech").forGetter(QuestOutput::speech)
     ).apply(i, QuestOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:quest");
+    public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:quest");
 
     public QuestOutput {
         title = LegacyText.snapshot(title);
@@ -66,14 +66,14 @@ public record QuestOutput(String id, Component title, Component chapter, String 
             if (reward.choices().isPresent()) {
                 for (int i = 0; i < reward.choices().get().size(); i++) {
                     QuestChoiceOutput choice = reward.choices().get().get(i);
-                    builder.serverButton("claim_" + reward.id() + "_" + i, "system.action.choose", Identifier.parse("system:quest_claim"),
+                    builder.serverButton("claim_" + reward.id() + "_" + i, "system.action.choose", ResourceLocation.parse("system:quest_claim"),
                                     Map.of("claim_ref", reward.claimRef().get(), "choice", Integer.toString(reward.choiceOffset() + i)))
                             .actionParameter("action_reward_title", choice.title());
                 }
                 if (reward.hasMoreChoices())
                     this.page(builder, "more_choices", "system.action.more_choices", this.rewardPage.offset(), reward.choiceOffset() + reward.choices().get().size(), this.descriptionPage.offset(), this.taskPage.offset());
             } else
-                builder.serverButton("claim_" + reward.id(), "system.action.claim", Identifier.parse("system:quest_claim"), Map.of("claim_ref", reward.claimRef().get()))
+                builder.serverButton("claim_" + reward.id(), "system.action.claim", ResourceLocation.parse("system:quest_claim"), Map.of("claim_ref", reward.claimRef().get()))
                         .actionParameter("action_reward_title", reward.title());
         }
         if (this.rewardPage.hasMore())
@@ -86,7 +86,7 @@ public record QuestOutput(String id, Component title, Component chapter, String 
     }
 
     private void page(CardBuilder builder, String id, String label, int rewards, int choices, int description, int tasks) {
-        builder.serverButton(id, label, Identifier.parse("system:quest_detail"), Map.of("quest", this.id,
+        builder.serverButton(id, label, ResourceLocation.parse("system:quest_detail"), Map.of("quest", this.id,
                 "rewards", Integer.toString(rewards), "choices", Integer.toString(choices), "description", Integer.toString(description), "tasks", Integer.toString(tasks)));
     }
 

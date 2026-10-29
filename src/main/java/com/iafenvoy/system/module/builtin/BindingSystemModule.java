@@ -13,16 +13,16 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.commands.arguments.IdentifierArgument;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 import java.util.function.Consumer;
 
 public final class BindingSystemModule implements CoreModule {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "binding");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("system", "binding");
     public static final MapCodec<BindingSystemModule> CODEC = MapCodec.unit(new BindingSystemModule());
 
     @Override
@@ -32,7 +32,7 @@ public final class BindingSystemModule implements CoreModule {
 
     @Override
     public void serverCommands(LiteralArgumentBuilder<CommandSourceStack> root) {
-        root.then(Commands.literal("grant").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+        root.then(Commands.literal("grant").requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .executes(context -> {
                     context.getSource().sendFailure(Component.translatable("system.command.grant_usage"));
                     return 0;
@@ -43,22 +43,22 @@ public final class BindingSystemModule implements CoreModule {
         for (Operation operation : List.of(
                 new Operation("revoke", (runtime, target, feedback) -> runtime.players().revoke(target, feedback)),
                 new Operation("reset", (runtime, target, feedback) -> runtime.players().reset(target, feedback)))) {
-            root.then(Commands.literal(operation.name()).requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+            root.then(Commands.literal(operation.name()).requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .executes(context -> execute(context, context.getSource().getPlayerOrException(), operation))
                     .then(Commands.argument("player", EntityArgument.player())
                             .executes(context -> execute(context, EntityArgument.getPlayer(context, "player"), operation))));
         }
     }
 
-    private static RequiredArgumentBuilder<CommandSourceStack, Identifier> systemArgument() {
-        return Commands.argument("system", IdentifierArgument.id()).suggests((context, builder) ->
+    private static RequiredArgumentBuilder<CommandSourceStack, ResourceLocation> systemArgument() {
+        return Commands.argument("system", ResourceLocationArgument.id()).suggests((context, builder) ->
                 SharedSuggestionProvider.suggestResource(SystemDataPackRegistries.ids(context.getSource().getServer().registryAccess()), builder));
     }
 
     private static int grant(CommandContext<CommandSourceStack> context, ServerPlayer target) {
         AssistantServer runtime = ModuleCommands.runtime(context.getSource());
         if (runtime == null) return 0;
-        runtime.players().grant(target, IdentifierArgument.getId(context, "system"), ModuleCommands.feedback(context, target));
+        runtime.players().grant(target, ResourceLocationArgument.getId(context, "system"), ModuleCommands.feedback(context, target));
         return 1;
     }
 

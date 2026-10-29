@@ -5,7 +5,7 @@ import com.iafenvoy.system.agent.store.PlayerData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.world.item.ItemStackTemplate;
+import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.List;
 import java.util.Optional;

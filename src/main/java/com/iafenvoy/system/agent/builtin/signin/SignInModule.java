@@ -18,7 +18,7 @@ import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.SignInSystemModule;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -36,7 +36,7 @@ public final class SignInModule extends BuiltinModule<SignInInput> {
     @Override
     public ModuleRouting<SignInInput> routing() {
         return ModuleRouting.<SignInInput>defaults()
-                .button(_ -> SignInInput.INSTANCE)
+                .button(unused -> SignInInput.INSTANCE)
                 .command(AgentCommand.literal(SignInInput.INSTANCE, "signin", "签到"))
                 .semantic(RoutingProfile.hints(
                         List.of("帮我签个到", "领取今天的签到补给", "现在执行每日签到", "给我结算今日签到"),
@@ -56,7 +56,7 @@ public final class SignInModule extends BuiltinModule<SignInInput> {
         SignInDecision.Player state = SignInDecision.Player.of(context.tool(BuiltinTools.PLAYER, "snapshot", EmptyInput.INSTANCE));
         SignInDecision decision = context.model(context.prompt(SystemPrompts.SIGN_IN), SignInDecision.Input.CODEC,
                 new SignInDecision.Input(state, catalog.rewards(), day), SignInDecision.CODEC);
-        Identifier selectedId = decision.rewardId();
+        ResourceLocation selectedId = decision.rewardId();
         String reason = MiscUtil.clip(decision.reason(), 240);
         PlayerData.Reward reward = catalog.rewards().stream().filter(value -> value.id().equals(selectedId)).findFirst()
                 .orElseThrow(() -> new AgentException("MODEL_INVALID"));

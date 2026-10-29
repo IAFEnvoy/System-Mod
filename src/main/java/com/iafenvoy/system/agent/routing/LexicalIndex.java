@@ -42,7 +42,7 @@ public final class LexicalIndex<T> {
         Map<String, Integer> counts = new HashMap<>();
         for (Document<T> document : documents) {
             counts.merge(document.language(), 1, Integer::sum);
-            Map<String, Integer> terms = frequencies.computeIfAbsent(document.language(), _ -> new HashMap<>());
+            Map<String, Integer> terms = frequencies.computeIfAbsent(document.language(), unused -> new HashMap<>());
             document.features().terms().keySet().forEach(term -> terms.merge(term, 1, Integer::sum));
         }
         Map<String, Map<String, Double>> weights = new HashMap<>();

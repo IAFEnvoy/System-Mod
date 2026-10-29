@@ -1,6 +1,6 @@
 package com.iafenvoy.system.agent;
 
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -14,8 +14,8 @@ public final class CommandArguments {
     private CommandArguments() {
     }
 
-    public static Identifier identifier(String text) {
-        Identifier id = Identifier.tryParse(text);
+    public static ResourceLocation identifier(String text) {
+        ResourceLocation id = ResourceLocation.tryParse(text);
         if (id == null) throw new AgentException("INVALID_INPUT");
         return id;
     }

@@ -21,5 +21,8 @@ public final class SystemMod {
         SystemEntityConditions.REGISTRY.register(bus);
         SystemServerModules.REGISTRY.register(bus);
         SystemSoundEvents.REGISTRY.register(bus);
+        // Saturn is compiled in, so its registries and caches are wired here instead of a separate mod entrypoint.
+        SaturnIntegration.register(bus);
+        SaturnIntegration.initialize();
     }
 }

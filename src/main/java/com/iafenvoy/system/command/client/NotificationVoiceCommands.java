@@ -5,14 +5,14 @@ import com.iafenvoy.system.agent.routing.LexicalIndex;
 import com.iafenvoy.system.screen.AssistantMessages.Button;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
  */
 @EventBusSubscriber(Dist.CLIENT)
 public final class NotificationVoiceCommands {
-    private static final Identifier RESOURCE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "routing/notification-buttons.json");
+    private static final ResourceLocation RESOURCE = ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "routing/notification-buttons.json");
     private static final Codec<Map<String, Map<String, List<String>>>> CODEC = Codec.unboundedMap(Codec.STRING,
             Codec.unboundedMap(Codec.STRING, Codec.STRING.listOf()));
     private static final Pattern COMPLEX = Pattern.compile("不|别|没|如果|是否|能否|怎么|如何|为什么|然后|并且|同时|或者|以后|稍后|"
@@ -41,9 +41,8 @@ public final class NotificationVoiceCommands {
     }
 
     @SubscribeEvent
-    public static void reloadListeners(AddClientReloadListenersEvent event) {
-        event.addListener(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "notification_voice"),
-                (ResourceManagerReloadListener) NotificationVoiceCommands::reload);
+    public static void reloadListeners(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener((ResourceManagerReloadListener) NotificationVoiceCommands::reload);
     }
 
     private static void reload(ResourceManager manager) {

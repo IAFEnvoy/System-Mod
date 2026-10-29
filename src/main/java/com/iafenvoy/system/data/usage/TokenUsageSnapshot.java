@@ -15,15 +15,22 @@ import java.util.UUID;
 public record TokenUsageSnapshot(boolean all, boolean canViewAll, int offset, boolean hasMore,
                                  int playerCount, Usage totals, List<Player> players) {
     public static final int PAGE_SIZE = 8;
+    // 1.21.1's StreamCodec.composite tops out at six components, so the five page scalars travel as one header.
     public static final StreamCodec<ByteBuf, TokenUsageSnapshot> STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.BOOL, TokenUsageSnapshot::all,
-            ByteBufCodecs.BOOL, TokenUsageSnapshot::canViewAll,
-            ByteBufCodecs.VAR_INT, TokenUsageSnapshot::offset,
-            ByteBufCodecs.BOOL, TokenUsageSnapshot::hasMore,
-            ByteBufCodecs.VAR_INT, TokenUsageSnapshot::playerCount,
+            Page.STREAM_CODEC, snapshot -> new Page(snapshot.all, snapshot.canViewAll, snapshot.offset, snapshot.hasMore, snapshot.playerCount),
             Usage.STREAM_CODEC, TokenUsageSnapshot::totals,
             Player.STREAM_CODEC.apply(ByteBufCodecs.list(PAGE_SIZE)), TokenUsageSnapshot::players,
-            TokenUsageSnapshot::new);
+            (page, totals, players) -> new TokenUsageSnapshot(page.all, page.canViewAll, page.offset, page.hasMore, page.playerCount, totals, players));
+
+    private record Page(boolean all, boolean canViewAll, int offset, boolean hasMore, int playerCount) {
+        private static final StreamCodec<ByteBuf, Page> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL, Page::all,
+                ByteBufCodecs.BOOL, Page::canViewAll,
+                ByteBufCodecs.VAR_INT, Page::offset,
+                ByteBufCodecs.BOOL, Page::hasMore,
+                ByteBufCodecs.VAR_INT, Page::playerCount,
+                Page::new);
+    }
 
     public TokenUsageSnapshot {
         Objects.requireNonNull(totals);

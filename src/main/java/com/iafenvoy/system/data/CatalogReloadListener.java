@@ -8,13 +8,12 @@ import com.iafenvoy.system.agent.commerce.LotteryPool;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
-import net.neoforged.neoforge.resource.ListenerKey;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -26,14 +25,15 @@ import java.util.Map;
  * Retained per resource reload; failed reloads never publish a partial catalog.
  */
 public final class CatalogReloadListener extends SimplePreparableReloadListener<CommerceCatalog> {
-    public static final ListenerKey<CatalogReloadListener> KEY = ListenerKey.create(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "commerce_catalog"));
+    // 1.21.1 has no keyed retained-listener registry, so the last successfully applied instance publishes itself.
+    private static volatile CatalogReloadListener latest;
     private CommerceCatalog catalog;
 
     @Override
-    protected CommerceCatalog prepare(ResourceManager manager, @NonNull ProfilerFiller profiler) {
-        Map<Identifier, Resource> rewardFiles = manager.listResources("system/signin_rewards", id -> id.getPath().endsWith(".json"));
-        Map<Identifier, Resource> offerFiles = manager.listResources("system/shop_offers", id -> id.getPath().endsWith(".json"));
-        Map<Identifier, Resource> lotteryFiles = manager.listResources("system/lottery_pools", id -> id.getPath().endsWith(".json"));
+    protected CommerceCatalog prepare(ResourceManager manager, @NotNull ProfilerFiller profiler) {
+        Map<ResourceLocation, Resource> rewardFiles = manager.listResources("system/signin_rewards", id -> id.getPath().endsWith(".json"));
+        Map<ResourceLocation, Resource> offerFiles = manager.listResources("system/shop_offers", id -> id.getPath().endsWith(".json"));
+        Map<ResourceLocation, Resource> lotteryFiles = manager.listResources("system/lottery_pools", id -> id.getPath().endsWith(".json"));
         List<PlayerData.Reward> rewards = new ArrayList<>();
         List<CommerceCatalog.Offer> offers = new ArrayList<>();
         List<LotteryPool> lotteries = new ArrayList<>();
@@ -57,8 +57,16 @@ public final class CatalogReloadListener extends SimplePreparableReloadListener<
     }
 
     @Override
-    protected void apply(CommerceCatalog prepared, @NonNull ResourceManager manager, @NonNull ProfilerFiller profiler) {
+    protected void apply(CommerceCatalog prepared, @NotNull ResourceManager manager, @NotNull ProfilerFiller profiler) {
         this.catalog = prepared;
+        latest = this;
+    }
+
+    /**
+     * Returns the catalog installed by the most recent successful reload, or {@code null} before the first one.
+     */
+    public static CatalogReloadListener latest() {
+        return latest;
     }
 
     public CommerceCatalog catalog() {
@@ -66,7 +74,7 @@ public final class CatalogReloadListener extends SimplePreparableReloadListener<
         return this.catalog;
     }
 
-    private <T> T read(Map.Entry<Identifier, Resource> entry, Codec<T> codec) {
+    private <T> T read(Map.Entry<ResourceLocation, Resource> entry, Codec<T> codec) {
         try (InputStream input = entry.getValue().open()) {
             byte[] bytes = input.readAllBytes();
             return codec.parse(this.getRegistryLookup().createSerializationContext(JsonOps.INSTANCE),
@@ -76,7 +84,7 @@ public final class CatalogReloadListener extends SimplePreparableReloadListener<
         }
     }
 
-    private static Identifier id(Identifier resource, String prefix) {
+    private static ResourceLocation id(ResourceLocation resource, String prefix) {
         String path = resource.getPath();
         return resource.withPath(path.substring(prefix.length(), path.length() - 5));
     }

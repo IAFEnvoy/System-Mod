@@ -42,7 +42,7 @@
 
 | 当前基础 | 对新系统的影响 |
 | --- | --- |
-| Minecraft 26.1.2、NeoForge 26.1.2.114、Java 25 | 首版保持 Java 服务端实现，减少跨语言部署成本 |
+| Minecraft 1.21.1、NeoForge 21.1.262、Java 21 | 首版保持 Java 服务端实现，减少跨语言部署成本 |
 | 已引入 LangChain4J 1.21.0，`src/main/java` 尚无模型调用和 Agent 编排 | 可以设计新编排层，无须兼容当前仓库中不存在的对话循环 |
 | `SystemService` 负责绑定、快照和签到检查 | 可作为业务入口参考，不能直接把网络处理器暴露给模型 |
 | `SignInFunction.rewardKey` 只是展示文案，签到只写日期 | AI 奖励需要新增奖励策略、持久化账本和交付状态，不能只替换文案 |

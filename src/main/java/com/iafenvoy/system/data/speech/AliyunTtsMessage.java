@@ -1,5 +1,6 @@
 package com.iafenvoy.system.data.speech;
 
+import com.iafenvoy.system.util.ExtraCodecsCompat;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
@@ -71,7 +72,7 @@ public final class AliyunTtsMessage {
 
     public record Billing(Optional<Long> characters, Optional<Long> input, Optional<Long> output,
                           Optional<Long> total) {
-        private static final Codec<Long> COUNT = ExtraCodecs.NON_NEGATIVE_LONG.validate(v -> v <= 1_000_000
+        private static final Codec<Long> COUNT = ExtraCodecsCompat.NON_NEGATIVE_LONG.validate(v -> v <= 1_000_000
                 ? DataResult.success(v) : DataResult.error(() -> "Oversized billing count"));
         public static final Codec<Billing> CODEC = RecordCodecBuilder.create(i -> i.group(
                 COUNT.optionalFieldOf("characters").forGetter(Billing::characters),

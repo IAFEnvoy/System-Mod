@@ -51,7 +51,7 @@
 
 ## 项目约定
 
-- 文档在 `docs/`，中英文语言文件键数必须一致（当前各 70 个，`assets/system/lang/en_us.json` 与 `zh_cn.json`），键集合必须完全相同。
+- 文档在 `docs/`，中英文语言文件键数必须一致（当前各 493 个，`assets/system/lang/en_us.json` 与 `zh_cn.json`），键集合必须完全相同。
 - 新增功能类型需同时改：`SystemFunction` 实现、注册表注册、服务端快照、HTML 页面、`SystemClient` 填充、双语语言键、`docs/`。
 - 数据包注册表路径为 `data/<条目命名空间>/system/system/<文件名>.json`，三个 `system` 分别代表条目命名空间、注册表命名空间、注册表路径。
 - 不要把 `system:ftb_quests` 等可选功能写进必须能加载的内置数据包，否则未安装对应模组时整个数据包注册表会解析失败，服务器拒绝启动。引用可选功能的定义放在测试源集（`src/test-mod/resources/data/system_test/system/system/ftb_quests.json`），它只进入开发运行、不进发布 JAR。

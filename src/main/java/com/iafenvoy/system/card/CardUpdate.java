@@ -3,7 +3,7 @@ package com.iafenvoy.system.card;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.StringRepresentable;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Locale;
 import java.util.Optional;
@@ -33,7 +33,7 @@ public record CardUpdate(CardRef ref, Mode mode, Optional<CardData> data) {
         public static final Codec<Mode> CODEC = StringRepresentable.fromEnum(Mode::values);
 
         @Override
-        public @NonNull String getSerializedName() {
+        public @NotNull String getSerializedName() {
             return this.name().toLowerCase(Locale.ROOT);
         }
     }

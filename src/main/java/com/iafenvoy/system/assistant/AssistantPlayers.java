@@ -12,7 +12,7 @@ import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.registry.SystemDataPackRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -85,7 +85,7 @@ public final class AssistantPlayers {
         }));
     }
 
-    public void grant(ServerPlayer player, Identifier system, Consumer<AgentResult> feedback) {
+    public void grant(ServerPlayer player, ResourceLocation system, Consumer<AgentResult> feedback) {
         SystemDefinition definition = SystemDataPackRegistries.get(this.server.registryAccess(), system).orElse(null);
         if (definition == null) {
             AgentResult answer = AgentResult.error("SYSTEM_UNAVAILABLE");
@@ -184,7 +184,7 @@ public final class AssistantPlayers {
         }));
     }
 
-    void earned(ServerPlayer player, Identifier advancement) {
+    void earned(ServerPlayer player, ResourceLocation advancement) {
         this.refreshPlayer(player);
         this.modules.advancement(player, advancement);
     }

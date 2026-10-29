@@ -54,7 +54,7 @@ public record DetailsNode(String summary, List<CardTemplate.Node> children, bool
             if (!view.interactive()) return;
             this.expanded(toggle, arrow, content, !"true".equals(toggle.getAttribute("aria-expanded")));
             // Reflow the revealed subtree before painting or querying the next pointer position.
-            content.getRenderer().invalidateLayoutSubtree();
+            content.invalidateStyle();
             AssistantPages.commit(view.document());
         });
         Element element = view.element("div", "");

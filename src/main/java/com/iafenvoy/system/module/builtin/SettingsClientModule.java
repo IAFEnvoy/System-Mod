@@ -10,12 +10,12 @@ import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 public final class SettingsClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
-        module.localAction(Identifier.parse("system:settings"), (_, _) -> {
+        module.localAction(ResourceLocation.parse("system:settings"), (unused1, unused2) -> {
             Minecraft minecraft = Minecraft.getInstance();
             minecraft.setScreen(new AssistantSettingsScreen(minecraft.screen, AssistantSettingsScreen.Tab.GENERAL));
         });

@@ -2,7 +2,7 @@ package com.iafenvoy.system.agent.commerce;
 
 import com.mojang.serialization.Codec;
 import net.minecraft.util.StringRepresentable;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Distinguishes confirmed operations and their inbox IDs without allowing cross-purpose quotes.
@@ -19,7 +19,7 @@ public enum PurchaseType implements StringRepresentable {
     }
 
     @Override
-    public @NonNull String getSerializedName() {
+    public @NotNull String getSerializedName() {
         return this.name;
     }
 

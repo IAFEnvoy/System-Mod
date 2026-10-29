@@ -7,7 +7,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 import java.util.Map;
@@ -16,11 +16,11 @@ import java.util.Optional;
 /**
  * Public pool summaries include display samples; confirmed order contents remain server-owned.
  */
-public record LotteryPoolOutput(Identifier id, String label, Optional<CommerceCatalog.Price> price, int prizeCount,
+public record LotteryPoolOutput(ResourceLocation id, String label, Optional<CommerceCatalog.Price> price, int prizeCount,
                                 boolean paymentAvailable, List<LotteryPrizeOutput> prizes, Optional<String> quoteRef,
                                 String catalogRevision) implements CardData {
     public static final MapCodec<LotteryPoolOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Identifier.CODEC.fieldOf("id").forGetter(LotteryPoolOutput::id),
+            ResourceLocation.CODEC.fieldOf("id").forGetter(LotteryPoolOutput::id),
             Codec.STRING.fieldOf("label").forGetter(LotteryPoolOutput::label),
             CommerceCatalog.Price.CODEC.optionalFieldOf("price").forGetter(LotteryPoolOutput::price),
             Codec.INT.fieldOf("prizeCount").forGetter(LotteryPoolOutput::prizeCount),
@@ -29,7 +29,7 @@ public record LotteryPoolOutput(Identifier id, String label, Optional<CommerceCa
             Codec.STRING.optionalFieldOf("quoteRef").forGetter(LotteryPoolOutput::quoteRef),
             Codec.STRING.fieldOf("catalogRevision").forGetter(LotteryPoolOutput::catalogRevision)
     ).apply(i, LotteryPoolOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:lottery_pool");
+    public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:lottery_pool");
 
     public LotteryPoolOutput {
         prizes = List.copyOf(prizes);
@@ -44,9 +44,9 @@ public record LotteryPoolOutput(Identifier id, String label, Optional<CommerceCa
         this.price().ifPresent(builder::price);
         if (this.paymentAvailable) {
             if (this.quoteRef.isPresent())
-                builder.serverButton("draw", "system.action.lottery_confirm", Identifier.parse("system:lottery_draw"), Map.of("quote", this.quoteRef.get()));
+                builder.serverButton("draw", "system.action.lottery_confirm", ResourceLocation.parse("system:lottery_draw"), Map.of("quote", this.quoteRef.get()));
             else
-                builder.serverButton("preview", "system.action.lottery_preview", Identifier.parse("system:lottery_preview"), Map.of("pool", this.id.toString(), "revision", this.catalogRevision));
+                builder.serverButton("preview", "system.action.lottery_preview", ResourceLocation.parse("system:lottery_preview"), Map.of("pool", this.id.toString(), "revision", this.catalogRevision));
         }
         return builder;
     }

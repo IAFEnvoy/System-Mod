@@ -25,21 +25,21 @@ import java.util.concurrent.CompletionStage;
  * Server-thread snapshots use exact-class formatters; unfamiliar types retain native titles for model fallback.
  */
 final class FtbQuestSpeech implements QuestNarration.Source {
-    private static final TypeDispatch<Void, QuestNarration.Line> TASKS = new TypeDispatch<Void, QuestNarration.Line>((_, value) -> unknown((Task) value))
-            .register(ItemTask.class, (_, task) -> {
+    private static final TypeDispatch<Void, QuestNarration.Line> TASKS = new TypeDispatch<Void, QuestNarration.Line>((unused1, value) -> unknown((Task) value))
+            .register(ItemTask.class, (unused1, task) -> {
                 if (task.getItemStack().isEmpty() || ItemMatchingSystem.INSTANCE.isItemFilter(task.getItemStack()))
                     return unknown(task);
                 String key = task.consumesResources() ? "submit" : task.isOnlyFromCrafting() ? "craft" : "obtain";
                 return QuestNarration.Line.formatted("system.tts.quest." + key, task.getMaxProgress(), task.getItemStack().getHoverName());
             })
-            .register(CheckmarkTask.class, (_, _) -> QuestNarration.Line.formatted("system.tts.quest.checkmark"));
-    private static final TypeDispatch<Void, QuestNarration.Line> REWARDS = new TypeDispatch<Void, QuestNarration.Line>((_, value) -> unknown((Reward) value))
-            .register(ItemReward.class, (_, reward) -> reward.getItem().isEmpty() ? unknown(reward)
+            .register(CheckmarkTask.class, (unused1, unused2) -> QuestNarration.Line.formatted("system.tts.quest.checkmark"));
+    private static final TypeDispatch<Void, QuestNarration.Line> REWARDS = new TypeDispatch<Void, QuestNarration.Line>((unused1, value) -> unknown((Reward) value))
+            .register(ItemReward.class, (unused1, reward) -> reward.getItem().isEmpty() ? unknown(reward)
                     : QuestNarration.Line.formatted("system.tts.quest.item", amount(reward.getButtonText()), reward.getItem().getHoverName()))
-            .register(XPReward.class, (_, reward) -> QuestNarration.Line.formatted("system.tts.quest.xp", reward.getButtonText().replace("+", "")))
-            .register(XPLevelsReward.class, (_, reward) -> QuestNarration.Line.formatted("system.tts.quest.levels", reward.getButtonText().replace("+", "")))
-            .register(ChoiceReward.class, (_, reward) -> QuestNarration.Line.formatted("system.tts.quest.choice", reward.getTitle()))
-            .register(RandomReward.class, (_, reward) -> QuestNarration.Line.formatted("system.tts.quest.random", reward.getTitle()));
+            .register(XPReward.class, (unused1, reward) -> QuestNarration.Line.formatted("system.tts.quest.xp", reward.getButtonText().replace("+", "")))
+            .register(XPLevelsReward.class, (unused1, reward) -> QuestNarration.Line.formatted("system.tts.quest.levels", reward.getButtonText().replace("+", "")))
+            .register(ChoiceReward.class, (unused1, reward) -> QuestNarration.Line.formatted("system.tts.quest.choice", reward.getTitle()))
+            .register(RandomReward.class, (unused1, reward) -> QuestNarration.Line.formatted("system.tts.quest.random", reward.getTitle()));
     private final FtbQuestAccess access;
 
     FtbQuestSpeech(FtbQuestAccess access) {
@@ -52,8 +52,8 @@ final class FtbQuestSpeech implements QuestNarration.Source {
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
             if (runtime == null || !runtime.moduleManager().hasType(player.getUUID(), QuestSystemModule.CODEC))
                 throw new AgentException("CAPABILITY_UNAVAILABLE");
-            if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
-            ServerQuestFile file = ServerQuestFile.getInstance();
+            if (ServerQuestFile.getInstance().isEmpty()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            ServerQuestFile file = ServerQuestFile.getInstance().orElseThrow();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));
             Quest quest = file.getQuest(Long.parseUnsignedLong(questId, 16));
             if (quest == null || !FtbQuestReader.detailAvailable(team, quest))

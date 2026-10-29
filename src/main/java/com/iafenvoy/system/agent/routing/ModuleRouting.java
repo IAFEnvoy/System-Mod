@@ -27,7 +27,7 @@ public record ModuleRouting<I extends AgentAction>(List<AgentCommand<I>> command
     }
 
     public static <I extends AgentAction> ModuleRouting<I> defaults() {
-        return new ModuleRouting<>(List.of(), Optional.empty(), Optional.empty(), Selection.NORMAL, _ -> {
+        return new ModuleRouting<>(List.of(), Optional.empty(), Optional.empty(), Selection.NORMAL, unused -> {
             throw new AgentException("UNSUPPORTED");
         }, Optional.empty());
     }

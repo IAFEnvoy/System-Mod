@@ -2,7 +2,7 @@ package com.iafenvoy.system.agent;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -19,8 +19,8 @@ import java.util.function.Predicate;
  */
 public final class ToolRegistry {
     private final Map<String, Tool<?, ?>> tools = new HashMap<>();
-    private final Map<String, Set<Identifier>> owners = new HashMap<>();
-    private final Map<Identifier, Map<String, Tool<?, ?>>> variants = new LinkedHashMap<>();
+    private final Map<String, Set<ResourceLocation>> owners = new HashMap<>();
+    private final Map<ResourceLocation, Map<String, Tool<?, ?>>> variants = new LinkedHashMap<>();
     private boolean frozen;
 
     public void registerAll(List<Tool<?, ?>> values) {
@@ -37,19 +37,19 @@ public final class ToolRegistry {
     /**
      * Exported operations keep their feature owner even when several workflows share the same handler.
      */
-    public void registerAll(Identifier owner, List<Tool<?, ?>> values) {
+    public void registerAll(ResourceLocation owner, List<Tool<?, ?>> values) {
         Objects.requireNonNull(owner);
         this.registerVariant(owner, values);
-        values.forEach(tool -> this.owners.computeIfAbsent(tool.id(), _ -> new LinkedHashSet<>()).add(owner));
+        values.forEach(tool -> this.owners.computeIfAbsent(tool.id(), unused -> new LinkedHashSet<>()).add(owner));
     }
 
-    public void registerVariant(Identifier owner, List<Tool<?, ?>> values) {
+    public void registerVariant(ResourceLocation owner, List<Tool<?, ?>> values) {
         if (owner == null) {
             this.registerAll(values);
             return;
         }
         if (this.frozen) throw new IllegalStateException("Agent registration has finished");
-        Map<String, Tool<?, ?>> scoped = this.variants.computeIfAbsent(owner, _ -> new HashMap<>());
+        Map<String, Tool<?, ?>> scoped = this.variants.computeIfAbsent(owner, unused -> new HashMap<>());
         for (Tool<?, ?> tool : values) {
             Tool<?, ?> previous = this.tools.get(tool.id());
             if (previous != null && (previous.type() != tool.type() || previous.write() != tool.write()
@@ -62,8 +62,8 @@ public final class ToolRegistry {
         }
     }
 
-    public boolean available(String id, Predicate<Identifier> available) {
-        Set<Identifier> exporting = this.owners.get(id);
+    public boolean available(String id, Predicate<ResourceLocation> available) {
+        Set<ResourceLocation> exporting = this.owners.get(id);
         return this.tools.containsKey(id) && (exporting == null || exporting.stream().anyMatch(available));
     }
 
@@ -90,8 +90,8 @@ public final class ToolRegistry {
         return (Tool<I, O>) tool;
     }
 
-    public <I, O> Tool<I, O> require(Type<I, O> type, Identifier owner, Predicate<Identifier> available) {
-        Set<Identifier> exporting = this.owners.get(type.id());
+    public <I, O> Tool<I, O> require(Type<I, O> type, ResourceLocation owner, Predicate<ResourceLocation> available) {
+        Set<ResourceLocation> exporting = this.owners.get(type.id());
         Tool<?, ?> tool = exporting == null ? this.variants.getOrDefault(owner, Map.of()).get(type.id())
                 : exporting.stream().filter(available).map(id -> this.variants.get(id).get(type.id()))
                         .filter(Objects::nonNull).findFirst().orElse(null);

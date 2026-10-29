@@ -1,0 +1,42 @@
+package com.iafenvoy.saturn.data.action.builtin.entity;
+
+import com.iafenvoy.saturn.data.action.EntityAction;
+import com.iafenvoy.saturn.data.context.action.EntityActionContext;
+import com.iafenvoy.saturn.util.formula.FormulaContext;
+import com.iafenvoy.saturn.util.formula.NumberProvider;
+import com.iafenvoy.saturn.util.formula.number.Constant;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.core.Holder;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
+import org.jetbrains.annotations.NotNull;
+
+/**
+ * Applies an ordinary vanilla status effect to a living entity.
+ */
+public record ApplyEffectAction(Holder<MobEffect> effect, NumberProvider durationTicks,
+                                NumberProvider amplifier) implements EntityAction {
+    public static final MapCodec<ApplyEffectAction> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+            MobEffect.CODEC.fieldOf("effect").forGetter(ApplyEffectAction::effect),
+            NumberProvider.CODEC.fieldOf("duration_ticks").forGetter(ApplyEffectAction::durationTicks),
+            NumberProvider.CODEC.optionalFieldOf("amplifier", new Constant(0.0D)).forGetter(ApplyEffectAction::amplifier)
+    ).apply(i, ApplyEffectAction::new));
+
+    @Override
+    public void execute(@NotNull EntityActionContext ctx) {
+        FormulaContext context = ctx.formula();
+        if (!(ctx.entity() instanceof LivingEntity living)) return;
+        double duration = this.durationTicks.evaluate(context);
+        double amplifier = this.amplifier.evaluate(context);
+        if (!Double.isFinite(duration) || !Double.isFinite(amplifier) || duration < 1.0D || duration > Integer.MAX_VALUE || amplifier < 0.0D || amplifier > 255.0D)
+            return;
+        living.addEffect(new MobEffectInstance(this.effect, (int) Math.round(duration), (int) Math.round(amplifier)));
+    }
+
+    @Override
+    public @NotNull MapCodec<ApplyEffectAction> codec() {
+        return CODEC;
+    }
+}

@@ -5,7 +5,7 @@ import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.util.CodecIO;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -81,7 +81,7 @@ final class InteractiveExecutor implements AutoCloseable {
                 data.conversation.history.add(new PlayerData.Message(id, "user", received, text));
             return data.conversation.memoryEpoch;
         });
-        AgentModule<?> direct = this.engine.module(player, Identifier.tryParse(moduleId));
+        AgentModule<?> direct = this.engine.module(player, ResourceLocation.tryParse(moduleId));
         ExecutionPolicy initial = moduleId.isBlank() || direct == null ? AgentConfig.INSTANCE.get().routingPolicy() : this.engine.policy(direct);
         ExecutionContext context = new ExecutionContext(this.engine, player, id, null, received, epoch, initial, store, incarnation);
         this.active.put(player, context);

@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.model;
 
+import com.iafenvoy.system.util.ExtraCodecsCompat;
 import com.iafenvoy.system.config.file.ModelConfig;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -46,18 +47,18 @@ public final class ChatCompletion {
     }
 
     public record TokenDetails(Optional<Long> cachedTokens) {
-        public static final Codec<TokenDetails> CODEC = ExtraCodecs.NON_NEGATIVE_LONG.optionalFieldOf("cached_tokens")
+        public static final Codec<TokenDetails> CODEC = ExtraCodecsCompat.NON_NEGATIVE_LONG.optionalFieldOf("cached_tokens")
                 .xmap(TokenDetails::new, TokenDetails::cachedTokens).codec();
     }
 
     public record Usage(long prompt, long completion, long total, Optional<TokenDetails> details,
                         Optional<Long> cacheHit) {
         public static final Codec<Usage> CODEC = RecordCodecBuilder.create(i -> i.group(
-                ExtraCodecs.NON_NEGATIVE_LONG.fieldOf("prompt_tokens").forGetter(Usage::prompt),
-                ExtraCodecs.NON_NEGATIVE_LONG.fieldOf("completion_tokens").forGetter(Usage::completion),
-                ExtraCodecs.NON_NEGATIVE_LONG.fieldOf("total_tokens").forGetter(Usage::total),
+                ExtraCodecsCompat.NON_NEGATIVE_LONG.fieldOf("prompt_tokens").forGetter(Usage::prompt),
+                ExtraCodecsCompat.NON_NEGATIVE_LONG.fieldOf("completion_tokens").forGetter(Usage::completion),
+                ExtraCodecsCompat.NON_NEGATIVE_LONG.fieldOf("total_tokens").forGetter(Usage::total),
                 TokenDetails.CODEC.optionalFieldOf("prompt_tokens_details").forGetter(Usage::details),
-                ExtraCodecs.NON_NEGATIVE_LONG.optionalFieldOf("prompt_cache_hit_tokens").forGetter(Usage::cacheHit)
+                ExtraCodecsCompat.NON_NEGATIVE_LONG.optionalFieldOf("prompt_cache_hit_tokens").forGetter(Usage::cacheHit)
         ).apply(i, Usage::new));
         public static final Codec<Optional<Usage>> ENVELOPE = CODEC.optionalFieldOf("usage").codec();
 

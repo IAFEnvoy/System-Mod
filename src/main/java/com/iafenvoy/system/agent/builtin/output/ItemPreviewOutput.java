@@ -2,7 +2,7 @@ package com.iafenvoy.system.agent.builtin.output;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.world.item.ItemStackTemplate;
+import com.iafenvoy.system.util.ItemStackTemplate;
 
 /**
  * Display quantities may be ranges or exceed one stack; the template retains the item components.

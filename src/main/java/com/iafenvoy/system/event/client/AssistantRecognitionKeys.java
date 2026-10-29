@@ -41,7 +41,7 @@ public final class AssistantRecognitionKeys {
 
     @SubscribeEvent
     public static void key(InputEvent.Key event) {
-        if (!VOICE_INPUT.matches(event.getKeyEvent())) return;
+        if (!VOICE_INPUT.matches(event.getKey(), event.getScanCode())) return;
         if (event.getAction() == GLFW.GLFW_RELEASE) release();
         else if (event.getAction() == GLFW.GLFW_PRESS && Minecraft.getInstance().screen == null) press();
     }
@@ -50,14 +50,14 @@ public final class AssistantRecognitionKeys {
     public static void screenKey(ScreenEvent.KeyPressed.Pre event) {
         if (!(event.getScreen() instanceof AssistantScreen || event.getScreen() instanceof AssistantSimpleScreen
                 || event.getScreen() instanceof ChatScreen && AssistantMessages.hasVoiceTarget())
-                || !VOICE_INPUT.matches(event.getKeyEvent()) || !VOICE_INPUT.isConflictContextAndModifierActive())
+                || !VOICE_INPUT.matches(event.getKeyCode(), event.getScanCode()) || !VOICE_INPUT.isConflictContextAndModifierActive())
             return;
         if (press()) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public static void screenRelease(ScreenEvent.KeyReleased.Pre event) {
-        if (held && VOICE_INPUT.matches(event.getKeyEvent())) {
+        if (held && VOICE_INPUT.matches(event.getKeyCode(), event.getScanCode())) {
             boolean consumed = ownsInput(event.getScreen());
             release();
             if (consumed) event.setCanceled(true);
@@ -146,8 +146,8 @@ public final class AssistantRecognitionKeys {
         }
         InputConstants.Key key = VOICE_INPUT.getKey();
         boolean down = switch (key.getType()) {
-            case KEYSYM -> InputConstants.isKeyDown(minecraft.getWindow(), key.getValue());
-            case MOUSE -> GLFW.glfwGetMouseButton(minecraft.getWindow().handle(), key.getValue()) == GLFW.GLFW_PRESS;
+            case KEYSYM -> InputConstants.isKeyDown(minecraft.getWindow().getWindow(), key.getValue());
+            case MOUSE -> GLFW.glfwGetMouseButton(minecraft.getWindow().getWindow(), key.getValue()) == GLFW.GLFW_PRESS;
             default -> true;
         };
         if (!down || !VOICE_INPUT.isConflictContextAndModifierActive()) release();

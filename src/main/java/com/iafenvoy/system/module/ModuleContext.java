@@ -6,7 +6,7 @@ import com.iafenvoy.system.agent.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.data.SystemModule;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,14 +20,14 @@ public final class ModuleContext {
     private final MinecraftTools game;
     private final CommerceTransactions commerce;
     private final Registry<SystemModule> modules;
-    private final Identifier id;
+    private final ResourceLocation id;
     private final Map<ToolRegistry.Type<?, ?>, ToolRegistry.Tool<?, ?>> tools = new HashMap<>();
 
     public ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce, Registry<SystemModule> modules) {
         this(engine, game, commerce, modules, null);
     }
 
-    private ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce, Registry<SystemModule> modules, Identifier id) {
+    private ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce, Registry<SystemModule> modules, ResourceLocation id) {
         this.engine = engine;
         this.game = game;
         this.commerce = commerce;
@@ -51,11 +51,11 @@ public final class ModuleContext {
         return this.modules;
     }
 
-    public Identifier id() {
+    public ResourceLocation id() {
         return java.util.Objects.requireNonNull(this.id, "Module context is not scoped to a definition");
     }
 
-    ModuleContext forModule(Identifier id) {
+    ModuleContext forModule(ResourceLocation id) {
         return new ModuleContext(this.engine, this.game, this.commerce, this.modules, id);
     }
 
@@ -67,7 +67,7 @@ public final class ModuleContext {
     }
 
     public <I, O> ToolRegistry.Tool<I, O> tool(ToolRegistry.Type<I, O> type, Supplier<ToolRegistry.Tool<I, O>> factory) {
-        ToolRegistry.Tool<?, ?> value = this.tools.computeIfAbsent(type, _ -> {
+        ToolRegistry.Tool<?, ?> value = this.tools.computeIfAbsent(type, unused -> {
             ToolRegistry.Tool<I, O> tool = factory.get();
             if (tool.type() != type) throw new IllegalArgumentException("Incorrect tool factory " + type.id());
             return tool;

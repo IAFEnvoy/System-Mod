@@ -4,7 +4,7 @@ import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.CoreSystemModule;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 import java.util.Map;
@@ -29,7 +29,7 @@ final class EventExecutor implements AutoCloseable {
     }
 
     public CompletionStage<AgentResult> trigger(UUID player, String key, String ruleId, AgentAction input) {
-        Identifier moduleId = input.id();
+        ResourceLocation moduleId = input.id();
         // Event keys identify durable workflows; resuming reuses the saved policy, budget and step receipts.
         long incarnation = this.engine.incarnation(player);
         AgentStore store = this.engine.playerStore(player, incarnation);

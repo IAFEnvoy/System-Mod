@@ -14,7 +14,7 @@ public final class CommandTrees {
     }
 
     public static <S> CommandNode<S> copy(CommandNode<S> node) {
-        return copy(node, _ -> true);
+        return copy(node, unused -> true);
     }
 
     public static <S> CommandDispatcher<S> available(CommandDispatcher<S> dispatcher, S source) {

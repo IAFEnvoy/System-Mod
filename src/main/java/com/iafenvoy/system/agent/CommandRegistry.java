@@ -16,7 +16,7 @@ import com.mojang.brigadier.suggestion.Suggestion;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.tree.ArgumentCommandNode;
 import com.mojang.brigadier.tree.CommandNode;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -28,7 +28,7 @@ import java.util.function.Predicate;
  */
 public final class CommandRegistry {
     private final CommandDispatcher<AssistantCommandSource> dispatcher = new CommandDispatcher<>();
-    private final Map<String, Identifier> owners = new LinkedHashMap<>();
+    private final Map<String, ResourceLocation> owners = new LinkedHashMap<>();
     private AgentAction root;
 
     <I extends AgentAction> void validate(List<AgentCommand<I>> commands) {
@@ -38,7 +38,7 @@ public final class CommandRegistry {
                 if (!names.add(name)) throw new IllegalArgumentException("Duplicate command alias " + name);
     }
 
-    <I extends AgentAction> void register(Identifier id, List<AgentCommand<I>> commands) {
+    <I extends AgentAction> void register(ResourceLocation id, List<AgentCommand<I>> commands) {
         for (AgentCommand<I> command : commands)
             for (String name : command.names()) {
                 LiteralArgumentBuilder<AssistantCommandSource> node = command.node().apply(name);
@@ -53,20 +53,20 @@ public final class CommandRegistry {
         this.root = input;
     }
 
-    public List<String> suggestions(Predicate<Identifier> available) {
+    public List<String> suggestions(Predicate<ResourceLocation> available) {
         AssistantCommandSource source = new AssistantCommandSource("", available);
         return this.dispatcher.getRoot().getChildren().stream().filter(node -> node.canUse(source))
                 .map(node -> node.getName() + (node.getChildren().isEmpty() ? "" : " ")).toList();
     }
 
-    public CompletableFuture<Suggestions> suggest(String input, Predicate<Identifier> available) {
+    public CompletableFuture<Suggestions> suggest(String input, Predicate<ResourceLocation> available) {
         AssistantCommandInput command = AssistantCommandInput.of(input);
         AssistantCommandSource source = new AssistantCommandSource(input, available);
         CommandDispatcher<AssistantCommandSource> filtered = CommandTrees.available(this.dispatcher, source);
         return filtered.getCompletionSuggestions(filtered.parse(command.reader(filtered.getRoot()), source));
     }
 
-    public List<String> usages(Predicate<Identifier> available) {
+    public List<String> usages(Predicate<ResourceLocation> available) {
         return Arrays.stream(this.dispatcher.getAllUsage(this.dispatcher.getRoot(), new AssistantCommandSource("", available), true))
                 .map(usage -> "/" + usage).toList();
     }
@@ -74,18 +74,18 @@ public final class CommandRegistry {
     /**
      * Share standard argument nodes with /system; execution still enters the normal Agent pipeline.
      */
-    public <S> void attach(CommandNode<S> root, Function<S, Predicate<Identifier>> available, Command<S> execute) {
+    public <S> void attach(CommandNode<S> root, Function<S, Predicate<ResourceLocation>> available, Command<S> execute) {
         for (CommandNode<AssistantCommandSource> node : this.dispatcher.getRoot().getChildren())
             if (root.getChild(node.getName()) == null) root.addChild(this.copy(node, available, execute));
     }
 
     private <S> CommandNode<S> copy(CommandNode<AssistantCommandSource> node,
-                                    Function<S, Predicate<Identifier>> available, Command<S> execute) {
+                                    Function<S, Predicate<ResourceLocation>> available, Command<S> execute) {
         ArgumentBuilder<S, ?> builder;
         if (node instanceof ArgumentCommandNode<AssistantCommandSource, ?> argument) {
             RequiredArgumentBuilder<S, Object> argumentBuilder = RequiredArgumentBuilder.argument(node.getName(), cast(argument.getType()));
             if (argument.getCustomSuggestions() != null)
-                argumentBuilder.suggests((context, _) -> this.suggest("/" + context.getInput(), available.apply(context.getSource()))
+                argumentBuilder.suggests((context, unused1) -> this.suggest("/" + context.getInput(), available.apply(context.getSource()))
                         .thenApply(suggestions -> Suggestions.create(context.getInput(), suggestions.getList().stream()
                                 .map(suggestion -> new Suggestion(StringRange.between(suggestion.getRange().getStart() - 1,
                                         suggestion.getRange().getEnd() - 1), suggestion.getText(), suggestion.getTooltip())).toList())));
@@ -103,7 +103,7 @@ public final class CommandRegistry {
         return (ArgumentType<Object>) type;
     }
 
-    public AgentAction parse(String text, Predicate<Identifier> available) {
+    public AgentAction parse(String text, Predicate<ResourceLocation> available) {
         AssistantCommandInput command = AssistantCommandInput.of(text.stripTrailing());
         if (command.explicit() && command.start() == command.text().length()) {
             if (!command.text().strip().equalsIgnoreCase("/system")) throw new AgentException("UNSUPPORTED");
@@ -111,7 +111,7 @@ public final class CommandRegistry {
             if (!available.test(this.root.id())) throw new AgentException("CAPABILITY_UNAVAILABLE");
             return this.root;
         }
-        Identifier owner = this.owners.get(command.name().toLowerCase(Locale.ROOT));
+        ResourceLocation owner = this.owners.get(command.name().toLowerCase(Locale.ROOT));
         if (owner == null) {
             if (command.explicit()) throw new AgentException("UNSUPPORTED");
             return null;

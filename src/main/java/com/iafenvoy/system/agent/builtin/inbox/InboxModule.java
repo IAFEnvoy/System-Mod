@@ -36,7 +36,7 @@ public final class InboxModule extends BuiltinModule<InboxInput> {
     @Override
     public ModuleRouting<InboxInput> routing() {
         return ModuleRouting.<InboxInput>defaults()
-                .button(_ -> InboxInput.INSTANCE)
+                .button(unused -> InboxInput.INSTANCE)
                 .command(AgentCommand.literal(InboxInput.INSTANCE, "inbox", "收件箱"))
                 .semantic(RoutingProfile.read(text -> InboxInput.INSTANCE,
                         List.of("我今天签到了吗", "查看我的收件箱", "现在有哪些待领取奖励", "看一下签到状态和补给", "查看收件箱", "查看签到状态"),

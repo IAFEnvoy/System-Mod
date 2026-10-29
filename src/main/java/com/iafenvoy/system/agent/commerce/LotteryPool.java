@@ -5,7 +5,7 @@ import com.iafenvoy.system.agent.store.PlayerData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.ExtraCodecs;
 
 import java.util.List;
@@ -14,7 +14,7 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * Each confirmed draw selects one complete reward by integer weight; the model never chooses prizes.
  */
-public record LotteryPool(Identifier id, String label, List<Cost> costs, List<Entry> entries) {
+public record LotteryPool(ResourceLocation id, String label, List<Cost> costs, List<Entry> entries) {
     public LotteryPool {
         costs = List.copyOf(costs);
         entries = List.copyOf(entries);
@@ -51,7 +51,7 @@ public record LotteryPool(Identifier id, String label, List<Cost> costs, List<En
         ).apply(i, Definition::new)).validate(value -> value.enabled() && (value.label().isBlank() || value.entries().isEmpty())
                 ? DataResult.error(() -> "Enabled lottery pools need a label and entries") : DataResult.success(value));
 
-        public LotteryPool resolve(Identifier id) {
+        public LotteryPool resolve(ResourceLocation id) {
             return new LotteryPool(id, this.label, this.costs, this.entries);
         }
     }

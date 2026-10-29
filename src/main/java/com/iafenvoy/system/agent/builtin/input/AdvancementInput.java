@@ -4,14 +4,14 @@ import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.agent.AgentAction;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Optional;
 
 /**
  * Built-in parameters with boundary validation.
  */
-public record AdvancementInput(Optional<String> featureId, Optional<Identifier> rewardId,
+public record AdvancementInput(Optional<String> featureId, Optional<ResourceLocation> rewardId,
                                Optional<String> advancementId,
                                Optional<String> ruleId) implements AgentAction {
     public static final SchemaMapCodec<AdvancementInput> CODEC = SchemaCodecs.record((i, f) -> i.group(

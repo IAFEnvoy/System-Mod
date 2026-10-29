@@ -6,7 +6,7 @@ import com.iafenvoy.system.agent.store.ConversationMemory;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.card.data.SelectionCardData;
 import com.iafenvoy.system.util.CodecIO;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 import java.util.Map;
@@ -43,12 +43,12 @@ public final class HybridRouter implements AutoCloseable {
             context.ensureMemoryCurrent();
             attempt = SemanticRouter.Attempt.fallback("SEMANTIC_ERROR");
         }
-        if (attempt.decision() != null && context.available(Identifier.tryParse(attempt.decision().moduleId()))
-                && this.modules.semanticSelectable(Identifier.tryParse(attempt.decision().moduleId())))
+        if (attempt.decision() != null && context.available(ResourceLocation.tryParse(attempt.decision().moduleId()))
+                && this.modules.semanticSelectable(ResourceLocation.tryParse(attempt.decision().moduleId())))
             return attempt.decision();
         List<ModelRoute.Candidate> hints = attempt.hints().stream()
-                .filter(candidate -> this.modules.modelSelectable(Identifier.tryParse(candidate.moduleId()))
-                        && context.available(Identifier.tryParse(candidate.moduleId()))).toList();
+                .filter(candidate -> this.modules.modelSelectable(ResourceLocation.tryParse(candidate.moduleId()))
+                        && context.available(ResourceLocation.tryParse(candidate.moduleId()))).toList();
         // The decoder accepts exactly the advertised catalogue, including confirmation-only exclusions.
         List<ConversationMemory.Entry> history = context.store().read(context.player(), data -> ConversationMemory.recent(data, context.taskId(), 1600));
         ModelRoute route = context.model(context.prompt(SystemPrompts.ROUTING, Map.of("capabilities", CodecIO.write(ModelRoute.Capability.CATALOGUE, this.modules.capabilities(context::available)))),
@@ -62,7 +62,7 @@ public final class HybridRouter implements AutoCloseable {
     }
 
     public void remember(ExecutionContext context, RouteDecision decision, String text) {
-        if (!this.modules.semanticSelectable(Identifier.tryParse(decision.moduleId()))) return;
+        if (!this.modules.semanticSelectable(ResourceLocation.tryParse(decision.moduleId()))) return;
         try {
             this.semantic.remember(context, decision, text);
         } catch (Exception ignored) { /* An optional cache must not change a completed read result. */ }

@@ -12,7 +12,7 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
@@ -56,7 +56,7 @@ public record SelectionCardData(Component summary, Component speech, List<Choice
 
     @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(Identifier.parse("system:selection")).summary(this.summary).speech(this.speech);
+        CardBuilder builder = CardBuilder.template(ResourceLocation.parse("system:selection")).summary(this.summary).speech(this.speech);
         for (int i = 0; i < this.choices.size(); i++) {
             Choice choice = this.choices.get(i);
             builder.serverButton("choice_" + i, choice.labelKey(), choice.action.id(), choice.action.arguments(),

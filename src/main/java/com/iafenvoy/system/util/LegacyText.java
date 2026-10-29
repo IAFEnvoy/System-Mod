@@ -130,7 +130,7 @@ public final class LegacyText {
 
     public static String plain(String text) {
         StringBuilder result = new StringBuilder();
-        runs(text, Style.EMPTY, (run, _) -> result.append(run));
+        runs(text, Style.EMPTY, (run, unused1) -> result.append(run));
         return result.toString();
     }
 

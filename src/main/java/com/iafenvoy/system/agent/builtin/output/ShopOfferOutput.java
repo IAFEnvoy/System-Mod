@@ -9,8 +9,8 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.resources.ResourceLocation;
+import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -18,10 +18,10 @@ import java.util.Map;
 /**
  * Complete server snapshot; card construction only reads these fields.
  */
-public record ShopOfferOutput(Identifier id, String label, List<ItemStackTemplate> items, CommerceCatalog.Price price,
+public record ShopOfferOutput(ResourceLocation id, String label, List<ItemStackTemplate> items, CommerceCatalog.Price price,
                               boolean paymentAvailable, String catalogRevision) implements CardData {
     public static final MapCodec<ShopOfferOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Identifier.CODEC.fieldOf("id").forGetter(ShopOfferOutput::id),
+            ResourceLocation.CODEC.fieldOf("id").forGetter(ShopOfferOutput::id),
             Codec.STRING.fieldOf("label").forGetter(ShopOfferOutput::label),
             PlayerData.Reward.ITEMS_CODEC.fieldOf("items").forGetter(ShopOfferOutput::items),
             CommerceCatalog.Price.CODEC.fieldOf("price").forGetter(ShopOfferOutput::price),
@@ -40,11 +40,11 @@ public record ShopOfferOutput(Identifier id, String label, List<ItemStackTemplat
 
     @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(Identifier.parse("system:shop_offer")).title("system.result.shop_offer").summary(Component.literal(this.label))
+        CardBuilder builder = CardBuilder.template(ResourceLocation.parse("system:shop_offer")).title("system.result.shop_offer").summary(Component.literal(this.label))
                 .put("label", this.label).put("id", this.id.toString()).put("items", new CardText.Items(this.items.stream().map(ItemPreviewOutput::of).toList()))
                 .put("offer_items", this.items.stream().map(ItemPreviewOutput::of).toList()).put("payment_available", this.paymentAvailable).price(this.price);
         if (this.paymentAvailable)
-            builder.serverButton("quote", "system.action.shop_quote", Identifier.parse("system:shop_quote"), Map.of("offer", this.id.toString(), "revision", this.catalogRevision));
+            builder.serverButton("quote", "system.action.shop_quote", ResourceLocation.parse("system:shop_quote"), Map.of("offer", this.id.toString(), "revision", this.catalogRevision));
         return builder;
     }
 }

@@ -9,7 +9,7 @@ import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
 import com.iafenvoy.system.agent.builtin.output.FeatureOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.store.PlayerData;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
@@ -26,7 +26,7 @@ public final class AdvancementFollowupModule extends BuiltinModule<AdvancementIn
         if (input.featureId().isPresent())
             context.tool(BuiltinTools.FEATURE_UNLOCK, "unlock", new FeatureInput(input.featureId().get()));
         if (input.rewardId().isPresent()) {
-            Identifier rewardId = input.rewardId().get();
+            ResourceLocation rewardId = input.rewardId().get();
             PlayerData.Reward reward = context.catalog().rewards().stream().filter(value -> value.id().equals(rewardId)).findFirst()
                     .orElseThrow(() -> new AgentException("INVALID_INPUT"));
             context.tool(BuiltinTools.REWARD_CREDIT, "milestone", new RewardCreditInput("event:" + context.taskId(), reward));

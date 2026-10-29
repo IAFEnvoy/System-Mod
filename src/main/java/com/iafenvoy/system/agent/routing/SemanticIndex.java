@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.routing;
 
 import com.iafenvoy.system.config.file.SemanticConfig;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.io.IOException;
 import java.util.*;
@@ -48,10 +48,10 @@ final class SemanticIndex {
     }
 
     Ranking search(String text, String language) {
-        return this.search(text, language, _ -> true);
+        return this.search(text, language, unused -> true);
     }
 
-    Ranking search(String text, String language, Predicate<Identifier> available) {
+    Ranking search(String text, String language, Predicate<ResourceLocation> available) {
         LexicalIndex.Ranking<RoutingProfile.Bound> ranking = this.index.search(text, language);
         return new Ranking(ranking.matches().stream().map(match -> new Match(match.value(), match.score(), match.coverage(), match.topicsCovered()))
                 .filter(match -> available.test(match.profile().moduleId()))

@@ -33,8 +33,8 @@ final class FtbQuestFindTool implements ToolRegistry.Handler<QuestFindInput, Lis
     @Override
     public CompletionStage<List<QuestBriefOutput>> execute(ExecutionContext context, QuestFindInput input) {
         return this.access.game.onPlayer(context, player -> {
-            if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
-            ServerQuestFile file = ServerQuestFile.getInstance();
+            if (ServerQuestFile.getInstance().isEmpty()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            ServerQuestFile file = ServerQuestFile.getInstance().orElseThrow();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("CAPABILITY_UNAVAILABLE"));
             List<Quest> matches = new FtbQuestReader(file, team).find(input.query());
             // A unique match opens details directly, so it must not replace the player's displayed list indices.

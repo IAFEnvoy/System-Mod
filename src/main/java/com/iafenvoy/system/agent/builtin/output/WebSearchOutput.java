@@ -7,7 +7,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
@@ -35,7 +35,7 @@ public record WebSearchOutput(String answer, List<SearchObservation.Source> sour
     public CardBuilder buildCard() {
         Component text = this.answer.isBlank() ? Component.translatable(this.incomplete && !this.sources.isEmpty() ? "system.search.incomplete" : "system.search.no_results")
                 : Component.literal(this.answer);
-        CardBuilder builder = CardBuilder.template(Identifier.parse("system:web_search")).title("system.result.web_search").summary(text).speech(text);
+        CardBuilder builder = CardBuilder.template(ResourceLocation.parse("system:web_search")).title("system.result.web_search").summary(text).speech(text);
         return builder.list("sources", this.sources, (prefix, source) -> builder.put(prefix + "id", source.id())
                 .put(prefix + "title", source.title()).put(prefix + "url", source.url()).put(prefix + "snippet", source.snippet()));
     }

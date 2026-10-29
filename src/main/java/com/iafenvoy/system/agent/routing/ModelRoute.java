@@ -23,7 +23,7 @@ public record ModelRoute(AgentAction call) {
     public static Codec<ModelRoute> codec(Collection<MapCodec<? extends AgentAction>> capabilities) {
         Map<String, MapCodec<? extends ModelRoute>> types = new LinkedHashMap<>();
         types.put("clarify", EmptyInput.CODEC.codec().fieldOf("input")
-                .xmap(_ -> new ModelRoute(null), _ -> EmptyInput.INSTANCE));
+                .xmap(unused -> new ModelRoute(null), unused -> EmptyInput.INSTANCE));
         for (MapCodec<? extends AgentAction> codec : capabilities)
             types.put(SystemRegistries.ACTION_TYPE.getKey(codec).toString(), choice(codec));
         Codec<String> ids = Codec.STRING.validate(id -> types.containsKey(id)

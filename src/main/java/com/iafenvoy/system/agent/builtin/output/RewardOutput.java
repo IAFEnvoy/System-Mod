@@ -9,7 +9,7 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Map;
 import java.util.Optional;
@@ -41,10 +41,10 @@ public record RewardOutput(PlayerData.Reward reward, Optional<String> entitlemen
 
     @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(Identifier.parse("system:reward")).title("system.result.reward")
+        CardBuilder builder = CardBuilder.template(ResourceLocation.parse("system:reward")).title("system.result.reward")
                 .summary(this.summary).reward("", this.reward).put("reason", this.reason);
         this.entitlementId.ifPresent(id -> builder.serverButton("deliver", "system.action.deliver",
-                Identifier.parse("system:deliver"), Map.of("entitlement", id)));
+                ResourceLocation.parse("system:deliver"), Map.of("entitlement", id)));
         return builder;
     }
 }

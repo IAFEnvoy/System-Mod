@@ -4,8 +4,8 @@ import com.iafenvoy.system.command.AssistantCommandSource;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import net.minecraft.commands.arguments.IdentifierArgument;
-import net.minecraft.resources.Identifier;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 import java.util.Locale;
@@ -42,9 +42,9 @@ public record AgentCommand<I extends AgentAction>(List<String> names,
         });
     }
 
-    public static <I extends AgentAction> AgentCommand<I> identifier(String argument, Function<Identifier, I> parser, String... names) {
+    public static <I extends AgentAction> AgentCommand<I> identifier(String argument, Function<ResourceLocation, I> parser, String... names) {
         return new AgentCommand<>(List.of(names), name -> LiteralArgumentBuilder.<AssistantCommandSource>literal(name)
-                .then(RequiredArgumentBuilder.<AssistantCommandSource, Identifier>argument(argument, IdentifierArgument.id())
-                        .executes(context -> context.getSource().action(parser.apply(context.getArgument(argument, Identifier.class))))));
+                .then(RequiredArgumentBuilder.<AssistantCommandSource, ResourceLocation>argument(argument, ResourceLocationArgument.id())
+                        .executes(context -> context.getSource().action(parser.apply(context.getArgument(argument, ResourceLocation.class))))));
     }
 }

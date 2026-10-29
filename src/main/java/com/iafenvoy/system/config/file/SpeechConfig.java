@@ -4,7 +4,7 @@ import com.iafenvoy.system.config.ConfigInstance;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Locale;
@@ -72,7 +72,7 @@ public record SpeechConfig(boolean enabled, String provider, String apiKey, Stri
     }
 
     @Override
-    public @NonNull String toString() {
+    public @NotNull String toString() {
         return "SpeechSettings[provider=" + this.provider + ", enabled=" + this.enabled + "]";
     }
 }

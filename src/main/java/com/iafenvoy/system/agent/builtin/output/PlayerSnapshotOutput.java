@@ -5,7 +5,7 @@ import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
@@ -23,7 +23,7 @@ public record PlayerSnapshotOutput(String name, float health, float maxHealth, i
             Codec.STRING.listOf().fieldOf("onlinePlayers").forGetter(PlayerSnapshotOutput::onlinePlayers),
             Codec.STRING.fieldOf("language").forGetter(PlayerSnapshotOutput::language)
     ).apply(i, PlayerSnapshotOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:player");
+    public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:player");
 
     public PlayerSnapshotOutput {
         onlinePlayers = List.copyOf(onlinePlayers);

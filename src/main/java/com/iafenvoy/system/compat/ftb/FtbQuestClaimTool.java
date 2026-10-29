@@ -42,8 +42,8 @@ final class FtbQuestClaimTool implements ToolRegistry.Handler<QuestClaimInput, Q
         long rewardId = reference.reward();
         int choice = input.choice().orElse(-1);
         return this.access.game.onPlayer(context, player -> {
-            if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
-            ServerQuestFile file = ServerQuestFile.getInstance();
+            if (ServerQuestFile.getInstance().isEmpty()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            ServerQuestFile file = ServerQuestFile.getInstance().orElseThrow();
             Quest quest = file.getQuest(questId);
             Reward reward = file.getReward(rewardId);
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));

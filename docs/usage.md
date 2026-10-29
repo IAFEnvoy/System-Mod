@@ -36,7 +36,7 @@ config/system/
 
 同页的“通知音效”默认开启，无需密钥且与自动朗读独立。关闭后立即保存，不再播放通知展开提示音，正文仍按自动朗读设置播放；开启时只在首次展开播放，连续消息不重复，音量仍为播报音量的 75%。
 
-Minecraft 26.1.2 / NeoForge 26.1.2.114。服务端与客户端均安装 System；客户端安装 ApricityUI 1.2.6 及其依赖。FTB Quests 为可选集成，具体版本见开发文档。
+Minecraft 1.21.1 / NeoForge 21.1.262。服务端与客户端均安装 System；客户端安装 ApricityUI 1.2.6 及其依赖。Saturn 能力已内联，不需要另外安装 Saturn。FTB Quests 为可选集成，具体版本见开发文档。
 
 - `/system grant <系统ID> [玩家]`：管理员授予数据包定义的系统；也可用 `/system grant <系统ID>` 操作自己。系统 ID 从当前存档的 `system:system` 注册表补全与校验，例如 `/system grant system:default Steve`。首次成功后通过 HUD 显示“宿主检测 → 连接建立 → 绑定成功”提示，不打开界面；重复授予同一系统只显示已绑定通知，另一系统会被拒绝，需先 revoke。
 - `/system revoke [玩家]`：管理员撤销系统并清空该玩家的业务记录，保留累计 AI / TTS / ASR 用量；省略玩家时操作自己。

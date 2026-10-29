@@ -1,33 +1,33 @@
 package com.iafenvoy.system.config;
 
 import com.iafenvoy.system.SystemMod;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.event.AddServerReloadListenersEvent;
+import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.GameShuttingDownEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 @EventBusSubscriber
 public enum ConfigReloader implements ResourceManagerReloadListener {
     INSTANCE;
-    private static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "config_reloader");
+    private static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "config_reloader");
 
     @Override
-    public void onResourceManagerReload(@NonNull ResourceManager resourceManager) {
+    public void onResourceManagerReload(@NotNull ResourceManager resourceManager) {
         ConfigInstance.reloadAll();
     }
 
     @SubscribeEvent
-    public static void registerReloader(AddServerReloadListenersEvent event) {
-        event.addListener(ID, INSTANCE);
+    public static void registerReloader(AddReloadListenerEvent event) {
+        event.addListener(INSTANCE);
     }
 
     @SubscribeEvent
@@ -51,8 +51,8 @@ public enum ConfigReloader implements ResourceManagerReloadListener {
     @EventBusSubscriber(Dist.CLIENT)
     public static final class Client {
         @SubscribeEvent
-        public static void registerReloader(AddClientReloadListenersEvent event) {
-            event.addListener(ID, INSTANCE);
+        public static void registerReloader(RegisterClientReloadListenersEvent event) {
+            event.registerReloadListener(INSTANCE);
         }
 
         @SubscribeEvent

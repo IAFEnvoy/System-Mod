@@ -11,7 +11,7 @@ import com.iafenvoy.system.module.ServerModule;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 
 @SuppressWarnings("unused")
@@ -26,6 +26,6 @@ public final class SystemResourceKeys {
     public static final ResourceKey<Registry<SystemDefinition>> SYSTEM = create("system");
 
     private static <T> ResourceKey<Registry<T>> create(String id) {
-        return ResourceKey.createRegistryKey(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, id));
+        return ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, id));
     }
 }

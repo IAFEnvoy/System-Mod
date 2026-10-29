@@ -13,9 +13,9 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.commands.arguments.IdentifierArgument;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
@@ -29,7 +29,7 @@ final class ModuleManagementCommands {
     }
 
     static void register(LiteralArgumentBuilder<CommandSourceStack> root) {
-        root.then(Commands.literal("module").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+        root.then(Commands.literal("module").requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(change("add", true))
                 .then(change("remove", false))
                 .then(Commands.literal("list").executes(context -> list(context.getSource()))
@@ -39,11 +39,11 @@ final class ModuleManagementCommands {
 
     private static LiteralArgumentBuilder<CommandSourceStack> change(String name, boolean add) {
         return Commands.literal(name).then(Commands.argument("player", EntityArgument.player())
-                .then(Commands.argument("module", IdentifierArgument.id())
+                .then(Commands.argument("module", ResourceLocationArgument.id())
                         .suggests((context, builder) -> SharedSuggestionProvider.suggestResource(
                                 SystemDataPackRegistries.modules(context.getSource().registryAccess()).stream()
                                         .flatMap(registry -> registry.keySet().stream().filter(id -> {
-                                            SystemModule module = registry.getValue(id);
+                                            SystemModule module = registry.get(id);
                                             return module.available() && module.server().filter(CoreModule.class::isInstance).isEmpty();
                                         })).sorted(), builder))
                         .executes(context -> change(context, add))));
@@ -54,8 +54,8 @@ final class ModuleManagementCommands {
         AssistantServer runtime = ModuleCommands.runtime(source);
         if (runtime == null) return 0;
         ServerPlayer player = EntityArgument.getPlayer(context, "player");
-        Identifier id = IdentifierArgument.getId(context, "module");
-        SystemModule module = SystemDataPackRegistries.modules(source.registryAccess()).map(registry -> registry.getValue(id)).orElse(null);
+        ResourceLocation id = ResourceLocationArgument.getId(context, "module");
+        SystemModule module = SystemDataPackRegistries.modules(source.registryAccess()).map(registry -> registry.get(id)).orElse(null);
         if (module == null || !module.available()) {
             source.sendFailure(Component.translatable("system.command.module_unknown", id.toString()));
             return 0;
@@ -78,7 +78,7 @@ final class ModuleManagementCommands {
     }
 
     private static int list(CommandSourceStack source) {
-        List<Identifier> modules = SystemDataPackRegistries.moduleIds(source.registryAccess());
+        List<ResourceLocation> modules = SystemDataPackRegistries.moduleIds(source.registryAccess());
         source.sendSuccess(() -> Component.translatable("system.command.module_list", modules.size(), names(modules)), false);
         return modules.size();
     }
@@ -86,14 +86,14 @@ final class ModuleManagementCommands {
     private static int list(CommandSourceStack source, ServerPlayer player) {
         AssistantServer runtime = ModuleCommands.runtime(source);
         if (runtime == null || !requireSystem(source, player, runtime.moduleManager())) return 0;
-        List<Identifier> modules = runtime.moduleManager().enabled(player.getUUID());
+        List<ResourceLocation> modules = runtime.moduleManager().enabled(player.getUUID());
         source.sendSuccess(() -> Component.translatable("system.command.module_player_list", player.getName(), modules.size(), names(modules)), false);
         return modules.size();
     }
 
-    private static Component names(List<Identifier> modules) {
+    private static Component names(List<ResourceLocation> modules) {
         return modules.isEmpty() ? Component.translatable("system.command.module_empty")
-                : Component.literal(modules.stream().map(Identifier::toString).collect(Collectors.joining(", ")));
+                : Component.literal(modules.stream().map(ResourceLocation::toString).collect(Collectors.joining(", ")));
     }
 
     private static boolean requireSystem(CommandSourceStack source, ServerPlayer player, ModuleManager modules) {

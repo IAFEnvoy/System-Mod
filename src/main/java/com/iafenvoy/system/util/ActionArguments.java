@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentException;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -45,8 +45,8 @@ public record ActionArguments(Map<String, String> values) {
         }
     }
 
-    public Identifier identifier(String... keys) {
-        Identifier id = Identifier.tryParse(this.required(keys));
+    public ResourceLocation identifier(String... keys) {
+        ResourceLocation id = ResourceLocation.tryParse(this.required(keys));
         if (id == null) throw new AgentException("INVALID_INPUT");
         return id;
     }

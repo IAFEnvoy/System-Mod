@@ -10,12 +10,12 @@ import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.SharedModule;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
 public final class ItemSystemModule implements SharedModule {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "items");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("system", "items");
     public static final MapCodec<ItemSystemModule> CODEC = MapCodec.unit(new ItemSystemModule());
 
     @Override

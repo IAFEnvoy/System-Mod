@@ -4,15 +4,15 @@ import com.iafenvoy.saturn.data.action.EntityAction;
 import com.iafenvoy.saturn.data.context.action.EntityActionContext;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.NotNull;
 
-public record AddModuleAction(Identifier module) implements EntityAction {
-    public static final MapCodec<AddModuleAction> CODEC = Identifier.CODEC.fieldOf("module").xmap(AddModuleAction::new, AddModuleAction::module);
+public record AddModuleAction(ResourceLocation module) implements EntityAction {
+    public static final MapCodec<AddModuleAction> CODEC = ResourceLocation.CODEC.fieldOf("module").xmap(AddModuleAction::new, AddModuleAction::module);
 
     @Override
-    public @NonNull MapCodec<AddModuleAction> codec() {
+    public @NotNull MapCodec<AddModuleAction> codec() {
         return CODEC;
     }
 

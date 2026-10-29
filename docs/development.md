@@ -10,20 +10,20 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 
 | 组件 | 配置 |
 | --- | --- |
-| 模组与 Agent Java toolchain / 字节码 | 25 / Java 25 |
+| 模组与 Agent Java toolchain / 字节码 | 21 / Java 21 |
 | Gradle / ModDev | 9.2.1 / 2.0.148 |
-| Minecraft / NeoForge | 26.1.2 / 26.1.2.114 |
-| ApricityUI | 1.2.6 |
-| Jupiter | CurseMaven 8569832 |
-| Saturn | 1.0-beta.3 / CurseMaven 9349648；客户端和服务端均必装，统一 Cost、模块 DataStorage 与 Codec 工具 |
-| Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
+| Minecraft / NeoForge | 1.21.1 / 21.1.262 |
+| ApricityUI | 1.2.6；`implementation`，按需客户端 UI，Java 端外置依赖 |
+| 可空性注解 | `org.jetbrains:annotations:24.1.0`；compileOnly，取代原先的 JSpecify |
+| Saturn | 已内联并裁剪：`com.iafenvoy.saturn` 318 个文件（原 464），保留 Cost、DataStorage、Trigger、公式、动作/条件词汇与 Codec 工具；能力、资源与资源条、时间线、KubeJS 桥接、掉落条目、profiling 已删除 |
+| Simple Voice Chat | CurseMaven 9350472；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
 | Gson | 2.13.2；主项目直接声明依赖，Minecraft 提供运行时类 |
-| FTB Quests / Library / Teams | 26.1.2.8 / 26.1.2.9 / 26.1.2.4，可选 compileOnly |
+| FTB Quests / Library / Teams | 2101.1.37 / 2101.1.39 / 2101.1.11，可选 compileOnly |
 | LangChain4J | 已移除；使用 JDK HTTP 网关 |
 | 本地意图路由 | `lexical-tfidf-v1`，JDK + 已有 Gson；无新增第三方依赖、native 或模型文件 |
 | 产物体积上限 | 完整 System JAR 不超过 10,000,000 字节，`jar` 任务强制检查 |
 
-Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎、执行器、执行上下文、模块/工具接口、注册表、指令与请求结果；`builtin/<功能>` 包含该功能的工作流与单行为工具，`routing`、`model`、`store`、`commerce`、`prompt` 按职责组织。外层 `module/builtin` 平铺内置功能的两端指令、装配、生命周期与界面贡献，全部内置 DataStorage 实现集中在 `module/builtin/storage`，详见[功能模块化](feature-modules.md)。通用 Codec、Schema 和 JSON 工具直接归入外层 `com.iafenvoy.system.util`，配置统一位于外层 `config`。游戏生命周期、界面、网络、语音和可选模组桥接继续位于模组的对应包；所有代码共用主源码集、依赖和 Java 25 工具链，不单独发布 Agent 核心库。
+Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎、执行器、执行上下文、模块/工具接口、注册表、指令与请求结果；`builtin/<功能>` 包含该功能的工作流与单行为工具，`routing`、`model`、`store`、`commerce`、`prompt` 按职责组织。外层 `module/builtin` 平铺内置功能的两端指令、装配、生命周期与界面贡献，全部内置 DataStorage 实现集中在 `module/builtin/storage`，详见[功能模块化](feature-modules.md)。通用 Codec、Schema 和 JSON 工具直接归入外层 `com.iafenvoy.system.util`，配置统一位于外层 `config`。游戏生命周期、界面、网络、语音和可选模组桥接继续位于模组的对应包；所有代码共用主源码集、依赖和 Java 21 工具链，不单独发布 Agent 核心库。
 
 ```powershell
 .\gradlew.bat compileJava testModClasses jar

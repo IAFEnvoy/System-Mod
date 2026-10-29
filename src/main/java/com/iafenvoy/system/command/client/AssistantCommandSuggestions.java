@@ -12,7 +12,7 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.client.multiplayer.ClientSuggestionProvider;
+import net.minecraft.commands.SharedSuggestionProvider;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -52,7 +52,8 @@ public final class AssistantCommandSuggestions {
         if (connection == null || connection.getCommands().getRoot().getChild("system") == null) return;
         String serverInput = "system " + draft.substring(input.start());
         // Use the received permission-filtered tree and its native server suggestion providers.
-        CommandDispatcher<ClientSuggestionProvider> server = connection.getCommands();
+        // 1.21.1 types the received tree against SharedSuggestionProvider, matching getSuggestionsProvider().
+        CommandDispatcher<SharedSuggestionProvider> server = connection.getCommands();
         CompletableFuture<Suggestions> remote = server.getCompletionSuggestions(server.parse(new AssistantCommandInput(serverInput, 0, false).reader(server.getRoot()), connection.getSuggestionsProvider()));
         Set<String> workflows = AssistantClient.state().commands().stream().map(String::strip).collect(Collectors.toSet());
         local.thenCombine(remote, (result, serverResult) -> {

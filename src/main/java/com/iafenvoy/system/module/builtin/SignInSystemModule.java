@@ -13,15 +13,15 @@ import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.SharedModule;
 import com.iafenvoy.system.module.builtin.storage.SignInDataStorage;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
 public final class SignInSystemModule implements SharedModule {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "signin");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("system", "signin");
     public static final MapCodec<SignInSystemModule> CODEC = MapCodec.unit(new SignInSystemModule());
     public static final ModuleStorage<SignInDataStorage> STORAGE = new ModuleStorage<>(ID,
-            Identifier.fromNamespaceAndPath("system", "sign_in"), SignInDataStorage.class, SignInDataStorage.CODEC, SignInDataStorage::new);
+            ResourceLocation.fromNamespaceAndPath("system", "sign_in"), SignInDataStorage.class, SignInDataStorage.CODEC, SignInDataStorage::new);
 
     @Override
     public MapCodec<SignInSystemModule> codec() {

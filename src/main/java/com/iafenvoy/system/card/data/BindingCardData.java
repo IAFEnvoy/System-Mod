@@ -6,7 +6,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Map;
 
@@ -28,9 +28,9 @@ public record BindingCardData(String player, String nameKey, String descriptionK
     @Override
     public CardBuilder buildCard() {
         Component name = Component.translatable(this.nameKey), description = Component.translatable(this.descriptionKey);
-        return CardBuilder.template(Identifier.parse("system:text"))
+        return CardBuilder.template(ResourceLocation.parse("system:text"))
                 .summary(Component.translatable("system.ui.binding_text", this.player, name, description))
                 .speech(Component.translatable("system.tts.message.binding", name, description))
-                .localButton("open", "system.ui.message_open_button", Identifier.parse("system:open"), Map.of());
+                .localButton("open", "system.ui.message_open_button", ResourceLocation.parse("system:open"), Map.of());
     }
 }

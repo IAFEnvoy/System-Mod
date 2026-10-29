@@ -1,5 +1,41 @@
 # 编译与验收
 
+## 2026-10-30 裁剪内联的 Saturn
+
+按「只留本模组真正用到的」把内联源码从 464 个文件裁到 318 个。删除范围：`compat/kubejs`（18）、`data/ability`（28）+ `runtime/ability`（7）、`data/resource`（8）+ `data/resourcebar`（21）+ `runtime/resource`（2）、`data/timeline`（8）、`data/item`（`IncompleteMarker`）、`loot` 与 `SaturnLootRegistries`、`attachment/AbilityAttachment` 与 `ResourceHolderAttachment`、`api/AbilityHooks`、`event` 里四个能力/资源事件、`registry/content` 里七张对应的注册器，以及裁剪后不再被引用的 `config/SaturnConfig`、`data/{AttributeEntry,IconReference,SpriteIcon}`、`data/cost/context/CostOrigins`、`data/storage/{DataStorageCollector,DataStorageDeclaration}`、`runtime/Sources`、`util/SourceLedger`、`util/formula/NumberRange`。
+
+保留 trigger 整套（`data/trigger`、`runtime/trigger`、`TriggerRehydrateEvent`、`TriggerCooldownAttachment`、`RegistryCaches.TRIGGER_RULES_BY_SIGNAL`），即使当前没有调用方。保留 `util/math`：`Comparison` 被 `RelativeRotationCondition`、`AdjacentCondition` 等条件使用，`Space` 被两个 `AddVelocityAction` 使用，`CompareOperation` 由 `Comparison` 使用。
+
+随之改写的部分：`Cost` 去掉 `saturn:resource` 简写分支，`CostTarget` 删 `Account` 记录，`CostPayment` 删资源账单相关方法（`resources`、`resourceAmounts`、`replaceResourceAmounts`、`samePayer`、`resourceContext`、`ResourceChannel` 回填），`CostContext` 去掉账号字段，`FormulaContext` 去掉资源字段，`EntityVariable` 不再读资源，`Failure` 去掉带资源名的重载，`FailureSources` 去掉 `ABILITY`/`RESOURCE`，`SaturnRegistries`/`SaturnResourceKeys`/`SaturnDatapackRegistries`/`SaturnContent` 去掉对应注册，`COST_TYPE` 默认值从 `resource` 改为 `item`。`CommerceCosts` 删掉 `CostTarget.Account` 分支。
+
+`assets/saturn/lang` 从 81 键裁到 23 键，只保留仍会动态生成的 `failure.saturn.common.*`（`Failures` 与 `CostFailure` 的常量），中英键集合仍一致。示例包 `coin_food` 的 `saturn:resource` 费用改为 `saturn:item`，并删除 `data/example/saturn/resource`。
+
+验证：`compileJava testModClasses build` 全部通过，产物 `system-1.0-alpha.3.jar` 从 2,527,874 字节降到 2,179,923 字节。未启动游戏，触发、费用与数据存储的运行时行为未验收。
+
+## 2026-10-30 开发环境的 jarJar 库可见性
+
+`runTestClient` 启动即失败，`SystemMod` 构造抛 `NoClassDefFoundError: net/objecthunter/exp4j/function/Function`，调用点在 `SaturnFormulaFunctions.<clinit>`。排查确认这不是依赖没声明：Gradle 实际启动命令的 `-cp`（17 794 字符）里有 `exp4j-0.4.8.jar`，该 jar 里也有 `net/objecthunter/exp4j/function/Function.class`，`main.runtimeClasspath` 共 118 项同样包含它。真正的原因是开发态本模组以「文件夹 mod」形式加载：`-Dfml.modFolders` 只给出 `build/classes/java/main` 与 `build/resources/main` 两个根，FML 不会展开发布 jar 里的 `META-INF/jarjar` 嵌套副本，因此非 mod 的库必须落在模组自己的根目录下才可见。
+
+修复：`processResources` 把 jarJar 的 exp4j 解压到模组资源根（`build.gradle:138-148`），`jar` 任务再排除 `net/objecthunter/**`，发布包继续只带 `META-INF/jarjar/exp4j-0.4.8.jar` 这一份嵌套副本。验证：`clean processResources jar` 后资源根下有 51 个 exp4j 类，发布 jar 内 `META-INF/jarjar/exp4j-0.4.8.jar` 与 `metadata.json` 存在、散落的 `net/objecthunter/**` 为 0；`runTestClient` 实际启动正常（游戏可进，日志 `run-test-client/logs/latest.log`）。
+
+同一轮还修了 1.21.1 的元数据要求：FML 4.0.45 的 `ModFileInfo` 强制要求 `modLoader` 与 `loaderVersion`，缺任一项就报 `InvalidModFileException: Missing ModLoader in file`（26.x 的格式没有这两项），两份 `neoforge.mods.toml` 都已补 `modLoader="javafml"` / `loaderVersion="[4,)"`。
+
+随后统一了依赖口径：ApricityUI 定为 1.2.6（`gradle.properties` 与文档、产物元数据一致）；可空性注解由 JSpecify 换成 `org.jetbrains:annotations:24.1.0`（compileOnly，NeoForge 本就传递引入同一版本，因此没有版本偏移）。231 个文件把 `import org.jspecify.annotations.NonNull` / `@NonNull` 改成 `org.jetbrains.annotations.NotNull` / `@NotNull`（426 处），`Nullable` 只换包名（38 处），`org.jspecify:jspecify` 依赖删除；`compileJava testModClasses` 通过。
+
+## 2026-10-29 迁移到 Minecraft 1.21.1
+
+仓库从 26.1.2 迁到 1.21.1：`minecraft_version=1.21.1`、`neo_version=21.1.262`、Java toolchain 21、ApricityUI `1.2.6`、FTB `2101.1.37/2101.1.39/2101.1.11`、SVC `9350472`（`1.21.1-2.6.27`）。Saturn 不再作为外部依赖，其最小闭包源码内联到 `com.iafenvoy.saturn`，`neoforge.mods.toml` 删除 saturn 依赖；`system.mixins.json` 的 `compatibilityLevel` 改为 `JAVA_21`。
+
+API 差异逐项按 1.21.1 源码或字节码核对，不凭记忆：`Registry#getValue`→`get`（1.21.1 返回可空值而非 `Optional`）、`EntitySpawnReason`→`MobSpawnType`、`ResourceKey#identifier`→`location`、`advancements.criterion`→`critereon`；1.21.1 无 `SavedDataType`（改用 `SavedData.Factory` + `save(CompoundTag, Provider)`，存于主世界 DataStorage）、无 `SoundEngine.PlayResult`（用 `isActive` 探测）、无 `RenderElement.invalidateLayoutSubtree`（改用 `Element.invalidateStyle`）、`StreamCodec.composite` 最多 6 分量（页标量折叠为内部记录）、`LootItemFunction`/`LootItemCondition` 需 `getType()` 且无 `codec()` 钩子、`ScreenEvent` 按键用 `getKeyCode()` 而 `InputEvent.Key` 用 `getKey()`、`Level.getEntity(UUID)` 仅 `ServerLevel` 提供、`EntityType.create(Level, MobSpawnType)` 不存在。
+
+`AuiCursorReleaseMixin` 的注入目标与所引用 AUI 成员已按 1.2.6 字节码逐一核对：`CursorReleaseController.update(boolean,boolean,boolean,Runnable,Runnable)` 存在，首个 boolean 即 ordinal 0；`Document.getAll/isActive/isManuallyRendered/getPath/getElements`、`Interaction.isDisplayed/isVisible`、`Size.box`、`Element.isConnected/getComputedStyle`、`Style.pointerEvents` 均存在，mixin 无需改动。
+
+FTB 2101.1.37 移除了 `CustomTask.enableButton()` getter（类中仅剩 `checkOnLogin()Z` 一个 `()Z`，字段只在客户端 `writeNetData` 同步），`FtbQuestReader` 改为缓存反射读取该私有字段，读不到时告警并退回 `Submission.NONE`；这是已知的脆弱点，FTB 改名或加模块化限制会静默降级。
+
+Saturn 内联后补回两处只有独立 `@Mod` 才会做的事：`SaturnIntegration` 在 `SystemMod` 构造函数里注册 `SaturnAttachments` 与 `SaturnContent`（当时的 23 个内容注册器，现已随裁剪减少），并调用 `RegistryCaches.init()` 触发行名与触发规则两张缓存加入 `RegistryCache` 的重建列表。缺任一项都只会让注册表整局为空而不报编译错误。Saturn 的静态订阅者（新建注册表、数据包注册表、标签更新）仍靠 `@EventBusSubscriber` 自动注册，无需手动接线。上游 `assets/saturn/lang/en_us.json` 与 `zh_cn.json` 当时一并复制（各 81 键，现为 23 键）；`incomplete.png` 与 `saturn.mixins.json` 未复制，闭包内 `runtime/hold` 整包不存在且无任何引用。
+
+执行 `compileJava testModClasses build --console=plain` 全部通过，产物 `system-1.0-alpha.3.jar` 的元数据已展开为 `[1.21.1,1.22)` / `[21.1.262,)` / `[1.2.6,)` 且无 saturn 依赖，`assets/saturn/lang` 已进包，中英系统语言文件各 493 键且集合一致。未启动 Minecraft，运行时行为、网络协议、mixin 实际注入与 AUI 渲染均未游戏内验收。
+
 ## 2026-10-29 通知取消自动关闭与切换
 
 阅读 AssistantMessages 确认原实现以 160 个可见客户端 tick 倒计时，到期 dismiss 并显示下一条，与 TTS 是否结束无关。删除倒计时、消息时长及仅用于暂停计时的按钮字段，可见阶段持续保留通知。确认、关闭、业务按钮的原位替换、服务端 REPLACE/REMOVE 和断线清理继续使用原有流程；中英文提示移除自动收起与暂停计时的描述，相关使用、界面和语音文档同步。
@@ -26,7 +62,7 @@
 
 ## 2026-10-29 重进世界后客户端模块入口恢复
 
-只读检查现有存档确认系统绑定与模块存储仍保留。对照当前 NeoForge TagsUpdatedEvent 源码、Saturn RegistryCache 实现和本项目 ModDev 的 MC 26.1.2 补丁源码，确认共享静态缓存跳过单人连接的 ClientPacketReceived，世界加载的 disconnect 又会触发客户端登出清理；原 get 使用 RegistryAccess.EMPTY 惰性装配后不再纠正，造成已绑定但模块入口消失。
+只读检查现有存档确认系统绑定与模块存储仍保留。对照当前 NeoForge TagsUpdatedEvent 源码、Saturn RegistryCache 实现和本项目 ModDev 的 MC 1.21.1 补丁源码，确认共享静态缓存不覆盖单人连接的客户端标签更新路径，世界加载的 disconnect 又会触发客户端登出清理；原 get 使用 RegistryAccess.EMPTY 惰性装配后不再纠正，造成已绑定但模块入口消失。
 
 ClientModuleBindingsCache 改为仅按客户端标签同步和登出事件维护自身与命令缓存，包含单人连接，不再继承共享静态 RegistryCache。首次访问优先使用当前连接注册表，配置阶段已收到标签但本地玩家尚未创建时保留快照；连接注册表改变会按需重建。存档与服务端模块权限逻辑无需改动。
 
@@ -110,7 +146,7 @@ ServerModule 仅保留服务端生命周期、存储与依赖可用性；ToolMod
 
 执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未执行测试或启动 Minecraft。
 
-阅读代码确认：SystemResourceKeys / SystemRegistries 移除 Client 内部类，全部 10 张代码注册表在两端统一创建并登记。客户端模块、节点和语音工厂仍仅在 Dist.CLIENT 入口绑定，专用服务端保留空表；共用卡片载荷在公共入口登记，供服务端构建回复。核对当前 NeoForge 26.1.2.114 源码，RegistryBuilder 的 sync 默认 false，sync(true) 仅用于数字 ID 同步；本次沿用名称编码，不新增同步协议。专用服务端实际类加载及联机同步尚未游戏内验收。
+阅读代码确认：SystemResourceKeys / SystemRegistries 移除 Client 内部类，全部 10 张代码注册表在两端统一创建并登记。客户端模块、节点和语音工厂仍仅在 Dist.CLIENT 入口绑定，专用服务端保留空表；共用卡片载荷在公共入口登记，供服务端构建回复。核对当前 NeoForge 21.1.262 源码，RegistryBuilder 的 sync 默认 false，sync(true) 仅用于数字 ID 同步；本次沿用名称编码，不新增同步协议。专用服务端实际类加载及联机同步尚未游戏内验收。
 
 ## 2026-10-28 响应实现与 Codec 拆分
 

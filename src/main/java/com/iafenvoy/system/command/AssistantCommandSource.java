@@ -1,7 +1,7 @@
 package com.iafenvoy.system.command;
 
 import com.iafenvoy.system.agent.AgentAction;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.function.Predicate;
 
@@ -10,10 +10,10 @@ import java.util.function.Predicate;
  */
 public final class AssistantCommandSource {
     private final String input;
-    private final Predicate<Identifier> available;
+    private final Predicate<ResourceLocation> available;
     private AgentAction action;
 
-    public AssistantCommandSource(String input, Predicate<Identifier> available) {
+    public AssistantCommandSource(String input, Predicate<ResourceLocation> available) {
         this.input = input;
         this.available = available;
     }
@@ -22,7 +22,7 @@ public final class AssistantCommandSource {
         return this.input;
     }
 
-    public boolean available(Identifier id) {
+    public boolean available(ResourceLocation id) {
         return this.available.test(id);
     }
 

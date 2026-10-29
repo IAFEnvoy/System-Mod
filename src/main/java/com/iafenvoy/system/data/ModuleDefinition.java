@@ -9,7 +9,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 
 import java.util.List;
@@ -29,7 +29,7 @@ public record ModuleDefinition(Either<Holder<SystemModule>, TagKey<SystemModule>
         this(id, AlwaysCondition.INSTANCE);
     }
 
-    public boolean matches(Registry<SystemModule> registry, Identifier module) {
+    public boolean matches(Registry<SystemModule> registry, ResourceLocation module) {
         return RegistryCodecs.matches(List.of(this.id), registry, module);
     }
 }

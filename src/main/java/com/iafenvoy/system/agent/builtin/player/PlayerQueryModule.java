@@ -22,7 +22,7 @@ public final class PlayerQueryModule extends BuiltinModule<PlayerQueryInput> {
     @Override
     public ModuleRouting<PlayerQueryInput> routing() {
         return ModuleRouting.<PlayerQueryInput>defaults()
-                .button(_ -> PlayerQueryInput.INSTANCE)
+                .button(unused -> PlayerQueryInput.INSTANCE)
                 .command(AgentCommand.literal(PlayerQueryInput.INSTANCE, "player", "状态", "玩家"))
                 .semantic(RoutingProfile.read(text -> PlayerQueryInput.INSTANCE,
                         List.of("查一下我的状态", "看看我当前的血量和等级", "我现在在哪个维度", "检测宿主状态", "查看我的血量", "查看我的等级", "查看我的位置", "查看血量", "查看维度"),

@@ -1,3 +1,5 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
 license = "${mod_license}"
 
 [[mods]] #mandatory
@@ -31,16 +33,9 @@ ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.${mod_id}]]
-modId = "saturn"
-type = "required"
-versionRange = "[0,)"
-ordering = "AFTER"
-side = "BOTH"
-
-[[dependencies.${mod_id}]]
 modId = "apricityui"
 type = "required"
-versionRange = "[1.2.6,)"
+versionRange = "[${apricityui_version},)"
 ordering = "AFTER"
 side = "CLIENT"
 

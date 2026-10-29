@@ -9,7 +9,7 @@ import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -30,14 +30,14 @@ import java.util.function.Supplier;
 @EventBusSubscriber(Dist.CLIENT)
 public final class ClientModuleBindingsCache implements Supplier<ClientModuleBindingsCache> {
     private List<Workspace> workspace = List.of();
-    private Map<Identifier, BiConsumer<CardRef, Map<String, String>>> localActions = Map.of();
+    private Map<ResourceLocation, BiConsumer<CardRef, Map<String, String>>> localActions = Map.of();
     private RegistryAccess registries;
     private boolean building;
 
     @SubscribeEvent
-    public static void onTagsUpdated(TagsUpdatedEvent.ClientPacketReceived event) {
+    public static void onTagsUpdated(TagsUpdatedEvent event) {
         // Client bindings need every connection's snapshot, including integrated-server packets.
-        ClientModuleCaches.BINDINGS.rebuild(event.getRegistries());
+        ClientModuleCaches.BINDINGS.rebuild(event.getRegistryAccess());
     }
 
     @SubscribeEvent
@@ -53,10 +53,10 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
         ClientModuleCaches.COMMAND.begin();
         try {
             SystemClientModules.local().forEach((id, module) -> this.register(id, module, List.of()));
-            Map<Identifier, List<Identifier>> definitions = new LinkedHashMap<>();
+            Map<ResourceLocation, List<ResourceLocation>> definitions = new LinkedHashMap<>();
             SystemDataPackRegistries.modules(access).ifPresent(registry ->
-                    SystemDataPackRegistries.moduleIds(access).forEach(id -> registry.getValue(id).client().ifPresent(type ->
-                            definitions.computeIfAbsent(type, _ -> new ArrayList<>()).add(id))));
+                    SystemDataPackRegistries.moduleIds(access).forEach(id -> registry.get(id).client().ifPresent(type ->
+                            definitions.computeIfAbsent(type, unused -> new ArrayList<>()).add(id))));
             definitions.forEach((type, ids) -> {
                 if (SystemClientModules.local().containsKey(type)) return;
                 ClientModule module = SystemClientModules.get(type);
@@ -74,7 +74,7 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
         }
     }
 
-    private void register(Identifier id, ClientModule module, List<Identifier> definitions) {
+    private void register(ResourceLocation id, ClientModule module, List<ResourceLocation> definitions) {
         module.register(new ClientModuleContext(this, id, module, definitions));
         ClientModuleCaches.COMMAND.game(module::clientCommands);
     }
@@ -98,13 +98,13 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
         return this;
     }
 
-    void localAction(Identifier id, BiConsumer<CardRef, Map<String, String>> handler) {
+    void localAction(ResourceLocation id, BiConsumer<CardRef, Map<String, String>> handler) {
         if (!this.building) throw new IllegalStateException("Client module registration has finished");
         if (this.localActions.putIfAbsent(id, handler) != null)
             throw new IllegalArgumentException("Duplicate local card action " + id);
     }
 
-    public void localAction(Identifier id, CardRef source, Map<String, String> arguments) {
+    public void localAction(ResourceLocation id, CardRef source, Map<String, String> arguments) {
         BiConsumer<CardRef, Map<String, String>> handler = this.localActions.get(id);
         if (handler != null) handler.accept(source, arguments);
     }

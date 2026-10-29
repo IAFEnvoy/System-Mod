@@ -31,19 +31,26 @@ repositories {
     maven { url = "https://cursemaven.com" }
     maven { url = "https://maven.sighs.cc/repository/maven-public/" }
     maven { url = 'https://maven.ftb.dev/releases' }
+    // FTB Quests 1.21.1 pulls Architectury as a transitive dependency.
+    maven { url = 'https://maven.architectury.dev' }
 }
 
 base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(25)
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
 def testClientGameDirectory = project.findProperty('systemTestClientGameDirectory') ?: 'run-test-client'
 def testClientUsername = project.findProperty('systemTestClientUsername')
 
 neoForge {
     version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
 
     runs {
         client {
@@ -74,7 +81,7 @@ neoForge {
         }
 
         data {
-            clientData()
+            data()
             programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
         }
 
@@ -108,9 +115,11 @@ configurations {
 }
 
 dependencies {
-    implementation "curse.maven:jupiter-1072905:8569832"
-    implementation "curse.maven:saturn-lib-1767455:9349648"
-    implementation "com.sighs:ApricityUI-neoforge-26.1:${apricityui_version}"
+    implementation "com.sighs:ApricityUI-neoforge-1.21.1:${apricityui_version}"
+    // Formula expressions are evaluated by exp4j; it rides along in this jar so a dependent mod does not have to.
+    implementation jarJar("net.objecthunter:exp4j:0.4.8")
+    // Nullability annotations for the inlined sources; NeoForge already resolves this version transitively.
+    compileOnly "org.jetbrains:annotations:24.1.0"
 
     // SVC for optional voice input support
     compileOnly "curse.maven:simple-voice-chat-416089:${voicechat_file_id}"
@@ -126,6 +135,20 @@ dependencies {
     runtimeOnly "dev.ftb.mods:ftb-teams-neoforge:${ftb_teams_version}"
 }
 
+// A jarJar'd library is shipped nested inside the release jar, but in a development run this mod is a pair of folders
+// and FML only shows it those folders - the nested jar is never extracted, so exp4j used to be missing at runtime.
+// Unpacking it next to the mod classes puts it in the mod's own roots; the jar below drops those copies again and
+// keeps only the nested one.
+tasks.named('processResources', ProcessResources) {
+    from({ zipTree(configurations.jarJar.singleFile) }) {
+        include 'net/objecthunter/**'
+    }
+}
+
+tasks.named('jar', Jar) {
+    exclude 'net/objecthunter/**'
+}
+
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
             minecraft_version      : minecraft_version,
@@ -136,6 +159,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_license            : mod_license,
             mod_version            : mod_version,
             ftb_quests_version     : ftb_quests_version,
+            apricityui_version     : apricityui_version,
     ]
     inputs.properties replaceProperties
     expand replaceProperties
@@ -160,6 +184,8 @@ publishing {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    // Report every diagnostic in one run; javac stops at 100 by default, which hides the real migration surface.
+    options.compilerArgs << '-Xmaxerrs' << '10000'
 }
 
 idea {

@@ -8,9 +8,12 @@ import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.UUIDUtil;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.minecraft.world.level.saveddata.SavedDataType;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.CompoundTag;
 
 import java.util.*;
 
@@ -22,10 +25,24 @@ public final class TokenUsageData extends SavedData {
     private static final Codec<TokenUsageData> CODEC = RecordCodecBuilder.create(i -> i.group(
             PlayerUsage.CODEC.listOf().optionalFieldOf("players", List.of()).forGetter(TokenUsageData::entries)
     ).apply(i, TokenUsageData::new));
-    public static final SavedDataType<TokenUsageData> TYPE = new SavedDataType<>(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "token_usage"), TokenUsageData::new, CODEC);
+    // 1.21.1 identifies saved data by file id plus a Factory, not by SavedDataType.
+    public static final String FILE_ID = ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "token_usage").toString();
+    public static final Factory<TokenUsageData> FACTORY = new Factory<>(TokenUsageData::new,
+            (tag, registries) -> CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), tag).getOrThrow());
     private final Map<UUID, PlayerUsage> players = new HashMap<>();
 
     public TokenUsageData() {
+    }
+
+    @Override
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+        // The codec produces an opaque Tag; SavedData hands back the CompoundTag it was given.
+        Tag encoded = CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), this)
+                .getOrThrow(error -> new IllegalStateException("Failed to save token usage: " + error));
+        if (!(encoded instanceof CompoundTag compound))
+            throw new IllegalStateException("Token usage did not encode to a compound tag");
+        tag.merge(compound);
+        return tag;
     }
 
     private TokenUsageData(List<PlayerUsage> entries) {

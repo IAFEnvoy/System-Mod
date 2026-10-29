@@ -8,10 +8,10 @@ import com.iafenvoy.system.agent.builtin.output.ItemPageOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemStackTemplate;
+import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,8 +32,8 @@ public record ItemQueryTool(MinecraftTools game) implements ToolRegistry.Handler
         return this.game.onPlayer(context, player -> {
             List<ItemInfoOutput> items = new ArrayList<>();
             int matches = 0;
-            for (Identifier id : BuiltInRegistries.ITEM.keySet().stream().sorted().toList()) {
-                Item item = BuiltInRegistries.ITEM.getValue(id);
+            for (ResourceLocation id : BuiltInRegistries.ITEM.keySet().stream().sorted().toList()) {
+                Item item = BuiltInRegistries.ITEM.get(id);
                 String name = new ItemStack(item).getHoverName().getString();
                 if (!id.toString().contains(query) && !name.toLowerCase(Locale.ROOT).contains(query)) continue;
                 if (matches++ < input.offset()) continue;

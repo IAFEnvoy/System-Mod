@@ -138,7 +138,9 @@ public final class AssistantSpeech {
             NotificationSound cue = new NotificationSound(current.volume());
             notification = cue;
             try {
-                if (minecraft.getSoundManager().play(cue) == SoundEngine.PlayResult.NOT_STARTED) {
+                // 1.21.1 reports no play result, so a source that never becomes active is treated as failed.
+                minecraft.getSoundManager().play(cue);
+                if (!minecraft.getSoundManager().isActive(cue)) {
                     cue.close();
                     notification = null;
                 }

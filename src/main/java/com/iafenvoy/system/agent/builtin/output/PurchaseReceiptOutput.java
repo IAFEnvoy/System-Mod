@@ -7,7 +7,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Map;
 import java.util.Optional;
@@ -16,15 +16,15 @@ import java.util.Optional;
  * Built-in result data and its serialization codec.
  */
 public record PurchaseReceiptOutput(String orderId, String entitlementId, PlayerData.Reward reward, String state,
-                                    Optional<Identifier> sourcePool) implements CardData {
+                                    Optional<ResourceLocation> sourcePool) implements CardData {
     public static final MapCodec<PurchaseReceiptOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("orderId").forGetter(PurchaseReceiptOutput::orderId),
             Codec.STRING.fieldOf("entitlementId").forGetter(PurchaseReceiptOutput::entitlementId),
             PlayerData.Reward.CODEC.fieldOf("reward").forGetter(PurchaseReceiptOutput::reward),
             Codec.STRING.fieldOf("state").forGetter(PurchaseReceiptOutput::state),
-            Identifier.CODEC.optionalFieldOf("sourcePool").forGetter(PurchaseReceiptOutput::sourcePool)
+            ResourceLocation.CODEC.optionalFieldOf("sourcePool").forGetter(PurchaseReceiptOutput::sourcePool)
     ).apply(i, PurchaseReceiptOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:purchase");
+    public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:purchase");
 
     public PurchaseReceiptOutput(String orderId, String entitlementId, PlayerData.Reward reward, String state) {
         this(orderId, entitlementId, reward, state, Optional.empty());
@@ -38,8 +38,8 @@ public record PurchaseReceiptOutput(String orderId, String entitlementId, Player
         builder.reward("", this.reward())
                 .put("order_id", this.orderId()).put("entitlement_id", this.entitlementId()).put("state", this.state());
         if (this.state.equals("COMPLETED"))
-            builder.serverButton("deliver", "system.action.deliver", Identifier.parse("system:deliver"), Map.of("entitlement", this.entitlementId));
-        this.sourcePool.ifPresent(id -> builder.serverButton("again", "system.action.lottery_again", Identifier.parse("system:lottery_preview"), Map.of("pool", id.toString())));
+            builder.serverButton("deliver", "system.action.deliver", ResourceLocation.parse("system:deliver"), Map.of("entitlement", this.entitlementId));
+        this.sourcePool.ifPresent(id -> builder.serverButton("again", "system.action.lottery_again", ResourceLocation.parse("system:lottery_preview"), Map.of("pool", id.toString())));
         return builder;
     }
 

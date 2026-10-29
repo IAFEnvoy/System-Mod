@@ -18,12 +18,12 @@ import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStackTemplate;
-import org.jspecify.annotations.Nullable;
+import com.iafenvoy.system.util.ItemStackTemplate;
+import org.jetbrains.annotations.Nullable;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -38,7 +38,7 @@ public final class CommerceCosts {
     private CommerceCosts() {
     }
 
-    public static Prepared prepare(List<Cost> costs, ServerPlayer player, PurchaseType type, Identifier source) {
+    public static Prepared prepare(List<Cost> costs, ServerPlayer player, PurchaseType type, ResourceLocation source) {
         CostContext context = CostContext.of(player, "system:" + type.getSerializedName()).with("system:source", source);
         CostPayment bill = CostPayment.of(context);
         AtomicBoolean started = new AtomicBoolean();
@@ -46,7 +46,7 @@ public final class CommerceCosts {
         List<ItemPreviewOutput> items = new ArrayList<>();
         List<Component> descriptions = new ArrayList<>();
         Failure failure = null;
-        Identifier failedResource = null;
+        ResourceLocation failedResource = null;
         for (Cost cost : costs) {
             ResultWithData<Cost.Transaction> result = cost.prepare(context);
             if (result.isFailure()) {
@@ -70,8 +70,6 @@ public final class CommerceCosts {
                     Item item
             ))
                 items.add(new ItemPreviewOutput(new ItemStackTemplate(item), number(Math.ceil(transaction.amount()))));
-            else if (transaction.target() instanceof CostTarget.Account target)
-                descriptions.add(Component.translatableWithFallback(DefinitionText.key(target.resource()), target.resource().unwrapKey().orElseThrow().identifier().toString()).append(" × " + number(transaction.amount())));
             else if (transaction.target() instanceof CostTarget.Items target) {
                 MutableComponent alternatives = Component.empty();
                 for (ItemMatcher.Entry entry : target.entries()) {
@@ -109,7 +107,7 @@ public final class CommerceCosts {
         private final AtomicBoolean started, uncertain;
 
         private Prepared(ServerPlayer payer, CostPayment bill, CommerceCatalog.Price price, @Nullable Failure failure,
-                         @Nullable Identifier failedResource, AtomicBoolean started, AtomicBoolean uncertain) {
+                         @Nullable ResourceLocation failedResource, AtomicBoolean started, AtomicBoolean uncertain) {
             super(price, failure, failedResource);
             this.payer = payer;
             this.bill = bill;

@@ -20,23 +20,23 @@ import java.util.Objects;
  * Deterministic, bounded projections; history never grants permissions or invents facts.
  */
 public final class ConversationMemory {
-    private static final TypeDispatch<Void, Fact> FACTS = new TypeDispatch<Void, Fact>((_, _) -> null)
-            .register(PlayerSnapshotOutput.class, (_, v) -> fact("player", "", v.name(), ""))
-            .register(StateOutput.class, (_, v) -> fact("state", "", "", v.state()))
-            .register(QuestClaimOutput.class, (_, v) -> fact("quest_claim", "", "", v.state()))
-            .register(RewardOutput.class, (_, v) -> reward("", "", v.reward()))
-            .register(CreditReceiptOutput.class, (_, v) -> reward(v.entitlementId(), v.state(), v.reward()))
-            .register(PurchaseReceiptOutput.class, (_, v) -> reward(v.entitlementId(), v.state(), v.reward()))
-            .register(ResultTypes.SignInStatus.class, (_, v) -> fact("sign_in", "", "", Boolean.toString(v.signedIn())))
-            .register(ResultTypes.ShopOrder.class, (_, v) -> fact("order", "", "", v.state()))
-            .register(ShopOfferOutput.class, (_, v) -> fact("offer", v.id().toString(), v.label(), ""))
-            .register(LotteryPoolOutput.class, (_, v) -> fact("lottery_pool", v.id().toString(), v.label(), ""))
-            .register(LotteryPrizeOutput.class, (_, v) -> reward("", "", v.reward()))
-            .register(ResultTypes.QuestNotice.class, (_, v) -> fact("quest_notice", "", v.title().getString(), ""))
-            .register(StarterGiftOutput.class, (_, v) -> fact("starter_gift", "", "", Integer.toString(v.gifts().size())))
-            .register(QuestSubmitOutput.class, (_, v) -> fact("quest_submit", v.questId(), v.title().getString(), v.completed() ? "COMPLETED" : "INCOMPLETE"))
-            .register(QuestStartupOutput.class, (_, v) -> fact("quest_startup", "", "", Integer.toString(v.total())))
-            .register(QuestOutput.class, (_, v) -> new Fact("quest", v.id(), MiscUtil.clip(v.title().getString(), 96), "",
+    private static final TypeDispatch<Void, Fact> FACTS = new TypeDispatch<Void, Fact>((unused1, unused2) -> null)
+            .register(PlayerSnapshotOutput.class, (unused1, v) -> fact("player", "", v.name(), ""))
+            .register(StateOutput.class, (unused1, v) -> fact("state", "", "", v.state()))
+            .register(QuestClaimOutput.class, (unused1, v) -> fact("quest_claim", "", "", v.state()))
+            .register(RewardOutput.class, (unused1, v) -> reward("", "", v.reward()))
+            .register(CreditReceiptOutput.class, (unused1, v) -> reward(v.entitlementId(), v.state(), v.reward()))
+            .register(PurchaseReceiptOutput.class, (unused1, v) -> reward(v.entitlementId(), v.state(), v.reward()))
+            .register(ResultTypes.SignInStatus.class, (unused1, v) -> fact("sign_in", "", "", Boolean.toString(v.signedIn())))
+            .register(ResultTypes.ShopOrder.class, (unused1, v) -> fact("order", "", "", v.state()))
+            .register(ShopOfferOutput.class, (unused1, v) -> fact("offer", v.id().toString(), v.label(), ""))
+            .register(LotteryPoolOutput.class, (unused1, v) -> fact("lottery_pool", v.id().toString(), v.label(), ""))
+            .register(LotteryPrizeOutput.class, (unused1, v) -> reward("", "", v.reward()))
+            .register(ResultTypes.QuestNotice.class, (unused1, v) -> fact("quest_notice", "", v.title().getString(), ""))
+            .register(StarterGiftOutput.class, (unused1, v) -> fact("starter_gift", "", "", Integer.toString(v.gifts().size())))
+            .register(QuestSubmitOutput.class, (unused1, v) -> fact("quest_submit", v.questId(), v.title().getString(), v.completed() ? "COMPLETED" : "INCOMPLETE"))
+            .register(QuestStartupOutput.class, (unused1, v) -> fact("quest_startup", "", "", Integer.toString(v.total())))
+            .register(QuestOutput.class, (unused1, v) -> new Fact("quest", v.id(), MiscUtil.clip(v.title().getString(), 96), "",
                     v.rewards().stream().filter(r -> r.claimRef().isPresent()).limit(2).map(r -> new Reference(
                             r.id(), MiscUtil.clip(r.title().getString(), 64), r.claimRef().orElseThrow(),
                             r.choices().orElse(List.of()).stream().limit(3).map(c -> MiscUtil.clip(c.title().getString(), 48)).toList(), r.choiceOffset())).toList()));

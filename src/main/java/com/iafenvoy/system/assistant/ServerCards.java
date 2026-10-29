@@ -33,10 +33,10 @@ public final class ServerCards {
     }
 
     public static synchronized void publish(UUID player, AgentResult result) {
-        Map<UUID, Version> cards = PLAYERS.computeIfAbsent(player, _ -> new HashMap<>());
+        Map<UUID, Version> cards = PLAYERS.computeIfAbsent(player, unused -> new HashMap<>());
         for (CardUpdate update : result.cards()) {
             if (update.mode() == CardUpdate.Mode.REMOVE) cards.remove(update.ref().id());
-            else cards.compute(update.ref().id(), (_, previous) -> {
+            else cards.compute(update.ref().id(), (unused1, previous) -> {
                 if (previous == null) return new Version(update.ref().revision());
                 previous.issued = Math.max(previous.issued, update.ref().revision());
                 previous.reserved = Math.max(previous.reserved, previous.issued);

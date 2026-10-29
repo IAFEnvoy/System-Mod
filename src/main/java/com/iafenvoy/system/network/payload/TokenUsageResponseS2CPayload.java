@@ -6,15 +6,15 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.Identifier;
-import org.jspecify.annotations.NonNull;
+import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Locale;
 import java.util.Optional;
 
 public record TokenUsageResponseS2CPayload(String id, boolean open, Optional<TokenUsageSnapshot> snapshot,
                                            String errorKey) implements CustomPacketPayload {
-    public static final Type<TokenUsageResponseS2CPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "token_usage_response_s2c"));
+    public static final Type<TokenUsageResponseS2CPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "token_usage_response_s2c"));
     public static final StreamCodec<RegistryFriendlyByteBuf, TokenUsageResponseS2CPayload> CODEC = StreamCodec.composite(
             ByteBufCodecs.stringUtf8(36), TokenUsageResponseS2CPayload::id,
             ByteBufCodecs.BOOL, TokenUsageResponseS2CPayload::open,
@@ -40,7 +40,7 @@ public record TokenUsageResponseS2CPayload(String id, boolean open, Optional<Tok
     }
 
     @Override
-    public @NonNull Type<? extends CustomPacketPayload> type() {
+    public @NotNull Type<? extends CustomPacketPayload> type() {
         return TYPE;
     }
 }

@@ -70,7 +70,7 @@ public final class ClientCommandCache {
         for (String alias : aliases) {
             String[] parts = alias.split(" ");
             LiteralArgumentBuilder<AssistantCommandSource> leaf = LiteralArgumentBuilder.<AssistantCommandSource>literal(parts[parts.length - 1])
-                    .executes(_ -> {
+                    .executes(unused -> {
                         action.run();
                         return 1;
                     });

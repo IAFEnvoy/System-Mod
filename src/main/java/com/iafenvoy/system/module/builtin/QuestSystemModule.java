@@ -8,7 +8,7 @@ import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.module.SharedModule;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.fml.ModList;
 
@@ -18,7 +18,7 @@ import java.util.List;
  * This definition is safe without FTB; only the checked factory resolves optional dependency classes.
  */
 public final class QuestSystemModule implements SharedModule {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "ftb_quests");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "ftb_quests");
     public static final MapCodec<QuestSystemModule> CODEC = MapCodec.unit(new QuestSystemModule());
 
     @Override

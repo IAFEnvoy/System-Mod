@@ -24,7 +24,7 @@ public final class StarterGiftQueryModule extends BuiltinModule<StarterGiftsInpu
     @Override
     public ModuleRouting<StarterGiftsInput> routing() {
         return ModuleRouting.<StarterGiftsInput>defaults()
-                .button(_ -> StarterGiftsInput.INSTANCE).structuredOnly();
+                .button(unused -> StarterGiftsInput.INSTANCE).structuredOnly();
     }
 
     @Override

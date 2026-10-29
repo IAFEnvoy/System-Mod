@@ -26,21 +26,21 @@ public final class AssistantKeys {
 
     @SubscribeEvent
     public static void key(InputEvent.Key event) {
-        if (!TOGGLE_INTERFACE.matches(event.getKeyEvent())) return;
+        if (!TOGGLE_INTERFACE.matches(event.getKey(), event.getScanCode())) return;
         if (event.getAction() == GLFW.GLFW_RELEASE) held = false;
         else if (event.getAction() == GLFW.GLFW_PRESS && Minecraft.getInstance().screen == null) press();
     }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void screenKey(ScreenEvent.KeyPressed.Pre event) {
-        if (!(event.getScreen() instanceof AssistantPageScreen) || !TOGGLE_INTERFACE.matches(event.getKeyEvent())
+        if (!(event.getScreen() instanceof AssistantPageScreen) || !TOGGLE_INTERFACE.matches(event.getKeyCode(), event.getScanCode())
                 || !TOGGLE_INTERFACE.isConflictContextAndModifierActive()) return;
         if (press()) event.setCanceled(true);
     }
 
     @SubscribeEvent
     public static void screenRelease(ScreenEvent.KeyReleased.Pre event) {
-        if (TOGGLE_INTERFACE.matches(event.getKeyEvent())) held = false;
+        if (TOGGLE_INTERFACE.matches(event.getKeyCode(), event.getScanCode())) held = false;
     }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
@@ -77,8 +77,8 @@ public final class AssistantKeys {
         }
         InputConstants.Key key = TOGGLE_INTERFACE.getKey();
         boolean down = switch (key.getType()) {
-            case KEYSYM -> InputConstants.isKeyDown(minecraft.getWindow(), key.getValue());
-            case MOUSE -> GLFW.glfwGetMouseButton(minecraft.getWindow().handle(), key.getValue()) == GLFW.GLFW_PRESS;
+            case KEYSYM -> InputConstants.isKeyDown(minecraft.getWindow().getWindow(), key.getValue());
+            case MOUSE -> GLFW.glfwGetMouseButton(minecraft.getWindow().getWindow(), key.getValue()) == GLFW.GLFW_PRESS;
             default -> true;
         };
         if (!down) held = false;

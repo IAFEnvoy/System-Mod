@@ -7,7 +7,7 @@ import com.iafenvoy.system.card.CardButton;
 import com.iafenvoy.system.card.CardRef;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.screen.AssistantMessages;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Map;
 import java.util.Optional;
@@ -27,7 +27,7 @@ public final class CardController {
         if (!ClientCards.active(source) || button.action() instanceof CardAction.Server && AssistantClient.state().busy())
             return;
         if (notification && !AssistantMessages.actionStarted(source, button.behavior())) return;
-        if (button.action() instanceof CardAction.Local(Identifier id, Map<String, String> arguments)) {
+        if (button.action() instanceof CardAction.Local(ResourceLocation id, Map<String, String> arguments)) {
             ClientModuleCaches.BINDINGS.get().localAction(id, source, arguments);
         } else if (button.action() instanceof CardAction.Server server)
             AssistantClient.send(new CardActionRequest(source, server),

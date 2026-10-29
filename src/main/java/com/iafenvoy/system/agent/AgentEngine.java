@@ -14,7 +14,7 @@ import com.iafenvoy.system.agent.store.SystemBindings;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.search.DeepSeekSearchClient;
 import com.iafenvoy.system.search.SearchGateway;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -50,7 +50,7 @@ public final class AgentEngine implements AutoCloseable {
     private final List<Consumer<UUID>> revokeListeners = new CopyOnWriteArrayList<>();
     private final ConversationService conversations = new ConversationService(this);
     private final QuestNarration questNarration;
-    private BiPredicate<UUID, Identifier> moduleAccess = (_, _) -> true;
+    private BiPredicate<UUID, ResourceLocation> moduleAccess = (unused1, unused2) -> true;
 
     public AgentEngine(CommerceCatalog catalog, AgentStore store, ModelClient model) {
         this.store = store;
@@ -84,7 +84,7 @@ public final class AgentEngine implements AutoCloseable {
 
     public void start() {
         for (String id : AgentConfig.INSTANCE.get().policies().keySet())
-            if (this.modules.get(Identifier.tryParse(id)) == null)
+            if (this.modules.get(ResourceLocation.tryParse(id)) == null)
                 throw new IllegalArgumentException("Unknown policy module " + id);
         this.router.start();
     }
@@ -180,7 +180,7 @@ public final class AgentEngine implements AutoCloseable {
         };
     }
 
-    public CompletionStage<AgentResult> grant(UUID player, Identifier system, Consumer<PlayerData> initialize) {
+    public CompletionStage<AgentResult> grant(UUID player, ResourceLocation system, Consumer<PlayerData> initialize) {
         Objects.requireNonNull(system);
         return this.personalMaintenance(player, () -> this.store.update(player, data -> {
             // Check and assign under the same player transaction, including concurrent administrator requests.
@@ -272,25 +272,25 @@ public final class AgentEngine implements AutoCloseable {
         this.modules.register(module);
     }
 
-    public void registerModule(Identifier owner, AgentModule<?> module) {
+    public void registerModule(ResourceLocation owner, AgentModule<?> module) {
         this.modules.register(owner, module);
     }
 
-    public void moduleAccess(BiPredicate<UUID, Identifier> moduleAccess) {
+    public void moduleAccess(BiPredicate<UUID, ResourceLocation> moduleAccess) {
         this.moduleAccess = Objects.requireNonNull(moduleAccess);
     }
 
-    public boolean available(UUID player, Identifier workflow) {
+    public boolean available(UUID player, ResourceLocation workflow) {
         AgentModule<?> module = this.module(player, workflow);
         // Recheck exported tool dependencies for routing, in-flight work and queued game-thread operations.
         return module != null && module.descriptor().tools().stream().allMatch(tool -> this.toolAvailable(player, tool));
     }
 
-    public AgentModule<?> module(UUID player, Identifier workflow) {
+    public AgentModule<?> module(UUID player, ResourceLocation workflow) {
         return this.modules.get(workflow, owner -> this.moduleAccess.test(player, owner));
     }
 
-    boolean moduleEnabled(UUID player, Identifier owner) {
+    boolean moduleEnabled(UUID player, ResourceLocation owner) {
         return owner == null || this.moduleAccess.test(player, owner);
     }
 
@@ -298,7 +298,7 @@ public final class AgentEngine implements AutoCloseable {
         return this.tools.available(tool, owner -> this.moduleAccess.test(player, owner));
     }
 
-    <I, O> ToolRegistry.Tool<I, O> tool(UUID player, ToolRegistry.Type<I, O> type, Identifier owner) {
+    <I, O> ToolRegistry.Tool<I, O> tool(UUID player, ToolRegistry.Type<I, O> type, ResourceLocation owner) {
         return this.tools.require(type, owner, exporting -> this.moduleAccess.test(player, exporting));
     }
 

@@ -34,8 +34,8 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
     @Override
     public CompletionStage<QuestSubmitOutput> execute(ExecutionContext context, QuestSubmitInput input) {
         return this.access.game.onPlayer(context, player -> {
-            if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
-            ServerQuestFile file = ServerQuestFile.getInstance();
+            if (ServerQuestFile.getInstance().isEmpty()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            ServerQuestFile file = ServerQuestFile.getInstance().orElseThrow();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));
             Quest quest = FtbQuestAccess.selected(context, file, team, input.questId(), input.index().orElse(0), this.access.lists);
             if (quest == null && !input.query().isBlank()) {
@@ -43,7 +43,7 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
                 if (matches.size() > 1) throw new AgentException("QUEST_AMBIGUOUS");
                 quest = matches.isEmpty() ? null : matches.getFirst();
             }
-            if (quest == null || !FtbQuestReader.active(team, quest) || team.isProgressionPaused(player))
+            if (quest == null || !FtbQuestReader.active(team, quest))
                 throw new AgentException("QUEST_UNAVAILABLE");
             if (input.checkmarkOnly() && !FtbQuestReader.canComplete(player, team, quest))
                 throw new AgentException("QUEST_UNAVAILABLE");
@@ -57,7 +57,7 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
                 for (Task task : tasks) {
                     // Auto-claimed repeatable quests may reset immediately; one command never enters the next cycle.
                     if (team.isCompleted(target) || team.getCompletionCount(target) != completions || team.isLocked()
-                            || !team.canStartTasks(target) || team.isProgressionPaused(player)) break;
+                            || !team.canStartTasks(target)) break;
                     if (FtbQuestReader.pendingSubmission(team, task)) task.submitTask(team, player);
                 }
             });

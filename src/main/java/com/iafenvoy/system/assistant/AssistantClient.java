@@ -168,7 +168,7 @@ public final class AssistantClient {
                 && !result.messageKey().equals("system.error.not_bound")) return false;
         MutableComponent message = Component.translatable(result.messageKey());
         if (!result.text().isBlank()) message.append("\n").append(result.text());
-        Minecraft.getInstance().gui.getChat().addClientSystemMessage(message.withStyle(ChatFormatting.RED));
+        Minecraft.getInstance().gui.getChat().addMessage(message.withStyle(ChatFormatting.RED));
         return true;
     }
 

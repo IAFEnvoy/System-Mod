@@ -14,15 +14,15 @@ import com.iafenvoy.system.agent.commerce.PurchaseType;
 import com.iafenvoy.system.module.*;
 import com.iafenvoy.system.module.builtin.storage.CommerceDataStorage;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
 public final class ShopSystemModule implements SharedModule {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "shop");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("system", "shop");
     public static final MapCodec<ShopSystemModule> CODEC = MapCodec.unit(new ShopSystemModule());
     public static final ModuleStorage<CommerceDataStorage> STORAGE = new ModuleStorage<>(ID,
-            Identifier.fromNamespaceAndPath("system", "commerce"), CommerceDataStorage.class, CommerceDataStorage.CODEC, CommerceDataStorage::new);
+            ResourceLocation.fromNamespaceAndPath("system", "commerce"), CommerceDataStorage.class, CommerceDataStorage.CODEC, CommerceDataStorage::new);
 
     @Override
     public MapCodec<ShopSystemModule> codec() {

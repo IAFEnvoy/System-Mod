@@ -2,14 +2,14 @@ package com.iafenvoy.system.screen.card;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.util.CodecIO;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -23,20 +23,20 @@ import java.util.Map;
 @EventBusSubscriber(Dist.CLIENT)
 public enum CardTemplates implements ResourceManagerReloadListener {
     INSTANCE;
-    private static Map<Identifier, CardTemplate> templates = Map.of();
+    private static Map<ResourceLocation, CardTemplate> templates = Map.of();
     private static long revision;
 
     @SubscribeEvent
-    public static void reloadListeners(AddClientReloadListenersEvent event) {
-        event.addListener(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "cards"), INSTANCE);
+    public static void reloadListeners(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener(INSTANCE);
     }
 
     @Override
     public void onResourceManagerReload(ResourceManager manager) {
-        Map<Identifier, CardTemplate> loaded = new LinkedHashMap<>();
+        Map<ResourceLocation, CardTemplate> loaded = new LinkedHashMap<>();
         manager.listResources("cards", id -> id.getPath().endsWith(".json")).forEach((resourceId, resource) -> {
             String path = resourceId.getPath();
-            Identifier id = Identifier.fromNamespaceAndPath(resourceId.getNamespace(), path.substring(6, path.length() - 5));
+            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(resourceId.getNamespace(), path.substring(6, path.length() - 5));
             // Fall back through lower resource packs, then to the last valid version of this file.
             List<Resource> layers = manager.getResourceStack(resourceId);
             for (Resource layer : layers.reversed()) {
@@ -53,7 +53,7 @@ public enum CardTemplates implements ResourceManagerReloadListener {
         revision++;
     }
 
-    public static CardTemplate get(Identifier id) {
+    public static CardTemplate get(ResourceLocation id) {
         return templates.get(id);
     }
 

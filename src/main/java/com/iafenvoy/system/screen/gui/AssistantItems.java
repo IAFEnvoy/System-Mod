@@ -5,7 +5,7 @@ import com.sighs.apricityui.element.Item;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -75,7 +75,7 @@ public final class AssistantItems {
     /**
      * AUI owns hit testing and clipping; vanilla owns tooltip components, advanced details and mod hooks.
      */
-    public static boolean tooltip(Document document, GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+    public static boolean tooltip(Document document, GuiGraphics graphics, int mouseX, int mouseY) {
         if (document == null || document.isDisposed()) return false;
         List<Element> elements = document.getElements();
         for (int index = elements.size() - 1; index >= 0; index--) {
@@ -83,7 +83,7 @@ public final class AssistantItems {
                 continue;
             ItemStack stack = item.getTooltipStack();
             if (stack.isEmpty()) continue;
-            graphics.setTooltipForNextFrame(Minecraft.getInstance().font, stack, mouseX, mouseY);
+            graphics.renderTooltip(Minecraft.getInstance().font, stack, mouseX, mouseY);
             return true;
         }
         return false;

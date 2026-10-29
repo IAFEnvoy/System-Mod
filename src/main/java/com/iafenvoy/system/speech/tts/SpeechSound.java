@@ -8,12 +8,12 @@ import net.minecraft.client.sounds.AudioStream;
 import net.minecraft.client.sounds.SoundBufferLibrary;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.client.sounds.WeighedSoundEvents;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.valueproviders.ConstantFloat;
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.sound.sampled.AudioFormat;
 import java.nio.ByteBuffer;
@@ -29,7 +29,7 @@ final class SpeechSound extends AbstractSoundInstance {
     private volatile boolean nativeFailed;
 
     SpeechSound(SpeechAudio audio, int volume) {
-        super(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "speech"), SoundSource.VOICE, RandomSource.create());
+        super(ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "speech"), SoundSource.VOICE, RandomSource.create());
         this.audio = audio;
         this.volume = volume / 100.0F;
         this.relative = true;
@@ -66,20 +66,20 @@ final class SpeechSound extends AbstractSoundInstance {
     }
 
     @Override
-    public WeighedSoundEvents resolve(@NonNull SoundManager manager) {
-        this.sound = new Sound(this.identifier, ConstantFloat.of(1), ConstantFloat.of(1), 1, Sound.Type.FILE, true, false, 16);
-        WeighedSoundEvents event = new WeighedSoundEvents(this.identifier, null);
+    public WeighedSoundEvents resolve(@NotNull SoundManager manager) {
+        this.sound = new Sound(this.location, ConstantFloat.of(1), ConstantFloat.of(1), 1, Sound.Type.FILE, true, false, 16);
+        WeighedSoundEvents event = new WeighedSoundEvents(this.location, null);
         event.addSound(this.sound);
         return event;
     }
 
     @Override
-    public @NonNull CompletableFuture<AudioStream> getStream(@NonNull SoundBufferLibrary buffers, @NonNull Sound sound, boolean looping) {
+    public @NotNull CompletableFuture<AudioStream> getStream(@NotNull SoundBufferLibrary buffers, @NotNull Sound sound, boolean looping) {
         return CompletableFuture.completedFuture(new AudioStream() {
             private final SpeechAudio.Cursor cursor = SpeechSound.this.audio.cursor();
 
             @Override
-            public @NonNull AudioFormat getFormat() {
+            public @NotNull AudioFormat getFormat() {
                 return SpeechSound.this.format();
             }
 

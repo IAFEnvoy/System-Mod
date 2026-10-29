@@ -4,6 +4,6 @@
     { "id": "minecraft:bread", "count": 6 }
   ],
   "costs": [
-    { "type": "saturn:resource", "resource": "example:system_coin", "amount": 20 }
+    { "type": "saturn:item", "items": ["minecraft:emerald"], "amount": 2 }
   ]
 }

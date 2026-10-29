@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent;
 
+import com.iafenvoy.system.util.ExtraCodecsCompat;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.ExtraCodecs;
@@ -17,8 +18,8 @@ public record ExecutionPolicy(int modelCalls, int toolCalls, int steps, int writ
             ExtraCodecs.POSITIVE_INT.fieldOf("inputBytes").forGetter(ExecutionPolicy::inputBytes),
             ExtraCodecs.POSITIVE_INT.fieldOf("outputTokens").forGetter(ExecutionPolicy::outputTokens),
             ExtraCodecs.POSITIVE_INT.fieldOf("totalTokens").forGetter(ExecutionPolicy::totalTokens),
-            ExtraCodecs.POSITIVE_LONG.fieldOf("ttlMillis").forGetter(ExecutionPolicy::ttlMillis),
-            ExtraCodecs.POSITIVE_LONG.fieldOf("modelTimeoutMillis").forGetter(ExecutionPolicy::modelTimeoutMillis)
+            ExtraCodecsCompat.POSITIVE_LONG.fieldOf("ttlMillis").forGetter(ExecutionPolicy::ttlMillis),
+            ExtraCodecsCompat.POSITIVE_LONG.fieldOf("modelTimeoutMillis").forGetter(ExecutionPolicy::modelTimeoutMillis)
     ).apply(i, ExecutionPolicy::new));
 
     public static ExecutionPolicy quick(int models, int writes) {

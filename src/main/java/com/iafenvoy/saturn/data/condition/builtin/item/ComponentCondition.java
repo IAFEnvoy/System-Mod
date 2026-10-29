@@ -1,0 +1,41 @@
+package com.iafenvoy.saturn.data.condition.builtin.item;
+
+import com.iafenvoy.saturn.data.condition.ItemCondition;
+import com.iafenvoy.saturn.data.context.condition.ItemConditionContext;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.NotNull;
+
+/**
+ * Matches the serialized value of a data component using partial NBT comparison.
+ */
+public record ComponentCondition(DataComponentType<?> component, CompoundTag nbt) implements ItemCondition {
+    public static final MapCodec<ComponentCondition> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+            DataComponentType.CODEC.fieldOf("component").forGetter(ComponentCondition::component),
+            CompoundTag.CODEC.fieldOf("nbt").forGetter(ComponentCondition::nbt)
+    ).apply(i, ComponentCondition::new));
+
+    @Override
+    public boolean test(@NotNull ItemConditionContext ctx) {
+        ItemStack stack = ctx.stack();
+        if (!stack.has(this.component)) return false;
+        return NbtUtils.compareNbt(this.nbt, serialize(this.component, stack), true);
+    }
+
+    private static <T> Tag serialize(DataComponentType<T> type, ItemStack stack) {
+        T value = stack.get(type);
+        if (value == null) return new CompoundTag();
+        return type.codecOrThrow().encodeStart(NbtOps.INSTANCE, value).result().orElseGet(CompoundTag::new);
+    }
+
+    @Override
+    public @NotNull MapCodec<ComponentCondition> codec() {
+        return CODEC;
+    }
+}

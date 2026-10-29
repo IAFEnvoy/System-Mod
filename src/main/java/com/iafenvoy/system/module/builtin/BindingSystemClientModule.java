@@ -10,29 +10,29 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.commands.arguments.IdentifierArgument;
-import net.minecraft.resources.Identifier;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.resources.ResourceLocation;
 
 public final class BindingSystemClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
         module.command(LiteralArgumentBuilder.<AssistantCommandSource>literal("grant")
-                .then(RequiredArgumentBuilder.<AssistantCommandSource, Identifier>argument("system", IdentifierArgument.id())
-                        .suggests((_, builder) -> {
+                .then(RequiredArgumentBuilder.<AssistantCommandSource, ResourceLocation>argument("system", ResourceLocationArgument.id())
+                        .suggests((unused1, builder) -> {
                             ClientPacketListener connection = Minecraft.getInstance().getConnection();
                             if (connection != null)
-                                SystemDataPackRegistries.ids(connection.registryAccess()).stream().map(Identifier::toString)
+                                SystemDataPackRegistries.ids(connection.registryAccess()).stream().map(ResourceLocation::toString)
                                         .filter(id -> id.startsWith(builder.getRemainingLowerCase())).forEach(builder::suggest);
                             return builder.buildFuture();
                         })
-                        .executes(context -> grant(context.getArgument("system", Identifier.class), ""))
+                        .executes(context -> grant(context.getArgument("system", ResourceLocation.class), ""))
                         .then(RequiredArgumentBuilder.<AssistantCommandSource, String>argument("player", StringArgumentType.word())
-                                .executes(context -> grant(context.getArgument("system", Identifier.class), StringArgumentType.getString(context, "player"))))));
+                                .executes(context -> grant(context.getArgument("system", ResourceLocation.class), StringArgumentType.getString(context, "player"))))));
         module.command(() -> AssistantClient.command("revoke"), "revoke");
         module.command(() -> AssistantClient.command("reset"), "reset");
     }
 
-    private static int grant(Identifier system, String player) {
+    private static int grant(ResourceLocation system, String player) {
         AssistantClient.command("grant " + system + (player.isEmpty() ? "" : " " + player));
         return 1;
     }

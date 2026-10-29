@@ -35,8 +35,8 @@ final class FtbQuestDetailTool implements ToolRegistry.Handler<QuestDetailInput,
         String questId = input.questId();
         int index = input.index().orElse(0);
         return this.access.game.onPlayer(context, player -> {
-            if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
-            ServerQuestFile file = ServerQuestFile.getInstance();
+            if (ServerQuestFile.getInstance().isEmpty()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            ServerQuestFile file = ServerQuestFile.getInstance().orElseThrow();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("CAPABILITY_UNAVAILABLE"));
             Quest selected = selected(context, file, team, questId, index, this.access.lists);
             if (selected == null || !FtbQuestReader.detailAvailable(team, selected))

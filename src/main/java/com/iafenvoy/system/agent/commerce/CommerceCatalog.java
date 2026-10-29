@@ -7,8 +7,8 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
-import net.minecraft.resources.Identifier;
-import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.resources.ResourceLocation;
+import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.HashSet;
 import java.util.List;
@@ -24,7 +24,7 @@ public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, 
         rewards = List.copyOf(rewards);
         offers = List.copyOf(offers);
         lotteries = List.copyOf(lotteries);
-        Set<Identifier> ids = new HashSet<>();
+        Set<ResourceLocation> ids = new HashSet<>();
         for (PlayerData.Reward reward : rewards) {
             if (!ids.add(reward.id()) || reward.label().isBlank())
                 throw new IllegalArgumentException("Invalid reward");
@@ -40,9 +40,9 @@ public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, 
         return new CommerceCatalog(UUID.randomUUID().toString(), rewards, offers, lotteries);
     }
 
-    public record Offer(Identifier id, String label, List<ItemStackTemplate> items, List<Cost> costs) {
+    public record Offer(ResourceLocation id, String label, List<ItemStackTemplate> items, List<Cost> costs) {
         public static final Codec<Offer> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Identifier.CODEC.fieldOf("id").forGetter(Offer::id),
+                ResourceLocation.CODEC.fieldOf("id").forGetter(Offer::id),
                 Codec.STRING.fieldOf("label").forGetter(Offer::label),
                 PlayerData.Reward.ITEMS_CODEC.fieldOf("items").forGetter(Offer::items),
                 Cost.LIST_CODEC.fieldOf("costs").forGetter(Offer::costs)

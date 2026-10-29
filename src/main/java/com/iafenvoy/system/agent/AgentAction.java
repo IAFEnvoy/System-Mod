@@ -4,7 +4,7 @@ import com.iafenvoy.system.registry.SystemRegistries;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Objects;
 
@@ -16,7 +16,7 @@ public interface AgentAction {
 
     MapCodec<? extends AgentAction> codec();
 
-    default Identifier id() {
+    default ResourceLocation id() {
         return Objects.requireNonNull(SystemRegistries.ACTION_TYPE.getKey(this.codec()), "Unregistered Agent action codec");
     }
 

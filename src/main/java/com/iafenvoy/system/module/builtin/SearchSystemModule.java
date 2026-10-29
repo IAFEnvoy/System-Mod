@@ -7,7 +7,7 @@ import com.iafenvoy.system.agent.builtin.search.WebSearchTool;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.SharedModule;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 
@@ -15,7 +15,7 @@ import java.util.List;
  * Availability enables registration; only a current explicit request may incur search charges.
  */
 public final class SearchSystemModule implements SharedModule {
-    public static final Identifier ID = Identifier.parse("system:web_search");
+    public static final ResourceLocation ID = ResourceLocation.parse("system:web_search");
     public static final MapCodec<SearchSystemModule> CODEC = MapCodec.unit(new SearchSystemModule());
 
     @Override

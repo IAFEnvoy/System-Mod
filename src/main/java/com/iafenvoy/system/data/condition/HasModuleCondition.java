@@ -4,15 +4,15 @@ import com.iafenvoy.saturn.data.condition.EntityCondition;
 import com.iafenvoy.saturn.data.context.condition.EntityConditionContext;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.NotNull;
 
-public record HasModuleCondition(Identifier module) implements EntityCondition {
-    public static final MapCodec<HasModuleCondition> CODEC = Identifier.CODEC.fieldOf("module").xmap(HasModuleCondition::new, HasModuleCondition::module);
+public record HasModuleCondition(ResourceLocation module) implements EntityCondition {
+    public static final MapCodec<HasModuleCondition> CODEC = ResourceLocation.CODEC.fieldOf("module").xmap(HasModuleCondition::new, HasModuleCondition::module);
 
     @Override
-    public @NonNull MapCodec<HasModuleCondition> codec() {
+    public @NotNull MapCodec<HasModuleCondition> codec() {
         return CODEC;
     }
 

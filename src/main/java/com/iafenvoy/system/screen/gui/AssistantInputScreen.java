@@ -15,12 +15,10 @@ import com.sighs.apricityui.event.KeyEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import com.sighs.apricityui.layout.Position;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.IMEPreeditOverlay;
-import net.minecraft.client.input.PreeditEvent;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import org.jspecify.annotations.NonNull;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
@@ -31,23 +29,17 @@ import java.util.List;
 public abstract class AssistantInputScreen extends AssistantPageScreen {
     protected String draft;
     private @Nullable AbstractText textInput;
-    private @Nullable IMEPreeditOverlay preeditOverlay;
-    private @Nullable InputArea inputArea;
     private @Nullable SuggestionState suggestionState;
     private @Nullable SuggestionArea suggestionArea;
     private List<AssistantCommandSuggestions.Suggestion> suggestions = List.of();
     private int selectedSuggestion;
     private @Nullable String dismissedDraft;
-    private long compositionEnded;
     private boolean enterDown;
     private @Nullable Session speech;
     private AssistantRecognition.@Nullable Session recognition;
     private String recognitionStatus = "idle";
     private String recognitionDraft = "";
     private String renderedRecognition = "";
-
-    private record InputArea(int left, int top, int right, int bottom, int guiScale) {
-    }
 
     private record SuggestionState(String value, int cursor, int selectionStart, int selectionEnd, long revision,
                                    boolean eligible, long commandRevision,
@@ -237,8 +229,12 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         return key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER;
     }
 
+    /**
+     * 1.21.1 exposes no IME preedit state to screens, so a composing key never reaches this composer and Escape/Tab
+     * stay available while typing.
+     */
     private boolean imeOwnsKeys() {
-        return this.preeditOverlay != null || this.compositionEnded != 0 && System.nanoTime() - this.compositionEnded < 150_000_000L;
+        return false;
     }
 
     private void inputKeyPressed(Element input, KeyEvent event) {
@@ -393,33 +389,16 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         if (next == this.textInput) return;
         boolean wasTyping = this.textInput != null;
         this.textInput = next;
-        this.preeditOverlay = null;
-        this.compositionEnded = 0;
-        this.inputArea = null;
-        // Moving between editable controls keeps the native IME session enabled.
-        if (wasTyping == (next == null)) this.minecraft.onTextInputFocusChange(this, next != null);
     }
 
     private void clearTextInputFocus() {
-        this.preeditOverlay = null;
-        this.compositionEnded = 0;
-        this.inputArea = null;
         if (this.textInput == null) return;
         this.textInput = null;
-        this.minecraft.onTextInputFocusChange(this, false);
     }
 
     @Override
-    public boolean preeditUpdated(@Nullable PreeditEvent event) {
-        if (event == null && this.preeditOverlay != null) this.compositionEnded = System.nanoTime();
-        this.preeditOverlay = event != null && this.textInput != null ? new IMEPreeditOverlay(event, this.font, this.font.lineHeight + 1) : null;
-        this.updateSuggestions();
-        return this.textInput != null || super.preeditUpdated(event);
-    }
-
-    @Override
-    public void extractRenderState(@NonNull GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
         this.syncTextInputFocus();
         Document document = this.getLinkedDocument();
         if (document == null) return;
@@ -428,27 +407,6 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
             this.positionSuggestions(document);
             AssistantPages.commit(document);
             AssistantItems.tooltip(document, graphics, mouseX, mouseY);
-            if (this.textInput == null) return;
-            Element.DOMRect bounds = this.textInput.getBoundingClientRect();
-            if (bounds.width <= 0 || bounds.height <= 0) return;
-            Position start = document.documentToGuiPosition(new Position(bounds.left, bounds.top));
-            Position end = document.documentToGuiPosition(new Position(bounds.right, bounds.bottom));
-            int left = Math.clamp((int) Math.floor(start.x), 0, Math.max(0, this.width - 1));
-            int top = Math.clamp((int) Math.floor(start.y), 0, Math.max(0, this.height - 1));
-            int right = Math.clamp((int) Math.ceil(end.x), left + 1, Math.max(left + 1, this.width));
-            int bottom = Math.clamp((int) Math.ceil(end.y), top + 1, Math.max(top + 1, this.height));
-            if (this.preeditOverlay != null) {
-                // The vanilla overlay sets its own hot area; a second rectangle here makes IMEs oscillate.
-                this.inputArea = null;
-                this.preeditOverlay.updateInputPosition(left, Math.max(top, bottom - this.font.lineHeight - 1));
-                graphics.setPreeditOverlay(this.preeditOverlay);
-            } else {
-                InputArea area = new InputArea(left, top, right, bottom, this.minecraft.getWindow().getGuiScale());
-                if (!area.equals(this.inputArea)) {
-                    this.minecraft.textInputManager().setTextInputArea(left, top, right, bottom);
-                    this.inputArea = area;
-                }
-            }
         }
     }
 

@@ -6,7 +6,7 @@ import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.util.LegacyText;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,18 +17,18 @@ import java.util.function.BiConsumer;
  * One pure builder owns the complete card description and takes immutable snapshots on build.
  */
 public final class CardBuilder {
-    private final Identifier template;
+    private final ResourceLocation template;
     private final CardContext.Builder context = CardContext.builder();
     private final List<CardButton> buttons = new ArrayList<>();
     private String titleKey = "";
     private Component summary = Component.empty();
     private SpeechContent speech;
 
-    private CardBuilder(Identifier template) {
+    private CardBuilder(ResourceLocation template) {
         this.template = template;
     }
 
-    public static CardBuilder template(Identifier template) {
+    public static CardBuilder template(ResourceLocation template) {
         return new CardBuilder(template);
     }
 
@@ -88,16 +88,16 @@ public final class CardBuilder {
         return this;
     }
 
-    public CardBuilder serverButton(String id, String label, Identifier action, Map<String, String> arguments) {
+    public CardBuilder serverButton(String id, String label, ResourceLocation action, Map<String, String> arguments) {
         return this.serverButton(id, label, action, arguments, CardButton.Placement.FOOTER, CardButton.Behavior.REPLACE);
     }
 
-    public CardBuilder serverButton(String id, String label, Identifier action, Map<String, String> arguments,
+    public CardBuilder serverButton(String id, String label, ResourceLocation action, Map<String, String> arguments,
                                     CardButton.Placement placement, CardButton.Behavior behavior) {
         return this.button(new CardButton(id, label, new CardAction.Server(action, arguments), placement, behavior));
     }
 
-    public CardBuilder localButton(String id, String label, Identifier action, Map<String, String> arguments) {
+    public CardBuilder localButton(String id, String label, ResourceLocation action, Map<String, String> arguments) {
         return this.button(new CardButton(id, label, new CardAction.Local(action, arguments),
                 CardButton.Placement.FOOTER, CardButton.Behavior.CLOSE));
     }

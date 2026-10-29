@@ -79,7 +79,7 @@ public final class ConfigInstance<T> extends AbstractChangeTrackable implements 
                 try (InputStream defaults = ConfigInstance.class.getResourceAsStream("/defaults/" + this.fileName)) {
                     if (defaults == null)
                         throw new IOException("Missing bundled config defaults " + target.getFileName() + ", this should not happened!");
-                    FileUtils.write(target.toFile(), new InputStreamReader(defaults).readAllAsString(), StandardCharsets.UTF_8);
+                    FileUtils.write(target.toFile(), new String(defaults.readAllBytes(), StandardCharsets.UTF_8), StandardCharsets.UTF_8);
                 }
             }
             this.value = this.codec.parse(JsonOps.INSTANCE, JsonParser.parseString(FileUtils.readFileToString(target.toFile(), StandardCharsets.UTF_8))).getOrThrow();

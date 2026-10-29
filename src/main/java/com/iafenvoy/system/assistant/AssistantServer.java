@@ -20,7 +20,7 @@ import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.AddServerReloadListenersEvent;
+import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.event.entity.player.AdvancementEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
@@ -48,7 +48,8 @@ public final class AssistantServer {
 
     private AssistantServer(MinecraftServer server) throws Exception {
         this.server = server;
-        this.catalogListener = server.getServerResources().managers().getListener(CatalogReloadListener.KEY);
+        this.catalogListener = CatalogReloadListener.latest();
+        if (this.catalogListener == null) throw new IllegalStateException("Commerce catalog has not loaded");
         this.engine = new AgentEngine(this.catalogListener.catalog(),
                 new FileAgentStore(server.getWorldPath(LevelResource.ROOT).resolve("system-agent")), new OpenAiCompatibleClient());
         try {
@@ -100,15 +101,15 @@ public final class AssistantServer {
     }
 
     private void refreshCatalog() {
-        CatalogReloadListener listener = this.server.getServerResources().managers().getListener(CatalogReloadListener.KEY);
-        if (this.catalogListener == listener) return;
+        CatalogReloadListener listener = CatalogReloadListener.latest();
+        if (listener == null || this.catalogListener == listener) return;
         this.engine.catalog(listener.catalog());
         this.catalogListener = listener;
     }
 
     private void refreshPrompts() {
-        PromptReloadListener listener = this.server.getServerResources().managers().getListener(PromptReloadListener.KEY);
-        if (this.promptListener == listener) return;
+        PromptReloadListener listener = PromptReloadListener.latest();
+        if (listener == null || this.promptListener == listener) return;
         // Publish only the listener retained by successfully installed server resources.
         this.engine.prompts(listener.prompts());
         this.promptListener = listener;
@@ -173,8 +174,8 @@ public final class AssistantServer {
     }
 
     @SubscribeEvent
-    public static void reloadListeners(AddServerReloadListenersEvent event) {
-        event.addRetainedListener(CatalogReloadListener.KEY, new CatalogReloadListener());
-        event.addRetainedListener(PromptReloadListener.KEY, new PromptReloadListener());
+    public static void reloadListeners(AddReloadListenerEvent event) {
+        event.addListener(new CatalogReloadListener());
+        event.addListener(new PromptReloadListener());
     }
 }

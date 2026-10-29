@@ -9,9 +9,9 @@ import com.iafenvoy.system.card.data.TextCardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.StringRepresentable;
-import org.jspecify.annotations.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.List;
@@ -104,7 +104,7 @@ public final class AgentResult extends ResultWithData<List<CardUpdate>> {
         public static final Codec<Status> CODEC = StringRepresentable.fromEnum(Status::values);
 
         @Override
-        public @NonNull String getSerializedName() {
+        public @NotNull String getSerializedName() {
             return this.name().toLowerCase(Locale.ROOT);
         }
     }
@@ -131,7 +131,7 @@ public final class AgentResult extends ResultWithData<List<CardUpdate>> {
      * Wire snapshots keep the translated refusal key without serializing a supplier's implementation class.
      */
     private record MessageFailure(String key) implements Failure {
-        private static final FailureSource SOURCE = new FailureSource(Identifier.fromNamespaceAndPath("system", "agent"));
+        private static final FailureSource SOURCE = new FailureSource(ResourceLocation.fromNamespaceAndPath("system", "agent"));
 
         @Override
         public String name() {
@@ -155,7 +155,7 @@ public final class AgentResult extends ResultWithData<List<CardUpdate>> {
             Objects.requireNonNull(call);
         }
 
-        public Identifier moduleId() {
+        public ResourceLocation moduleId() {
             return this.call.id();
         }
     }

@@ -2,12 +2,12 @@ package com.iafenvoy.system.agent.builtin.input;
 
 import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * Built-in parameters with boundary validation.
  */
-public record SignInCreditInput(String date, Identifier rewardId, String catalogRevision) {
+public record SignInCreditInput(String date, ResourceLocation rewardId, String catalogRevision) {
     public static final SchemaMapCodec<SignInCreditInput> CODEC = SchemaCodecs.record((i, f) -> i.group(
             f.required("date", SchemaCodecs.STRING).forGetter(SignInCreditInput::date),
             f.required("rewardId", SchemaCodecs.IDENTIFIER).forGetter(SignInCreditInput::rewardId),

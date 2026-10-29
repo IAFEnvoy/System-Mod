@@ -142,7 +142,7 @@ public final class QuestNarration implements AutoCloseable {
                 this.active.remove(player, context);
             }
             return null;
-        }).whenComplete((_, _) -> this.preparing.remove(key));
+        }).whenComplete((unused1, unused2) -> this.preparing.remove(key));
     }
 
     private static void collect(Map<String, String> entries, String prefix, List<Line> lines) {

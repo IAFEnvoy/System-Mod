@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.commerce;
 
 import com.iafenvoy.system.agent.AgentException;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 import java.util.Map;
@@ -24,7 +24,7 @@ public final class CommerceQuotes {
         return this.create(player, catalog, PurchaseType.LOTTERY, pool.id(), pool.label(), payment, pool.entries());
     }
 
-    private Quote create(UUID player, CommerceCatalog catalog, PurchaseType type, Identifier source,
+    private Quote create(UUID player, CommerceCatalog catalog, PurchaseType type, ResourceLocation source,
                          String label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries) {
         long now = System.currentTimeMillis();
         this.quotes.values().removeIf(quote -> quote.expires() < now);
@@ -46,7 +46,7 @@ public final class CommerceQuotes {
         this.quotes.values().removeIf(quote -> quote.player().equals(player));
     }
 
-    public record Quote(String id, UUID player, String revision, PurchaseType type, Identifier source,
+    public record Quote(String id, UUID player, String revision, PurchaseType type, ResourceLocation source,
                         String label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries,
                         long expires) {
         public Quote {

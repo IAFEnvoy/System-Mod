@@ -1,5 +1,6 @@
 package com.iafenvoy.system.compat.ftb;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.builtin.output.QuestSubmission;
 import com.iafenvoy.system.util.TypeDispatch;
 import dev.ftb.mods.ftbquests.quest.Quest;
@@ -10,7 +11,9 @@ import dev.ftb.mods.ftbquests.quest.reward.Reward;
 import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
 import dev.ftb.mods.ftbquests.quest.task.*;
 import net.minecraft.server.level.ServerPlayer;
+import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Predicate;
@@ -30,14 +33,37 @@ public final class FtbQuestReader {
     }
 
     // Never load TaskClient on a dedicated server. Unknown resource handlers stay with FTB.
-    private static final TypeDispatch<Void, Submission> SUBMISSIONS = new TypeDispatch<Void, Submission>((_, value) ->
+    private static final TypeDispatch<Void, Submission> SUBMISSIONS = new TypeDispatch<Void, Submission>((unused1, value) ->
             ((Task) value).consumesResources() ? Submission.FTB_ONLY : Submission.NONE)
-            .register(ItemTask.class, (_, task) -> task.isTaskScreenOnly() ? Submission.FTB_ONLY : task.consumesResources() ? Submission.DIRECT : Submission.NONE)
-            .register(CheckmarkTask.class, (_, _) -> Submission.DIRECT)
-            .register(XPTask.class, (_, _) -> Submission.DIRECT)
-            .register(CustomTask.class, (_, task) -> task.enableButton() && task.autoSubmitOnPlayerTick() <= 0 ? Submission.DIRECT : Submission.NONE);
+            .register(ItemTask.class, (unused1, task) -> task.isTaskScreenOnly() ? Submission.FTB_ONLY : task.consumesResources() ? Submission.DIRECT : Submission.NONE)
+            .register(CheckmarkTask.class, (unused1, unused2) -> Submission.DIRECT)
+            .register(XPTask.class, (unused1, unused2) -> Submission.DIRECT)
+            .register(CustomTask.class, (unused1, task) -> customTaskButtonEnabled(task) && task.autoSubmitOnPlayerTick() <= 0 ? Submission.DIRECT : Submission.NONE);
+    // 2101.1.37 removed the public enableButton() getter, leaving the field readable only by reflection.
+    private static final Field CUSTOM_TASK_BUTTON = customTaskButtonField();
     private final ServerQuestFile file;
     private final TeamData team;
+
+    private static @Nullable Field customTaskButtonField() {
+        try {
+            Field field = CustomTask.class.getDeclaredField("enableButton");
+            field.setAccessible(true);
+            return field;
+        } catch (NoSuchFieldException | RuntimeException error) {
+            SystemMod.LOGGER.warn("Custom task button flag is unreadable; custom tasks will need the FTB interface", error);
+            return null;
+        }
+    }
+
+    private static boolean customTaskButtonEnabled(CustomTask task) {
+        Field field = CUSTOM_TASK_BUTTON;
+        if (field == null) return false;
+        try {
+            return field.getBoolean(task);
+        } catch (IllegalAccessException error) {
+            return false;
+        }
+    }
 
     public FtbQuestReader(ServerQuestFile file, TeamData team) {
         this.file = file;
@@ -51,7 +77,6 @@ public final class FtbQuestReader {
     }
 
     public List<Quest> active(ServerPlayer player) {
-        if (this.team.isProgressionPaused(player)) return List.of();
         return this.stream(quest -> active(this.team, quest)).toList();
     }
 
@@ -121,14 +146,14 @@ public final class FtbQuestReader {
     }
 
     public static boolean canComplete(ServerPlayer player, TeamData team, Quest quest) {
-        if (!active(team, quest) || team.isProgressionPaused(player)) return false;
+        if (!active(team, quest)) return false;
         List<Task> remaining = quest.getTasksAsList().stream().filter(task -> !team.isCompleted(task)).toList();
         // The completion button never submits a remaining resource-consuming or third-party task.
         return !remaining.isEmpty() && remaining.stream().allMatch(task -> task.getClass() == CheckmarkTask.class);
     }
 
     public static boolean canSubmit(ServerPlayer player, TeamData team, Quest quest) {
-        return active(team, quest) && !team.isProgressionPaused(player)
+        return active(team, quest)
                 && submittableTasks(quest).stream().anyMatch(task -> pendingSubmission(team, task));
     }
 
@@ -153,7 +178,7 @@ public final class FtbQuestReader {
 
     public static boolean starterGiftAvailable(ServerPlayer player, TeamData team, Quest quest) {
         return kind(quest) == Kind.STARTER_GIFT && readable(team, quest) && !team.isLocked()
-                && (team.isCompleted(quest) || active(team, quest) && !team.isProgressionPaused(player))
+                && (team.isCompleted(quest) || active(team, quest))
                 && quest.getRewards().stream().anyMatch(reward -> !team.isRewardBlocked(reward)
                 && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE && !team.isRewardClaimed(player.getUUID(), reward));
     }

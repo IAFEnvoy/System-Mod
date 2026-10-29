@@ -1,6 +1,5 @@
 package com.iafenvoy.system.agent;
 
-
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.commerce.CommerceQuotes;
 import com.iafenvoy.system.agent.model.ModelClient;
@@ -282,16 +281,25 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     public boolean available(UUID player, Identifier workflow) {
-        Identifier owner = this.modules.owner(workflow);
-        if (owner != null && !this.moduleAccess.test(player, owner)) return false;
-        AgentModule<?> module = this.modules.get(workflow);
+        AgentModule<?> module = this.module(player, workflow);
         // Recheck exported tool dependencies for routing, in-flight work and queued game-thread operations.
-        return module == null || module.descriptor().tools().stream().allMatch(tool -> this.toolAvailable(player, tool));
+        return module != null && module.descriptor().tools().stream().allMatch(tool -> this.toolAvailable(player, tool));
+    }
+
+    public AgentModule<?> module(UUID player, Identifier workflow) {
+        return this.modules.get(workflow, owner -> this.moduleAccess.test(player, owner));
+    }
+
+    boolean moduleEnabled(UUID player, Identifier owner) {
+        return owner == null || this.moduleAccess.test(player, owner);
     }
 
     public boolean toolAvailable(UUID player, String tool) {
-        Identifier owner = this.tools.owner(tool);
-        return this.tools.contains(tool) && (owner == null || this.moduleAccess.test(player, owner));
+        return this.tools.available(tool, owner -> this.moduleAccess.test(player, owner));
+    }
+
+    <I, O> ToolRegistry.Tool<I, O> tool(UUID player, ToolRegistry.Type<I, O> type, Identifier owner) {
+        return this.tools.require(type, owner, exporting -> this.moduleAccess.test(player, exporting));
     }
 
     public void moduleAccessChanged(UUID player) {
@@ -330,7 +338,7 @@ public final class AgentEngine implements AutoCloseable {
 
     AgentResult execute(ExecutionContext context, AgentAction input, ExecutionPolicy policy) {
         try {
-            ModuleRegistry.Call<?> call = this.modules.call(input);
+            ModuleRegistry.Call<?> call = this.modules.call(input, owner -> this.moduleAccess.test(context.player(), owner));
             AgentModule.Descriptor descriptor = call.module().descriptor();
             if (!this.available(context.player(), descriptor.id())) throw new AgentException("CAPABILITY_UNAVAILABLE");
             if (context.isEvent() ? !descriptor.event() : !descriptor.interactive())
@@ -339,7 +347,7 @@ public final class AgentEngine implements AutoCloseable {
                 throw new AgentException("CONFIRM_REQUIRED");
             if ((context.routeSource() == RouteSource.SEMANTIC || context.routeSource() == RouteSource.ROUTE_CACHE)
                     && !this.modules.semanticSelectable(descriptor.id())) throw new AgentException("NOT_AUTHORIZED");
-            context.select(descriptor, policy == null ? this.policy(call.module()) : policy);
+            context.select(call.owner(), descriptor, policy == null ? this.policy(call.module()) : policy);
             context.ensureMemoryCurrent();
             return call.execute(context);
         } catch (Exception error) {

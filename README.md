@@ -23,7 +23,8 @@ and HUD notifications that keep gameplay uninterrupted, with optional speech out
 - **Data-driven lottery:** browse pools, review prize weights and single-draw costs, then confirm one draw. Rewards
   enter the inbox. Data packs configure Saturn Costs or free draws.
 - **Configurable content and workflows:** data packs define system names, descriptions, enabled modules, check-in
-  rewards, shop offers and lottery pools. Modules support IDs, tags and conditions. Server rules can trigger bounded
+  rewards, shop offers and lottery pools. Modules use a synchronized `system_module` registry: server behavior is
+  selected by `server.type`, client UI by a separate `client` ID. Systems reference module instances or tags, with conditions. Server rules can trigger bounded
   workflows when players complete advancements.
 - **HUD notifications and speech:** notifications do not take control of the mouse or keyboard. Optional Aliyun
   streaming TTS reads message bodies; closing a view, dismissing a notification or switching messages ends the corresponding
@@ -40,8 +41,8 @@ and HUD notifications that keep gameplay uninterrupted, with optional speech out
    the Minecraft process must inherit the variable. Configuration stores the environment-variable name, not the key.
 4. Install a server data pack defining a system, then an administrator binds it with
    `/system grant <system ID> [player]`, for example `/system grant example:daily Steve`. Omit the player to bind
-   yourself. Players start unbound and can currently bind at most one system. The release JAR includes no default
-   system definition or default module tag; development defaults live only in `src/test-mod/`.
+   yourself. Players start unbound and can currently bind at most one system. Built-in `system:default` uses the
+   default module tag; the FTB Quests and web-search module definitions and tag additions are development-only.
 5. Run `/system`, `/system full` or `/system simple`, then use the controls or type a request.
 
 For example, set the variable in PowerShell, then launch the server from the same environment:
@@ -88,6 +89,7 @@ The following commands run in Minecraft chat:
 | `/system ask <text>`                  | Submit a natural-language request                                                                    |
 | `/system search <question>`           | Explicitly start paid web research; no automatic browsing                                            |
 | `/system player`                      | View your own status                                                                                 |
+| `/system submittable [query]`          | List FTB quests with pending manual or checkmark targets                                              |
 | `/system usage` / `/system usage all` | View personal usage / server AI and web usage as an administrator; voice totals always stay personal |
 | `/system grant <system ID> [player]`  | Bind one data-pack system as an administrator; omit the player to bind yourself                      |
 | `/system revoke [player]`             | Revoke access and clear System records as an administrator; retain cumulative usage                   |
@@ -164,12 +166,24 @@ keys. For example, create `data/example/system/system/daily.json`:
   "description": "system.definition.default.description",
   "modules": [
     "#example:basic",
-    "system:web_search"
+    "example:daily"
   ]
 }
 ```
 
-Place the corresponding module tag at `data/example/tags/system/server_module/basic.json`:
+Define `example:daily` at `data/example/system/system_module/daily.json`:
+
+```json
+{
+  "server": { "type": "system:signin" },
+  "client": "system:signin"
+}
+```
+
+`server.type` selects a registered module codec; any parameters belong beside `type`. Built-in codecs currently use
+parameterless singletons. `client` names a local client implementation. Either side may be omitted.
+
+Place the corresponding module tag at `data/example/tags/system/system_module/basic.json`:
 
 ```json
 {
@@ -177,7 +191,6 @@ Place the corresponding module tag at `data/example/tags/system/server_module/ba
   "values": [
     "system:player",
     "system:items",
-    "system:signin",
     "system:inbox",
     "system:shop",
     "system:lottery"

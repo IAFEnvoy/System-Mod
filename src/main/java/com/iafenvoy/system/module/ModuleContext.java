@@ -4,6 +4,9 @@ import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.MinecraftTools;
+import com.iafenvoy.system.data.SystemModule;
+import net.minecraft.core.Registry;
+import net.minecraft.resources.Identifier;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,12 +19,20 @@ public final class ModuleContext {
     private final AgentEngine engine;
     private final MinecraftTools game;
     private final CommerceTransactions commerce;
+    private final Registry<SystemModule> modules;
+    private final Identifier id;
     private final Map<ToolRegistry.Type<?, ?>, ToolRegistry.Tool<?, ?>> tools = new HashMap<>();
 
-    public ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce) {
+    public ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce, Registry<SystemModule> modules) {
+        this(engine, game, commerce, modules, null);
+    }
+
+    private ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce, Registry<SystemModule> modules, Identifier id) {
         this.engine = engine;
         this.game = game;
         this.commerce = commerce;
+        this.modules = modules;
+        this.id = id;
     }
 
     public AgentEngine engine() {
@@ -34,6 +45,18 @@ public final class ModuleContext {
 
     public CommerceTransactions commerce() {
         return this.commerce;
+    }
+
+    public Registry<SystemModule> modules() {
+        return this.modules;
+    }
+
+    public Identifier id() {
+        return java.util.Objects.requireNonNull(this.id, "Module context is not scoped to a definition");
+    }
+
+    ModuleContext forModule(Identifier id) {
+        return new ModuleContext(this.engine, this.game, this.commerce, this.modules, id);
     }
 
     /**

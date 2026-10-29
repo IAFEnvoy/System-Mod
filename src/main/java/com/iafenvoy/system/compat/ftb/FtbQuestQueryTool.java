@@ -36,7 +36,11 @@ final class FtbQuestQueryTool implements ToolRegistry.Handler<QuestQueryInput, L
             ServerQuestFile file = ServerQuestFile.getInstance();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("CAPABILITY_UNAVAILABLE"));
             FtbQuestReader reader = new FtbQuestReader(file, team);
-            List<Quest> quests = input.claimable() ? reader.claimable(player) : reader.active(player);
+            List<Quest> quests = switch (input.view()) {
+                case ACTIVE -> reader.active(player);
+                case CLAIMABLE -> reader.claimable(player);
+                case SUBMITTABLE -> reader.submittable(player);
+            };
             List<Quest> matches = quests.stream().filter(quest -> FtbQuestReader.matches(quest, input.query())).toList();
             return list(context, team, matches, this.access.lists);
         });

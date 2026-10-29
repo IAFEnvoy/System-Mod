@@ -3,16 +3,20 @@ package com.iafenvoy.system.module.client;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.card.CardRef;
 import com.iafenvoy.system.command.AssistantCommandSource;
-import com.iafenvoy.system.module.CoreModule;
-import com.iafenvoy.system.module.SharedModule;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import net.minecraft.resources.Identifier;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-public record ClientModuleContext(ClientModuleBindingsCache bindings, Identifier id, ClientModule module) {
+public record ClientModuleContext(ClientModuleBindingsCache bindings, Identifier id, ClientModule module,
+                                  List<Identifier> definitions) {
+    public ClientModuleContext {
+        definitions = List.copyOf(definitions);
+    }
+
     public void command(Runnable action, String... aliases) {
         ClientModuleCaches.COMMAND.register(this::available, action, aliases);
     }
@@ -26,8 +30,7 @@ public record ClientModuleContext(ClientModuleBindingsCache bindings, Identifier
     }
 
     public boolean available() {
-        return !(this.module instanceof SharedModule) || this.module instanceof CoreModule
-                || AssistantClient.state().hasModule(this.id);
+        return this.definitions.isEmpty() || this.definitions.stream().anyMatch(AssistantClient.state()::hasModule);
     }
 
     public void workspace(String page, String navigation, Consumer<WorkspaceContext> bind) {

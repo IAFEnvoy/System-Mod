@@ -58,7 +58,7 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
                     // Auto-claimed repeatable quests may reset immediately; one command never enters the next cycle.
                     if (team.isCompleted(target) || team.getCompletionCount(target) != completions || team.isLocked()
                             || !team.canStartTasks(target) || team.isProgressionPaused(player)) break;
-                    if (!team.isCompleted(task)) task.submitTask(team, player);
+                    if (FtbQuestReader.pendingSubmission(team, task)) task.submitTask(team, player);
                 }
             });
             boolean changed = !before.equals(tasks.stream().map(team::getProgress).toList()) || team.getCompletionCount(target) != completions;

@@ -2,38 +2,28 @@ package com.iafenvoy.system.registry;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.module.ServerModule;
-import com.iafenvoy.system.module.builtin.AdvancementSystemModule;
-import com.iafenvoy.system.module.builtin.BindingSystemModule;
-import com.iafenvoy.system.module.builtin.CoreSystemModule;
-import com.iafenvoy.system.module.builtin.InboxSystemModule;
-import com.iafenvoy.system.module.builtin.ItemSystemModule;
-import com.iafenvoy.system.module.builtin.LotterySystemModule;
-import com.iafenvoy.system.module.builtin.PlayerSystemModule;
-import com.iafenvoy.system.module.builtin.QuestSystemModule;
-import com.iafenvoy.system.module.builtin.SearchSystemModule;
-import com.iafenvoy.system.module.builtin.ShopSystemModule;
-import com.iafenvoy.system.module.builtin.SignInSystemModule;
-import com.iafenvoy.system.module.builtin.UsageSystemModule;
+import com.iafenvoy.system.module.builtin.*;
+import com.mojang.serialization.MapCodec;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**
- * Builtin feature definitions are registered once; workflows and player runtimes are per server.
+ * Builtin server module codecs are registered once; module instances are loaded from datapacks.
  */
 @SuppressWarnings("unused")
 public final class SystemServerModules {
-    public static final DeferredRegister<ServerModule> REGISTRY = DeferredRegister.create(SystemResourceKeys.SERVER_MODULE, SystemMod.MOD_ID);
+    public static final DeferredRegister<MapCodec<? extends ServerModule>> REGISTRY = DeferredRegister.create(SystemResourceKeys.SERVER_MODULE, SystemMod.MOD_ID);
 
-    public static final DeferredHolder<ServerModule, CoreSystemModule> CORE = REGISTRY.register("core", CoreSystemModule::new);
-    public static final DeferredHolder<ServerModule, BindingSystemModule> BINDING = REGISTRY.register("binding", BindingSystemModule::new);
-    public static final DeferredHolder<ServerModule, UsageSystemModule> USAGE = REGISTRY.register("usage", UsageSystemModule::new);
-    public static final DeferredHolder<ServerModule, PlayerSystemModule> PLAYER = REGISTRY.register("player", PlayerSystemModule::new);
-    public static final DeferredHolder<ServerModule, ItemSystemModule> ITEMS = REGISTRY.register("items", ItemSystemModule::new);
-    public static final DeferredHolder<ServerModule, SignInSystemModule> SIGN_IN = REGISTRY.register("signin", SignInSystemModule::new);
-    public static final DeferredHolder<ServerModule, InboxSystemModule> INBOX = REGISTRY.register("inbox", InboxSystemModule::new);
-    public static final DeferredHolder<ServerModule, ShopSystemModule> SHOP = REGISTRY.register("shop", ShopSystemModule::new);
-    public static final DeferredHolder<ServerModule, LotterySystemModule> LOTTERY = REGISTRY.register("lottery", LotterySystemModule::new);
-    public static final DeferredHolder<ServerModule, AdvancementSystemModule> ADVANCEMENT = REGISTRY.register("advancement", AdvancementSystemModule::new);
-    public static final DeferredHolder<ServerModule, QuestSystemModule> FTB_QUESTS = REGISTRY.register("ftb_quests", QuestSystemModule::new);
-    public static final DeferredHolder<ServerModule, SearchSystemModule> SEARCH = REGISTRY.register("web_search", SearchSystemModule::new);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<CoreSystemModule>> CORE = REGISTRY.register("core", () -> CoreSystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<BindingSystemModule>> BINDING = REGISTRY.register("binding", () -> BindingSystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<UsageSystemModule>> USAGE = REGISTRY.register("usage", () -> UsageSystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<PlayerSystemModule>> PLAYER = REGISTRY.register("player", () -> PlayerSystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<ItemSystemModule>> ITEMS = REGISTRY.register("items", () -> ItemSystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<SignInSystemModule>> SIGN_IN = REGISTRY.register("signin", () -> SignInSystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<InboxSystemModule>> INBOX = REGISTRY.register("inbox", () -> InboxSystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<ShopSystemModule>> SHOP = REGISTRY.register("shop", () -> ShopSystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<LotterySystemModule>> LOTTERY = REGISTRY.register("lottery", () -> LotterySystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<AdvancementSystemModule>> ADVANCEMENT = REGISTRY.register("advancement", () -> AdvancementSystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<QuestSystemModule>> FTB_QUESTS = REGISTRY.register("ftb_quests", () -> QuestSystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<SearchSystemModule>> SEARCH = REGISTRY.register("web_search", () -> SearchSystemModule.CODEC);
 }

@@ -4,7 +4,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 
 /**
- * Local contributions; SharedModule adds server entitlement checks while this contract stays common-safe.
+ * Client-only contributions; the binding context checks the synchronized definition IDs when applicable.
  */
 public interface ClientModule {
     /**

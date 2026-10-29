@@ -1,43 +1,63 @@
 package com.iafenvoy.system.registry;
 
-import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.module.builtin.BindingSystemModule;
-import com.iafenvoy.system.module.builtin.ConversationClientModule;
-import com.iafenvoy.system.module.builtin.CoreSystemModule;
-import com.iafenvoy.system.module.builtin.InboxSystemModule;
-import com.iafenvoy.system.module.builtin.ItemSystemModule;
-import com.iafenvoy.system.module.builtin.LotterySystemModule;
-import com.iafenvoy.system.module.builtin.PlayerSystemModule;
-import com.iafenvoy.system.module.builtin.QuestSystemModule;
-import com.iafenvoy.system.module.builtin.SearchSystemModule;
-import com.iafenvoy.system.module.builtin.SettingsClientModule;
-import com.iafenvoy.system.module.builtin.ShopSystemModule;
-import com.iafenvoy.system.module.builtin.SignInSystemModule;
-import com.iafenvoy.system.module.builtin.SpeechClientModule;
-import com.iafenvoy.system.module.builtin.UsageSystemModule;
+import com.iafenvoy.system.module.builtin.*;
 import com.iafenvoy.system.module.client.ClientModule;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredRegister;
+import net.minecraft.resources.Identifier;
 
-/**
- * The client catalog reuses shared feature classes; their UI hooks are invoked only on the client.
- */
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/** Client implementations are local objects; synchronized datapacks refer to them only by ID. */
 @SuppressWarnings("unused")
 public final class SystemClientModules {
-    public static final DeferredRegister<ClientModule> REGISTRY = DeferredRegister.create(SystemResourceKeys.CLIENT_MODULE, SystemMod.MOD_ID);
+    private static final Map<Identifier, ClientModule> TYPES = new LinkedHashMap<>();
+    private static final Map<Identifier, ClientModule> LOCAL = new LinkedHashMap<>();
 
-    public static final DeferredHolder<ClientModule, CoreSystemModule> CORE = REGISTRY.register("core", CoreSystemModule::new);
-    public static final DeferredHolder<ClientModule, BindingSystemModule> BINDING = REGISTRY.register("binding", BindingSystemModule::new);
-    public static final DeferredHolder<ClientModule, ConversationClientModule> CONVERSATION = REGISTRY.register("conversation", ConversationClientModule::new);
-    public static final DeferredHolder<ClientModule, SettingsClientModule> SETTINGS = REGISTRY.register("settings", SettingsClientModule::new);
-    public static final DeferredHolder<ClientModule, UsageSystemModule> USAGE = REGISTRY.register("usage", UsageSystemModule::new);
-    public static final DeferredHolder<ClientModule, SpeechClientModule> SPEECH = REGISTRY.register("speech", SpeechClientModule::new);
-    public static final DeferredHolder<ClientModule, PlayerSystemModule> PLAYER = REGISTRY.register("player", PlayerSystemModule::new);
-    public static final DeferredHolder<ClientModule, ItemSystemModule> ITEMS = REGISTRY.register("items", ItemSystemModule::new);
-    public static final DeferredHolder<ClientModule, SignInSystemModule> SIGN_IN = REGISTRY.register("signin", SignInSystemModule::new);
-    public static final DeferredHolder<ClientModule, InboxSystemModule> INBOX = REGISTRY.register("inbox", InboxSystemModule::new);
-    public static final DeferredHolder<ClientModule, ShopSystemModule> SHOP = REGISTRY.register("shop", ShopSystemModule::new);
-    public static final DeferredHolder<ClientModule, LotterySystemModule> LOTTERY = REGISTRY.register("lottery", LotterySystemModule::new);
-    public static final DeferredHolder<ClientModule, QuestSystemModule> FTB_QUESTS = REGISTRY.register("ftb_quests", QuestSystemModule::new);
-    public static final DeferredHolder<ClientModule, SearchSystemModule> SEARCH = REGISTRY.register("web_search", SearchSystemModule::new);
+    public static final CoreSystemClientModule CORE = local("core", new CoreSystemClientModule());
+    public static final BindingSystemClientModule BINDING = local("binding", new BindingSystemClientModule());
+    public static final UsageSystemClientModule USAGE = local("usage", new UsageSystemClientModule());
+    public static final ConversationClientModule CONVERSATION = local("conversation", new ConversationClientModule());
+    public static final SettingsClientModule SETTINGS = local("settings", new SettingsClientModule());
+    public static final SpeechClientModule SPEECH = local("speech", new SpeechClientModule());
+    public static final PlayerSystemClientModule PLAYER = register("player", new PlayerSystemClientModule());
+    public static final ItemSystemClientModule ITEMS = register("items", new ItemSystemClientModule());
+    public static final SignInSystemClientModule SIGN_IN = register("signin", new SignInSystemClientModule());
+    public static final InboxSystemClientModule INBOX = register("inbox", new InboxSystemClientModule());
+    public static final ShopSystemClientModule SHOP = register("shop", new ShopSystemClientModule());
+    public static final LotterySystemClientModule LOTTERY = register("lottery", new LotterySystemClientModule());
+    public static final QuestSystemClientModule FTB_QUESTS = register("ftb_quests", new QuestSystemClientModule());
+    public static final SearchSystemClientModule SEARCH = register("web_search", new SearchSystemClientModule());
+
+    private SystemClientModules() {
+    }
+
+    public static void init() {
+        // The client entrypoint initializes this class before RegistryCache consumes its definitions.
+    }
+
+    private static <T extends ClientModule> T register(String id, T module) {
+        return register(Identifier.fromNamespaceAndPath("system", id), module);
+    }
+
+    public static <T extends ClientModule> T register(Identifier id, T module) {
+        if (TYPES.putIfAbsent(id, module) != null)
+            throw new IllegalArgumentException("Duplicate client module type " + id);
+        return module;
+    }
+
+    private static <T extends ClientModule> T local(String id, T module) {
+        Identifier key = Identifier.fromNamespaceAndPath("system", id);
+        register(key, module);
+        LOCAL.put(key, module);
+        return module;
+    }
+
+    public static ClientModule get(Identifier id) {
+        return TYPES.get(id);
+    }
+
+    public static Map<Identifier, ClientModule> local() {
+        return Collections.unmodifiableMap(LOCAL);
+    }
 }

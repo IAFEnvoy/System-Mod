@@ -9,9 +9,6 @@
     "system:shop",
     "system:lottery",
     "system:advancement",
-    {
-      "id": "system:ftb_quests",
-      "required": false
-    }
+    "system:ftb_quests"
   ]
 }

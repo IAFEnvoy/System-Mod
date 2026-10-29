@@ -5,10 +5,11 @@ import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.ModuleCommands;
 import com.iafenvoy.system.module.ServerModule;
 import com.iafenvoy.system.module.SharedModule;
-import com.iafenvoy.system.registry.SystemRegistries;
+import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.tree.CommandNode;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.server.MinecraftServer;
@@ -16,6 +17,9 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * The root only assembles feature command nodes and forwards registered Agent instructions.
@@ -28,7 +32,10 @@ public final class SystemCommand {
     @SubscribeEvent
     public static void register(RegisterCommandsEvent event) {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal(SystemMod.MOD_ID);
-        SystemRegistries.SERVER_MODULE.stream().filter(ServerModule::available)
+        Set<MapCodec<? extends ServerModule>> types = new HashSet<>();
+        event.getBuildContext().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE).listElements()
+                .flatMap(holder -> holder.value().server().stream()).filter(module -> types.add(module.codec()))
+                .filter(ServerModule::available)
                 .filter(SharedModule.class::isInstance).map(SharedModule.class::cast)
                 .forEach(module -> module.serverCommands(root));
         root.then(Commands.argument("instruction", StringArgumentType.greedyString())

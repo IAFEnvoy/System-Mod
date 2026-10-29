@@ -1,0 +1,6 @@
+{
+  "server": {
+    "type": "system:ftb_quests"
+  },
+  "client": "system:ftb_quests"
+}

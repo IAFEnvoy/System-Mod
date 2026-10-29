@@ -10,42 +10,36 @@
 
 ## System 自有内置注册表
 
-下表字段名同时对应 `SystemResourceKeys` 的键与 `SystemRegistries` 的实例。所有注册表都在两端创建并统一登记到根注册表，声明不再按物理端拆分；客户端实现类的加载隔离放在条目装配入口。
+下表字段对应 SystemResourceKeys 的键与 SystemRegistries 的实例。代码类型在两端创建，由 NewRegistryEvent / DeferredRegister 登记并冻结；不启用数字 ID 同步，按名称 Codec 编解码。
 
-| 注册表 ID | 公开字段 | 条目类型 | 内置条目声明 |
+| 注册表 ID | 公开字段 | 条目类型 | 内置声明 |
 | --- | --- | --- | --- |
-| `system:server_module` | `SERVER_MODULE` | `ServerModule` | [`SystemServerModules`](../src/main/java/com/iafenvoy/system/registry/SystemServerModules.java) |
-| `system:card_data_type` | `CARD_DATA_TYPE` | `MapCodec<? extends CardData>` | [`SystemCardDataTypes`](../src/main/java/com/iafenvoy/system/registry/SystemCardDataTypes.java) |
-| `system:action_type` | `ACTION_TYPE` | `MapCodec<? extends AgentAction>` | [`SystemActionTypes`](../src/main/java/com/iafenvoy/system/registry/SystemActionTypes.java) |
-| `system:agent_request_type` | `AGENT_REQUEST_TYPE` | `MapCodec<? extends AgentRequest>` | [`SystemRequestTypes`](../src/main/java/com/iafenvoy/system/registry/SystemRequestTypes.java) |
-| `system:agent_response_type` | `AGENT_RESPONSE_TYPE` | `MapCodec<? extends AgentResponse>` | [`SystemResponseTypes`](../src/main/java/com/iafenvoy/system/registry/SystemResponseTypes.java) |
-| `system:client_module` | `CLIENT_MODULE` | `ClientModule` | [`SystemClientModules`](../src/main/java/com/iafenvoy/system/registry/SystemClientModules.java) |
-| `system:card_node_type` | `CARD_NODE_TYPE` | `MapCodec<? extends CardNode>` | [`SystemCardNodeTypes`](../src/main/java/com/iafenvoy/system/registry/SystemCardNodeTypes.java) |
+| `system:server_module` | `SERVER_MODULE` | `MapCodec<? extends ServerModule>` | SystemServerModules |
+| `system:card_data_type` | `CARD_DATA_TYPE` | `MapCodec<? extends CardData>` | SystemCardDataTypes |
+| `system:action_type` | `ACTION_TYPE` | `MapCodec<? extends AgentAction>` | SystemActionTypes |
+| `system:agent_request_type` | `AGENT_REQUEST_TYPE` | `MapCodec<? extends AgentRequest>` | SystemRequestTypes |
+| `system:agent_response_type` | `AGENT_RESPONSE_TYPE` | `MapCodec<? extends AgentResponse>` | SystemResponseTypes |
+| `system:card_node_type` | `CARD_NODE_TYPE` | `MapCodec<? extends CardNode>` | SystemCardNodeTypes |
 
-共 7 张代码注册表。共用条目（包括服务端生成回复所需的卡片载荷）的 DeferredRegister 由 `SystemMod` 绑定 mod event bus；客户端模块、布局节点的 DeferredRegister 由 `Dist.CLIENT` 的 `SystemClientMod` 绑定。专用服务端保留这两张表的空表。11 个双端功能的同一实现类分别以无状态实例登记到两张模块表；服务端会加载这些外层类及 ClientModule 接口，客户端 UI 实现保留在按需加载的 ClientHooks 静态内部类，不从公共构造或静态初始化访问。泛型声明本身不触发客户端实现加载。
-
-当前 NeoForge 的 `RegistryBuilder.sync(true)` 同步条目的数字 ID 映射，默认关闭，不传输 Java 实现或 Codec。本模组这些代码注册表均按名称编码，保留默认设置，客户端独有条目不会参与数字 ID 同步。共用协议类型仍须由两端安装的代码提供相同定义；`system:system` 数据包注册表另用网络 Codec 同步定义，见下文。运行中不能新增内置注册表条目。
+共 6 张代码注册表。只有卡片节点的 DeferredRegister 在 SystemClientMod 绑定；专用服务端保留其空表。ClientModule 已移出 MC 注册表，SystemRegistries 与 SystemResourceKeys 不再引用该接口。
 
 ### 内置模块
 
-- 服务端：`core`、`binding`、`usage`、`player`、`items`、`signin`、`inbox`、`shop`、`lottery`、`advancement`、`ftb_quests`、`web_search`。
-- 客户端：`core`、`binding`、`conversation`、`settings`、`usage`、`speech`、`player`、`items`、`signin`、`inbox`、`shop`、`lottery`、`ftb_quests`、`web_search`。
+服务端类型包括 core、binding、usage、player、items、signin、inbox、shop、lottery、advancement、ftb_quests、web_search，命名空间均为 system。每类提供 CODEC / codec()，无参数类型使用 MapCodec.unit 单例；ServerModule.CODEC 从 SERVER_MODULE 按 type dispatch。
 
-以上条目均属于 `system` 命名空间，使用普通 `DeferredHolder` 始终登记。`ServerModule.available()` 在定义内部声明依赖是否满足；任务模块检测 FTB Quests，缺席时保留模块 ID 与公共 Codec，跳过指令、工作流和运行时。客户端任务模块只使用本模组 DTO，仍可保留卡片展示定义。模块装配、玩家启停及生命周期见[功能模块化](feature-modules.md)。
+动态配置独立登记在 `system:system_module`，并通过 `SystemDataPackRegistries.modules(RegistryAccess)` 访问。内置动态条目采用同名 ID，扩展可给同一类型创建不同 ID 与参数；不能用静态 SERVER_MODULE 查询模块配置或取玩家可用条目。
 
-模块接口不提供 `id()`，使用方从对应 `SERVER_MODULE` / `CLIENT_MODULE` 的 `getKey(module)` 查找；客户端游戏指令使用 `clientCommands(root)`，服务端使用 `serverCommands(root)`，避免联合实现共享同一个指令钩子。成就仅服务端，对话/设置/语音仅客户端，其余内置功能使用同一个 `*SystemModule` 实现类。
+客户端实现位于 SystemClientModules 普通 Map，通过客户端入口初始化、public static 字段公开。数据条目的 client 是该 Map 的 Identifier；服务端不会解析客户端实现。内置双端功能拆为相邻的 *SystemModule / *SystemClientModule，不再共用 ClientHooks 或同一个实现类。聊天、设置、语音与基础界面贡献在本地常驻，其余按动态配置 ID 检查权限。
 
-模块仍登记到上述两张根类型注册表，职责由子接口区分，不新增分类注册表：
-
-| 接口 | 注册与用途 |
+| 接口 | 用途 |
 | --- | --- |
-| `ToolModule` | 仅 SERVER_MODULE；向工具目录导出操作，工作流白名单内调用，无玩家请求入口 |
-| `WorkflowModule` | SERVER_MODULE；服务端工作流与生命周期，内置成就使用此类型 |
-| `SharedModule` | SERVER_MODULE 与 CLIENT_MODULE；双端业务，客户端按服务端模块权限启用 |
-| `CoreModule` | 继承 SharedModule；core / binding / usage，绑定后必需且不能移除 |
-| `ClientModule` | 仅 CLIENT_MODULE；conversation / settings / speech 等本地贡献 |
+| ToolModule | 服务端纯工具集合，无玩家主动请求入口 |
+| WorkflowModule | 服务端工作流与生命周期，成就使用此类型 |
+| SharedModule | 继承 WorkflowModule，增加服务端游戏指令；不继承 ClientModule |
+| CoreModule | 继承 SharedModule，绑定后必需且不能移除 |
+| ClientModule | 客户端界面、本地动作及 clientCommands |
 
-`required()` 和 `serverRequired()` 已删除；客户端上下文、模块权限和管理员命令直接检查接口类型。`available()` 只做依赖可用性检查。纯工具模块由 ModuleManager 先于工作流安装到每服务器的 ToolRegistry，工具另记 owner 供执行时检查权限；运行时工具目录沿用普通 Map。完整声明和消费示例见[纯工具模块](feature-modules.md#纯工具模块)。
+分类使用接口，available() 仅检查依赖。纯工具和工作流都按配置 ID 保存 owner。Agent 工作流和工具目录支持同类型配置的多个候选，根据当前玩家已启用的模块选择实现；客户端缓存按 client ID 分组，仅装配一份 UI。详见[功能模块化](feature-modules.md)。
 
 ### 卡片数据与动作载荷
 
@@ -107,16 +101,17 @@ JSON 使用完整 ID，例如 `{"type":"system:items","items":"{{result_items}}"
 
 | 来源 / 注册键 | 声明入口 | 查询 / 用途 |
 | --- | --- | --- |
-| System 数据包注册表 `system:system` | `SystemDataPackRegistries`、`SystemResourceKeys.SYSTEM` | `SystemDataPackRegistries.get/current(RegistryAccess, ...)`；系统名、介绍与模块定义 |
+| System 模块数据包注册表 `system:system_module` | `SystemDataPackRegistries`、`SystemResourceKeys.SYSTEM_MODULE` | `modules/moduleIds(RegistryAccess)`；模块配置、server 类型分派与 client ID |
+| System 数据包注册表 `system:system` | `SystemDataPackRegistries`、`SystemResourceKeys.SYSTEM` | `SystemDataPackRegistries.get/ids(RegistryAccess, ...)`；系统名、介绍与模块定义 |
 | Saturn `SaturnResourceKeys.ENTITY_ACTION_TYPE` | `SystemEntityActions` | `system:add_module`、`system:remove_module` |
 | Saturn `SaturnResourceKeys.ENTITY_CONDITION_TYPE` | `SystemEntityConditions` | `system:has_module`、`system:has_system` |
 | Saturn `SaturnRegistries.DATA_STORAGE_TYPE` | `SystemDataStorages` | 模块权限、成就、Agent 日志、交易、收件箱、签到的 DataStorage Codec |
 | 原版 `Registries.SOUND_EVENT` | `SystemSoundEvents` | `system:notification` |
 | 客户端按键注册事件 | `SystemKeyMappings` | `CATEGORY`、`TOGGLE_INTERFACE`、`VOICE_INPUT`；使用 NeoForge 专用事件登记 |
 
-系统定义通过 `RegistryAccess` 查询，随服务端资源重载和同步更新；不能用静态 `SystemRegistries` 查询世界数据包条目。文件路径为 `data/<条目命名空间>/system/system/<路径>.json`，格式见[数据包文档](datapacks.md)。
+系统与模块定义通过 `RegistryAccess` 查询，在世界加载时读取、连接时同步；修改定义或参数需要重开世界或重启服务器，tag 仍遵循原版资源重载规则。不能用静态 `SystemRegistries` 查询世界数据包条目。系统文件路径为 `data/<条目命名空间>/system/system/<路径>.json`，格式见[数据包文档](datapacks.md)。
 
-系统定义的 `modules` 可引用 `SERVER_MODULE` 条目或 tag，例如 `"system:signin"`、`"#example:basic"`、`{ "id": "#example:basic", "condition": ... }`。模块 tag 文件位于 `data/<namespace>/tags/system/server_module/<path>.json`；复用 Saturn `RegistryCodecs.keyOrTag` / `matchesKeys`，解码保留 ID/tag，服务端权限求值时读取成员。客户端继续接收实际启用的模块 ID 列表，不自行展开 tag。默认 tag `#system:default` 与默认系统仅在 `src/test-mod/resources` 提供，不进入发布 JAR。格式与覆盖规则见[模块 tag](datapacks.md#模块-tag)。
+系统定义的 modules 可引用动态 SYSTEM_MODULE 条目或 tag，例如 "system:signin"、"#example:basic"、{ "id": "#example:basic", "condition": ... }。ModuleDefinition 的 Either 为 Holder<SystemModule> 或 TagKey<SystemModule>，由 Saturn RegistryCodecs.holderOrTag / matches 在当前世界注册表求值。模块 tag 路径为 data/<namespace>/tags/system/system_module/<path>.json；客户端状态同步实际启用的配置 ID。完整数据格式见[数据包](datapacks.md#系统模块定义)。
 
 `SystemDataPackRegistries.ids(access)` 提供当前存档的系统 ID 列表，`get(access, id)` 查找指定定义；`/system grant <系统ID> [玩家]` 使用前者补全、后者校验。玩家保存自己的绑定 ID，模块求值和客户端展示均按该 ID 读取，不再提供固定默认选择的 `current(access)`。
 
@@ -198,6 +193,6 @@ SystemRegistries.CARD_DATA_TYPE.forEach(entry -> { /* inspect registered types *
 
 ## 搜索模块入口
 
-服务端 `SystemServerModules.SEARCH` 和客户端 `SystemClientModules.SEARCH` 注册 ID 均为 `system:web_search`。动作 `SystemActionTypes.SEARCH_ACTION` 与卡片 `SystemCardDataTypes.WEB_SEARCH` 的 ID 均为 `system:web_search`，分别对应 WebSearchInput / WebSearchOutput；模板为 `assets/system/cards/web_search.json`。工具键 `BuiltinTools.WEB_SEARCH` / `WEB_FETCH` 对应 `web.search` / `web.fetch`，只执行一种操作。
+服务端类型 Codec 为 SystemServerModules.SEARCH，客户端 Map 实现为 SystemClientModules.SEARCH；开发动态条目同时指定 server.type 和 client 为 system:web_search。动作 `SystemActionTypes.SEARCH_ACTION` 与卡片 `SystemCardDataTypes.WEB_SEARCH` 的 ID 均为 `system:web_search`，分别对应 WebSearchInput / WebSearchOutput；模板为 `assets/system/cards/web_search.json`。工具键 `BuiltinTools.WEB_SEARCH` / `WEB_FETCH` 对应 `web.search` / `web.fetch`，只执行一种操作。
 
 搜索内部 SearchStep 以本地 Map 存三个 MapCodec，按 `type=search|fetch|answer` dispatch；它是单个工作流的模型决策协议，不是 MC 注册表或全局 AgentAction。ModuleRouting.explicit 声明保守的当前消息解析器，ModuleRegistry 统一解析并校验；固定句式未命中时，由模型路由根据当前请求识别搜索意图。工作流通过 `explicitOnly()` 在目录中携带 `explicitOnly: true` 标记，要求模型非常确信才选择，不隐藏能力；不提供语义档案或意图缓存。`structuredOnly()` 独立保留模型目录与返回值解码的硬性排除。

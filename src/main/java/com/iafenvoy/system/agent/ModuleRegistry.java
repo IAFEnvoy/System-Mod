@@ -20,6 +20,7 @@ public final class ModuleRegistry {
     private final ToolRegistry tools;
     private final CommandRegistry commands = new CommandRegistry();
     private final Map<Identifier, Entry<?>> modules = new LinkedHashMap<>();
+    private final Map<Identifier, Map<Identifier, AgentModule<?>>> variants = new LinkedHashMap<>();
     private final Map<Identifier, RoutingProfile.Bound> profiles = new LinkedHashMap<>();
     private boolean frozen;
 
@@ -35,7 +36,24 @@ public final class ModuleRegistry {
         this.checkMutable();
         AgentModule.Descriptor descriptor = module.descriptor();
         Identifier id = descriptor.id();
-        if (this.modules.containsKey(id) || this.profiles.containsKey(id))
+        if (this.modules.containsKey(id)) {
+            Entry<?> previous = this.modules.get(id);
+            if (owner == null || this.variants.get(id).containsKey(owner)
+                    || previous.module().inputCodec() != module.inputCodec()
+                    || previous.module().getClass() != module.getClass()
+                    || !previous.module().descriptor().tools().equals(descriptor.tools())
+                    || descriptor.version() != previous.module().descriptor().version()
+                    || descriptor.interactive() != previous.module().descriptor().interactive()
+                    || descriptor.event() != previous.module().descriptor().event()
+                    || !module.tools().stream().map(ToolRegistry.Tool::id).collect(Collectors.toSet()).equals(descriptor.tools())
+                    || previous.readOnly() != (descriptor.interactive() && descriptor.policy().writeSteps() == 0
+                        && module.tools().stream().noneMatch(ToolRegistry.Tool::write)))
+                throw new IllegalArgumentException("Conflicting workflow variant " + id + " for " + owner);
+            this.tools.registerVariant(owner, module.tools());
+            this.variants.get(id).put(owner, module);
+            return;
+        }
+        if (this.profiles.containsKey(id))
             throw new IllegalArgumentException("Duplicate module " + id);
         if (SystemRegistries.ACTION_TYPE.getValue(id) != module.inputCodec())
             throw new IllegalArgumentException("Module input type must be registered under its descriptor ID");
@@ -56,8 +74,11 @@ public final class ModuleRegistry {
         }).orElse(null);
         RoutingProfile.Bound profile = routing.semantic().map(value -> value.bind(id, module.inputCodec(), readOnly && routing.semanticSelectable())).orElse(null);
         // Every declaration is validated before any registry is changed; shared tools keep instance identity.
-        this.tools.registerAll(operations);
-        this.modules.put(id, new Entry<>(owner, module, routing, readOnly, shortcut));
+        this.tools.registerVariant(owner, operations);
+        this.modules.put(id, new Entry<>(module, routing, readOnly, shortcut));
+        Map<Identifier, AgentModule<?>> alternatives = new LinkedHashMap<>();
+        alternatives.put(owner, module);
+        this.variants.put(id, alternatives);
         this.commands.register(id, routing.commands());
         if (profile != null) this.profiles.put(id, profile);
     }
@@ -91,9 +112,16 @@ public final class ModuleRegistry {
         return entry == null ? null : entry.module();
     }
 
-    public Identifier owner(Identifier workflow) {
-        Entry<?> entry = this.modules.get(workflow);
-        return entry == null ? null : entry.owner();
+    public AgentModule<?> get(Identifier id, Predicate<Identifier> available) {
+        Map.Entry<Identifier, AgentModule<?>> variant = this.variant(id, available);
+        return variant == null ? null : variant.getValue();
+    }
+
+    private Map.Entry<Identifier, AgentModule<?>> variant(Identifier id, Predicate<Identifier> available) {
+        Map<Identifier, AgentModule<?>> alternatives = this.variants.get(id);
+        if (alternatives == null) return null;
+        return alternatives.entrySet().stream().filter(entry -> entry.getKey() == null || available.test(entry.getKey()))
+                .findFirst().orElse(null);
     }
 
     public boolean readOnly(Identifier id) {
@@ -175,12 +203,17 @@ public final class ModuleRegistry {
     }
 
     public <I extends AgentAction> Call<I> call(I input) {
-        AgentModule<?> module = this.get(input.id());
-        if (module == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        return this.call(input, _ -> true);
+    }
+
+    public <I extends AgentAction> Call<I> call(I input, Predicate<Identifier> available) {
+        Map.Entry<Identifier, AgentModule<?>> variant = this.variant(input.id(), available);
+        if (variant == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        AgentModule<?> module = variant.getValue();
         if (module.inputCodec() != input.codec()) throw new AgentException("INVALID_INPUT");
         // Registration ties this exact codec to I; keep the erased cast at this one boundary.
         @SuppressWarnings("unchecked") AgentModule<I> typed = (AgentModule<I>) module;
-        return new Call<>(typed, input);
+        return new Call<>(variant.getKey(), typed, input);
     }
 
     public AgentAction button(Identifier id, Map<String, String> arguments) {
@@ -199,12 +232,12 @@ public final class ModuleRegistry {
         }
     }
 
-    private record Entry<I extends AgentAction>(Identifier owner, AgentModule<I> module, ModuleRouting<I> routing,
+    private record Entry<I extends AgentAction>(AgentModule<I> module, ModuleRouting<I> routing,
                                                 boolean readOnly,
                                                 AgentResult.Action shortcut) {
     }
 
-    public record Call<I extends AgentAction>(AgentModule<I> module, I input) {
+    public record Call<I extends AgentAction>(Identifier owner, AgentModule<I> module, I input) {
         public AgentResult execute(ExecutionContext context) throws Exception {
             return this.module.execute(context, this.input);
         }

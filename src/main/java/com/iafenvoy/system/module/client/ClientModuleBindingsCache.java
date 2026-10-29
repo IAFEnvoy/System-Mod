@@ -2,7 +2,8 @@ package com.iafenvoy.system.module.client;
 
 import com.iafenvoy.saturn.registry.cache.RegistryCache;
 import com.iafenvoy.system.card.CardRef;
-import com.iafenvoy.system.registry.SystemRegistries;
+import com.iafenvoy.system.registry.SystemClientModules;
+import com.iafenvoy.system.registry.SystemDataPackRegistries;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.sighs.apricityui.init.Document;
@@ -14,7 +15,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -29,17 +29,22 @@ public final class ClientModuleBindingsCache extends RegistryCache<ClientModuleB
 
     @Override
     protected synchronized void build(RegistryAccess access) {
-        // These modules belong to the frozen builtin registry, not the world's datapack registries.
+        // Several configured entries can share one UI; group by client type before declaring commands and pages.
         this.workspace = new ArrayList<>();
         this.localActions = new LinkedHashMap<>();
         this.building = true;
         ClientModuleCaches.COMMAND.begin();
         try {
-            for (ClientModule module : SystemRegistries.CLIENT_MODULE) {
-                Identifier id = Objects.requireNonNull(SystemRegistries.CLIENT_MODULE.getKey(module));
-                module.register(new ClientModuleContext(this, id, module));
-                ClientModuleCaches.COMMAND.game(module::clientCommands);
-            }
+            SystemClientModules.local().forEach((id, module) -> this.register(id, module, List.of()));
+            Map<Identifier, List<Identifier>> definitions = new LinkedHashMap<>();
+            SystemDataPackRegistries.modules(access).ifPresent(registry ->
+                    SystemDataPackRegistries.moduleIds(access).forEach(id -> registry.getValue(id).client().ifPresent(type ->
+                            definitions.computeIfAbsent(type, _ -> new ArrayList<>()).add(id))));
+            definitions.forEach((type, ids) -> {
+                if (SystemClientModules.local().containsKey(type)) return;
+                ClientModule module = SystemClientModules.get(type);
+                if (module != null) this.register(type, module, ids);
+            });
             this.workspace = List.copyOf(this.workspace);
             this.localActions = Map.copyOf(this.localActions);
             ClientModuleCaches.COMMAND.finish();
@@ -50,6 +55,11 @@ public final class ClientModuleBindingsCache extends RegistryCache<ClientModuleB
         } finally {
             this.building = false;
         }
+    }
+
+    private void register(Identifier id, ClientModule module, List<Identifier> definitions) {
+        module.register(new ClientModuleContext(this, id, module, definitions));
+        ClientModuleCaches.COMMAND.game(module::clientCommands);
     }
 
     @Override

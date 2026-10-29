@@ -2,6 +2,7 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
+import com.iafenvoy.system.agent.builtin.output.QuestSubmission;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardButton;
@@ -142,7 +143,7 @@ public final class ResultTypes {
 
     public record QuestNotice(String id, Component title, Component chapter, List<ItemPreviewOutput> items,
                               String description, List<Component> requirements, List<Component> otherRewards,
-                              boolean manualSubmission, QuestEvent event, boolean canSubmit, boolean rewardPending,
+                              boolean manualSubmission, QuestEvent event, QuestSubmission submission, boolean rewardPending,
                               Optional<String> claimRef, SpeechContent speech) implements CardData {
         public static final MapCodec<QuestNotice> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 Codec.STRING.fieldOf("id").forGetter(QuestNotice::id),
@@ -154,7 +155,7 @@ public final class ResultTypes {
                 ComponentSerialization.CODEC.listOf().fieldOf("otherRewards").forGetter(QuestNotice::otherRewards),
                 Codec.BOOL.fieldOf("manualSubmission").forGetter(QuestNotice::manualSubmission),
                 QuestEvent.CODEC.fieldOf("event").forGetter(QuestNotice::event),
-                Codec.BOOL.fieldOf("canSubmit").forGetter(QuestNotice::canSubmit),
+                QuestSubmission.CODEC.fieldOf("submission").forGetter(QuestNotice::submission),
                 Codec.BOOL.fieldOf("rewardPending").forGetter(QuestNotice::rewardPending),
                 Codec.STRING.optionalFieldOf("claimRef").forGetter(QuestNotice::claimRef),
                 SpeechContent.CODEC.fieldOf("speech").forGetter(QuestNotice::speech)
@@ -180,8 +181,7 @@ public final class ResultTypes {
             if (this.rewardPending)
                 main = main.copy().append("\n").append(Component.translatable("system.ui.quest_reward_pending"));
             builder.summary(main).speech(this.speech);
-            if (this.canSubmit)
-                builder.serverButton("submit", "system.action.complete_quest", Identifier.parse("system:quest_submit"), Map.of("quest", this.id, "complete", "true"));
+            this.submission.addButton(builder, this.id);
             if (this.claimRef.isPresent())
                 builder.serverButton("claim", "system.action.claim", Identifier.parse("system:quest_claim"), Map.of("claim_ref", this.claimRef.get()));
             else if (this.rewardPending)

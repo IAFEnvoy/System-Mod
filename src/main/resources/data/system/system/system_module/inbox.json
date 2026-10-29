@@ -1,0 +1,6 @@
+{
+  "server": {
+    "type": "system:inbox"
+  },
+  "client": "system:inbox"
+}

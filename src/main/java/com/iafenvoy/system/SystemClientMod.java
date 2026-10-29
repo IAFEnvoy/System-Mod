@@ -14,7 +14,7 @@ import net.neoforged.fml.common.Mod;
 public final class SystemClientMod {
     public SystemClientMod(IEventBus bus) {
         SystemCardNodeTypes.REGISTRY.register(bus);
-        SystemClientModules.REGISTRY.register(bus);
+        SystemClientModules.init();
         ClientModuleCaches.init();
     }
 }

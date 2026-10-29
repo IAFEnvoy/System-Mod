@@ -117,7 +117,7 @@ final class FtbQuestAccess {
         int end = start + Math.min(2048, description.length() - start);
         return new QuestOutput(hex(quest.getId()), LegacyText.component(quest.getTitle()),
                 LegacyText.component(quest.getChapter().getTitle()), description.substring(start, end),
-                team.getRelativeProgress(quest), team.isCompleted(quest), FtbQuestReader.canComplete(player, team, quest),
+                team.getRelativeProgress(quest), team.isCompleted(quest), FtbQuestReader.submissionAction(player, team, quest),
                 FtbQuestReader.kind(quest) == FtbQuestReader.Kind.STARTER_GIFT,
                 quest.getRewards().stream().anyMatch(reward -> FtbQuestReader.canClaim(player, team, reward)), tasks, rewards,
                 new SectionPageOutput(rewardOffset, rewardOffset + rewards.size(), visibleRewards > rewardOffset + rewards.size()),

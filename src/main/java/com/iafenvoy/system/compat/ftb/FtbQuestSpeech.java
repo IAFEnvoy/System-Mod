@@ -50,7 +50,7 @@ final class FtbQuestSpeech implements QuestNarration.Source {
     public CompletionStage<QuestNarration.Quest> load(ExecutionContext context, String questId) {
         return this.access.game.onPlayer(context, player -> {
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
-            if (runtime == null || !runtime.moduleManager().hasModule(player.getUUID(), QuestSystemModule.ID))
+            if (runtime == null || !runtime.moduleManager().hasType(player.getUUID(), QuestSystemModule.CODEC))
                 throw new AgentException("CAPABILITY_UNAVAILABLE");
             if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
             ServerQuestFile file = ServerQuestFile.getInstance();

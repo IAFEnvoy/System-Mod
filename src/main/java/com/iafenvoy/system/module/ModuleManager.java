@@ -7,9 +7,9 @@ import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.module.client.ClientModule;
+import com.iafenvoy.system.data.SystemModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import com.iafenvoy.system.registry.SystemRegistries;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -38,27 +38,32 @@ public final class ModuleManager implements AutoCloseable {
     public ModuleManager(MinecraftServer server, ModuleContext context) {
         this.server = server;
         this.engine = context.engine();
-        List<ServerModule> modules = SystemRegistries.SERVER_MODULE.stream().filter(ServerModule::available).toList();
+        Map<Identifier, SystemModule> modules = new LinkedHashMap<>();
+        context.modules().keySet().stream().sorted().forEach(id -> {
+            SystemModule definition = context.modules().getValue(id);
+            if (definition.available()) modules.put(id, definition);
+        });
+        Map<Identifier, ModuleContext> contexts = new LinkedHashMap<>();
+        modules.keySet().forEach(id -> contexts.put(id, context.forModule(id)));
         // Tool modules export operations before workflows resolve their typed dependencies.
-        for (ServerModule module : modules) {
-            if (!(module instanceof ToolModule tools)) continue;
-            if (module instanceof WorkflowModule || module instanceof ClientModule)
-                throw new IllegalArgumentException("Tool modules cannot expose workflows or client contributions");
-            Identifier id = Objects.requireNonNull(SystemRegistries.SERVER_MODULE.getKey(module));
-            this.engine.tools().registerAll(id, tools.tools(context));
-        }
-        // Static definitions create fresh workflows before any per-server runtime is constructed.
-        for (ServerModule module : modules) {
-            Identifier id = Objects.requireNonNull(SystemRegistries.SERVER_MODULE.getKey(module));
+        modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
+            if (!(module instanceof ToolModule tools)) return;
+            if (module instanceof WorkflowModule)
+                throw new IllegalArgumentException("Tool modules cannot expose workflows");
+            this.engine.tools().registerAll(id, tools.tools(contexts.get(id)));
+        }));
+        // Configured definitions create fresh workflows before any per-server runtime is constructed.
+        modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
             if (module instanceof WorkflowModule workflows)
-                for (AgentModule<?> workflow : workflows.workflows(context)) this.engine.registerModule(id, workflow);
-            module.installed(context);
-        }
-        for (ServerModule module : modules) {
-            Identifier id = Objects.requireNonNull(SystemRegistries.SERVER_MODULE.getKey(module));
-            this.installed.put(id, new Installed(id, module, module.runtime(context),
-                    module.storages().stream().anyMatch(ModuleStorage::ticking)));
-        }
+                for (AgentModule<?> workflow : workflows.workflows(contexts.get(id))) this.engine.registerModule(id, workflow);
+        }));
+        Set<ServerModule> initialized = Collections.newSetFromMap(new IdentityHashMap<>());
+        modules.forEach((id, definition) -> {
+            definition.server().filter(initialized::add).ifPresent(module -> module.installed(contexts.get(id)));
+            PlayerModule runtime = definition.server().map(module -> module.runtime(contexts.get(id))).orElseGet(() -> new PlayerModule() { });
+            List<ModuleStorage<?>> storages = definition.server().map(ServerModule::storages).orElse(List.of());
+            this.installed.put(id, new Installed(id, definition, runtime, storages));
+        });
         this.access = new ModuleAccess(server, this.engine, List.copyOf(this.installed.keySet()));
         this.access.onChange(player -> {
             PlayerSession session = this.players.get(player.getUUID());
@@ -89,6 +94,11 @@ public final class ModuleManager implements AutoCloseable {
     public boolean hasModule(UUID player, Identifier module) {
         if (this.server.isSameThread() && this.access.resolving(player)) return this.access.hasModule(player, module);
         return this.active.getOrDefault(player, Set.of()).contains(module);
+    }
+
+    public boolean hasType(UUID player, MapCodec<? extends ServerModule> type) {
+        return this.enabled(player).stream().map(this.installed::get).filter(Objects::nonNull)
+                .anyMatch(module -> module.definition.server().filter(server -> server.codec() == type).isPresent());
     }
 
     public boolean add(ServerPlayer player, Identifier module) {
@@ -193,7 +203,7 @@ public final class ModuleManager implements AutoCloseable {
             if (!data.bound()) throw new IllegalStateException("Player system is no longer bound");
             for (Activation activation : additions) {
                 if (!activation.valid) continue;
-                ModuleData.initialize(data, activation.module.definition, gameTime);
+                activation.module.storages.forEach(storage -> ModuleData.initialize(data, storage, gameTime));
                 activation.session.initialize(data);
             }
             return null;
@@ -280,7 +290,7 @@ public final class ModuleManager implements AutoCloseable {
         for (PlayerSession player : List.copyOf(this.players.values())) {
             if (!this.current(player)) continue;
             List<Identifier> ticking = player.modules.entrySet().stream()
-                    .filter(entry -> entry.getValue().ready && entry.getValue().module.ticking)
+                    .filter(entry -> entry.getValue().ready && entry.getValue().module.storages.stream().anyMatch(ModuleStorage::ticking))
                     .map(Map.Entry::getKey).toList();
             if (!ticking.isEmpty()) {
                 DataStorageContext context = new DataStorageContext(player.player, FormulaContext.of(player.player), player.player.level().getGameTime());
@@ -289,9 +299,11 @@ public final class ModuleManager implements AutoCloseable {
                 try {
                     store.updateLoaded(uuid, data -> {
                         boolean dirty = false;
-                        for (Identifier id : ticking) {
-                            data.moduleData.tick(id, context);
-                            dirty |= data.moduleData.isDirty(id);
+                        Set<Identifier> owners = new LinkedHashSet<>();
+                        ticking.forEach(id -> this.installed.get(id).storages.forEach(storage -> owners.add(storage.owner())));
+                        for (Identifier owner : owners) {
+                            data.moduleData.tick(owner, context);
+                            dirty |= data.moduleData.isDirty(owner);
                         }
                         return dirty;
                     });
@@ -395,7 +407,7 @@ public final class ModuleManager implements AutoCloseable {
         }
     }
 
-    private record Installed(Identifier id, ServerModule definition, PlayerModule runtime, boolean ticking) {
+    private record Installed(Identifier id, SystemModule definition, PlayerModule runtime, List<ModuleStorage<?>> storages) {
     }
 
     private static final class Activation {

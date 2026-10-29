@@ -13,6 +13,7 @@ import com.iafenvoy.system.event.AssistantRegistrationEvent;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
+import com.iafenvoy.system.registry.SystemDataPackRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
@@ -55,7 +56,8 @@ public final class AssistantServer {
             this.refreshPrompts();
             MinecraftTools game = new MinecraftTools(server, this.gameQueue);
             CommerceTransactions transactions = new CommerceTransactions(this.engine, game);
-            ModuleContext modules = new ModuleContext(this.engine, game, transactions);
+            ModuleContext modules = new ModuleContext(this.engine, game, transactions,
+                    SystemDataPackRegistries.modules(server.registryAccess()).orElseThrow());
             this.moduleManager = new ModuleManager(server, modules);
             this.engine.moduleAccess(this.moduleManager::hasModule);
             NeoForge.EVENT_BUS.post(new AssistantRegistrationEvent(this.engine));

@@ -2,7 +2,8 @@ package com.iafenvoy.system.module;
 
 import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.registry.SystemRegistries;
+import com.iafenvoy.system.data.SystemModule;
+import net.minecraft.core.Registry;
 
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -28,15 +29,16 @@ public final class ModuleData {
         });
     }
 
-    public static void initialize(PlayerData data, ServerModule module, long gameTime) {
-        module.storages().forEach(storage -> get(data, storage, gameTime));
+    public static void initialize(PlayerData data, ModuleStorage<?> storage, long gameTime) {
+        get(data, storage, gameTime);
     }
 
     /**
      * Read existing values across declaring modules without creating disabled modules' data.
      */
-    public static <T extends DataStorage> Stream<T> values(PlayerData data, Class<T> type) {
-        return SystemRegistries.SERVER_MODULE.stream().filter(ServerModule::available).flatMap(module -> module.storages().stream())
+    public static <T extends DataStorage> Stream<T> values(PlayerData data, Class<T> type, Registry<SystemModule> modules) {
+        return modules.stream().filter(SystemModule::available).flatMap(module -> module.server().stream())
+                .flatMap(module -> module.storages().stream()).distinct()
                 .filter(storage -> storage.type() == type)
                 .flatMap(storage -> data.moduleData.get(storage.owner(), type).stream());
     }

@@ -1,19 +1,14 @@
 package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantServer;
-import com.iafenvoy.system.command.AssistantCommandSource;
-import com.iafenvoy.system.module.ModuleCommands;
 import com.iafenvoy.system.module.CoreModule;
-import com.iafenvoy.system.module.client.ClientModuleContext;
+import com.iafenvoy.system.module.ModuleCommands;
 import com.iafenvoy.system.registry.SystemDataPackRegistries;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientPacketListener;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -28,6 +23,12 @@ import java.util.function.Consumer;
 
 public final class BindingSystemModule implements CoreModule {
     public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "binding");
+    public static final MapCodec<BindingSystemModule> CODEC = MapCodec.unit(new BindingSystemModule());
+
+    @Override
+    public MapCodec<BindingSystemModule> codec() {
+        return CODEC;
+    }
 
     @Override
     public void serverCommands(LiteralArgumentBuilder<CommandSourceStack> root) {
@@ -76,35 +77,5 @@ public final class BindingSystemModule implements CoreModule {
     @FunctionalInterface
     private interface Handler {
         void run(AssistantServer runtime, ServerPlayer player, Consumer<AgentResult> feedback);
-    }
-
-    @Override
-    public void register(ClientModuleContext module) {
-        ClientHooks.register(module);
-    }
-
-    // The dedicated server loads the shared module, but never resolves these UI implementations.
-    private static final class ClientHooks {
-        private static void register(ClientModuleContext module) {
-            module.command(LiteralArgumentBuilder.<AssistantCommandSource>literal("grant")
-                    .then(RequiredArgumentBuilder.<AssistantCommandSource, Identifier>argument("system", IdentifierArgument.id())
-                            .suggests((_, builder) -> {
-                                ClientPacketListener connection = Minecraft.getInstance().getConnection();
-                                if (connection != null)
-                                    SystemDataPackRegistries.ids(connection.registryAccess()).stream().map(Identifier::toString)
-                                            .filter(id -> id.startsWith(builder.getRemainingLowerCase())).forEach(builder::suggest);
-                                return builder.buildFuture();
-                            })
-                            .executes(context -> grant(context.getArgument("system", Identifier.class), ""))
-                            .then(RequiredArgumentBuilder.<AssistantCommandSource, String>argument("player", StringArgumentType.word())
-                                    .executes(context -> grant(context.getArgument("system", Identifier.class), StringArgumentType.getString(context, "player"))))));
-            module.command(() -> AssistantClient.command("revoke"), "revoke");
-            module.command(() -> AssistantClient.command("reset"), "reset");
-        }
-
-        private static int grant(Identifier system, String player) {
-            AssistantClient.command("grant " + system + (player.isEmpty() ? "" : " " + player));
-            return 1;
-        }
     }
 }

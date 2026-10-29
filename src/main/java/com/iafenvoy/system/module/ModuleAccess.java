@@ -11,7 +11,7 @@ import com.iafenvoy.system.data.ModuleDefinition;
 import com.iafenvoy.system.module.builtin.CoreSystemModule;
 import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
 import com.iafenvoy.system.registry.SystemDataPackRegistries;
-import com.iafenvoy.system.registry.SystemRegistries;
+import com.iafenvoy.system.registry.SystemResourceKeys;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -45,8 +45,9 @@ final class ModuleAccess implements PlayerModule {
         this.server = server;
         this.engine = engine;
         this.installed = Set.copyOf(installed);
-        this.required = SystemRegistries.SERVER_MODULE.stream().filter(CoreModule.class::isInstance)
-                .map(SystemRegistries.SERVER_MODULE::getKey).filter(this.installed::contains)
+        var registry = SystemDataPackRegistries.modules(server.registryAccess()).orElseThrow();
+        this.required = registry.keySet().stream().filter(id -> registry.getValue(id).server()
+                        .filter(CoreModule.class::isInstance).isPresent()).filter(this.installed::contains)
                 .collect(Collectors.toUnmodifiableSet());
     }
 
@@ -213,7 +214,8 @@ final class ModuleAccess implements PlayerModule {
             boolean result = false;
             try {
                 EntityConditionContext context = new EntityConditionContext(this.player, FormulaContext.of(this.player));
-                result = this.definitions.stream().filter(definition -> definition.matches(module))
+                result = this.definitions.stream().filter(definition -> definition.matches(
+                                ModuleAccess.this.server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE), module))
                         .anyMatch(definition -> definition.condition().test(context));
             } catch (RuntimeException error) {
                 this.report(module, "Module condition failed", error);

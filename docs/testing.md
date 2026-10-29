@@ -1,5 +1,19 @@
 # 编译与验收
 
+## 2026-10-29 可提交任务列表与通知动作
+
+`QuestQueryInput.view` 改为 ACTIVE / CLAIMABLE / SUBMITTABLE，新增 `/submittable [query]`、中文别名、只读语义样本和任务页入口。`FtbQuestReader.submittable` 排除未解锁、暂停、已完成、仅 FTB 界面操作及被目标顺序阻塞的项目；列表不预扣材料，不保证一次完成。详情与通知统一保存 `QuestSubmission` 枚举，由同一方法构建勾选或提交按钮；新增提交按钮的中英文语音别名。执行继续走原生提交并检查当前状态，查询不触发写操作。
+
+阅读当前 FTB 反编译源码确认原生勾选、消耗物品、经验、自定义按钮及目标顺序语义。执行 `compileJava testModClasses --console=plain` 编译通过；未启动 Minecraft、未执行运行测试、未创建测试存档，按钮交互和语音匹配尚未实际验收。
+
+## 2026-10-29 数据驱动模块与客户端分离
+
+新增同步原生数据包注册表 system:system_module，SystemModule 的 server 按 ServerModule.CODEC / type dispatch，client 只传本地实现 ID。静态 SERVER_MODULE 改为 MapCodec 注册表，12 个内置实现使用 MapCodec.unit；SystemDefinition 中模块 ID/tag 的 Either 改为指向动态注册表。新 tag 路径为 tags/system/system_module，FTB 与搜索配置仅放 test-mod。
+
+源码阅读确认：公共注册表不再引用 ClientModule，11 份 UI 实现拆成相邻的 *SystemClientModule。客户端独立 Map 保存实现，绑定缓存按 client ID 合并一次 UI，并以配置 ID 列表检查权限；纯本地贡献在无世界时可用。服务端安装、权限、补全、管理指令、存储枚举和 FTB 通知均读取新配置；同类型工作流与工具保存按 owner 区分的处理器，执行上下文保留已选 owner。ModuleStorage.owner 继续决定账本归属，tick 按真实 storage owner 去重。
+
+执行 `compileJava testModClasses jar --console=plain` 编译与打包通过。未执行测试、未启动客户端或专用服务端、未创建测试存档、未调用外部 API；数据包加载同步、多个参数变体实际执行及客户端页面尚未做运行验收。下方专用服务端启动记录属于之前的联合实现版本。
+
 ## 2026-10-29 内置模块与存储包整理
 
 将 15 个内置模块及 AdvancementTracker、ModuleManagementCommands 共 17 个类平铺到 `module.builtin`，将六个内置 DataStorage 实现统一放到 `module.builtin.storage`。模块接口、ModuleManager、ModuleData 等通用设施仍位于 `module`，客户端缓存与工作台契约仍位于 `module.client`；Agent 工作流和工具包保持原组织方式。同步注册表、Agent、FTB 桥接及权限服务的引用，并清理旧功能空目录。

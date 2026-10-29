@@ -1,0 +1,6 @@
+{
+  "server": {
+    "type": "system:lottery"
+  },
+  "client": "system:lottery"
+}

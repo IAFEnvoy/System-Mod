@@ -1,0 +1,6 @@
+{
+  "server": {
+    "type": "system:items"
+  },
+  "client": "system:items"
+}

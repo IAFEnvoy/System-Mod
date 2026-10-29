@@ -18,7 +18,7 @@ import java.util.Map;
  * Built-in result data and its serialization codec.
  */
 public record QuestOutput(String id, Component title, Component chapter, String description, double progress,
-                          boolean completed, boolean canComplete, boolean starterGift, boolean rewardPending,
+                          boolean completed, QuestSubmission submission, boolean starterGift, boolean rewardPending,
                           List<QuestTaskOutput> tasks, List<QuestRewardOutput> rewards, SectionPageOutput rewardPage,
                           SectionPageOutput taskPage, SectionPageOutput descriptionPage,
                           SpeechContent speech) implements CardData {
@@ -29,7 +29,7 @@ public record QuestOutput(String id, Component title, Component chapter, String 
             Codec.STRING.fieldOf("description").forGetter(QuestOutput::description),
             Codec.DOUBLE.fieldOf("progress").forGetter(QuestOutput::progress),
             Codec.BOOL.fieldOf("completed").forGetter(QuestOutput::completed),
-            Codec.BOOL.optionalFieldOf("canComplete", false).forGetter(QuestOutput::canComplete),
+            QuestSubmission.CODEC.fieldOf("submission").forGetter(QuestOutput::submission),
             Codec.BOOL.fieldOf("starterGift").forGetter(QuestOutput::starterGift),
             Codec.BOOL.fieldOf("rewardPending").forGetter(QuestOutput::rewardPending),
             QuestTaskOutput.CODEC.listOf().fieldOf("tasks").forGetter(QuestOutput::tasks),
@@ -52,11 +52,10 @@ public record QuestOutput(String id, Component title, Component chapter, String 
     public CardBuilder buildCard() {
         CardBuilder builder = CardBuilder.template(TEMPLATE).summary(this.title);
         builder.put("title", this.title()).put("chapter", this.chapter()).put("description", this.description())
-                .put("progress", (int) this.progress()).put("completed", this.completed()).put("can_complete", this.canComplete())
+                .put("progress", (int) this.progress()).put("completed", this.completed())
                 .list("tasks", this.tasks(), (prefix, task) -> task.fill(builder, prefix))
                 .list("rewards", this.rewards(), (prefix, reward) -> reward.fill(builder, prefix));
-        if (this.canComplete)
-            builder.serverButton("submit", "system.action.complete_quest", Identifier.parse("system:quest_submit"), Map.of("quest", this.id, "complete", "true"));
+        this.submission.addButton(builder, this.id);
         for (QuestRewardOutput reward : this.rewards) {
             if (!reward.claimable() || reward.claimRef().isEmpty()) continue;
             if (reward.choices().isPresent()) {

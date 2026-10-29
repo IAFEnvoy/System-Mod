@@ -81,7 +81,7 @@ final class InteractiveExecutor implements AutoCloseable {
                 data.conversation.history.add(new PlayerData.Message(id, "user", received, text));
             return data.conversation.memoryEpoch;
         });
-        AgentModule<?> direct = this.engine.modules().get(Identifier.tryParse(moduleId));
+        AgentModule<?> direct = this.engine.module(player, Identifier.tryParse(moduleId));
         ExecutionPolicy initial = moduleId.isBlank() || direct == null ? AgentConfig.INSTANCE.get().routingPolicy() : this.engine.policy(direct);
         ExecutionContext context = new ExecutionContext(this.engine, player, id, null, received, epoch, initial, store, incarnation);
         this.active.put(player, context);

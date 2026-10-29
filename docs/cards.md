@@ -226,7 +226,7 @@ CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并暂停关�
 | lottery_pool | label/id/prize_count/preview_count/price/price_text/free/payment_available/price_items；prizes.<下标>.reward_label/chance/result_items |
 | lottery_prize | reward_label/reward_items/chance/result_items，概率数值不含百分号 |
 | delivery_state | state |
-| quest/quest_submit | title，tasks.<下标>.task_title/task_progress/task_required；详情另有 chapter/description/progress/completed/can_complete |
+| quest/quest_submit | title，tasks.<下标>.task_title/task_progress/task_required；详情另有 chapter/description/progress/completed；submission 枚举由 CardData 构建提交或勾选按钮 |
 | quest | rewards.<下标>.reward_title/reward_state/result_items，choices 使用 rewards.<下标>.choices.<下标>.choice_number/choice_title/result_items |
 | quest_notice | id/title/chapter/description/requirements/other_rewards/manual_submission/result_items |
 | quest_startup | total/remaining，quests.<下标>.title/progress |

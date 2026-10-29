@@ -1,0 +1,6 @@
+{
+  "server": {
+    "type": "system:shop"
+  },
+  "client": "system:shop"
+}

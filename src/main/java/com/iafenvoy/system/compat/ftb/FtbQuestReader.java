@@ -1,5 +1,6 @@
 package com.iafenvoy.system.compat.ftb;
 
+import com.iafenvoy.system.agent.builtin.output.QuestSubmission;
 import com.iafenvoy.system.util.TypeDispatch;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
@@ -72,6 +73,10 @@ public final class FtbQuestReader {
         return this.active(player).stream().filter(FtbQuestReader::requiresManualSubmission).toList();
     }
 
+    public List<Quest> submittable(ServerPlayer player) {
+        return this.active(player).stream().filter(quest -> canSubmit(player, this.team, quest)).toList();
+    }
+
     public List<Quest> notificationBaseline() {
         if (this.team.isLocked()) return List.of();
         // Completed startable quests remain in the baseline so resets are not announced as unlocks.
@@ -120,6 +125,24 @@ public final class FtbQuestReader {
         List<Task> remaining = quest.getTasksAsList().stream().filter(task -> !team.isCompleted(task)).toList();
         // The completion button never submits a remaining resource-consuming or third-party task.
         return !remaining.isEmpty() && remaining.stream().allMatch(task -> task.getClass() == CheckmarkTask.class);
+    }
+
+    public static boolean canSubmit(ServerPlayer player, TeamData team, Quest quest) {
+        return active(team, quest) && !team.isProgressionPaused(player)
+                && submittableTasks(quest).stream().anyMatch(task -> pendingSubmission(team, task));
+    }
+
+    public static QuestSubmission submissionAction(ServerPlayer player, TeamData team, Quest quest) {
+        if (!canSubmit(player, team, quest)) return QuestSubmission.NONE;
+        return canComplete(player, team, quest) ? QuestSubmission.CHECKMARK : QuestSubmission.SUBMIT;
+    }
+
+    // Match Task.checkTaskSequence without invoking submitTask or consuming a player's resources.
+    public static boolean pendingSubmission(TeamData team, Task task) {
+        if (team.isCompleted(task)) return false;
+        List<Task> tasks = task.getQuest().getTasksAsList();
+        int index = tasks.indexOf(task);
+        return !task.getQuest().getRequireSequentialTasks() || index == 0 || index > 0 && team.isCompleted(tasks.get(index - 1));
     }
 
     public static boolean canClaim(ServerPlayer player, TeamData team, Reward reward) {

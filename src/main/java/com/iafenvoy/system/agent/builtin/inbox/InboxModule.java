@@ -9,10 +9,12 @@ import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.config.file.AgentConfig;
+import com.iafenvoy.system.data.SystemModule;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
 import com.iafenvoy.system.module.builtin.SignInSystemModule;
 import com.iafenvoy.system.module.builtin.storage.CommerceDataStorage;
+import net.minecraft.core.Registry;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -24,8 +26,11 @@ import java.util.Set;
  * Builds reward delivery actions together with daily sign-in and pending order status.
  */
 public final class InboxModule extends BuiltinModule<InboxInput> {
-    public InboxModule() {
+    private final Registry<SystemModule> modules;
+
+    public InboxModule(Registry<SystemModule> modules) {
         super(InboxInput.CODEC, "Read sign-in status, available reward packages and my reward inbox.", List.of(), true, false, ExecutionPolicy.quick(2, 0));
+        this.modules = modules;
     }
 
     @Override
@@ -51,7 +56,7 @@ public final class InboxModule extends BuiltinModule<InboxInput> {
             }
             cards.add(CardUpdate.show(new ResultTypes.SignInStatus(day, ModuleData.get(data, SignInSystemModule.STORAGE).rewards.containsKey(day),
                     context.catalog().rewards(), data.saveHistory, data.externalModel)));
-            for (PlayerData.Purchase purchase : ModuleData.values(data, CommerceDataStorage.class)
+            for (PlayerData.Purchase purchase : ModuleData.values(data, CommerceDataStorage.class, this.modules)
                     .flatMap(storage -> storage.purchases.values().stream()).filter(value -> !"COMPLETED".equals(value.state) && !"FAILED".equals(value.state)).limit(8).toList())
                 cards.add(CardUpdate.show(new ResultTypes.ShopOrder(purchase.id, purchase.order.label(), purchase.state, purchase.error)));
             return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.inbox", "", cards);

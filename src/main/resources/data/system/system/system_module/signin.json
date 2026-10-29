@@ -1,0 +1,6 @@
+{
+  "server": {
+    "type": "system:signin"
+  },
+  "client": "system:signin"
+}

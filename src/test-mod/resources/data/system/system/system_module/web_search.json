@@ -1,0 +1,6 @@
+{
+  "server": {
+    "type": "system:web_search"
+  },
+  "client": "system:web_search"
+}

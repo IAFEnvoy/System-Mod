@@ -46,6 +46,8 @@ public final class ExecutionContext {
     private final AtomicBoolean cancelled = new AtomicBoolean();
     private final Set<String> completedLocalSteps = new HashSet<>();
     private AgentModule.Descriptor module;
+    private Identifier owner;
+    private Optional<Identifier> eventOwner = Optional.empty();
     private ExecutionPolicy policy;
     private long expires;
     private int models, tools, steps, writes, tokens;
@@ -67,6 +69,7 @@ public final class ExecutionContext {
         this.expires = started + initial.ttlMillis();
         if (eventKey != null) store.read(player, data -> {
             PlayerData.EventTask task = ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.get(eventKey);
+            this.eventOwner = task.owner;
             this.models = task.modelCalls;
             this.tools = task.toolCalls;
             this.steps = task.workflowSteps;
@@ -77,7 +80,10 @@ public final class ExecutionContext {
         });
     }
 
-    void select(AgentModule.Descriptor descriptor, ExecutionPolicy value) {
+    void select(Identifier owner, AgentModule.Descriptor descriptor, ExecutionPolicy value) {
+        if (this.isEvent() && !this.eventOwner.equals(Optional.ofNullable(owner)))
+            throw new AgentException("CAPABILITY_UNAVAILABLE");
+        this.owner = owner;
         this.module = descriptor;
         this.policy = value;
         // Routing time remains charged, but selecting a slow module may use its own deadline.
@@ -193,7 +199,7 @@ public final class ExecutionContext {
         if (this.cancelled.get() || this.engine.closed() || !this.engine.current(this.player, this.incarnation))
             throw new AgentException("CANCELLED");
         if (this.remainingMillis() == 0) throw new AgentException("EXPIRED");
-        if (this.module != null && !this.available(this.module.id()))
+        if (this.module != null && (!this.engine.moduleEnabled(this.player, this.owner) || !this.available(this.module.id())))
             throw new AgentException("CAPABILITY_UNAVAILABLE");
     }
 
@@ -278,7 +284,7 @@ public final class ExecutionContext {
         if (!stepId.matches("[a-zA-Z0-9_./-]+")) throw new AgentException("INVALID_INPUT");
         String id = type.id();
         if (this.module == null || !this.module.tools().contains(id)) throw new AgentException("NOT_AUTHORIZED");
-        ToolRegistry.Tool<I, O> tool = this.engine.tools().require(type);
+        ToolRegistry.Tool<I, O> tool = this.engine.tool(this.player, type, this.owner);
         if (!this.engine.toolAvailable(this.player, id)) throw new AgentException("CAPABILITY_UNAVAILABLE");
         if ((this.routeSource == RouteSource.SEMANTIC || this.routeSource == RouteSource.ROUTE_CACHE) && tool.write())
             throw new AgentException("NOT_AUTHORIZED");

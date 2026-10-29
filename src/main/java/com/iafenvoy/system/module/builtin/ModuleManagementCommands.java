@@ -1,11 +1,11 @@
 package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.assistant.AssistantServer;
+import com.iafenvoy.system.data.SystemModule;
 import com.iafenvoy.system.module.CoreModule;
 import com.iafenvoy.system.module.ModuleCommands;
 import com.iafenvoy.system.module.ModuleManager;
-import com.iafenvoy.system.module.ServerModule;
-import com.iafenvoy.system.registry.SystemRegistries;
+import com.iafenvoy.system.registry.SystemDataPackRegistries;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -41,8 +41,11 @@ final class ModuleManagementCommands {
         return Commands.literal(name).then(Commands.argument("player", EntityArgument.player())
                 .then(Commands.argument("module", IdentifierArgument.id())
                         .suggests((context, builder) -> SharedSuggestionProvider.suggestResource(
-                                SystemRegistries.SERVER_MODULE.stream().filter(ServerModule::available)
-                                        .filter(module -> !(module instanceof CoreModule)).map(SystemRegistries.SERVER_MODULE::getKey).sorted(), builder))
+                                SystemDataPackRegistries.modules(context.getSource().registryAccess()).stream()
+                                        .flatMap(registry -> registry.keySet().stream().filter(id -> {
+                                            SystemModule module = registry.getValue(id);
+                                            return module.available() && module.server().filter(CoreModule.class::isInstance).isEmpty();
+                                        })).sorted(), builder))
                         .executes(context -> change(context, add))));
     }
 
@@ -52,12 +55,12 @@ final class ModuleManagementCommands {
         if (runtime == null) return 0;
         ServerPlayer player = EntityArgument.getPlayer(context, "player");
         Identifier id = IdentifierArgument.getId(context, "module");
-        ServerModule module = SystemRegistries.SERVER_MODULE.getValue(id);
+        SystemModule module = SystemDataPackRegistries.modules(source.registryAccess()).map(registry -> registry.getValue(id)).orElse(null);
         if (module == null || !module.available()) {
             source.sendFailure(Component.translatable("system.command.module_unknown", id.toString()));
             return 0;
         }
-        if (module instanceof CoreModule) {
+        if (module.server().filter(CoreModule.class::isInstance).isPresent()) {
             source.sendFailure(Component.translatable("system.command.module_required", id.toString()));
             return 0;
         }
@@ -75,7 +78,7 @@ final class ModuleManagementCommands {
     }
 
     private static int list(CommandSourceStack source) {
-        List<Identifier> modules = SystemRegistries.SERVER_MODULE.keySet().stream().sorted().toList();
+        List<Identifier> modules = SystemDataPackRegistries.moduleIds(source.registryAccess());
         source.sendSuccess(() -> Component.translatable("system.command.module_list", modules.size(), names(modules)), false);
         return modules.size();
     }

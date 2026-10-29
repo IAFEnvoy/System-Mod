@@ -4,6 +4,7 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.QuestNarration;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.builtin.output.QuestStartupOutput;
+import com.iafenvoy.system.agent.builtin.output.QuestSubmission;
 import com.iafenvoy.system.agent.builtin.quest.StarterGiftModule;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.card.CardUpdate;
@@ -138,7 +139,7 @@ final class FtbQuestNotifications {
         Map<UUID, TeamData> onlineTeams = new LinkedHashMap<>();
         Map<UUID, Map<UUID, Recipient>> recipients = new HashMap<>();
         for (ServerPlayer player : this.file.server.getPlayerList().getPlayers()) {
-            if (!runtime.players().notificationsEnabled(player) || !runtime.moduleManager().hasModule(player.getUUID(), QuestSystemModule.ID))
+            if (!runtime.players().notificationsEnabled(player) || !runtime.moduleManager().hasType(player.getUUID(), QuestSystemModule.CODEC))
                 continue;
             this.file.getTeamData(player).ifPresent(team -> {
                 onlineTeams.put(team.getTeamId(), team);
@@ -237,7 +238,7 @@ final class FtbQuestNotifications {
                         && FtbQuestAccess.previewItems(reward).isEmpty()).map(FtbQuestSpeech::rewardText).toList(),
                 !completed && FtbQuestReader.requiresManualSubmission(quest),
                 completed ? ResultTypes.QuestEvent.COMPLETED : ResultTypes.QuestEvent.UNLOCKED,
-                !completed && FtbQuestReader.canComplete(player, team, quest), !claimable.isEmpty(), claimRef,
+                completed ? QuestSubmission.NONE : FtbQuestReader.submissionAction(player, team, quest), !claimable.isEmpty(), claimRef,
                 FtbQuestSpeech.content(player, team, quest, completed ? "completed" : "unlocked")));
     }
 
@@ -247,7 +248,7 @@ final class FtbQuestNotifications {
         AssistantServer runtime = AssistantServer.get(file.server);
         FtbQuestAccess access = ACCESS.get(file.server);
         if (runtime == null || access == null || !runtime.players().notificationsEnabled(player)
-                || !runtime.moduleManager().hasModule(player.getUUID(), QuestSystemModule.ID)) return;
+                || !runtime.moduleManager().hasType(player.getUUID(), QuestSystemModule.CODEC)) return;
         FtbQuestNotifications tracker = SERVERS.computeIfAbsent(file.server, _ -> new FtbQuestNotifications(file, access));
         TeamState state = tracker.teams.computeIfAbsent(team.getTeamId(), _ -> new TeamState(team, tracker.available(team), Map.of()));
         Completion previous = state.completed.get(quest.getId());
@@ -260,7 +261,7 @@ final class FtbQuestNotifications {
 
     private record Recipient(ServerPlayer player, UUID connection, long incarnation) {
         boolean valid(AssistantServer runtime, ServerQuestFile file, UUID team) {
-            return runtime.players().notificationsEnabled(this.player) && runtime.moduleManager().hasModule(this.player.getUUID(), QuestSystemModule.ID)
+            return runtime.players().notificationsEnabled(this.player) && runtime.moduleManager().hasType(this.player.getUUID(), QuestSystemModule.CODEC)
                     && runtime.engine().current(this.player.getUUID(), this.incarnation)
                     && this.connection.equals(ServerNetworkHandler.connectionId(this.player))
                     && file.getTeamData(this.player).map(data -> data.getTeamId().equals(team)).orElse(false);

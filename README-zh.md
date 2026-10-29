@@ -15,7 +15,7 @@ HUD 通知，并可选用语音播报。
 - **系统商城**：浏览商品、查看报价，通过 Saturn Cost 确认以物易物、资源或扩展支付。模组本身不提供系统币经济系统。
 - **数据驱动抽奖**：浏览奖池、查看奖品权重与单次消耗，确认后单抽一次，奖励存入收件箱。数据包通过 Saturn Cost 定义消耗，也可设置免费抽奖。
 - **内容配置与工作流**：数据包定义系统名称、介绍、启用模块、签到奖励、商城商品和抽奖奖池；模块支持 ID、tag
-  和条件，服务端规则可在玩家完成成就后触发有界工作流。
+  和条件；system_module 数据包条目通过 server.type 选择服务端行为、client 指定独立客户端实现，系统引用模块配置实例。服务端规则可在玩家完成成就后触发有界工作流。
 - **HUD 通知与语音**：提示不抢鼠标或键盘；可选阿里云流式 TTS 朗读正文，界面关闭、通知结束或切换时掐断对应语音 session。
 - **用量与隐私控制**：服务端按玩家统计 AI 与联网用量，TTS / ASR 用量仅存当前账号本机。支持管理历史、关闭外部 AI，按 UUID
   隔离数据并限制模型与工具执行。
@@ -28,7 +28,7 @@ HUD 通知，并可选用语音播报。
    进程继承该变量。配置文件保存环境变量名，不保存密钥。
 4. 安装提供系统定义的服务端数据包，管理员执行 `/system grant <系统ID> [玩家]` 绑定，例如
    `/system grant example:daily Steve`；省略玩家时绑定自己。玩家默认未绑定，目前每人最多绑定一个系统。
-   发布 JAR 不提供默认系统定义或默认模块 tag，开发默认资源仅放在 `src/test-mod/`，不会打进发布包。
+   内置 system:default 通过默认模块 tag 启用功能；FTB 任务与联网搜索的默认模块配置和 tag 追加仅放在 src/test-mod/，不会打进发布包。
 5. 执行 `/system`、`/system full` 或 `/system simple`，使用界面操作或输入请求。
 
 例如，在 PowerShell 中设置后，从同一环境启动服务端：
@@ -71,6 +71,7 @@ $env:SYSTEM_DEEPSEEK_API_KEY = "<你的 API Key>"
 | `/system ask <内容>`                    | 提交自然语言请求                              |
 | `/system search <问题>`                 | 明确发起付费联网检索                            |
 | `/system player`                      | 查看本人状态                                |
+| `/system submittable [查询]`            | 列出可提交或勾选的 FTB 任务                       |
 | `/system usage` / `/system usage all` | 查看个人用量 / 管理员查看全服 AI 与联网用量；语音统计始终仅显示自己 |
 | `/system grant <系统ID> [玩家]`           | 管理员绑定一个数据包系统，省略玩家时绑定自己                |
 | `/system revoke [玩家]`                 | 管理员撤销系统并清除业务记录，保留累计用量                 |
@@ -134,12 +135,24 @@ python tools/voice_design.py --lang zh --help
   "description": "system.definition.default.description",
   "modules": [
     "#example:basic",
-    "system:web_search"
+    "example:daily"
   ]
 }
 ```
 
-对应的模块 tag 放在 `data/example/tags/system/server_module/basic.json`：
+在 `data/example/system/system_module/daily.json` 中定义 `example:daily`：
+
+```json
+{
+  "server": { "type": "system:signin" },
+  "client": "system:signin"
+}
+```
+
+`server.type` 选择已注册的模块 Codec，模块参数与 `type` 平铺；当前内置类型使用无参数单例。
+`client` 指向客户端本地实现，两个字段均可按需省略。
+
+对应的模块 tag 放在 `data/example/tags/system/system_module/basic.json`：
 
 ```json
 {
@@ -147,7 +160,6 @@ python tools/voice_design.py --lang zh --help
   "values": [
     "system:player",
     "system:items",
-    "system:signin",
     "system:inbox",
     "system:shop",
     "system:lottery"

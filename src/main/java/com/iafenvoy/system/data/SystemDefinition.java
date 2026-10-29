@@ -14,7 +14,7 @@ import java.util.List;
  * Names and descriptions are translation keys; module conditions are evaluated only by the server.
  */
 public record SystemDefinition(String name, String description, List<ModuleDefinition> modules) {
-    public static final SystemDefinition DEFAULT = new SystemDefinition("system.definition.default.name", "system.definition.default.description", List.of(new ModuleDefinition(Either.right(TagKey.create(SystemResourceKeys.SERVER_MODULE, Identifier.fromNamespaceAndPath("system", "default"))))));
+    public static final SystemDefinition DEFAULT = new SystemDefinition("system.definition.default.name", "system.definition.default.description", List.of(new ModuleDefinition(Either.right(TagKey.create(SystemResourceKeys.SYSTEM_MODULE, Identifier.fromNamespaceAndPath("system", "default"))))));
     public static final Codec<SystemDefinition> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("name").forGetter(SystemDefinition::name),
             Codec.STRING.fieldOf("description").forGetter(SystemDefinition::description),

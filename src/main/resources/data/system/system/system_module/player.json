@@ -1,0 +1,6 @@
+{
+  "server": {
+    "type": "system:player"
+  },
+  "client": "system:player"
+}

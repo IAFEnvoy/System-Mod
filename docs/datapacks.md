@@ -8,7 +8,7 @@
 
 ## 系统定义
 
-系统参数使用 NeoForge 同步数据包注册表 `system:system`，文件路径为 `data/<namespace>/system/system/<path>.json`，条目 ID 为 `<namespace>:<path>`。发布 JAR 不包含默认系统定义或默认模块 tag，需要由服务端数据包提供系统。开发示例仅放在 `src/test-mod/resources/data/system/system/system/default.json`，正常发布不包含；其条目仍为 `system:default`。数据包可按同一资源路径提供该定义，或新增其他 ID，通过 `/system grant <系统ID> [玩家]` 为玩家选定，例如 `/system grant example:daily Steve`。自己绑定使用 `/system grant example:daily`；系统 ID 从该存档注册表补全和校验，玩家不必共用同一个定义。
+系统参数使用 NeoForge 同步数据包注册表 `system:system`，文件路径为 `data/<namespace>/system/system/<path>.json`，条目 ID 为 `<namespace>:<path>`。内置默认定义位于 `src/main/resources/data/system/system/system/default.json`，条目为 `system:default`；其 modules 只引用 `#system:default`，数据包可覆盖该 tag 或提供其他系统。数据包可按同一资源路径提供该定义，或新增其他 ID，通过 `/system grant <系统ID> [玩家]` 为玩家选定，例如 `/system grant example:daily Steve`。自己绑定使用 `/system grant example:daily`；系统 ID 从该存档注册表补全和校验，玩家不必共用同一个定义。
 
 每名玩家当前最多绑定一个系统，重复授予同一个 ID 不重新初始化，授予另一 ID 被拒绝，须先 `/system revoke <玩家>`。绑定状态以不可变 `SystemBindings` 集合保存于玩家文件的 `systems` 字段，集合形式为后续多系统保留位置，当前 Codec 最多接受一项；客户端状态同步当前系统 ID。绑定授予在同一玩家事务内检查与写入，未知 ID 不写入存档；定义后来被移除时保留原 ID 并停止初始化，不自动切换到默认系统。
 
@@ -41,9 +41,28 @@
 
 `modules` 控制每个已绑定玩家可用的功能，省略时为 `[]`。条目支持模块 ID（`"system:signin"`）、模块 tag（`"#example:basic"`），或带条件的对象 `{ "id": "#example:basic", "condition": ... }`；对象的 `id` 也可填单个模块 ID。省略 condition 表示无条件启用，condition 使用 Saturn 的 EntityCondition Codec，可写单个对象或条件数组（数组全部成立）。tag 中每个模块分别求值，同一模块被 ID 或多个 tag 引用时，任一匹配条目的条件成立即可启用。未列出的可选功能关闭；`core`、`binding`、`usage` 是基础设施，保留聊天、绑定管理与独立用量账本，不能通过模块开关关闭。客户端设置、记忆控制和语音输入仍属于本地功能。
 
+### 系统模块定义
+
+`system:system_module` 是新增的原生同步数据包注册表，文件路径为 `data/<namespace>/system/system_module/<path>.json`。系统的 modules、tag 和 condition 引用的是此处的配置实例；服务端实现类型依然由静态 `system:server_module` 注册表的 MapCodec 分派。
+
+例如 `data/example/system/system_module/daily.json` 定义 `example:daily`：
+
+```json
+{
+  "server": { "type": "system:signin" },
+  "client": "system:signin"
+}
+```
+
+系统配置写 `"modules": ["example:daily"]`，即可引用此实例。server 对象按 type dispatch 解码，其余键交给具体模块 Codec；当前内置类型是无参数单例，使用 MapCodec.unit。后续参数化实现可用 RecordCodecBuilder.mapCodec，字段直接放在 type 同级，不改变系统引用格式。两份模块配置可以选择同一个实现类型，并由不同系统引用不同参数；工作流执行按当前玩家启用的配置选择。相同动作的多个候选同时启用时，按模块配置 ID 排序取第一个，建议同类变体条件互斥。
+
+server/client 都可省略：成就等纯服务端类型只填 server；仅需要客户端贡献的条目只填 client。client 只是客户端本地实现 Map 的 ID，服务端不加载客户端类。系统定义和模块定义均在世界加载时读取、登录时同步；修改参数需正常重启，不通过 /reload 热替换运行中的工作流。
+
+内置的 core、binding、usage、player、items、signin、inbox、shop、lottery、advancement 配置位于 main；FTB 和联网搜索的默认配置仅位于 test-mod。发布包不直接引用 FTB 可选类型，未安装 FTB 的开发运行也会保留安全 Codec 并通过 available() 跳过装配。
+
 ### 模块 tag
 
-tag 来自正式的服务端功能注册表 `system:server_module`，不是客户端模块或 Agent 工作流注册表。文件路径为 `data/<namespace>/tags/system/server_module/<path>.json`。例如 `data/example/tags/system/server_module/basic.json` 定义 `#example:basic`：
+tag 来自动态模块配置注册表 `system:system_module`，成员为模块配置实例，不是实现 Codec 或 Agent 工作流。文件路径为 `data/<namespace>/tags/system/system_module/<path>.json`。例如 `data/example/tags/system/system_module/basic.json` 定义 `#example:basic`：
 
 ```json
 {
@@ -69,11 +88,11 @@ tag 来自正式的服务端功能注册表 `system:server_module`，不是客�
 }
 ```
 
-上例的 `#example:commerce` 可另建 `data/example/tags/system/server_module/commerce.json`，其 `values` 为 `["system:shop", "system:lottery"]`。tag 合并、`replace`、嵌套 `#tag` 和 `{ "id": "...", "required": false }` 均使用原版 tag 加载规则。未知或空 tag 不启用任何额外模块，依赖缺席的模块仍被安装检查排除。手动移除优先于 tag，手动添加仍可覆盖条件，基础设施规则不变。
+上例的 `#example:commerce` 可另建 `data/example/tags/system/system_module/commerce.json`，其 `values` 为 `["system:shop", "system:lottery"]`。tag 合并、`replace`、嵌套 `#tag` 和 `{ "id": "...", "required": false }` 均使用原版 tag 加载规则。未知或空 tag 不启用任何额外模块，依赖缺席的模块仍被安装检查排除。手动移除优先于 tag，手动添加仍可覆盖条件，基础设施规则不变。
 
-`ModuleDefinition` 复用 Saturn `RegistryCodecs.keyOrTag` 编解码符号引用，通过 `matchesKeys` 在权限求值时读取已加载的注册表 tag；不在系统定义解码阶段展开或固定 tag 成员。原版 tag 重载后的成员变化会在后续模块权限刷新时生效；系统定义本身仍按下文的注册表加载规则更新。
+`ModuleDefinition` 复用 Saturn `RegistryCodecs.holderOrTag` 编解码符号引用，通过 `matches` 在权限求值时读取已加载的注册表 tag；不在系统定义解码阶段展开或固定 tag 成员。原版 tag 重载后的成员变化会在后续模块权限刷新时生效；系统定义本身仍按下文的注册表加载规则更新。
 
-模块 ID 是正式内置注册表 `SystemRegistries.SERVER_MODULE` 的条目 ID，由调用方通过 `getKey(module)` 查表取得，并非 Agent 工作流 ID。接口不提供 `id()`。客户端目录位于独立的 `SystemRegistries.CLIENT_MODULE`；双端功能可以注册同一个实现类，客户端入口使用对应服务端模块的同名 ID。例如：
+模块 ID 是当前世界 `system:system_module` 的数据包条目 ID，并非 Agent 工作流 ID 或实现类型 ID。ServerModule 不提供 id()，通过作用域 ModuleContext.id() 可取得当前配置 ID。客户端实现由独立的 SystemClientModules Map 管理。例如，内置配置沿用以下 ID：
 
 | 功能 | 模块 ID |
 | --- | --- |
@@ -87,7 +106,7 @@ tag 来自正式的服务端功能注册表 `system:server_module`，不是客�
 | 成就工作流 | `system:advancement` |
 | FTB 任务（列表、详情、提交、领奖、新手礼包） | `system:ftb_quests` |
 
-开发默认系统的 `modules` 仅引用 `["#system:default"]`，Java 展示备用定义也引用同一 tag；备用定义只用于客户端展示，不会注册可绑定系统。模块清单仅放在 `src/test-mod/resources/data/system/tags/system/server_module/default.json`，与默认系统一起只进入开发运行，不打入发布 JAR。实际数据包的资源路径仍为 `data/system/tags/system/server_module/default.json`，可使用原版追加或 `replace: true` 规则。开发清单保持原有功能，`system:ftb_quests` 以 `required: false` 的 tag 条目提供。模块定义与公共 Codec 始终注册，实际装配由 `ServerModule.available()` 决定；未安装 FTB 时不会启用任务功能或加载对应 API，缺失条目也不会让默认 tag 加载失败。玩家条件和手动覆盖均无法启用依赖缺席的模块。
+内置默认系统的 modules 仅引用 ["#system:default"]，默认 tag 位于 src/main/resources/data/system/tags/system/system_module/default.json，包含必装功能。FTB 与联网搜索的模块配置和 tag 追加位于 src/test-mod/resources，不进入发布包。实现类型的 Codec 始终注册，依赖缺席的 FTB 模块由 available() 排除，不加载 FTB API；条件和手动覆盖无法启用不可用模块。
 
 条件在玩家初始化完成后、交互请求前及每 20 个服务端 tick 在主线程重新求值。变化后同步玩家实际模块与指令列表，刷新完整侧栏，清理路由缓存与交易报价。帮助、补全、本地语义候选、模型能力目录和实际执行共用权限过滤；旧卡片的结构化动作以及已经排入游戏线程的工具也会重新检查权限。功能定义和工具仍在服务器启动时注册，开关不卸载 Java 类或重新注册工作流。
 
@@ -102,7 +121,7 @@ tag 来自正式的服务端功能注册表 `system:server_module`，不是客�
 
 条件异常或循环依赖会关闭涉及的模块并记入服务端日志，避免递归溢出。手动添加可覆盖条件、手动移除可禁用定义中默认提供的模块，实现 `CoreModule` 的基础设施和未安装模块均不接受覆盖。纯服务端 `ToolModule` 同样使用这些模块开关，但只导出工作流内部使用的工具，不增加玩家指令或意图路由入口；调用时会检查该工具所属模块是否启用。
 
-管理员可使用 `/system module add <玩家> <模块ID>`、`/system module remove <玩家> <模块ID>` 调整已绑定在线玩家的持久覆盖，例如 `/system module add Steve system:lottery`。`/system module list` 列出全部已注册模块（含依赖缺席的安全定义），`/system module list Steve` 列出该玩家实际启用的模块；新增模块初始化完成后才出现在玩家列表。玩家参数使用原版在线玩家补全，模块参数从正式服务端注册表补全且排除必需模块和 `available()` 为 false 的模块；即使当前条件已启用或禁用，也可以明确写入手动覆盖。
+管理员可使用 `/system module add <玩家> <模块ID>`、`/system module remove <玩家> <模块ID>` 调整已绑定在线玩家的持久覆盖，例如 `/system module add Steve system:lottery`。`/system module list` 列出全部已注册模块（含依赖缺席的安全定义），`/system module list Steve` 列出该玩家实际启用的模块；新增模块初始化完成后才出现在玩家列表。玩家参数使用原版在线玩家补全，模块参数从当前世界 system_module 注册表补全且排除必需模块和 `available()` 为 false 的模块；即使当前条件已启用或禁用，也可以明确写入手动覆盖。
 
 ### 模块 action 与 condition
 
@@ -131,7 +150,7 @@ tag 来自正式的服务端功能注册表 `system:server_module`，不是客�
 
 模块覆盖保存在玩家独立数据文件 `<存档>/system-agent/<玩家 UUID>.json` 的 `moduleData` 字段中，由 `system:module_access` DataStorage 持有。数据按玩家 UUID 隔离，登出与重登保留，成功 `revoke/reset` 删除整份玩家数据，`forget` 不清除；累计用量仍保存在单独的世界 SavedData 文件中。
 
-功能模块在 `ServerModule.storages()` 声明 ModuleStorage，Codec 通过 Saturn DATA_STORAGE_TYPE 独立注册，管理器统一创建数据和驱动生命周期；事务内使用 `ModuleData.get(data, SomeSystemModule.STORAGE)`。PlayerData.moduleData 使用 Saturn DataStorageHolder，以模块 ID 和 Java 类型寻址，Codec 类型 ID 独立。商城和抽奖持有独立交易存储，Core 持有权限和幂等日志。普通业务修改在 AgentStore.update 原子落盘；DataStorage.tick 在主线程内存事务中执行，变化需 markDirty，由管理器合并异步保存。不使用玩家附件，停用保留账本，revoke/reset 才清空。
+功能模块在 `ServerModule.storages()` 声明 ModuleStorage，Codec 通过 Saturn DATA_STORAGE_TYPE 独立注册，管理器统一创建数据和驱动生命周期；事务内使用 `ModuleData.get(data, SomeSystemModule.STORAGE)`。PlayerData.moduleData 使用 Saturn DataStorageHolder，以 ModuleStorage.owner 和 Java 类型寻址；内置同类配置共用对应功能账本，Codec 类型 ID 独立。商城和抽奖持有独立交易存储，Core 持有权限和幂等日志。普通业务修改在 AgentStore.update 原子落盘；DataStorage.tick 在主线程内存事务中执行，变化需 markDirty，由管理器合并异步保存。不使用玩家附件，停用保留账本，revoke/reset 才清空。
 
 名称应用于助手标题、对话说话人和通知标题，介绍显示在欢迎区及首次绑定通知中；简约界面空闲时也展示介绍，绑定播报包含系统名称。定义从当前连接的原生注册表读取，不写入玩家附件或业务存档。该注册表在世界加载时读取，修改 JSON 后需要重开世界或重启服务器再连接；`/reload` 仍用于下述奖励、商品、奖池与提示词，不热更新系统定义。资源包的翻译文本可按客户端正常资源重载流程更新。
 

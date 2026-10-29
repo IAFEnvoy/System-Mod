@@ -1,6 +1,6 @@
 # 网页搜索与抓取
 
-已接入服务端功能模块 `system:web_search`，包含独立工作流 `system:web_search` 和两个只读工具 `web.search`、`web.fetch`。开发默认系统启用该模块；发布 JAR 不附带系统定义，实际使用需在自己的系统定义或模块 tag 中启用 system:web_search。启用模块、绑定、登录和打开搜索页均不会请求搜索服务。
+已接入服务端功能模块 `system:web_search`，包含独立工作流 `system:web_search` 和两个只读工具 `web.search`、`web.fetch`。开发环境通过测试数据启用该模块；发布 JAR 不附带搜索模块定义，实际使用需在数据包中提供 `system_module` 条目，并在系统定义或模块 tag 中引用该条目。启用模块、绑定、登录和打开搜索页均不会请求搜索服务。
 
 ## 触发与授权
 

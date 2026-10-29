@@ -1,0 +1,6 @@
+{
+  "server": {
+    "type": "system:binding"
+  },
+  "client": "system:binding"
+}

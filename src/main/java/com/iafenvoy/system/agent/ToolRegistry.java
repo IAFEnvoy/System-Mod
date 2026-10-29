@@ -5,17 +5,22 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
+import java.util.function.Predicate;
 
 /**
  * Each tool performs one typed operation; modules register their complete tool lists together.
  */
 public final class ToolRegistry {
     private final Map<String, Tool<?, ?>> tools = new HashMap<>();
-    private final Map<String, Identifier> owners = new HashMap<>();
+    private final Map<String, Set<Identifier>> owners = new HashMap<>();
+    private final Map<Identifier, Map<String, Tool<?, ?>>> variants = new LinkedHashMap<>();
     private boolean frozen;
 
     public void registerAll(List<Tool<?, ?>> values) {
@@ -34,17 +39,32 @@ public final class ToolRegistry {
      */
     public void registerAll(Identifier owner, List<Tool<?, ?>> values) {
         Objects.requireNonNull(owner);
-        for (Tool<?, ?> tool : values) {
-            Identifier previous = this.owners.get(tool.id());
-            if (previous != null && !previous.equals(owner))
-                throw new IllegalArgumentException("Conflicting tool owner " + tool.id());
-        }
-        this.registerAll(values);
-        values.forEach(tool -> this.owners.put(tool.id(), owner));
+        this.registerVariant(owner, values);
+        values.forEach(tool -> this.owners.computeIfAbsent(tool.id(), _ -> new LinkedHashSet<>()).add(owner));
     }
 
-    public Identifier owner(String id) {
-        return this.owners.get(id);
+    public void registerVariant(Identifier owner, List<Tool<?, ?>> values) {
+        if (owner == null) {
+            this.registerAll(values);
+            return;
+        }
+        if (this.frozen) throw new IllegalStateException("Agent registration has finished");
+        Map<String, Tool<?, ?>> scoped = this.variants.computeIfAbsent(owner, _ -> new HashMap<>());
+        for (Tool<?, ?> tool : values) {
+            Tool<?, ?> previous = this.tools.get(tool.id());
+            if (previous != null && (previous.type() != tool.type() || previous.write() != tool.write()
+                    || previous.idempotent() != tool.idempotent() || previous.allowEvent() != tool.allowEvent()))
+                throw new IllegalArgumentException("Conflicting tool type " + tool.id());
+            Tool<?, ?> existing = scoped.putIfAbsent(tool.id(), tool);
+            if (existing != null && existing != tool)
+                throw new IllegalArgumentException("Conflicting tool " + tool.id() + " for " + owner);
+            this.tools.putIfAbsent(tool.id(), tool);
+        }
+    }
+
+    public boolean available(String id, Predicate<Identifier> available) {
+        Set<Identifier> exporting = this.owners.get(id);
+        return this.tools.containsKey(id) && (exporting == null || exporting.stream().anyMatch(available));
     }
 
     void freeze() {
@@ -68,6 +88,18 @@ public final class ToolRegistry {
         if (tool == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
         if (tool.type() != type) throw new AgentException("NOT_AUTHORIZED");
         return (Tool<I, O>) tool;
+    }
+
+    public <I, O> Tool<I, O> require(Type<I, O> type, Identifier owner, Predicate<Identifier> available) {
+        Set<Identifier> exporting = this.owners.get(type.id());
+        Tool<?, ?> tool = exporting == null ? this.variants.getOrDefault(owner, Map.of()).get(type.id())
+                : exporting.stream().filter(available).map(id -> this.variants.get(id).get(type.id()))
+                        .filter(Objects::nonNull).findFirst().orElse(null);
+        if (tool == null && exporting == null) tool = this.tools.get(type.id());
+        if (tool == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        if (tool.type() != type) throw new AgentException("NOT_AUTHORIZED");
+        @SuppressWarnings("unchecked") Tool<I, O> typed = (Tool<I, O>) tool;
+        return typed;
     }
 
     public record Type<I, O>(String id, MapCodec<I> inputCodec, Codec<O> resultCodec) {

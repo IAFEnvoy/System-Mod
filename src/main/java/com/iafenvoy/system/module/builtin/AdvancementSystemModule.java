@@ -9,14 +9,21 @@ import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.module.WorkflowModule;
 import com.iafenvoy.system.module.builtin.storage.AdvancementDataStorage;
+import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
 
 public final class AdvancementSystemModule implements WorkflowModule {
     public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "advancement");
+    public static final MapCodec<AdvancementSystemModule> CODEC = MapCodec.unit(new AdvancementSystemModule());
     public static final ModuleStorage<AdvancementDataStorage> STORAGE = new ModuleStorage<>(ID,
             Identifier.fromNamespaceAndPath("system", "advancement"), AdvancementDataStorage.class, AdvancementDataStorage.CODEC, AdvancementDataStorage::new);
+
+    @Override
+    public MapCodec<AdvancementSystemModule> codec() {
+        return CODEC;
+    }
 
     @Override
     public List<ModuleStorage<?>> storages() {

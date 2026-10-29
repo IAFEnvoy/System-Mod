@@ -8,6 +8,7 @@ import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -43,8 +44,9 @@ final class EventExecutor implements AutoCloseable {
         }
         return this.events.submit(() -> {
                     try {
-                        AgentModule<?> module = this.engine.modules().get(moduleId);
-                        if (module == null || !module.descriptor().event())
+                        ModuleRegistry.Call<?> selected = this.engine.modules().call(input, owner -> this.engine.moduleEnabled(player, owner));
+                        AgentModule<?> module = selected.module();
+                        if (!module.descriptor().event())
                             throw new AgentException("CAPABILITY_UNAVAILABLE");
                         PlayerData.EventTask task = store.update(player, data -> {
                             if (!data.bound()) throw new AgentException("NOT_BOUND");
@@ -56,6 +58,7 @@ final class EventExecutor implements AutoCloseable {
                             value.id = UUID.randomUUID().toString();
                             value.key = key;
                             value.ruleId = ruleId;
+                            value.owner = Optional.ofNullable(selected.owner());
                             value.moduleVersion = module.descriptor().version();
                             value.call = input;
                             value.policy = this.engine.policy(module);
@@ -67,7 +70,8 @@ final class EventExecutor implements AutoCloseable {
                         if (!task.pending()) {
                             return task.result;
                         }
-                        if (!task.call.id().equals(moduleId) || task.moduleVersion != module.descriptor().version())
+                        if (!task.call.id().equals(moduleId) || task.moduleVersion != module.descriptor().version()
+                                || !task.owner.equals(Optional.ofNullable(selected.owner())))
                             throw new AgentException("CAPABILITY_UNAVAILABLE");
                         if (!this.enabledRules.getOrDefault(player, Set.of()).contains(task.ruleId))
                             throw new AgentException("NOT_AUTHORIZED");

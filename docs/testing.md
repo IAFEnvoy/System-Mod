@@ -1,5 +1,31 @@
 # 编译与验收
 
+## 2026-10-29 内置模块与存储包整理
+
+将 15 个内置模块及 AdvancementTracker、ModuleManagementCommands 共 17 个类平铺到 `module.builtin`，将六个内置 DataStorage 实现统一放到 `module.builtin.storage`。模块接口、ModuleManager、ModuleData 等通用设施仍位于 `module`，客户端缓存与工作台契约仍位于 `module.client`；Agent 工作流和工具包保持原组织方式。同步注册表、Agent、FTB 桥接及权限服务的引用，并清理旧功能空目录。
+
+执行 `compileJava testModClasses --console=plain` 编译通过；源码和增量编译产物均已使用新包路径，旧包名引用检查无残留。此次只调整包名、导入与文档，没有启动 Minecraft、执行运行测试、创建测试存档或调用收费 API。
+
+## 2026-10-29 模块接口按职责细分
+
+ServerModule 仅保留服务端生命周期、存储与依赖可用性；ToolModule 导出纯服务端工具，WorkflowModule 声明服务端工作流，SharedModule 组合双端功能及服务端游戏指令，CoreModule 表示必需基础设施。核心 / 绑定 / 用量改为 CoreModule，八个可选双端业务改为 SharedModule，成就改为 WorkflowModule，对话 / 设置 / 语音仍为 ClientModule。删除 required / serverRequired，权限、管理员指令和客户端上下文按接口类型判断；Workspace 复用上下文的权限判断，不另存分类布尔值。FTB 的 available 保留为依赖检测。
+
+静态阅读确认：ModuleManager 在工作流前注册 ToolModule 导出工具及 owner，拒绝把同一个定义同时作为工具模块与工作流 / 客户端模块。纯工具只进入 ToolRegistry，不注册动作、命令或意图入口；消费工作流通过 ModuleContext.tool(type) 取得同一实例并声明工具白名单。AgentEngine.available 与 ExecutionContext.tool 检查导出工具所属功能权限，模块失效时路由、补全、在途工作流和排队游戏操作复用权限复核。原有预算、事件权限、幂等回执及工具身份检查继续执行。
+
+执行 `compileJava testModClasses --console=plain` 编译通过。没有运行测试、启动 Minecraft、创建测试存档或调用收费 API；新增工具模块的实际装配与运行、客户端页面权限和本轮接口继承后的专用服务端类加载尚未运行验收。下方联合实现的两轮服务端记录属于上一轮代码验证。
+
+## 2026-10-29 双端模块联合实现与专用服务端验证
+
+核心、绑定、用量、玩家、物品、签到、收件箱、商城、抽奖、任务和搜索共 11 对模块合并为同一个 `*SystemModule` 实现 `ServerModule, ClientModule`，两张注册表分别注册无状态实例。接口删除 `id()`，装配直接查对应注册表；服务端 / 客户端游戏指令分别使用 `serverCommands` / `clientCommands`。客户端页面和动作放入静态内部类 `ClientHooks`，公共构造和静态初始化不调用客户端实现。成就仍仅服务端，对话、设置和语音仍仅客户端。
+
+实际执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过。按本次用户要求，使用隔离运行目录和 `127.0.0.1:25585` 启动两轮 NeoForge 专用服务端：两轮均从运行时类路径排除 ApricityUI 和 Simple Voice Chat；第一轮保留 FTB Quests / Library / Teams，第二轮再排除全部 FTB 依赖。两轮均到达 `Done`，且在 `/reload` 前后成功执行 `system module list`、`system routing`：12 个安全模块定义可列出，路由均为 READY，分别包含 136 / 112 条样例。
+
+通过 JVM `-Xlog:class+load=info` 实际记录确认：`ClientModule` 接口和合并后的公共模块外层确实加载，两轮均未加载 `ClientHooks`、`AssistantClient`、`net.minecraft.client.*` 或 `com.sighs.*`。未安装 FTB 的运行也未加载 `compat.ftb` 适配器，任务定义仍可注册。未发现本次合并引起的类加载或引擎初始化错误，因此保留改动，无需回滚。
+
+两轮均发送 `stop` 正常停止并完成保存，Gradle 以 `BUILD SUCCESSFUL` 结束；确认测试服务端进程退出、25585 和 25565 无监听，删除本次隔离测试存档的 `session.lock`。日志保留在 `run/module-server-check/with-ftb/logs/latest.log` 与 `run/module-server-check/without-ftb/logs/latest.log`，对应运行目录的 `class-load.log` 保存类加载证据，第二轮另有 `gradle-console.log`。首轮临时平坦世界配置缺少 layers 的提示属于测试世界生成配置，第二轮补全后正常加载。两轮新目录还记录 Jupiter 首次读取配置的 NoSuchFileException，随后均生成默认 `config/jupiter.json`，以及可选 AutoConfig 类缺失的 mixin 警告；这些提示没有阻止启动。
+
+以上验证覆盖专用服务端启动、模块装配、控制台命令、资源重载与类加载隔离；没有启动客户端或让玩家入服，没有验收 GUI、绑定 / 领奖等玩家业务，也没有调用模型、搜索或语音 API。
+
 ## 2026-10-29 缓存数据与维护逻辑归位
 
 阅读调用链后，将页面列表、本地卡片动作及登记/绑定/分派逻辑合入 ClientModuleBindingsCache；将命令声明、树编译、权限过滤补全及清理逻辑合入 ClientCommandCache。删除 ClientModuleBindings、ClientCommandRegistry 和 Commands 包装记录，缓存直接持有实际数据。绑定缓存接入 Saturn 生命周期并统一协调命令缓存，每轮只遍历客户端模块一次；完成后冻结页面/动作集合并释放临时 Builder，失败同时清空，首次使用仍支持惰性装配。界面异步补全改为核对命令缓存 revision，避免 Cache 本身不再换对象后漏掉失效检查。

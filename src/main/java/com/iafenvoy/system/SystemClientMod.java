@@ -8,7 +8,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 
 /**
- * Client-only definitions must never initialize from the common mod entrypoint.
+ * Client registry contributions and caches initialize only from the physical client entrypoint.
  */
 @Mod(value = SystemMod.MOD_ID, dist = Dist.CLIENT)
 public final class SystemClientMod {

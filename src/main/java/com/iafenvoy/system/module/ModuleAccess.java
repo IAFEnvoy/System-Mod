@@ -8,7 +8,8 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.data.ModuleDefinition;
-import com.iafenvoy.system.module.core.CoreSystemModule;
+import com.iafenvoy.system.module.builtin.CoreSystemModule;
+import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
 import com.iafenvoy.system.registry.SystemDataPackRegistries;
 import com.iafenvoy.system.registry.SystemRegistries;
 import net.minecraft.resources.Identifier;
@@ -44,8 +45,8 @@ final class ModuleAccess implements PlayerModule {
         this.server = server;
         this.engine = engine;
         this.installed = Set.copyOf(installed);
-        this.required = SystemRegistries.SERVER_MODULE.stream().filter(module -> this.installed.contains(module.id()))
-                .filter(ServerModule::required).map(ServerModule::id)
+        this.required = SystemRegistries.SERVER_MODULE.stream().filter(CoreModule.class::isInstance)
+                .map(SystemRegistries.SERVER_MODULE::getKey).filter(this.installed::contains)
                 .collect(Collectors.toUnmodifiableSet());
     }
 

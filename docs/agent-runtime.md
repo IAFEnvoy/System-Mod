@@ -1,6 +1,8 @@
 # Agent 运行结构与扩展
 
-Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类型、单行为 Tool、组合流程的 `AgentModule`，以及工作流自己的入口信息；功能的服务端装配、平台指令、生命周期与客户端贡献由外层 `ServerModule` / `ClientModule` 统一组织，见[功能模块化](feature-modules.md)。指令解析器和路由器不包含模块 ID 的业务 switch。
+Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类型、单行为 Tool、组合流程的 `AgentModule`，以及工作流自己的入口信息；外层 `ServerModule` / `ClientModule` 通过 ToolModule、WorkflowModule、SharedModule、CoreModule 子接口区分纯工具、服务端工作流、双端业务和核心基础设施，见[功能模块化](feature-modules.md)。指令解析器和路由器不包含模块 ID 的业务 switch。
+
+外层内置模块及辅助类统一放在 `com.iafenvoy.system.module.builtin`，内置 DataStorage 实现统一放在其 `storage` 子包；接口、ModuleManager 和通用存储访问工具继续保留在 `module` 根包。Agent 内部的 `agent.builtin.<功能>` 仍按工作流和工具业务归类。
 
 根包集中引擎、执行器、上下文、Module/Tool 契约、注册表、指令与请求结果。路由、模型、存储、商城和提示词分别归入 `routing`、`model`、`store`、`commerce`、`prompt`，各包同时包含自身的接口、数据与实现。内置工作流与工具位于 `builtin/<功能>`；共享类型键、输入及输出分别保留在 `builtin.tool`、`builtin.input`、`builtin.output`。共用 Codec、Schema 和 JSON 工具直接位于外层 `com.iafenvoy.system.util`，配置位于 `com.iafenvoy.system.config`。
 
@@ -16,6 +18,8 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 4. 记录模型可见性和只读快捷入口，供模型目录、澄清提示与帮助使用。
 
 `engine.start()` 校验策略和事件引用，冻结注册表并建立语义索引。启动后禁止继续注册工具、模块或 profile。未安装的可选模块不注册，因此不会出现在指令、帮助、补全、语义可执行候选或模型目录中。
+
+纯服务端 `ToolModule` 由 ModuleManager 先安装到引擎 ToolRegistry，保留所属功能 ID；不注册工作流或玩家入口。消费方用 `ModuleContext.tool(type)` 取得共享工具实例并加入工作流白名单；`ExecutionContext.tool` 在原有预算、事件和写入检查之外，检查导出工具所属功能是否对当前玩家启用。具体模型规划由工作流负责，纯工具不会成为意图路由目标。
 
 动作输入实现 `AgentAction`，`codec()` 返回本类 MapCodec；先通过 DeferredRegister 在 `SystemResourceKeys.ACTION_TYPE` 注册这个 Codec，内置声明由 `SystemActionTypes` 公开。Module 的 `inputCodec()` 返回同一实例；按钮、指令和模型路由都直接生成输入对象。类型与 Codec 必须在两端可用，定义不得引用未安装的可选模组类，详见[注册表速查](registries.md)。
 

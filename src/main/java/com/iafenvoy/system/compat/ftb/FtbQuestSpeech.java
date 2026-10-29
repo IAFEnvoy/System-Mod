@@ -5,7 +5,7 @@ import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.QuestNarration;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.card.SpeechContent;
-import com.iafenvoy.system.module.quest.QuestSystemModule;
+import com.iafenvoy.system.module.builtin.QuestSystemModule;
 import com.iafenvoy.system.util.TypeDispatch;
 import dev.ftb.mods.ftbquests.integration.item_filtering.ItemMatchingSystem;
 import dev.ftb.mods.ftbquests.quest.Quest;

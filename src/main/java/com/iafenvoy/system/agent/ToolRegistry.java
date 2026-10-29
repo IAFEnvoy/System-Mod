@@ -2,6 +2,7 @@ package com.iafenvoy.system.agent;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
+import net.minecraft.resources.Identifier;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.concurrent.CompletionStage;
  */
 public final class ToolRegistry {
     private final Map<String, Tool<?, ?>> tools = new HashMap<>();
+    private final Map<String, Identifier> owners = new HashMap<>();
     private boolean frozen;
 
     public void registerAll(List<Tool<?, ?>> values) {
@@ -25,6 +27,24 @@ public final class ToolRegistry {
                 throw new IllegalArgumentException("Conflicting tool " + tool.id());
         }
         this.tools.putAll(pending);
+    }
+
+    /**
+     * Exported operations keep their feature owner even when several workflows share the same handler.
+     */
+    public void registerAll(Identifier owner, List<Tool<?, ?>> values) {
+        Objects.requireNonNull(owner);
+        for (Tool<?, ?> tool : values) {
+            Identifier previous = this.owners.get(tool.id());
+            if (previous != null && !previous.equals(owner))
+                throw new IllegalArgumentException("Conflicting tool owner " + tool.id());
+        }
+        this.registerAll(values);
+        values.forEach(tool -> this.owners.put(tool.id(), owner));
+    }
+
+    public Identifier owner(String id) {
+        return this.owners.get(id);
     }
 
     void freeze() {

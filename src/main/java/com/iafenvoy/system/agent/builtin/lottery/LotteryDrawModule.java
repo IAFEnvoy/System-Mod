@@ -12,7 +12,7 @@ import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.module.ModuleData;
-import com.iafenvoy.system.module.lottery.LotterySystemModule;
+import com.iafenvoy.system.module.builtin.LotterySystemModule;
 
 import java.util.List;
 import java.util.Optional;

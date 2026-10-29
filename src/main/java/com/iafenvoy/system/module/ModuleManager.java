@@ -7,6 +7,7 @@ import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.registry.SystemRegistries;
 import net.minecraft.resources.Identifier;
@@ -38,14 +39,26 @@ public final class ModuleManager implements AutoCloseable {
         this.server = server;
         this.engine = context.engine();
         List<ServerModule> modules = SystemRegistries.SERVER_MODULE.stream().filter(ServerModule::available).toList();
+        // Tool modules export operations before workflows resolve their typed dependencies.
+        for (ServerModule module : modules) {
+            if (!(module instanceof ToolModule tools)) continue;
+            if (module instanceof WorkflowModule || module instanceof ClientModule)
+                throw new IllegalArgumentException("Tool modules cannot expose workflows or client contributions");
+            Identifier id = Objects.requireNonNull(SystemRegistries.SERVER_MODULE.getKey(module));
+            this.engine.tools().registerAll(id, tools.tools(context));
+        }
         // Static definitions create fresh workflows before any per-server runtime is constructed.
         for (ServerModule module : modules) {
-            for (AgentModule<?> workflow : module.workflows(context)) this.engine.registerModule(module.id(), workflow);
+            Identifier id = Objects.requireNonNull(SystemRegistries.SERVER_MODULE.getKey(module));
+            if (module instanceof WorkflowModule workflows)
+                for (AgentModule<?> workflow : workflows.workflows(context)) this.engine.registerModule(id, workflow);
             module.installed(context);
         }
-        for (ServerModule module : modules)
-            this.installed.put(module.id(), new Installed(module, module.runtime(context),
+        for (ServerModule module : modules) {
+            Identifier id = Objects.requireNonNull(SystemRegistries.SERVER_MODULE.getKey(module));
+            this.installed.put(id, new Installed(id, module, module.runtime(context),
                     module.storages().stream().anyMatch(ModuleStorage::ticking)));
+        }
         this.access = new ModuleAccess(server, this.engine, List.copyOf(this.installed.keySet()));
         this.access.onChange(player -> {
             PlayerSession session = this.players.get(player.getUUID());
@@ -149,7 +162,7 @@ public final class ModuleManager implements AutoCloseable {
         List<Activation> additions = new ArrayList<>();
         try {
             for (Installed module : this.installed.values()) {
-                Identifier id = module.definition.id();
+                Identifier id = module.id();
                 if (!desired.contains(id) || player.modules.containsKey(id) || player.failed.contains(id)) continue;
                 PlayerModule.Session session;
                 try {
@@ -163,7 +176,7 @@ public final class ModuleManager implements AutoCloseable {
                 additions.add(activation);
             }
         } catch (RuntimeException error) {
-            additions.forEach(activation -> this.stop(player, activation.module.definition.id()));
+            additions.forEach(activation -> this.stop(player, activation.module.id()));
             this.publish(player);
             player.initialized.completeExceptionally(error);
             SystemMod.LOGGER.warn("Unable to create player module sessions for {}", player.player.getUUID(), error);
@@ -187,7 +200,7 @@ public final class ModuleManager implements AutoCloseable {
         })).whenComplete((_, error) -> this.server.execute(() -> {
             if (!this.current(player)) return;
             for (Activation activation : additions) {
-                Identifier id = activation.module.definition.id();
+                Identifier id = activation.module.id();
                 // A removed/re-added module owns a different activation; stale callbacks cannot restart it.
                 if (player.modules.get(id) != activation) continue;
                 if (error != null) {
@@ -205,7 +218,7 @@ public final class ModuleManager implements AutoCloseable {
                 return;
             }
             for (Activation activation : additions) {
-                Identifier id = activation.module.definition.id();
+                Identifier id = activation.module.id();
                 if (player.modules.get(id) != activation || !activation.ready) continue;
                 try {
                     activation.session.ready();
@@ -261,7 +274,7 @@ public final class ModuleManager implements AutoCloseable {
             try {
                 module.runtime.tick();
             } catch (RuntimeException error) {
-                SystemMod.LOGGER.warn("Module maintenance failed for {}", module.definition.id(), error);
+                SystemMod.LOGGER.warn("Module maintenance failed for {}", module.id(), error);
             }
         }
         for (PlayerSession player : List.copyOf(this.players.values())) {
@@ -294,14 +307,14 @@ public final class ModuleManager implements AutoCloseable {
                 if (context.gameTime() % 20 == 0) this.flush(player.player.getUUID());
             }
             for (Activation activation : List.copyOf(player.modules.values())) {
-                if (!activation.ready || player.modules.get(activation.module.definition.id()) != activation) continue;
+                if (!activation.ready || player.modules.get(activation.module.id()) != activation) continue;
                 try {
                     activation.session.tick();
                 } catch (RuntimeException error) {
-                    this.stop(player, activation.module.definition.id());
-                    player.failed.add(activation.module.definition.id());
+                    this.stop(player, activation.module.id());
+                    player.failed.add(activation.module.id());
                     this.publish(player);
-                    SystemMod.LOGGER.warn("Module tick failed for {} / {}", player.player.getUUID(), activation.module.definition.id(), error);
+                    SystemMod.LOGGER.warn("Module tick failed for {} / {}", player.player.getUUID(), activation.module.id(), error);
                 }
             }
         }
@@ -312,11 +325,11 @@ public final class ModuleManager implements AutoCloseable {
         PlayerSession session = this.players.get(player.getUUID());
         if (session == null || !this.current(session)) return;
         for (Activation activation : List.copyOf(session.modules.values())) {
-            if (session.modules.get(activation.module.definition.id()) != activation) continue;
+            if (session.modules.get(activation.module.id()) != activation) continue;
             try {
                 activation.module.runtime.advancement(player, advancement);
             } catch (RuntimeException error) {
-                SystemMod.LOGGER.warn("Module advancement hook failed for {} / {}", player.getUUID(), activation.module.definition.id(), error);
+                SystemMod.LOGGER.warn("Module advancement hook failed for {} / {}", player.getUUID(), activation.module.id(), error);
             }
         }
     }
@@ -377,12 +390,12 @@ public final class ModuleManager implements AutoCloseable {
             try {
                 module.runtime.close();
             } catch (RuntimeException error) {
-                SystemMod.LOGGER.warn("Unable to close module runtime {}", module.definition.id(), error);
+                SystemMod.LOGGER.warn("Unable to close module runtime {}", module.id(), error);
             }
         }
     }
 
-    private record Installed(ServerModule definition, PlayerModule runtime, boolean ticking) {
+    private record Installed(Identifier id, ServerModule definition, PlayerModule runtime, boolean ticking) {
     }
 
     private static final class Activation {

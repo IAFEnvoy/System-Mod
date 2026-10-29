@@ -10,8 +10,8 @@ import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.module.ModuleData;
-import com.iafenvoy.system.module.inbox.InboxSystemModule;
-import com.iafenvoy.system.module.signin.SignInSystemModule;
+import com.iafenvoy.system.module.builtin.InboxSystemModule;
+import com.iafenvoy.system.module.builtin.SignInSystemModule;
 import net.minecraft.resources.Identifier;
 
 import java.time.LocalDate;

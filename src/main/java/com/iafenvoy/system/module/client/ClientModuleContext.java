@@ -3,6 +3,8 @@ package com.iafenvoy.system.module.client;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.card.CardRef;
 import com.iafenvoy.system.command.AssistantCommandSource;
+import com.iafenvoy.system.module.CoreModule;
+import com.iafenvoy.system.module.SharedModule;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import net.minecraft.resources.Identifier;
 
@@ -10,7 +12,7 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-public record ClientModuleContext(ClientModuleBindingsCache bindings, Identifier id, boolean serverRequired) {
+public record ClientModuleContext(ClientModuleBindingsCache bindings, Identifier id, ClientModule module) {
     public void command(Runnable action, String... aliases) {
         ClientModuleCaches.COMMAND.register(this::available, action, aliases);
     }
@@ -24,7 +26,8 @@ public record ClientModuleContext(ClientModuleBindingsCache bindings, Identifier
     }
 
     public boolean available() {
-        return !this.serverRequired || AssistantClient.state().hasModule(this.id);
+        return !(this.module instanceof SharedModule) || this.module instanceof CoreModule
+                || AssistantClient.state().hasModule(this.id);
     }
 
     public void workspace(String page, String navigation, Consumer<WorkspaceContext> bind) {
@@ -36,7 +39,7 @@ public record ClientModuleContext(ClientModuleBindingsCache bindings, Identifier
     }
 
     public void workspace(String page, String navigation, String label, WorkspaceGroup group, Consumer<WorkspaceContext> bind) {
-        this.bindings.workspace(new ClientModuleBindingsCache.Workspace(this.id, this.serverRequired, page, navigation, label, group, bind));
+        this.bindings.workspace(new ClientModuleBindingsCache.Workspace(this, page, navigation, label, group, bind));
     }
 
     public void localAction(Identifier action, BiConsumer<CardRef, Map<String, String>> handler) {

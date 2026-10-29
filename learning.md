@@ -36,8 +36,8 @@
 | 助手 Brigadier 命令、ClientModuleCaches（绑定/命令缓存直接持有数据与维护逻辑）、原生命令补全、标签同步与两端命令构建顺序 | [Agent 入口](docs/agent-runtime.md#给-module-声明入口)、[客户端模块贡献](docs/feature-modules.md)、[缓存时序](docs/registries.md#仍保留的运行时登记表) |
 | 包组织、依赖、配置、持久化、MC 桥接、实现边界 | [开发与架构](docs/development.md) |
 | 按键、声音、action/condition、模块目录、卡片节点注册与语音供应商工厂 Map；公开静态入口 | [registry 包](src/main/java/com/iafenvoy/system/registry)、[目录与职责](docs/development.md#目录与职责) |
-| 功能级装配、available() 可选依赖检查与安全定义、三分类动态侧栏、玩家模块条件/手动覆盖、Saturn action/condition、两端指令、ModuleManager 生命周期与模块存储声明 | [功能模块化](docs/feature-modules.md) |
-| ServerModule / ClientModule 正式内置注册表、DeferredRegister 扩展及客户端贡献装配 | [SystemRegistries](src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)、[功能模块化](docs/feature-modules.md) |
+| 内置功能平铺 module.builtin、DataStorage 集中 module.builtin.storage、available() 可选依赖检查、三分类侧栏、模块条件/手动覆盖、两端指令与 ModuleManager 生命周期 | [功能模块化](docs/feature-modules.md)、[内置模块](src/main/java/com/iafenvoy/system/module/builtin) |
+| ServerModule / ClientModule 及 ToolModule / WorkflowModule / SharedModule / CoreModule 分类、按接口判断类型、纯工具 owner 权限、ClientHooks 隔离、DeferredRegister 扩展 | [功能模块化](docs/feature-modules.md)、[注册表](src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)、[编译与验收](docs/testing.md) |
 | 注册表 ID 与公开字段速查、协议/载荷/卡片节点注册表、语音工厂 Map、注册时序及扩展示例 | [注册表速查](docs/registries.md) |
 | CardData.buildCard、公共 CardBuilder/CardView/CardUpdate、客户端 CardPresentation、纯文本无按钮约定、JSON 节点与平铺 Context、明确本地/服务端动作 | [客户端 JSON 卡片](docs/cards.md) |
 | 已实施卡片数据流：完整业务 DTO、消息 ID/版本、SHOW/REPLACE/REMOVE、状态与历史响应、Status 枚举和 BuiltinTools | [卡片与消息数据流](docs/card-flow-design.md) |

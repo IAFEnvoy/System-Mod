@@ -22,7 +22,7 @@
 | `system:client_module` | `CLIENT_MODULE` | `ClientModule` | [`SystemClientModules`](../src/main/java/com/iafenvoy/system/registry/SystemClientModules.java) |
 | `system:card_node_type` | `CARD_NODE_TYPE` | `MapCodec<? extends CardNode>` | [`SystemCardNodeTypes`](../src/main/java/com/iafenvoy/system/registry/SystemCardNodeTypes.java) |
 
-共 7 张代码注册表。共用条目（包括服务端生成回复所需的卡片载荷）的 DeferredRegister 由 `SystemMod` 绑定 mod event bus；客户端模块、布局节点的 DeferredRegister 由 `Dist.CLIENT` 的 `SystemClientMod` 绑定。专用服务端保留这两张表的空表，不加载客户端实现。公共声明只在泛型签名中使用客户端契约，不构造实现、不引用实现的 class literal 或静态 Codec。
+共 7 张代码注册表。共用条目（包括服务端生成回复所需的卡片载荷）的 DeferredRegister 由 `SystemMod` 绑定 mod event bus；客户端模块、布局节点的 DeferredRegister 由 `Dist.CLIENT` 的 `SystemClientMod` 绑定。专用服务端保留这两张表的空表。11 个双端功能的同一实现类分别以无状态实例登记到两张模块表；服务端会加载这些外层类及 ClientModule 接口，客户端 UI 实现保留在按需加载的 ClientHooks 静态内部类，不从公共构造或静态初始化访问。泛型声明本身不触发客户端实现加载。
 
 当前 NeoForge 的 `RegistryBuilder.sync(true)` 同步条目的数字 ID 映射，默认关闭，不传输 Java 实现或 Codec。本模组这些代码注册表均按名称编码，保留默认设置，客户端独有条目不会参与数字 ID 同步。共用协议类型仍须由两端安装的代码提供相同定义；`system:system` 数据包注册表另用网络 Codec 同步定义，见下文。运行中不能新增内置注册表条目。
 
@@ -32,6 +32,20 @@
 - 客户端：`core`、`binding`、`conversation`、`settings`、`usage`、`speech`、`player`、`items`、`signin`、`inbox`、`shop`、`lottery`、`ftb_quests`、`web_search`。
 
 以上条目均属于 `system` 命名空间，使用普通 `DeferredHolder` 始终登记。`ServerModule.available()` 在定义内部声明依赖是否满足；任务模块检测 FTB Quests，缺席时保留模块 ID 与公共 Codec，跳过指令、工作流和运行时。客户端任务模块只使用本模组 DTO，仍可保留卡片展示定义。模块装配、玩家启停及生命周期见[功能模块化](feature-modules.md)。
+
+模块接口不提供 `id()`，使用方从对应 `SERVER_MODULE` / `CLIENT_MODULE` 的 `getKey(module)` 查找；客户端游戏指令使用 `clientCommands(root)`，服务端使用 `serverCommands(root)`，避免联合实现共享同一个指令钩子。成就仅服务端，对话/设置/语音仅客户端，其余内置功能使用同一个 `*SystemModule` 实现类。
+
+模块仍登记到上述两张根类型注册表，职责由子接口区分，不新增分类注册表：
+
+| 接口 | 注册与用途 |
+| --- | --- |
+| `ToolModule` | 仅 SERVER_MODULE；向工具目录导出操作，工作流白名单内调用，无玩家请求入口 |
+| `WorkflowModule` | SERVER_MODULE；服务端工作流与生命周期，内置成就使用此类型 |
+| `SharedModule` | SERVER_MODULE 与 CLIENT_MODULE；双端业务，客户端按服务端模块权限启用 |
+| `CoreModule` | 继承 SharedModule；core / binding / usage，绑定后必需且不能移除 |
+| `ClientModule` | 仅 CLIENT_MODULE；conversation / settings / speech 等本地贡献 |
+
+`required()` 和 `serverRequired()` 已删除；客户端上下文、模块权限和管理员命令直接检查接口类型。`available()` 只做依赖可用性检查。纯工具模块由 ModuleManager 先于工作流安装到每服务器的 ToolRegistry，工具另记 owner 供执行时检查权限；运行时工具目录沿用普通 Map。完整声明和消费示例见[纯工具模块](feature-modules.md#纯工具模块)。
 
 ### 卡片数据与动作载荷
 

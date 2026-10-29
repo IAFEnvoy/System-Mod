@@ -3,7 +3,7 @@ package com.iafenvoy.system.agent;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.module.ModuleData;
-import com.iafenvoy.system.module.core.CoreSystemModule;
+import com.iafenvoy.system.module.builtin.CoreSystemModule;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;

@@ -283,7 +283,15 @@ public final class AgentEngine implements AutoCloseable {
 
     public boolean available(UUID player, Identifier workflow) {
         Identifier owner = this.modules.owner(workflow);
-        return owner == null || this.moduleAccess.test(player, owner);
+        if (owner != null && !this.moduleAccess.test(player, owner)) return false;
+        AgentModule<?> module = this.modules.get(workflow);
+        // Recheck exported tool dependencies for routing, in-flight work and queued game-thread operations.
+        return module == null || module.descriptor().tools().stream().allMatch(tool -> this.toolAvailable(player, tool));
+    }
+
+    public boolean toolAvailable(UUID player, String tool) {
+        Identifier owner = this.tools.owner(tool);
+        return this.tools.contains(tool) && (owner == null || this.moduleAccess.test(player, owner));
     }
 
     public void moduleAccessChanged(UUID player) {

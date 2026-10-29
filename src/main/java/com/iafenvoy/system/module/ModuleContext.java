@@ -36,6 +36,13 @@ public final class ModuleContext {
         return this.commerce;
     }
 
+    /**
+     * Resolve an exported tool after ToolModule installation, without constructing another handler.
+     */
+    public <I, O> ToolRegistry.Tool<I, O> tool(ToolRegistry.Type<I, O> type) {
+        return this.engine.tools().require(type);
+    }
+
     public <I, O> ToolRegistry.Tool<I, O> tool(ToolRegistry.Type<I, O> type, Supplier<ToolRegistry.Tool<I, O>> factory) {
         ToolRegistry.Tool<?, ?> value = this.tools.computeIfAbsent(type, _ -> {
             ToolRegistry.Tool<I, O> tool = factory.get();

@@ -16,7 +16,7 @@ import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.module.ModuleData;
-import com.iafenvoy.system.module.signin.SignInSystemModule;
+import com.iafenvoy.system.module.builtin.SignInSystemModule;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 

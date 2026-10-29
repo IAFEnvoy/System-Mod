@@ -9,10 +9,10 @@ import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.config.file.AgentConfig;
-import com.iafenvoy.system.module.CommerceDataStorage;
 import com.iafenvoy.system.module.ModuleData;
-import com.iafenvoy.system.module.inbox.InboxSystemModule;
-import com.iafenvoy.system.module.signin.SignInSystemModule;
+import com.iafenvoy.system.module.builtin.InboxSystemModule;
+import com.iafenvoy.system.module.builtin.SignInSystemModule;
+import com.iafenvoy.system.module.builtin.storage.CommerceDataStorage;
 
 import java.time.LocalDate;
 import java.time.ZoneId;

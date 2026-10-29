@@ -8,7 +8,7 @@ import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.module.ModuleData;
-import com.iafenvoy.system.module.inbox.InboxSystemModule;
+import com.iafenvoy.system.module.builtin.InboxSystemModule;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;

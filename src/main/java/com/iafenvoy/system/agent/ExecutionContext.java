@@ -9,7 +9,7 @@ import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.module.ModuleData;
-import com.iafenvoy.system.module.core.CoreSystemModule;
+import com.iafenvoy.system.module.builtin.CoreSystemModule;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
@@ -279,6 +279,7 @@ public final class ExecutionContext {
         String id = type.id();
         if (this.module == null || !this.module.tools().contains(id)) throw new AgentException("NOT_AUTHORIZED");
         ToolRegistry.Tool<I, O> tool = this.engine.tools().require(type);
+        if (!this.engine.toolAvailable(this.player, id)) throw new AgentException("CAPABILITY_UNAVAILABLE");
         if ((this.routeSource == RouteSource.SEMANTIC || this.routeSource == RouteSource.ROUTE_CACHE) && tool.write())
             throw new AgentException("NOT_AUTHORIZED");
         if (this.isEvent() && !tool.allowEvent()) throw new AgentException("NOT_AUTHORIZED");

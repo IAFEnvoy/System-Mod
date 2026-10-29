@@ -4,6 +4,7 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.ModuleCommands;
 import com.iafenvoy.system.module.ServerModule;
+import com.iafenvoy.system.module.SharedModule;
 import com.iafenvoy.system.registry.SystemRegistries;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -27,7 +28,9 @@ public final class SystemCommand {
     @SubscribeEvent
     public static void register(RegisterCommandsEvent event) {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal(SystemMod.MOD_ID);
-        SystemRegistries.SERVER_MODULE.stream().filter(ServerModule::available).forEach(module -> module.commands(root));
+        SystemRegistries.SERVER_MODULE.stream().filter(ServerModule::available)
+                .filter(SharedModule.class::isInstance).map(SharedModule.class::cast)
+                .forEach(module -> module.serverCommands(root));
         root.then(Commands.argument("instruction", StringArgumentType.greedyString())
                 .executes(context -> ModuleCommands.ask(context.getSource().getPlayerOrException(),
                         "/system " + StringArgumentType.getString(context, "instruction"))));

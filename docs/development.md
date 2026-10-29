@@ -23,7 +23,7 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 | 本地意图路由 | `lexical-tfidf-v1`，JDK + 已有 Gson；无新增第三方依赖、native 或模型文件 |
 | 产物体积上限 | 完整 System JAR 不超过 10,000,000 字节，`jar` 任务强制检查 |
 
-Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎、执行器、执行上下文、模块/工具接口、注册表、指令与请求结果；`builtin/<功能>` 包含该功能的工作流与单行为工具，`routing`、`model`、`store`、`commerce`、`prompt` 按职责组织。外层 `module/<功能>` 组织该功能的两端指令、装配、生命周期与界面贡献，详见[功能模块化](feature-modules.md)。通用 Codec、Schema 和 JSON 工具直接归入外层 `com.iafenvoy.system.util`，配置统一位于外层 `config`。游戏生命周期、界面、网络、语音和可选模组桥接继续位于模组的对应包；所有代码共用主源码集、依赖和 Java 25 工具链，不单独发布 Agent 核心库。
+Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎、执行器、执行上下文、模块/工具接口、注册表、指令与请求结果；`builtin/<功能>` 包含该功能的工作流与单行为工具，`routing`、`model`、`store`、`commerce`、`prompt` 按职责组织。外层 `module/builtin` 平铺内置功能的两端指令、装配、生命周期与界面贡献，全部内置 DataStorage 实现集中在 `module/builtin/storage`，详见[功能模块化](feature-modules.md)。通用 Codec、Schema 和 JSON 工具直接归入外层 `com.iafenvoy.system.util`，配置统一位于外层 `config`。游戏生命周期、界面、网络、语音和可选模组桥接继续位于模组的对应包；所有代码共用主源码集、依赖和 Java 25 工具链，不单独发布 Agent 核心库。
 
 ```powershell
 .\gradlew.bat compileJava testModClasses jar
@@ -39,7 +39,8 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | --- | --- |
 | `agent` | 引擎与执行器、预算和授权上下文、Module/Tool 契约、每服务实例的模块/工具/指令索引、请求与结果 |
 | `registry` | 系统定义、Saturn action/condition 与存储类型、按键、声音、两端模块、协议/载荷类型、卡片节点的注册表及 DeferredRegister 注册项，客户端绑定与命令 RegistryCache，以及语音供应商工厂 Map |
-| `module/<功能>` | 功能装配、平台指令、玩家生命周期、客户端页面、本地指令及本地卡片动作 |
+| `module/builtin` | 平铺内置功能装配、平台指令、玩家生命周期、客户端页面、本地指令及本地卡片动作 |
+| `module/builtin/storage` | 内置签到、收件箱、成就、交易、模块覆盖与 Agent 幂等日志的 DataStorage 实现 |
 | `module` | 功能定义、装配、ModuleManager、玩家权限快照、模块存储声明和生命周期 |
 | `module/client` | 客户端功能契约、ClientModuleBindingsCache 页面/动作缓存、ClientCommandCache 命令缓存、三分类动态导航与工作台 |
 | `agent/builtin` | 按功能分包的工作流、单行为工具和签到模型决策结构 |
@@ -66,7 +67,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 上表路径均相对于 `src/main/java/com/iafenvoy/system/`。Agent 与游戏接入代码处于同一主项目；模块、工具和服务接口仍保留职责划分，工具使用稳定逻辑 ID，方便后续扩展业务。
 
-注册项通过对应注册类的 `public static final` 字段公开，例如 `SystemKeyMappings.TOGGLE_INTERFACE`、`SystemSoundEvents.NOTIFICATION`、`SystemEntityActions.ADD_MODULE` 和 `SystemServerModules.SIGN_IN`。注册类使用类级别 `@SuppressWarnings("unused")`。`SystemRegistries` 的正式内置注册表在两端统一创建，通过 `NewRegistryEvent` 加入原版根注册表，由对应的 DeferredRegister 注册条目，再由 NeoForge 冻结；完整 ID、字段与扩展入口见[注册表速查](registries.md)。模块由 `SystemServerModules` / `SystemClientModules` 注册，接口分别为 `ServerModule` 和 `ClientModule`，默认 `id()` 从注册表取得。客户端实现的条目由仅在物理客户端加载的 `SystemClientMod` 绑定，专用服务端保留对应空表；公共协议与卡片载荷在两端登记。客户端贡献由 `ClientModuleCaches.BINDINGS.get()` 从冻结注册表装配。按键事件处理、网络、指令、资源重载监听器保持原有位置，Agent 内部按实例管理的工作流、工具与指令索引继续位于独立的 `agent` 包。
+注册项通过对应注册类的 `public static final` 字段公开，例如 `SystemKeyMappings.TOGGLE_INTERFACE`、`SystemSoundEvents.NOTIFICATION`、`SystemEntityActions.ADD_MODULE` 和 `SystemServerModules.SIGN_IN`。注册类使用类级别 `@SuppressWarnings("unused")`。`SystemRegistries` 的正式内置注册表在两端统一创建，通过 `NewRegistryEvent` 加入原版根注册表，由对应的 DeferredRegister 注册条目，再由 NeoForge 冻结；完整 ID、字段与扩展入口见[注册表速查](registries.md)。模块由 `SystemServerModules` / `SystemClientModules` 注册，根接口为 `ServerModule` / `ClientModule`，使用方通过对应注册表 `getKey(module)` 取得 ID。子接口 `ToolModule`、`WorkflowModule`、`SharedModule`、`CoreModule` 分别声明纯工具、服务端工作流、双端业务和必需基础设施；类型判断不再使用 `required()` / `serverRequired()`。11 个双端功能实现 SharedModule 或其 CoreModule 子接口，两张表分别注册无状态实例；游戏指令钩子区分为 `serverCommands` / `clientCommands`。客户端目录由物理客户端入口 `SystemClientMod` 绑定，专用服务端保留空表；联合实现的公共外层仍会加载，实际 UI 实现隔离在静态内部类 `ClientHooks`，只由客户端调用。公共协议与卡片载荷在两端登记，客户端贡献由 `ClientModuleCaches.BINDINGS.get()` 从冻结注册表装配。按键事件处理、网络、指令、资源重载监听器保持原有位置，Agent 内部按实例管理的工作流、工具与指令索引继续位于独立的 `agent` 包。
 
 `AssistantServer` 负责组装引擎、安装模块、转发游戏事件及资源刷新；`AssistantPlayers` 管理绑定与连接，ModuleManager 根据 ServerModule.runtime 创建 PlayerModule 并统一管理模块会话、事件、tick 和关闭；成就基线与派发由成就模块管理，`AssistantRequests` 管理类型化请求分派与回复，`AssistantUsage` 管理用量查询及计量队列。命令、网络和可选桥接通过 `players()`、`requests()`、`usage()` 调用对应服务；异步回复仍核对连接代次，模型计量仍由服务端主线程写入 SavedData。
 
@@ -117,7 +118,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 每个 Tool 只负责一个行为，`ToolRegistry.Type<I, O>` 保存稳定 ID、参数 `MapCodec<I>` 和结果 `Codec<O>`，`Tool<I, O>` 保存写入、幂等、事件权限和单一 Handler。模块直接调用 `context.tool(type, stepId, typedInput)` 获得类型化结果；一个流程需要多个行为时使用模块的 `List.of(toolA, toolB)` 组合。同一工具被多个模块使用时共享同一实例，重复的不同实现或同 ID 不同类型键会被拒绝。
 
-功能级扩展用标准 `DeferredRegister<ServerModule>` 注册到 `SystemResourceKeys.SERVER_MODULE`；客户端以相同方式注册到 `SystemResourceKeys.CLIENT_MODULE`，注册入口限定 `Dist.CLIENT`。完整示例见[功能模块化](feature-modules.md)。只有工作流的扩展也可在原有 `AssistantRegistrationEvent` 中调用 `engine.registerModule(module)`：引擎的工作流目录核对描述白名单与工具列表，检查 ID、指令别名和工具实例冲突，再统一收集工具、指令、语义 profile 和快捷入口。不再提供先注册工具、再注册模块的两阶段入口。FTB 也使用此路径，查询、详情、普通领奖、新手礼包领取和明确任务提交各有独立 Tool 及对应模块，不需要专用服务接口。
+功能级扩展用标准 `DeferredRegister<ServerModule>` 注册到 `SystemResourceKeys.SERVER_MODULE`，实现所需子接口；客户端以相同方式注册到 `SystemResourceKeys.CLIENT_MODULE`，注册入口限定 `Dist.CLIENT`。ModuleManager 先安装 ToolModule 导出的工具及 owner，再装配 WorkflowModule 的工作流。消费方通过 `ModuleContext.tool(type)` 取得已安装工具，仍须加入自身工作流的工具列表；ExecutionContext 同时检查工作流白名单与导出工具所属功能权限。SharedModule 才贡献服务端游戏指令；CoreModule 决定基础设施始终启用及不可移除。完整示例见[功能模块化](feature-modules.md)。只有工作流的扩展也可在原有 `AssistantRegistrationEvent` 中调用 `engine.registerModule(module)`：引擎的工作流目录核对描述白名单与工具列表，检查 ID、指令别名和工具实例冲突，再统一收集工具、指令、语义 profile 和快捷入口。FTB 也使用此路径，查询、详情、普通领奖、新手礼包领取和明确任务提交各有独立 Tool 及对应模块，不需要专用服务接口。
 
 `AgentAction.CODEC` 通过正式 `SystemRegistries.ACTION_TYPE` 的 `byNameCodec().dispatch(...)` 按 `moduleId` 选择实例返回的 MapCodec；参数平铺为 `{"moduleId":"system:item_query","query":"stone"}`。`ModuleRegistry.call` 根据 Codec 注册 ID 定位当前服务器已安装模块并核对实例身份。指令、语义提取和按钮解码共用 `AgentAction.validate` 校验 Java 创建的动作；模型只接受当前可用目录中的动作。未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `AgentAction`，没有额外的 type/value 包装。
 
@@ -310,7 +311,7 @@ FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubm
 
 ## 联网搜索实现入口
 
-- `module/search`：功能装配、工作台入口；注册 ID system:web_search。
+- `module/builtin/SearchSystemModule`：功能装配、工作台入口；注册 ID system:web_search。
 - `agent/builtin/search`：模块自身的明确输入解析、类型化 ReAct 决策和两个独立 Tool；工作流 ID system:web_search。
 - `search`：SearchProvider、DeepSeekSearchClient 与统一玩家计量 SearchGateway；复用 HttpTransport。
 - `config/file/SearchConfig`、`SearchPricingConfig`：默认共享 SYSTEM_DEEPSEEK_API_KEY，分别管理连接与按千次价格。

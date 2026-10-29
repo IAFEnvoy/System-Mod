@@ -73,7 +73,7 @@ tag 来自正式的服务端功能注册表 `system:server_module`，不是客�
 
 `ModuleDefinition` 复用 Saturn `RegistryCodecs.keyOrTag` 编解码符号引用，通过 `matchesKeys` 在权限求值时读取已加载的注册表 tag；不在系统定义解码阶段展开或固定 tag 成员。原版 tag 重载后的成员变化会在后续模块权限刷新时生效；系统定义本身仍按下文的注册表加载规则更新。
 
-模块 ID 是正式内置注册表 `SystemRegistries.SERVER_MODULE` 的条目 ID，`ServerModule.id()` 从注册表取得该值，并非 Agent 工作流 ID。客户端定义位于独立的 `SystemRegistries.CLIENT_MODULE`，客户端入口通常使用对应服务端模块的同名 ID。例如：
+模块 ID 是正式内置注册表 `SystemRegistries.SERVER_MODULE` 的条目 ID，由调用方通过 `getKey(module)` 查表取得，并非 Agent 工作流 ID。接口不提供 `id()`。客户端目录位于独立的 `SystemRegistries.CLIENT_MODULE`；双端功能可以注册同一个实现类，客户端入口使用对应服务端模块的同名 ID。例如：
 
 | 功能 | 模块 ID |
 | --- | --- |
@@ -100,7 +100,7 @@ tag 来自正式的服务端功能注册表 `system:server_module`，不是客�
 }
 ```
 
-条件异常或循环依赖会关闭涉及的模块并记入服务端日志，避免递归溢出。手动添加可覆盖条件、手动移除可禁用定义中默认提供的模块，基础设施和未安装模块均不接受覆盖。
+条件异常或循环依赖会关闭涉及的模块并记入服务端日志，避免递归溢出。手动添加可覆盖条件、手动移除可禁用定义中默认提供的模块，实现 `CoreModule` 的基础设施和未安装模块均不接受覆盖。纯服务端 `ToolModule` 同样使用这些模块开关，但只导出工作流内部使用的工具，不增加玩家指令或意图路由入口；调用时会检查该工具所属模块是否启用。
 
 管理员可使用 `/system module add <玩家> <模块ID>`、`/system module remove <玩家> <模块ID>` 调整已绑定在线玩家的持久覆盖，例如 `/system module add Steve system:lottery`。`/system module list` 列出全部已注册模块（含依赖缺席的安全定义），`/system module list Steve` 列出该玩家实际启用的模块；新增模块初始化完成后才出现在玩家列表。玩家参数使用原版在线玩家补全，模块参数从正式服务端注册表补全且排除必需模块和 `available()` 为 false 的模块；即使当前条件已启用或禁用，也可以明确写入手动覆盖。
 

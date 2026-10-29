@@ -7,7 +7,7 @@ import com.iafenvoy.system.agent.builtin.output.QuestStartupOutput;
 import com.iafenvoy.system.agent.builtin.quest.StarterGiftModule;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.card.CardUpdate;
-import com.iafenvoy.system.module.quest.QuestSystemModule;
+import com.iafenvoy.system.module.builtin.QuestSystemModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.util.LegacyText;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressEventData;

@@ -1,7 +1,6 @@
 package com.iafenvoy.system.module.client;
 
 import com.iafenvoy.saturn.registry.cache.RegistryCache;
-import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.card.CardRef;
 import com.iafenvoy.system.registry.SystemRegistries;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
@@ -15,6 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -36,8 +36,9 @@ public final class ClientModuleBindingsCache extends RegistryCache<ClientModuleB
         ClientModuleCaches.COMMAND.begin();
         try {
             for (ClientModule module : SystemRegistries.CLIENT_MODULE) {
-                module.register(new ClientModuleContext(this, module.id(), module.serverRequired()));
-                ClientModuleCaches.COMMAND.game(module::commands);
+                Identifier id = Objects.requireNonNull(SystemRegistries.CLIENT_MODULE.getKey(module));
+                module.register(new ClientModuleContext(this, id, module));
+                ClientModuleCaches.COMMAND.game(module::clientCommands);
             }
             this.workspace = List.copyOf(this.workspace);
             this.localActions = Map.copyOf(this.localActions);
@@ -110,10 +111,10 @@ public final class ClientModuleBindingsCache extends RegistryCache<ClientModuleB
         return this.workspace;
     }
 
-    public record Workspace(Identifier owner, boolean serverRequired, String page, String navigation, String label,
+    public record Workspace(ClientModuleContext context, String page, String navigation, String label,
                             WorkspaceGroup group, Consumer<WorkspaceContext> bind) {
         public boolean available() {
-            return !this.serverRequired || AssistantClient.state().hasModule(this.owner);
+            return this.context.available();
         }
     }
 }

@@ -1,17 +1,39 @@
 {
   "body": [
     {
-      "type": "system:items",
-      "items": "{{gifts.*.result_items}}",
-      "repeat": "gifts",
-      "label": "{{field:reward}}",
-      "description": [
+      "type": "system:container",
+      "style": "reward_section",
+      "when": "has_rewards",
+      "children": [
         {
           "type": "system:text",
-          "text": "{{gifts.*.error}}",
-          "when": "gifts.*.error"
+          "style": "item_group_label",
+          "text": "{{field:reward}}:"
+        },
+        {
+          "type": "system:container",
+          "style": "reward_grid",
+          "children": [
+            {
+              "type": "system:items",
+              "items": "{{result_items}}",
+              "compact": true,
+              "show_labels": false
+            },
+            {
+              "type": "system:icons",
+              "icons": "{{reward_icons}}"
+            }
+          ]
         }
       ]
+    },
+    {
+      "type": "system:text",
+      "style": ["card_context", "reward_error"],
+      "repeat": "gifts",
+      "text": "{{gifts.*.error}}",
+      "when": "gifts.*.error"
     },
     {
       "type": "system:actions",

@@ -7,5 +7,6 @@ public record CardButton(String id, String labelKey, CardAction action, Placemen
     public enum Placement {BODY, FOOTER}
 
     // REPLACE waits for a direct reply and uses the originating notification's display slot.
-    public enum Behavior {CLOSE, WAIT, REPLACE}
+    // PUSH also retains the source view for local back navigation; it never advances the waiting queue.
+    public enum Behavior {CLOSE, WAIT, REPLACE, PUSH}
 }

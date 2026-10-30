@@ -24,7 +24,7 @@ public record WebFetchTool(
     @Override
     public CompletionStage<SearchProvider.Page> execute(ExecutionContext context, SearchProvider.FetchRequest input) {
         try {
-            context.requireExternalServices();
+            context.requireWebSearch();
             return CompletableFuture.completedFuture(this.gateway.fetch(context.player(), input, Duration.ofMillis(Math.min(15000, context.remainingMillis()))));
         } catch (SearchException error) {
             return CompletableFuture.failedFuture(new AgentException(error.code(), error));

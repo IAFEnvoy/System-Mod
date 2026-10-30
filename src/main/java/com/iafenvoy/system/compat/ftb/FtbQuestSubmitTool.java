@@ -5,9 +5,7 @@ import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.QuestSubmitInput;
 import com.iafenvoy.system.agent.builtin.output.QuestSubmitOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestTaskOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
-import com.iafenvoy.system.util.LegacyText;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
@@ -39,7 +37,7 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));
             Quest quest = FtbQuestAccess.selected(context, file, team, input.questId(), input.index().orElse(0), this.access.lists);
             if (quest == null && !input.query().isBlank()) {
-                List<Quest> matches = new FtbQuestReader(file, team).find(input.query());
+                List<Quest> matches = new FtbQuestReader(file, team).find(player, input.query());
                 if (matches.size() > 1) throw new AgentException("QUEST_AMBIGUOUS");
                 quest = matches.isEmpty() ? null : matches.getFirst();
             }
@@ -64,8 +62,8 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
             boolean changed = !before.equals(tasks.stream().map(team::getProgress).toList()) || team.getCompletionCount(target) != completions;
             boolean completed = team.isCompleted(quest) || team.getCompletionCount(target) != completions;
             if (completed) FtbQuestNotifications.submitted(player, file, team, quest);
-            return new QuestSubmitOutput(FtbQuestAccess.hex(quest.getId()), LegacyText.component(quest.getTitle()), tasks.stream()
-                    .map(task -> new QuestTaskOutput(LegacyText.component(task.getTitle()), team.getProgress(task), task.getMaxProgress(), FtbQuestAccess.previewItems(task))).toList(), changed, completed);
+            return new QuestSubmitOutput(FtbQuestAccess.hex(quest.getId()), FtbQuestText.title(player, quest), tasks.stream()
+                    .map(task -> FtbQuestAccess.task(player, team, task)).toList(), changed, completed);
         });
     }
 }

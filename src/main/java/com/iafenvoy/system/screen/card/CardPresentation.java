@@ -27,6 +27,10 @@ public record CardPresentation(CardTemplate template, CardContext context) {
     private static final CardFormatting FORMAT = LegacyText::formatted;
 
     public static CardPresentation of(CardUpdate original, String messageKey, CardContext.Mode mode, int actionOffset) {
+        return of(original, messageKey, mode, actionOffset, new CardPageState());
+    }
+
+    public static CardPresentation of(CardUpdate original, String messageKey, CardContext.Mode mode, int actionOffset, CardPageState pages) {
         CardUpdate update = ClientCards.latest(original);
         CardView view = ClientCards.view(update);
         CardContext.Builder builder = CardContext.builder();
@@ -40,7 +44,8 @@ public record CardPresentation(CardTemplate template, CardContext context) {
                 .enable("show_card_title", !view.titleKey().isBlank() && !view.titleKey().equals(messageKey))
                 .enable("text_items", mode == CardContext.Mode.TEXT)
                 .enable("full", mode == CardContext.Mode.FULL).enable("simple", mode == CardContext.Mode.SIMPLE)
-                .enable("notification", mode == CardContext.Mode.NOTIFICATION).put(CardContext.RESULT_ACTIONS, view.buttons());
+                .enable("notification", mode == CardContext.Mode.NOTIFICATION).put(CardContext.RESULT_ACTIONS, view.buttons())
+                .put("local_pages", pages);
         for (int i = 0; i < view.buttons().size(); i++) {
             CardButton button = view.buttons().get(i);
             String prefix = "actions." + i + ".";

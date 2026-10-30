@@ -1,0 +1,30 @@
+{
+  "body": [
+    {
+      "type": "system:context",
+      "translate": "system.ui.quest_guide_query",
+      "args": ["{{query}}"]
+    },
+    {
+      "type": "system:text",
+      "translate": "system.ui.quest_guide_empty",
+      "unless": "entries"
+    },
+    {
+      "type": "system:container",
+      "style": "guide_entry",
+      "repeat": "entries",
+      "children": [
+        {"type": "system:header", "text": "{{entries.*.title}}"},
+        {"type": "system:context", "text": "{{entries.*.chapter}}"},
+        {"type": "system:text", "text": "{{entries.*.passage}}"},
+        {
+          "type": "system:details",
+          "summary": "{{tr:system.ui.quest_guide_source}}",
+          "when": "entries.*.has_more",
+          "children": [{"type": "system:text", "text": "{{entries.*.body}}"}]
+        }
+      ]
+    }
+  ]
+}

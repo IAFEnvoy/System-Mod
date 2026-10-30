@@ -350,7 +350,7 @@ p {
     gap: 10px;
 }
 
-#shop_query, #lottery_query {
+#shop_query, #lottery_query, #quest_guide_query {
     flex: 1 1 0;
     min-width: 0;
     height: 42px;
@@ -516,6 +516,17 @@ p {
     word-break: break-all;
 }
 
+.guide_entry {
+    min-width: 0;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--assistant-line-soft);
+}
+
+.guide_entry .card_title {
+    margin-bottom: 3px;
+}
+
 .card_details {
     display: block;
     min-width: 0;
@@ -631,6 +642,90 @@ p {
     min-width: 0;
 }
 
+.quest_icon_group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.quest_icon_row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.quest_icon_entry {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 4px;
+    border: 1px solid rgba(77, 201, 211, 0.28);
+    background-color: rgba(8, 23, 31, 0.55);
+}
+
+.quest_type_icon {
+    display: block;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    flex-shrink: 0;
+}
+
+.quest_icon_amount {
+    color: #c7e6e8;
+    font-size: 11px;
+}
+
+/* Reward sections share one heading and wrap item/type previews in the same compact flow. */
+.reward_section {
+    min-width: 0;
+    margin-top: 8px;
+}
+
+.reward_grid, .reward_entry {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.reward_entry {
+    flex: 0 1 auto;
+}
+
+.reward_grid .item_groups, .reward_grid .quest_icon_group {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    margin-top: 0;
+    gap: 0;
+}
+
+.reward_grid .item_icon_frame {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+}
+
+.reward_grid .quest_type_icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+}
+
+.reward_error {
+    flex-basis: 100%;
+}
+
 .item_entry {
     display: flex;
     align-items: center;
@@ -710,6 +805,43 @@ p {
     width: 100%;
     text-align: left;
     white-space: normal;
+}
+
+.card_pagination, .card_navigation {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.card_pagination {
+    justify-content: center;
+}
+
+.card_page_label {
+    color: #b6cfd5;
+    font-size: 12px;
+    text-align: center;
+}
+
+.card_navigation {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.card_pagination .card_action, .card_navigation .card_action {
+    margin: 0;
+}
+
+.notification .quest_list {
+    max-height: none;
+    overflow-y: visible;
+}
+
+.notification .quest_row {
+    justify-content: flex-start;
+    text-align: left;
 }
 
 /* Lottery results keep cost and odds readable without exposing nested codec fields. */
@@ -1619,7 +1751,7 @@ button.assistant_switch:disabled {
         flex-wrap: wrap;
     }
 
-    #shop_query, #lottery_query {
+    #shop_query, #lottery_query, #quest_guide_query {
         flex-basis: 100%;
     }
 

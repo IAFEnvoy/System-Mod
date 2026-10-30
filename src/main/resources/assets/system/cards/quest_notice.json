@@ -14,22 +14,42 @@
       "when": "requirements"
     },
     {
+      "type": "system:icons",
+      "icons": "{{task_icons}}",
+      "label": "{{field:tasks}}"
+    },
+    {
       "type": "system:text",
       "translate": "system.ui.quest_manual_submission",
       "when": "manual_submission"
     },
     {
-      "type": "system:text",
-      "translate": "system.tts.quest.rewards",
-      "args": [
-        "{{other_rewards}}"
-      ],
-      "when": "other_rewards"
-    },
-    {
-      "type": "system:items",
-      "items": "{{result_items}}",
-      "label": "{{field:reward}}"
+      "type": "system:container",
+      "style": "reward_section",
+      "when": "has_rewards",
+      "children": [
+        {
+          "type": "system:text",
+          "style": "item_group_label",
+          "text": "{{field:reward}}:"
+        },
+        {
+          "type": "system:container",
+          "style": "reward_grid",
+          "children": [
+            {
+              "type": "system:items",
+              "items": "{{result_items}}",
+              "compact": true,
+              "show_labels": false
+            },
+            {
+              "type": "system:icons",
+              "icons": "{{reward_icons}}"
+            }
+          ]
+        }
+      ]
     },
     {
       "type": "system:actions",

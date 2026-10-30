@@ -24,6 +24,8 @@ public CardBuilder buildCard() {
 
 `ClientCards` 保存连接内按 ID 的最新数据、版本和活动状态。`CardPresentation.of(update, messageKey, mode, actionOffset)` 取最新快照，解析 Component 和 CardText，补充显示模式、按钮标签及受控 callback，然后读取 `assets/<namespace>/cards/<path>.json`。缺少模板时回退到 summary 和已有按钮，不展示 DTO 的原始 JSON。
 
+知识问答使用 `KnowledgeAnswerOutput` / `system:knowledge_answer`，正文显示回答、本地来源默认折叠，包含标题、分类和命中段落；只播报回答或原文提示，不提供网页链接或任务操作。联网回退继续使用独立的 WebSearchOutput / web_search 模板；两种卡片都只展示服务端准备的结果。
+
 ## 普通消息约定
 
 仅当模板正文恰好是一个 `system:text` 节点、没有 repeat、没有任何 CardButton、没有额外可见标题或独立摘要内容时，渲染成普通 `message_text`，不生成卡片外框。文字可以换行或带格式；无需单独登记普通文本渲染器。
@@ -104,10 +106,33 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 | `link` | `card_link` | 调用 Minecraft 原版打开 URL 的流程 |
 | `divider` | `card_divider` | 分割线 |
 | `items` | `item_groups` | 原版物品图标、数量及 tooltip |
+| `icons` | `quest_icon_group` | FTB 任务 / 奖励的原生类型图标、数量 / 进度及文字 tooltip |
 | `actions` | `card_actions` | 已有可信动作列表 |
 | `button` | `card_action` | 通过 callback ID 绑定 Java 操作 |
 
 `text/header/context` 共享 `text/translate/args/inline`：优先使用 translate，先替换 args 中占位符再翻译，inline 默认 false。容器的 children 必填，text_separator 可选，仅影响纯文本连接。
+
+### 任务与奖励类型图标
+
+```json
+{
+  "type": "system:icons",
+  "icons": "{{reward_icons}}",
+  "label": "{{field:reward}}"
+}
+```
+
+`icons` 绑定 `List<QuestIconOutput>`，label 可选，均支持平铺占位符及循环。每项包含 task / reward 分类、FTB 原生类型 ID、本地化标题、数量或进度、tooltip 的 Component 列表；不序列化 FTB Icon，不发送客户端对象或脚本。原生物品目标 / 奖励继续使用 `items` 节点和原版物品 tooltip，非物品类型使用截图中 FTB 创建菜单的类型图标；不按目标实体或配置图标替换类型图标。
+
+`IconsNode` 在首次实际渲染时检查 FTB 安装情况，反射加载隔离的 `compat.ftb.client.FtbQuestIconElement`；通过 TaskTypes / RewardTypes 的类型表与 getIcon 取得 FTB 原始图标，使用其 renderer 提取贴图、atlas、组合、动画及第三方已注册类型的绘制状态，不复制资源或手写 ID 到贴图的映射。26.1.2 的 FtbQuestIconRenderer 在 AUI 的活动目标和投影中重放提取的几何、文字与物品，不调用完整 GuiRenderer 来改写渲染目标；版本适配记录见 [跨版本同步](ftb-quests-porting.md)。缺少依赖 / 未知类型时显示文字。专服不会执行图标解析或加载这个客户端适配器。
+
+图标元素在 AUI BODY 阶段绘制，沿用当前 pose、滚动裁剪、变换及 opacity 合成；与现有物品 tooltip 共用屏幕绘制后的检测入口，通过原版 GuiGraphicsExtractor.setTooltipForNextFrame 显示标题、类型、具体要求 / 奖励、进度 / 领取状态。HUD 需先按聊天键进入交互状态。完整模式、简约模式、任务通知、自选奖励和新手礼包共用这些数据和模板，TTS 继续使用独立 SpeechContent；纯文本导出保留具体内容。
+
+礼包、任务详情和任务通知使用 `reward_section` 外层统一显示一次“奖励”标题，内层 `reward_grid` / `reward_entry` 将物品与非物品图标横向排列，宽度不足时换行。子节点不再设置重复的奖励 label，物品使用 compact 并隐藏分组标签；自选项保留各自编号和名称。礼包整体的 `items` / `icons` 由服务端汇总，模板绑定顶层 `result_items` / `reward_icons`：经验值、经验等级各自相加，同物品且组件相同的数量 / 随机区间相加，原生 `only_one` 条件物品保留独立。`gifts` 仅保留任务 ID、领取引用和错误；失败文字在汇总预览下方逐项显示。礼包与 `QuestNotice` 的 `has_rewards` 均由物品及类型图标是否为空决定，无奖励时不显示空标题。
+
+普通任务每批仅解锁一项时直接发送 `QuestOutput` 完整详情，播报使用新任务主句及个人设置允许的要求、奖励和背景。多项时使用 `QuestUnlockedOutput`，复用 QuestList 的按 ID 查看按钮与 `system:quest_list` 模板；`unlock_notice` 隐藏主动查询的编号提示和行编号，摘要与播报仅提示本批数量。通知内每页 10 项，点开详情后可返回原列表和原页码。完成任务仍每项各发一条独立通知。
+
+`QuestGuideOutput` 使用 `system:quest_guide` 类型及同名模板，包含查询词和已授权的来源条目。每条提供标题、章节、匹配段落及原文；`has_more` 控制本地 details 展开，不发送任务提交或领奖动作。播报只提示命中数量，正文不自动发给模型。来源收录和权限边界见 [本地说明书检索](quest-guides.md)。
 
 ### 折叠区与超链接
 
@@ -205,13 +230,15 @@ button 的 text、callback 必填。callback 只查询已注册的 Runnable；�
 
 label 仅作纯文本投影。缺省使用动作原标签；简约模式按真实动作顺序显示编号，由输入执行选择。可信回调仍经过原有服务端权限、任务和交易校验。
 
-CardButton 显式描述 Local/Server 动作、BODY/FOOTER 位置以及 CLOSE/WAIT/REPLACE 行为。actions 节点在通知正文只绘制 BODY 按钮，FOOTER 由通知宿主生成；宿主始终在业务按钮之后补充本地确定按钮，忙碌时仍可关闭通知。大任务列表直接放正文滚动区，不截断成少量底部按钮。
+`actions` 节点可设置 `notification_page_size`（默认 0，不分页）；内置任务列表设置为 10，仅通知模式生效。上页、页码、下页在节点内部生成，与宿主底部确定及业务按钮分开。翻页仅修改当前通知的 `CardPageState` 并重绘该节点，不发包、不替换通知、不推进队列或重启播报；完整 / 简约界面仍展示完整列表。页码按动作数据绑定键保存，跟随通知窗口存活，不序列化至服务端或聊天历史。
+
+CardButton 显式描述 Local/Server 动作、BODY/FOOTER 位置以及 CLOSE/WAIT/REPLACE/PUSH 行为。actions 节点在通知正文只绘制 BODY 按钮，FOOTER 由通知宿主生成；宿主始终在业务按钮之后补充本地确定按钮，忙碌时仍可关闭通知。列表内容使用原有固定宽度和限高滚动视口，分页不扩大通知面板。
 
 点击、数字和语音选择都进入 CardController。Local 从 ClientModuleCaches.BINDINGS 的处理器 Map 分派；Map 和登记、分派、清理逻辑直接位于 ClientModuleBindingsCache，由模块通过 localAction 声明，随 Saturn RegistryCache 重建和退出清理。Controller 不单独保存永久动作表。Server 发 CardActionRequest(source, action)，仅含来源 CardRef、动作 Identifier 和字符串参数。工作流在 ModuleRouting.button 中解码，继续经过原有权限、预算、引用、Cost 与发奖流程，不经过模型路由。labelKey 只决定标签和语音候选，不决定动作。
 
-CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并等待回复。REPLACE 同样等待，但把直接回复的新 SHOW 卡片放到当前通知的位置，旧内容淡出后新内容淡入，不收起面板或重复播放提示音；其余排队通知保持顺序。CardBuilder.serverButton 默认使用 REPLACE，任务列表、详情和选择按钮使用此行为。通知没有自动关闭计时，播报结束也不会切换到下一条；玩家明确操作或服务端更新才能关闭或替换当前项。
+CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并等待回复。REPLACE 同样等待，但把直接回复的新 SHOW 卡片放到当前通知的位置，旧内容淡出后新内容淡入，不收起面板或重复播放提示音；其余排队通知保持顺序。CardBuilder.serverButton 默认使用 REPLACE。任务列表查看按钮使用 PUSH：收到可显示的回复后保留来源视图，详情正文上方提供本地“返回列表”，返回时恢复原页码且不重复播报列表。失败的零卡片回复保留原列表；业务 REMOVE 会清除对应返回视图。底部确定结束整个当前窗口并清理返回栈，再取下一条通知。通知没有自动关闭计时，播报结束也不会切换到下一条。
 
-仅从 HUD 激活的 REPLACE 按钮会在客户端 pending 中记录来源 CardRef，并按 requestId 关联回复；完整/简约页面中的同一按钮仍按页面流程处理。原通知已确认或关闭时，迟到回复不重新弹出，也不替换其他通知。独立推送继续入队；业务 CardUpdate.REPLACE/REMOVE 仍沿用静默更新语义。等待期间禁用服务端按钮，失败、超时和零卡片回复也解除等待。语音优先匹配当前版本的实际按钮，失败或歧义才进入主聊天。
+仅从 HUD 激活的 REPLACE / PUSH 按钮会在客户端 pending 中记录来源 CardRef，并按 requestId 关联回复；完整/简约页面中的同一按钮仍按页面流程处理。原通知已确认、关闭或返回上层时，迟到回复不重新弹出，也不替换其他通知。独立推送继续入队；业务 CardUpdate.REPLACE/REMOVE 仍沿用静默更新语义。等待期间禁用服务端按钮，失败、超时和零卡片回复也解除等待；本地翻页、返回和确定独立于服务端忙碌状态。语音优先匹配当前通知的业务按钮、返回及确定，失败或歧义才进入主聊天。
 
 ## 通用参数与模块字段
 

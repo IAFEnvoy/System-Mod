@@ -2,11 +2,13 @@
   "body": [
     {
       "type": "system:text",
-      "translate": "system.ui.quest_list_hint"
+      "translate": "system.ui.quest_list_hint",
+      "unless": "unlock_notice"
     },
     {
       "type": "system:actions",
-      "actions": "{{result_actions}}"
+      "actions": "{{result_actions}}",
+      "notification_page_size": 10
     }
   ],
   "actions": {
@@ -20,7 +22,13 @@
       {
         "type": "system:text",
         "text": "{{actions.*.action_number}}. {{actions.*.action_title}} · {{actions.*.action_chapter}} · {{actions.*.action_progress}}%",
-        "when": "actions.*.action_title"
+        "when": "actions.*.action_title",
+        "unless": "unlock_notice"
+      },
+      {
+        "type": "system:text",
+        "text": "{{actions.*.action_title}} · {{actions.*.action_chapter}} · {{actions.*.action_progress}}%",
+        "when": "unlock_notice"
       },
       {
         "type": "system:text",

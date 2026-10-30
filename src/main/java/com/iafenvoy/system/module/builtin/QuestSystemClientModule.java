@@ -1,6 +1,7 @@
 package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.builtin.input.QuestGuideInput;
 import com.iafenvoy.system.agent.builtin.input.QuestQueryInput;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
 import com.iafenvoy.system.assistant.AssistantClient;
@@ -31,7 +32,12 @@ public final class QuestSystemClientModule implements ClientModule {
                             .suggests(QuestSystemClientModule::quests)));
         module.workspace("quests", "nav_quests", workspace -> {
             Runnable refresh = () -> AssistantClient.send(new QuestQueryInput("", QuestQueryInput.View.ACTIVE), "");
-            workspace.labels("nav_quests", "quest_refresh", "quest_claimable", "quest_submittable");
+            workspace.labels("nav_quests", "quest_refresh", "quest_claimable", "quest_submittable", "quest_guide_search");
+            workspace.input("quest_guide_query", "system.ui.quest_guide_placeholder", "quest_guide_search");
+            workspace.click("quest_guide_search", () -> {
+                String query = workspace.query("quest_guide_query");
+                if (!query.isBlank()) AssistantClient.send(new QuestGuideInput(query), query);
+            });
             workspace.click("nav_quests", () -> {
                 workspace.show("quests");
                 refresh.run();

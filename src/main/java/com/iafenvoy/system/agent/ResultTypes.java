@@ -2,6 +2,7 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
+import com.iafenvoy.system.agent.builtin.output.QuestIconOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestSubmission;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.card.CardBuilder;
@@ -127,7 +128,7 @@ public final class ResultTypes {
             CardBuilder builder = CardBuilder.template(TEMPLATE).title("system.result.quests").summary("system.result.quests");
             for (QuestBriefOutput quest : this.quests) {
                 builder.serverButton("quest_" + quest.id(), "system.action.quest_detail", Identifier.parse("system:quest_detail"),
-                                Map.of("quest", quest.id()), CardButton.Placement.BODY, CardButton.Behavior.REPLACE)
+                                Map.of("quest", quest.id()), CardButton.Placement.BODY, CardButton.Behavior.PUSH)
                         .actionParameter("action_number", quest.number()).actionParameter("action_title", quest.title())
                         .actionParameter("action_chapter", quest.chapter()).actionParameter("action_progress", (int) quest.progress());
             }
@@ -142,8 +143,10 @@ public final class ResultTypes {
     }
 
     public record QuestNotice(String id, Component title, Component chapter, List<ItemPreviewOutput> items,
-                              String description, List<Component> requirements, List<Component> otherRewards,
-                              boolean manualSubmission, QuestEvent event, QuestSubmission submission, boolean rewardPending,
+                              String description, List<Component> requirements, List<QuestIconOutput> rewardIcons,
+                              List<QuestIconOutput> taskIcons,
+                              boolean manualSubmission, QuestEvent event, QuestSubmission submission,
+                              boolean rewardPending,
                               Optional<String> claimRef, SpeechContent speech) implements CardData {
         public static final MapCodec<QuestNotice> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 Codec.STRING.fieldOf("id").forGetter(QuestNotice::id),
@@ -152,7 +155,8 @@ public final class ResultTypes {
                 ItemPreviewOutput.CODEC.listOf().fieldOf("items").forGetter(QuestNotice::items),
                 Codec.STRING.fieldOf("description").forGetter(QuestNotice::description),
                 ComponentSerialization.CODEC.listOf().fieldOf("requirements").forGetter(QuestNotice::requirements),
-                ComponentSerialization.CODEC.listOf().fieldOf("otherRewards").forGetter(QuestNotice::otherRewards),
+                QuestIconOutput.CODEC.listOf().optionalFieldOf("rewardIcons", List.of()).forGetter(QuestNotice::rewardIcons),
+                QuestIconOutput.CODEC.listOf().optionalFieldOf("taskIcons", List.of()).forGetter(QuestNotice::taskIcons),
                 Codec.BOOL.fieldOf("manualSubmission").forGetter(QuestNotice::manualSubmission),
                 QuestEvent.CODEC.fieldOf("event").forGetter(QuestNotice::event),
                 QuestSubmission.CODEC.fieldOf("submission").forGetter(QuestNotice::submission),
@@ -167,7 +171,8 @@ public final class ResultTypes {
             chapter = LegacyText.snapshot(chapter);
             items = List.copyOf(items);
             requirements = List.copyOf(requirements);
-            otherRewards = List.copyOf(otherRewards);
+            rewardIcons = List.copyOf(rewardIcons);
+            taskIcons = List.copyOf(taskIcons);
         }
 
         @Override
@@ -175,7 +180,8 @@ public final class ResultTypes {
             CardBuilder builder = CardBuilder.template(TEMPLATE);
             builder.put("id", this.id()).put("title", this.title()).put("chapter", this.chapter()).put("description", this.description())
                     .put("requirements", CardBuilder.join(this.requirements(), "，"))
-                    .put("other_rewards", CardBuilder.join(this.otherRewards(), "，"))
+                    .put("reward_icons", this.rewardIcons()).put("task_icons", this.taskIcons())
+                    .enable("has_rewards", !this.items().isEmpty() || !this.rewardIcons().isEmpty())
                     .put("manual_submission", this.manualSubmission()).put("result_items", this.items());
             Component main = Component.translatable("system.tts.message.quest_" + this.event.getSerializedName(), this.title);
             if (this.rewardPending)

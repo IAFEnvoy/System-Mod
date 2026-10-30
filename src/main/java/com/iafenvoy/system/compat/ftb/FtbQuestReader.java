@@ -5,9 +5,7 @@ import com.iafenvoy.system.util.TypeDispatch;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
-import dev.ftb.mods.ftbquests.quest.reward.ItemReward;
-import dev.ftb.mods.ftbquests.quest.reward.Reward;
-import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
+import dev.ftb.mods.ftbquests.quest.reward.*;
 import dev.ftb.mods.ftbquests.quest.task.*;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -55,6 +53,26 @@ public final class FtbQuestReader {
         return this.stream(quest -> active(this.team, quest)).toList();
     }
 
+    // Guides deliberately include introduction quests, which are excluded from progress views.
+    public List<Quest> guideCandidates() {
+        return guideCandidates(this.file);
+    }
+
+    public static List<Quest> guideCandidates(ServerQuestFile file) {
+        return file.getAllChapters().stream().filter(chapter -> !chapter.isAlwaysInvisible())
+                .flatMap(chapter -> chapter.getQuests().stream()).filter(FtbQuestReader::guideCandidate).toList();
+    }
+
+    public static boolean guideCandidate(Quest quest) {
+        return kind(quest) != Kind.STARTER_GIFT
+                && quest.getTasksAsList().stream().allMatch(task -> task.getClass() == CheckmarkTask.class);
+    }
+
+    public static boolean guideReadable(TeamData team, Quest quest) {
+        return guideCandidate(quest) && !quest.getChapter().isAlwaysInvisible() && quest.isVisible(team)
+                && (!quest.hideDetailsUntilStartable() || team.canStartTasks(quest));
+    }
+
     // This view includes locked gifts; availability and unclaimed rewards are separate concerns.
     public List<Quest> unfinishedStarterGifts() {
         return this.stream(quest -> kind(quest) == Kind.STARTER_GIFT && !this.team.isCompleted(quest)).toList();
@@ -84,17 +102,17 @@ public final class FtbQuestReader {
                 || this.team.isCompleted(quest) && kind(quest) == Kind.STARTER_GIFT).toList();
     }
 
-    public List<Quest> find(String name) {
+    public List<Quest> find(ServerPlayer player, String name) {
         String query = name.strip().toLowerCase(Locale.ROOT);
-        List<Quest> matches = this.stream(quest -> matches(quest, query)).toList();
-        List<Quest> exact = matches.stream().filter(quest -> quest.getTitle().getString().equalsIgnoreCase(query)
+        List<Quest> matches = this.stream(quest -> matches(player, quest, query)).toList();
+        List<Quest> exact = matches.stream().filter(quest -> FtbQuestText.title(player, quest).getString().equalsIgnoreCase(query)
                 || String.format(Locale.ROOT, "%016x", quest.getId()).equalsIgnoreCase(query)).toList();
         return exact.isEmpty() ? matches : exact;
     }
 
-    public static boolean matches(Quest quest, String text) {
+    public static boolean matches(ServerPlayer player, Quest quest, String text) {
         String query = text.strip().toLowerCase(Locale.ROOT);
-        return query.isBlank() || quest.getTitle().getString().toLowerCase(Locale.ROOT).contains(query)
+        return query.isBlank() || FtbQuestText.title(player, quest).getString().toLowerCase(Locale.ROOT).contains(query)
                 || String.format(Locale.ROOT, "%016x", quest.getId()).equalsIgnoreCase(query);
     }
 
@@ -102,10 +120,17 @@ public final class FtbQuestReader {
         if (!quest.getTasksAsList().stream().allMatch(task -> task.getClass() == CheckmarkTask.class))
             return Kind.NORMAL;
         if (quest.getRewards().isEmpty()) return Kind.INTRODUCTION;
-        if (!quest.getTasksAsList().isEmpty() && !quest.canBeRepeated() && quest.getRewards().stream().allMatch(reward ->
-                reward.getClass() == ItemReward.class && !((ItemReward) reward).getItem().isEmpty()
-                        && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE)) return Kind.STARTER_GIFT;
+        if (!quest.getTasksAsList().isEmpty() && !quest.canBeRepeated()
+                && quest.getRewards().stream().anyMatch(reward -> reward.getClass() == ItemReward.class)
+                && quest.getRewards().stream().allMatch(FtbQuestReader::starterGiftReward)) return Kind.STARTER_GIFT;
         return Kind.NORMAL;
+    }
+
+    private static boolean starterGiftReward(Reward reward) {
+        // Packs commonly add XP to item gifts; command, choice and third-party rewards remain ordinary quests.
+        return reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE
+                && (reward.getClass() == ItemReward.class && !((ItemReward) reward).getItem().isEmpty()
+                || reward.getClass() == XPReward.class || reward.getClass() == XPLevelsReward.class);
     }
 
     public static boolean readable(TeamData team, Quest quest) {

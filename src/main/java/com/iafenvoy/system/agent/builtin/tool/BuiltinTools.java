@@ -11,6 +11,7 @@ import java.util.List;
  * Stable typed keys shared by workflows and platform implementations; no game classes are referenced.
  */
 public final class BuiltinTools {
+    public static final ToolRegistry.Type<DatabaseQueryInput, DatabaseQueryOutput> DATABASE_QUERY = new ToolRegistry.Type<>("database.query", DatabaseQueryInput.CODEC, DatabaseQueryOutput.CODEC);
     public static final ToolRegistry.Type<SearchProvider.Request, SearchProvider.Response> WEB_SEARCH = new ToolRegistry.Type<>("web.search", SearchProvider.Request.MAP_CODEC, SearchProvider.Response.CODEC);
     public static final ToolRegistry.Type<SearchProvider.FetchRequest, SearchProvider.Page> WEB_FETCH = new ToolRegistry.Type<>("web.fetch", SearchProvider.FetchRequest.MAP_CODEC, SearchProvider.Page.CODEC);
     public static final ToolRegistry.Type<CommercePreviewInput, List<CommercePreviewOutput>> COMMERCE_PREVIEW = new ToolRegistry.Type<>("game.commerce.preview", CommercePreviewInput.CODEC, CommercePreviewOutput.CODEC.listOf());
@@ -24,6 +25,7 @@ public final class BuiltinTools {
     public static final ToolRegistry.Type<LotteryDrawInput, PurchaseReceiptOutput> LOTTERY_DRAW = new ToolRegistry.Type<>("game.lottery.draw", LotteryDrawInput.CODEC, PurchaseReceiptOutput.CODEC.codec());
     public static final ToolRegistry.Type<QuestQueryInput, List<QuestBriefOutput>> QUEST_QUERY = new ToolRegistry.Type<>("ftb.query", QuestQueryInput.CODEC, QuestBriefOutput.CODEC.listOf());
     public static final ToolRegistry.Type<QuestFindInput, List<QuestBriefOutput>> QUEST_FIND = new ToolRegistry.Type<>("ftb.find", QuestFindInput.CODEC, QuestBriefOutput.CODEC.listOf());
+    public static final ToolRegistry.Type<QuestGuideInput, QuestGuideOutput> QUEST_GUIDE = new ToolRegistry.Type<>("ftb.guide", QuestGuideInput.CODEC, QuestGuideOutput.CODEC.codec());
     public static final ToolRegistry.Type<QuestDetailInput, QuestOutput> QUEST_DETAIL = new ToolRegistry.Type<>("ftb.detail", QuestDetailInput.CODEC, QuestOutput.CODEC.codec());
     public static final ToolRegistry.Type<QuestClaimInput, QuestClaimOutput> QUEST_CLAIM = new ToolRegistry.Type<>("ftb.claim", QuestClaimInput.CODEC, QuestClaimOutput.CODEC.codec());
     public static final ToolRegistry.Type<StarterGiftInput, StarterGiftOutput> STARTER_GIFT = new ToolRegistry.Type<>("ftb.starter_gift", StarterGiftInput.CODEC, StarterGiftOutput.CODEC.codec());

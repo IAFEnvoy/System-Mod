@@ -61,15 +61,14 @@ final class FtbQuestClaimTool implements ToolRegistry.Handler<QuestClaimInput, Q
                     throw new AgentException("CHOICE_REQUIRED");
                 Reward selected = selectable.getTable().getWeightedRewards().get(choice).getReward();
                 if (selected instanceof ChoiceReward) throw new AgentException("UNSUPPORTED");
-                if (!team.markRewardAsClaimed(player.getUUID(), reward, System.currentTimeMillis()))
-                    throw new AgentException("NOT_AUTHORIZED");
-                selected.claim(player, true);
+                // Match the native 26.1 choice handler: reserve the outer reward before granting its selection.
+                if (team.markRewardAsClaimed(player.getUUID(), reward, System.currentTimeMillis()))
+                    selected.claim(player, true);
             } else {
                 if (choice != -1) throw new AgentException("INVALID_INPUT");
-                if (!team.markRewardAsClaimed(player.getUUID(), reward, System.currentTimeMillis()))
-                    throw new AgentException("NOT_AUTHORIZED");
-                reward.claim(player, true);
+                team.claimReward(player, reward, true);
             }
+            if (!team.isRewardClaimed(player.getUUID(), reward)) throw new AgentException("CLAIM_REJECTED");
             return new QuestClaimOutput("CLAIM_EXECUTED", Optional.of(hex(questId)), Optional.of(hex(rewardId)), Optional.of(false));
         });
     }

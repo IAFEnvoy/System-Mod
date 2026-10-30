@@ -79,8 +79,14 @@ public final class AssistantItems {
         if (document == null || document.isDisposed()) return false;
         List<Element> elements = document.getElements();
         for (int index = elements.size() - 1; index >= 0; index--) {
-            if (!(elements.get(index) instanceof Item item) || !item.isConnected() || !item.isVisible || !item.isHover)
+            Element element = elements.get(index);
+            if (!element.isConnected() || !element.isVisible || !element.isHover)
                 continue;
+            if (element instanceof AssistantTooltip tooltip) {
+                tooltip.renderTooltip(graphics, mouseX, mouseY);
+                return true;
+            }
+            if (!(element instanceof Item item)) continue;
             ItemStack stack = item.getTooltipStack();
             if (stack.isEmpty()) continue;
             graphics.setTooltipForNextFrame(Minecraft.getInstance().font, stack, mouseX, mouseY);

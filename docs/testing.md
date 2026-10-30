@@ -635,3 +635,24 @@ web_search.txt 要求提炼相关事实、合并重复内容、先给结论和�
 AgentCommand、CommandRegistry 与客户端命令声明已接入 Brigadier；ClientCommandCache 缓存声明，游戏客户端注册复制缓存节点。助手异步合并原生服务端建议，任务和选择按钮的候选由对应模块实时提供；补全前显式过滤 requires，模块变更及 revoke/reset 后同步游戏命令树。普通文本语法未完整匹配时继续语义/模型路由，未知斜杠指令和明确语法错误不调用模型，参数构造及 Codec 失败仍直接拒绝。英文 literal 忽略大小写，选择1、选择 1、select 1 和裸数字保留。
 
 执行 `compileJava testModClasses --console=plain` 编译通过；中英文各 490 个语言键且集合相同，更新文档的本地链接存在，`git diff --check` 通过。没有执行测试、启动 Minecraft、创建临时世界/数据包或请求模型服务。游戏内 Tab/IME、任务候选、模块切换、重载与重连仍需人工验收。
+
+
+## 2026-10-30 1.21.1 修改同步至 26.1.2 master
+
+先从干净的 1.21.1 工作区切换 master，再执行 git pull --ff-only，远端更新从 2c459f9 快进至 b6afc9d；随后同步 b601fd7..03ca46a 的功能差异，不带入版本降级、嵌入式 Saturn 或 1.21 专属兼容类。完整行为清单、目标 API 适配和人工验收项见 [跨版本同步记录](ftb-quests-porting.md)。
+
+阅读目标 FTB Quests 26.1.2.8、Library 26.1.2.9、ApricityUI 26.1-1.2.6 的源码，以及实际 Minecraft 26.1.2 JAR 签名，确认服务端实例非 Optional、NeoForge 进度事件、Json5Object 奖励序列化、void claim 与自选原生标记顺序、原版 ItemStackTemplate、ComponentSerialization、Commands.hasPermission 和延迟 GUI 提取机制。图标的几何 / 文字 / 物品在 AUI 当前输出目标与变换中重放，tooltip 使用目标原版 API；这属于源码核对和编译验证，并非渲染验收。
+
+实际执行 `gradlew compileJava testModClasses jar --console=plain` 成功：主代码与测试源集编译通过，产物 `build/libs/system-1.0-alpha.3.jar` 为 1,542,493 字节，小于 10 MB。直接检查 JAR，确认数据库、数据库优先问答、目标图标绘制类、卡片和提示词已包含；没有嵌入 Saturn、旧 WebSearchModule / WebSearchInput 或默认 web_search 配置 / tag 授权。已有依赖和版本配置未更改。
+
+静态检查：双语各 513 个键且集合一致；23 份卡片 JSON 无重复键并可解析，节点 ID 均在 13 个节点类型中注册；动作与卡片数据分别为 21 / 26 个类型。冲突标记与旧版 API 引用检查、重复 import 检查和 git diff HEAD --check 通过。保留 master 的通知替换与手动切换逻辑；根目录两份 README 未改。临时补丁已删除，改动未提交、未推送、未暂存。
+
+没有运行测试、启动 Minecraft、创建存档 / 数据包或请求收费 API。功能实际验收尚未进行，尤其是目标渲染流程、第三方 FTB 图标、持久化 / 玩家隔离、并发重载和本地优先联网授权；不能将编译通过视作运行通过。
+
+## 2026-10-30 任务通知交互窗口
+
+阅读并修改代码：通知任务列表由 actions 节点每页截取 10 项，上 / 下页和页码位于正文，与宿主底部确定按钮独立。翻页只更新通知持有的 CardPageState 和节点 DOM，不发送请求、不替换通知、不推进队列或重启播报；共用 CSS 保留原宽度与限高视口。QuestList 查看动作改为 PUSH，详情回复仍按原来源原位展示，保留本地返回栈；返回恢复原页且不重复播报列表，确定关闭整个窗口。卡片更新保留页码，移除会清理相应返回项；返回淡出期间的迟到回复不覆盖待返回内容，关闭来源后的迟到回复仍不能抢占其他通知。
+
+服务端普通新解锁任务只有一项时直接构造 QuestOutput 详情并使用 unlocked 播报；多项时继续合并一条 QuestUnlockedOutput。FTB 完成事件循环仍逐个构建、发送独立完成通知，未合并任务完成项。上述结论来自源码阅读。
+
+实际执行 `gradlew compileJava testModClasses --console=plain` 成功。静态检查通过：中英文各 517 键且集合完全相同，23 份卡片 JSON 可解析且无重复键，内置任务列表页大小为 10；新源文件和 `git diff --check` 无空白错误。没有运行测试、启动 Minecraft 或请求收费 API。尚未游戏内验收：边界页与大列表、详情返回和页码保持、动画期间迟到回包、忙碌时本地操作、语音返回、资源重载和临时隐藏后的恢复。

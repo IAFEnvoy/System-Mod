@@ -6,10 +6,14 @@
 | --- | --- |
 | [使用与配置](usage.md) | 打开助手、服务端密钥、功能入口、隐私及奖励状态 |
 | [模型接口与 DeepSeek 兼容](model-api.md) | OpenAI Chat Completions、提供商配置、DeepSeek 思考参数与用量格式 |
-| [DeepSeek 网页搜索与抓取](search-api.md) | 明确触发的联网模块、独立 ReAct 预算、共享密钥、Search/Fetch 按次计费 |
+| [数据库优先问答与网页搜索](search-api.md) | 当前玩家 / 共享知识、授权说明书、空结果与本次联网许可、可选搜索工具、预算和按次计费 |
 | [外部 API 请求清单](external-apis.md) | 模组与独立音色工具访问的接口、客户端/服务端归属、触发条件和发送的数据 |
 | [开发与架构](development.md) | Agent 包组织、模块与工具接口、预算、持久化、MC 接入和当前限制 |
 | [功能模块化](feature-modules.md) | 功能装配、两端指令、生命周期、页面/通知/口播注册与可选集成 |
+| [FTB Quests 跨版本修复记录](ftb-quests-porting.md) | 1.21.1 标题 / 勾选礼包 / 领奖修复，以及待同步到 26.1.2 的入口与 API 差异 |
+| [FTB 本地说明书检索](quest-guides.md) | 勾选说明任务收录、纯 Java 稀疏向量索引、查询入口、可见性与存档缓存 |
+| [分层本地数据库](databases.md) | 存档共享库、玩家独立库、Codec 数据表、FTB 重新收录指令与生命周期 |
+| [JVector 索引评估](jvector-evaluation.md) | 发布体积实测、Java / SIMD、磁盘存储、稀疏 TF-IDF 适配与性能取舍；尚未接入 |
 | [注册表速查](registries.md) | 正式注册表 ID、条目类型、公开入口、查询方式及扩展注册示例 |
 | [客户端 JSON 卡片](cards.md) | CardData/CardBuilder、纯文本约定、通用模板解析、按钮动作、物品和资源包覆盖 |
 | [卡片与消息数据流](card-flow-design.md) | 已实现的两端边界、完整 DTO、按 ID/版本更新、结果状态枚举与 BuiltinTools 职责 |

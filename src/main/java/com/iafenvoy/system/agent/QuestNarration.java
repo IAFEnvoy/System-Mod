@@ -9,7 +9,6 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
-import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -21,7 +20,7 @@ import java.util.concurrent.TimeUnit;
  */
 public final class QuestNarration implements AutoCloseable {
     private final AgentEngine engine;
-    private final QuestBackgrounds backgrounds = new QuestBackgrounds();
+    private final QuestBackgrounds backgrounds;
     private final TaskExecutor workers = new TaskExecutor("agent-quest-speech", 2, 32);
     private final Map<UUID, ExecutionContext> active = new ConcurrentHashMap<>();
 
@@ -40,6 +39,7 @@ public final class QuestNarration implements AutoCloseable {
 
     QuestNarration(AgentEngine engine) {
         this.engine = engine;
+        this.backgrounds = new QuestBackgrounds(engine.databases().shared());
     }
 
     @FunctionalInterface
@@ -49,10 +49,6 @@ public final class QuestNarration implements AutoCloseable {
 
     public void source(Source source) {
         this.source = Objects.requireNonNull(source);
-    }
-
-    public void cacheFile(Path file) {
-        this.backgrounds.file(file);
     }
 
     public record Line(Component text, Optional<String> unformatted) {

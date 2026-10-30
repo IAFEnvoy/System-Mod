@@ -105,13 +105,15 @@ TTS / ASR 的 API Key 由各客户端自行配置，所有调用及费用由 `Lo
 
 ## 存档数据
 
-`TokenUsageData` 使用 Minecraft 26.1 的 `SavedDataType` 和 Codec，注册到服务器全局 `SavedDataStorage`，与袭击等游戏存档数据使用同一套生命周期。文件为：
+`TokenUsageData` 使用 Minecraft 1.21.1 的 `SavedData.Factory` 和 Codec，保存到主世界的 `DimensionDataStorage`，与袭击等游戏存档数据使用同一套生命周期。文件为：
 
 ```text
-<存档>/data/system/token_usage.dat
+<存档>/data/system_token_usage.dat
 ```
 
 这是独立的 NBT 数据文件，不使用玩家附件，不存入 `<存档>/system-agent/<UUID>.json`，不同维度的消费累计到同一 UUID。名称只用于展示，玩家改名后更新名称并保留同一条 UUID 记录。累计计数使用 64 位非负整数，溢出时保持最大值。
+
+1.21.1 的 SavedData 键会直接作为文件名，不能使用含冒号的 `system:token_usage`；与 26.1.2 的命名空间型 SavedDataType 路径规则不同。该修正不改变账本内容或 revoke 保留策略。
 
 网关工作线程将不可变的消费记录放入队列，服务端主线程在 tick 或读取统计前归并并标脏。正常停服时先关闭 Agent，再归并剩余记录，由 Minecraft 正常保存世界；不会为每次请求阻塞网络线程写磁盘。异常断电可能丢失最近尚未随世界保存的部分，与普通 SavedData 的保存语义一致。
 

@@ -16,6 +16,7 @@
 | ApricityUI | 开发配置 `1.2.6`；客户端依赖，需兼容 MC `1.21.1` | [gradle.properties](gradle.properties) 的 `apricityui_version` |
 | Saturn | 已内联并裁剪到 318 个文件；保留 Cost、DataStorage、Trigger、公式与 Codec 工具 | [src/main/java/com/iafenvoy/saturn](src/main/java/com/iafenvoy/saturn)、[开发与架构](docs/development.md) |
 | Simple Voice Chat | CurseMaven 文件 ID `9350472`；可选客户端录音后端，不打入发布 JAR，服务端不要求安装 | [gradle.properties](gradle.properties)、[build.gradle](build.gradle) |
+| IMBlocker | 按 `5.6.1` NeoForge 核对；可选 `@Pseudo` Mixin 将助手页面视为白名单，无新增依赖 | [输入法适配](docs/ui-localization.md)、[ImBlockerConfigMixin](src/main/java/com/iafenvoy/system/mixin/ImBlockerConfigMixin.java) |
 | FTB Quests | `2101.1.37`；可选集成 | [gradle.properties](gradle.properties) 的 `ftb_quests_version` |
 | FTB Library / FTB Teams | `2101.1.39` / `2101.1.11`；FTB 集成配套依赖 | [gradle.properties](gradle.properties) |
 | 网络协议 | `1`；客户端和服务端必须匹配 | [NetworkManager.java](src/main/java/com/iafenvoy/system/network/NetworkManager.java) 的 `event.registrar(...)` |
@@ -35,7 +36,7 @@
 | Agent 执行流程、AgentAction 与 MapCodec 分派、Module / Tool 契约、类型化输入输出、玩家模块 DataStorage 扩展 | [Agent 运行结构与扩展](docs/agent-runtime.md) |
 | 助手 Brigadier 命令、ClientModuleCaches（绑定/命令缓存直接持有数据与维护逻辑）、原生命令补全、标签同步与两端命令构建顺序 | [Agent 入口](docs/agent-runtime.md#给-module-声明入口)、[客户端模块贡献](docs/feature-modules.md)、[缓存时序](docs/registries.md#仍保留的运行时登记表) |
 | 包组织、依赖、配置、持久化、MC 桥接、实现边界 | [开发与架构](docs/development.md) |
-| FTBQ 1.21.1 玩家语言、勾选礼包、原生领奖、类型图标 / tooltip 与解锁任务汇总通知；待同步到 26.1.2 | [跨版本修复清单](docs/ftb-quests-porting.md) |
+| FTBQ 两版本同步：玩家语言、礼包、图标 / tooltip、数据库；master 通知窗口已回同步 1.21.1（每页 10 项、详情返回、单项新任务直接详情） | [跨版本修复与同步记录](docs/ftb-quests-porting.md) |
 | 勾选 / 无目标说明书、存档本地稀疏向量索引、guide 指令和任务页查询、玩家可见性复核 | [本地说明书检索](docs/quest-guides.md) |
 | AgentDatabases 共享库 / 玩家独立库、Codec 数据表与段落索引、/system ftb reload、revoke / reset 清理私有库 | [分层本地数据库](docs/databases.md) |
 | JVector 4.0.2 分发体积、磁盘图索引、Java / SIMD、TF-IDF 适配、性能边界与后续测量；仅评估未实施 | [JVector 索引评估](docs/jvector-evaluation.md) |
@@ -52,9 +53,9 @@
 | 10MB 分发约束、路由方案比较、校准与后续方向 | [路由选型与计划](docs/semantic-routing-plan.md) |
 | 系统定义、system_module 配置实例与 server.type/client、grant 指定系统与单绑定/多系统结构预留、模块 ID/tag/condition、模块增删 action、签到奖励、商城商品、抽奖奖池、提示词、成就规则 | [数据包与扩展配置](docs/datapacks.md) |
 | TTS 接口、流式播放、语种、音色、取消 session、Python 设计 / 复刻 / 临时上传 | [语音合成与音色设计](docs/tts.md) |
-| ASR、NLS AccessKey 自动签发与 Token 缓存刷新、录音 session、可选 SVC、按键录音与按次估价 | [语音识别](docs/asr.md) |
+| ASR、NLS AccessKey 自动签发与 Token 缓存刷新、录音 EOF 与设备清理解耦、session 超时、可选 SVC、按键录音与按次估价 | [语音识别](docs/asr.md) |
 | 服务端 AI/联网用量 SavedData、仅本地可见的个人 TTS / ASR 用量、字符与 Token、客户端计费配置、撤销后保留 | [用量统计](docs/token-usage.md) |
-| 共享 CSS、完整 / 简约界面、HUD、动画、物品 tooltip、输入法、双语键 | [界面与本地化](docs/ui-localization.md) |
+| 共享 CSS、完整 / 简约界面、HUD、动画、物品 tooltip、1.21.1 IMBlocker 白名单、AUI / 平台输入流程、双语键 | [界面与本地化](docs/ui-localization.md) |
 | 网文系统语气、提示词与模板边界、公开参考 | [文案与提示词](docs/system-voice.md) |
 | 绑定、新手礼包、任务通知的文案与占位符；该稿不直接作为运行时模板 | [通知文案稿](docs/notification-copy-draft.md) |
 | 编译检查、已执行验证、未验收范围、开发依赖 | [编译与验收](docs/testing.md) |

@@ -12,7 +12,6 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.NotNull;
 
@@ -26,8 +25,8 @@ public final class TokenUsageData extends SavedData {
     private static final Codec<TokenUsageData> CODEC = RecordCodecBuilder.create(i -> i.group(
             PlayerUsage.CODEC.listOf().optionalFieldOf("players", List.of()).forGetter(TokenUsageData::entries)
     ).apply(i, TokenUsageData::new));
-    // 1.21.1 identifies saved data by file id plus a Factory, not by SavedDataType.
-    public static final String FILE_ID = ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "token_usage").toString();
+    // 1.21.1 uses this literal filename; a namespaced resource ID contains a colon invalid on Windows.
+    public static final String FILE_ID = SystemMod.MOD_ID + "_token_usage";
     public static final Factory<TokenUsageData> FACTORY = new Factory<>(TokenUsageData::new,
             (tag, registries) -> CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), tag).getOrThrow());
     private final Map<UUID, PlayerUsage> players = new HashMap<>();

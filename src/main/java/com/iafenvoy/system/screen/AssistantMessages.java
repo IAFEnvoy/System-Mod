@@ -10,6 +10,7 @@ import com.iafenvoy.system.command.client.NotificationVoiceCommands;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.event.client.AssistantRecognitionKeys;
 import com.iafenvoy.system.module.client.ClientMessage;
+import com.iafenvoy.system.screen.card.CardPageState;
 import com.iafenvoy.system.screen.card.CardPresentation;
 import com.iafenvoy.system.screen.gui.AssistantItems;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
@@ -42,6 +43,8 @@ import static com.iafenvoy.system.screen.gui.AssistantView.*;
 public final class AssistantMessages {
     private static final int MAX_PENDING = 32;
     private static final Deque<Pending> QUEUE = new ArrayDeque<>();
+    private static final Deque<Message> BACK = new ArrayDeque<>();
+    private static CardRef navigationSource;
     private static Message current;
     private static Pending replacement;
     private static AssistantSpeech.Session speech;
@@ -74,7 +77,7 @@ public final class AssistantMessages {
         }
     }
 
-    private record Message(String text, String speechText, List<Button> buttons, UUID cardId, AgentResult result) {
+    private record Message(String text, String speechText, List<Button> buttons, UUID cardId, AgentResult result, CardPageState pages) {
         private Message {
             buttons = List.copyOf(buttons);
         }
@@ -102,7 +105,10 @@ public final class AssistantMessages {
      * Direct action replies replace the active slot; a dismissed source cannot reopen or displace another notice.
      */
     public static void reply(AgentResult result, CardRef source) {
-        boolean active = current != null && source.id().equals(current.cardId());
+        // A local back action may already be fading this source out in favor of its retained parent.
+        boolean active = current != null && replacement == null && source.id().equals(current.cardId());
+        Message parent = active && source.equals(navigationSource) ? current : null;
+        navigationSource = null;
         refresh(result);
         if (!active || result.silent()) return;
         List<Pending> replies = result.cards().stream()
@@ -110,6 +116,8 @@ public final class AssistantMessages {
                 .map(card -> message(result.withPresentation(result.messageKey(), result.text(), List.of(card), false)))
                 .map(message -> new Pending(message, !message.speechText().isBlank())).toList();
         if (replies.isEmpty()) return;
+        if (parent != null && ClientCards.active(ClientCards.latest(parent.result()).cards().getFirst().ref()))
+            BACK.addLast(parent);
         replacement = replies.getFirst();
         // Extra reply cards follow the replacement without evicting notices that were already waiting.
         int count = Math.min(replies.size() - 1, Math.max(0, MAX_PENDING - QUEUE.size()));
@@ -123,6 +131,10 @@ public final class AssistantMessages {
     }
 
     private static Message message(AgentResult result) {
+        return message(result, new CardPageState());
+    }
+
+    private static Message message(AgentResult result, CardPageState pages) {
         ClientMessage content = CardPresentation.message(result);
         List<Button> buttons = new ArrayList<>();
         CardUpdate card = result.cards().getFirst();
@@ -130,7 +142,7 @@ public final class AssistantMessages {
             CardButton button = choice.button();
             if (button.placement() == CardButton.Placement.FOOTER) buttons.add(button(choice));
         }
-        return new Message(content.text(), content.speech(), buttons, card.ref().id(), result);
+        return new Message(content.text(), content.speech(), buttons, card.ref().id(), result, pages);
     }
 
     private static Button button(ClientCards.Choice choice) {
@@ -144,35 +156,46 @@ public final class AssistantMessages {
             if (update.mode() == CardUpdate.Mode.SHOW) continue;
             if (replacement != null && update.ref().id().equals(replacement.message().cardId()))
                 replacement = update.mode() == CardUpdate.Mode.REMOVE ? null
-                        : new Pending(message(ClientCards.latest(replacement.message().result())), false);
+                        : new Pending(message(ClientCards.latest(replacement.message().result()), replacement.message().pages()), false);
+            List<Message> parents = new ArrayList<>(BACK);
+            BACK.clear();
+            for (Message parent : parents) {
+                if (!update.ref().id().equals(parent.cardId())) BACK.addLast(parent);
+                else if (update.mode() != CardUpdate.Mode.REMOVE)
+                    BACK.addLast(message(ClientCards.latest(parent.result()), parent.pages()));
+            }
             List<Pending> queued = new ArrayList<>(QUEUE);
             QUEUE.clear();
             for (Pending pending : queued) {
                 if (!update.ref().id().equals(pending.message().cardId())) QUEUE.addLast(pending);
                 else if (update.mode() != CardUpdate.Mode.REMOVE)
-                    QUEUE.addLast(new Pending(message(ClientCards.latest(pending.message().result())), false));
+                    QUEUE.addLast(new Pending(message(ClientCards.latest(pending.message().result()), pending.message().pages()), false));
             }
             if (current == null || !update.ref().id().equals(current.cardId())) continue;
             if (update.mode() == CardUpdate.Mode.REMOVE) dismiss(current);
             else {
                 stopRecognition();
                 stopSpeech();
-                current = message(ClientCards.latest(current.result()));
+                current = message(ClientCards.latest(current.result()), current.pages());
                 speakCurrent = false;
                 speechStarted = true;
                 if (document != null && !document.isDisposed()) renderMessage();
             }
         }
+        renderNavigation();
     }
 
     public static void dismissCard(UUID id) {
+        BACK.removeIf(parent -> id.equals(parent.cardId()));
         QUEUE.removeIf(pending -> id.equals(pending.message().cardId()));
         if (replacement != null && id.equals(replacement.message().cardId())) replacement = null;
         if (current != null && id.equals(current.cardId())) dismiss(current);
+        renderNavigation();
     }
 
     public static boolean actionStarted(CardRef source, CardButton.Behavior behavior) {
         if (!hasVoiceTarget() || !source.id().equals(current.cardId())) return false;
+        navigationSource = behavior == CardButton.Behavior.PUSH ? source : null;
         if (behavior == CardButton.Behavior.CLOSE) dismiss(current);
         else {
             stopRecognition();
@@ -250,6 +273,9 @@ public final class AssistantMessages {
     private static void nextMessage() {
         stopRecognition();
         stopSpeech();
+        // Only a new queued notice starts a new navigation session; replacements remain in the same window.
+        if (replacement == null) BACK.clear();
+        navigationSource = null;
         Pending next = replacement == null ? QUEUE.pollFirst() : replacement;
         replacement = null;
         current = next == null ? null : next.message();
@@ -267,8 +293,12 @@ public final class AssistantMessages {
         text(document.getElementById("notification_text"), "");
         Element cards = document.getElementById("notification_cards");
         cards.setInnerHTML("");
+        Element navigation = element(document, "div", "card_navigation", "");
+        navigation.setAttribute("id", "notification_navigation");
+        cards.appendChild(navigation);
+        renderNavigation();
         for (CardUpdate card : current.result().cards())
-            cards.appendChild(CardPresentation.of(card, current.result().messageKey(), CardContext.Mode.NOTIFICATION, 0).render(document));
+            cards.appendChild(CardPresentation.of(card, current.result().messageKey(), CardContext.Mode.NOTIFICATION, 0, current.pages()).render(document));
         cards.setInlineStyleProperty("display", cards.children.isEmpty() ? "none" : "block");
         document.getElementById("notification_choices").setInlineStyleProperty("display", "none");
         document.getElementById("notification_items").setInlineStyleProperty("display", "none");
@@ -276,6 +306,22 @@ public final class AssistantMessages {
         interactive = null;
         displayedBusy = null;
         displayedPending = -1;
+    }
+
+    private static void renderNavigation() {
+        if (document == null || document.isDisposed()) return;
+        Element navigation = document.getElementById("notification_navigation");
+        if (navigation == null) return;
+        navigation.setInnerHTML("");
+        navigation.setInlineStyleProperty("display", current == null || BACK.isEmpty() ? "none" : "flex");
+        if (current == null || BACK.isEmpty()) return;
+        Message shown = current;
+        Button back = backButton(shown);
+        Element button = element(document, "button", "card_action", back.label());
+        button.addEventListener("click", event -> {
+            if (canInteract(shown)) activate(shown, back);
+        });
+        navigation.appendChild(button);
     }
 
     private static void animate(Phase next, boolean chatting) {
@@ -375,10 +421,23 @@ public final class AssistantMessages {
 
     private static List<Button> voiceButtons(Message shown) {
         List<Button> buttons = new ArrayList<>();
+        if (!BACK.isEmpty()) buttons.add(backButton(shown));
         for (ClientCards.Choice choice : ClientCards.choices(shown.result()))
             if (choice.button().placement() == CardButton.Placement.BODY) buttons.add(button(choice));
         buttons.addAll(buttons(shown));
         return buttons;
+    }
+
+    private static Button backButton(Message shown) {
+        return new Button("back", "system.ui.notification_back", false, () -> {
+            if (current != shown || BACK.isEmpty()) return;
+            navigationSource = null;
+            stopRecognition();
+            stopSpeech();
+            Message parent = BACK.removeLast();
+            replacement = new Pending(message(ClientCards.latest(parent.result()), parent.pages()), false);
+            animate(Phase.FADING_OUT, Minecraft.getInstance().screen instanceof ChatScreen);
+        });
     }
 
     private static void activate(Message shown, Button option) {
@@ -483,6 +542,8 @@ public final class AssistantMessages {
         if (current != shown) return;
         stopRecognition();
         stopSpeech();
+        BACK.clear();
+        navigationSource = null;
         current = null;
         // A claim can finish while another screen has temporarily unmounted the HUD.
         if (document == null || document.isDisposed()) {
@@ -530,6 +591,8 @@ public final class AssistantMessages {
     public static void clear() {
         stopSpeech();
         QUEUE.clear();
+        BACK.clear();
+        navigationSource = null;
         current = null;
         replacement = null;
         unmount();

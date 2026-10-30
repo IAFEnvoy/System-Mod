@@ -89,6 +89,11 @@ final class FtbQuestAccess {
     }
 
     static QuestOutput detail(ServerPlayer player, TeamData team, Quest quest, QuestDetailInput input, Map<String, RewardReference> references) {
+        return detail(player, team, quest, input, references, "detail");
+    }
+
+    static QuestOutput detail(ServerPlayer player, TeamData team, Quest quest, QuestDetailInput input,
+                              Map<String, RewardReference> references, String speechEvent) {
         int rewardOffset = input.rewardOffset();
         int choiceOffset = input.choiceOffset();
         int taskOffset = input.taskOffset();
@@ -127,7 +132,7 @@ final class FtbQuestAccess {
                 new SectionPageOutput(rewardOffset, rewardOffset + rewards.size(), visibleRewards > rewardOffset + rewards.size()),
                 new SectionPageOutput(taskOffset, taskOffset + tasks.size(), quest.getTasksAsList().size() > taskOffset + tasks.size()),
                 new SectionPageOutput(start, end, description.length() > end),
-                FtbQuestSpeech.content(player, team, quest, "detail"));
+                FtbQuestSpeech.content(player, team, quest, speechEvent));
     }
 
     record QuestList(UUID team, long incarnation, long epoch, List<Quest> quests, long expires) {

@@ -807,6 +807,43 @@ p {
     white-space: normal;
 }
 
+.card_pagination, .card_navigation {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.card_pagination {
+    justify-content: center;
+}
+
+.card_page_label {
+    color: #b6cfd5;
+    font-size: 12px;
+    text-align: center;
+}
+
+.card_navigation {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.card_pagination .card_action, .card_navigation .card_action {
+    margin: 0;
+}
+
+.notification .quest_list {
+    max-height: none;
+    overflow-y: visible;
+}
+
+.notification .quest_row {
+    justify-content: flex-start;
+    text-align: left;
+}
+
 /* Lottery results keep cost and odds readable without exposing nested codec fields. */
 .lottery_card {
     padding: 14px 16px;

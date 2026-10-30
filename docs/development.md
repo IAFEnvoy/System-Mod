@@ -17,6 +17,7 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 | 可空性注解 | `org.jetbrains:annotations:24.1.0`；compileOnly，取代原先的 JSpecify |
 | Saturn | 已内联并裁剪：`com.iafenvoy.saturn` 318 个文件（原 464），保留 Cost、DataStorage、Trigger、公式、动作/条件词汇与 Codec 工具；能力、资源与资源条、时间线、KubeJS 桥接、掉落条目、profiling 已删除 |
 | Simple Voice Chat | CurseMaven 9350472；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
+| IMBlocker | 可选客户端兼容，按 5.6.1 NeoForge 源码核对；`@Pseudo` Mixin 将助手页面视为白名单，无编译或运行依赖 |
 | Gson | 2.13.2；主项目直接声明依赖，Minecraft 提供运行时类 |
 | FTB Quests / Library / Teams | 2101.1.37 / 2101.1.39 / 2101.1.11，可选 compileOnly |
 | LangChain4J | 已移除；使用 JDK HTTP 网关 |
@@ -63,6 +64,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | `screen/card/node` | 独立节点实现，各自提供 MapCodec、默认 CSS、render 与 text；文字及容器派生类复用实现 |
 | `speech/aliyun、speech/tts、speech/asr` | 语音接口及供应商协议、报文、流式播放会话、缓存与可取消录音 |
 | `compat/ftb、compat/voicechat` | 可选 FTB 工具/事件和 SVC 收音，检测后才加载相关实现 |
+| `mixin` | AUI 鼠标释放、音频清理及可选 IMBlocker 屏幕白名单注入 |
 | `event、network、network/payload` | 扩展/按键事件、协议 1 注册、Handler 与有界载荷 |
 
 上表路径均相对于 `src/main/java/com/iafenvoy/system/`。Agent 与游戏接入代码处于同一主项目；模块、工具和服务接口仍保留职责划分，工具使用稳定逻辑 ID，方便后续扩展业务。
@@ -170,7 +172,7 @@ AgentResult 继承 Saturn ResultWithData<List<CardUpdate>>。Status 为 SUCCEEDE
 
 ClientCards 保存连接内最新消息、版本和活动状态，ServerCards 只保存已发布版本元数据，并在异步动作开始时预留版本。REPLACE 只修改同一 ID，不新入队或播报；REMOVE 停止该卡片的显示/语音，历史保留只读快照。通知不按时长或播报结束自动切换；WAIT 保留当前通知并禁用服务端操作，失败、请求超时和零卡片回复都完成等待。状态与历史独立响应，历史恢复不发包、不播报，不恢复旧引用的交互能力。
 
-CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式 CARD_NODE_TYPE 按 type 分派；style 支持字符串或列表。Context 三表平铺且共享，items 直接绑定 List<ItemPreviewOutput>，不经 JSON 字符串传物品。通知正文 actions 只显示 BODY 按钮，FOOTER 仍由代码生成；大任务列表直接滚动。模板缺失使用 summary 和已有按钮回退，不显示原始 DTO。格式见[客户端 JSON 卡片](cards.md)，完整流程和 BuiltinTools 职责见[卡片数据流](card-flow-design.md)。
+CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式 CARD_NODE_TYPE 按 type 分派；style 支持字符串或列表。Context 三表平铺且共享，items 直接绑定 List<ItemPreviewOutput>，不经 JSON 字符串传物品。通知正文 actions 只显示 BODY 按钮，FOOTER 仍由代码生成；任务列表通知每页 10 项，节点内本地翻页，查看详情后可返回原页。模板缺失使用 summary 和已有按钮回退，不显示原始 DTO。格式见[客户端 JSON 卡片](cards.md)，完整流程和 BuiltinTools 职责见[卡片数据流](card-flow-design.md)。
 
 网络、历史和玩家存档的结果统一使用 AgentResult.CODEC，文本边界使用 CodecIO。协议保持 1；项目未发布，不提供旧卡片、网络或开发存档迁移。CardData 的 Codec 始终共用且不引用可选模组类，FTB 真实工具与工作流仅在安装后加载。TTS/ASR 私人密钥和用量不上传服务端。
 
@@ -206,7 +208,7 @@ CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式
 
 玩家文件按 UTF-8 读取，读取器在 `load` 返回前通过 try-with-resources 关闭，避免 Windows 下未释放的读取句柄阻止后续原子替换。读写、删除和目录枚举失败会在服务端记录操作、路径与异常原因，并通过带 cause 的 `AgentException` 保留错误链；客户端仍只接收稳定的 `STORAGE_UNAVAILABLE` 错误码，不发送内部路径或堆栈。
 
-长期 AI 用量使用服务器全局 SavedData，保存在 `<存档>/data/system/token_usage.dat`，不进入上述业务文件或玩家附件，也不随 revoke 清理。所有 AI 请求统一经过 `ModelGateway`，按 API 实际 usage 累计。TTS / ASR 由客户端使用私人凭据请求，用量按客户端账号 UUID 只存本机 `config/system/speech-usage/<UUID>.json`，费用读取客户端 `SpeechPricingConfig`。服务端没有语音上报消息、存储字段或快照字段；管理员全服视图只有 AI，个人语音面板跨服务器累计，协议保持 1。详情见[用量统计](token-usage.md)。
+长期 AI 用量使用服务器全局 SavedData，保存在 `<存档>/data/system_token_usage.dat`，不进入上述业务文件或玩家附件，也不随 revoke 清理。1.21.1 的 SavedData.Factory 接受实际文件名，使用下划线前缀，不能将含冒号的资源 ID 当文件名。所有 AI 请求统一经过 `ModelGateway`，按 API 实际 usage 累计。TTS / ASR 由客户端使用私人凭据请求，用量按客户端账号 UUID 只存本机 `config/system/speech-usage/<UUID>.json`，费用读取客户端 `SpeechPricingConfig`。服务端没有语音上报消息、存储字段或快照字段；管理员全服视图只有 AI，个人语音面板跨服务器累计，协议保持 1。详情见[用量统计](token-usage.md)。
 
 每玩家文件包含对话、每日签到、收件箱、业务操作回执、事件任务、成就状态及模块覆盖，各业务状态分属独立 DataStorage。对话清理不清除业务唯一标记。配置不进入玩家文件；密钥始终来自服务端环境变量。请用宿主机权限保护存档、临时文件和备份。
 
@@ -271,13 +273,13 @@ FTB 的安全模块定义始终注册，`QuestSystemModule.available()` 在内�
 
 查询包含已完成但仍可领奖励的任务。任务列表一次返回全部匹配简表并连续编号，查询与名称候选不再携带列表分页偏移；详情保留每页 4 个奖励、每个自选奖励 8 个选项；更多奖励和选项由独立按钮继续读取。领取引用为随机短期令牌，绑定玩家、队伍、任务/奖励对象、完成时间、自选表版本，2 分钟失效；重启、换队或变化后重新查询。读取回执不以模型文字认定成功。1.21.1 普通奖励使用原生 `TeamData.claimReward`，自选路径校验索引，按原生 `ClaimChoiceRewardMessage` 先调用候选奖励的 `tryClaim`，成功后才标记外层奖励；处理器拒绝时不提前标记已领取。第三方奖励的实际交付不作独立保证。
 
-任务列表在完整界面与通知中使用限高滚动区域，不再创建列表翻页动作。S2C 回复使用 trusted Codec 和 NeoForge 的大包拆分，不再受旧的 60000 字符回复拦截；C2S 仍使用受限解码。玩家文件容量不足时先按整轮淘汰对话及回放缓存，业务记录不参与淘汰。
+任务列表在完整界面使用限高滚动区域，通知以每页 10 项的本地控件翻页，保留原固定宽度和高度上限；不创建服务端列表翻页动作。S2C 回复使用 trusted Codec 和 NeoForge 的大包拆分，不再受旧的 60000 字符回复拦截；C2S 仍使用受限解码。玩家文件容量不足时先按整轮淘汰对话及回放缓存，业务记录不参与淘汰。
 
 `FtbQuestAdapter.install` 同时安装 `FtbQuestNotifications` 的进程级监听器，仍只有检测到可选依赖后才加载；其服务端快照按 `MinecraftServer` 隔离，停止时移除。1.21.1 使用 Architectury 的 `ObjectCompletedEvent` / `ObjectStartedEvent` 监听任务进度，并以 `ClearFileCacheEvent` 重建基线。相同事件也会在客户端回显，必须以 `object.getQuestFile() instanceof ServerQuestFile` 过滤，不能重复发送。
 
-FTB 没有专门的解锁事件。按队伍保存可见且 `canStartTasks` 的任务 ID 集合，收到进度事件后标记 dirty，在服务器 tick 结束时合并比较；完成提示按事件顺序先发送；新增且未完成的普通任务按章节/任务顺序合并成一条 QuestUnlockedOutput 列表通知，每位接收者每批至多一条，礼包仍先使用独立汇总。解锁列表复用 QuestList 的按任务 ID 查看按钮和 quest_list 模板，以 unlock_notice 隐藏编号及主动查询提示，不改最近查询缓存；摘要和播报仅提示数量，详情点击后按原入口查询。保留已完成但可推进的 ID 作为基线，避免普通重置直接冒充新解锁；每 20 tick 再扫描一次，以覆盖没有进度事件的锁定、重置与重复任务冷却变化。锁定切换、换队和任务文件 cache clear 重载只重建基线，不批量播报已有任务。只有新绑定成功会在 `AssistantPlayers` 标记一次待发送引导，绑定消息先发送，等登录基线就绪且队伍可用后由 FTB tick 消费该标记，依次发送可领取的新手礼包和普通任务概览（总数及前三项）；缺少内容时跳过。概览不生成列表编号，点击“查看任务”才重新执行完整列表查询。普通登录及重复授予不创建标记，登出、撤销或重置清除未发送标记，文件重载不重复引导；撤销后新绑定可再次触发。FTB 明确关闭通知的进度批次静默更新基线，隐藏章节与不可见任务不发送。
+FTB 没有专门的解锁事件。按队伍保存可见且 `canStartTasks` 的任务 ID 集合，收到进度事件后标记 dirty，在服务器 tick 结束时合并比较；完成提示按事件顺序先发送；新增且未完成的普通任务仅一项时直接发送 QuestOutput 详情，播报使用 unlocked 事件；多项时按章节/任务顺序合并成一条 QuestUnlockedOutput 列表通知，每位接收者每批至多一条，礼包仍先使用独立汇总。解锁列表复用 QuestList 的按任务 ID 查看按钮和 quest_list 模板，以 unlock_notice 隐藏编号及主动查询提示，不改最近查询缓存；摘要和播报仅提示数量。通知每页 10 项，本地翻页不发请求；详情点击后按原入口查询，PUSH 保留来源视图与 CardPageState，返回恢复原页，底部确定结束整个窗口。完成通知仍每个任务独立发送。保留已完成但可推进的 ID 作为基线，避免普通重置直接冒充新解锁；每 20 tick 再扫描一次，以覆盖没有进度事件的锁定、重置与重复任务冷却变化。锁定切换、换队和任务文件 cache clear 重载只重建基线，不批量播报已有任务。只有新绑定成功会在 `AssistantPlayers` 标记一次待发送引导，绑定消息先发送，等登录基线就绪且队伍可用后由 FTB tick 消费该标记，依次发送可领取的新手礼包和普通任务概览（总数及前三项）；缺少内容时跳过。概览不生成列表编号，点击“查看任务”才重新执行完整列表查询。普通登录及重复授予不创建标记，登出、撤销或重置清除未发送标记，文件重载不重复引导；撤销后新绑定可再次触发。FTB 明确关闭通知的进度批次静默更新基线，隐藏章节与不可见任务不发送。
 
-`FtbQuestText` 统一按 `ServerPlayer.clientInformation().language()` 读取 FTB 翻译，使用原生缺译回退；不改动全局 file locale 或缓存。列表、名称搜索、详情、提交、通知和播报共用此入口，无标题任务回退到第一个目标的本地化标题。JSON Component 使用原版服务端安全的 lenient 解析器，§ / & 交给 LegacyText，背景整理输入去除格式码；隐藏描述仍按 FTB 完成条件处理。根因、实际整合包样例及待同步到 26.1.2 的清单见 [跨版本修复记录](ftb-quests-porting.md)。
+`FtbQuestText` 统一按 `ServerPlayer.clientInformation().language()` 读取 FTB 翻译，使用原生缺译回退；不改动全局 file locale 或缓存。列表、名称搜索、详情、提交、通知和播报共用此入口，无标题任务回退到第一个目标的本地化标题。JSON Component 使用原版服务端安全的 lenient 解析器，§ / & 交给 LegacyText，背景整理输入去除格式码；隐藏描述仍按 FTB 完成条件处理。根因、实际整合包样例及两版本同步记录见 [跨版本修复记录](ftb-quests-porting.md)。
 
 `FtbQuestReader` 是独立的只读任务入口，按当前 `ServerQuestFile` 与 `TeamData` 创建并在服务端线程使用，不缓存进度。`stream(Predicate<Quest>)` 统一章节遍历、可见性和介绍任务过滤，其余类型可组合谓词扩展；查询、详情、播报、礼包和通知共用这里的读取判定。无任务或全部为原生 `CheckmarkTask` 且无奖励的任务视为介绍任务，系统不读取，也不修改其进度或绕过它作为前置时的依赖。至少有一个原生勾选目标且全部目标均为勾选、不可重复、至少一项非空原生物品奖励时，允许附带原生经验 / 等级奖励，所有奖励均须非隐藏，识别为新手礼包。使用精确类匹配，仅经验、混合目标、命令 / 自选 / 随机 / 第三方奖励及重复任务保留普通处理，不按任务名称猜测。
 

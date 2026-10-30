@@ -16,6 +16,7 @@ import net.neoforged.fml.ModList;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
@@ -75,9 +76,7 @@ public record IconsNode(String icons, String label) implements CardNode {
                 SystemMod.LOGGER.warn("Failed to create quest icon for {}", preview.type(), error);
             }
             Element entry = AssistantView.element(view.document(), "div", "quest_icon_entry", "");
-            if (icon == null)
-                entry.appendChild(AssistantView.element(view.document(), "span", "card_body", this.fallback(preview)));
-            else entry.appendChild(icon);
+            entry.appendChild(Objects.requireNonNullElseGet(icon, () -> AssistantView.element(view.document(), "span", "card_body", this.fallback(preview))));
             if (!preview.amount().isBlank())
                 entry.appendChild(AssistantView.element(view.document(), "span", "quest_icon_amount", preview.amount()));
             row.appendChild(entry);

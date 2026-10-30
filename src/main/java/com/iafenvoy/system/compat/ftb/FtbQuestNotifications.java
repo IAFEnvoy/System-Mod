@@ -4,6 +4,7 @@ import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.output.QuestStartupOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestSubmission;
 import com.iafenvoy.system.agent.builtin.output.QuestUnlockedOutput;
@@ -209,7 +210,7 @@ final class FtbQuestNotifications {
                             .filter(quest -> !previous.contains(quest.getKey()) && !team.isCompleted(quest.getValue()))
                             .map(Map.Entry::getValue).toList();
                     List<Quest> unlocked = newlyAvailable.stream().filter(quest -> FtbQuestReader.kind(quest) == FtbQuestReader.Kind.NORMAL).toList();
-                    // Finish completions first, then send one gift preview and one normal unlock list per recipient.
+                    // Each completion keeps its own notice; unlock batches use details for one quest and a list for several.
                     for (Recipient recipient : current.values()) {
                         if (!recipient.equals(state.recipients.get(recipient.player().getUUID())) || !recipient.valid(runtime, this.file, id))
                             continue;
@@ -217,8 +218,7 @@ final class FtbQuestNotifications {
                         if (newlyAvailable.stream().anyMatch(quest -> FtbQuestReader.starterGiftAvailable(player, team, quest)))
                             runtime.players().notifyEvent(player, StarterGiftModule.preview(this.access.gifts.preview(player, this.file, team)));
                         if (!unlocked.isEmpty())
-                            runtime.players().notifyEvent(player, AgentResult.data("system.result.quest_unlocked", new QuestUnlockedOutput(
-                                    unlocked.stream().map(quest -> FtbQuestAccess.brief(player, team, quest, 0)).toList())));
+                            runtime.players().notifyEvent(player, this.unlockNotification(unlocked, player, team));
                     }
                 }
                 state.available = Set.copyOf(available.keySet());
@@ -276,6 +276,16 @@ final class FtbQuestNotifications {
                 List.of(), false, ResultTypes.QuestEvent.COMPLETED,
                 QuestSubmission.NONE, !claimable.isEmpty(), claimRef,
                 FtbQuestSpeech.content(player, team, quest, "completed")));
+    }
+
+    private AgentResult unlockNotification(List<Quest> quests, ServerPlayer player, TeamData team) {
+        if (quests.size() == 1) {
+            Quest quest = quests.getFirst();
+            return AgentResult.data("system.result.quest_unlocked", FtbQuestAccess.detail(player, team, quest,
+                    QuestDetailInput.byId(FtbQuestAccess.hex(quest.getId())), this.access.references, "unlocked"));
+        }
+        return AgentResult.data("system.result.quest_unlocked", new QuestUnlockedOutput(
+                quests.stream().map(quest -> FtbQuestAccess.brief(player, team, quest, 0)).toList()));
     }
 
     // The native event and explicit submission converge on the same pending completion entry.

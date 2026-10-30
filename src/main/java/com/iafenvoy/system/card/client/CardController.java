@@ -31,6 +31,7 @@ public final class CardController {
             ClientModuleCaches.BINDINGS.get().localAction(id, source, arguments);
         } else if (button.action() instanceof CardAction.Server server)
             AssistantClient.send(new CardActionRequest(source, server),
-                    notification && button.behavior() == CardButton.Behavior.REPLACE ? Optional.of(source) : Optional.empty());
+                    notification && (button.behavior() == CardButton.Behavior.REPLACE || button.behavior() == CardButton.Behavior.PUSH)
+                            ? Optional.of(source) : Optional.empty());
     }
 }

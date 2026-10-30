@@ -1,6 +1,6 @@
 # FTB Quests 跨版本修复记录
 
-记录日期：2026-10-30。当前修改目标为 Minecraft 1.21.1；**以下修复还需要同步到 26.1.2，本文作为同步清单**。没有修改或验证 26.1.2 分支。
+记录日期：2026-10-30。以下 1.21.1 修复已同步至 26.1.2 / master（`b97aa1c`）；同日将 master 的交互式任务通知窗口回同步至 1.21.1。下方旧节保留首次修复时的迁移分析，“也需同步”等措辞为历史清单；最新结果见本文末尾的同步记录。
 
 ## 依据与复现数据
 
@@ -95,3 +95,30 @@ QuestKnowledgeCache 已拆成通用 agent.database 下的 AgentDatabases / Agent
 5. 让原生奖励条件拒绝普通或自选奖励，确认不会提前标记已领取；解除限制后可重新请求领取。
 
 未经用户明确要求，不为上述验收启动游戏、插入探针或创建临时存档。当前仅执行编译和静态检查，执行记录见 [编译与验收](testing.md)。
+
+
+## 2026-10-30 master 通知窗口回同步 1.21.1
+
+切换 `1.21.1` 后先执行 `git pull --ff-only`，远端无新提交（目标 `03ca46a`）；来源为 master `b97aa1c`。此次仅同步交互式任务通知，不合并版本、依赖、内联 Saturn 或 26.x 渲染代码。
+
+- `ActionsNode.notification_page_size=10` 控制通知内任务列表分页，上 / 下页和页码独立位于卡片正文，底部确定结束整个窗口。翻页只改 `CardPageState` 和局部 DOM，不发包、不生成新通知或推进队列。
+- `CardButton.Behavior.PUSH` 与来源请求关联保留当前列表；详情正文提供返回，恢复原页且不重复播报列表。更新保留页码，移除清理对应返回项；返回淡出期间的迟到回复不能覆盖待返回视图。
+- 单个普通新解锁任务直接发送 `QuestOutput` 详情，使用 `unlocked` 主句；多个任务发送分页列表。完成事件仍每个任务单独通知，礼包流程不变。
+- 同步 `CardPresentation`、共享 CSS、`quest_list.json` 和四个双语键。1.21.1 保留 ResourceLocation、项目内 ItemStackTemplate、Architectury 进度事件，以及 ScreenEvent.Render.Post / GuiGraphics tooltip；没有引入 26.x 的 ApricityGuiLayers 提交逻辑。
+
+实际执行 `gradlew compileJava testModClasses --console=plain` 成功，未运行测试或启动游戏。静态资源与语言检查结果见 [编译与验收](testing.md)；仍需游戏内验收 10 / 11 项边界页、大列表、返回原页、任务完成逐条通知和单 / 多任务解锁。改动留在 1.21.1 工作区，未提交或推送。
+
+### 回同步后的分页点击修正（master 尚需同步）
+
+用户反馈点击“下页”无反应。阅读 AUI 1.21.1 / 1.2.6 的 sources JAR 确认：Node.prepareForInsertion 调用 Element.init，普通 Element 会被注册的 Div 实例替换；旧回调持有原始分页容器，其 isConnected 为 false。ActionsNode.render 改为先 Element.init(view.element(...))，再构建分页及回调，使后续挂载和重绘指向同一实际容器。保留连接与交互检查，不绕过通知生命周期。此修正当前仅写入 1.21.1，master 的同源 ActionsNode 也需同步这一行及注释；编译通过，未启动游戏复测。
+
+### 1.21.1 SavedData 文件名修正
+
+用户在 Windows 保存世界时报告 `data/system:token_usage.dat` 的 InvalidPathException。核对 1.21.1 DimensionDataStorage.getDataFile 后确认它直接将字符串键拼接为 `<键>.dat`，不会像 26.x SavedDataType 一样拆分命名空间。TokenUsageData.FILE_ID 改为 `system_token_usage`，实际路径为 `<存档>/data/system_token_usage.dat`；去掉无用的 ResourceLocation import，用量内容及撤销保留规则不变。本修正仅适用于 1.21.1 的文件名 API，不能机械改动 master 的合法 Identifier / SavedDataType。扫描主源码与内联 Saturn，仅此一处使用原版 SavedData；编译通过，未修改用户存档或启动游戏。
+
+
+### 1.21.1 ASR 收尾与输入法（后续同步注意）
+
+RecognitionRecording 手动停止与帧入队共用锁，耗尽缓冲后直接返回 EOF，不等待设备线程；自然结束的 EOF 也改为在设备 close 之前发布，结束后读取帧队列时复核最后一帧；AssistantRecognition 增加独立 session 计时、完成终态、后台错误和执行器繁忙处理。这两处是跨版本共有的语音链路修正，后续需同步到 master / 26.1.2。
+
+中文输入法修正则针对 1.21.1：`ImBlockerConfigMixin` 用 `@Pseudo` 和字符串目标注入 `IMBlockerConfig.isScreenInWhitelist`，将全部 `AssistantPageScreen` 子类视为白名单，不改用户配置，无 IMBlocker 编译或运行依赖。核对实际整合包 IMBlocker 5.6.1 JAR 及 v5.6.1 源码；不自行管理其控件焦点、候选定位或字符探测，也不再保留 Windows 专用组合串检测与按键保护。文字输入沿用 AUI 和平台原有流程。master 已有 26.1 原生文本输入 / preedit API，后续同步应保留其平台原生支持；白名单 Mixin 需先核对目标版本 IMBlocker 签名。此次只做编译和源码 / JAR 检查，没有游戏内验收。

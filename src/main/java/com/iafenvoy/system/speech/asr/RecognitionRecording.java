@@ -1,5 +1,6 @@
 package com.iafenvoy.system.speech.asr;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.speech.SpeechException;
 
 import java.util.Arrays;
@@ -55,7 +56,10 @@ final class RecognitionRecording implements AsrProvider.AudioSource, AutoCloseab
                 if (count == 0) continue;
                 if (count > buffer.length || (count & 1) != 0) throw new SpeechException("audio");
                 count = Math.min(count, remaining);
-                if (!this.frames.offer(Arrays.copyOf(buffer, count))) throw new SpeechException("audio");
+                synchronized (this) {
+                    if (this.closed || this.stopped) break;
+                    if (!this.frames.offer(Arrays.copyOf(buffer, count))) throw new SpeechException("audio");
+                }
                 remaining -= count;
             }
         } catch (Exception error) {
@@ -65,6 +69,7 @@ final class RecognitionRecording implements AsrProvider.AudioSource, AutoCloseab
             this.failure = new SpeechException("microphone");
             this.opened.completeExceptionally(this.failure);
         } finally {
+            // Publish EOF before native device cleanup, which may take longer than the ASR response.
             this.ended = true;
         }
     }
@@ -82,7 +87,12 @@ final class RecognitionRecording implements AsrProvider.AudioSource, AutoCloseab
             this.current = this.frames.poll(10, TimeUnit.MILLISECONDS);
             this.offset = 0;
         }
-        if (this.current == null) return this.ended ? -1 : 0;
+        if (this.current == null) {
+            if (!this.ended && !this.stopped) return 0;
+            // The last frame can arrive between a timed poll and the volatile EOF publication.
+            this.current = this.frames.poll();
+            if (this.current == null) return -1;
+        }
         int count = Math.min(buffer.length, this.current.length - this.offset) & ~1;
         System.arraycopy(this.current, this.offset, buffer, 0, count);
         this.offset += count;
@@ -90,12 +100,13 @@ final class RecognitionRecording implements AsrProvider.AudioSource, AutoCloseab
         return count;
     }
 
-    void finish() {
+    synchronized void finish() {
+        // No later frame can be queued; drain what is buffered and send StopRecognition immediately.
         this.stopped = true;
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
         this.closed = true;
         Future<?> pending = this.recorder;
         if (pending != null) pending.cancel(true);

@@ -130,7 +130,7 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 
 礼包、任务详情和任务通知使用 `reward_section` 外层统一显示一次“奖励”标题，内层 `reward_grid` / `reward_entry` 将物品与非物品图标横向排列，宽度不足时换行。子节点不再设置重复的奖励 label，物品使用 compact 并隐藏分组标签；自选项保留各自编号和名称。礼包整体的 `items` / `icons` 由服务端汇总，模板绑定顶层 `result_items` / `reward_icons`：经验值、经验等级各自相加，同物品且组件相同的数量 / 随机区间相加，原生 `only_one` 条件物品保留独立。`gifts` 仅保留任务 ID、领取引用和错误；失败文字在汇总预览下方逐项显示。礼包与 `QuestNotice` 的 `has_rewards` 均由物品及类型图标是否为空决定，无奖励时不显示空标题。
 
-`QuestUnlockedOutput` 使用 `system:quest_unlocked` 卡片类型，复用 QuestList 的按 ID 查看按钮与 `system:quest_list` 模板。`unlock_notice` 状态隐藏主动查询的编号提示和行编号，仅显示任务名称、章节及进度；列表保留滚动与替换当前通知的查看动作。摘要与播报只提示本批新解锁任务数量，不为每个新任务生成一张通知或播报详情，详情在点开后继续使用现有任务卡片。
+普通任务每批仅解锁一项时直接发送 `QuestOutput` 完整详情，播报使用新任务主句及个人设置允许的要求、奖励和背景。多项时使用 `QuestUnlockedOutput`，复用 QuestList 的按 ID 查看按钮与 `system:quest_list` 模板；`unlock_notice` 隐藏主动查询的编号提示和行编号，摘要与播报仅提示本批数量。通知内每页 10 项，点开详情后可返回原列表和原页码。完成任务仍每项各发一条独立通知。
 
 `QuestGuideOutput` 使用 `system:quest_guide` 类型及同名模板，包含查询词和已授权的来源条目。每条提供标题、章节、匹配段落及原文；`has_more` 控制本地 details 展开，不发送任务提交或领奖动作。播报只提示命中数量，正文不自动发给模型。来源收录和权限边界见 [本地说明书检索](quest-guides.md)。
 
@@ -230,13 +230,17 @@ button 的 text、callback 必填。callback 只查询已注册的 Runnable；�
 
 label 仅作纯文本投影。缺省使用动作原标签；简约模式按真实动作顺序显示编号，由输入执行选择。可信回调仍经过原有服务端权限、任务和交易校验。
 
-CardButton 显式描述 Local/Server 动作、BODY/FOOTER 位置以及 CLOSE/WAIT/REPLACE 行为。actions 节点在通知正文只绘制 BODY 按钮，FOOTER 由通知宿主生成；宿主始终在业务按钮之后补充本地确定按钮，忙碌时仍可关闭通知。大任务列表直接放正文滚动区，不截断成少量底部按钮。
+`actions` 节点可设置 `notification_page_size`（默认 0，不分页）；内置任务列表设置为 10，仅通知模式生效。上页、页码、下页在节点内部生成，与宿主底部确定及业务按钮分开。翻页仅修改当前通知的 `CardPageState` 并重绘该节点，不发包、不替换通知、不推进队列或重启播报；完整 / 简约界面仍展示完整列表。页码按动作数据绑定键保存，跟随通知窗口存活，不序列化至服务端或聊天历史。
+
+分页容器在绑定回调前先经 `Element.init` 取得实际组件。AUI 在 appendChild 时会把普通 Element 升级为 Div 等注册组件；捕获升级前的对象会导致 isConnected 为 false，点击被直接忽略，即使移除该判断也只会重绘已脱离 DOM 的旧对象。
+
+CardButton 显式描述 Local/Server 动作、BODY/FOOTER 位置以及 CLOSE/WAIT/REPLACE/PUSH 行为。actions 节点在通知正文只绘制 BODY 按钮，FOOTER 由通知宿主生成；宿主始终在业务按钮之后补充本地确定按钮，忙碌时仍可关闭通知。列表内容使用原有固定宽度和限高滚动视口，分页不扩大通知面板。
 
 点击、数字和语音选择都进入 CardController。Local 从 ClientModuleCaches.BINDINGS 的处理器 Map 分派；Map 和登记、分派、清理逻辑直接位于 ClientModuleBindingsCache，由模块通过 localAction 声明，随 Saturn RegistryCache 重建和退出清理。Controller 不单独保存永久动作表。Server 发 CardActionRequest(source, action)，仅含来源 CardRef、动作 Identifier 和字符串参数。工作流在 ModuleRouting.button 中解码，继续经过原有权限、预算、引用、Cost 与发奖流程，不经过模型路由。labelKey 只决定标签和语音候选，不决定动作。
 
-CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并等待回复。REPLACE 同样等待，但把直接回复的新 SHOW 卡片放到当前通知的位置，旧内容淡出后新内容淡入，不收起面板或重复播放提示音；其余排队通知保持顺序。CardBuilder.serverButton 默认使用 REPLACE，任务列表、详情和选择按钮使用此行为。通知没有自动关闭计时，播报结束也不会切换到下一条；玩家明确操作或服务端更新才能关闭或替换当前项。
+CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并等待回复。REPLACE 同样等待，但把直接回复的新 SHOW 卡片放到当前通知的位置，旧内容淡出后新内容淡入，不收起面板或重复播放提示音；其余排队通知保持顺序。CardBuilder.serverButton 默认使用 REPLACE。任务列表查看按钮使用 PUSH：收到可显示的回复后保留来源视图，详情正文上方提供本地“返回列表”，返回时恢复原页码且不重复播报列表。失败的零卡片回复保留原列表；业务 REMOVE 会清除对应返回视图。底部确定结束整个当前窗口并清理返回栈，再取下一条通知。通知没有自动关闭计时，播报结束也不会切换到下一条。
 
-仅从 HUD 激活的 REPLACE 按钮会在客户端 pending 中记录来源 CardRef，并按 requestId 关联回复；完整/简约页面中的同一按钮仍按页面流程处理。原通知已确认或关闭时，迟到回复不重新弹出，也不替换其他通知。独立推送继续入队；业务 CardUpdate.REPLACE/REMOVE 仍沿用静默更新语义。等待期间禁用服务端按钮，失败、超时和零卡片回复也解除等待。语音优先匹配当前版本的实际按钮，失败或歧义才进入主聊天。
+仅从 HUD 激活的 REPLACE / PUSH 按钮会在客户端 pending 中记录来源 CardRef，并按 requestId 关联回复；完整/简约页面中的同一按钮仍按页面流程处理。原通知已确认、关闭或返回上层时，迟到回复不重新弹出，也不替换其他通知。独立推送继续入队；业务 CardUpdate.REPLACE/REMOVE 仍沿用静默更新语义。等待期间禁用服务端按钮，失败、超时和零卡片回复也解除等待；本地翻页、返回和确定独立于服务端忙碌状态。语音优先匹配当前通知的业务按钮、返回及确定，失败或歧义才进入主聊天。
 
 ## 通用参数与模块字段
 

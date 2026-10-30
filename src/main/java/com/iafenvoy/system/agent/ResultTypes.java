@@ -128,7 +128,7 @@ public final class ResultTypes {
             CardBuilder builder = CardBuilder.template(TEMPLATE).title("system.result.quests").summary("system.result.quests");
             for (QuestBriefOutput quest : this.quests) {
                 builder.serverButton("quest_" + quest.id(), "system.action.quest_detail", ResourceLocation.parse("system:quest_detail"),
-                                Map.of("quest", quest.id()), CardButton.Placement.BODY, CardButton.Behavior.REPLACE)
+                                Map.of("quest", quest.id()), CardButton.Placement.BODY, CardButton.Behavior.PUSH)
                         .actionParameter("action_number", quest.number()).actionParameter("action_title", quest.title())
                         .actionParameter("action_chapter", quest.chapter()).actionParameter("action_progress", (int) quest.progress());
             }

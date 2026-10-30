@@ -53,13 +53,13 @@ FTB 启动概览的“查看任务”以及新手礼包的“领取礼包”“�
 
 依据[一句话识别 API](https://help.aliyun.com/zh/isi/user-guide/api-reference-1)接入 NLS WebSocket，使用 JDK `HttpClient`，无新增 SDK、原生库或模型文件。`HttpTransport.webSocket` 复用网络工具的客户端生命周期、握手时限和取消；Token 沿用阿里云官方 Java SDK 的 X-NLS-Token 握手请求头，不记录凭据或上游异常正文。
 
-连接 `wss://nls-gateway-cn-<region>.aliyuncs.com/ws/v1`，发送 `SpeechRecognizer.StartRecognition`，麦克风在后台打开后立即采集，不等云端握手；等待 `RecognitionStarted` 后上传缓冲及后续音频，避免吞掉开头。松开按键立即停止本地采集，已缓冲的内容仍在本次请求内提交。发送 16 kHz / 16-bit / 单声道 / 小端 PCM 二进制帧，启用中间结果、标点和 ITN。停止后只发送一次 `StopRecognition`，以 `RecognitionCompleted.payload.result` 为最终文本，不将中间结果累计相加。
+连接 `wss://nls-gateway-cn-<region>.aliyuncs.com/ws/v1`，发送 `SpeechRecognizer.StartRecognition`，麦克风在后台打开后立即采集，不等云端握手；等待 `RecognitionStarted` 后上传缓冲及后续音频，避免吞掉开头。松开按键立即停止本地采集，已缓冲的内容仍在本次请求内提交。发送 16 kHz / 16-bit / 单声道 / 小端 PCM 二进制帧，启用中间结果、标点和 ITN。停止后只发送一次 `StopRecognition`，以 `RecognitionCompleted.payload.result` 为最终文本，不将中间结果累计相加。手动结束在同一锁内停止接收后续音频帧；网络读取线程耗尽缓冲后直接返回 EOF，不等待设备线程退出。录音线程自然结束时也在关闭原生设备之前发布 EOF，避免清理设备阻塞结束命令；读取线程在看到 EOF 后再检查一次帧队列，保留同时到达的最后一帧。
 
 语音输入默认关闭，**Simple Voice Chat（SVC）是可选客户端依赖**，服务端无需安装。设置页显示是否检测到 SVC：未安装时使用 JDK Java Sound 默认输入设备；安装时通过反射加载隔离适配器，沿用 SVC 选定的麦克风、OpenAL/Java Sound 后端选择及 OpenAL 失败后退回 Java Sound 的处理。直接以 16 kHz、每帧 320 个样本采集，既不经过 Opus，也不需从 48 kHz 重采样。原有按钮和按键共用同一采集路径。
 
 已核对 1.21.1 分支所用 SVC 依赖 JAR：公开 `VoicechatClientApi` 没有独立启停麦克风方法，`ClientSoundEvent` 又在 SVC 自身 PTT/语音激活筛选之后，不能作为独立按键录音源。因此 `compat/voicechat/VoicechatRecognitionCapture` 封装其内部 `ALMicrophone` / `JavaxMicrophone`，单独打开设备，不读取或修改 SVC 自身录音线程。公开插件事件只负责在助手采集期间取消语聊发送，结束后保留 250ms 尾部抑制；适配/插件安装失败时提示错误并不开始录音。没有安装 SVC 时不注册插件、不加载适配器或任何 SVC 类型。内部接口存在版本敏感性，升级 SVC 后应重新核对；若设备不允许同时打开，显示麦克风错误，不抢占语聊设备。
 
-设备打开与音频读取在一个有界守护录音执行器中执行，网络在独立识别执行器中执行，主线程仅操作界面和取消。连接期间音频仅在有界内存队列保存，不落盘；录音上限 60 秒 / 1,920,000 PCM 字节。不支持 16 kHz 单声道或被系统禁止访问时给出本地提示。单条响应最多 64 KiB，结果最多 2000 UTF-16 单元；连接 10 秒超时、整体 90 秒上限、停止后最多再等待 15 秒。失败不自动重试收费任务。
+设备打开与音频读取在一个有界守护录音执行器中执行，网络在独立识别执行器中执行，主线程仅操作界面和取消。连接期间音频仅在有界内存队列保存，不落盘；录音上限 60 秒 / 1,920,000 PCM 字节。不支持 16 kHz 单声道或被系统禁止访问时给出本地提示。单条响应最多 64 KiB，结果最多 2000 UTF-16 单元；连接 10 秒超时、session 首次等待 90 秒上限，手动结束或读到 EOF 后改为最多再等待 15 秒。独立守护计时器负责结束客户端等待，不依赖网络或设备线程返回；超时取消后台任务并显示既有本地化超时状态，完成 / 取消会清除计时任务，迟到回调不再改写终态。执行器繁忙直接显示 busy，后台 Exception / LinkageError 显示错误并仅记录本地代码与异常类型，不输出凭据、音频、识别文字或上游异常正文。失败不自动重试收费任务。
 
 `AsrProvider` 位于 `speech.asr`，协议层不依赖 MC。供应商由 `speech.AsrProviders` 的普通工厂 Map 管理，内置键为 `aliyun-nls`。扩展在客户端初始化时调用 `AsrProviders.register(name, factory)`，不参与 MC 注册表生命周期，`AsrProviders.create(provider)` 按配置字符串精确查找并创建独占实例，不自动补命名空间。供应商实现纯本地的 `validate`、`recognize(Request, AudioSource, Consumer<String>, Runnable requestStarted)` 和 `close`；`requestStarted` 在鉴权、连接完成后、首次发送识别命令前调用，开始统计本次识别，详见[注册表速查](registries.md)。当前配置凭据结构面向 NLS，增加不同鉴权方式的供应商时需扩展相应配置表单。可选供应商自己的单位计费也需单独适配，不套用 NLS 次数单价。
 

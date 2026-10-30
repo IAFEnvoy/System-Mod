@@ -1,5 +1,13 @@
 # 编译与验收
 
+## 2026-10-30 语音识别结束等待与中文输入法
+
+用户反馈 ASR 有中间识别文字，但松开后一直等待，不回填 / 发送。阅读链路发现：录音的 EOF 在原生设备 close 之后发布，收尾会等待设备清理；改为停止后先耗尽缓冲并立即返回 EOF，自然结束也先发布 EOF 再关闭设备，并补一次终止后的帧队列读取。停止标记与入队共用锁，不会在 EOF 后继续追加帧。Session 独立计时，结束后最多等 15 秒；完成 / 失败为终态，取消清理计时任务，执行器拒绝与 LinkageError 也显示错误。没有把中间结果冒充最终识别或改变 autoSend 配置。
+
+同时读取整合包中的 IMBlocker 5.6.1 JAR 及同版本源码，确认屏幕白名单可直接允许输入法，无须实现整套 AUI 焦点适配。`ImBlockerConfigMixin` 直接在 `isScreenInWhitelist` 开头对 `AssistantPageScreen` 返回 true，其余屏幕不变。`@Pseudo` 字符串目标仅在客户端应用，未安装 IMBlocker 时跳过，不需要编译或运行依赖，不修改用户配置或其原白名单。控件适配器、反射加载、NUL 探测处理及自定义候选定位已移除；候选框使用 IMBlocker 自身屏幕级定位。按用户要求，Windows 专用组合串检测类及全部调用也已移除，发送、语音输入和补全不再查询该状态；文字输入统一沿用 AUI 和平台流程。
+
+IMBlocker 目标 API 已对照实际 JAR（SHA-1 `ae2f4c8b929d923b6fd637b5158fd93082a0fdb2`）与同版本源码确认。移除该依赖后执行 `compileJava testModClasses jar --console=plain` 通过；检查产物确认新 Mixin 只登记在 client，旧适配器及 IMBlocker 自身类均不在包内。双语各 517 键且集合一致，`git diff --check` 通过。未运行测试、启动游戏、打开麦克风、修改整合包或调用收费 API；尚未实际验收 NLS 完成回调、真实设备关闭行为、自动发送、通知语音按钮及 Microsoft / 第三方输入法。现有日志没有 ASR 收尾异常记录，因此不能据此认定用户设备具体阻塞于哪一步；新增安全错误日志与 session 超时用于避免静默等待并提供后续定位依据。
+
 ## 2026-10-30 分层本地数据库与 FTB 手动重新收录
 
 新增通用 AgentDatabases / AgentDatabase / DatabaseTable / KnowledgeIndex，统一存档共享库与玩家独立库的 Codec 读写，FTB 原文和背景分类进入同一 shared.json 的独立表。私有库按 UUID 懒加载，revoke / reset 删除，关闭服务端后旧句柄失效；写入同作用域串行并先保存后发布，损坏文件保留并报错，不静默覆盖。
@@ -749,3 +757,23 @@ AgentCommand、CommandRegistry 与客户端命令声明已接入 Brigadier；Cli
 执行 `.\gradlew.bat compileJava testModClasses --console=plain` 编译通过；23 份卡片 JSON 无重复键且节点类型均已注册，中英文各 513 个语言键并且集合一致，routing / knowledge_answer / web_search 提示词占位符有效。动作类型 21 个、卡片数据类型 26 个且注册 ID 无重复；修改文档的本地链接存在，git diff --check 通过。源码中旧 WebSearchInput / WebSearchModule / SEARCH_ACTION 已移除。
 
 没有执行测试、启动 Minecraft、创建临时存档 / 数据包或调用外部 API。数据库命中与无结果、拒绝联网、模块未启用、玩家隔离 / FTB 隐藏文本、在途权限变化及供应商计费均尚未游戏内验收。FTB 适配器导出与跨版本同步清单记录在 [26.1.2 待同步项](ftb-quests-porting.md)。
+
+## 2026-10-30 master 交互式任务通知回同步 1.21.1
+
+切换 1.21.1 并执行 `git pull --ff-only`，远端无新提交，基线为 03ca46a；从 master b97aa1c 选取通知窗口相关修改。阅读差异确认：任务列表每页 10 项，正文内独立翻页；查看详情用 PUSH 保存来源，返回保留页码，底部确定结束整个窗口。单项普通解锁直接详情，多项合并列表，完成任务仍逐项通知。保留 1.21.1 的 Architectury 事件、ResourceLocation、自有 ItemStackTemplate 和 ScreenEvent.Render.Post / GuiGraphics tooltip，没有带入 26.x 渲染提交 API。
+
+实际执行 `gradlew compileJava testModClasses --console=plain` 成功，主代码及测试源集编译通过。静态检查：23 份卡片 JSON 有效且无重复键，任务列表 notification_page_size 为 10；中英文各 517 键且集合完全一致；共享分页 / 卡片展示代码与来源一致，git diff --check 和新增文件空白检查通过。gradle.properties、build.gradle 及根目录两份 README 与目标 HEAD 一致。迁移与后续定位记录在 [跨版本同步记录](ftb-quests-porting.md) 和 learning.md。
+
+没有运行测试、启动 Minecraft、创建临时数据或调用外部 API。游戏内分页边界、大列表、返回原页、动画期间回包、按 T 交互、语音返回及单 / 多任务解锁尚待人工验收。当前停留在 1.21.1，改动未提交、未推送。
+
+## 2026-10-30 通知“下页”点击无效修正
+
+用户实测反馈点击下页完全无反应。核对实际依赖 ApricityUI-neoforge-1.21.1:1.2.6 的 sources JAR：Node.prepareForInsertion 经 Element.init 将原始 Element 换成注册的 Div，分页闭包仍持有未挂载的旧对象，isConnected 检查直接返回。ActionsNode 在构造分页回调前初始化实际容器，挂载后闭包持有的即为 DOM 中实例；没有删除交互 / 生命周期检查，也没有增加请求或切换通知。
+
+执行 `gradlew compileJava testModClasses --console=plain` 成功，git diff --check 通过。以上根因来自依赖源码与调用链阅读；没有运行测试、启动 Minecraft 或加入调试探针，点击及连续翻页仍需游戏内复测。修正与 master 待同步项记录在 [跨版本记录](ftb-quests-porting.md)。
+
+## 2026-10-30 Windows 用量账本非法文件名修正
+
+用户提供保存异常：InvalidPathException 指向 `data/system:token_usage.dat`。读取实际 NeoForge / Minecraft 1.21.1 sources JAR，确认 DimensionDataStorage.getDataFile 直接使用 `new File(dataFolder, name + ".dat")`。TokenUsageData.FILE_ID 从资源 ID 字符串改为 `SystemMod.MOD_ID + "_token_usage"`，最终文件名为 system_token_usage.dat；更新实际存档路径说明。全主源码（包括内联 Saturn）扫描仅发现该处 SavedData 实现与消费入口，无其他同类存档键。
+
+执行 `gradlew compileJava testModClasses --console=plain` 成功，git diff --check 通过。未运行测试、启动游戏或改动用户存档，保存世界和重新加载账本尚待游戏内复测；本次不修改用量数据结构及 revoke 策略。

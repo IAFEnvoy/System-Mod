@@ -7,7 +7,8 @@
     },
     {
       "type": "system:actions",
-      "actions": "{{result_actions}}"
+      "actions": "{{result_actions}}",
+      "notification_page_size": 10
     }
   ],
   "actions": {

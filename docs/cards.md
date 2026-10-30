@@ -1,6 +1,6 @@
 # 客户端 JSON 卡片
 
-数据流为：服务端生成业务快照 → `CardUpdate` 携带 `CardData` → 客户端调用 `buildCard().build()` → `CardView` → JSON 布局 → 明确的本地或服务端按钮动作。完整模式、简约模式和 HUD 共用构建、版本和交互入口。架构说明见[卡片与消息数据流](card-flow-design.md)，注册入口见[注册表速查](registries.md)。
+数据流为：服务端生成业务快照 → `CardUpdate` 携带 `CardData` → 客户端调用 `buildCard()` → `CardBuildEvent` 扩展 Builder → `build()` 冻结为 `CardView` → JSON 布局 → 明确的本地或服务端按钮动作。完整模式、简约模式和 HUD 共用构建、版本和交互入口。架构说明见[卡片与消息数据流](card-flow-design.md)，注册入口见[注册表速查](registries.md)。
 
 ## 数据与渲染绑定
 
@@ -25,6 +25,51 @@ public CardBuilder buildCard() {
 `ClientCards` 保存连接内按 ID 的最新数据、版本和活动状态。`CardPresentation.of(update, messageKey, mode, actionOffset)` 取最新快照，解析 Component 和 CardText，补充显示模式、按钮标签及受控 callback，然后读取 `assets/<namespace>/cards/<path>.json`。缺少模板时回退到 summary 和已有按钮，不展示 DTO 的原始 JSON。
 
 知识问答使用 `KnowledgeAnswerOutput` / `system:knowledge_answer`，正文显示回答、本地来源默认折叠，包含标题、分类和命中段落；只播报回答或原文提示，不提供网页链接或任务操作。联网回退继续使用独立的 WebSearchOutput / web_search 模板；两种卡片都只展示服务端准备的结果。
+
+## 构建事件：给现有卡片补充参数
+
+[`CardBuildEvent`](../src/main/java/com/iafenvoy/system/event/client/CardBuildEvent.java) 在客户端 `NeoForge.EVENT_BUS` 同步发布，不走 mod event bus，不可取消。统一入口位于 `ClientCards`：先调用原 `CardData.buildCard()` 填好内置内容，再发布事件，最后 `CardBuilder.build()` 复制出不可变快照。公共 CardData / CardBuilder 不负责发布事件，专用服务端不会走这个客户端入口。
+
+| 访问器 | 内容 |
+| --- | --- |
+| `ref()` | 当前卡片 UUID 和 revision，可区分消息与版本 |
+| `data()` | 服务端传来的类型化 CardData，按实现类筛选需要扩展的卡片 |
+| `builder()` | 已有内置参数的可变 CardBuilder，使用 put / enable / list 添加展示参数 |
+
+例如，其他模组在客户端监听并扩展宿主信息卡片：
+
+```java
+import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
+import com.iafenvoy.system.event.client.CardBuildEvent;
+import net.minecraft.network.chat.Component;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+
+@EventBusSubscriber(Dist.CLIENT)
+public final class ExampleCardEvents {
+    @SubscribeEvent
+    public static void build(CardBuildEvent event) {
+        if (!(event.data() instanceof PlayerSnapshotOutput player)) return;
+        event.builder()
+                .put("example_host", Component.translatable("example.card.host", player.name()))
+                .put("example_level", player.experienceLevel())
+                .enable("example_extra", true);
+    }
+}
+```
+
+`example.card.host` 的语言键由扩展模组提供。也可以在这里读取该模组已同步到客户端的数据，写入自己前缀下的参数；Component / CardText 会继续经过原有客户端格式处理。资源包覆盖 `assets/system/cards/player.json`，在需要的位置加入节点：
+
+```json
+{
+  "type": "system:text",
+  "when": "example_extra",
+  "text": "{{example_host}} · Lv.{{example_level}}"
+}
+```
+
+事件覆盖 SHOW、携带新数据的 REPLACE、历史恢复和未缓存卡片的按需构建；读取已有 CardView、过期 / 重复更新、REMOVE 不触发。完整、简约和通知共享同一份扩展快照，资源重载只重读 JSON，不会重新采集参数。按需构建可能重复触发，因此监听器应只补充展示内容，不把它当成发奖等业务事件；仅在回调期间修改 Builder，不保留引用。新参数不自动持久化或上传服务端，服务端业务和权限仍通过原有请求处理。
 
 ## 普通消息约定
 
@@ -106,11 +151,47 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 | `link` | `card_link` | 调用 Minecraft 原版打开 URL 的流程 |
 | `divider` | `card_divider` | 分割线 |
 | `items` | `item_groups` | 原版物品图标、数量及 tooltip |
+| `player` | `player_preview` | 按快照 UUID 渲染客户端玩家模型、皮肤和装备 |
 | `icons` | `quest_icon_group` | FTB 任务 / 奖励的原生类型图标、数量 / 进度及文字 tooltip |
 | `actions` | `card_actions` | 已有可信动作列表 |
 | `button` | `card_action` | 通过 callback ID 绑定 Java 操作 |
 
 `text/header/context` 共享 `text/translate/args/inline`：优先使用 translate，先替换 args 中占位符再翻译，inline 默认 false。容器的 children 必填，text_separator 可选，仅影响纯文本连接。
+
+### 宿主信息与玩家模型
+
+内置 `player.json` 用 row / column 排出左侧模型、右侧信息；生命值显示当前 / 上限，保留等级、维度与默认折叠的在线玩家列表。布局、边框、预览宽高均在共享 `assistant.css`，窄容器允许换行，不改变 HUD 的宿主宽度或限高。
+
+```json
+{
+  "type": "system:player",
+  "player": "{{player_id}}",
+  "follow_mouse": true,
+  "yaw": 15,
+  "pitch": 0,
+  "scale": 1,
+  "offset_x": 0,
+  "offset_y": 0
+}
+```
+
+| 参数 | 节点默认值 | 含义 |
+| --- | --- | --- |
+| `player` | `{{player_id}}` | 参数表中 UUID 对象的绑定键，支持现有循环下标；绑定缺失或类型不符时不生成节点 |
+| `follow_mouse` | false | 光标可见时跟随鼠标，水平 / 垂直偏转沿用原版背包预览的计算方式；内置 player.json 显式开启 |
+| `yaw` | 15 | 关闭跟随或光标锁定时的固定水平朝向，单位为度；0 为正面，180 为背面，90 / -90 为两侧 |
+| `pitch` | 0 | 关闭跟随或光标锁定时的固定俯仰角，单位为度 |
+| `scale` | 1 | 自动适配宽高后的缩放倍率，必须大于 0；0.8 缩小，1.2 放大，不改变区域尺寸 |
+| `offset_x` | 0 | 模型中心水平偏移，单位为文档 CSS 像素；正数向右 |
+| `offset_y` | 0 | 模型中心垂直偏移，单位为文档 CSS 像素；正数向下 |
+
+以上配置字段使用 lenientOptionalFieldOf，缺失或类型错误时采用默认值，非正数或非有限的 scale 同样回退为 1。节点没有额外文字投影，不影响纯文本导出或 TTS。区域尺寸仍由 CSS 的 player_preview 样式控制，缩放和偏移只调整框内模型，超出区域的部分继续裁剪。
+
+跟随在客户端绘制时读取实时光标，先通过 AUI 的文档视口与 CSS transform 逆变换转换坐标，再与偏移后的模型中心比较，适配 GUI 缩放、滚动和容器变换。游戏锁定鼠标时使用 yaw / pitch，不强制释放光标，不拦截按键或点击。固定朝向模式保持头部与身体的水平朝向一致，跟随模式则保留原版预览的头部偏转。
+
+`PlayerQueryTool` 在服务端读取当前宿主 UUID 和数值，`PlayerSnapshotOutput` 的 Codec 携带 playerId，buildCard 写入 player_id；公共数据不持有 Entity、皮肤或客户端类。客户端 `PlayerModelElement` 每次按 UUID 解析当前世界玩家，复用原版 InventoryScreen / GuiEntityRenderer 的独立渲染状态与实体提交链路，沿用 MC 皮肤、装备和模型层。数值属于服务端查询时的快照，模型使用当前客户端状态；不按名字找人、不把离线卡片替换成本机玩家，也不自行请求皮肤接口。
+
+模型在 AUI 当前输出目标、变换与裁剪中绘制，深度使用其物品保留区间，避免 CSS 尺寸改变后覆盖其他文档；不调用会切换投影 / 输出目标的整套 GuiRenderer。只调整临时 render state，移除姓名、阴影、火焰和轮廓，不修改真实实体的朝向或姿态。节点不保留实体引用或单独 GPU 资源，玩家暂不在客户端世界中时显示本地化占位，重新可用后恢复。
 
 ### 任务与奖励类型图标
 
@@ -248,7 +329,7 @@ CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并等待回�
 
 | 模板 | 参数 |
 | --- | --- |
-| player | name/health/max_health/experience_level/dimension/language，online_players.<下标>.player_name |
+| player | player_id（UUID）、name/health/max_health/experience_level/dimension/language，online_players.<下标>.player_name |
 | items | items.<下标>.item_name/item_id/max_stack，result_items |
 | sign_in_status | date/signed_in/history_saved/external_model，candidates.<下标>.reward_label/reward_items/result_items |
 | reward/entitlement/purchase | reward_label/reward_items/result_items；回执另有 entitlement_id/state，购买另有 order_id |

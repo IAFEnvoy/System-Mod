@@ -4,13 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 
@@ -94,7 +88,7 @@ public final class ToolRegistry {
         Set<Identifier> exporting = this.owners.get(type.id());
         Tool<?, ?> tool = exporting == null ? this.variants.getOrDefault(owner, Map.of()).get(type.id())
                 : exporting.stream().filter(available).map(id -> this.variants.get(id).get(type.id()))
-                        .filter(Objects::nonNull).findFirst().orElse(null);
+                .filter(Objects::nonNull).findFirst().orElse(null);
         if (tool == null && exporting == null) tool = this.tools.get(type.id());
         if (tool == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
         if (tool.type() != type) throw new AgentException("NOT_AUTHORIZED");

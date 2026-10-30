@@ -78,7 +78,8 @@ public final class AssistantMessages {
         }
     }
 
-    private record Message(String text, String speechText, List<Button> buttons, UUID cardId, AgentResult result, CardPageState pages) {
+    private record Message(String text, String speechText, List<Button> buttons, UUID cardId, AgentResult result,
+                           CardPageState pages) {
         private Message {
             buttons = List.copyOf(buttons);
         }

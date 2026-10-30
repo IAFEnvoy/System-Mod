@@ -8,6 +8,7 @@ import com.iafenvoy.system.screen.gui.AssistantView;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
@@ -90,7 +91,7 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
     @Override
     public synchronized ClientModuleBindingsCache get() {
         if (this.building) throw new IllegalStateException("Client module registration is still in progress");
-        var connection = Minecraft.getInstance().getConnection();
+        ClientPacketListener connection = Minecraft.getInstance().getConnection();
         // A tag packet may arrive before the local player; keep its snapshot until a connection is available.
         if (connection != null) {
             if (this.registries != connection.registryAccess()) this.rebuild(connection.registryAccess());
@@ -120,20 +121,16 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
 
     public void bindWorkspace(AssistantScreen screen, Document document) {
         Element navigation = document.getElementById("sidebar_navigation");
+        Element topbar = document.getElementById("topbar_navigation");
         navigation.setInnerHTML("");
-        for (WorkspaceGroup category : WorkspaceGroup.values()) {
-            Element group = AssistantView.element(document, "div", "navigation_group", "");
-            group.setAttribute("id", "nav_group_" + category.id());
-            group.appendChild(AssistantView.element(document, "div", "section_code", AssistantView.tr(category.label())));
-            for (Workspace entry : this.workspace) {
-                if (entry.group() != category || entry.navigation().isBlank()) continue;
-                Element button = AssistantView.element(document, "button", "nav", AssistantView.tr(entry.label()));
-                button.setAttribute("id", entry.navigation());
-                group.appendChild(button);
-            }
-            navigation.appendChild(group);
+        topbar.setInnerHTML("");
+        for (Workspace entry : this.workspace) {
+            if (entry.navigation().isBlank()) continue;
+            Element button = AssistantView.element(document, "button", "nav", AssistantView.tr(entry.label()));
+            button.setAttribute("id", entry.navigation());
+            (entry.group() == WorkspaceGroup.SETTINGS ? topbar : navigation).appendChild(button);
         }
-        this.workspace.forEach(entry -> entry.bind().accept(new WorkspaceContext(screen, document, entry::available)));
+        this.workspace.forEach(entry -> entry.bind().accept(new WorkspaceContext(screen, document, entry)));
     }
 
     public List<Workspace> workspace() {

@@ -1,6 +1,7 @@
 package com.iafenvoy.system.card;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.StringRepresentable;
 import org.jspecify.annotations.NonNull;
@@ -13,11 +14,17 @@ import java.util.UUID;
  * Updates always replace full snapshots; removal leaves a version tombstone on the client.
  */
 public record CardUpdate(CardRef ref, Mode mode, Optional<CardData> data) {
-    public static final Codec<CardUpdate> CODEC = RecordCodecBuilder.create(i -> i.group(
-            CardRef.CODEC.fieldOf("ref").forGetter(CardUpdate::ref),
-            Mode.CODEC.fieldOf("mode").forGetter(CardUpdate::mode),
-            CardData.CODEC.optionalFieldOf("data").forGetter(CardUpdate::data)
-    ).apply(i, CardUpdate::new));
+    public static final Codec<CardUpdate> CODEC = Mode.CODEC.dispatch("mode", CardUpdate::mode, CardUpdate::codec);
+
+    private static MapCodec<CardUpdate> codec(Mode mode) {
+        if (mode == Mode.REMOVE)
+            return CardRef.CODEC.fieldOf("ref").xmap(ref -> new CardUpdate(ref, mode, Optional.empty()), CardUpdate::ref);
+        // Required payloads fail through DataResult rather than constructing an invalid partial update.
+        return RecordCodecBuilder.mapCodec(i -> i.group(
+                CardRef.CODEC.fieldOf("ref").forGetter(CardUpdate::ref),
+                CardData.CODEC.fieldOf("data").forGetter(update -> update.data().orElseThrow())
+        ).apply(i, (ref, data) -> new CardUpdate(ref, mode, Optional.of(data))));
+    }
 
     public CardUpdate {
         if ((mode == Mode.REMOVE) == data.isPresent())

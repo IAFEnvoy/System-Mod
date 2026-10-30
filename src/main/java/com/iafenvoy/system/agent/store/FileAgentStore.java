@@ -3,6 +3,7 @@ package com.iafenvoy.system.agent.store;
 import com.google.gson.JsonParser;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.JsonOps;
 
@@ -74,8 +75,23 @@ public final class FileAgentStore implements AgentStore {
         try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
             data = PlayerData.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseReader(reader))
                     .getOrThrow(message -> new IOException("Invalid structured file: " + path.getFileName() + ": " + message));
+        } catch (RuntimeException error) {
+            // A malformed JSON value or a throwing business Codec is a storage failure, never an empty player.
+            throw new IOException("Unable to decode agent store: " + path.getFileName(), error);
         }
         if (data.version != 1) throw new IOException("Invalid agent store version");
+        int historySize = data.conversation.history.size();
+        data.conversation.history.removeIf(message -> {
+            if (!message.role().equals("assistant")) return false;
+            try {
+                CodecIO.parse(AgentResult.CODEC, message.text());
+                return false;
+            } catch (RuntimeException ignored) {
+                return true;
+            }
+        });
+        if (data.conversation.history.size() != historySize)
+            SystemMod.LOGGER.warn("Discarded {} invalid assistant history entries from {}", historySize - data.conversation.history.size(), path);
         prune(data.conversation);
         return data;
     }
@@ -183,6 +199,9 @@ public final class FileAgentStore implements AgentStore {
                 file.force(true);
             }
             Files.move(temp, this.root.resolve(player + ".json"), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (RuntimeException error) {
+            if (error instanceof AgentException known) throw known;
+            throw new IOException("Unable to encode agent store: " + player, error);
         } finally {
             try {
                 Files.deleteIfExists(temp);

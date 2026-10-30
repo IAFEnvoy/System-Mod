@@ -13,7 +13,6 @@ import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.module.builtin.QuestSystemModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import com.iafenvoy.system.util.LegacyText;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressEventData;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressType;
 import dev.ftb.mods.ftbquests.api.event.progress.QuestProgressEvent;
@@ -28,6 +27,7 @@ import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
+
 import java.util.*;
 import java.util.concurrent.CompletionStage;
 

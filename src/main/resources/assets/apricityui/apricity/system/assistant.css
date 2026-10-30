@@ -238,26 +238,23 @@ p {
     overflow-y: auto;
 }
 
-.section_code {
-    color: var(--assistant-accent-hover);
-    font-size: 11px;
-    letter-spacing: 1px;
-    margin: 5px 8px 10px;
-}
-
-#sidebar_navigation, .navigation_group {
+#sidebar_navigation {
     display: flex;
     flex-direction: column;
 }
 
-.navigation_group:not(:first-child) {
-    margin-top: 22px;
+#topbar_navigation {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
 }
 
-.section_code::before {
-    content: ">>";
-    margin-right: 7px;
-    color: var(--assistant-accent);
+#topbar_navigation .nav {
+    margin: 0;
+    border-color: var(--assistant-line);
+    text-align: center;
+    white-space: nowrap;
 }
 
 .nav {
@@ -323,14 +320,8 @@ p {
     display: none;
     flex: 0 0 auto;
     gap: 10px;
-    padding: 18px 0 14px;
-    border-bottom: 1px solid var(--assistant-line-soft);
-}
-
-#page_chat {
-    height: 0;
-    padding: 0;
-    border: 0;
+    padding: 14px 0;
+    border-top: 1px solid var(--assistant-line-soft);
 }
 
 #item_query {
@@ -385,7 +376,8 @@ p {
 }
 
 #conversation {
-    display: block;
+    display: flex;
+    flex-direction: column;
     flex: 1;
     min-height: 0;
     overflow-y: auto;
@@ -393,7 +385,14 @@ p {
     padding: 18px 4px 14px;
 }
 
-/* Let long cards size the transcript in normal flow instead of nested flex measurement. */
+/* Auto margin anchors short transcripts; overflowing cards retain their full normal-flow height. */
+#conversation_entries {
+    display: block;
+    flex: 0 0 auto;
+    min-width: 0;
+    margin-top: auto;
+}
+
 .message {
     display: block;
     min-width: 0;
@@ -506,6 +505,46 @@ p {
 .card_row > * {
     flex: 1 1 140px;
     min-width: 0;
+}
+
+.player_card_layout {
+    align-items: stretch;
+    gap: 12px 16px;
+    margin-top: 10px;
+}
+
+.player_preview {
+    width: 160px;
+    height: 240px;
+    padding: 8px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+    overflow: hidden;
+}
+
+.player_card_layout > .player_preview {
+    flex: 1 1 140px;
+    max-width: 200px;
+}
+
+.player_card_layout > .player_info {
+    flex: 2 1 240px;
+    padding: 10px 14px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: rgba(11, 54, 69, 0.16);
+}
+
+.player_info > .card_body {
+    margin: 0;
+}
+
+.player_preview_empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    white-space: normal;
 }
 
 .card_context {
@@ -1773,6 +1812,16 @@ button.assistant_switch:disabled {
 
     #topbar {
         padding: 10px 16px;
+        gap: 8px;
+    }
+
+    #topbar_navigation {
+        gap: 6px;
+    }
+
+    #topbar_navigation .nav {
+        padding: 8px;
+        font-size: 12px;
     }
 
     #privacy {

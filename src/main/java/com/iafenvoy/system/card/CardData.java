@@ -4,12 +4,13 @@ import com.iafenvoy.system.registry.SystemRegistries;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 
+import java.util.function.Function;
+
 /**
  * Server-built snapshots describe cards without loading any client or optional-mod classes.
  */
 public interface CardData {
-    Codec<CardData> CODEC = Codec.lazyInitialized(SystemRegistries.CARD_DATA_TYPE::byNameCodec)
-            .dispatch("type", CardData::codec, codec -> codec);
+    Codec<CardData> CODEC = Codec.lazyInitialized(SystemRegistries.CARD_DATA_TYPE::byNameCodec).dispatch("type", CardData::codec, Function.identity());
 
     MapCodec<? extends CardData> codec();
 

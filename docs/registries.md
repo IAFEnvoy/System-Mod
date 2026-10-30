@@ -84,7 +84,9 @@ Codec 在第一次编解码时才访问注册表，避免静态初始化时提�
 
 ### 卡片节点
 
-内置节点：`system:text`、`system:header`、`system:context`、`system:container`、`system:row`、`system:column`、`system:details`、`system:link`、`system:divider`、`system:items`、`system:icons`、`system:actions`、`system:button`。
+内置节点：`system:text`、`system:header`、`system:context`、`system:container`、`system:row`、`system:column`、`system:details`、`system:link`、`system:divider`、`system:items`、`system:player`、`system:icons`、`system:actions`、`system:button`。
+
+`player` 通过 `SystemCardNodeTypes.PLAYER` 暴露，绑定参数表中的 UUID，客户端解析原版玩家模型；尺寸使用共享 CSS，follow_mouse 控制光标跟随，yaw / pitch 控制固定朝向，scale 和 offset_x / offset_y 调整框内缩放和位置。服务端 player 卡片数据仅增加 playerId，不加载 PlayerModelElement，也不新增业务动作或网络包。其数据类型 ID 与节点类型 ID 同为 system:player，分属两张注册表。
 
 `icons` 绑定服务端准备的 `QuestIconOutput` 列表，按类型 ID 在客户端读取 FTB 原生图标并显示 tooltip；仅在实际渲染且安装 FTB 时加载隔离适配器，不新增服务端图标注册表。
 

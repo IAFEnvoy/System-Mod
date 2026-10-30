@@ -1,10 +1,12 @@
 package com.iafenvoy.system.agent.store;
 
 import com.iafenvoy.saturn.data.storage.DataStorageHolder;
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ExecutionPolicy;
 import com.iafenvoy.system.agent.commerce.CommerceOrder;
+import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.JsonOps;
@@ -67,9 +69,11 @@ public final class PlayerData {
     public static final class Conversation {
         public static final MapCodec<Conversation> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 Codec.LONG.optionalFieldOf("memoryEpoch", 0L).forGetter(v -> v.memoryEpoch),
-                Message.CODEC.listOf().optionalFieldOf("history", List.of()).forGetter(v -> v.history),
-                // Discard an invalid display/replay cache without weakening authoritative operation journals.
-                Codec.unboundedMap(Codec.STRING, Codec.lazyInitialized(() -> AgentResult.CODEC)).lenientOptionalFieldOf("requests", Map.of()).forGetter(v -> v.requests),
+                Message.CODEC.listOf().lenientOptionalFieldOf("history", List.of()).forGetter(v -> v.history),
+                // Recover entries independently; operation journals and business data remain strict.
+                CodecIO.recoveringMap(Codec.STRING, Codec.lazyInitialized(() -> AgentResult.CODEC),
+                                count -> SystemMod.LOGGER.warn("Discarded {} invalid cached agent results", count))
+                        .lenientOptionalFieldOf("requests", Map.of()).forGetter(v -> v.requests),
                 Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("requestInputs", Map.of()).forGetter(v -> v.requestInputs)
         ).apply(i, Conversation::new));
         public long memoryEpoch;

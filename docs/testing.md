@@ -1,5 +1,33 @@
 # 编译与验收
 
+## 2026-10-30 完整聊天布局与滚动
+
+删除“对话”导航与侧栏分组标题，SETTINGS 类入口由 ClientModuleBindingsCache 放到右上角，模块工具栏移至聊天记录与输入框之间。WorkspaceContext 统一处理当前工具栏入口的重复点击，收起时跳过原打开回调，避免重复查询；即时查询和独立设置页面保持原动作。聊天内容放入普通文档流容器，通过 flex 自动上边距让短对话靠近输入框，长卡片不压缩。
+
+阅读 AUI 26.1 / 1.2.6 的 Flex、Box 与 ScrollModel 源码确认自动边距、滚动范围和 setter 行为。AssistantScreen 在所属 Document 上下文中先提交布局，再按 scrollHeight 减 innerSize.height 计算范围；内容或工具栏变化前记录当前与目标位置，变化后仅在原本接近底部时跟随新消息，否则保留并限制位置到有效范围。
+
+执行 `gradlew compileJava --console=plain` 编译通过，`git diff --check` 通过。未运行测试或启动 Minecraft；工具栏布局、重复点击、短卡片底部对齐及翻阅历史时的滚动仍需游戏内验收。
+
+## 2026-10-30 客户端卡片构建扩展事件
+
+新增 event.client.CardBuildEvent，使用当前 NeoForge bus 8.0.5 的 Event / NeoForge.EVENT_BUS API，提供 ref、原始 CardData 和可变 CardBuilder。将 ClientCards 的 SHOW、REPLACE 和无缓存回退构建收敛到同一个 build 方法，在内置 buildCard 后、不可变 CardView 构建前同步发布事件；历史恢复复用 SHOW 构建，REMOVE / 旧版本与缓存读取不发布。公共 CardBuilder / CardData 和网络 Codec 未改变；新增参数继续由 CardPresentation 统一处理 Component / CardText，然后供 JSON 使用。
+
+执行 `gradlew compileJava --console=plain` 成功。没有运行测试、启动 Minecraft、添加临时探针或调用外部 API。其他模组的实际监听顺序、追加参数后的 GUI / 通知 / 历史显示、资源包重载和专用服务端加载仍需运行验收。文档补充客户端监听及资源包占位符示例，以及事件与缓存的生命周期约定。
+
+## 2026-10-30 玩家模型节点展示参数
+
+核对 AUI 26.1 / 1.2.6 的 Document.getMouseDocumentPosition、Base.toLocalPoint、RenderNode 变换流程，以及 Minecraft 26.1.2 的 MouseHandler.isMouseGrabbed、InventoryScreen 和 LivingEntityRenderer 源码。PlayerNode 新增 follow_mouse、scale、offset_x / offset_y，保留 yaw / pitch 并用于关闭跟随或光标锁定后的固定朝向；固定模式下头部水平旋转与身体对齐。内置 player.json 显式开启跟随并列出所有可调参数，节点缺省仍为固定展示。字段采用 lenientOptionalFieldOf，scale 使用原版 POSITIVE_FLOAT。
+
+编译执行 `gradlew compileJava --console=plain` 成功；未启动 Minecraft、运行测试或请求外部 API。鼠标跟随、GUI 缩放 / 滚动 / CSS 变换、HUD 光标锁定后的回退、固定侧面 / 背面朝向，以及放大 / 偏移后的裁剪仍待游戏内验收。
+
+## 2026-10-30 卡片缓存容错与存储异常
+
+读取用户现有 `run-test-client/logs/latest.log`，确认登录时旧缓存的 `system:player` 卡片缺少新增的 `playerId`，RecordCodecBuilder 的部分结果触发 CardUpdate 构造异常，最终显示通用 MODULE_FAILED。只读核对了玩家文件的缓存类型与字段，没有删除或修改现有存档。
+
+CardUpdate 改为按 mode 分派：SHOW / REPLACE 的 data 必填，缺失时返回 Codec 错误。新增 CodecIO.recoveringMap，仅对 Conversation.requests 逐项捕获解析错误及构造异常，丢弃失败项、保留有效结果，编码不容错。加载时删除无法解析的助手历史卡片，历史结构错误可回退为空；用户消息及严格读取的绑定、业务账本、请求指纹保持原逻辑。FileAgentStore 对 JSON / Codec 运行时异常补充 IOException 包装和错误链，读写失败通过原有日志与 STORAGE_UNAVAILABLE 提示，不覆盖为新的空玩家文件。
+
+执行 `gradlew compileJava --console=plain` 编译通过。没有运行测试、启动 Minecraft、创建临时数据或调用模型 / 语音 API；旧缓存实际自动恢复、历史显示、异常文件的保留与业务防重复仍需运行验收。
+
 ## 2026-10-29 通知取消自动关闭与切换
 
 阅读 AssistantMessages 确认原实现以 160 个可见客户端 tick 倒计时，到期 dismiss 并显示下一条，与 TTS 是否结束无关。删除倒计时、消息时长及仅用于暂停计时的按钮字段，可见阶段持续保留通知。确认、关闭、业务按钮的原位替换、服务端 REPLACE/REMOVE 和断线清理继续使用原有流程；中英文提示移除自动收起与暂停计时的描述，相关使用、界面和语音文档同步。
@@ -664,3 +692,11 @@ AgentCommand、CommandRegistry 与客户端命令声明已接入 Brigadier；Cli
 实际执行 `gradlew compileJava testModClasses jar --console=plain` 成功；这里的 testModClasses 只编译开发源集，没有运行测试或游戏。静态 / JAR 检查通过：双语各 517 键且集合相同、23 份卡片 JSON 可解析，三个修改类均为 Java 25 字节码。产物 `build/libs/system-1.0-beta.1.jar` 为 1,548,823 字节，没有带入 1.21.1 的内嵌 Saturn、旧输入法 helper 或 IMBlocker Mixin。
 
 没有请求收费 API、创建存档 / 临时配置或执行运行时探针。尚未实际验收：通知翻页点击及返回页码、Java Sound / SVC 录音结束、设备延迟关闭、取消 / 超时后的迟到回调、识别填入与自动发送。完整范围及来源审计见 [跨版本同步记录](ftb-quests-porting.md#2026-10-30-本轮补充移植)。
+
+## 2026-10-30 宿主信息双栏卡片（26.1.2）
+
+核对实际 Minecraft 26.1.2 InventoryScreen、GuiEntityRenderer、EntityRenderDispatcher 的源码及 AUI 26.1 / 1.2.6 MinecraftElement、Mask、物品后端与深度区间。新增 system:player 节点和客户端 PlayerModelElement，服务端快照携带 UUID；player.json 用现有 row / column 组合模型和信息，在线列表折叠，统一 CSS 控制尺寸和窄屏换行。客户端每次按 UUID 解析玩家，不缓存实体，不修改真实实体，不新增依赖或服务端客户端类引用。
+
+实际执行 `gradlew compileJava testModClasses jar --console=plain` 成功。静态检查通过：中英文各 519 键且集合相同，23 份卡片 JSON 无重复键、节点均在 14 个注册类型内、translate 键存在；JAR 包含新增节点 / 元素和更新后的玩家模板，产物 `build/libs/system-1.0-beta.1.jar` 为 1,555,739 字节，`git diff --check` 通过。
+
+未运行测试、启动 Minecraft、创建临时世界或请求收费 API；本次只有编译、源码和资源检查。仍需游戏内确认完整 / 简约 / HUD 的缩放和裁剪、外观 / 装备层、模型与文字淡入淡出、窄屏换行、重生后重新解析玩家、模型不可用时的占位，以及缺少 FTB / SVC 的专用服务端加载。仅修改当前 master / 26.1.2，尚未移植到 1.21.1。

@@ -11,6 +11,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStackTemplate;
+
 import java.util.*;
 
 /**
@@ -52,7 +53,8 @@ final class FtbQuestPreviews {
             Json5Object data = data(player, reward);
             ItemAmount amount = new ItemAmount(item.getCount(), (long) item.getCount() + Json5Util.getInt(data, "random_bonus").orElse(0));
             // Inventory-conditional rewards stay separate; identical component patches are required for merging.
-            if (Json5Util.getBoolean(data, "only_one").orElse(false)) separate.add(new ItemPreviewOutput(template, amount.text()));
+            if (Json5Util.getBoolean(data, "only_one").orElse(false))
+                separate.add(new ItemPreviewOutput(template, amount.text()));
             else totals.merge(template, amount, ItemAmount::add);
         }
         List<ItemPreviewOutput> result = new ArrayList<>();

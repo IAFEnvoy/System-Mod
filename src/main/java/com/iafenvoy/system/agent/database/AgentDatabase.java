@@ -20,8 +20,7 @@ import java.util.*;
  * Encoded values stay private, so callers cannot mutate stored data without a successful write.
  */
 public final class AgentDatabase implements AutoCloseable {
-    private static final Codec<Map<Identifier, Map<String, Dynamic<?>>>> CODEC = Codec.unboundedMap(
-            Identifier.CODEC, Codec.unboundedMap(Codec.STRING, Codec.PASSTHROUGH));
+    private static final Codec<Map<Identifier, Map<String, Dynamic<?>>>> CODEC = Codec.unboundedMap(Identifier.CODEC, Codec.unboundedMap(Codec.STRING, Codec.PASSTHROUGH));
     private final Path file;
     private final Map<EntryKey, KnowledgeIndex> indexes = new HashMap<>();
     private Map<Identifier, Map<String, Dynamic<?>>> tables;

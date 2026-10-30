@@ -27,7 +27,7 @@ public record CardContext(Object2DoubleMap<String> states, Map<String, Object> p
     }
 
     public CardContext {
-        states = Object2DoubleMaps.unmodifiable(new Object2DoubleOpenHashMap<>(states));
+        states = Object2DoubleMaps.unmodifiable(states);
         parameters = Map.copyOf(parameters);
         callbacks = Map.copyOf(callbacks);
     }

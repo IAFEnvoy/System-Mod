@@ -4,7 +4,7 @@
 
 ## 工作流程与边界
 
-**服务端处理数据 → CardData 快照发客户端 → buildCard().build() → CardView → JSON 渲染 → 点击按钮 → 本地执行或发包到服务端。**
+**服务端处理数据 → CardData 快照发客户端 → buildCard() → 客户端 CardBuildEvent 补参数 → build() → CardView → JSON 渲染 → 点击按钮 → 本地执行或发包到服务端。**
 
 | 层 | 职责 | 主要入口 |
 | --- | --- | --- |
@@ -21,8 +21,10 @@ sequenceDiagram
     participant D as CardData
     participant V as JSON 与通知宿主
     S-->>C: CardUpdate + 业务快照
-    C->>D: buildCard().build()
-    D-->>C: CardView
+    C->>D: buildCard()
+    D-->>C: CardBuilder
+    C->>C: 发布 CardBuildEvent 补充参数
+    C->>C: builder.build() 冻结为 CardView
     C->>V: 模板、参数、按钮、播报
     V-->>C: 鼠标/数字/语音选择
     alt Local
@@ -38,7 +40,7 @@ sequenceDiagram
 
 [CardData](../src/main/java/com/iafenvoy/system/card/CardData.java) 提供 codec() 与 buildCard()。各实现通过 [SystemCardDataTypes](../src/main/java/com/iafenvoy/system/registry/SystemCardDataTypes.java) 注册 MapCodec，根 Codec 按 type 分派；不再提供独立 template/buildContext，也不登记渲染工厂或 ClientCardBindings。
 
-[CardBuilder](../src/main/java/com/iafenvoy/system/card/CardBuilder.java) 一处设置模板、summary、可选标题、平铺参数、按钮和 SpeechContent。build 复制为 [CardView](../src/main/java/com/iafenvoy/system/card/CardView.java)。CardContext 仍是 states、parameters、callbacks 三表，整张卡片一份；公共构建不接收 Runnable。客户端 CardPresentation 解析 Component/CardText，补模式、标签和版本受控 callback 后渲染。
+[CardBuilder](../src/main/java/com/iafenvoy/system/card/CardBuilder.java) 一处设置模板、summary、可选标题、平铺参数、按钮和 SpeechContent。客户端 ClientCards 在 build 前向 NeoForge.EVENT_BUS 发布 CardBuildEvent，让扩展按 CardData 类型向已有 Builder 补充参数；公共契约保持纯构建。build 复制为 [CardView](../src/main/java/com/iafenvoy/system/card/CardView.java)。CardContext 仍是 states、parameters、callbacks 三表，整张卡片一份；公共构建不接收 Runnable。客户端 CardPresentation 解析 Component/CardText，补模式、标签和版本受控 callback 后渲染。事件生命周期与监听实例见[构建事件](cards.md#构建事件给现有卡片补充参数)。
 
 普通消息沿用同一数据流：**仅一个纯文本节点、没有按钮、没有其他可见内容**时省去卡片外框；带按钮的文字仍是卡片。容器、物品、分割线、多节点等继续作为卡片。该约定由通用渲染入口判定。
 

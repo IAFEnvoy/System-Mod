@@ -19,7 +19,7 @@ public record PlayerQueryTool(MinecraftTools game) implements ToolRegistry.Handl
 
     @Override
     public CompletionStage<PlayerSnapshotOutput> execute(ExecutionContext context, EmptyInput input) {
-        return this.game.onPlayer(context, player -> new PlayerSnapshotOutput(player.getName().getString(), player.getHealth(), player.getMaxHealth(),
+        return this.game.onPlayer(context, player -> new PlayerSnapshotOutput(player.getUUID(), player.getName().getString(), player.getHealth(), player.getMaxHealth(),
                 player.experienceLevel, player.level().dimension().identifier().toString(),
                 player.level().getServer().getPlayerList().getPlayers().stream().limit(64).map(online -> online.getName().getString()).toList(),
                 player.clientInformation().language()));

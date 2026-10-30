@@ -1,7 +1,7 @@
 package com.iafenvoy.system.module.client;
 
 /**
- * The workspace owns category order; modules choose where their navigation entry belongs.
+ * Modules choose navigation placement; settings go in the header without category headings.
  */
 public enum WorkspaceGroup {
     CHAT("chat"), MODULES("modules"), SETTINGS("settings");

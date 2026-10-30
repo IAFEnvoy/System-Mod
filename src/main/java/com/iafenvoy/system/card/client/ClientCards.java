@@ -2,6 +2,8 @@ package com.iafenvoy.system.card.client;
 
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.card.*;
+import com.iafenvoy.system.event.client.CardBuildEvent;
+import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.*;
 
@@ -46,11 +48,11 @@ public final class ClientCards {
         }
         if (update.mode() == CardUpdate.Mode.SHOW || history) {
             CardData data = update.data().orElseThrow();
-            CARDS.put(update.ref().id(), new Entry(update.ref(), data, data.buildCard().build(), !history));
+            CARDS.put(update.ref().id(), new Entry(update.ref(), data, build(update.ref(), data), !history));
         } else {
             if (previous == null) return false;
             CardData data = update.data().orElse(previous.data);
-            CARDS.put(update.ref().id(), new Entry(update.ref(), data, update.data().isPresent() ? data.buildCard().build() : previous.view, previous.active));
+            CARDS.put(update.ref().id(), new Entry(update.ref(), data, update.data().isPresent() ? build(update.ref(), data) : previous.view, previous.active));
         }
         return true;
     }
@@ -67,7 +69,14 @@ public final class ClientCards {
 
     public static CardView view(CardUpdate update) {
         Entry entry = CARDS.get(update.ref().id());
-        return entry == null ? update.data().orElseThrow().buildCard().build() : entry.view;
+        return entry == null ? build(update.ref(), update.data().orElseThrow()) : entry.view;
+    }
+
+    private static CardView build(CardRef ref, CardData data) {
+        CardBuilder builder = data.buildCard();
+        // Shared data stays pure; client extensions run before the immutable context is captured.
+        NeoForge.EVENT_BUS.post(new CardBuildEvent(ref, data, builder));
+        return builder.build();
     }
 
     public static AgentResult latest(AgentResult result) {

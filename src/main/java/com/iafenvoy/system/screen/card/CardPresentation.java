@@ -34,8 +34,7 @@ public record CardPresentation(CardTemplate template, CardContext context) {
         CardUpdate update = ClientCards.latest(original);
         CardView view = ClientCards.view(update);
         CardContext.Builder builder = CardContext.builder();
-        view.context().parameters().forEach((key, value) -> builder.put(key,
-                value instanceof Component || value instanceof CardText ? FORMAT.value(value) : value));
+        view.context().parameters().forEach((key, value) -> builder.put(key, value instanceof Component || value instanceof CardText ? FORMAT.value(value) : value));
         view.context().states().forEach((key, value) -> {
             Object parameter = view.context().parameters().get(key);
             if (!(parameter instanceof Component) && !(parameter instanceof CardText)) builder.enable(key, value);

@@ -14,9 +14,9 @@ import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
 import com.iafenvoy.system.module.builtin.storage.CommerceDataStorage;
+import com.iafenvoy.system.util.ItemStackTemplate;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;

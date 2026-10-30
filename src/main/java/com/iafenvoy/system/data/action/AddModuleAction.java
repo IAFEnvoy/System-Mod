@@ -17,7 +17,7 @@ public record AddModuleAction(ResourceLocation module) implements EntityAction {
     }
 
     @Override
-    public void execute(EntityActionContext context) {
+    public void execute(@NotNull EntityActionContext context) {
         if (context.entity() instanceof ServerPlayer player) {
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
             if (runtime != null) runtime.moduleManager().add(player, this.module);

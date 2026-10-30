@@ -106,7 +106,7 @@ tag 来自动态模块配置注册表 `system:system_module`，成员为模块�
 | 成就工作流 | `system:advancement` |
 | FTB 任务（列表、详情、提交、领奖、新手礼包） | `system:ftb_quests` |
 
-内置默认系统的 modules 仅引用 ["#system:default"]，默认 tag 位于 src/main/resources/data/system/tags/system/system_module/default.json，包含必装功能。FTB 与联网搜索的模块配置和 tag 追加位于 src/test-mod/resources，不进入发布包。实现类型的 Codec 始终注册，依赖缺席的 FTB 模块由 available() 排除，不加载 FTB API；条件和手动覆盖无法启用不可用模块。
+内置默认系统的 modules 仅引用 ["#system:default"]，默认 tag 位于 src/main/resources/data/system/tags/system/system_module/default.json。联网搜索的示例模块配置位于 src/test-mod/resources，不进入发布包，也不再追加到默认 tag；需由管理员明确配置或添加。FTB 类型的 Codec 始终注册，依赖缺席时由 available() 排除，不加载 FTB API；条件和手动覆盖无法启用不可用模块。
 
 条件在玩家初始化完成后、交互请求前及每 20 个服务端 tick 在主线程重新求值。变化后同步玩家实际模块与指令列表，刷新完整侧栏，清理路由缓存与交易报价。帮助、补全、本地语义候选、模型能力目录和实际执行共用权限过滤；旧卡片的结构化动作以及已经排入游戏线程的工具也会重新检查权限。功能定义和工具仍在服务器启动时注册，开关不卸载 Java 类或重新注册工作流。
 
@@ -162,6 +162,7 @@ tag 来自动态模块配置注册表 `system:system_module`，成员为模块�
 | --- | --- | --- |
 | `data/system/system/prompts/routing.txt` | `system:routing` | `{{player_language}}`、`{{capabilities}}` |
 | `data/system/system/prompts/web_search.txt` | `system:web_search` | `{{player_language}}` |
+| `data/system/system/prompts/knowledge_answer.txt` | `system:knowledge_answer` | `{{player_language}}` |
 | `data/system/system/prompts/sign_in.txt` | `system:sign_in` | `{{player_language}}` |
 | `data/system/system/prompts/quest_narration.txt` | `system:quest_narration` | `{{player_language}}` |
 | `data/system/system/prompts/quest_background.txt` | `system:quest_background` | `{{player_language}}` |

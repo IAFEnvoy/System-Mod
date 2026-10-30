@@ -1,6 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
-import com.iafenvoy.system.agent.builtin.input.WebSearchInput;
+import com.iafenvoy.system.agent.builtin.input.QuestionInput;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
@@ -14,7 +14,7 @@ public final class SearchSystemClientModule implements ClientModule {
             workspace.click("nav_search", () -> workspace.show("search"));
             workspace.click("web_search", () -> {
                 String question = workspace.query("web_query");
-                if (!question.isBlank()) AssistantClient.send(new WebSearchInput(question), question);
+                if (!question.isBlank()) AssistantClient.send(QuestionInput.online(question), question);
             });
         });
     }

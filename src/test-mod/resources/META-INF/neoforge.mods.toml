@@ -14,7 +14,7 @@ Development-only test content for System.
 [[dependencies.system_test]]
 modId="neoforge"
 type="required"
-versionRange="[21.1.262,)"
+versionRange="[21.1.248,)"
 ordering="NONE"
 side="BOTH"
 

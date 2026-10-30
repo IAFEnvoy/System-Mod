@@ -41,8 +41,8 @@ final class FtbQuestQueryTool implements ToolRegistry.Handler<QuestQueryInput, L
                 case CLAIMABLE -> reader.claimable(player);
                 case SUBMITTABLE -> reader.submittable(player);
             };
-            List<Quest> matches = quests.stream().filter(quest -> FtbQuestReader.matches(quest, input.query())).toList();
-            return list(context, team, matches, this.access.lists);
+            List<Quest> matches = quests.stream().filter(quest -> FtbQuestReader.matches(player, quest, input.query())).toList();
+            return list(context, player, team, matches, this.access.lists);
         });
     }
 }

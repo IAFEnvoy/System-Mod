@@ -8,7 +8,6 @@ import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.TtsProviders;
 import com.iafenvoy.system.util.LegacyText;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.sounds.SoundEngine;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundSource;
 import net.neoforged.api.distmarker.Dist;

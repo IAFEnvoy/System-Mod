@@ -11,7 +11,6 @@ import com.iafenvoy.saturn.data.action.builtin.item.meta.IfElseAction;
 import com.iafenvoy.saturn.data.action.builtin.item.meta.SequenceItemAction;
 import com.iafenvoy.saturn.registry.SaturnRegistries;
 import com.mojang.serialization.MapCodec;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**

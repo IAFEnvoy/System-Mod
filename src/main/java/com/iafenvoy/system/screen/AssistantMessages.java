@@ -206,6 +206,8 @@ public final class AssistantMessages {
                 AssistantPages.prepare("system/assistant-message.html");
                 document = Document.create("system/assistant-message.html");
                 if (document == null) throw new IllegalStateException("Missing assistant message template");
+                // AUI draws HUD documents only while no screen is open; this keeps the notice over the chat screen.
+                document.setReloadPersistent(true);
             } catch (RuntimeException error) {
                 // A broken resource pack must not crash gameplay or retry the same notice every tick.
                 SystemMod.LOGGER.warn("Unable to create assistant HUD notification", error);

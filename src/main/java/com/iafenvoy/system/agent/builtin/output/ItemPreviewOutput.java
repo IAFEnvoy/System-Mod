@@ -1,8 +1,8 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.util.ItemStackTemplate;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import com.iafenvoy.system.util.ItemStackTemplate;
 
 /**
  * Display quantities may be ranges or exceed one stack; the template retains the item components.

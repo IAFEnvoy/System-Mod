@@ -24,6 +24,8 @@ public CardBuilder buildCard() {
 
 `ClientCards` 保存连接内按 ID 的最新数据、版本和活动状态。`CardPresentation.of(update, messageKey, mode, actionOffset)` 取最新快照，解析 Component 和 CardText，补充显示模式、按钮标签及受控 callback，然后读取 `assets/<namespace>/cards/<path>.json`。缺少模板时回退到 summary 和已有按钮，不展示 DTO 的原始 JSON。
 
+知识问答使用 `KnowledgeAnswerOutput` / `system:knowledge_answer`，正文显示回答、本地来源默认折叠，包含标题、分类和命中段落；只播报回答或原文提示，不提供网页链接或任务操作。联网回退继续使用独立的 WebSearchOutput / web_search 模板；两种卡片都只展示服务端准备的结果。
+
 ## 普通消息约定
 
 仅当模板正文恰好是一个 `system:text` 节点、没有 repeat、没有任何 CardButton、没有额外可见标题或独立摘要内容时，渲染成普通 `message_text`，不生成卡片外框。文字可以换行或带格式；无需单独登记普通文本渲染器。
@@ -104,10 +106,33 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 | `link` | `card_link` | 调用 Minecraft 原版打开 URL 的流程 |
 | `divider` | `card_divider` | 分割线 |
 | `items` | `item_groups` | 原版物品图标、数量及 tooltip |
+| `icons` | `quest_icon_group` | FTB 任务 / 奖励的原生类型图标、数量 / 进度及文字 tooltip |
 | `actions` | `card_actions` | 已有可信动作列表 |
 | `button` | `card_action` | 通过 callback ID 绑定 Java 操作 |
 
 `text/header/context` 共享 `text/translate/args/inline`：优先使用 translate，先替换 args 中占位符再翻译，inline 默认 false。容器的 children 必填，text_separator 可选，仅影响纯文本连接。
+
+### 任务与奖励类型图标
+
+```json
+{
+  "type": "system:icons",
+  "icons": "{{reward_icons}}",
+  "label": "{{field:reward}}"
+}
+```
+
+`icons` 绑定 `List<QuestIconOutput>`，label 可选，均支持平铺占位符及循环。每项包含 task / reward 分类、FTB 原生类型 ID、本地化标题、数量或进度、tooltip 的 Component 列表；不序列化 FTB Icon，不发送客户端对象或脚本。原生物品目标 / 奖励继续使用 `items` 节点和原版物品 tooltip，非物品类型使用截图中 FTB 创建菜单的类型图标；不按目标实体或配置图标替换类型图标。
+
+`IconsNode` 在首次实际渲染时检查 FTB 安装情况，反射加载隔离的 `compat.ftb.client.FtbQuestIconElement`；通过 TaskTypes / RewardTypes 的类型表与 getIconSupplier 复用 FTB 原始 Icon.draw，包括贴图、atlas、组合、动画及第三方已注册类型，不复制资源或手写 ID 到贴图的映射。缺少依赖 / 未知类型时显示文字。专服不会执行图标解析或加载这个客户端适配器。
+
+图标元素在 AUI BODY 阶段绘制，沿用当前 pose、滚动裁剪、变换及 opacity 合成；与现有物品 tooltip 共用屏幕绘制后的检测入口，通过原版 GuiGraphics 显示标题、类型、具体要求 / 奖励、进度 / 领取状态。HUD 需先按聊天键进入交互状态。完整模式、简约模式、任务通知、自选奖励和新手礼包共用这些数据和模板，TTS 继续使用独立 SpeechContent；纯文本导出保留具体内容。
+
+礼包、任务详情和任务通知使用 `reward_section` 外层统一显示一次“奖励”标题，内层 `reward_grid` / `reward_entry` 将物品与非物品图标横向排列，宽度不足时换行。子节点不再设置重复的奖励 label，物品使用 compact 并隐藏分组标签；自选项保留各自编号和名称。礼包整体的 `items` / `icons` 由服务端汇总，模板绑定顶层 `result_items` / `reward_icons`：经验值、经验等级各自相加，同物品且组件相同的数量 / 随机区间相加，原生 `only_one` 条件物品保留独立。`gifts` 仅保留任务 ID、领取引用和错误；失败文字在汇总预览下方逐项显示。礼包与 `QuestNotice` 的 `has_rewards` 均由物品及类型图标是否为空决定，无奖励时不显示空标题。
+
+`QuestUnlockedOutput` 使用 `system:quest_unlocked` 卡片类型，复用 QuestList 的按 ID 查看按钮与 `system:quest_list` 模板。`unlock_notice` 状态隐藏主动查询的编号提示和行编号，仅显示任务名称、章节及进度；列表保留滚动与替换当前通知的查看动作。摘要与播报只提示本批新解锁任务数量，不为每个新任务生成一张通知或播报详情，详情在点开后继续使用现有任务卡片。
+
+`QuestGuideOutput` 使用 `system:quest_guide` 类型及同名模板，包含查询词和已授权的来源条目。每条提供标题、章节、匹配段落及原文；`has_more` 控制本地 details 展开，不发送任务提交或领奖动作。播报只提示命中数量，正文不自动发给模型。来源收录和权限边界见 [本地说明书检索](quest-guides.md)。
 
 ### 折叠区与超链接
 

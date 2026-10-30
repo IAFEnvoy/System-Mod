@@ -1,11 +1,11 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.util.ItemStackTemplate;
 import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
-import com.iafenvoy.system.util.ItemStackTemplate;
 
 /**
  * Built-in result data and its serialization codec.

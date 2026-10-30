@@ -13,7 +13,6 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.advancements.CriterionTriggerInstance;
 import net.minecraft.advancements.critereon.*;
 import net.minecraft.resources.ResourceLocation;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**

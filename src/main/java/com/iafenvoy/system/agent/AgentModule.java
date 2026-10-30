@@ -27,11 +27,15 @@ public interface AgentModule<I extends AgentAction> {
 
     // Descriptions guide routing; tools and entry flags constrain execution, and version guards event resume.
     record Descriptor(ResourceLocation id, int version, String description, JsonObject schema,
-                      Set<String> tools, boolean interactive, boolean event, ExecutionPolicy policy) {
+                      Set<String> tools, Set<String> optionalTools, boolean interactive, boolean event,
+                      ExecutionPolicy policy) {
         public Descriptor {
             Objects.requireNonNull(id);
             if (version < 1) throw new IllegalArgumentException("Invalid module version");
             tools = Set.copyOf(tools);
+            optionalTools = Set.copyOf(optionalTools);
+            if (tools.stream().anyMatch(optionalTools::contains))
+                throw new IllegalArgumentException("A tool cannot be both required and optional");
             schema = schema.deepCopy();
         }
     }

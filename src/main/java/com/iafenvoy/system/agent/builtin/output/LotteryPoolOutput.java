@@ -16,7 +16,8 @@ import java.util.Optional;
 /**
  * Public pool summaries include display samples; confirmed order contents remain server-owned.
  */
-public record LotteryPoolOutput(ResourceLocation id, String label, Optional<CommerceCatalog.Price> price, int prizeCount,
+public record LotteryPoolOutput(ResourceLocation id, String label, Optional<CommerceCatalog.Price> price,
+                                int prizeCount,
                                 boolean paymentAvailable, List<LotteryPrizeOutput> prizes, Optional<String> quoteRef,
                                 String catalogRevision) implements CardData {
     public static final MapCodec<LotteryPoolOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(

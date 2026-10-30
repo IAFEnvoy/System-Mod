@@ -3,10 +3,10 @@ package com.iafenvoy.system.screen.gui;
 import com.iafenvoy.system.screen.AssistantPages;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.screen.ApricityScreen;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.ConfirmLinkScreen;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.URISyntaxException;

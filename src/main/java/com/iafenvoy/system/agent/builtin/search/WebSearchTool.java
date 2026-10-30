@@ -24,7 +24,7 @@ public record WebSearchTool(
     @Override
     public CompletionStage<SearchProvider.Response> execute(ExecutionContext context, SearchProvider.Request input) {
         try {
-            context.requireExternalServices();
+            context.requireWebSearch();
             return CompletableFuture.completedFuture(this.gateway.search(context.player(), input, Duration.ofMillis(Math.min(15000, context.remainingMillis()))));
         } catch (SearchException error) {
             return CompletableFuture.failedFuture(new AgentException(error.code(), error));

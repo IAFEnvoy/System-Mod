@@ -8,7 +8,6 @@ import com.iafenvoy.saturn.data.action.builtin.block.*;
 import com.iafenvoy.saturn.data.action.builtin.block.meta.*;
 import com.iafenvoy.saturn.registry.SaturnRegistries;
 import com.mojang.serialization.MapCodec;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**

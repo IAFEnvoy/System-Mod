@@ -6,7 +6,7 @@ import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.output.*;
 import com.iafenvoy.system.assistant.MinecraftTools;
-import com.iafenvoy.system.util.LegacyText;
+import com.iafenvoy.system.util.ItemStackTemplate;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
@@ -18,7 +18,6 @@ import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
 import dev.ftb.mods.ftbquests.quest.task.ItemTask;
 import dev.ftb.mods.ftbquests.quest.task.Task;
 import net.minecraft.server.level.ServerPlayer;
-import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,14 +30,18 @@ final class FtbQuestAccess {
     final Map<String, RewardReference> references = new ConcurrentHashMap<>();
     final Map<UUID, QuestList> lists = new ConcurrentHashMap<>();
     final FtbStarterGifts gifts = new FtbStarterGifts();
+    final FtbQuestKnowledge knowledge;
 
     FtbQuestAccess(AgentEngine engine, MinecraftTools game) {
         this.game = game;
-        engine.onRevoke(player -> {
-            this.references.values().removeIf(reference -> reference.player.equals(player));
-            this.lists.remove(player);
-            this.gifts.clear(player);
-        });
+        this.knowledge = FtbQuestNotifications.knowledge(engine, game.server());
+        engine.onRevoke(this::clear);
+    }
+
+    void clear(UUID player) {
+        this.references.values().removeIf(reference -> reference.player.equals(player));
+        this.lists.remove(player);
+        this.gifts.clear(player);
     }
 
     static Quest selected(ExecutionContext context, ServerQuestFile file, TeamData team, String questId, int index, Map<UUID, QuestList> lists) {
@@ -67,11 +70,11 @@ final class FtbQuestAccess {
         return Optional.of(reference);
     }
 
-    static List<QuestBriefOutput> list(ExecutionContext context, TeamData team, List<Quest> matches, Map<UUID, QuestList> lists) {
+    static List<QuestBriefOutput> list(ExecutionContext context, ServerPlayer player, TeamData team, List<Quest> matches, Map<UUID, QuestList> lists) {
         List<Quest> selected = List.copyOf(matches);
         List<QuestBriefOutput> quests = new ArrayList<>();
         for (Quest quest : selected)
-            quests.add(brief(team, quest, quests.size() + 1));
+            quests.add(brief(player, team, quest, quests.size() + 1));
         long now = System.currentTimeMillis();
         lists.values().removeIf(value -> value.expires < now);
         if (!lists.containsKey(context.player()) && lists.size() >= 4096) throw new AgentException("BUSY");
@@ -80,9 +83,9 @@ final class FtbQuestAccess {
         return List.copyOf(quests);
     }
 
-    static QuestBriefOutput brief(TeamData team, Quest quest, int number) {
-        return new QuestBriefOutput(number, hex(quest.getId()), LegacyText.component(quest.getTitle()),
-                LegacyText.component(quest.getChapter().getTitle()), team.getRelativeProgress(quest));
+    static QuestBriefOutput brief(ServerPlayer player, TeamData team, Quest quest, int number) {
+        return new QuestBriefOutput(number, hex(quest.getId()), FtbQuestText.title(player, quest),
+                FtbQuestText.title(player, quest.getChapter()), team.getRelativeProgress(quest));
     }
 
     static QuestOutput detail(ServerPlayer player, TeamData team, Quest quest, QuestDetailInput input, Map<String, RewardReference> references) {
@@ -100,25 +103,24 @@ final class FtbQuestAccess {
             boolean hasMoreChoices = false;
             if (reward instanceof ChoiceReward choice && choice.getTable() != null) {
                 choices = Optional.of(choice.getTable().getWeightedRewards().stream().skip(choiceOffset).limit(8)
-                        .map(candidate -> new QuestChoiceOutput(LegacyText.component(candidate.getReward().getTitle()),
-                                previewItems(candidate.getReward()))).toList());
+                        .map(candidate -> new QuestChoiceOutput(FtbQuestText.title(player, candidate.getReward()),
+                                previewItems(candidate.getReward()), FtbQuestPreviews.reward(player, team, candidate.getReward(), reward))).toList());
                 hasMoreChoices = choice.getTable().getWeightedRewards().size() > choiceOffset + choices.get().size();
             }
             // Expanded details and completion notices share player/team/object-bound reward references.
             Optional<String> claimRef = claimable ? reference(player, team, quest, reward, references) : Optional.empty();
             if (claimable && claimRef.isEmpty()) claimable = false;
-            rewards.add(new QuestRewardOutput(hex(reward.getId()), LegacyText.component(reward.getTitle()), claimable,
+            rewards.add(new QuestRewardOutput(hex(reward.getId()), FtbQuestText.title(player, reward), claimable,
                     team.getClaimType(player.getUUID(), reward).name(), choices, choices.isPresent() ? choiceOffset : 0, hasMoreChoices, claimRef,
-                    previewItems(reward)));
+                    previewItems(reward), FtbQuestPreviews.reward(player, team, reward)));
         }
         List<QuestTaskOutput> tasks = quest.getTasksAsList().stream().skip(taskOffset).limit(12)
-                .map(task -> new QuestTaskOutput(LegacyText.component(task.getTitle()), team.getProgress(task), task.getMaxProgress(), previewItems(task))).toList();
-        String description = quest.getHideTextUntilComplete().get(quest.getChapter().isHideTextUntilComplete()) && !team.isCompleted(quest)
-                ? "" : String.join("\n", quest.getRawDescription());
+                .map(task -> task(player, team, task)).toList();
+        String description = FtbQuestText.description(player, team, quest);
         int start = Math.min(descriptionOffset, description.length());
         int end = start + Math.min(2048, description.length() - start);
-        return new QuestOutput(hex(quest.getId()), LegacyText.component(quest.getTitle()),
-                LegacyText.component(quest.getChapter().getTitle()), description.substring(start, end),
+        return new QuestOutput(hex(quest.getId()), FtbQuestText.title(player, quest),
+                FtbQuestText.title(player, quest.getChapter()), description.substring(start, end),
                 team.getRelativeProgress(quest), team.isCompleted(quest), FtbQuestReader.submissionAction(player, team, quest),
                 FtbQuestReader.kind(quest) == FtbQuestReader.Kind.STARTER_GIFT,
                 quest.getRewards().stream().anyMatch(reward -> FtbQuestReader.canClaim(player, team, reward)), tasks, rewards,
@@ -129,6 +131,11 @@ final class FtbQuestAccess {
     }
 
     record QuestList(UUID team, long incarnation, long epoch, List<Quest> quests, long expires) {
+    }
+
+    static QuestTaskOutput task(ServerPlayer player, TeamData team, Task task) {
+        return new QuestTaskOutput(FtbQuestText.title(player, task), team.getProgress(task), task.getMaxProgress(),
+                previewItems(task), FtbQuestPreviews.task(player, team, task));
     }
 
     static List<ItemPreviewOutput> previewItems(Reward reward) {

@@ -21,6 +21,7 @@ public final class SystemCardNodeTypes {
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<LinkNode>> LINK = REGISTRY.register("link", () -> LinkNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<DividerNode>> DIVIDER = REGISTRY.register("divider", () -> DividerNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<ItemsNode>> ITEMS = REGISTRY.register("items", () -> ItemsNode.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<IconsNode>> ICONS = REGISTRY.register("icons", () -> IconsNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<ActionsNode>> ACTIONS = REGISTRY.register("actions", () -> ActionsNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<ButtonNode>> BUTTON = REGISTRY.register("button", () -> ButtonNode.CODEC);
 }

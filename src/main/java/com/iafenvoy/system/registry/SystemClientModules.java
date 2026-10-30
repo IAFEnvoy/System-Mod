@@ -8,7 +8,9 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Client implementations are local objects; synchronized datapacks refer to them only by ID. */
+/**
+ * Client implementations are local objects; synchronized datapacks refer to them only by ID.
+ */
 @SuppressWarnings("unused")
 public final class SystemClientModules {
     private static final Map<ResourceLocation, ClientModule> TYPES = new LinkedHashMap<>();

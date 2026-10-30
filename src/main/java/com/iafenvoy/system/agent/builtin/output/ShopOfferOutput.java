@@ -5,12 +5,12 @@ import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.iafenvoy.system.card.CardText;
+import com.iafenvoy.system.util.ItemStackTemplate;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -18,7 +18,8 @@ import java.util.Map;
 /**
  * Complete server snapshot; card construction only reads these fields.
  */
-public record ShopOfferOutput(ResourceLocation id, String label, List<ItemStackTemplate> items, CommerceCatalog.Price price,
+public record ShopOfferOutput(ResourceLocation id, String label, List<ItemStackTemplate> items,
+                              CommerceCatalog.Price price,
                               boolean paymentAvailable, String catalogRevision) implements CardData {
     public static final MapCodec<ShopOfferOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             ResourceLocation.CODEC.fieldOf("id").forGetter(ShopOfferOutput::id),

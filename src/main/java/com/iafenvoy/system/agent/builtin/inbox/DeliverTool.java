@@ -11,9 +11,9 @@ import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
+import com.iafenvoy.system.util.ItemStackTemplate;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;

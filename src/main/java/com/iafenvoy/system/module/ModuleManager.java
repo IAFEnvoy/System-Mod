@@ -55,12 +55,14 @@ public final class ModuleManager implements AutoCloseable {
         // Configured definitions create fresh workflows before any per-server runtime is constructed.
         modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
             if (module instanceof WorkflowModule workflows)
-                for (AgentModule<?> workflow : workflows.workflows(contexts.get(id))) this.engine.registerModule(id, workflow);
+                for (AgentModule<?> workflow : workflows.workflows(contexts.get(id)))
+                    this.engine.registerModule(id, workflow);
         }));
         Set<ServerModule> initialized = Collections.newSetFromMap(new IdentityHashMap<>());
         modules.forEach((id, definition) -> {
             definition.server().filter(initialized::add).ifPresent(module -> module.installed(contexts.get(id)));
-            PlayerModule runtime = definition.server().map(module -> module.runtime(contexts.get(id))).orElseGet(() -> new PlayerModule() { });
+            PlayerModule runtime = definition.server().map(module -> module.runtime(contexts.get(id))).orElseGet(() -> new PlayerModule() {
+            });
             List<ModuleStorage<?>> storages = definition.server().map(ServerModule::storages).orElse(List.of());
             this.installed.put(id, new Installed(id, definition, runtime, storages));
         });
@@ -407,7 +409,8 @@ public final class ModuleManager implements AutoCloseable {
         }
     }
 
-    private record Installed(ResourceLocation id, SystemModule definition, PlayerModule runtime, List<ModuleStorage<?>> storages) {
+    private record Installed(ResourceLocation id, SystemModule definition, PlayerModule runtime,
+                             List<ModuleStorage<?>> storages) {
     }
 
     private static final class Activation {

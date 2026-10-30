@@ -11,15 +11,17 @@ import java.util.List;
 /**
  * Choice labels and previews keep the same order as the server's paged reward actions.
  */
-public record QuestChoiceOutput(Component title, List<ItemPreviewOutput> items) {
+public record QuestChoiceOutput(Component title, List<ItemPreviewOutput> items, List<QuestIconOutput> icons) {
     public static final Codec<QuestChoiceOutput> CODEC = RecordCodecBuilder.create(i -> i.group(
             ComponentSerialization.CODEC.fieldOf("title").forGetter(QuestChoiceOutput::title),
-            ItemPreviewOutput.CODEC.listOf().fieldOf("items").forGetter(QuestChoiceOutput::items)
+            ItemPreviewOutput.CODEC.listOf().fieldOf("items").forGetter(QuestChoiceOutput::items),
+            QuestIconOutput.CODEC.listOf().optionalFieldOf("icons", List.of()).forGetter(QuestChoiceOutput::icons)
     ).apply(i, QuestChoiceOutput::new));
 
     public QuestChoiceOutput {
         title = LegacyText.snapshot(title);
 
         items = List.copyOf(items);
+        icons = List.copyOf(icons);
     }
 }

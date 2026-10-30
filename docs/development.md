@@ -132,7 +132,7 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 - `InteractiveExecutor` 管理每玩家一个交互请求、取消代次、请求指纹与结果回放；入队、初始化和写回都检查取消代次。
 - `EventExecutor` 管理持久事件、规则授权、去重和恢复；恢复使用已保存策略、预算与工具回执。
 - `ConversationService` 负责历史读取、清空和偏好修改，不重复实现执行或队列逻辑。
-- `QuestNarration` 管理只读任务口播、短期同玩家并发约束、模型整理片段缓存及同批合并，不占用主聊天、不创建对话记录。`QuestBackgrounds` 按任务唯一 ID、语言和内容指纹持久化背景分类与文案（含无背景），存档根目录文件为 `system-quest-backgrounds.json`，不含玩家进度。FTB 的 `FtbQuestSpeech` 只提供主线程定义快照；卡片同步返回已有结构化段落，缓存未就绪时后台整理供后续卡片使用，不阻塞通知或重播当前消息；读取源复核当前权限，模型预算与客户端 session 边界见[语音合成](tts.md)。
+- `QuestNarration` 管理只读任务口播、短期同玩家并发约束、模型整理片段缓存及同批合并，不占用主聊天、不创建对话记录。`QuestBackgrounds` 按任务唯一 ID、语言和内容指纹持久化背景分类与文案（含无背景），使用共享数据库的 `system:quest_backgrounds` 表，不含玩家进度。FTB 的 `FtbQuestSpeech` 只提供主线程定义快照；卡片同步返回已有结构化段落，缓存未就绪时后台整理供后续卡片使用，不阻塞通知或重播当前消息；读取源复核当前权限，模型预算与客户端 session 边界见[语音合成](tts.md)。
 - `TaskExecutor` 统一有界调度、队列满错误、关闭和 Future 收尾；关闭后未执行的任务也得到 `CANCELLED`。
 - `HybridRouter` 只编排结构化调用 → 指令注册表 → 本地语义/缓存 → 一次模型回退。每个模块通过 `ModuleRouting<I>` 提供自己的指令、例句、参数提取和可选只读快捷入口。
 - `ExecutionContext` 是执行权限、预算、模型与工具调用的共同入口。Module 组合流程，Tool 每次只执行一个行为。
@@ -269,23 +269,25 @@ FTB 的安全模块定义始终注册，`QuestSystemModule.available()` 在内�
 
 `QuestDetailModule` 将名称输入先交给 `ftb.find`；无匹配或多匹配显示候选列表，单匹配再按 ID 读取详情。唯一匹配直接打开详情，不替换玩家原先看到的编号列表；ID/编号查询不存在或不可查看时返回业务错误，不切换结果类型。详情的 `starterGift` 标记由兼容层分类，Module 遇到礼包后调用共享的 `ftb.starter_gifts` 工具展示全部可领取礼包，不让详情 Tool 返回礼包对象。这些只读组合最多调用 3 次本地工具，不增加模型调用；礼包工具实例与独立礼包查询模块复用。
 
-查询包含已完成但仍可领奖励的任务。任务列表一次返回全部匹配简表并连续编号，查询与名称候选不再携带列表分页偏移；详情保留每页 4 个奖励、每个自选奖励 8 个选项；更多奖励和选项由独立按钮继续读取。领取引用为随机短期令牌，绑定玩家、队伍、任务/奖励对象、完成时间、自选表版本，2 分钟失效；重启、换队或变化后重新查询。读取回执不以模型文字认定成功，自选路径校验索引并采用 FTB 的先标记后调用奖励语义。第三方奖励的实际交付不作独立保证。
+查询包含已完成但仍可领奖励的任务。任务列表一次返回全部匹配简表并连续编号，查询与名称候选不再携带列表分页偏移；详情保留每页 4 个奖励、每个自选奖励 8 个选项；更多奖励和选项由独立按钮继续读取。领取引用为随机短期令牌，绑定玩家、队伍、任务/奖励对象、完成时间、自选表版本，2 分钟失效；重启、换队或变化后重新查询。读取回执不以模型文字认定成功。1.21.1 普通奖励使用原生 `TeamData.claimReward`，自选路径校验索引，按原生 `ClaimChoiceRewardMessage` 先调用候选奖励的 `tryClaim`，成功后才标记外层奖励；处理器拒绝时不提前标记已领取。第三方奖励的实际交付不作独立保证。
 
 任务列表在完整界面与通知中使用限高滚动区域，不再创建列表翻页动作。S2C 回复使用 trusted Codec 和 NeoForge 的大包拆分，不再受旧的 60000 字符回复拦截；C2S 仍使用受限解码。玩家文件容量不足时先按整轮淘汰对话及回放缓存，业务记录不参与淘汰。
 
-`FtbQuestAdapter.install` 同时安装 `FtbQuestNotifications` 的进程级监听器，仍只有检测到可选依赖后才加载；其服务端快照按 `MinecraftServer` 隔离，停止时移除。核对当前依赖源码后使用 NeoForge 原生 `FTBQuestsEvent.QuestProgress` 的 `COMPLETED`，并监听 task/quest/chapter/file 的 started/completed 变化。相同事件也会在客户端回显，必须以 `object.getQuestFile() instanceof ServerQuestFile` 过滤，不能重复发送。
+`FtbQuestAdapter.install` 同时安装 `FtbQuestNotifications` 的进程级监听器，仍只有检测到可选依赖后才加载；其服务端快照按 `MinecraftServer` 隔离，停止时移除。1.21.1 使用 Architectury 的 `ObjectCompletedEvent` / `ObjectStartedEvent` 监听任务进度，并以 `ClearFileCacheEvent` 重建基线。相同事件也会在客户端回显，必须以 `object.getQuestFile() instanceof ServerQuestFile` 过滤，不能重复发送。
 
-FTB 没有专门的解锁事件。按队伍保存可见且 `canStartTasks` 的任务 ID 集合，收到进度事件后标记 dirty，在服务器 tick 结束时合并比较；完成提示按事件顺序先发送，新增且未完成的任务按章节/任务顺序分别发送解锁提示。保留已完成但可推进的 ID 作为基线，避免普通重置直接冒充新解锁；每 20 tick 再扫描一次，以覆盖没有进度事件的锁定、重置与重复任务冷却变化。锁定切换、换队和任务文件 cache clear 重载只重建基线，不批量播报已有任务。只有新绑定成功会在 `AssistantPlayers` 标记一次待发送引导，绑定消息先发送，等登录基线就绪且队伍可用后由 FTB tick 消费该标记，依次发送可领取的新手礼包和普通任务概览（总数及前三项）；缺少内容时跳过。概览不生成列表编号，点击“查看任务”才重新执行完整列表查询。普通登录及重复授予不创建标记，登出、撤销或重置清除未发送标记，文件重载不重复引导；撤销后新绑定可再次触发。FTB 明确关闭通知的进度批次静默更新基线，隐藏章节与不可见任务不发送。
+FTB 没有专门的解锁事件。按队伍保存可见且 `canStartTasks` 的任务 ID 集合，收到进度事件后标记 dirty，在服务器 tick 结束时合并比较；完成提示按事件顺序先发送；新增且未完成的普通任务按章节/任务顺序合并成一条 QuestUnlockedOutput 列表通知，每位接收者每批至多一条，礼包仍先使用独立汇总。解锁列表复用 QuestList 的按任务 ID 查看按钮和 quest_list 模板，以 unlock_notice 隐藏编号及主动查询提示，不改最近查询缓存；摘要和播报仅提示数量，详情点击后按原入口查询。保留已完成但可推进的 ID 作为基线，避免普通重置直接冒充新解锁；每 20 tick 再扫描一次，以覆盖没有进度事件的锁定、重置与重复任务冷却变化。锁定切换、换队和任务文件 cache clear 重载只重建基线，不批量播报已有任务。只有新绑定成功会在 `AssistantPlayers` 标记一次待发送引导，绑定消息先发送，等登录基线就绪且队伍可用后由 FTB tick 消费该标记，依次发送可领取的新手礼包和普通任务概览（总数及前三项）；缺少内容时跳过。概览不生成列表编号，点击“查看任务”才重新执行完整列表查询。普通登录及重复授予不创建标记，登出、撤销或重置清除未发送标记，文件重载不重复引导；撤销后新绑定可再次触发。FTB 明确关闭通知的进度批次静默更新基线，隐藏章节与不可见任务不发送。
 
-`FtbQuestReader` 是独立的只读任务入口，按当前 `ServerQuestFile` 与 `TeamData` 创建并在服务端线程使用，不缓存进度。`stream(Predicate<Quest>)` 统一章节遍历、可见性和介绍任务过滤，其余类型可组合谓词扩展；查询、详情、播报、礼包和通知共用这里的读取判定。无任务或全部为原生 `CheckmarkTask` 且无奖励的任务视为介绍任务，系统不读取，也不修改其进度或绕过它作为前置时的依赖。至少有一个原生勾选任务、不可重复、所有奖励均为非空且非隐藏的原生 `ItemReward` 时，识别为新手礼包。使用精确类匹配，第三方任务/奖励子类、混合奖励及重复任务保留普通处理，不按任务名称猜测。
+`FtbQuestText` 统一按 `ServerPlayer.clientInformation().language()` 读取 FTB 翻译，使用原生缺译回退；不改动全局 file locale 或缓存。列表、名称搜索、详情、提交、通知和播报共用此入口，无标题任务回退到第一个目标的本地化标题。JSON Component 使用原版服务端安全的 lenient 解析器，§ / & 交给 LegacyText，背景整理输入去除格式码；隐藏描述仍按 FTB 完成条件处理。根因、实际整合包样例及待同步到 26.1.2 的清单见 [跨版本修复记录](ftb-quests-porting.md)。
 
-读取视图分别为 `active(player)`（可见、已解锁、可推进、未完成，排除队伍锁定和玩家暂停）、`unfinishedStarterGifts()`（所有可见但未完成的礼包，包含尚未解锁项）、`availableStarterGifts(player)`（现在可领取的礼包，包含已完成但尚未领取的礼包）、`claimable(player)`（有可领奖励的任务）、`manualSubmission(player)`（当前可执行且包含手动目标的任务）和 `submittable(player)`（存在未完成、受支持且顺序允许的直接提交目标）。`QuestQueryInput.view` 使用 ACTIVE / CLAIMABLE / SUBMITTABLE 枚举，分别连接三个公开查询视图，schema 和模型能力说明同步包含该选项；指令 `/submittable [query]` 和任务页按钮直接查询，不调用 AI。`find(name)` 按标题或十六进制 ID 精确优先匹配，完整列表快照与玩家编号仍由 `FtbQuestAccess` 管理。通知单独使用 `notificationBaseline()` 保留已完成且可推进的任务，避免重置被当作新解锁。
+`FtbQuestReader` 是独立的只读任务入口，按当前 `ServerQuestFile` 与 `TeamData` 创建并在服务端线程使用，不缓存进度。`stream(Predicate<Quest>)` 统一章节遍历、可见性和介绍任务过滤，其余类型可组合谓词扩展；查询、详情、播报、礼包和通知共用这里的读取判定。无任务或全部为原生 `CheckmarkTask` 且无奖励的任务视为介绍任务，系统不读取，也不修改其进度或绕过它作为前置时的依赖。至少有一个原生勾选目标且全部目标均为勾选、不可重复、至少一项非空原生物品奖励时，允许附带原生经验 / 等级奖励，所有奖励均须非隐藏，识别为新手礼包。使用精确类匹配，仅经验、混合目标、命令 / 自选 / 随机 / 第三方奖励及重复任务保留普通处理，不按任务名称猜测。
+
+读取视图分别为 `active(player)`（可见、已解锁、可推进、未完成，排除队伍锁定和玩家暂停）、`unfinishedStarterGifts()`（所有可见但未完成的礼包，包含尚未解锁项）、`availableStarterGifts(player)`（现在可领取的礼包，包含已完成但尚未领取的礼包）、`claimable(player)`（有可领奖励的任务）、`manualSubmission(player)`（当前可执行且包含手动目标的任务）和 `submittable(player)`（存在未完成、受支持且顺序允许的直接提交目标）。`QuestQueryInput.view` 使用 ACTIVE / CLAIMABLE / SUBMITTABLE 枚举，分别连接三个公开查询视图，schema 和模型能力说明同步包含该选项；指令 `/submittable [query]` 和任务页按钮直接查询，不调用 AI。`find(player, name)` 按玩家语言的标题或十六进制 ID 精确优先匹配，完整列表快照与玩家编号仍由 `FtbQuestAccess` 管理。通知单独使用 `notificationBaseline()` 保留已完成且可推进的任务，避免重置被当作新解锁。
 
 FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubmission(quest)` 对全部目标执行 `anyMatch`，任意一个原生手动目标就将整个任务归入手动提交，包括可选目标或已完成的手动目标。按实际配置区分消耗物品、仅任务界面物品、勾选、经验及仅启用按钮且不自动检查的自定义任务；未适配的资源目标保守交给 FTB 专用输入。类型判定不加载 `TaskClient`，也不把“没有 tick 自动检查”的击杀、观察等目标误当成手动任务。显式提交只遍历 `submittableTasks(quest)` 中支持直接调用的原生目标：消耗物品、勾选、经验和手动自定义按钮；仅任务界面、流体、能量与未知资源目标仍在 FTB 中操作，查询和通知不触发提交。
 
 `canComplete(player, team, quest)` 判断全部剩余目标均为原生 `CheckmarkTask`；`canSubmit` 检查可执行状态和至少一个支持直接调用的未完成、顺序允许目标。`submissionAction` 返回公共枚举 `QuestSubmission.NONE / CHECKMARK / SUBMIT`，详情和通知都保存该快照，枚举统一构建“完成此任务”或“提交任务”按钮。查询不模拟提交，不预扣资源，也不承诺材料足够或自定义检查成功；原生接口决定部分提交及实际进度。勾选动作携带 `QuestSubmitInput.checkmarkOnly=true`，真正执行时重查仅剩勾选目标，避免旧按钮提交新增加的资源目标；普通提交在循环中重新检查每个目标的完成和顺序条件。依赖、暂停、重复任务代次和完成通知合并仍沿用原链路。按钮不会自动执行，也不改变介绍任务与新手礼包分类。当前网络协议为 `1`，任务列表没有分页偏移，Tool 直接返回完整简表 List，Module 再包装为 `ResultTypes.QuestList` 卡片。
 
-新手礼包详情使用 `StarterGiftOutput.gifts` 汇总全部当前可领取的匹配任务；每组只同步内部任务 ID、奖励预览、领取引用与可选错误，界面和播报不显示任务名或章节。`StarterGiftQueryModule` 与只读 Tool 负责刷新完整列表，领取模块只接受可信按钮携带的 `StarterGiftInput.claimRefs`，不参与自由模型路由。领取引用绑定玩家、队伍、原任务/奖励对象及完成时间，2 分钟有效，撤销同步清理。显式批量领取先校验引用归属，再逐组核对解锁、暂停、可见和奖励阻止状态，在 `withPlayerContext` 内执行原生勾选提交，并通过 `TeamData.claimReward` 领取原奖励；不消耗物品或经验。成功项从列表移除，失败项保留错误与可用动作；回包仅静默更新状态和原礼包列表，不新建成功通知、对话记录或播报，全部领取后继续下一条通知。任务顺序、自动领取和队伍奖励语义沿用 FTB；不新建签到/收件箱权益，不重复推送礼包任务的普通完成消息。
+新手礼包详情使用 `StarterGiftOutput.gifts` 汇总全部当前可领取的匹配任务；每组只同步内部任务 ID、物品预览、经验 / 等级等非物品类型图标描述、领取引用与可选错误，界面和播报不显示任务名或章节。`StarterGiftQueryModule` 与只读 Tool 负责刷新完整列表，领取模块只接受可信按钮携带的 `StarterGiftInput.claimRefs`，不参与自由模型路由。领取引用绑定玩家、队伍、原任务/奖励对象及完成时间，2 分钟有效，撤销同步清理。显式批量领取先校验引用归属，再逐组核对解锁、暂停、可见和奖励阻止状态，在 `withPlayerContext` 内执行原生勾选提交，并通过 `TeamData.claimReward` 领取原奖励；不消耗物品或经验。成功项从列表移除，失败项保留错误与可用动作；回包仅静默更新状态和原礼包列表，不新建成功通知、对话记录或播报，全部领取后继续下一条通知。任务顺序、自动领取和队伍奖励语义沿用 FTB；不新建签到/收件箱权益，不重复推送礼包任务的普通完成消息。
 
 明确提交完成的普通任务与 FTB 原生完成事件合并到同一队伍、任务 ID 的当批完成项；提交回包仅结束请求，不再追加“已提交”或“进度更新”通知。未完成时才返回实际进度是否变化。`AgentResult.silent()` 统一标记这两类静默回包，客户端更新请求与礼包状态，历史不新增空白结果；写步骤与请求回放仍保留。新增礼包列表输入和丰富任务通知载荷后，未发布版本的网络协议统一为 `1`，客户端与服务端需同步更新。
 
@@ -293,9 +295,19 @@ FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubm
 
 完成通知在发送时按接收玩家的可领奖励生成操作，与详情共用 `FtbQuestAccess.reference`。仅一项普通奖励可直接复用 `quest_claim`，多项或自选奖励先走 `quest_detail` 供选择；没有可领奖励则只保留详情。事件到达本身不发奖，领取时仍校验引用期限、玩家/队伍和对象版本。可选模块安装时把共用的访问对象按服务器传给通知桥接，停服时清理。
 
+非物品目标和奖励共用 `FtbQuestPreviews`，仅同步 `QuestIconOutput` 的类型 ID、文字、数量 / 进度和提示行；任务详情 / 提交结果、通知、礼包和自选项使用同一 `system:icons` 节点。客户端从 FTB 类型表获取原生图标供应器，不在服务端调用 Icon API，适配器只在安装依赖且首次渲染时反射加载。原生 tooltip 在现有物品 tooltip pass 中显示，绘制沿用 AUI pose、clip 与透明度合成。参见[卡片图标](cards.md#任务与奖励类型图标)及[26.1.2 同步记录](ftb-quests-porting.md)。
+
 物品参数由 `CardData.buildCard()` 填入公共 `CardContext.Builder`，JSON 的 items 节点选择来源、分组标题和说明，再交给客户端 `AssistantItems` 共享绘制，卡片、当前回复和通知使用同一个 AUI `Item` 组件及共享 CSS。物品数据来自已解码的业务对象，不扫描 JSON 或模型文字；新类型在自己的 `buildCard()` 中扩展。`ItemPreviewOutput` 使用 `RecordCodecBuilder` 保存物品模板与数量文本，`QuestChoiceOutput` 保存候选名称与预览；只有隔离的 FTB 适配器访问 `ItemReward`，核心载荷及客户端不引用可选模组类。FTB 使用数量 1 的模板保留组件，再用 `getButtonText()` 展示真实配置数量/随机范围，不构造超出模板范围的物品，也不改动 FTB 原始栈。客户端在渲染阶段创建实际栈；原版 tooltip 接收该栈，保留物品 tooltip 组件和模组事件。详见[界面与本地化](ui-localization.md)。
 
 客户端 `AssistantRecognition.Session` 通过 `BooleanSupplier` 接收所属 UI 的有效性判断，供输入界面与 HUD 通知共用录音、网络与计量；最终回调同时核对原连接。`AssistantRecognitionKeys` 优先将按住说话交给当前可见通知，再交给主输入界面。通知将按钮本地化键与回调分离，用共用 `LexicalIndex` 缓存固定例句向量；未命中时进入主聊天路由。资源包定义、匹配门槛和生命周期见[语音识别](asr.md)与[轻量路由](semantic-routing.md)。
+
+## FTB 本地说明书索引
+
+`QuestGuideModule` 提供 `system:quest_guide` 动作、guide / 说明书 / 查说明 指令及一个只读 `ftb.guide` Tool。FtbQuestKnowledge 在服务端线程缓存勾选 / 无目标且不是礼包的各语言静态正文，FtbQuestGuideTool 每次只计算授权 ID 并在返回前复核原文。AgentDatabase 将原文保存在共享库的 `system:ftb_guides` 表，KnowledgeIndex 复用 LexicalIndex 构建内存稀疏 TF-IDF；权限不写入数据库。FTB 原生清缓存事件或 `/system ftb reload` 使快照失效，手动指令后台重建索引。
+
+AgentEngine 统一拥有 AgentDatabases：`<存档>/system-database/shared.json` 为共享库，`players/<UUID>.json` 为按需创建的独立库。两者使用相同的命名空间 DatabaseTable 和 Codec API，任务背景不再单独写文件。读写与索引构建在后台，查询排序使用不可变索引；revoke / reset 删除私有库，关闭服务端释放全部句柄。玩家事务与累计用量保持各自所有权，详细边界见 [分层本地数据库](databases.md)。
+
+返回前重新核对连接 / 执行上下文、任务文件、队伍、语言、可见性和当前正文；intro 只在知识视图读取，不改变进行中 / 礼包 / 完成行为。QuestGuideOutput 直接展示片段和原文，任务页与 guide 指令不调用 embedding / LLM。FtbQuestAdapter 通过 ModuleContext 导出同一个 ftb.guide Tool，供核心 QuestionModule 在授权后复用；普通知识问答可用模型整理片段，再查询一次以复核。两个入口都不自动提交任务。方法、限制和文件说明见 [本地说明书检索](quest-guides.md)。
 
 ## 当前语义增强与其余限制
 
@@ -309,12 +321,14 @@ FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubm
 
 本轮验证仅为编译、打包与静态检查；没有实际调用模型服务、启动客户端/服务端或验证游戏内布局/领奖。
 
-## 联网搜索实现入口
+## 知识问答与联网搜索实现入口
 
-- `module/builtin/SearchSystemModule`：功能装配、工作台入口；注册 ID system:web_search。
-- `agent/builtin/search`：模块自身的明确输入解析、类型化 ReAct 决策和两个独立 Tool；工作流 ID system:web_search。
+- `module/builtin/CoreSystemModule`：装配核心 `QuestionModule`；动作 ID system:question。
+- `agent/builtin/knowledge`：DatabaseQueryTool 聚合当前玩家 / 共享知识及授权说明书；QuestionModule 固定执行查库、命中整理、空结果授权判断，不让模型跳过查库。
+- `module/builtin/SearchSystemModule`：可选 ToolModule，仅导出两个工具；类型 ID system:web_search。相邻 SearchSystemClientModule 贡献搜索页，提交 QuestionInput.online。
+- `agent/builtin/search`：WebResearch 保留有界 ReAct 与 SearchStep dispatch；WebSearchTool / WebFetchTool 每次检查本次联网门禁。
 - `search`：SearchProvider、DeepSeekSearchClient 与统一玩家计量 SearchGateway；复用 HttpTransport。
 - `config/file/SearchConfig`、`SearchPricingConfig`：默认共享 SYSTEM_DEEPSEEK_API_KEY，分别管理连接与按千次价格。
 - `data/usage/SearchUsage`：不可变计数，合入现有世界 SavedData 与 StreamCodec 快照；客户端语音账本不上传。
 
-该工作流默认 6 次模型、5 次网络工具、90 秒，单次模型最多 20 秒，独立于快速模块。已有证据时预留最终整理；重复操作或可恢复的探索失败改为只输出 Answer。ModuleRouting.explicit 作为通用扩展钩子，搜索不放入语义直达；自然语言可由带 explicitOnly 标记的模型路由判断。详见[搜索配置与流程](search-api.md)。
+system:question 默认 6 次模型、9 次工具、20 步、90 秒，单次模型最多 20 秒，查库 / 内部 FTB 查询和网络步骤共用预算。Descriptor.optionalTools 声明可选只读依赖，未启用搜索模块不会禁用本地问答。数据库为空、当前 QuestionInput.allowWeb 明确允许且搜索工具已启用时才进入 WebResearch；有结果或查库失败均不搜索。问答语义样例仅作提示，不本地直达或缓存授权；网络已有证据时预留最终整理，不自动重试收费工具。详见[搜索配置与流程](search-api.md)。

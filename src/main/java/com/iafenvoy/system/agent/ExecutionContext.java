@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
@@ -51,6 +52,7 @@ public final class ExecutionContext {
     private ExecutionPolicy policy;
     private long expires;
     private int models, tools, steps, writes, tokens;
+    private boolean webSearchAuthorized;
 
     ExecutionContext(AgentEngine engine, UUID player, String taskId, String eventKey,
                      long started, long epoch, ExecutionPolicy initial, AgentStore store, long incarnation) {
@@ -86,6 +88,7 @@ public final class ExecutionContext {
         this.owner = owner;
         this.module = descriptor;
         this.policy = value;
+        this.webSearchAuthorized = false;
         // Routing time remains charged, but selecting a slow module may use its own deadline.
         this.expires = this.started + value.ttlMillis();
         if (this.models > value.modelCalls() || this.tokens > value.totalTokens())
@@ -161,6 +164,35 @@ public final class ExecutionContext {
 
     public boolean available(ResourceLocation workflow) {
         return this.engine.available(this.player, workflow);
+    }
+
+    /**
+     * Optional dependencies remain owned by their exporting modules and never disable local question answering.
+     */
+    public boolean toolAvailable(ToolRegistry.Type<?, ?> type) {
+        return this.module != null && (this.module.tools().contains(type.id()) || this.module.optionalTools().contains(type.id()))
+                && this.engine.toolAvailable(this.player, type.id());
+    }
+
+    public boolean externalServicesAllowed() {
+        this.ensureMemoryCurrent();
+        return this.store.read(this.player, data -> data.externalModel);
+    }
+
+    /**
+     * The trusted question workflow opens this gate only after an empty local result and current consent.
+     */
+    public void authorizeWebSearch() {
+        if (this.isEvent()) throw new AgentException("NOT_AUTHORIZED");
+        this.webSearchAuthorized = true;
+        this.requireWebSearch();
+    }
+
+    public void requireWebSearch() {
+        this.requireExternalServices();
+        if (!this.webSearchAuthorized) throw new AgentException("NOT_AUTHORIZED");
+        if (!this.toolAvailable(BuiltinTools.WEB_SEARCH) || !this.toolAvailable(BuiltinTools.WEB_FETCH))
+            throw new AgentException("CAPABILITY_UNAVAILABLE");
     }
 
     public long remainingMillis() {
@@ -283,8 +315,10 @@ public final class ExecutionContext {
         this.ensureMemoryCurrent();
         if (!stepId.matches("[a-zA-Z0-9_./-]+")) throw new AgentException("INVALID_INPUT");
         String id = type.id();
-        if (this.module == null || !this.module.tools().contains(id)) throw new AgentException("NOT_AUTHORIZED");
+        if (this.module == null || !this.module.tools().contains(id) && !this.module.optionalTools().contains(id))
+            throw new AgentException("NOT_AUTHORIZED");
         ToolRegistry.Tool<I, O> tool = this.engine.tool(this.player, type, this.owner);
+        if (this.module.optionalTools().contains(id) && tool.write()) throw new AgentException("NOT_AUTHORIZED");
         if (!this.engine.toolAvailable(this.player, id)) throw new AgentException("CAPABILITY_UNAVAILABLE");
         if ((this.routeSource == RouteSource.SEMANTIC || this.routeSource == RouteSource.ROUTE_CACHE) && tool.write())
             throw new AgentException("NOT_AUTHORIZED");
@@ -322,6 +356,10 @@ public final class ExecutionContext {
         try {
             O result = tool.handler().execute(this, input).toCompletableFuture()
                     .get(this.remainingMillis(), TimeUnit.MILLISECONDS);
+            if (!tool.write()) {
+                this.ensureMemoryCurrent();
+                if (!this.engine.toolAvailable(this.player, id)) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            }
             if (tool.write()) this.store().update(this.player, data -> {
                 PlayerData.Step receipt = ModuleData.get(data, CoreSystemModule.JOURNAL).operations.get(operationKey);
                 receipt.state = "DONE";

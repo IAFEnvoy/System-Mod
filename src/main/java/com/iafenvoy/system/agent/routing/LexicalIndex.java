@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Immutable sparse TF-IDF vectors shared by module routing and client notification commands.
+ * Immutable sparse TF-IDF vectors shared by routing, notification commands and local guide retrieval.
  */
 public final class LexicalIndex<T> {
     public record Example<T>(T value, String language, String text) {

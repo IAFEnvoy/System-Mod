@@ -19,7 +19,7 @@ public record HasSystemCondition(Optional<ResourceLocation> system) implements E
     }
 
     @Override
-    public boolean test(EntityConditionContext context) {
+    public boolean test(@NotNull EntityConditionContext context) {
         if (!(context.entity() instanceof ServerPlayer player)) return false;
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
         return runtime != null && runtime.moduleManager().hasSystem(player.getUUID())

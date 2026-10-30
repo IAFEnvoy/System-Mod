@@ -7,9 +7,9 @@ import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.core.HolderLookup.RegistryLookup;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.RegistryFixedCodec;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 
 import java.util.Collection;
@@ -46,7 +46,7 @@ public final class RegistryCodecs {
     public static <T> boolean matches(Collection<Either<Holder<T>, TagKey<T>>> values, Registry<T> registry, ResourceLocation candidate) {
         T held = registry.get(candidate);
         // The Holder overload is picked explicitly: T itself also matches the value-based overload.
-        return held != null && matches(values, (Holder<T>) registry.wrapAsHolder(held));
+        return held != null && matches(values, registry.wrapAsHolder(held));
     }
 
     /**

@@ -7,11 +7,11 @@ import com.iafenvoy.system.agent.builtin.output.ItemInfoOutput;
 import com.iafenvoy.system.agent.builtin.output.ItemPageOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.assistant.MinecraftTools;
+import com.iafenvoy.system.util.ItemStackTemplate;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.ArrayList;
 import java.util.List;

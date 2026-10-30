@@ -1,11 +1,10 @@
 package com.iafenvoy.saturn.util.codec;
 
-import com.iafenvoy.system.util.ExtraCodecsCompat;
 import com.iafenvoy.saturn.util.OptionalBoolean;
 import com.iafenvoy.saturn.util.OptionalFloat;
+import com.iafenvoy.system.util.ExtraCodecsCompat;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
-import net.minecraft.util.ExtraCodecs;
 
 import java.util.Optional;
 import java.util.OptionalDouble;

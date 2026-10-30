@@ -3,11 +3,16 @@ package com.iafenvoy.system.module.builtin;
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.builtin.core.HelpModule;
 import com.iafenvoy.system.agent.builtin.input.HelpInput;
+import com.iafenvoy.system.agent.builtin.knowledge.DatabaseQueryTool;
+import com.iafenvoy.system.agent.builtin.knowledge.QuestionModule;
 import com.iafenvoy.system.agent.response.OpenResponse;
 import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.assistant.AssistantServer;
-import com.iafenvoy.system.module.*;
+import com.iafenvoy.system.module.CoreModule;
+import com.iafenvoy.system.module.ModuleCommands;
+import com.iafenvoy.system.module.ModuleContext;
+import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.builtin.storage.AgentJournalDataStorage;
 import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
 import com.iafenvoy.system.util.CodecIO;
@@ -40,15 +45,15 @@ public final class CoreSystemModule implements CoreModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new HelpModule());
+        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.engine()).tool()));
     }
 
     @Override
     public void installed(ModuleContext context) {
         context.engine().modules().root(HelpInput.INSTANCE);
         context.engine().modules().reject(ResourceLocation.fromNamespaceAndPath("system", "semantic_reject"), RoutingProfile.hints(
-                List.of("不要替我签到", "签到奖励有哪些", "如果签到会怎么样", "查询配方如何合成", "帮我建造房子", "我想问一个游戏攻略"),
-                List.of("Do not sign me in", "Explain daily sign-in rewards", "What happens if I sign in?", "How do I craft this recipe?", "Build me a house", "Tell me a game strategy")));
+                List.of("不要替我签到", "签到奖励有哪些", "如果签到会怎么样", "帮我建造房子"),
+                List.of("Do not sign me in", "Explain daily sign-in rewards", "What happens if I sign in?", "Build me a house")));
     }
 
     @Override

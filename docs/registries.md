@@ -45,9 +45,9 @@
 
 ### 卡片数据与动作载荷
 
-卡片类型共 23 个：`text`、`selection`、`binding`、`shop_offer`、`shop_quote`、`player`、`items`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`claim`、`sign_in_status`、`shop_order`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`。状态与历史不再注册为卡片。
+卡片类型共 26 个：`text`、`selection`、`binding`、`shop_offer`、`shop_quote`、`player`、`items`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
 
-动作类型共 20 个：`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`web_search`。
+动作类型共 21 个：`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`。
 
 内置条目均以 `public static DeferredHolder` 暴露。卡片实现 `CardData`，动作实现 `AgentAction`，都直接创建和传递数据对象；各实现的 `codec()` 返回自己的已注册 MapCodec：
 
@@ -84,7 +84,9 @@ Codec 在第一次编解码时才访问注册表，避免静态初始化时提�
 
 ### 卡片节点
 
-内置节点：`system:text`、`system:header`、`system:context`、`system:container`、`system:row`、`system:column`、`system:details`、`system:link`、`system:divider`、`system:items`、`system:actions`、`system:button`。
+内置节点：`system:text`、`system:header`、`system:context`、`system:container`、`system:row`、`system:column`、`system:details`、`system:link`、`system:divider`、`system:items`、`system:icons`、`system:actions`、`system:button`。
+
+`icons` 绑定服务端准备的 `QuestIconOutput` 列表，按类型 ID 在客户端读取 FTB 原生图标并显示 tooltip；仅在实际渲染且安装 FTB 时加载隔离适配器，不新增服务端图标注册表。
 
 `details` 通过 summary、children 和默认 false 的 open 控制本地折叠；`link` 通过 text/url 调用原版打开链接流程。两者都是通用客户端节点，不增加业务 CardData 类型、服务端动作或协议载荷。
 
@@ -195,6 +197,6 @@ SystemRegistries.CARD_DATA_TYPE.forEach(entry -> { /* inspect registered types *
 
 ## 搜索模块入口
 
-服务端类型 Codec 为 SystemServerModules.SEARCH，客户端 Map 实现为 SystemClientModules.SEARCH；开发动态条目同时指定 server.type 和 client 为 system:web_search。动作 `SystemActionTypes.SEARCH_ACTION` 与卡片 `SystemCardDataTypes.WEB_SEARCH` 的 ID 均为 `system:web_search`，分别对应 WebSearchInput / WebSearchOutput；模板为 `assets/system/cards/web_search.json`。工具键 `BuiltinTools.WEB_SEARCH` / `WEB_FETCH` 对应 `web.search` / `web.fetch`，只执行一种操作。
+服务端类型 Codec 为 SystemServerModules.SEARCH，客户端 Map 实现为 SystemClientModules.SEARCH；开发动态条目同时指定 server.type 和 client 为 system:web_search，但不再追加到默认模块 tag。搜索类型仅导出工具，不注册独立 AgentAction。核心动作 `SystemActionTypes.QUESTION_ACTION` 的 ID 为 `system:question`，对应 QuestionInput；本地答复卡片为 `SystemCardDataTypes.KNOWLEDGE_ANSWER` / `system:knowledge_answer`，联网答复继续使用 `WEB_SEARCH` / `system:web_search`。模板分别为 `knowledge_answer.json` 与 `web_search.json`。工具键 DATABASE_QUERY / QUEST_GUIDE / WEB_SEARCH / WEB_FETCH 对应 `database.query` / `ftb.guide` / `web.search` / `web.fetch`。
 
-搜索内部 SearchStep 以本地 Map 存三个 MapCodec，按 `type=search|fetch|answer` dispatch；它是单个工作流的模型决策协议，不是 MC 注册表或全局 AgentAction。ModuleRouting.explicit 声明保守的当前消息解析器，ModuleRegistry 统一解析并校验；固定句式未命中时，由模型路由根据当前请求识别搜索意图。工作流通过 `explicitOnly()` 在目录中携带 `explicitOnly: true` 标记，要求模型非常确信才选择，不隐藏能力；不提供语义档案或意图缓存。`structuredOnly()` 独立保留模型目录与返回值解码的硬性排除。
+WebResearch 内部 SearchStep 以本地 Map 存三个 MapCodec，按 `type=search|fetch|answer` dispatch，不是 MC 注册表或全局 AgentAction。QuestionModule 的 ModuleRouting.explicit 解析当前明确联网句式；普通问题由模型路由选择 system:question，allowWeb 默认 false，只有非常确信当前授权外部查询时才为 true。问答语义样例仅作候选提示，不缓存授权；执行时固定先查库，本地为空且可选工具已启用时才开放联网门禁。`explicitOnly()` 与 `structuredOnly()` 仍保留为通用路由声明。

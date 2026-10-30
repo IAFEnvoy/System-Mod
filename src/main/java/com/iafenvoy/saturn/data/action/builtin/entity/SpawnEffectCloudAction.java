@@ -8,7 +8,6 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.AreaEffectCloud;
-import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.EntityType;
 import org.jetbrains.annotations.NotNull;
 

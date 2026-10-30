@@ -1,10 +1,8 @@
 package com.iafenvoy.saturn.runtime.resulting;
 
-import com.iafenvoy.saturn.util.DefinitionText;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.StringRepresentable;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
 

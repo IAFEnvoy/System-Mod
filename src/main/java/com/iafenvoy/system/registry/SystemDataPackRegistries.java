@@ -25,7 +25,7 @@ public final class SystemDataPackRegistries {
 
     public static Optional<SystemDefinition> get(RegistryAccess access, ResourceLocation id) {
         // 1.21.1 hands out a plain Registry here; an unknown id yields null rather than an empty Optional.
-        return access.registry(SystemResourceKeys.SYSTEM).map(registry -> registry.get(id)).filter(java.util.Objects::nonNull);
+        return access.registry(SystemResourceKeys.SYSTEM).map(registry -> registry.get(id));
     }
 
     public static List<ResourceLocation> ids(RegistryAccess access) {

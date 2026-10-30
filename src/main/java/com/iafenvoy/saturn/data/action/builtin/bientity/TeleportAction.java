@@ -51,7 +51,7 @@ public record TeleportAction(boolean teleportActor, boolean teleportTarget, bool
         }
 
         private void teleport(Entity entity, boolean rotate) {
-            entity.teleportTo(this.level, this.x, this.y, this.z, Set.<net.minecraft.world.entity.RelativeMovement>of(),
+            entity.teleportTo(this.level, this.x, this.y, this.z, Set.of(),
                     rotate ? this.yRot : entity.getYRot(), rotate ? this.xRot : entity.getXRot());
         }
     }

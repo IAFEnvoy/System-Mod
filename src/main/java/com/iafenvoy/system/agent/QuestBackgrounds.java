@@ -1,20 +1,19 @@
 package com.iafenvoy.system.agent;
 
-import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.agent.database.AgentDatabase;
+import com.iafenvoy.system.agent.database.DatabaseTable;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.config.file.ModelConfig;
-import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.resources.ResourceLocation;
 
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
-import java.util.*;
+import java.util.HexFormat;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -24,17 +23,13 @@ import java.util.concurrent.TimeUnit;
  * Only worker threads access disk, and callers must recheck native visibility before using an entry.
  */
 final class QuestBackgrounds {
-    private static final Codec<List<Entry>> CODEC = Entry.CODEC.listOf();
-    private final Map<String, Entry> cache = new HashMap<>();
+    private static final DatabaseTable<Entry> TABLE = new DatabaseTable<>(ResourceLocation.fromNamespaceAndPath("system", "quest_backgrounds"), Entry.CODEC);
+    private final AgentDatabase database;
     private final Map<String, CompletableFuture<String>> loading = new ConcurrentHashMap<>();
     private final Map<String, Long> retryAfter = new ConcurrentHashMap<>();
-    private Path file;
-    private boolean loaded;
 
-    synchronized void file(Path file) {
-        this.file = file;
-        this.loaded = false;
-        this.cache.clear();
+    QuestBackgrounds(AgentDatabase database) {
+        this.database = database;
     }
 
     private record Input(String title, String description) {
@@ -71,12 +66,9 @@ final class QuestBackgrounds {
         String fingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(
                 String.join("\0", "background-v1", title, description, instruction, model.baseUrl(), model.model()).getBytes(StandardCharsets.UTF_8)));
         String key = questId.toUpperCase(Locale.ROOT) + ":" + context.language();
-        synchronized (this) {
-            this.load();
-            Entry cached = this.cache.get(key);
-            if (cached != null && cached.fingerprint().equals(fingerprint))
-                return cached.narrative() ? cached.text() : "";
-        }
+        Entry cached = this.database.get(TABLE, key).orElse(null);
+        if (cached != null && cached.fingerprint().equals(fingerprint))
+            return cached.narrative() ? cached.text() : "";
         String flight = key + ":" + fingerprint;
         if (description.isBlank() || description.strip().equals(title.strip())
                 || description.strip().matches("https?://\\S+")) {
@@ -90,13 +82,11 @@ final class QuestBackgrounds {
         if (previous != null) return previous.get(context.remainingMillis(), TimeUnit.MILLISECONDS);
         try {
             // A previous owner may have populated the cache between our first read and registration.
-            synchronized (this) {
-                Entry cached = this.cache.get(key);
-                if (cached != null && cached.fingerprint().equals(fingerprint)) {
-                    String text = cached.narrative() ? cached.text() : "";
-                    future.complete(text);
-                    return text;
-                }
+            cached = this.database.get(TABLE, key).orElse(null);
+            if (cached != null && cached.fingerprint().equals(fingerprint)) {
+                String text = cached.narrative() ? cached.text() : "";
+                future.complete(text);
+                return text;
             }
             Background result = context.model(instruction, Input.CODEC, new Input(title, description), Background.CODEC);
             if (result.narrative() && result.text().isBlank() || !result.narrative() && !result.text().isBlank())
@@ -118,32 +108,7 @@ final class QuestBackgrounds {
         }
     }
 
-    private void load() {
-        if (this.loaded) return;
-        this.loaded = true;
-        if (this.file == null || !Files.exists(this.file)) return;
-        try {
-            for (Entry entry : CodecIO.parse(CODEC, Files.readString(this.file, StandardCharsets.UTF_8)))
-                this.cache.put(entry.key(), entry);
-        } catch (Exception error) {
-            SystemMod.LOGGER.warn("Unable to read quest background cache ({})", error.getClass().getSimpleName());
-        }
-    }
-
-    private synchronized void put(Entry entry) {
-        this.cache.put(entry.key(), entry);
-        if (this.file == null) return;
-        Path temporary = this.file.resolveSibling(this.file.getFileName() + ".tmp");
-        try {
-            Files.createDirectories(this.file.getParent());
-            Files.writeString(temporary, CodecIO.write(CODEC, List.copyOf(this.cache.values())), StandardCharsets.UTF_8);
-            try {
-                Files.move(temporary, this.file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException error) {
-                Files.move(temporary, this.file, StandardCopyOption.REPLACE_EXISTING);
-            }
-        } catch (Exception error) {
-            SystemMod.LOGGER.warn("Unable to save quest background cache ({})", error.getClass().getSimpleName());
-        }
+    private void put(Entry entry) {
+        this.database.put(TABLE, entry.key(), entry);
     }
 }

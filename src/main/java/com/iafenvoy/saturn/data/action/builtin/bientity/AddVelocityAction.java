@@ -12,7 +12,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3f;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.Locale;
 import java.util.function.BiFunction;

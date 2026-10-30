@@ -6,11 +6,14 @@ import com.iafenvoy.system.util.ActionArguments;
 import com.mojang.serialization.Codec;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.StringRepresentable;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Locale;
 import java.util.Optional;
 
-/** Server-selected actions shared by quest detail cards and notifications. */
+/**
+ * Server-selected actions shared by quest detail cards and notifications.
+ */
 public enum QuestSubmission implements StringRepresentable {
     NONE, CHECKMARK, SUBMIT;
 
@@ -24,7 +27,7 @@ public enum QuestSubmission implements StringRepresentable {
     }
 
     @Override
-    public String getSerializedName() {
+    public @NotNull String getSerializedName() {
         return this.name().toLowerCase(Locale.ROOT);
     }
 }

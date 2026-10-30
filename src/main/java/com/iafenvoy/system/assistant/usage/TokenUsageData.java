@@ -7,13 +7,14 @@ import com.iafenvoy.system.data.usage.TokenUsage;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.core.UUIDUtil;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.UUIDUtil;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.saveddata.SavedData;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -35,7 +36,7 @@ public final class TokenUsageData extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    public @NotNull CompoundTag save(@NotNull CompoundTag tag, HolderLookup.Provider registries) {
         // The codec produces an opaque Tag; SavedData hands back the CompoundTag it was given.
         Tag encoded = CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), this)
                 .getOrThrow(error -> new IllegalStateException("Failed to save token usage: " + error));

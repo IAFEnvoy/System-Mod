@@ -5,6 +5,7 @@ import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.agent.AgentAction;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.util.StringRepresentable;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Locale;
 
@@ -41,7 +42,7 @@ public record QuestQueryInput(String query, View view) implements AgentAction {
         }
 
         @Override
-        public String getSerializedName() {
+        public @NotNull String getSerializedName() {
             return this.name().toLowerCase(Locale.ROOT);
         }
     }

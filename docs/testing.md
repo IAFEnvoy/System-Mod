@@ -1,5 +1,75 @@
 # 编译与验收
 
+## 2026-10-30 分层本地数据库与 FTB 手动重新收录
+
+新增通用 AgentDatabases / AgentDatabase / DatabaseTable / KnowledgeIndex，统一存档共享库与玩家独立库的 Codec 读写，FTB 原文和背景分类进入同一 shared.json 的独立表。私有库按 UUID 懒加载，revoke / reset 删除，关闭服务端后旧句柄失效；写入同作用域串行并先保存后发布，损坏文件保留并报错，不静默覆盖。
+
+FtbQuestKnowledge 缓存各语言静态定义并维护失效代次，FTB 原生清缓存或管理员 `/system ftb reload` 更新收录，后者后台重建索引，不改原生进度 / 奖励。查询仍逐次检查权限、语言、队伍与来源内容；源码确认 FTB 2101.1.37 的 ServerQuestFile.getInstance 返回 Optional，ClearFileCacheEvent 在原生 clearCachedData 中触发。
+
+执行 `compileJava testModClasses --console=plain` 通过；双语各 507 个键且集合一致，22 份卡片 JSON 可解析，新增文档链接有效，Java 中已无旧缓存类 / 路径引用，`git diff --check` 通过。未运行测试或启动 Minecraft；两级文件生成 / 重启加载、不同玩家数据隔离、revoke 清理、控制台 / 未绑定管理员指令、空语料、编辑 / 重载并发与缺少 FTB 的运行行为尚未实际验收。设计和扩展入口见 [分层本地数据库](databases.md)，26.1.2 同步清单已记录。
+
+## 2026-10-30 新手礼包奖励合计
+
+阅读当前 FTB 2101.1.37 的 ItemReward / XPReward / XPLevelsReward 源码，确认物品 count、随机奖励区间、only_one 条件与经验保存字段。FtbQuestPreviews 在服务端按相同物品及组件累加数量 / 区间，并分别累加经验值和经验等级；only_one 物品保留独立。展示数量使用 long 和字符串，物品模板 count 保持 1。经验 tooltip 使用同一总量，不通过客户端 getButtonText 读取数值。
+
+StarterGiftOutput 将汇总 items / icons 与各任务的领取引用、错误分开；首次查询和部分失败刷新复用同一快照准备逻辑。模板仅绘制一组奖励，不循环重复的经验图标；每个任务仍按原流程提交、发奖和去重，无奖励时不显示空标题。
+
+执行 `compileJava testModClasses --console=plain` 通过；22 份卡片 JSON 可解析，双语各 504 个键且集合一致，旧礼包物品 / 图标占位符与 Gift 访问已清除，`git diff --check` 通过。未运行测试或启动游戏；六份 100 经验的实际 +600 图标 / tooltip、重复物品、不同组件、随机区间、部分失败刷新及领取结果尚待游戏内验收。26.1.2 同步范围已记入 [FTB 跨版本记录](ftb-quests-porting.md)。
+
+## 2026-10-30 聊天历史领取新手礼包
+
+恢复礼包通知原来的“确定”与“领取礼包”，移除本轮添加的 PRIMARY 与关闭别名。代码阅读确认：关闭通知不撤销卡片，但礼包凭证在两分钟后失效，批量领取会对每个礼包返回失效错误。取消礼包凭证的时间过期，保留所有权、队伍、任务 / 奖励对象、完成时间和原生领奖校验；统一在撤销、登出或任务模块会话结束时清理凭证与查询缓存。普通任务奖励引用仍按原时限处理。
+
+执行 `compileJava testModClasses --console=plain` 通过；双语各 504 个键且集合一致，通知按钮别名 JSON 可解析，`git diff --check` 通过。未运行测试或启动游戏，同一连接内关闭通知后延迟领取、重复领取、任务定义 / 队伍变化及会话清理仍待游戏内验收。26.1.2 同步范围已记入 [FTB 跨版本记录](ftb-quests-porting.md)。
+
+## 2026-10-30 FTB 本地说明书检索
+
+根据用户确认的规则，收录仅原生勾选 / 无目标、有正文且不是礼包的任务；知识视图与原本过滤介绍任务的进度视图分开。新增单检索 Tool 与工作流、guide / 说明书 / 查说明 指令、任务页查询框及 QuestGuideOutput 原文卡片。QuestKnowledgeCache 在后台持有段落 TF-IDF 索引并按存档 / 语言保存静态文档，原生权限与来源快照在服务端线程检查，后台返回后再次核对队伍、语言、可见性及正文。没有引入 embedding API、模型、数据库依赖或自动任务操作；明确查询不走模型，模糊输入仍按原路由处理。
+
+阅读现有 FTB 2101.1.37 任务与 TranslationManager 源码，沿用已确认的原生可见性 / 文本隐藏 API。执行 `compileJava testModClasses jar --console=plain` 通过，发布产物 `system-1.0-alpha.3.jar` 为 2,226,807 字节。静态检查：22 份卡片 JSON 可解析；双语各 504 个键且集合相同；21 个动作和 25 个卡片类型；新增动作 / 卡片无可选依赖或客户端 imports；新文档导航链接有效；`git diff --check` 通过。
+
+未运行测试、启动游戏或在任何存档中生成索引文件。尚未实际验收首次查询持久化、跨语言 / 队伍权限、FTB 编辑与重载后的更新、损坏文件重建、命中质量、TTS 提示和任务页布局。相关方法与限制见 [本地说明书检索](quest-guides.md)，待同步到 26.1.2 的文件已追加到 [FTB 跨版本记录](ftb-quests-porting.md)。
+
+## 2026-10-30 新解锁任务合并为列表通知
+
+按现有队伍进度批次先发送完成通知，再将新增且未完成的普通任务合并成一个 QuestUnlockedOutput 列表，每位有效在线队员每批至多收到一条；礼包仍使用独立汇总。复用现有列表的 BODY 查看按钮、滚动及替换当前通知行为，隐藏解锁列表的编号提示和行编号，按稳定任务 ID 打开详情，不覆盖主动查询缓存。摘要和播报仅提示本批解锁数量；原逐任务解锁通知路径已移除。重登基线、静默批次、锁定切换与接收者校验保留。
+
+执行 `compileJava testModClasses --console=plain` 通过。静态检查：21 份卡片 JSON 可解析；中英文各 496 个键且集合一致；24 个卡片类型含新增 quest_unlocked；新增 DTO 无客户端或 FTB imports；`git diff --check` 通过。未执行测试或启动 Minecraft，实际完成 → 礼包 → 解锁列表的显示、多人接收、滚动及点击详情尚未游戏内验收。同步到 26.1.2 的文件与检查项已追加到 [FTB 跨版本记录](ftb-quests-porting.md)。
+
+## 2026-10-30 奖励区紧凑布局
+
+新手礼包、任务详情和任务通知将“奖励”标题移到循环外层，物品与非物品类型图标使用共享横向换行布局，移除每条奖励重复的 label 和物品组上边距，统一奖励图标占位尺寸。自选项编号、名称、领取按钮、物品领取状态、礼包失败提示和 tooltip 入口保留。QuestNotice 的 has_rewards 状态根据两类奖励列表共同生成，无奖励时不显示标题；26.1.2 同步清单已追加对应模板、样式和派生状态。
+
+执行 `compileJava --console=plain` 通过。静态检查：21 份卡片 JSON 可解析；starter_gift / quest / quest_notice 均只有一个奖励标题、没有单条奖励 label；双语语言键各 495 个且集合一致；`git diff --check` 通过。未运行测试或启动游戏，实际换行、滚动与悬停显示尚未游戏内验收。
+
+## 2026-10-30 任务 / 奖励类型图标与 tooltip
+
+读取开发依赖 Quests 2101.1.37 的 TaskType / RewardType / TaskTypes / RewardTypes 源码，使用 javap 确认 Library 2101.1.39 的 Icon.draw、ImageIcon / ItemIcon 绘制 API；读取 AUI 1.2.6 sources JAR 的 MinecraftElement、RenderNode / Drawer、clip 和 opacity 合成流程，以及 MC GuiGraphics 构造与 tooltip 签名。
+
+新增纯数据 QuestIconOutput 和服务端 FtbQuestPreviews，详情、提交结果、通知、礼包和自选奖励同步非物品类型图标引用及提示文字，物品预览保持原接口。system:icons 节点在首次渲染且安装 FTB 时反射加载客户端隔离适配器，直接调用类型图标供应器，未知类型 / 未安装时回退文字；原生图标在 AUI BODY 阶段绘制并恢复深度及 shader color，沿用 pose、clip 和 opacity 合成。AssistantTooltip 接入已有物品 tooltip pass，显示标题、类型、具体要求 / 奖励、进度或领取状态；HUD 仍需按 T 交互，不改变按钮或播报内容。
+
+执行 `compileJava testModClasses --console=plain` 通过；21 份卡片 JSON 可解析、节点 ID 全部属于 13 个注册类型，中英文各 495 个键且集合一致，图标 DTO 无客户端 / FTB 类引用，公共图标节点只有字符串形式的隔离适配器引用，`git diff --check` 通过。未运行测试或启动游戏，实际图标位置、动画、滚动裁剪、tooltip 和第三方类型尚未游戏内验收。26.1.2 同步范围与 API 差异已追加到 [跨版本修复记录](ftb-quests-porting.md)。
+
+## 2026-10-30 FTBQ 1.21.1 标题、勾选礼包与领奖
+
+只读检查用户整合包 `D:\PrismLauncher\instances\『化龍』导入包-1.4\minecraft` 的现有任务、翻译、日志与依赖 JAR；该包实际加载了 24 个章节、837 个任务，使用 Quests 2101.1.34。对照开发依赖 2101.1.37 的反编译源码，确认服务端标题 / 描述固定读取文件回退语言，以及礼包判定不接受“物品 + 经验”奖励；任务 359B897165997027 为具体样例。任务目标仍是原生 CheckmarkTask，不是任务类变更。
+
+新增 FtbQuestText，查询、搜索、详情、提交、通知与播报统一按玩家语言读取，不改全局语言或标题缓存；JSON 文本使用原版服务端安全解析器，§ / & 沿用 LegacyText，背景模型输入去除格式码。纯勾选、不可重复且含物品的任务允许附带原生经验 / 等级奖励；礼包 DTO 和模板展示这些额外奖励，保持无任务名、原生领取与静默刷新。普通及自选奖励按 1.21.1 的原生成功返回值和事件处理，成功后标记已领取，拒绝时返回 CLAIM_REJECTED。
+
+执行 `compileJava testModClasses --console=plain` 通过；中英文各 494 个语言键且集合一致，21 份卡片 JSON 可解析，新增文档与索引链接有效，`git diff --check` 通过。未执行测试、启动 Minecraft 或改写整合包、存档及开发运行目录。编译针对开发 Quests 2101.1.37，用户的 2101.1.34 仅作源码对照，尚未游戏内验收。
+
+待同步到 26.1.2 的修改清单、版本专属 API 和人工验收步骤已记录在 [FTB Quests 跨版本修复记录](ftb-quests-porting.md)，并从 docs 索引和 learning.md 链接。测试目录旧 JSON5 在 1.21.1 加载为空是独立问题，不能据此判断实际整合包的任务功能。
+
+## 2026-10-30 HUD 通知在聊天界面消失
+
+现象：通知在 HUD 正常显示，按 T 打开聊天后立刻消失，迁移前是可点击的。
+
+根因在 AUI 1.2.6 的两条绘制路径：`Client.drawOverlay(RenderGuiEvent.Post)` 开头就是 `if (minecraft.screen != null) return`（字节码 `getfield Minecraft.screen; ifnonnull`），而屏幕打开时走 `Client.drawScreen(ScreenEvent.Render.Post)`，它只画满足 `!inWorld && !isManuallyRendered() && isReloadPersistent()` 的文档。通知文档由 `Document.create` 创建，`reloadPersistent` 默认 false，于是聊天一开就没有绘制者。
+
+修复：`AssistantMessages` 创建通知文档后调用 `document.setReloadPersistent(true)`（[AssistantMessages.java:207-210](src/main/java/com/iafenvoy/system/screen/AssistantMessages.java#L207-L210)）。这样 HUD 无屏幕时仍由 `drawOverlay` 画，聊天界面打开后由 `drawScreen` 的 persistent 分支画在聊天层之上；其他屏幕仍由 `tick` 里的 `unmount()` 收起，不会残留。
+
+验证：`compileJava` 通过。**未启动游戏**，聊天界面下的显示与点击尚未验收。
+
 ## 2026-10-30 裁剪内联的 Saturn
 
 按「只留本模组真正用到的」把内联源码从 464 个文件裁到 318 个。删除范围：`compat/kubejs`（18）、`data/ability`（28）+ `runtime/ability`（7）、`data/resource`（8）+ `data/resourcebar`（21）+ `runtime/resource`（2）、`data/timeline`（8）、`data/item`（`IncompleteMarker`）、`loot` 与 `SaturnLootRegistries`、`attachment/AbilityAttachment` 与 `ResourceHolderAttachment`、`api/AbilityHooks`、`event` 里四个能力/资源事件、`registry/content` 里七张对应的注册器，以及裁剪后不再被引用的 `config/SaturnConfig`、`data/{AttributeEntry,IconReference,SpriteIcon}`、`data/cost/context/CostOrigins`、`data/storage/{DataStorageCollector,DataStorageDeclaration}`、`runtime/Sources`、`util/SourceLedger`、`util/formula/NumberRange`。
@@ -671,3 +741,11 @@ web_search.txt 要求提炼相关事实、合并重复内容、先给结论和�
 AgentCommand、CommandRegistry 与客户端命令声明已接入 Brigadier；ClientCommandCache 缓存声明，游戏客户端注册复制缓存节点。助手异步合并原生服务端建议，任务和选择按钮的候选由对应模块实时提供；补全前显式过滤 requires，模块变更及 revoke/reset 后同步游戏命令树。普通文本语法未完整匹配时继续语义/模型路由，未知斜杠指令和明确语法错误不调用模型，参数构造及 Codec 失败仍直接拒绝。英文 literal 忽略大小写，选择1、选择 1、select 1 和裸数字保留。
 
 执行 `compileJava testModClasses --console=plain` 编译通过；中英文各 490 个语言键且集合相同，更新文档的本地链接存在，`git diff --check` 通过。没有执行测试、启动 Minecraft、创建临时世界/数据包或请求模型服务。游戏内 Tab/IME、任务候选、模块切换、重载与重连仍需人工验收。
+
+## 2026-10-30 数据库优先问答与可选联网工具
+
+阅读调用链确认：核心 QuestionModule 先通过 database.query 汇总当前玩家 / 共享知识及授权 FTB 说明书；本地命中时只按来源整理，并再次查询复核。查库异常、部分资料或整理失败均不转为搜索。仅空结果、本次 allowWeb=true、搜索导出模块已启用且外部服务允许时打开 ExecutionContext 的联网门禁；每次 Search/Fetch 都检查。搜索改为 ToolModule，删除开发默认 tag 的搜索授予，保留测试数据定义以供管理员手动添加。/question 不允许联网，/search 与搜索页提交允许本地无结果后的回退。
+
+执行 `.\gradlew.bat compileJava testModClasses --console=plain` 编译通过；23 份卡片 JSON 无重复键且节点类型均已注册，中英文各 513 个语言键并且集合一致，routing / knowledge_answer / web_search 提示词占位符有效。动作类型 21 个、卡片数据类型 26 个且注册 ID 无重复；修改文档的本地链接存在，git diff --check 通过。源码中旧 WebSearchInput / WebSearchModule / SEARCH_ACTION 已移除。
+
+没有执行测试、启动 Minecraft、创建临时存档 / 数据包或调用外部 API。数据库命中与无结果、拒绝联网、模块未启用、玩家隔离 / FTB 隐藏文本、在途权限变化及供应商计费均尚未游戏内验收。FTB 适配器导出与跨版本同步清单记录在 [26.1.2 待同步项](ftb-quests-porting.md)。

@@ -35,7 +35,7 @@
 | `CoreModule extends SharedModule` | 基础设施；已安装的对应配置对绑定玩家始终启用且不可移除 |
 | `ClientModule` | 仅客户端的页面、命令和本地卡片动作 |
 
-类型由接口表达，`available()` 仅检查可选依赖。核心、绑定、用量实现 CoreModule，玩家、物品、签到、收件箱、商城、抽奖、任务和搜索实现 SharedModule，成就实现 WorkflowModule。聊天、设置、语音以及基础界面操作由客户端本地目录常驻，不依赖进入世界后的注册表同步。
+类型由接口表达，`available()` 仅检查可选依赖。核心、绑定、用量实现 CoreModule，玩家、物品、签到、收件箱、商城、抽奖和任务实现 SharedModule，成就实现 WorkflowModule，搜索实现 ToolModule。聊天、设置、语音以及基础界面操作由客户端本地目录常驻，不依赖进入世界后的注册表同步。
 
 ## 服务端装配与指令
 
@@ -63,6 +63,8 @@ ModuleManager 从当前服务器 RegistryAccess 读取动态配置，筛选 avai
 工具模块实现 ToolModule，提供 codec() 和 `tools(context)`，每个 Tool 只做一个行为，一组行为通过 List 组合。工作流在装配时用 `context.tool(type)` 获取已导出的工具，并列入自身工具白名单；执行仍统一走 ExecutionContext.tool。
 
 ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当前 owner 的实例；外部导出工具在调用时根据玩家启用的导出模块选择。预算、事件授权、写入回执与工具类型身份检查保留。工具模块不能同时实现 WorkflowModule；未启用的工具不能通过直接发请求绕过权限。
+
+必需工具缺失会禁用工作流；Descriptor.optionalTools 则声明可选只读依赖，缺少对应功能不影响工作流的本地路径。执行时仍检查工具所属模块，不因为声明可选项就自动启用该模块。FTB 模块也可在安装时导出其说明书 Tool，供通用问答复用同一权限与检索处理器。
 
 ## 玩家生命周期
 
@@ -101,10 +103,10 @@ ClientModuleCaches.BINDINGS 按同步的动态条目对 client ID 分组，每�
 
 SystemDefinition.modules 的 Either 改为 `Holder<SystemModule> | TagKey<SystemModule>`，读取动态 system_module 注册表。引用格式、condition、tag 合并与手动增删规则不变；详见[数据包](datapacks.md#系统模块定义)。未知直接 ID 会报数据包错误，可选 tag 成员可用 required:false。
 
-可选 FTB 定义的 Codec 保持公共安全，依赖缺席时 available() 为 false，跳过工作流、运行时与存储钩子。FTB 通知检查已启用模块的实现 Codec，因此任务模块改名或自定义条目 ID 不会丢失通知。FTB 数据定义及默认 tag 追加仅放在测试源集，main 不含可选实现类型引用。搜索也仅在测试源集提供默认配置与 tag 追加。
+可选 FTB 定义的 Codec 保持公共安全，依赖缺席时 available() 为 false，跳过工作流、运行时与存储钩子。FTB 通知检查已启用模块的实现 Codec，因此任务模块改名或自定义条目 ID 不会丢失通知。FTB 适配器仍只在依赖存在时反射加载。搜索仅在测试源集提供模块配置，不再向默认 tag 追加；管理员需明确配置或手动添加。
 
 system 和 system_module 都是原生数据包注册表，在世界加载时读取、登录时同步，不是 retained reload listener；新增或修改参数需正常重启服务器/重新进入世界。tag 的资源重载仍使用原版规则。没有旧模块注册表/tag 路径兼容层。
 
 ## 联网搜索模块
 
-服务端类型为 system:web_search，客户端实现为 SearchSystemClientModule。开发动态条目同时设置 server.type 和 client 为 system:web_search。工作流和 Search/Fetch 工具仍独立预算、明确触发并计费；聊天或模糊提问不会因为本次注册方式变化而自动搜索。
+服务端类型为 system:web_search，仅导出 Search/Fetch 两个单行为 Tool；客户端实现 SearchSystemClientModule 可独立配对搜索页。开发动态条目保留 server.type / client，但不自动启用。核心 `system:question` 统一处理问题：先查私有 / 共享知识及可读 FTB 说明，命中则按资料回答；仅本地为空且当前请求允许联网时才调用已启用的搜索工具。搜索页提交同样先查库，普通提问不授权网络回退。详见 [问答与联网](search-api.md)。

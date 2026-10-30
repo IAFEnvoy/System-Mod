@@ -17,7 +17,7 @@ public record RemoveModuleAction(ResourceLocation module) implements EntityActio
     }
 
     @Override
-    public void execute(EntityActionContext context) {
+    public void execute(@NotNull EntityActionContext context) {
         if (context.entity() instanceof ServerPlayer player) {
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
             if (runtime != null) runtime.moduleManager().remove(player, this.module);

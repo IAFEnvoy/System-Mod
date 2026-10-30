@@ -5,7 +5,6 @@ import com.iafenvoy.saturn.profiling.LoggerDispatcher;
 import com.iafenvoy.saturn.profiling.ProfilerScope;
 import com.iafenvoy.saturn.profiling.ServerProfiling;
 import com.iafenvoy.saturn.runtime.resulting.Failure;
-import com.iafenvoy.saturn.runtime.resulting.Failures;
 import com.iafenvoy.saturn.runtime.resulting.Result;
 import com.iafenvoy.saturn.runtime.resulting.ResultWithData;
 import com.iafenvoy.saturn.runtime.resulting.failures.CostFailure;

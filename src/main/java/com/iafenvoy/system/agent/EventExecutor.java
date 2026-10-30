@@ -6,11 +6,7 @@ import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.CoreSystemModule;
 import net.minecraft.resources.ResourceLocation;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;

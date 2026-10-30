@@ -1,6 +1,5 @@
 package com.iafenvoy.saturn.util.formula.variable;
 
-import com.iafenvoy.saturn.registry.SaturnAttachments;
 import com.iafenvoy.saturn.registry.cache.RegistryCaches;
 import com.iafenvoy.saturn.util.formula.FormulaContext;
 import com.iafenvoy.saturn.util.formula.FormulaVariable;

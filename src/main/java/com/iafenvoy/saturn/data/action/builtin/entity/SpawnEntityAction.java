@@ -8,7 +8,6 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.EntityType;
 import org.jetbrains.annotations.NotNull;
 

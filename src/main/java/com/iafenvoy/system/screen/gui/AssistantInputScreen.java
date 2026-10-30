@@ -14,7 +14,6 @@ import com.sighs.apricityui.element.AbstractText;
 import com.sighs.apricityui.event.KeyEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
-import com.sighs.apricityui.layout.Position;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import org.jetbrains.annotations.NotNull;

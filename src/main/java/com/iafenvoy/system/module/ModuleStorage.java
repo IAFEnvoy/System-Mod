@@ -10,7 +10,8 @@ import java.util.function.Supplier;
 /**
  * A module owns the holder key; the independently registered type ID selects its codec.
  */
-public record ModuleStorage<T extends DataStorage>(ResourceLocation owner, ResourceLocation id, Class<T> type, MapCodec<T> codec,
+public record ModuleStorage<T extends DataStorage>(ResourceLocation owner, ResourceLocation id, Class<T> type,
+                                                   MapCodec<T> codec,
                                                    Supplier<T> factory) {
     public boolean ticking() {
         try {

@@ -14,36 +14,36 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * All gifts share one list; source IDs authorize actions but never become display titles.
+ * Merged reward previews share one list; each source retains its claim reference and failure separately.
  */
-public record StarterGiftOutput(List<Gift> gifts) implements CardData {
-    public static final MapCodec<StarterGiftOutput> CODEC = Gift.CODEC.listOf().fieldOf("gifts")
-            .xmap(StarterGiftOutput::new, StarterGiftOutput::gifts);
+public record StarterGiftOutput(List<Gift> gifts, List<ItemPreviewOutput> items,
+                                List<QuestIconOutput> icons) implements CardData {
+    public static final MapCodec<StarterGiftOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+            Gift.CODEC.listOf().fieldOf("gifts").forGetter(StarterGiftOutput::gifts),
+            ItemPreviewOutput.CODEC.listOf().fieldOf("items").forGetter(StarterGiftOutput::items),
+            QuestIconOutput.CODEC.listOf().fieldOf("icons").forGetter(StarterGiftOutput::icons)
+    ).apply(i, StarterGiftOutput::new));
     public static final ResourceLocation TEMPLATE = ResourceLocation.parse("system:starter_gift");
 
     public StarterGiftOutput {
         gifts = List.copyOf(gifts);
+        items = List.copyOf(items);
+        icons = List.copyOf(icons);
     }
 
-    public record Gift(String questId, List<ItemPreviewOutput> items, Optional<String> claimRef,
-                       Optional<String> error) {
+    public record Gift(String questId, Optional<String> claimRef, Optional<String> error) {
         public static final Codec<Gift> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("questId").forGetter(Gift::questId),
-                ItemPreviewOutput.CODEC.listOf().fieldOf("items").forGetter(Gift::items),
                 Codec.STRING.optionalFieldOf("claimRef").forGetter(Gift::claimRef),
                 Codec.STRING.optionalFieldOf("error").forGetter(Gift::error)
         ).apply(i, Gift::new));
-
-        public Gift {
-            items = List.copyOf(items);
-        }
     }
 
     @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(TEMPLATE);
+        CardBuilder builder = CardBuilder.template(TEMPLATE).put("result_items", this.items).put("reward_icons", this.icons)
+                .enable("has_rewards", !this.items.isEmpty() || !this.icons.isEmpty());
         builder.list("gifts", this.gifts(), (prefix, gift) -> builder
-                .put(prefix + "result_items", gift.items())
                 .put(prefix + "error", gift.error().map(error -> Component.translatable("system.error." + error.toLowerCase(Locale.ROOT))).orElse(Component.empty())));
         List<String> refs = this.gifts.stream().flatMap(gift -> gift.claimRef().stream()).toList();
         if (!refs.isEmpty())

@@ -53,7 +53,7 @@ sequenceDiagram
 | QuestOutput | 标题、要求、奖励、可提交状态、领取引用、自选项、游标、全任务剩余奖励标志、SpeechContent |
 | QuestList | 服务端列表编号与任务快照；直接配对查看按钮 |
 | QuestNotice | COMPLETED/UNLOCKED、当前可操作状态、奖励入口、播报段落 |
-| StarterGiftOutput | 全部匹配礼包的物品、引用和必要错误；不显示来源任务名称 |
+| StarterGiftOutput | 全部匹配礼包合计的物品、经验 / 等级图标，以及各来源的引用和必要错误；不显示来源任务名称 |
 | BindingCardData | 宿主名和系统名称/介绍翻译键；本地打开按钮 |
 
 客户端不反查工作流输入、不推断是否能领奖、不补造订单或领取引用。工具内部输出不必都实现 CardData。
@@ -99,7 +99,7 @@ ReplyResponse 完成对应 requestId，零卡片同样完成；NoticeResponse �
 
 SpeechContent 分 main、requirements、rewards、descriptions。未设 speech 默认 summary；显式 EMPTY 不播报。客户端只按个人开关拼接，TTS 不再发任务播报查询包。
 
-可格式化的要求与奖励由 FTB 服务端适配器整理；不熟悉的类型及“是否为背景描述”由 QuestNarration/QuestBackgrounds 整理和缓存。缓存关联任务 ID、语言、提示词、模型与内容指纹；背景正负判断保存在存档根目录 system-quest-backgrounds.json。首次卡片不等待 AI，先展示已有结构化内容，后台结果供后续卡片使用，不追加到正在播放的消息。
+可格式化的要求与奖励由 FTB 服务端适配器整理；不熟悉的类型及“是否为背景描述”由 QuestNarration/QuestBackgrounds 整理和缓存。缓存关联任务 ID、语言、提示词、模型与内容指纹；背景正负判断保存在存档共享数据库的 system:quest_backgrounds 表。首次卡片不等待 AI，先展示已有结构化内容，后台结果供后续卡片使用，不追加到正在播放的消息。
 
 FTB 的 § 在适配入口解析为 Component，客户端安全转为格式片段，换行和字段边界收束样式，不解释成 HTML。播报去样式。“叮”保留在明确的主句里；提示音仅在通知队列首次展开时播放。切换、确认、关闭、REMOVE 以及 WAIT/REPLACE 按钮操作都停止旧 session，下一条不等旧音频结束。
 

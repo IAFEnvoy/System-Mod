@@ -42,8 +42,9 @@ public record ItemPageOutput(String query, List<ItemInfoOutput> items, int nextO
             builder.put("items." + i + ".item_name", item.name()).put("items." + i + ".item_id", item.id())
                     .put("items." + i + ".max_stack", item.maxStack());
         }
-        if (this.hasMore) builder.serverButton("next", "system.action.next", ResourceLocation.parse("system:item_query"),
-                Map.of("query", this.query, "offset", Integer.toString(this.nextOffset)));
+        if (this.hasMore)
+            builder.serverButton("next", "system.action.next", ResourceLocation.parse("system:item_query"),
+                    Map.of("query", this.query, "offset", Integer.toString(this.nextOffset)));
         return builder;
     }
 }

@@ -1,6 +1,5 @@
 package com.iafenvoy.system.data;
 
-import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
@@ -25,7 +24,7 @@ public final class PromptReloadListener extends SimplePreparableReloadListener<S
     private SystemPrompts prompts;
 
     @Override
-    protected SystemPrompts prepare(ResourceManager manager, @NotNull ProfilerFiller profiler) {
+    protected @NotNull SystemPrompts prepare(ResourceManager manager, @NotNull ProfilerFiller profiler) {
         Map<ResourceLocation, Resource> resources = manager.listResources(DIRECTORY, id -> id.getPath().endsWith(".txt"));
         Map<String, String> definitions = new LinkedHashMap<>();
         resources.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> {
@@ -47,7 +46,7 @@ public final class PromptReloadListener extends SimplePreparableReloadListener<S
     }
 
     @Override
-    protected void apply(SystemPrompts prepared, @NotNull ResourceManager manager, @NotNull ProfilerFiller profiler) {
+    protected void apply(@NotNull SystemPrompts prepared, @NotNull ResourceManager manager, @NotNull ProfilerFiller profiler) {
         this.prompts = prepared;
         latest = this;
     }

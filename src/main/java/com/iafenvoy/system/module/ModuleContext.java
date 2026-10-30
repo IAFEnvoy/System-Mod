@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
@@ -52,7 +53,7 @@ public final class ModuleContext {
     }
 
     public ResourceLocation id() {
-        return java.util.Objects.requireNonNull(this.id, "Module context is not scoped to a definition");
+        return Objects.requireNonNull(this.id, "Module context is not scoped to a definition");
     }
 
     ModuleContext forModule(ResourceLocation id) {

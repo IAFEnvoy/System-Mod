@@ -3,6 +3,7 @@ package com.iafenvoy.system.assistant;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.commerce.CommerceTransactions;
+import com.iafenvoy.system.agent.database.AgentDatabases;
 import com.iafenvoy.system.agent.model.OpenAiCompatibleClient;
 import com.iafenvoy.system.agent.store.FileAgentStore;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
@@ -51,7 +52,8 @@ public final class AssistantServer {
         this.catalogListener = CatalogReloadListener.latest();
         if (this.catalogListener == null) throw new IllegalStateException("Commerce catalog has not loaded");
         this.engine = new AgentEngine(this.catalogListener.catalog(),
-                new FileAgentStore(server.getWorldPath(LevelResource.ROOT).resolve("system-agent")), new OpenAiCompatibleClient());
+                new FileAgentStore(server.getWorldPath(LevelResource.ROOT).resolve("system-agent")), new OpenAiCompatibleClient(),
+                new AgentDatabases(server.getWorldPath(LevelResource.ROOT).resolve("system-database")));
         try {
             this.usage = new AssistantUsage(server, this.engine);
             this.refreshPrompts();

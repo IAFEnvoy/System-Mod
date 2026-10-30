@@ -1,11 +1,10 @@
 package com.iafenvoy.system.data.speech;
 
-import com.iafenvoy.system.util.ExtraCodecsCompat;
 import com.iafenvoy.system.speech.tts.TtsProvider;
+import com.iafenvoy.system.util.ExtraCodecsCompat;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.util.ExtraCodecs;
 
 import java.util.List;
 import java.util.Map;

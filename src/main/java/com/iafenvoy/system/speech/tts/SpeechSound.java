@@ -66,7 +66,7 @@ final class SpeechSound extends AbstractSoundInstance {
     }
 
     @Override
-    public WeighedSoundEvents resolve(@NotNull SoundManager manager) {
+    public @NotNull WeighedSoundEvents resolve(@NotNull SoundManager manager) {
         this.sound = new Sound(this.location, ConstantFloat.of(1), ConstantFloat.of(1), 1, Sound.Type.FILE, true, false, 16);
         WeighedSoundEvents event = new WeighedSoundEvents(this.location, null);
         event.addSound(this.sound);

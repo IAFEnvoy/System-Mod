@@ -5,6 +5,7 @@ import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ExecutionPolicy;
 import com.iafenvoy.system.agent.commerce.CommerceOrder;
+import com.iafenvoy.system.util.ItemStackTemplate;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.JsonOps;
@@ -12,7 +13,6 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.*;
 

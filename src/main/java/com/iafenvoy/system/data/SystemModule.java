@@ -7,7 +7,9 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.util.Optional;
 
-/** A datapack entry pairs configured server behavior with an optional client implementation ID. */
+/**
+ * A datapack entry pairs configured server behavior with an optional client implementation ID.
+ */
 public record SystemModule(Optional<ServerModule> server, Optional<ResourceLocation> client) {
     public static final Codec<SystemModule> CODEC = RecordCodecBuilder.create(i -> i.group(
             ServerModule.CODEC.optionalFieldOf("server").forGetter(SystemModule::server),

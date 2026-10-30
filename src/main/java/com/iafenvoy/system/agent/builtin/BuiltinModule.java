@@ -9,10 +9,11 @@ import com.iafenvoy.system.registry.SystemRegistries;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * A workflow owns its tool list; the descriptor derives the exact authorization set from that list.
+ * Required tool instances belong to the workflow; optional read tools remain owned by their exporters.
  */
 public abstract class BuiltinModule<I extends AgentAction> implements AgentModule<I> {
     private final Descriptor descriptor;
@@ -20,9 +21,14 @@ public abstract class BuiltinModule<I extends AgentAction> implements AgentModul
     private final List<ToolRegistry.Tool<?, ?>> tools;
 
     protected BuiltinModule(SchemaMapCodec<I> inputCodec, String description, List<ToolRegistry.Tool<?, ?>> tools, boolean interactive, boolean event, ExecutionPolicy policy) {
+        this(inputCodec, description, tools, Set.of(), interactive, event, policy);
+    }
+
+    protected BuiltinModule(SchemaMapCodec<I> inputCodec, String description, List<ToolRegistry.Tool<?, ?>> tools,
+                            Set<String> optionalTools, boolean interactive, boolean event, ExecutionPolicy policy) {
         this.inputCodec = inputCodec;
         this.tools = List.copyOf(tools);
-        this.descriptor = new Descriptor(Objects.requireNonNull(SystemRegistries.ACTION_TYPE.getKey(inputCodec), "Unregistered Agent action codec"), 1, description, inputCodec.schema(), this.tools.stream().map(ToolRegistry.Tool::id).collect(Collectors.toSet()), interactive, event, policy);
+        this.descriptor = new Descriptor(Objects.requireNonNull(SystemRegistries.ACTION_TYPE.getKey(inputCodec), "Unregistered Agent action codec"), 1, description, inputCodec.schema(), this.tools.stream().map(ToolRegistry.Tool::id).collect(Collectors.toSet()), optionalTools, interactive, event, policy);
     }
 
     @Override

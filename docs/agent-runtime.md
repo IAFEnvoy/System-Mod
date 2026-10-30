@@ -110,6 +110,8 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 
 不要给 Tool 增加 `operation` 字段来分派一组行为。同一工具由多个模块使用时，复用同一个实例和 `ToolRegistry.Type`。写工具声明幂等及事件权限；恢复时稳定的 `stepId` 对应既有回执，已完成操作不会重复执行。存档只保留一份全局操作回执，不额外保留未使用的任务内步骤表。
 
+Descriptor 的 `tools` 为必需工具，`optionalTools` 为可选只读工具 ID，二者不能重叠。可选项只在导出模块已启用时才能调用，缺席不会禁用本地工作流，也不自动注册处理器或授予模块。ExecutionContext.tool 同时检查声明、导出模块权限与只读属性；必需和可选调用共用原有工具 / 步数预算。知识问答使用该机制接入 FTB 说明书与网页搜索。
+
 ## 两端指令与补全
 
 助手输入框通过状态快照取得服务端注册表的指令候选。`HelpModule` 从同一注册表生成模块指令说明，FTBQ 未安装时不会显示任务指令。客户端界面切换、设置、历史和当前动作选择仍由客户端处理；它们的执行与补全共用本地指令表。
@@ -141,12 +143,12 @@ FTB 查询 Tool 使用固定返回类型：`ftb.query` 列出当前可执行或�
 
 新增业务能力继续通过 Module 注册。若要新增协议请求，增加请求类型及其 `MapCodec` 注册，再在 `AssistantRequests.registerRequests()` 登记执行处理器；新增响应时同步登记类型 Codec 和客户端处理器，不再增加字符串判断或类型 switch。类型实现保持无默认方法的接口，Codec 声明在实现类，注册集中于 `registry` 包，根 Codec 延迟访问注册表，避免子类静态初始化时递归读取尚未赋值的 Codec。
 
-## 明确授权的联网工作流
+## 数据库优先的问答与联网回退
 
-`SearchSystemModule` 装配一个 WebSearchModule 与两个独立的只读 Tool。ModuleRouting 的 explicit 解析器在指令解析后、语义匹配前检查当前消息，通过统一 AgentAction 校验得到明确输入；未命中固定句式时，搜索以 `explicitOnly: true` 进入模型能力目录。提示词要求模型非常确信当前消息是在请求查资料时才使用，例如“帮我查一下……”；普通提问不代表联网授权，本地任务和状态优先使用对应能力。搜索不提供语义档案、快捷推荐或缓存样例，不因相似度或历史直接启动，也不允许事件调用。
+核心模块装配 `QuestionModule`，动作是 `system:question` / QuestionInput，必需工具只有 `database.query`。先查询当前 UUID 私有和共享 `system:knowledge` 表及已启用的 FTB 授权说明书；有资料时最多一次模型整理并展示本地来源，发送前重新查库复核。未配置模型、关闭外部 AI 或可恢复的整理失败仍保留原文，不转入联网；查库异常也不作为空结果。
 
-工作流持有紧凑的 SearchObservation 列表，探索模型经 SearchStep 的 Codec dispatch 选择 Search、Fetch 或 Answer，最终整理只解码 Answer。只有本次 Search 得到的 URL 可 Fetch，重复检索转入最终整理，引用编号由服务器核对。预算共用 ExecutionContext，搜索默认 6 次模型/5 次工具/90 秒，单次模型 20 秒，可按 system:web_search 独立覆盖；模型还受通用每日额度和并发限制。已有证据时为整理保留模型次数和时间窗口，探索失败可在原预算内整理，不重试收费工具；最终整理失败才保留来源并记录错误码。
+SearchSystemModule 仅实现 ToolModule，导出 `web.search` / `web.fetch`，由数据包或管理员明确授予；开发默认 tag 也不自动启用。问答仅在本地为空、allowWeb=true、工具导出模块已启用且外部服务允许时打开本次 ExecutionContext 的联网门禁；两种网络工具每次都检查该门禁。`/question` 使用 false，`/search` 及搜索页明确提交使用 true；普通问题由模型识别但默认 false，仅非常确信当前请求授权外部查询时才设 true。语义样例仅作提示，不直接路由或缓存授权；事件、历史和资料正文不能开启联网。
 
-收费工具每次调用前检查取消、模块访问和外部服务偏好，经 SearchGateway 统一记录次数及价格；ModelGateway 继续负责模型 Token。客户端状态同步可用工作流的最大请求期限，避免自定义较长预算被本机等待上限提前丢弃。连接、计费与来源边界见[联网搜索](search-api.md)。
+获准后的 `WebResearch` 持有紧凑的 SearchObservation，模型经 SearchStep Codec dispatch 选择 Search、Fetch 或 Answer，最终整理只解码 Answer。仅允许抓取本次检索返回的 URL，引用编号由服务器核对。整个问答默认 6 次模型 / 9 次工具 / 20 步 / 90 秒，单次模型 20 秒；数据库查询、内部 FTB 查询、复核和联网共用预算，按 `system:question` 覆盖。重复检索或可恢复的探索失败改为整理已有资料，不重试收费工具。每次网络工具都检查取消、模块权限与外部服务偏好，经 SearchGateway 计量；模型 Token 继续由 ModelGateway 记录。详见[问答与联网](search-api.md)。
 
 模块实现与配置分离：SystemModule 数据包条目提供 server/client，系统引用动态配置 ID 或 tag；ServerModule.CODEC 按 type 分派注册的 MapCodec。不同配置的同类型工作流与工具按玩家启用的 owner 选择，执行上下文保存选中 owner 并持续检查权限。ClientModule 只在客户端 Map 中登记，服务端类不再实现或引用客户端接口；客户端按 client ID 合并 UI、按关联配置 ID 进行权限判断。

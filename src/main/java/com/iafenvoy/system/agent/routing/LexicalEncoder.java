@@ -23,12 +23,14 @@ final class LexicalEncoder {
     }
 
     private final Map<String, List<Alias>> aliases;
+    private final boolean domainAliases;
 
     LexicalEncoder() throws IOException {
         this(true);
     }
 
     LexicalEncoder(boolean domainAliases) throws IOException {
+        this.domainAliases = domainAliases;
         if (!domainAliases) {
             this.aliases = Map.of();
             return;
@@ -54,7 +56,8 @@ final class LexicalEncoder {
     }
 
     Features encode(String input, String language) {
-        String text = ITEM_ID.matcher(normalize(input)).replaceAll(" registryitem ");
+        String text = normalize(input);
+        if (this.domainAliases) text = ITEM_ID.matcher(text).replaceAll(" registryitem ");
         List<Alias> dictionary = this.aliases.getOrDefault(language, List.of());
         Map<String, Double> terms = new HashMap<>();
         Set<String> topics = new HashSet<>();

@@ -1,7 +1,6 @@
 package com.iafenvoy.system.data;
 
 import com.google.gson.JsonParser;
-import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.commerce.CatalogEntry;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.commerce.LotteryPool;
@@ -30,7 +29,7 @@ public final class CatalogReloadListener extends SimplePreparableReloadListener<
     private CommerceCatalog catalog;
 
     @Override
-    protected CommerceCatalog prepare(ResourceManager manager, @NotNull ProfilerFiller profiler) {
+    protected @NotNull CommerceCatalog prepare(ResourceManager manager, @NotNull ProfilerFiller profiler) {
         Map<ResourceLocation, Resource> rewardFiles = manager.listResources("system/signin_rewards", id -> id.getPath().endsWith(".json"));
         Map<ResourceLocation, Resource> offerFiles = manager.listResources("system/shop_offers", id -> id.getPath().endsWith(".json"));
         Map<ResourceLocation, Resource> lotteryFiles = manager.listResources("system/lottery_pools", id -> id.getPath().endsWith(".json"));
@@ -57,7 +56,7 @@ public final class CatalogReloadListener extends SimplePreparableReloadListener<
     }
 
     @Override
-    protected void apply(CommerceCatalog prepared, @NotNull ResourceManager manager, @NotNull ProfilerFiller profiler) {
+    protected void apply(@NotNull CommerceCatalog prepared, @NotNull ResourceManager manager, @NotNull ProfilerFiller profiler) {
         this.catalog = prepared;
         latest = this;
     }

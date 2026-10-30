@@ -8,6 +8,7 @@ import com.iafenvoy.system.screen.gui.AssistantView;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
@@ -90,7 +91,7 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
     @Override
     public synchronized ClientModuleBindingsCache get() {
         if (this.building) throw new IllegalStateException("Client module registration is still in progress");
-        var connection = Minecraft.getInstance().getConnection();
+        ClientPacketListener connection = Minecraft.getInstance().getConnection();
         // A tag packet may arrive before the local player; keep its snapshot until a connection is available.
         if (connection != null) {
             if (this.registries != connection.registryAccess()) this.rebuild(connection.registryAccess());

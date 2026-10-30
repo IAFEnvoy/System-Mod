@@ -35,6 +35,10 @@
 | Agent 执行流程、AgentAction 与 MapCodec 分派、Module / Tool 契约、类型化输入输出、玩家模块 DataStorage 扩展 | [Agent 运行结构与扩展](docs/agent-runtime.md) |
 | 助手 Brigadier 命令、ClientModuleCaches（绑定/命令缓存直接持有数据与维护逻辑）、原生命令补全、标签同步与两端命令构建顺序 | [Agent 入口](docs/agent-runtime.md#给-module-声明入口)、[客户端模块贡献](docs/feature-modules.md)、[缓存时序](docs/registries.md#仍保留的运行时登记表) |
 | 包组织、依赖、配置、持久化、MC 桥接、实现边界 | [开发与架构](docs/development.md) |
+| FTBQ 1.21.1 玩家语言、勾选礼包、原生领奖、类型图标 / tooltip 与解锁任务汇总通知；待同步到 26.1.2 | [跨版本修复清单](docs/ftb-quests-porting.md) |
+| 勾选 / 无目标说明书、存档本地稀疏向量索引、guide 指令和任务页查询、玩家可见性复核 | [本地说明书检索](docs/quest-guides.md) |
+| AgentDatabases 共享库 / 玩家独立库、Codec 数据表与段落索引、/system ftb reload、revoke / reset 清理私有库 | [分层本地数据库](docs/databases.md) |
+| JVector 4.0.2 分发体积、磁盘图索引、Java / SIMD、TF-IDF 适配、性能边界与后续测量；仅评估未实施 | [JVector 索引评估](docs/jvector-evaluation.md) |
 | 按键、声音、action/condition、模块目录、卡片节点注册与语音供应商工厂 Map；公开静态入口 | [registry 包](src/main/java/com/iafenvoy/system/registry)、[目录与职责](docs/development.md#目录与职责) |
 | 内置功能平铺 module.builtin、DataStorage 集中 module.builtin.storage、available() 可选依赖检查、三分类侧栏、模块条件/手动覆盖、两端指令与 ModuleManager 生命周期 | [功能模块化](docs/feature-modules.md)、[内置模块](src/main/java/com/iafenvoy/system/module/builtin) |
 | ServerModule / ClientModule 及 ToolModule / WorkflowModule / SharedModule / CoreModule 分类、按接口判断类型、配置 owner 权限、服务端 MapCodec dispatch、动态 system_module、客户端独立实现 Map | [功能模块化](docs/feature-modules.md)、[注册表](src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)、[编译与验收](docs/testing.md) |
@@ -42,7 +46,7 @@
 | CardData.buildCard、公共 CardBuilder/CardView/CardUpdate、客户端 CardPresentation、纯文本无按钮约定、JSON 节点与平铺 Context、明确本地/服务端动作 | [客户端 JSON 卡片](docs/cards.md) |
 | 已实施卡片数据流：完整业务 DTO、消息 ID/版本、SHOW/REPLACE/REMOVE、状态与历史响应、Status 枚举和 BuiltinTools | [卡片与消息数据流](docs/card-flow-design.md) |
 | OpenAI 兼容接口、DeepSeek 特殊参数、模型连接与 Token 响应 | [模型接口](docs/model-api.md) |
-| 明确触发的联网搜索模块、独立 ReAct、共享 DeepSeek 环境变量及按次计费 | [网页搜索与抓取](docs/search-api.md) |
+| 核心 system:question 先查私有 / 共享知识与授权 FTB 说明、可选工具与本次联网授权、WebResearch ReAct、DeepSeek 计费 | [知识问答与网页搜索](docs/search-api.md)、[知识表入口](docs/databases.md#问答知识表) |
 | 模组和音色工具会请求哪些 API、触发条件、发送数据、客户端 / 服务端归属 | [外部 API 请求清单](docs/external-apis.md) |
 | 领域词表、稀疏 TF-IDF、阈值、玩家意图缓存、只读直达与模型兜底 | [本地意图路由](docs/semantic-routing.md) |
 | 10MB 分发约束、路由方案比较、校准与后续方向 | [路由选型与计划](docs/semantic-routing-plan.md) |

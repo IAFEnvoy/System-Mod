@@ -11,8 +11,8 @@ import com.iafenvoy.system.module.ServerModule;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 
 @SuppressWarnings("unused")
 public final class SystemResourceKeys {

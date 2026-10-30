@@ -5,7 +5,6 @@ import com.iafenvoy.saturn.registry.SaturnRegistries;
 import com.iafenvoy.saturn.util.formula.NumberProvider;
 import com.iafenvoy.saturn.util.formula.number.*;
 import com.mojang.serialization.MapCodec;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**

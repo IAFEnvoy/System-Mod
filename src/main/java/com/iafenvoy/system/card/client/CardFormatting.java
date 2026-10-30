@@ -3,10 +3,10 @@ package com.iafenvoy.system.card.client;
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.card.CardText;
+import com.iafenvoy.system.util.ItemStackTemplate;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.ArrayList;
 import java.util.List;

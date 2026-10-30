@@ -42,12 +42,13 @@ public final class ModuleRegistry {
                     || previous.module().inputCodec() != module.inputCodec()
                     || previous.module().getClass() != module.getClass()
                     || !previous.module().descriptor().tools().equals(descriptor.tools())
+                    || !previous.module().descriptor().optionalTools().equals(descriptor.optionalTools())
                     || descriptor.version() != previous.module().descriptor().version()
                     || descriptor.interactive() != previous.module().descriptor().interactive()
                     || descriptor.event() != previous.module().descriptor().event()
                     || !module.tools().stream().map(ToolRegistry.Tool::id).collect(Collectors.toSet()).equals(descriptor.tools())
                     || previous.readOnly() != (descriptor.interactive() && descriptor.policy().writeSteps() == 0
-                        && module.tools().stream().noneMatch(ToolRegistry.Tool::write)))
+                    && module.tools().stream().noneMatch(ToolRegistry.Tool::write)))
                 throw new IllegalArgumentException("Conflicting workflow variant " + id + " for " + owner);
             this.tools.registerVariant(owner, module.tools());
             this.variants.get(id).put(owner, module);

@@ -11,7 +11,6 @@ import com.iafenvoy.saturn.data.condition.builtin.entity.meta.NotEntityCondition
 import com.iafenvoy.saturn.data.condition.builtin.entity.meta.OrEntityCondition;
 import com.iafenvoy.saturn.registry.SaturnRegistries;
 import com.mojang.serialization.MapCodec;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**

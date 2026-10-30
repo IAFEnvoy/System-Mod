@@ -2,6 +2,7 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.commerce.CommerceQuotes;
+import com.iafenvoy.system.agent.database.AgentDatabases;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.model.ModelGateway;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
@@ -29,6 +30,7 @@ import java.util.function.Predicate;
  */
 public final class AgentEngine implements AutoCloseable {
     private final AgentStore store;
+    private final AgentDatabases databases;
     private final ModelGateway model;
     private final SearchGateway search = new SearchGateway(new DeepSeekSearchClient());
     private final ToolRegistry tools = new ToolRegistry();
@@ -52,11 +54,13 @@ public final class AgentEngine implements AutoCloseable {
     private final QuestNarration questNarration;
     private BiPredicate<UUID, ResourceLocation> moduleAccess = (unused1, unused2) -> true;
 
-    public AgentEngine(CommerceCatalog catalog, AgentStore store, ModelClient model) {
+    public AgentEngine(CommerceCatalog catalog, AgentStore store, ModelClient model, AgentDatabases databases) {
         this.store = store;
+        this.databases = Objects.requireNonNull(databases);
         this.model = new ModelGateway(model);
         this.questNarration = new QuestNarration(this);
         this.onRevoke(this.questNarration::cancel);
+        this.onRevoke(this.databases::deletePlayer);
         this.catalog = Objects.requireNonNull(catalog);
         this.modelSlots = new Semaphore(AgentConfig.INSTANCE.get().concurrentModels(), true);
         this.router = new HybridRouter(this);
@@ -72,6 +76,10 @@ public final class AgentEngine implements AutoCloseable {
 
     public AgentStore store() {
         return this.store;
+    }
+
+    public AgentDatabases databases() {
+        return this.databases;
     }
 
     public ModuleRegistry modules() {
@@ -404,5 +412,6 @@ public final class AgentEngine implements AutoCloseable {
         this.model.close();
         this.search.close();
         this.store.close();
+        this.databases.close();
     }
 }

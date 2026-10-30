@@ -5,7 +5,6 @@ import com.iafenvoy.saturn.data.cost.Cost;
 import com.iafenvoy.saturn.data.cost.builtin.ItemCost;
 import com.iafenvoy.saturn.registry.SaturnRegistries;
 import com.mojang.serialization.MapCodec;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 /**

@@ -10,6 +10,10 @@
       "repeat": "tasks",
       "children": [
         {
+          "type": "system:icons",
+          "icons": "{{tasks.*.task_icons}}"
+        },
+        {
           "type": "system:items",
           "items": "{{tasks.*.task_items}}",
           "compact": true,
@@ -17,7 +21,8 @@
         },
         {
           "type": "system:text",
-          "text": "{{tasks.*.task_title}} · {{tasks.*.task_progress}}/{{tasks.*.task_required}}"
+          "text": "{{tasks.*.task_title}} · {{tasks.*.task_progress}}/{{tasks.*.task_required}}",
+          "unless": "tasks.*.task_icons"
         }
       ]
     },

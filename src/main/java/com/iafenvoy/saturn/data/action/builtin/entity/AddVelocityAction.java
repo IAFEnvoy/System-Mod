@@ -8,8 +8,8 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Vector3f;
 import org.jetbrains.annotations.NotNull;
+import org.joml.Vector3f;
 
 public record AddVelocityAction(float x, float y, float z, Space space, boolean set) implements EntityAction {
     public static final MapCodec<AddVelocityAction> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(

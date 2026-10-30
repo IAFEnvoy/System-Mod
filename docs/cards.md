@@ -232,6 +232,8 @@ label 仅作纯文本投影。缺省使用动作原标签；简约模式按真�
 
 `actions` 节点可设置 `notification_page_size`（默认 0，不分页）；内置任务列表设置为 10，仅通知模式生效。上页、页码、下页在节点内部生成，与宿主底部确定及业务按钮分开。翻页仅修改当前通知的 `CardPageState` 并重绘该节点，不发包、不替换通知、不推进队列或重启播报；完整 / 简约界面仍展示完整列表。页码按动作数据绑定键保存，跟随通知窗口存活，不序列化至服务端或聊天历史。
 
+节点先调用 `Element.init`，再创建分页按钮回调。AUI 26.1 / 1.2.6 插入普通标签时会替换其 Element 实例，提前初始化可确保回调持有已挂载容器，避免连接检查始终失败而使翻页无反应。
+
 CardButton 显式描述 Local/Server 动作、BODY/FOOTER 位置以及 CLOSE/WAIT/REPLACE/PUSH 行为。actions 节点在通知正文只绘制 BODY 按钮，FOOTER 由通知宿主生成；宿主始终在业务按钮之后补充本地确定按钮，忙碌时仍可关闭通知。列表内容使用原有固定宽度和限高滚动视口，分页不扩大通知面板。
 
 点击、数字和语音选择都进入 CardController。Local 从 ClientModuleCaches.BINDINGS 的处理器 Map 分派；Map 和登记、分派、清理逻辑直接位于 ClientModuleBindingsCache，由模块通过 localAction 声明，随 Saturn RegistryCache 重建和退出清理。Controller 不单独保存永久动作表。Server 发 CardActionRequest(source, action)，仅含来源 CardRef、动作 Identifier 和字符串参数。工作流在 ModuleRouting.button 中解码，继续经过原有权限、预算、引用、Cost 与发奖流程，不经过模型路由。labelKey 只决定标签和语音候选，不决定动作。

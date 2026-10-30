@@ -61,3 +61,31 @@
 ## master 后续变更：交互式任务通知窗口
 
 2026-10-30 在 master 增加以上分页与返回行为。后续同步其他版本时，需一并同步 `ActionsNode` 的 `notification_page_size`、通知持有的 `CardPageState` / 返回栈、`CardButton.Behavior.PUSH` 与请求来源关联、`quest_list.json`、共享 CSS 和四个双语键；服务端 `unlockNotification` 的单项分支复用 `FtbQuestAccess.detail(..., "unlocked")`，完成事件循环不合并。该变更不新增依赖、网络包或数据库格式。
+
+
+## 2026-10-30 本轮补充移植
+
+以下先保留移植前的核对记录；实际实施结果见后续小节。
+
+### 2026-10-30 待移植清单复核（1.21.1 `7aca25a` → master `b97aa1c`）
+
+本次仅阅读并比较源码、依赖源码和资源，执行 `git fetch origin` 更新远端引用；未切换分支、修改 master、编译或启动游戏。远端 master 当前为 `b6afc9d`，本地 master 多出的 `b97aa1c` 尚未推送，下表以本地 master 为基线。
+
+| 状态 | 范围 | 核对结果与后续处理 |
+| --- | --- | --- |
+| 待同步 | `screen/card/node/ActionsNode` | 回调捕获前调用 `Element.init`。已直接检查 26.1 / AUI 1.2.6 的 `Node.prepareForInsertion` 与 `Element.init`，目标版本同样会替换普通 Element，分页按钮也有同一问题。 |
+| 待同步 | `speech/asr/RecognitionRecording`、`AssistantRecognition` | 同步停止与入队互斥、缓冲耗尽后直接 EOF、终态回调保护、90 秒会话 / 15 秒收尾超时、取消清理和执行器拒绝处理；平台无关，不涉及 Windows 输入法。 |
+| 先修正再同步 | `RecognitionRecording.record` 的自然 EOF | 当前 `ended = true` 写在 try-with-resources 外层 finally，实际发生在设备 `close()` 之后，尚未实现“自然 EOF 在设备关闭前发布”。手动停止已可通过 `stopped` 返回 EOF；自然结束则应将发布动作调整至资源关闭前，再同步两版本。这里只记录问题，未改实现。 |
+| 按目标依赖确认 | `ImBlockerConfigMixin`、`system.mixins.json` | 当前白名单注入只核对过 IMBlocker 5.6.1 / 1.21.1，不代表适用于 26.1.2；有目标版本集成需求时先检查实际 JAR，缺少可用版本则不迁移。 |
+| 保留目标实现 | `AssistantInputScreen`、`TokenUsageData` | 26.1.2 已有原生文本输入 / preedit 生命周期，不能随 1.21.1 的简化一起删除；SavedDataType 使用合法 Identifier，也不应套用 1.21.1 的字符串文件名修正。Windows 专用输入法检测已删除，不加入目标版本。 |
+| 已同步 | 任务通知窗口与 FTB 业务 | PUSH / 返回栈、每页 10 项、单个新任务直接详情、完成任务分别通知均已在本地 master；本轮对比两分支的 `assets/system` 卡片 / 语言和共享 CSS 无差异。FTB 事件、奖励调用、ItemStackTemplate 和图标渲染仍保留各版本 API。 |
+
+同步时更新 ASR 和分页相关说明，保留 26.1.2 自己的版本信息、渲染与输入法文档；不能整份覆盖 1.21.1 的文档或直接 cherry-pick `7aca25a`。
+
+### 实施结果
+
+已切换 master 并执行 `git pull --ff-only origin master`，远端无新提交，基线仍为 `b97aa1c`。同步 `7aca25a` 的 ActionsNode 提前初始化、RecognitionRecording 停止 / 帧队列处理和 AssistantRecognition 的终态、超时、取消及错误处理；额外将自然结束时的 `ended = true` 移至 try-with-resources 关闭设备之前，外层 finally 仍保证异常路径最终发布终止。该额外顺序修正目前只在 master，1.21.1 后续需回同步。
+
+26.1.2 的 AssistantInputScreen 原生文本输入 / preedit、TokenUsageData 的 Identifier / SavedDataType，以及版本、依赖和 Mixin 配置保持原实现。2026-10-30 查询 [IMBlocker 的 Modrinth 26.1.2 版本列表](https://api.modrinth.com/v2/project/imblocker/version?game_versions=%5B%2226.1.2%22%5D) 为空，未将仅核对过 1.21.1 的白名单 Mixin 加入目标；没有增加平台专用输入法代码。
+
+实际执行 `gradlew compileJava testModClasses jar --console=plain` 成功。静态 / 产物检查：中英文各 517 键且集合相同，23 份卡片 JSON 可解析，三个修改类均为 Java 25 字节码；`system-1.0-beta.1.jar` 为 1,548,823 字节，无内嵌 Saturn、旧 screen/input 类或 IMBlocker Mixin。没有运行测试、启动游戏、创建存档或调用收费 API；分页点击、设备结束与取消、识别自动发送仍待游戏内验收。改动未提交或推送。

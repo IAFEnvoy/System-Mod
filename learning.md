@@ -35,7 +35,7 @@
 | Agent 执行流程、AgentAction 与 MapCodec 分派、Module / Tool 契约、类型化输入输出、玩家模块 DataStorage 扩展 | [Agent 运行结构与扩展](docs/agent-runtime.md) |
 | 助手 Brigadier 命令、ClientModuleCaches（绑定/命令缓存直接持有数据与维护逻辑）、原生命令补全、标签同步与两端命令构建顺序 | [Agent 入口](docs/agent-runtime.md#给-module-声明入口)、[客户端模块贡献](docs/feature-modules.md)、[缓存时序](docs/registries.md#仍保留的运行时登记表) |
 | 包组织、依赖、配置、持久化、MC 桥接、实现边界 | [开发与架构](docs/development.md) |
-| FTBQ 1.21.1 → 26.1.2 已同步：玩家语言、勾选礼包、图标 / tooltip、解锁汇总、分层数据库与数据库优先问答 | [跨版本同步记录](docs/ftb-quests-porting.md) |
+| FTBQ 1.21.1 → 26.1.2 已同步：玩家语言、勾选礼包、图标 / tooltip、解锁汇总、分层数据库与数据库优先问答；分页点击与 ASR 收尾补充移植 | [跨版本同步记录](docs/ftb-quests-porting.md) |
 | 勾选 / 无目标说明书、存档本地稀疏向量索引、guide 指令和任务页查询、玩家可见性复核 | [本地说明书检索](docs/quest-guides.md) |
 | AgentDatabases 共享库 / 玩家独立库、Codec 数据表与段落索引、/system ftb reload、revoke / reset 清理私有库 | [分层本地数据库](docs/databases.md) |
 | JVector 4.0.2 分发体积、磁盘图索引、Java / SIMD、TF-IDF 适配、性能边界与后续测量；仅评估未实施 | [JVector 索引评估](docs/jvector-evaluation.md) |
@@ -52,7 +52,7 @@
 | 10MB 分发约束、路由方案比较、校准与后续方向 | [路由选型与计划](docs/semantic-routing-plan.md) |
 | 系统定义、system_module 配置实例与 server.type/client、grant 指定系统与单绑定/多系统结构预留、模块 ID/tag/condition、模块增删 action、签到奖励、商城商品、抽奖奖池、提示词、成就规则 | [数据包与扩展配置](docs/datapacks.md) |
 | TTS 接口、流式播放、语种、音色、取消 session、Python 设计 / 复刻 / 临时上传 | [语音合成与音色设计](docs/tts.md) |
-| ASR、NLS AccessKey 自动签发与 Token 缓存刷新、录音 session、可选 SVC、按键录音与按次估价 | [语音识别](docs/asr.md) |
+| ASR、NLS AccessKey 自动签发与 Token 缓存刷新、停止 / 自然 EOF 与设备关闭解耦、session 超时、可选 SVC、按键录音与按次估价 | [语音识别](docs/asr.md) |
 | 服务端 AI/联网用量 SavedData、仅本地可见的个人 TTS / ASR 用量、字符与 Token、客户端计费配置、撤销后保留 | [用量统计](docs/token-usage.md) |
 | 共享 CSS、完整 / 简约界面、HUD、动画、物品 tooltip、输入法、双语键 | [界面与本地化](docs/ui-localization.md) |
 | 网文系统语气、提示词与模板边界、公开参考 | [文案与提示词](docs/system-voice.md) |

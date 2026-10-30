@@ -44,7 +44,8 @@ public record ActionsNode(String actions, int notificationPageSize) implements C
         CardContext context = view.context();
         List<?> actions = context.get(CardRenderer.binding(this.actions, view.indices()), List.class);
         if (actions == null || actions.isEmpty()) return null;
-        Element element = view.element("div", "");
+        // AUI upgrades raw tags on insertion; callbacks must retain that live instance, not its detached precursor.
+        Element element = Element.init(view.element("div", ""));
         boolean notification = CardRenderer.enabled("notification", context, List.of());
         List<Integer> indices = IntStream.range(0, actions.size()).filter(index -> actions.get(index) instanceof CardButton button
                 && (!notification || button.placement() == CardButton.Placement.BODY)).boxed().toList();

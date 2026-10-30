@@ -55,9 +55,14 @@ final class RecognitionRecording implements AsrProvider.AudioSource, AutoCloseab
                 if (count == 0) continue;
                 if (count > buffer.length || (count & 1) != 0) throw new SpeechException("audio");
                 count = Math.min(count, remaining);
-                if (!this.frames.offer(Arrays.copyOf(buffer, count))) throw new SpeechException("audio");
+                synchronized (this) {
+                    if (this.closed || this.stopped) break;
+                    if (!this.frames.offer(Arrays.copyOf(buffer, count))) throw new SpeechException("audio");
+                }
                 remaining -= count;
             }
+            // Publish natural EOF before try-with-resources closes a potentially slow native device.
+            this.ended = true;
         } catch (Exception error) {
             this.failure = error;
             this.opened.completeExceptionally(error);
@@ -82,7 +87,12 @@ final class RecognitionRecording implements AsrProvider.AudioSource, AutoCloseab
             this.current = this.frames.poll(10, TimeUnit.MILLISECONDS);
             this.offset = 0;
         }
-        if (this.current == null) return this.ended ? -1 : 0;
+        if (this.current == null) {
+            if (!this.ended && !this.stopped) return 0;
+            // The last frame can arrive between a timed poll and the volatile EOF publication.
+            this.current = this.frames.poll();
+            if (this.current == null) return -1;
+        }
         int count = Math.min(buffer.length, this.current.length - this.offset) & ~1;
         System.arraycopy(this.current, this.offset, buffer, 0, count);
         this.offset += count;
@@ -90,12 +100,13 @@ final class RecognitionRecording implements AsrProvider.AudioSource, AutoCloseab
         return count;
     }
 
-    void finish() {
+    synchronized void finish() {
+        // No later frame can be queued; drain what is buffered and send StopRecognition immediately.
         this.stopped = true;
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
         this.closed = true;
         Future<?> pending = this.recorder;
         if (pending != null) pending.cancel(true);

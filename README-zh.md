@@ -28,7 +28,8 @@ HUD 通知，并可选用语音播报。
    进程继承该变量。配置文件保存环境变量名，不保存密钥。
 4. 安装提供系统定义的服务端数据包，管理员执行 `/system grant <系统ID> [玩家]` 绑定，例如
    `/system grant example:daily Steve`；省略玩家时绑定自己。玩家默认未绑定，目前每人最多绑定一个系统。
-   内置 system:default 通过默认模块 tag 启用功能；FTB 任务与联网搜索的默认模块配置和 tag 追加仅放在 src/test-mod/，不会打进发布包。
+   内置 system:default 通过默认模块 tag 启用功能；FTB 任务与联网搜索的默认模块配置和 tag 追加仅放在
+   src/test-mod/，不会打进发布包。
 5. 执行 `/system`、`/system full` 或 `/system simple`，使用界面操作或输入请求。
 
 例如，在 PowerShell 中设置后，从同一环境启动服务端：
@@ -71,7 +72,7 @@ $env:SYSTEM_DEEPSEEK_API_KEY = "<你的 API Key>"
 | `/system ask <内容>`                    | 提交自然语言请求                              |
 | `/system search <问题>`                 | 明确发起付费联网检索                            |
 | `/system player`                      | 查看本人状态                                |
-| `/system submittable [查询]`            | 列出可提交或勾选的 FTB 任务                       |
+| `/system submittable [查询]`            | 列出可提交或勾选的 FTB 任务                      |
 | `/system usage` / `/system usage all` | 查看个人用量 / 管理员查看全服 AI 与联网用量；语音统计始终仅显示自己 |
 | `/system grant <系统ID> [玩家]`           | 管理员绑定一个数据包系统，省略玩家时绑定自己                |
 | `/system revoke [玩家]`                 | 管理员撤销系统并清除业务记录，保留累计用量                 |
@@ -144,7 +145,9 @@ python tools/voice_design.py --lang zh --help
 
 ```json
 {
-  "server": { "type": "system:signin" },
+  "server": {
+    "type": "system:signin"
+  },
   "client": "system:signin"
 }
 ```

@@ -656,3 +656,11 @@ AgentCommand、CommandRegistry 与客户端命令声明已接入 Brigadier；Cli
 服务端普通新解锁任务只有一项时直接构造 QuestOutput 详情并使用 unlocked 播报；多项时继续合并一条 QuestUnlockedOutput。FTB 完成事件循环仍逐个构建、发送独立完成通知，未合并任务完成项。上述结论来自源码阅读。
 
 实际执行 `gradlew compileJava testModClasses --console=plain` 成功。静态检查通过：中英文各 517 键且集合完全相同，23 份卡片 JSON 可解析且无重复键，内置任务列表页大小为 10；新源文件和 `git diff --check` 无空白错误。没有运行测试、启动 Minecraft 或请求收费 API。尚未游戏内验收：边界页与大列表、详情返回和页码保持、动画期间迟到回包、忙碌时本地操作、语音返回、资源重载和临时隐藏后的恢复。
+
+## 2026-10-30 26.1.2 分页与 ASR 补充移植
+
+切换 master 后先执行 `git pull --ff-only origin master`，远端无新提交，基线为 `b97aa1c`。核对 AUI 26.1 / 1.2.6 的 Node / Element 源码后同步分页容器提前初始化；ASR 同步停止与入队互斥、EOF 复核、终态和计时代次、90 秒会话 / 15 秒收尾超时、取消及后台错误处理，并将正常结束的 EOF 实际移到设备关闭前。26.1.2 原生输入法、SavedDataType、依赖及网络协议未变。
+
+实际执行 `gradlew compileJava testModClasses jar --console=plain` 成功；这里的 testModClasses 只编译开发源集，没有运行测试或游戏。静态 / JAR 检查通过：双语各 517 键且集合相同、23 份卡片 JSON 可解析，三个修改类均为 Java 25 字节码。产物 `build/libs/system-1.0-beta.1.jar` 为 1,548,823 字节，没有带入 1.21.1 的内嵌 Saturn、旧输入法 helper 或 IMBlocker Mixin。
+
+没有请求收费 API、创建存档 / 临时配置或执行运行时探针。尚未实际验收：通知翻页点击及返回页码、Java Sound / SVC 录音结束、设备延迟关闭、取消 / 超时后的迟到回调、识别填入与自动发送。完整范围及来源审计见 [跨版本同步记录](ftb-quests-porting.md#2026-10-30-本轮补充移植)。

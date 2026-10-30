@@ -1,5 +1,6 @@
 package com.iafenvoy.system.speech.asr;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.speech.AsrProviders;
 import com.iafenvoy.system.speech.SpeechException;
@@ -20,9 +21,15 @@ public final class AssistantRecognition {
         thread.setDaemon(true);
         return thread;
     });
+    private static final ScheduledThreadPoolExecutor TIMEOUTS = new ScheduledThreadPoolExecutor(1, runnable -> {
+        Thread thread = new Thread(runnable, "system-recognition-timeouts");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     static {
         WORKER.allowCoreThreadTimeOut(true);
+        TIMEOUTS.setRemoveOnCancelPolicy(true);
     }
 
     private AssistantRecognition() {
@@ -49,6 +56,8 @@ public final class AssistantRecognition {
         private final RecognitionRecording microphone = new RecognitionRecording();
         private final Consumer<String> result;
         private Future<?> pending;
+        private ScheduledFuture<?> timeout;
+        private int timeoutRevision;
         private volatile boolean closed;
         private volatile boolean stopping;
         private String status = "connecting";
@@ -69,49 +78,76 @@ public final class AssistantRecognition {
                 request = RecognitionConfig.INSTANCE.get().request();
             }
             WORKER.purge();
-            this.pending = WORKER.submit(() -> {
-                RecognitionUsageTracker accounting = new RecognitionUsageTracker(providerId, request.region());
-                try (AsrProvider provider = AsrProviders.create(providerId); RecognitionRecording capture = this.microphone) {
-                    provider.validate(request);
-                    capture.open();
-                    if (this.closed || Thread.currentThread().isInterrupted()) return;
-                    this.update(() -> this.status = this.stopping ? "recognizing" : "recording");
-                    String recognized = provider.recognize(request, new AsrProvider.AudioSource() {
-                        @Override
-                        public void start() throws Exception {
-                            capture.start();
-                        }
+            this.scheduleTimeout(90);
+            try {
+                this.pending = WORKER.submit(() -> {
+                    RecognitionUsageTracker accounting = new RecognitionUsageTracker(providerId, request.region());
+                    try (AsrProvider provider = AsrProviders.create(providerId); RecognitionRecording capture = this.microphone) {
+                        provider.validate(request);
+                        capture.open();
+                        if (this.closed || Thread.currentThread().isInterrupted()) return;
+                        this.update(() -> this.status = this.stopping ? "recognizing" : "recording");
+                        String recognized = provider.recognize(request, new AsrProvider.AudioSource() {
+                            @Override
+                            public void start() throws Exception {
+                                capture.start();
+                            }
 
-                        @Override
-                        public int read(byte[] buffer) throws Exception {
-                            int count = capture.read(buffer);
-                            if (count < 0) Session.this.update(() -> Session.this.status = "recognizing");
-                            return count;
-                        }
-                    }, text -> this.update(() -> this.intermediate = text), accounting::begin);
-                    accounting.complete(true);
-                    this.update(() -> {
-                        this.finished = true;
-                        this.status = recognized.isBlank() ? "empty" : "done";
-                        if (!recognized.isBlank()) this.result.accept(recognized);
-                    });
-                } catch (Exception error) {
-                    String code = error instanceof SpeechException speech ? speech.code()
-                            : error instanceof TimeoutException ? "timeout" : "network";
-                    this.update(() -> {
-                        this.finished = true;
-                        this.status = code;
-                    });
-                } finally {
-                    accounting.complete(false);
-                }
-            });
+                            @Override
+                            public int read(byte[] buffer) throws Exception {
+                                int count = capture.read(buffer);
+                                if (count < 0) Session.this.update(Session.this::finish);
+                                return count;
+                            }
+                        }, text -> this.update(() -> this.intermediate = text), accounting::begin);
+                        accounting.complete(true);
+                        this.update(() -> {
+                            this.complete();
+                            this.status = recognized.isBlank() ? "empty" : "done";
+                            if (!recognized.isBlank()) this.result.accept(recognized);
+                        });
+                    } catch (Exception | LinkageError error) {
+                        String code = error instanceof SpeechException speech ? speech.code()
+                                : error instanceof TimeoutException ? "timeout" : "network";
+                        // Upstream messages can include credentials; log only the local code and exception type.
+                        if (!this.closed)
+                            SystemMod.LOGGER.warn("Recognition failed: {} ({})", code, error.getClass().getSimpleName());
+                        this.update(() -> {
+                            this.complete();
+                            this.status = code;
+                        });
+                    } finally {
+                        accounting.complete(false);
+                    }
+                });
+            } catch (RejectedExecutionException error) {
+                this.complete();
+                this.status = "busy";
+            }
         }
 
         private void update(Runnable action) {
             this.minecraft.execute(() -> {
-                if (this.active()) action.run();
+                if (this.active() && !this.finished) action.run();
             });
+        }
+
+        private void complete() {
+            this.finished = true;
+            if (this.timeout != null) this.timeout.cancel(false);
+        }
+
+        private void scheduleTimeout(int seconds) {
+            if (this.timeout != null) this.timeout.cancel(false);
+            int revision = ++this.timeoutRevision;
+            // The UI must finish even if a capture backend or provider never returns to its own deadline.
+            this.timeout = TIMEOUTS.schedule(() -> this.update(() -> {
+                if (this.timeoutRevision != revision) return;
+                SystemMod.LOGGER.warn("Recognition session timed out ({})", this.status);
+                this.complete();
+                this.status = "timeout";
+                this.cancelPending();
+            }), seconds, TimeUnit.SECONDS);
         }
 
         public boolean active() {
@@ -135,11 +171,17 @@ public final class AssistantRecognition {
             this.stopping = true;
             this.microphone.finish();
             this.status = "recognizing";
+            this.scheduleTimeout(15);
         }
 
         @Override
         public void close() {
             this.closed = true;
+            if (this.timeout != null) this.timeout.cancel(false);
+            this.cancelPending();
+        }
+
+        private void cancelPending() {
             if (this.pending != null) this.pending.cancel(true);
             this.microphone.close();
             WORKER.purge();

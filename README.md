@@ -24,10 +24,12 @@ and HUD notifications that keep gameplay uninterrupted, with optional speech out
   enter the inbox. Data packs configure Saturn Costs or free draws.
 - **Configurable content and workflows:** data packs define system names, descriptions, enabled modules, check-in
   rewards, shop offers and lottery pools. Modules use a synchronized `system_module` registry: server behavior is
-  selected by `server.type`, client UI by a separate `client` ID. Systems reference module instances or tags, with conditions. Server rules can trigger bounded
+  selected by `server.type`, client UI by a separate `client` ID. Systems reference module instances or tags, with
+  conditions. Server rules can trigger bounded
   workflows when players complete advancements.
 - **HUD notifications and speech:** notifications do not take control of the mouse or keyboard. Optional Aliyun
-  streaming TTS reads message bodies; closing a view, dismissing a notification or switching messages ends the corresponding
+  streaming TTS reads message bodies; closing a view, dismissing a notification or switching messages ends the
+  corresponding
   speech session.
 - **Usage and privacy controls:** server AI and web usage by player, private local TTS / ASR usage, history management,
   external-AI opt-out, UUID-isolated data and limits on model and tool execution.
@@ -81,24 +83,24 @@ when using a proxy for DeepSeek, explicitly select `deepseek`.
 
 The following commands run in Minecraft chat:
 
-| Command                               | Action                                                                                               |
-|---------------------------------------|------------------------------------------------------------------------------------------------------|
-| `/system`                             | Open the last selected view                                                                          |
-| `/system full` / `/system simple`     | Open the full / minimal view                                                                         |
-| `/system settings`                    | Open unified client settings directly; no binding or administrator permission required                |
-| `/system ask <text>`                  | Submit a natural-language request                                                                    |
-| `/system search <question>`           | Explicitly start paid web research; no automatic browsing                                            |
-| `/system player`                      | View your own status                                                                                 |
-| `/system submittable [query]`          | List FTB quests with pending manual or checkmark targets                                              |
-| `/system usage` / `/system usage all` | View personal usage / server AI and web usage as an administrator; voice totals always stay personal |
-| `/system grant <system ID> [player]`  | Bind one data-pack system as an administrator; omit the player to bind yourself                      |
-| `/system revoke [player]`             | Revoke access and clear System records as an administrator; retain cumulative usage                   |
-| `/system reset [player]`              | Clear old-format System records and binding; cumulative usage is retained, then grant again          |
-| `/system module add <player> <module ID>` | Enable an additional module for a player as an administrator                                      |
-| `/system module remove <player> <module ID>` | Disable a module for a player as an administrator                                              |
-| `/system module list [player]`        | List registered modules or a player's enabled modules as an administrator                            |
-| `/system routing`                     | View routing diagnostics as an administrator                                                         |
-| `/system help`                        | Show available actions                                                                               |
+| Command                                      | Action                                                                                               |
+|----------------------------------------------|------------------------------------------------------------------------------------------------------|
+| `/system`                                    | Open the last selected view                                                                          |
+| `/system full` / `/system simple`            | Open the full / minimal view                                                                         |
+| `/system settings`                           | Open unified client settings directly; no binding or administrator permission required               |
+| `/system ask <text>`                         | Submit a natural-language request                                                                    |
+| `/system search <question>`                  | Explicitly start paid web research; no automatic browsing                                            |
+| `/system player`                             | View your own status                                                                                 |
+| `/system submittable [query]`                | List FTB quests with pending manual or checkmark targets                                             |
+| `/system usage` / `/system usage all`        | View personal usage / server AI and web usage as an administrator; voice totals always stay personal |
+| `/system grant <system ID> [player]`         | Bind one data-pack system as an administrator; omit the player to bind yourself                      |
+| `/system revoke [player]`                    | Revoke access and clear System records as an administrator; retain cumulative usage                  |
+| `/system reset [player]`                     | Clear old-format System records and binding; cumulative usage is retained, then grant again          |
+| `/system module add <player> <module ID>`    | Enable an additional module for a player as an administrator                                         |
+| `/system module remove <player> <module ID>` | Disable a module for a player as an administrator                                                    |
+| `/system module list [player]`               | List registered modules or a player's enabled modules as an administrator                            |
+| `/system routing`                            | View routing diagnostics as an administrator                                                         |
+| `/system help`                               | Show available actions                                                                               |
 
 System IDs, players and module arguments support completion. Granting the same system again does not reset player
 data; revoke the current binding before switching to another system. Manual module overrides take precedence over
@@ -175,7 +177,9 @@ Define `example:daily` at `data/example/system/system_module/daily.json`:
 
 ```json
 {
-  "server": { "type": "system:signin" },
+  "server": {
+    "type": "system:signin"
+  },
   "client": "system:signin"
 }
 ```
@@ -200,7 +204,8 @@ Place the corresponding module tag at `data/example/tags/system/system_module/ba
 
 Module lists also accept objects with a `condition`; `id` can name a single module or a `#tag`. If several entries match
 the same module, any satisfied condition enables it. Module availability controls workspace entries, commands and
-execution permissions. FTB features also require their dependencies. See [system definitions and module tags](docs/datapacks.md#系统定义).
+execution permissions. FTB features also require their dependencies.
+See [system definitions and module tags](docs/datapacks.md#系统定义).
 
 Check-in rewards, shop offers and lottery pools are defined entirely by data packs, including the bundled defaults:
 
@@ -220,8 +225,8 @@ See the examples in this GitHub repository for details.
 |---------------------------------------------------|-------------------------------------------------------------------------------------------|
 | Server `config/system/system-agent.json`          | Execution budgets, concurrency, daily model limits and time zone                          |
 | Server `config/system/system-model.json`          | Model connection and provider options                                                     |
-| Server `config/system/system-search.json`         | DeepSeek search connection; shares the model key environment variable by default           |
-| Server `config/system/system-search-pricing.json` | Search / Fetch rates per 1,000 requests                                                    |
+| Server `config/system/system-search.json`         | DeepSeek search connection; shares the model key environment variable by default          |
+| Server `config/system/system-search-pricing.json` | Search / Fetch rates per 1,000 requests                                                   |
 | Server `config/system/system-semantic.json`       | Local intent routing, thresholds, examples and cache                                      |
 | Server `config/system/system-advancements.json`   | Trusted advancement rules                                                                 |
 | `<world>/system-agent/<UUID>.json`                | Binding, conversations, preferences, rewards, orders and workflow records                 |
@@ -250,4 +255,5 @@ are not charged together.
 
 Empty search results receive no cost estimate. Unknown outcomes, such as timeouts or network interruptions, are recorded
 separately and do not prove that the provider charged nothing. Rate changes do not recalculate historical totals;
-provider billing is authoritative. See [usage and billing](docs/token-usage.md) and the [external API request list](docs/external-apis.md).
+provider billing is authoritative. See [usage and billing](docs/token-usage.md) and
+the [external API request list](docs/external-apis.md).

@@ -12,7 +12,7 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 
 `ModuleRegistry` 是当前服务器能力的来源。`engine.registerModule(module)` 同时处理：
 
-1. 核对已共享注册的 `MapCodec<I>`、模块 Identifier 与工具白名单。
+1. 核对已共享注册的 `MapCodec<I>`、模块 `ResourceLocation` 与工具白名单。
 2. 校验所有指令别名和工具实例冲突，然后注册 Module 的工具 List。
 3. 绑定指令参数解析器、语义样例和参数提取器，不再重复填写模块 ID。
 4. 记录模型可见性和只读快捷入口，供模型目录、澄清提示与帮助使用。
@@ -45,7 +45,7 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 
 ## 玩家模块存储
 
-玩家私有记录位于 `<存档>/system-agent/<UUID>.json`。PlayerData.moduleData 使用 Saturn `DataStorageHolder<Identifier>`；Holder 键为 ServerModule ID，具体 Java 类型区分同一模块的多项存储，Codec 类型 ID 独立。
+玩家私有记录位于 `<存档>/system-agent/<UUID>.json`。PlayerData.moduleData 使用 Saturn `DataStorageHolder<ResourceLocation>`；Holder 键为 ServerModule ID，具体 Java 类型区分同一模块的多项存储，Codec 类型 ID 独立。
 
 存储由 `ServerModule.storages()` 返回 ModuleStorage 声明，包含 owner、Codec ID、Java 类型、MapCodec 和工厂；声明从当前世界 system:system_module 的 server 配置读取；静态 SystemRegistries.SERVER_MODULE 只注册 MapCodec 类型。内置 Codec 由 SystemDataStorages 的 DeferredRegister 注册到 Saturn DATA_STORAGE_TYPE，扩展的 Codec 需另行注册。不同模块可以复用同一存储类型与 Codec；数据按 ModuleStorage.owner 区分，内置同类配置共用该功能账本。业务访问统一用 `ModuleData.get(data, SomeSystemModule.STORAGE)`，不要在 PlayerData 加功能访问器。完整声明与生命周期见[功能模块化](feature-modules.md#玩家生命周期)。
 

@@ -10,7 +10,7 @@
 | --- | --- |
 | `SystemRegistries.SERVER_MODULE` / `system:server_module` | 静态 `MapCodec<? extends ServerModule>` 类型注册表，由 `SystemServerModules` 注册 |
 | `SystemResourceKeys.SYSTEM_MODULE` / `system:system_module` | 原生同步数据包注册表，条目是 `data.SystemModule`，按 `server.type` 解码服务端配置 |
-| `SystemClientModules` | 仅客户端初始化的普通实现 Map；数据包的 `client` 只保存该表的 Identifier |
+| `SystemClientModules` | 仅客户端初始化的普通实现 Map；数据包的 `client` 只保存该表的 `ResourceLocation` |
 | `SystemResourceKeys.SYSTEM` / `system:system` | 系统名称、介绍与模块 ID/tag/condition；引用上述动态模块实例 |
 
 例如 `data/example/system/system_module/daily.json`：
@@ -88,7 +88,7 @@ ServerModule.storages() 返回 ModuleStorage 列表，包含 owner、存储类�
 客户端实现通过仅客户端入口注册：
 
 ```java
-SystemClientModules.register(Identifier.parse("example:daily"), new ExampleClientModule());
+SystemClientModules.register(ResourceLocation.parse("example:daily"), new ExampleClientModule());
 ```
 
 数据包填 `"client": "example:daily"`，无需给公共 MC 注册表增加 ClientModule 类型。内置客户端实现集中在 registry.SystemClientModules 公开静态字段；专用服务端不会加载该类或 module.builtin.*ClientModule。未知 client ID 只缺少对应界面，不参与服务端业务分派。

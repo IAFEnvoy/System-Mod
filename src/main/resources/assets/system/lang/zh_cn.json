@@ -389,6 +389,8 @@
   "system.ui.no": "否",
   "system.ui.off": "关闭",
   "system.ui.on": "开启",
+  "system.ui.player_info": "宿主信息",
+  "system.ui.player_preview_unavailable": "玩家模型暂不可用",
   "system.ui.privacy_heading": "记忆与外部推演",
   "system.ui.privacy_text": "AI 请求会将必要文本发送给服务端配置的模型服务。仅在明确要求联网搜索时，问题和检索词才用于外部检索；不会自动搜索。历史最多在服务端保存 30 天，可随时清空；关闭外部 AI 也会禁止联网搜索。",
   "system.ui.quest_claimable": "可领奖励",

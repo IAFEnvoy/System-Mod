@@ -1,6 +1,7 @@
 {
   "server": {
-    "type": "system:signin"
+    "type": "system:signin",
+    "rewards": "#system:default"
   },
   "client": "system:signin"
 }

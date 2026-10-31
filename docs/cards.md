@@ -11,12 +11,12 @@
 ```java
 @Override
 public CardBuilder buildCard() {
-    return CardBuilder.template(Identifier.parse("example:reward"))
+    return CardBuilder.template(ResourceLocation.parse("example:reward"))
             .summary(this.title)
             .put("result_items", this.items)
             .speech(this.speech)
             .serverButton("claim", "system.action.claim",
-                    Identifier.parse("example:claim"), Map.of("reference", this.reference));
+                    ResourceLocation.parse("example:claim"), Map.of("reference", this.reference));
 }
 ```
 
@@ -203,6 +203,12 @@ items 字段引用参数表中的 `List<ItemPreviewOutput>`，缺失、类型不
 
 商城提供 offer_items、price_items；奖励提供 result_items。奖池奖品、签到候选和任务奖励各自用平铺的带下标键，分组与概率/状态说明均由 JSON 决定。物品节点不输出纯文本，文字导出使用 text_items 状态及对应文字参数。FTB 物品任务同时提供 `task_items`，详情卡片会把目标物品作为原版图标渲染并保留进度文字；无法确定具体物品的任务仍只显示标题。
 
+## 玩家模型
+
+`system:player` 从 `player` 引用的 UUID 参数读取当前客户端可见的玩家，默认 `{{player_id}}`；皮肤、装备和模型仅在客户端解析。玩家不在客户端世界中时显示不可用提示，不请求服务端补发实体。
+
+可设置 `follow_mouse`（默认 false）、`yaw`（默认 15 度）、`pitch`（默认 0 度）、`scale`（默认 1）以及 CSS 像素单位的 `offset_x` / `offset_y`（默认 0）。模型按预览框的宽高适配，跟随鼠标时先逆变换 AUI 坐标。1.21.1 直接调用原版玩家渲染器，保留 AUI 的变换、裁剪和物品深度层；不使用会覆盖裁剪区的背包预览高层方法。绘制结束后恢复玩家朝向、相机、光照和深度状态。
+
 ## 按钮与动作
 
 ```json
@@ -230,13 +236,15 @@ button 的 text、callback 必填。callback 只查询已注册的 Runnable；�
 
 label 仅作纯文本投影。缺省使用动作原标签；简约模式按真实动作顺序显示编号，由输入执行选择。可信回调仍经过原有服务端权限、任务和交易校验。
 
-`actions` 节点可设置 `notification_page_size`（默认 0，不分页）；内置任务列表设置为 10，仅通知模式生效。上页、页码、下页在节点内部生成，与宿主底部确定及业务按钮分开。翻页仅修改当前通知的 `CardPageState` 并重绘该节点，不发包、不替换通知、不推进队列或重启播报；完整 / 简约界面仍展示完整列表。页码按动作数据绑定键保存，跟随通知窗口存活，不序列化至服务端或聊天历史。
+`actions` 节点可设置 `page_size`（默认 0，不分页）；内置任务列表设置为 10，在完整模式和通知中生效。上页、页码、下页在节点内部生成，与宿主底部确定及业务按钮分开；只有一页时不显示翻页控件，首尾页禁用对应方向。翻页仅修改本地 `CardPageState` 并重绘当前节点，不发包、不替换通知、不推进队列或重启播报。简约模式仍展示完整编号列表，文字导出也保留所有条目。
+
+完整模式按卡片 UUID 独立保存页码，聊天内容更新、忙碌状态变化及窗口缩放重建 DOM 后继续使用原页；卡片退出当前聊天记录时清理页码，关闭后新开界面从第一页开始。通知沿用自身窗口与返回栈的页码，两种界面互不影响。数据变少时页码收束到最后一页；状态不序列化至服务端或聊天历史。
 
 分页容器在绑定回调前先经 `Element.init` 取得实际组件。AUI 在 appendChild 时会把普通 Element 升级为 Div 等注册组件；捕获升级前的对象会导致 isConnected 为 false，点击被直接忽略，即使移除该判断也只会重绘已脱离 DOM 的旧对象。
 
 CardButton 显式描述 Local/Server 动作、BODY/FOOTER 位置以及 CLOSE/WAIT/REPLACE/PUSH 行为。actions 节点在通知正文只绘制 BODY 按钮，FOOTER 由通知宿主生成；宿主始终在业务按钮之后补充本地确定按钮，忙碌时仍可关闭通知。列表内容使用原有固定宽度和限高滚动视口，分页不扩大通知面板。
 
-点击、数字和语音选择都进入 CardController。Local 从 ClientModuleCaches.BINDINGS 的处理器 Map 分派；Map 和登记、分派、清理逻辑直接位于 ClientModuleBindingsCache，由模块通过 localAction 声明，随 Saturn RegistryCache 重建和退出清理。Controller 不单独保存永久动作表。Server 发 CardActionRequest(source, action)，仅含来源 CardRef、动作 Identifier 和字符串参数。工作流在 ModuleRouting.button 中解码，继续经过原有权限、预算、引用、Cost 与发奖流程，不经过模型路由。labelKey 只决定标签和语音候选，不决定动作。
+点击、数字和语音选择都进入 CardController。Local 从 ClientModuleCaches.BINDINGS 的处理器 Map 分派；Map 和登记、分派、清理逻辑直接位于 ClientModuleBindingsCache，由模块通过 localAction 声明，随 Saturn RegistryCache 重建和退出清理。Controller 不单独保存永久动作表。Server 发 CardActionRequest(source, action)，仅含来源 CardRef、动作 `ResourceLocation` 和字符串参数。工作流在 ModuleRouting.button 中解码，继续经过原有权限、预算、引用、Cost 与发奖流程，不经过模型路由。labelKey 只决定标签和语音候选，不决定动作。
 
 CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并等待回复。REPLACE 同样等待，但把直接回复的新 SHOW 卡片放到当前通知的位置，旧内容淡出后新内容淡入，不收起面板或重复播放提示音；其余排队通知保持顺序。CardBuilder.serverButton 默认使用 REPLACE。任务列表查看按钮使用 PUSH：收到可显示的回复后保留来源视图，详情正文上方提供本地“返回列表”，返回时恢复原页码且不重复播报列表。失败的零卡片回复保留原列表；业务 REMOVE 会清除对应返回视图。底部确定结束整个当前窗口并清理返回栈，再取下一条通知。通知没有自动关闭计时，播报结束也不会切换到下一条。
 

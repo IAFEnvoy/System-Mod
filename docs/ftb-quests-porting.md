@@ -112,6 +112,10 @@ QuestKnowledgeCache 已拆成通用 agent.database 下的 AgentDatabases / Agent
 
 用户反馈点击“下页”无反应。阅读 AUI 1.21.1 / 1.2.6 的 sources JAR 确认：Node.prepareForInsertion 调用 Element.init，普通 Element 会被注册的 Div 实例替换；旧回调持有原始分页容器，其 isConnected 为 false。ActionsNode.render 改为先 Element.init(view.element(...))，再构建分页及回调，使后续挂载和重绘指向同一实际容器。保留连接与交互检查，不绕过通知生命周期。此修正当前仅写入 1.21.1，master 的同源 ActionsNode 也需同步这一行及注释；编译通过，未启动游戏复测。
 
+### 完整模式任务列表分页（master 待同步）
+
+2026-10-31：`ActionsNode` 的配置字段由 `notification_page_size` 改为通用 `page_size`，`quest_list.json` 设为 10，同时用于完整模式与通知。完整模式在 `AssistantScreen` 按卡片 UUID 保存 `CardPageState`，经 `AssistantView.renderCard` 传给构建入口；聊天重绘、忙碌更新和窗口重建后保留页码，不同卡片互不影响。卡片退出当前聊天记录时清理，简约模式和文字导出仍保留完整列表。后续同步 master 时同时迁移节点 Codec、模板、页码状态注释、完整模式传参及文档。
+
 ### 1.21.1 SavedData 文件名修正
 
 用户在 Windows 保存世界时报告 `data/system:token_usage.dat` 的 InvalidPathException。核对 1.21.1 DimensionDataStorage.getDataFile 后确认它直接将字符串键拼接为 `<键>.dat`，不会像 26.x SavedDataType 一样拆分命名空间。TokenUsageData.FILE_ID 改为 `system_token_usage`，实际路径为 `<存档>/data/system_token_usage.dat`；去掉无用的 ResourceLocation import，用量内容及撤销保留规则不变。本修正仅适用于 1.21.1 的文件名 API，不能机械改动 master 的合法 Identifier / SavedDataType。扫描主源码与内联 Saturn，仅此一处使用原版 SavedData；编译通过，未修改用户存档或启动游戏。
@@ -122,3 +126,7 @@ QuestKnowledgeCache 已拆成通用 agent.database 下的 AgentDatabases / Agent
 RecognitionRecording 手动停止与帧入队共用锁，耗尽缓冲后直接返回 EOF，不等待设备线程；自然结束的 EOF 也改为在设备 close 之前发布，结束后读取帧队列时复核最后一帧；AssistantRecognition 增加独立 session 计时、完成终态、后台错误和执行器繁忙处理。这两处是跨版本共有的语音链路修正，后续需同步到 master / 26.1.2。
 
 中文输入法修正则针对 1.21.1：`ImBlockerConfigMixin` 用 `@Pseudo` 和字符串目标注入 `IMBlockerConfig.isScreenInWhitelist`，将全部 `AssistantPageScreen` 子类视为白名单，不改用户配置，无 IMBlocker 编译或运行依赖。核对实际整合包 IMBlocker 5.6.1 JAR 及 v5.6.1 源码；不自行管理其控件焦点、候选定位或字符探测，也不再保留 Windows 专用组合串检测与按键保护。文字输入沿用 AUI 和平台原有流程。master 已有 26.1 原生文本输入 / preedit API，后续同步应保留其平台原生支持；白名单 Mixin 需先核对目标版本 IMBlocker 签名。此次只做编译和源码 / JAR 检查，没有游戏内验收。
+
+### 语音价格表初始化与统计隔离（master 待核对同步）
+
+2026-10-31：根据 1.21.1 整合包实际堆栈，将 `SpeechPricingConfig` 的 PRICE Codec 和 LOGGER 移到外层 CODEC / INSTANCE 之前，避免静态初始化期间读取 null。金额 Codec 同时接受 JSON 数字和十进制字符串，保存数字，不经 double 转换；原 Codec.STRING 无法读取默认价格文件的数字字段。`LocalSpeechUsage.Ledger` 集中在同步 update 中隔离 RuntimeException / LinkageError，计算失败保留旧快照并记录完整堆栈，不阻断 ASR 文本交付或 TTS 播放；`AssistantRecognition` 也保留完整错误堆栈。后续在 master / 26.1.2 核对同源问题再同步上述三类及语音文档，无需改玩家存档或清空统计。

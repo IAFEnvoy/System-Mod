@@ -777,3 +777,9 @@ AgentCommand、CommandRegistry 与客户端命令声明已接入 Brigadier；Cli
 用户提供保存异常：InvalidPathException 指向 `data/system:token_usage.dat`。读取实际 NeoForge / Minecraft 1.21.1 sources JAR，确认 DimensionDataStorage.getDataFile 直接使用 `new File(dataFolder, name + ".dat")`。TokenUsageData.FILE_ID 从资源 ID 字符串改为 `SystemMod.MOD_ID + "_token_usage"`，最终文件名为 system_token_usage.dat；更新实际存档路径说明。全主源码（包括内联 Saturn）扫描仅发现该处 SavedData 实现与消费入口，无其他同类存档键。
 
 执行 `gradlew compileJava testModClasses --console=plain` 成功，git diff --check 通过。未运行测试、启动游戏或改动用户存档，保存世界和重新加载账本尚待游戏内复测；本次不修改用量数据结构及 revoke 策略。
+
+## 2026-10-31 1.21.1 存储与目录注册表同步
+
+保留 1.21.1 工作区已有改动，手工同步 master 的近期存储与目录改动：`PlayerData.State`、事件任务和步骤状态改为共享枚举；内置 DataStorage 集合改为私有字段并统一通过 getter / 事务方法修改，变更调用 `markDirty()`；签到奖励、商城商品和抽奖奖池改为原生 `system:signin_rewards`、`system:shop_offers`、`system:lottery_pools` 数据包注册表，模块通过 ID / tag 过滤可用目录，移除旧 `CatalogReloadListener`。所有 1.21.1 代码继续使用 `ResourceLocation`，没有带入 26.x 的 `Identifier` 或客户端渲染 API。同步更新目录、模块和注册表文档，保留用户未提交的其他修改。
+
+执行 `gradlew compileJava testModClasses --console=plain` 成功；主源码和测试源集编译通过。脚本校验 `src/main/resources` 与 `src/test-mod/resources` 共 65 个 JSON，无重复键；`git diff --check` 通过。没有启动 Minecraft、创建临时存档或进行游戏内验收；数据包注册表加载、tag 过滤、目录交易和存档回写仍需实际运行检查。

@@ -109,9 +109,9 @@ public final class AssistantRecognition {
                     } catch (Exception | LinkageError error) {
                         String code = error instanceof SpeechException speech ? speech.code()
                                 : error instanceof TimeoutException ? "timeout" : "network";
-                        // Upstream messages can include credentials; log only the local code and exception type.
+                        // Keep the cause chain so initialization and dependency failures can be diagnosed.
                         if (!this.closed)
-                            SystemMod.LOGGER.warn("Recognition failed: {} ({})", code, error.getClass().getSimpleName());
+                            SystemMod.LOGGER.warn("Recognition failed: {}", code, error);
                         this.update(() -> {
                             this.complete();
                             this.status = code;

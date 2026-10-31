@@ -4,7 +4,6 @@ import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.builtin.inbox.DeliverModule;
 import com.iafenvoy.system.agent.builtin.inbox.DeliverTool;
 import com.iafenvoy.system.agent.builtin.inbox.InboxModule;
-import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.module.*;
 import com.iafenvoy.system.module.builtin.storage.InboxDataStorage;
 import com.mojang.serialization.MapCodec;
@@ -39,10 +38,7 @@ public final class InboxSystemModule implements SharedModule {
         return new PlayerModule() {
             @Override
             public Session login(ServerPlayer player) {
-                return data -> {
-                    for (PlayerData.Delivery delivery : ModuleData.get(data, STORAGE).deliveries.values())
-                        if ("DELIVERING".equals(delivery.state)) delivery.state = "DELIVERY_UNKNOWN";
-                };
+                return data -> ModuleData.get(data, STORAGE).recoverDeliveries();
             }
         };
     }

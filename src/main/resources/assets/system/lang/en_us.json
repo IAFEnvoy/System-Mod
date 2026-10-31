@@ -389,6 +389,8 @@
   "system.ui.no": "No",
   "system.ui.off": "Off",
   "system.ui.on": "On",
+  "system.ui.player_info": "Host information",
+  "system.ui.player_preview_unavailable": "Player model unavailable",
   "system.ui.privacy_heading": "Memory and external inference",
   "system.ui.privacy_text": "AI sends necessary text to the configured model service. Questions and queries are used for web research only at your explicit request. History stays on this server for up to 30 days and can be cleared. Disabling external AI also blocks web research.",
   "system.ui.quest_claimable": "Ready to claim",

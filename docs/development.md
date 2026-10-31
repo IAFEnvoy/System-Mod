@@ -69,7 +69,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 上表路径均相对于 `src/main/java/com/iafenvoy/system/`。Agent 与游戏接入代码处于同一主项目；模块、工具和服务接口仍保留职责划分，工具使用稳定逻辑 ID，方便后续扩展业务。
 
-注册项由 registry 类的 public static final 字段公开。静态 SERVER_MODULE 是 MapCodec 类型注册表；动态 SystemModule 配置来自世界的 system:system_module 注册表，server 字段按 type dispatch。ServerModule 与 ClientModule 的实现分文件，客户端 Map 仅由 SystemClientMod 初始化，公共注册表不再引用 ClientModule。数据包 client 字段只存 Identifier；客户端绑定缓存按 client ID 分组并关联配置 ID 列表。ToolModule、WorkflowModule、SharedModule、CoreModule 仍按接口划分服务端职责，SharedModule 不再继承 ClientModule。完整入口与生命周期见[功能模块化](feature-modules.md)和[注册表速查](registries.md)。
+注册项由 registry 类的 public static final 字段公开。静态 SERVER_MODULE 是 MapCodec 类型注册表；动态 SystemModule 配置来自世界的 system:system_module 注册表，server 字段按 type dispatch。ServerModule 与 ClientModule 的实现分文件，客户端 Map 仅由 SystemClientMod 初始化，公共注册表不再引用 ClientModule。数据包 client 字段只存 `ResourceLocation`；客户端绑定缓存按 client ID 分组并关联配置 ID 列表。ToolModule、WorkflowModule、SharedModule、CoreModule 仍按接口划分服务端职责，SharedModule 不再继承 ClientModule。完整入口与生命周期见[功能模块化](feature-modules.md)和[注册表速查](registries.md)。
 
 `AssistantServer` 负责组装引擎、安装模块、转发游戏事件及资源刷新；`AssistantPlayers` 管理绑定与连接，ModuleManager 根据 ServerModule.runtime 创建 PlayerModule 并统一管理模块会话、事件、tick 和关闭；成就基线与派发由成就模块管理，`AssistantRequests` 管理类型化请求分派与回复，`AssistantUsage` 管理用量查询及计量队列。命令、网络和可选桥接通过 `players()`、`requests()`、`usage()` 调用对应服务；异步回复仍核对连接代次，模型计量仍由服务端主线程写入 SavedData。
 
@@ -116,7 +116,7 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 
 实现 `AgentModule<I extends AgentAction>`，通过 `inputCodec()` 提供已注册的 `MapCodec<I>`，另声明描述信息和 `List<ToolRegistry.Tool<?, ?>> tools()`；`execute` 直接接收动作对象。动作实现的 `codec()` 返回自己的 MapCodec。内置模块继承 `BuiltinModule<I>`：构造时只传 `SchemaMapCodec<I>`、描述和工具列表，注册 ID 与输入 Schema 从同一个 Codec 获取，工具白名单从列表生成，避免重复声明。模块是受信 Java 代码，Codec 不替代业务授权，也不是同 JVM 沙箱。
 
-模块 ID 使用原版 `Identifier`：`Descriptor.id`、`AgentAction.id()` 及模块注册表的键均为该类型。先通过 DeferredRegister 向 `SystemResourceKeys.ACTION_TYPE` 登记动作 MapCodec，内置定义由 `SystemActionTypes` 提供。模块的 `inputCodec()` 和动作的 `codec()` 必须复用同一实例；引擎拒绝注册 ID 不一致或未注册的 Codec。无参数动作使用独立类型与 Codec，不能将同一个 EmptyInput Codec 注册为多个动作。配置和网络仍编码为 `namespace:path` 字符串。
+模块 ID 使用 1.21.1 原版 `ResourceLocation`：`Descriptor.id`、`AgentAction.id()` 及模块注册表的键均为该类型。先通过 DeferredRegister 向 `SystemResourceKeys.ACTION_TYPE` 登记动作 MapCodec，内置定义由 `SystemActionTypes` 提供。模块的 `inputCodec()` 和动作的 `codec()` 必须复用同一实例；引擎拒绝注册 ID 不一致或未注册的 Codec。无参数动作使用独立类型与 Codec，不能将同一个 EmptyInput Codec 注册为多个动作。配置和网络仍编码为 `namespace:path` 字符串。
 
 每个 Tool 只负责一个行为，`ToolRegistry.Type<I, O>` 保存稳定 ID、参数 `MapCodec<I>` 和结果 `Codec<O>`，`Tool<I, O>` 保存写入、幂等、事件权限和单一 Handler。模块直接调用 `context.tool(type, stepId, typedInput)` 获得类型化结果；一个流程需要多个行为时使用模块的 `List.of(toolA, toolB)` 组合。同一模块配置内共享工具实例；不同配置可有同类型工具的不同处理器，调用时按配置 owner 选择。相同 ID 不同工具类型键仍被拒绝。
 
@@ -168,7 +168,7 @@ AgentResult 继承 Saturn ResultWithData<List<CardUpdate>>。Status 为 SUCCEEDE
 
 公共 card 包定义 CardData、CardBuilder/CardView、CardButton/CardAction、CardContext 和 SpeechContent；不加载客户端、AUI、FTB 或服务端运行时。CardData 自己提供 MapCodec 和 buildCard，客户端调用后得到完整的模板、参数、主文案、按钮与播报。CardPresentation 负责本地翻译、CardText 延迟物品解析、通用模式和受控 callback，JSON 仅控制布局。仅一个纯文本节点且没有按钮或额外内容时显示为普通消息，文字带按钮继续作为卡片。
 
-服务端 DTO 包含分页原查询词、目录版本、报价、领取引用及可操作状态，客户端不反查工作流或自行判断业务。CardAction.Server 发送动作 Identifier 和字符串参数，由 ModuleRouting.button 转成原类型化输入并校验，继续进入原 AgentModule/Tool。Local 由客户端控制器 Map 执行；labelKey 只用于显示与语音匹配。ClientCardBindings 和按标签推断行为的 notificationAction 已移除。
+服务端 DTO 包含分页原查询词、目录版本、报价、领取引用及可操作状态，客户端不反查工作流或自行判断业务。CardAction.Server 发送动作 `ResourceLocation` 和字符串参数，由 ModuleRouting.button 转成原类型化输入并校验，继续进入原 AgentModule/Tool。Local 由客户端控制器 Map 执行；labelKey 只用于显示与语音匹配。ClientCardBindings 和按标签推断行为的 notificationAction 已移除。
 
 ClientCards 保存连接内最新消息、版本和活动状态，ServerCards 只保存已发布版本元数据，并在异步动作开始时预留版本。REPLACE 只修改同一 ID，不新入队或播报；REMOVE 停止该卡片的显示/语音，历史保留只读快照。通知不按时长或播报结束自动切换；WAIT 保留当前通知并禁用服务端操作，失败、请求超时和零卡片回复都完成等待。状态与历史独立响应，历史恢复不发包、不播报，不恢复旧引用的交互能力。
 
@@ -212,7 +212,7 @@ CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式
 
 每玩家文件包含对话、每日签到、收件箱、业务操作回执、事件任务、成就状态及模块覆盖，各业务状态分属独立 DataStorage。对话清理不清除业务唯一标记。配置不进入玩家文件；密钥始终来自服务端环境变量。请用宿主机权限保护存档、临时文件和备份。
 
-`PlayerData` 顶层 `RecordCodecBuilder` 只保存版本、绑定与偏好、`Conversation`、`DataStorageHolder<Identifier>` 和 `ModelQuota` 共 7 项。签到、收件箱、事件/操作回执、商城、成就状态和模块覆盖分别实现 Saturn `DataStorage`，由 ServerModule.storages 声明，内置 Codec 由 `SystemDataStorages` 注册，扩展 Codec 独立注册到 Saturn DATA_STORAGE_TYPE，并由 `DataStorageHolder.codec(Identifier.CODEC)` 分派；扩展模块可用自己的 DataStorage 避免继续扩大共享玩家记录。访问入口为 `ModuleData.get(data, SomeSystemModule.STORAGE)`，底层按 Holder 键和类型调用 `get` / `set`，与 DataStorage Codec 类型 ID 分开；复制必须隔离可变集合和其中的可变记录。玩家文件仍由 `AgentStore.update` 整体事务化写入，不属于玩家附件。对话历史和请求回放由 `Conversation` 管理，`Conversation.clear()` 统一清理并推进记忆代次；内部交付、事件、步骤回执和订单使用 `RecordCodecBuilder`。
+`PlayerData` 顶层 `RecordCodecBuilder` 只保存版本、绑定与偏好、`Conversation`、`DataStorageHolder<ResourceLocation>` 和 `ModelQuota` 共 7 项。签到、收件箱、事件/操作回执、商城、成就状态和模块覆盖分别实现 Saturn `DataStorage`，由 ServerModule.storages 声明，内置 Codec 由 `SystemDataStorages` 注册，扩展 Codec 独立注册到 Saturn DATA_STORAGE_TYPE，并由 `DataStorageHolder.codec(ResourceLocation.CODEC)` 分派；扩展模块可用自己的 DataStorage 避免继续扩大共享玩家记录。访问入口为 `ModuleData.get(data, SomeSystemModule.STORAGE)`，底层按 Holder 键和类型调用 `get` / `set`，与 DataStorage Codec 类型 ID 分开；复制必须隔离可变集合和其中的可变记录。玩家文件仍由 `AgentStore.update` 整体事务化写入，不属于玩家附件。对话历史和请求回放由 `Conversation` 管理，`Conversation.clear()` 统一清理并推进记忆代次；内部交付、事件、步骤回执和订单使用 `RecordCodecBuilder`。
 
 成就规则与事件存档将完整动作保存在 `action` 字段中，动作内部按 moduleId 分派并平铺参数，避免与规则的 advancementId、事件任务的 ruleId 重名；事件授权只使用任务自身保存的 ruleId。结果、语音统计和 ASR 统计按当前 Codec 结构读取，不从旧记录猜测或回退字段。
 
@@ -238,9 +238,9 @@ ModuleAccess 在登录事务中取得绑定 ID，在主线程确认定义仍存�
 
 ## 商城与目录扩展
 
-`agent/commerce/CommerceCatalog` 是奖励、商品与奖池目录的不可变快照，只从数据包生成；默认内容也放在 JAR 内 `data/system/system/signin_rewards/`、`shop_offers/` 与 `lottery_pools/`。初始目录注入引擎，重载后通过 `engine.catalog(snapshot)` 发布新目录。MC 使用已核对依赖源码的 `AddServerReloadListenersEvent.addRetainedListener` 注册加载器；只在成功切换服务器资源后发布新快照，不使用全局跨世界目录。资源同路径按数据包优先级覆盖，不同 ID 汇总，格式见 [扩展配置](datapacks.md)。
+`agent/commerce/CommerceCatalog` 是奖励、商品与奖池目录的不可变快照，只从服务端动态数据包注册表生成；默认内容也放在 JAR 内 `data/system/system/signin_rewards/`、`shop_offers/` 与 `lottery_pools/`。服务器启动时从 `RegistryAccess` 创建目录，工作流通过 `AgentEngine.availableCatalog(player)` 按已启用模块过滤；不会再维护目录重载监听器或跨世界全局快照。资源同路径按数据包优先级覆盖，不同 ID 汇总，格式见 [扩展配置](datapacks.md)。
 
-奖励和商品 ID 使用 `Identifier`，通过 `Identifier.CODEC` 解析；签到选择、报价请求和成就奖励引用保留该类型，只在搜索或对话摘要等文本边界转换。商品与奖池直接保存 `List<Cost>`，通过 Saturn `Cost.LIST_CODEC` 按注册类型分派；目录监听器使用 NeoForge 注入的 `getRegistryLookup()` 创建 RegistryOps，支持资源 Cost 的动态注册表引用。`CommerceCatalog.Price` 仅保存求值后的物品图标和文字组件，供客户端及订单快照使用，不含可执行费用。
+奖励和商品 ID 使用 `ResourceLocation`，通过 `ResourceLocation.CODEC` 解析；签到选择、报价请求和成就奖励引用保留该类型，只在搜索或对话摘要等文本边界转换。商品与奖池直接保存 `List<Cost>`，通过 Saturn `Cost.LIST_CODEC` 按注册类型分派；数据包注册表在 `SystemDataPackRegistries` 中登记，`CommerceCatalog` 只读取当前服务器的 `RegistryAccess`。`CommerceCatalog.Price` 仅保存求值后的物品图标和文字组件，供客户端及订单快照使用，不含可执行费用。
 
 `system:shop` 分页浏览、`system:shop_quote` 生成预览、`system:shop_purchase` 处理独立确认，后者拒绝模型路由直接进入。支付内容只来自服务端签发的 `CommerceQuotes`，绑定玩家、操作类型与目录版本；订单按报价 ID 持久化，清空对话不删除订单。`ShopPurchaseTool` 与 `LotteryDrawTool` 各自只负责一种确认行为，通过同一 `CommerceTransactions` 预留 `CommerceOrder` 与锁定的收件箱权益，再进入受限主线程队列验证模板并扣除材料，最后在同一玩家事务中完成订单并解锁权益。扣款失败与结果未知分别记录；未知订单不自动重试，权益保持锁定。`Purchase.order` 保存操作类型、来源、价格及完整奖励快照；没有迁移旧 `Purchase.offer` 的兼容逻辑，开发存档若无法解析，使用 `/system reset [玩家]` 后重新授予。
 

@@ -31,7 +31,7 @@
 
 动态配置独立登记在 `system:system_module`，并通过 `SystemDataPackRegistries.modules(RegistryAccess)` 访问。内置动态条目采用同名 ID，扩展可给同一类型创建不同 ID 与参数；不能用静态 SERVER_MODULE 查询模块配置或取玩家可用条目。
 
-客户端实现位于 SystemClientModules 普通 Map，通过客户端入口初始化、public static 字段公开。数据条目的 client 是该 Map 的 Identifier；服务端不会解析客户端实现。内置双端功能拆为相邻的 *SystemModule / *SystemClientModule，不再共用 ClientHooks 或同一个实现类。聊天、设置、语音与基础界面贡献在本地常驻，其余按动态配置 ID 检查权限。
+客户端实现位于 SystemClientModules 普通 Map，通过客户端入口初始化、public static 字段公开。数据条目的 client 是该 Map 的 `ResourceLocation`；服务端不会解析客户端实现。内置双端功能拆为相邻的 *SystemModule / *SystemClientModule，不再共用 ClientHooks 或同一个实现类。聊天、设置、语音与基础界面贡献在本地常驻，其余按动态配置 ID 检查权限。
 
 | 接口 | 用途 |
 | --- | --- |
@@ -179,8 +179,8 @@ AsrProviders.register("example:recognition", ExampleAsrProvider::new);
 ### 查询已有条目
 
 ```java
-var type = SystemRegistries.CARD_DATA_TYPE.getValue(Identifier.parse("system:player")); // nullable
-var optional = SystemRegistries.CARD_DATA_TYPE.getOptional(Identifier.parse("system:player"));
+var type = SystemRegistries.CARD_DATA_TYPE.get(ResourceLocation.parse("system:player")); // nullable
+var optional = Optional.ofNullable(type);
 var id = SystemRegistries.CARD_DATA_TYPE.getKey(SystemCardDataTypes.PLAYER.get());
 SystemRegistries.CARD_DATA_TYPE.forEach(entry -> { /* inspect registered types */ });
 ```

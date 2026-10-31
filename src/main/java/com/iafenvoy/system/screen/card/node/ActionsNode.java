@@ -19,10 +19,10 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 import java.util.stream.IntStream;
 
-public record ActionsNode(String actions, int notificationPageSize) implements CardNode {
+public record ActionsNode(String actions, int pageSize) implements CardNode {
     public static final MapCodec<ActionsNode> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.optionalFieldOf("actions", "{{result_actions}}").forGetter(ActionsNode::actions),
-            Codec.INT.optionalFieldOf("notification_page_size", 0).forGetter(ActionsNode::notificationPageSize)
+            Codec.INT.optionalFieldOf("page_size", 0).forGetter(ActionsNode::pageSize)
     ).apply(i, ActionsNode::new));
 
     public ActionsNode(String actions) {
@@ -50,7 +50,7 @@ public record ActionsNode(String actions, int notificationPageSize) implements C
         List<Integer> indices = IntStream.range(0, actions.size()).filter(index -> actions.get(index) instanceof CardButton button
                 && (!notification || button.placement() == CardButton.Placement.BODY)).boxed().toList();
         if (indices.isEmpty()) return null;
-        if (notification && this.notificationPageSize > 0) {
+        if (this.pageSize > 0 && (notification || CardRenderer.enabled("full", context, List.of()))) {
             this.renderPage(view, element, actions, indices);
             return element;
         }
@@ -86,13 +86,13 @@ public record ActionsNode(String actions, int notificationPageSize) implements C
         CardPageState pages = view.context().get("local_pages", CardPageState.class);
         if (pages == null) pages = new CardPageState();
         String key = CardRenderer.binding(this.actions, view.indices());
-        int total = (indices.size() - 1) / this.notificationPageSize + 1;
+        int total = (indices.size() - 1) / this.pageSize + 1;
         int page = Math.clamp(pages.page(key), 0, total - 1);
         pages.page(key, page);
         element.setInnerHTML("");
         Element rows = AssistantView.element(view.document(), "div", "", "");
-        int from = page * this.notificationPageSize;
-        this.renderActions(view, rows, actions, indices.subList(from, Math.min(from + this.notificationPageSize, indices.size())));
+        int from = page * this.pageSize;
+        this.renderActions(view, rows, actions, indices.subList(from, Math.min(from + this.pageSize, indices.size())));
         element.appendChild(rows);
         if (total == 1) return;
         // These controls only rebuild this node; they never dispatch card actions or replace a notification.

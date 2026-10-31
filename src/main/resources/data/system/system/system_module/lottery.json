@@ -1,6 +1,7 @@
 {
   "server": {
-    "type": "system:lottery"
+    "type": "system:lottery",
+    "pools": "#system:default"
   },
   "client": "system:lottery"
 }

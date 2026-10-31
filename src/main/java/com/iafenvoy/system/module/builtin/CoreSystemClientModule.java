@@ -7,7 +7,6 @@ import com.iafenvoy.system.command.AssistantCommandSource;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
-import com.iafenvoy.system.module.client.WorkspaceGroup;
 import com.iafenvoy.system.screen.AssistantMessages;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantView;
@@ -49,10 +48,6 @@ public final class CoreSystemClientModule implements ClientModule {
                 reader.setCursor(reader.getCursor() + 2);
             return IntegerArgumentType.integer().parse(reader);
         }));
-        module.workspace("chat", "nav_chat", WorkspaceGroup.CHAT, workspace -> {
-            workspace.labels("nav_chat");
-            workspace.click("nav_chat", () -> workspace.show("chat"));
-        });
     }
 
     private static RequiredArgumentBuilder<AssistantCommandSource, Integer> selection() {

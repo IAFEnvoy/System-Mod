@@ -1,38 +1,58 @@
 {
   "body": [
     {
-      "type": "system:text",
-      "text": "{{field:name}}: {{name}}"
-    },
-    {
-      "type": "system:text",
-      "text": "{{field:health}}: {{health}}"
-    },
-    {
-      "type": "system:text",
-      "text": "{{field:max_health}}: {{max_health}}"
-    },
-    {
-      "type": "system:text",
-      "text": "{{field:experience_level}}: {{experience_level}}"
-    },
-    {
-      "type": "system:text",
-      "text": "{{field:dimension}}: {{dimension}}"
-    },
-    {
-      "type": "system:text",
-      "text": "{{field:online_players}}:",
-      "when": "online_players"
-    },
-    {
-      "type": "system:text",
-      "text": "{{online_players.*.player_name}}",
-      "repeat": "online_players"
-    },
-    {
-      "type": "system:text",
-      "text": "{{field:language}}: {{language}}"
+      "type": "system:row",
+      "style": ["card_row", "player_card_layout"],
+      "children": [
+        {
+          "type": "system:player",
+          "player": "{{player_id}}",
+          "follow_mouse": true,
+          "yaw": 15,
+          "pitch": 0,
+          "scale": 1,
+          "offset_x": 0,
+          "offset_y": 0
+        },
+        {
+          "type": "system:column",
+          "style": ["card_column", "player_info"],
+          "children": [
+            {
+              "type": "system:header",
+              "translate": "system.ui.player_info"
+            },
+            {
+              "type": "system:text",
+              "text": "{{field:name}}: {{name}}"
+            },
+            {
+              "type": "system:text",
+              "text": "{{field:health}}: {{health}} / {{max_health}}"
+            },
+            {
+              "type": "system:text",
+              "text": "{{field:experience_level}}: {{experience_level}}"
+            },
+            {
+              "type": "system:text",
+              "text": "{{field:dimension}}: {{dimension}}"
+            },
+            {
+              "type": "system:details",
+              "summary": "{{field:online_players}}",
+              "when": "online_players",
+              "children": [
+                {
+                  "type": "system:text",
+                  "text": "{{online_players.*.player_name}}",
+                  "repeat": "online_players"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     },
     {
       "type": "system:actions",

@@ -12,6 +12,7 @@ import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
 import com.iafenvoy.system.module.builtin.SignInSystemModule;
+import com.iafenvoy.system.module.builtin.storage.SignInDataStorage;
 import net.minecraft.resources.ResourceLocation;
 
 import java.time.LocalDate;
@@ -42,12 +43,11 @@ public final class SignInCreditTool implements ToolRegistry.Handler<SignInCredit
             if (!day.equals(LocalDate.now(ZoneId.of(AgentConfig.INSTANCE.get().timeZone())).toString()))
                 throw new AgentException("EXPIRED");
             if (!data.externalModel) throw new AgentException("MODEL_DISABLED");
-            if (ModuleData.get(data, SignInSystemModule.STORAGE).rewards.containsKey(day))
-                return new RewardOutput(ModuleData.get(data, SignInSystemModule.STORAGE).rewards.get(day));
-            if (ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.size() >= 4096)
-                throw new AgentException("STORAGE_FULL");
-            ModuleData.get(data, SignInSystemModule.STORAGE).rewards.put(day, reward);
-            ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.put("daily:" + day, new PlayerData.Delivery("daily:" + day, reward));
+            SignInDataStorage signIn = ModuleData.get(data, SignInSystemModule.STORAGE);
+            if (signIn.hasReward(day)) return new RewardOutput(signIn.getReward(day));
+            ModuleData.get(data, InboxSystemModule.STORAGE).assertDeliveryCount();
+            signIn.putReward(day, reward);
+            ModuleData.get(data, InboxSystemModule.STORAGE).putDelivery("daily:" + day, new PlayerData.Delivery("daily:" + day, reward));
             return new RewardOutput(reward);
         }));
     }

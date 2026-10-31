@@ -14,6 +14,7 @@ import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
 import com.iafenvoy.system.module.builtin.storage.CommerceDataStorage;
+import com.iafenvoy.system.module.builtin.storage.InboxDataStorage;
 import com.iafenvoy.system.util.ItemStackTemplate;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -53,12 +54,13 @@ public final class CommerceTransactions {
             public Session login(ServerPlayer player) {
                 UUID uuid = player.getUUID();
                 return data -> {
-                    for (PlayerData.Purchase purchase : ModuleData.get(data, storage).purchases.values())
+                    CommerceDataStorage journal = ModuleData.get(data, storage);
+                    for (PlayerData.Purchase purchase : journal.getPurchases().values())
                         if ("PREPARED".equals(purchase.state) && !CommerceTransactions.this.active(uuid, purchase.id)) {
-                            purchase.state = "PAYMENT_UNKNOWN";
-                            purchase.error = "EFFECT_UNKNOWN";
-                            PlayerData.Delivery delivery = ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.get(purchase.order.type().entitlement(purchase.id));
-                            if (delivery != null) delivery.state = "PAYMENT_UNKNOWN";
+                            journal.setPurchaseState(purchase.id, "PAYMENT_UNKNOWN", "EFFECT_UNKNOWN");
+                            InboxDataStorage inbox = ModuleData.get(data, InboxSystemModule.STORAGE);
+                            if (inbox.getDelivery(purchase.order.type().entitlement(purchase.id)) != null)
+                                inbox.setDeliveryState(purchase.order.type().entitlement(purchase.id), "PAYMENT_UNKNOWN");
                         }
                 };
             }
@@ -71,7 +73,7 @@ public final class CommerceTransactions {
 
     public CompletionStage<List<CommercePreviewOutput>> preview(ExecutionContext context, CommercePreviewInput input) {
         return this.game.onPlayer(context, player -> {
-            CommerceCatalog catalog = this.engine.catalog();
+            CommerceCatalog catalog = this.engine.availableCatalog(context.player());
             if (!catalog.revision().equals(input.revision())) throw new AgentException("STALE_QUOTE");
             List<CommercePreviewOutput> previews = new ArrayList<>();
             for (ResourceLocation id : input.offers()) {
@@ -101,30 +103,31 @@ public final class CommerceTransactions {
             throw new AgentException("INVALID_INPUT");
         }
         ModuleStorage<CommerceDataStorage> storage = this.storage(type);
-        PlayerData.Purchase previous = context.store().read(context.player(), data -> ModuleData.get(data, storage).purchases.get(id));
+        PlayerData.Purchase previous = context.store().read(context.player(), data -> ModuleData.get(data, storage).getPurchase(id));
         if (previous != null) {
             if (previous.order.type() != type) throw new AgentException("NOT_AUTHORIZED");
             if (previous.state.equals("COMPLETED")) return CompletableFuture.completedFuture(receipt(previous));
             throw new AgentException(previous.state.equals("FAILED") ? previous.error : "EFFECT_UNKNOWN");
         }
-        CommerceQuotes.Quote quote = this.engine.commerceQuotes().require(context.player(), id, this.engine.catalog(), type);
+        CommerceQuotes.Quote quote = this.engine.commerceQuotes().require(context.player(), id, this.engine.availableCatalog(context.player()), type);
         String key = context.player() + ":" + id;
         if (!this.active.add(key)) throw new AgentException("BUSY");
         try {
             context.ensureMemoryCurrent();
             context.store().update(context.player(), data -> {
-                if (ModuleData.get(data, storage).purchases.containsKey(id)) throw new AgentException("EFFECT_UNKNOWN");
-                if (ModuleData.get(data, storage).purchases.size() >= 4096 || ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.size() >= 4096)
-                    throw new AgentException("STORAGE_FULL");
+                CommerceDataStorage journal = ModuleData.get(data, storage);
+                if (journal.getPurchase(id) != null) throw new AgentException("EFFECT_UNKNOWN");
+                journal.assertPurchaseCount();
+                ModuleData.get(data, InboxSystemModule.STORAGE).assertDeliveryCount();
                 PlayerData.Purchase purchase = new PlayerData.Purchase();
                 purchase.id = id;
                 purchase.order = quote.select();
                 purchase.created = System.currentTimeMillis();
-                ModuleData.get(data, storage).purchases.put(id, purchase);
+                journal.putPurchase(id, purchase);
                 // Reserve the reward before payment; delivery becomes available only after payment is recorded.
                 PlayerData.Delivery held = new PlayerData.Delivery(type.entitlement(id), purchase.order.reward());
                 held.state = "PAYMENT_PENDING";
-                ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.put(held.id, held);
+                ModuleData.get(data, InboxSystemModule.STORAGE).putDelivery(held.id, held);
                 return null;
             });
         } catch (RuntimeException e) {
@@ -135,7 +138,7 @@ public final class CommerceTransactions {
         // Once payment may have changed external state, failures become UNKNOWN and must not auto-retry.
         AtomicBoolean touched = new AtomicBoolean();
         CompletionStage<Boolean> payment = this.game.onPlayer(context, player -> {
-            this.engine.commerceQuotes().require(context.player(), id, this.engine.catalog(), type);
+            this.engine.commerceQuotes().require(context.player(), id, this.engine.availableCatalog(context.player()), type);
             // Reject the whole pool before payment if any prize cannot be created; failed draws cannot bias its odds.
             for (LotteryPool.Entry entry : quote.entries())
                 for (ItemStackTemplate item : entry.reward().items())
@@ -149,17 +152,17 @@ public final class CommerceTransactions {
         payment.whenComplete((paid, error) -> this.engine.maintenance(() -> {
             String code = error == null ? "" : touched.get() ? "EFFECT_UNKNOWN" : AgentEngine.errorCode(error);
             PurchaseReceiptOutput committed = context.store().update(context.player(), data -> {
-                PlayerData.Purchase order = ModuleData.get(data, storage).purchases.get(id);
+                CommerceDataStorage journal = ModuleData.get(data, storage);
+                PlayerData.Purchase order = journal.getPurchase(id);
                 if (error == null) {
                     String entitlement = type.entitlement(id);
-                    ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.get(entitlement).state = "PENDING";
-                    order.state = "COMPLETED";
+                    ModuleData.get(data, InboxSystemModule.STORAGE).setDeliveryState(entitlement, "PENDING");
+                    journal.setPurchaseState(id, "COMPLETED", "");
                 } else {
-                    order.state = touched.get() ? "PAYMENT_UNKNOWN" : "FAILED";
-                    order.error = code;
+                    journal.setPurchaseState(id, touched.get() ? "PAYMENT_UNKNOWN" : "FAILED", code);
                     if (touched.get())
-                        ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.get(type.entitlement(id)).state = "PAYMENT_UNKNOWN";
-                    else ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.remove(type.entitlement(id));
+                        ModuleData.get(data, InboxSystemModule.STORAGE).setDeliveryState(type.entitlement(id), "PAYMENT_UNKNOWN");
+                    else ModuleData.get(data, InboxSystemModule.STORAGE).removeDelivery(type.entitlement(id));
                 }
                 return receipt(order);
             });

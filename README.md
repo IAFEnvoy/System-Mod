@@ -215,7 +215,12 @@ data/<namespace>/system/shop_offers/<path>.json
 data/<namespace>/system/lottery_pools/<path>.json
 ```
 
-See the examples in this GitHub repository for details.
+These are server-only Data Pack Registries. Each has tags under
+`data/<namespace>/tags/system/<registry-name>/<path>.json`. In a module's `server` definition,
+`rewards` (check-in), `offers` (shop), and `pools` (lottery) accept an ID, `#tag`, or a mixed array.
+Bundled modules use their respective `#system:default` tags. Entry or module changes require reopening the world
+or restarting the server; tag membership follows vanilla reload behavior.
+See [catalog options and examples](docs/datapacks.md#模块目录可选项) for details.
 
 ## Data and Privacy
 

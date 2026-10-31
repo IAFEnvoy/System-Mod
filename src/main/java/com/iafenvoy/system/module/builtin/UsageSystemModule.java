@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.CoreModule;
 import com.iafenvoy.system.module.ModuleCommands;
@@ -11,7 +12,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 public final class UsageSystemModule implements CoreModule {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "usage");
+    public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "usage");
     public static final MapCodec<UsageSystemModule> CODEC = MapCodec.unit(new UsageSystemModule());
 
     @Override

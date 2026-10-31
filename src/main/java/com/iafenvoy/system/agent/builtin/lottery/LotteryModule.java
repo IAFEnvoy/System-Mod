@@ -52,7 +52,7 @@ public final class LotteryModule extends BuiltinModule<LotteryQueryInput> {
     @Override
     public AgentResult execute(ExecutionContext context, LotteryQueryInput input) throws Exception {
         String query = input.query().toLowerCase(Locale.ROOT);
-        CommerceCatalog catalog = context.catalog();
+        CommerceCatalog catalog = context.availableCatalog();
         List<LotteryPool> matches = catalog.lotteries().stream().filter(pool -> pool.id().toString().contains(query)
                 || pool.label().toLowerCase(Locale.ROOT).contains(query)).toList();
         List<CardUpdate> cards = new ArrayList<>();

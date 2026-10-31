@@ -3,6 +3,7 @@ package com.iafenvoy.system.agent;
 import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.saturn.runtime.resulting.FailureSource;
 import com.iafenvoy.saturn.runtime.resulting.ResultWithData;
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.card.CardData;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.card.data.TextCardData;
@@ -131,7 +132,7 @@ public final class AgentResult extends ResultWithData<List<CardUpdate>> {
      * Wire snapshots keep the translated refusal key without serializing a supplier's implementation class.
      */
     private record MessageFailure(String key) implements Failure {
-        private static final FailureSource SOURCE = new FailureSource(Identifier.fromNamespaceAndPath("system", "agent"));
+        private static final FailureSource SOURCE = new FailureSource(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "agent"));
 
         @Override
         public String name() {

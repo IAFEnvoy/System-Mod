@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.CoreModule;
@@ -22,7 +23,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public final class BindingSystemModule implements CoreModule {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "binding");
+    public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "binding");
     public static final MapCodec<BindingSystemModule> CODEC = MapCodec.unit(new BindingSystemModule());
 
     @Override

@@ -13,6 +13,7 @@ import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.agent.store.SystemBindings;
 import com.iafenvoy.system.config.file.AgentConfig;
+import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.search.DeepSeekSearchClient;
 import com.iafenvoy.system.search.SearchGateway;
 import net.minecraft.resources.Identifier;
@@ -43,7 +44,8 @@ public final class AgentEngine implements AutoCloseable {
     private volatile SystemPrompts prompts = SystemPrompts.empty();
     private final Map<UUID, String> playerLanguages = new ConcurrentHashMap<>();
     private final AtomicBoolean closed = new AtomicBoolean();
-    private volatile CommerceCatalog catalog;
+    private final CommerceCatalog catalog;
+    private final Map<Identifier, CatalogModule<?>> catalogs = new LinkedHashMap<>();
     private final CommerceQuotes commerceQuotes = new CommerceQuotes();
     private final Set<UUID> maintenanceOwners = ConcurrentHashMap.newKeySet();
     // Incarnations invalidate every queued task and storage handle after revoke.
@@ -260,8 +262,15 @@ public final class AgentEngine implements AutoCloseable {
         return this.catalog;
     }
 
-    public void catalog(CommerceCatalog value) {
-        this.catalog = Objects.requireNonNull(value);
+    public void registerCatalog(Identifier owner, CatalogModule<?> module) {
+        if (this.catalogs.putIfAbsent(owner, module) != null)
+            throw new IllegalArgumentException("Duplicate module catalog " + owner);
+    }
+
+    public CommerceCatalog availableCatalog(UUID player) {
+        // Resolve enabled definitions on every use, including confirmations issued before module changes.
+        return this.catalog.available(this.catalogs.entrySet().stream()
+                .filter(entry -> this.moduleEnabled(player, entry.getKey())).map(Map.Entry::getValue).toList());
     }
 
     public CommerceQuotes commerceQuotes() {

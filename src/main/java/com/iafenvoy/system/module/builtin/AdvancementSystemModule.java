@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.builtin.advancement.AdvancementFollowupModule;
 import com.iafenvoy.system.agent.builtin.advancement.FeatureUnlockTool;
@@ -15,10 +16,9 @@ import net.minecraft.resources.Identifier;
 import java.util.List;
 
 public final class AdvancementSystemModule implements WorkflowModule {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "advancement");
+    public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "advancement");
     public static final MapCodec<AdvancementSystemModule> CODEC = MapCodec.unit(new AdvancementSystemModule());
-    public static final ModuleStorage<AdvancementDataStorage> STORAGE = new ModuleStorage<>(ID,
-            Identifier.fromNamespaceAndPath("system", "advancement"), AdvancementDataStorage.class, AdvancementDataStorage.CODEC, AdvancementDataStorage::new);
+    public static final ModuleStorage<AdvancementDataStorage> STORAGE = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "advancement"), AdvancementDataStorage.class, AdvancementDataStorage.CODEC, AdvancementDataStorage::new);
 
     @Override
     public MapCodec<AdvancementSystemModule> codec() {

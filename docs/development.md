@@ -79,6 +79,8 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system 和 system:system_module，两者均使用同一个数据/网络 Codec 同步。SystemDefinition 保存名称/介绍翻译键及模块引用；ModuleDefinition 的 Either 指向 Holder<SystemModule> 或 TagKey<SystemModule>，condition 使用 Saturn EntityCondition。模块配置文件为 data/<namespace>/system/system_module/<path>.json，server 通过 ServerModule.CODEC 分派，client 仅为本地实现 ID。系统仍按玩家绑定 ID 从 RegistryAccess 读取，不缓存跨世界快照。ModuleManager 以配置 ID 管理启停、运行时和权限，当前参数配置只在世界加载时读取，不是 /reload retained listener。手动覆盖仍由玩家 ModuleAccessDataStorage 保存，撤销删除业务数据但保留用量。
 
+同一入口还登记服务端专用的 system:signin_rewards、system:shop_offers、system:lottery_pools 三张原生数据包注册表，分别使用 CatalogEntry.REWARD / OFFER 和 LotteryPool.Definition.CODEC，不提供网络 Codec。模块的 rewards / offers / pools 使用 Saturn RegistryCodecs.keyOrTagList，在同步配置中只传 ResourceKey / TagKey，不要求客户端解析服务端 Cost 或全目录。三张目录注册表的条目在世界加载时读取，tag 由原版流程加载与重载。
+
 配置类各自声明 `FILE_NAME`、`CODEC` 和 `ConfigInstance<T> INSTANCE = ConfigInstance.of(...)`。容器首次初始化时从 `/defaults/<文件名>` 复制缺失的默认文件，再通过 Codec 读取；已有文件不覆盖，加载失败时记录错误并在内存中使用默认值。读取使用 `INSTANCE.get()`，提交不可变新值使用 `INSTANCE.set(next)`，实际变化由容器自动调用 `markDirty()`。若未来使用可变配置并原地修改，则必须显式调用 `INSTANCE.markDirty()`，不能绕过变更标记。
 
 `ConfigReloader` 在资源重载时调用 `reloadAll()`，客户端/服务端 tick 与关闭事件调用 `saveAll()`，只保存有标记的配置。检查标记、保存及加载使用同一实例锁；保存失败恢复标记以便重试，重载前先保存已提交的改动。所有生效配置从对应 `config.file.XxxConfig.INSTANCE.get()` 直接读取；引擎、路由、模型客户端和成就桥接不缓存配置对象，构造函数也不传递全局配置，删除 `settings()` 转发链。
@@ -238,7 +240,9 @@ ModuleAccess 在登录事务中取得绑定 ID，在主线程确认定义仍存�
 
 ## 商城与目录扩展
 
-`agent/commerce/CommerceCatalog` 是奖励、商品与奖池目录的不可变快照，只从数据包生成；默认内容也放在 JAR 内 `data/system/system/signin_rewards/`、`shop_offers/` 与 `lottery_pools/`。初始目录注入引擎，重载后通过 `engine.catalog(snapshot)` 发布新目录。MC 使用已核对依赖源码的 `AddServerReloadListenersEvent.addRetainedListener` 注册加载器；只在成功切换服务器资源后发布新快照，不使用全局跨世界目录。资源同路径按数据包优先级覆盖，不同 ID 汇总，格式见 [扩展配置](datapacks.md)。
+`agent/commerce/CommerceCatalog` 从当前服务端 RegistryAccess 的三张目录注册表建立不可变业务快照；默认内容也放在 JAR 内 `data/system/system/signin_rewards/`、`shop_offers/` 与 `lottery_pools/`，原路径不变。CatalogReloadListener、目录文件扫描和逐 tick 发布逻辑已删除。原版负责资源优先级、条目 ID、Codec 加载与 tag，条目修改需重开世界 / 重启服务器；目录版本按服务端实例生成，不使用跨世界静态数据。提示词仍使用 retained reload listener 读取 txt。
+
+签到、商城和抽奖实现 CatalogModule，声明对应目录注册表与可选 ResourceKey / TagKey 列表。ModuleManager 将配置注册到当前引擎，availableCatalog(player) 仅合并该玩家已启用定义允许的条目，同类配置取并集、目录顺序稳定且不重复；省略字段允许全表，空数组为空。内置三模块显式引用各表自己的 #system:default。所有列表、签到候选与提交、报价和扣款均读取这份受限视图，收件箱状态也使用同一入口；成就事件显式读取原始目录。原生 tag 重载无需重建业务内容快照，后续查询读取当前成员；确认和支付前还会检查报价来源是否仍可用。同类配置共用原有对应交易账本，允许重复装配同一静态 ModuleStorage，不重复注册存储类型。格式见 [扩展配置](datapacks.md#模块目录可选项)。
 
 奖励和商品 ID 使用 `Identifier`，通过 `Identifier.CODEC` 解析；签到选择、报价请求和成就奖励引用保留该类型，只在搜索或对话摘要等文本边界转换。商品与奖池直接保存 `List<Cost>`，通过 Saturn `Cost.LIST_CODEC` 按注册类型分派；目录监听器使用 NeoForge 注入的 `getRegistryLookup()` 创建 RegistryOps，支持资源 Cost 的动态注册表引用。`CommerceCatalog.Price` 仅保存求值后的物品图标和文字组件，供客户端及订单快照使用，不含可执行费用。
 

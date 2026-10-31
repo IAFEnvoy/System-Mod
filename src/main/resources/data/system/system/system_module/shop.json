@@ -1,6 +1,7 @@
 {
   "server": {
-    "type": "system:shop"
+    "type": "system:shop",
+    "offers": "#system:default"
   },
   "client": "system:shop"
 }

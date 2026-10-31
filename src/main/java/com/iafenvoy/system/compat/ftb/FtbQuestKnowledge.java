@@ -1,5 +1,6 @@
 package com.iafenvoy.system.compat.ftb;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.ExecutionContext;
@@ -20,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Static localized FTB documents are cached on the server thread; persistence and indexing run on workers.
  */
 final class FtbQuestKnowledge {
-    private static final Identifier SOURCE = Identifier.fromNamespaceAndPath("system", "ftb_guides");
+    private static final Identifier SOURCE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "ftb_guides");
     private final AgentEngine engine;
     private final MinecraftServer server;
     private final AgentDatabase database;

@@ -1,0 +1,7 @@
+{
+  "server": {
+    "type": "system:shop",
+    "offers": ["system:torch_bundle", "#example:starter"]
+  },
+  "client": "system:shop"
+}

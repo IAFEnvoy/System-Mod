@@ -36,7 +36,7 @@ public final class ShopQuoteModule extends BuiltinModule<ShopQuoteInput> {
 
     @Override
     public AgentResult execute(ExecutionContext context, ShopQuoteInput input) throws Exception {
-        CommerceCatalog catalog = context.catalog();
+        CommerceCatalog catalog = context.availableCatalog();
         if (!input.catalogRevision().orElse(catalog.revision()).equals(catalog.revision()))
             throw new AgentException("STALE_QUOTE");
         Identifier id = input.offerId();

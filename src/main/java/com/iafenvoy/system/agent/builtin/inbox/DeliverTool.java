@@ -42,13 +42,13 @@ public final class DeliverTool implements ToolRegistry.Handler<EntitlementInput,
         String id = input.entitlementId();
         Object lock = this.deliveryLocks.computeIfAbsent(context.player(), ignored -> new Object());
         synchronized (lock) {
-            PlayerData.Delivery delivery = context.store().read(context.player(), data -> ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.get(id));
+            PlayerData.Delivery delivery = context.store().read(context.player(), data -> ModuleData.get(data, InboxSystemModule.STORAGE).getDelivery(id));
             if (delivery == null) throw new AgentException("NOT_AUTHORIZED");
             if ("DELIVERED".equals(delivery.state))
                 return CompletableFuture.completedFuture(new StateOutput("DELIVERED"));
             if (!"PENDING".equals(delivery.state)) throw new AgentException("EFFECT_UNKNOWN");
             context.store().update(context.player(), data -> {
-                ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.get(id).state = "DELIVERING";
+                ModuleData.get(data, InboxSystemModule.STORAGE).setDeliveryState(id, "DELIVERING");
                 return null;
             });
             CompletableFuture<StateOutput> future = new CompletableFuture<>();
@@ -76,7 +76,7 @@ public final class DeliverTool implements ToolRegistry.Handler<EntitlementInput,
                     String code = error == null ? "" : AgentEngine.errorCode(error);
                     boolean untouched = Set.of("INVENTORY_FULL", "PLAYER_OFFLINE", "INVALID_REWARD", "EXPIRED", "CANCELLED", "BUSY").contains(code);
                     context.store().update(context.player(), data -> {
-                        ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.get(id).state = error == null ? "DELIVERED" : untouched ? "PENDING" : "DELIVERY_UNKNOWN";
+                        ModuleData.get(data, InboxSystemModule.STORAGE).setDeliveryState(id, error == null ? "DELIVERED" : untouched ? "PENDING" : "DELIVERY_UNKNOWN");
                         return null;
                     });
                     if (error == null) future.complete(result);

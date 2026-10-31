@@ -35,7 +35,7 @@ public final class LotteryDrawModule extends BuiltinModule<LotteryDrawInput> {
     public AgentResult execute(ExecutionContext context, LotteryDrawInput input) throws Exception {
         PurchaseReceiptOutput receipt = context.tool(BuiltinTools.LOTTERY_DRAW, "draw", input);
         LotteryPreviewInput again = context.store().read(context.player(), data -> new LotteryPreviewInput(
-                ModuleData.get(data, LotterySystemModule.STORAGE).purchases.get(receipt.orderId()).order.source(), 0, Optional.empty()));
+                ModuleData.get(data, LotterySystemModule.STORAGE).getPurchase(receipt.orderId()).order.source(), 0, Optional.empty()));
         return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.lottery_drawn", "", List.of(
                 CardUpdate.show(new PurchaseReceiptOutput(receipt.orderId(), receipt.entitlementId(), receipt.reward(), receipt.state(), Optional.of(again.poolId())))));
     }

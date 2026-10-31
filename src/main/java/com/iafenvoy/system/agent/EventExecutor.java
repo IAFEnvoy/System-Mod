@@ -4,6 +4,7 @@ import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.CoreSystemModule;
+import com.iafenvoy.system.module.builtin.storage.AgentJournalDataStorage;
 import net.minecraft.resources.Identifier;
 
 import java.util.*;
@@ -46,10 +47,10 @@ final class EventExecutor implements AutoCloseable {
                             throw new AgentException("CAPABILITY_UNAVAILABLE");
                         PlayerData.EventTask task = store.update(player, data -> {
                             if (!data.bound()) throw new AgentException("NOT_BOUND");
-                            if (ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.containsKey(key))
-                                return ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.get(key);
-                            if (ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.size() >= 4096)
-                                throw new AgentException("STORAGE_FULL");
+                            AgentJournalDataStorage storage = ModuleData.get(data, CoreSystemModule.JOURNAL);
+                            PlayerData.EventTask t = storage.getTask(key);
+                            if (t != null) return t;
+                            storage.assertTaskCount();
                             PlayerData.EventTask value = new PlayerData.EventTask();
                             value.id = UUID.randomUUID().toString();
                             value.key = key;
@@ -60,7 +61,7 @@ final class EventExecutor implements AutoCloseable {
                             value.policy = this.engine.policy(module);
                             value.created = System.currentTimeMillis();
                             value.expires = value.created + value.policy.ttlMillis();
-                            ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.put(key, value);
+                            storage.putTask(key, value);
                             return value;
                         });
                         if (!task.pending()) {
@@ -73,12 +74,12 @@ final class EventExecutor implements AutoCloseable {
                             throw new AgentException("NOT_AUTHORIZED");
                         ExecutionContext context = new ExecutionContext(this.engine, player, task.id, key, task.created, 0, task.policy, store, incarnation);
                         store.update(player, data -> {
-                            ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.get(key).state = "RUNNING";
+                            ModuleData.get(data, CoreSystemModule.JOURNAL).setTaskState(key, PlayerData.State.RUNNING);
                             return null;
                         });
                         AgentResult completed = this.engine.execute(context, task.call, task.policy);
                         store.update(player, data -> {
-                            ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.get(key).complete(completed);
+                            ModuleData.get(data, CoreSystemModule.JOURNAL).completeTask(key, completed);
                             return null;
                         });
                         return completed;
@@ -86,13 +87,14 @@ final class EventExecutor implements AutoCloseable {
                         AgentResult failure = AgentResult.error(AgentEngine.errorCode(error));
                         try {
                             failure = store.update(player, data -> {
-                                PlayerData.EventTask task = ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.get(key);
+                                AgentJournalDataStorage storage = ModuleData.get(data, CoreSystemModule.JOURNAL);
+                                PlayerData.EventTask task = storage.getTask(key);
                                 AgentResult result = AgentResult.error(AgentEngine.errorCode(error));
                                 if (task != null && task.pending()) {
-                                    boolean partial = ModuleData.get(data, CoreSystemModule.JOURNAL).hasCompletedOperation(task.id);
+                                    boolean partial = storage.hasCompletedOperation(task.id);
                                     if (partial)
                                         result = result.partial();
-                                    task.complete(result);
+                                    storage.completeTask(key, result);
                                 }
                                 return result;
                             });
@@ -100,15 +102,14 @@ final class EventExecutor implements AutoCloseable {
                         return failure;
                     }
                 }).handle((result, error) -> error == null ? result : AgentResult.error(AgentEngine.errorCode(error)))
-                .whenComplete((result, error) -> this.activeEvents.remove(activeKey));
+                .whenComplete((_, _) -> this.activeEvents.remove(activeKey));
     }
 
     public void resume(UUID player) {
         long incarnation = this.engine.incarnation(player);
         AgentStore store = this.engine.playerStore(player, incarnation);
         this.engine.maintenance(() -> {
-            List<PlayerData.EventTask> pending = store.read(player, data -> ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.values().stream()
-                    .filter(PlayerData.EventTask::pending).toList());
+            List<PlayerData.EventTask> pending = store.read(player, data -> ModuleData.get(data, CoreSystemModule.JOURNAL).streamTasks().filter(PlayerData.EventTask::pending).toList());
             for (PlayerData.EventTask task : pending) {
                 if (!this.engine.current(player, incarnation)) break;
                 this.trigger(player, task.key, task.ruleId, task.call);

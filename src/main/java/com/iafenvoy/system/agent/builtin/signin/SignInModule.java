@@ -48,10 +48,10 @@ public final class SignInModule extends BuiltinModule<SignInInput> {
         // AI selects an existing reward ID; the server owns quantities and commits the daily entitlement.
         ZoneId zone = ZoneId.of(AgentConfig.INSTANCE.get().timeZone());
         String day = LocalDate.now(zone).toString();
-        PlayerData.Reward existing = context.store().read(context.player(), data -> ModuleData.get(data, SignInSystemModule.STORAGE).rewards.get(day));
+        PlayerData.Reward existing = context.store().read(context.player(), data -> ModuleData.get(data, SignInSystemModule.STORAGE).getReward(day));
         if (existing != null)
             return AgentResult.data("system.result.already", new RewardOutput(existing, Optional.of("daily:" + day), Component.translatable("system.result.already"), ""));
-        CommerceCatalog catalog = context.catalog();
+        CommerceCatalog catalog = context.availableCatalog();
         if (catalog.rewards().isEmpty()) throw new AgentException("CAPABILITY_UNAVAILABLE");
         SignInDecision.Player state = SignInDecision.Player.of(context.tool(BuiltinTools.PLAYER, "snapshot", EmptyInput.INSTANCE));
         SignInDecision decision = context.model(context.prompt(SystemPrompts.SIGN_IN), SignInDecision.Input.CODEC,

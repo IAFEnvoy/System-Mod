@@ -40,7 +40,7 @@ public final class ShopModule extends BuiltinModule<ShopQueryInput> {
     public AgentResult execute(ExecutionContext context, ShopQueryInput input) throws Exception {
         String query = input.query().toLowerCase(Locale.ROOT);
         int offset = input.offset();
-        CommerceCatalog catalog = context.catalog();
+        CommerceCatalog catalog = context.availableCatalog();
         List<CommerceCatalog.Offer> matches = catalog.offers().stream().filter(offer -> offer.id().toString().contains(query)
                 || offer.label().toLowerCase(Locale.ROOT).contains(query)
                 || offer.items().stream().anyMatch(item -> item.item().getRegisteredName().contains(query))).toList();

@@ -9,6 +9,7 @@ import com.iafenvoy.system.config.AdvancementRule;
 import com.iafenvoy.system.config.file.AdvancementConfig;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.PlayerModule;
+import com.iafenvoy.system.module.builtin.storage.AdvancementDataStorage;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.resources.Identifier;
@@ -47,7 +48,7 @@ final class AdvancementTracker implements PlayerModule {
         Map<String, Set<String>> baselines = new LinkedHashMap<>();
         for (AdvancementRule rule : AdvancementConfig.INSTANCE.get().rules())
             baselines.put(rule.id() + "|" + rule.advancementId(), this.completed(player, rule) ? Set.of(rule.advancementId().toString()) : Set.of());
-        return data -> ModuleData.get(data, AdvancementSystemModule.STORAGE).baselines.putAll(baselines);
+        return data -> baselines.forEach(ModuleData.get(data, AdvancementSystemModule.STORAGE)::putBaseline);
     }
 
     private boolean completed(ServerPlayer player, AdvancementRule rule) {
@@ -79,22 +80,20 @@ final class AdvancementTracker implements PlayerModule {
         if (!this.engine.available(player, rule.call().id())) return;
         long incarnation = this.engine.incarnation(player);
         AgentStore store = this.engine.playerStore(player);
-        this.engine.maintenance(() -> store.read(player, data ->
-                        ModuleData.get(data, AdvancementSystemModule.STORAGE).baselines.getOrDefault(rule.id() + "|" + rule.advancementId(), Set.of()).contains(rule.advancementId().toString())))
-                .thenAccept(baseline -> {
-                    if (baseline || !this.engine.current(player, incarnation)) return;
-                    AgentAction input = rule.call();
-                    if (input instanceof AdvancementInput value)
-                        input = new AdvancementInput(value.featureId(), value.rewardId(),
-                                Optional.of(rule.advancementId().toString()), Optional.of(rule.id().toString()));
-                    this.engine.trigger(player, rule.id() + "|" + rule.advancementId(), rule.id().toString(), input).thenAccept(result -> {
-                        if (result != null && result.isSuccess()) this.server.execute(() -> {
-                            ServerPlayer online = this.server.getPlayerList().getPlayer(player);
-                            if (online != null && this.engine.current(player, incarnation))
-                                ServerNetworkHandler.notice(online, result);
-                        });
-                    });
+        this.engine.maintenance(() -> store.read(player, data -> ModuleData.get(data, AdvancementSystemModule.STORAGE).getBaseline(rule.id() + "|" + rule.advancementId()).contains(rule.advancementId().toString()))).thenAccept(baseline -> {
+            if (baseline || !this.engine.current(player, incarnation)) return;
+            AgentAction input = rule.call();
+            if (input instanceof AdvancementInput value)
+                input = new AdvancementInput(value.featureId(), value.rewardId(),
+                        Optional.of(rule.advancementId().toString()), Optional.of(rule.id().toString()));
+            this.engine.trigger(player, rule.id() + "|" + rule.advancementId(), rule.id().toString(), input).thenAccept(result -> {
+                if (result != null && result.isSuccess()) this.server.execute(() -> {
+                    ServerPlayer online = this.server.getPlayerList().getPlayer(player);
+                    if (online != null && this.engine.current(player, incarnation))
+                        ServerNetworkHandler.notice(online, result);
                 });
+            });
+        });
     }
 
     private final class TrackingSession implements Session {
@@ -113,11 +112,12 @@ final class AdvancementTracker implements PlayerModule {
 
         @Override
         public void initialize(PlayerData data) {
+            AdvancementDataStorage storage = ModuleData.get(data, AdvancementSystemModule.STORAGE);
             for (AdvancementRule rule : this.rules) {
                 String baseline = rule.id() + "|" + rule.advancementId();
-                if (ModuleData.get(data, AdvancementSystemModule.STORAGE).baselines.containsKey(baseline)) continue;
+                if (storage.hasBaseline(baseline)) continue;
                 this.fresh.add(rule.id());
-                ModuleData.get(data, AdvancementSystemModule.STORAGE).baselines.put(baseline, this.completed.get(rule.id()) ? Set.of(rule.advancementId().toString()) : Set.of());
+                storage.putBaseline(baseline, this.completed.get(rule.id()) ? Set.of(rule.advancementId().toString()) : Set.of());
             }
         }
 

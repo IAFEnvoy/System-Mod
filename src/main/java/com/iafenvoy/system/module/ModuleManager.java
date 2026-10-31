@@ -41,7 +41,7 @@ public final class ModuleManager implements AutoCloseable {
         Map<Identifier, SystemModule> modules = new LinkedHashMap<>();
         context.modules().keySet().stream().sorted().forEach(id -> {
             SystemModule definition = context.modules().getValue(id);
-            if (definition.available()) modules.put(id, definition);
+            if (definition != null && definition.available()) modules.put(id, definition);
         });
         Map<Identifier, ModuleContext> contexts = new LinkedHashMap<>();
         modules.keySet().forEach(id -> contexts.put(id, context.forModule(id)));
@@ -54,6 +54,7 @@ public final class ModuleManager implements AutoCloseable {
         }));
         // Configured definitions create fresh workflows before any per-server runtime is constructed.
         modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
+            if (module instanceof CatalogModule<?> catalog) this.engine.registerCatalog(id, catalog);
             if (module instanceof WorkflowModule workflows)
                 for (AgentModule<?> workflow : workflows.workflows(contexts.get(id)))
                     this.engine.registerModule(id, workflow);

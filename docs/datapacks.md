@@ -58,6 +58,8 @@
 
 server/client 都可省略：成就等纯服务端类型只填 server；仅需要客户端贡献的条目只填 client。client 只是客户端本地实现 Map 的 ID，服务端不加载客户端类。系统定义和模块定义均在世界加载时读取、登录时同步；修改参数需正常重启，不通过 /reload 热替换运行中的工作流。
 
+签到、商城和抽奖的 server 还可分别设置 `rewards`、`offers`、`pools`，引用下文三张目录注册表。字段接受单个 ID、`#tag` 或混合数组，详见[模块目录可选项](#模块目录可选项)。
+
 内置的 core、binding、usage、player、items、signin、inbox、shop、lottery、advancement 配置位于 main；FTB 和联网搜索的默认配置仅位于 test-mod。发布包不直接引用 FTB 可选类型，未安装 FTB 的开发运行也会保留安全 Codec 并通过 available() 跳过装配。
 
 ### 模块 tag
@@ -152,7 +154,7 @@ tag 来自动态模块配置注册表 `system:system_module`，成员为模块�
 
 功能模块在 `ServerModule.storages()` 声明 ModuleStorage，Codec 通过 Saturn DATA_STORAGE_TYPE 独立注册，管理器统一创建数据和驱动生命周期；事务内使用 `ModuleData.get(data, SomeSystemModule.STORAGE)`。PlayerData.moduleData 使用 Saturn DataStorageHolder，以 ModuleStorage.owner 和 Java 类型寻址；内置同类配置共用对应功能账本，Codec 类型 ID 独立。商城和抽奖持有独立交易存储，Core 持有权限和幂等日志。普通业务修改在 AgentStore.update 原子落盘；DataStorage.tick 在主线程内存事务中执行，变化需 markDirty，由管理器合并异步保存。不使用玩家附件，停用保留账本，revoke/reset 才清空。
 
-名称应用于助手标题、对话说话人和通知标题，介绍显示在欢迎区及首次绑定通知中；简约界面空闲时也展示介绍，绑定播报包含系统名称。定义从当前连接的原生注册表读取，不写入玩家附件或业务存档。该注册表在世界加载时读取，修改 JSON 后需要重开世界或重启服务器再连接；`/reload` 仍用于下述奖励、商品、奖池与提示词，不热更新系统定义。资源包的翻译文本可按客户端正常资源重载流程更新。
+名称应用于助手标题、对话说话人和通知标题，介绍显示在欢迎区及首次绑定通知中；简约界面空闲时也展示介绍，绑定播报包含系统名称。定义从当前连接的原生注册表读取，不写入玩家附件或业务存档。系统、模块和三张目录注册表均在世界加载时读取，修改 JSON 后需要重开世界或重启服务器再连接；`/reload` 继续更新提示词和原生 tag，不热替换注册表条目。资源包的翻译文本可按客户端正常资源重载流程更新。
 
 ## 提示词模板
 
@@ -177,21 +179,61 @@ tag 来自动态模块配置注册表 `system:system_module`，成员为模块�
 
 ## 奖励目录
 
-奖励和商品只从下述数据包目录读取，不再由 `AgentSettings` 提供列表或兜底。条目 ID 来自文件路径，正文包含简短 `label` 和 `items` 列表；商品另有 Saturn `costs` 列表。产出物品直接使用原版 `ItemStackTemplate.CODEC`，包含注册 ID、可选的 `count`（默认 1，原版范围 1～99）及 `components`。签到奖励和商品产出每包为 1～36 项，与交付时主背包预留空位的规则一致。重载阶段只读取模板，不构建 `ItemStack`；实际扣款前或交付时才调用 `create()`，由原版校验最终组件及产出的实际堆叠上限。支付定义使用 Saturn `Cost.LIST_CODEC`，数量由 `amount` 提供，不受产出模板的堆叠数量限制。
+奖励、商品和奖池直接使用 NeoForge Data Pack Registry，由原版读取条目和 tag，不再使用自定义目录 reload listener。三张表仅在服务端加载，不向客户端同步完整目录与 Cost；客户端只接收业务结果和报价快照。条目 ID 来自注册表键，正文包含简短 `label` 和 `items` 列表；商品另有 Saturn `costs` 列表。产出物品直接使用原版 `ItemStackTemplate.CODEC`，包含注册 ID、可选的 `count`（默认 1，原版范围 1～99）及 `components`。签到奖励和商品产出每包为 1～36 项，与交付时主背包预留空位的规则一致。注册表加载时只读取模板，不构建 `ItemStack`；实际扣款前或交付时才调用 `create()`，由原版校验最终组件及产出的实际堆叠上限。支付定义使用 Saturn `Cost.LIST_CODEC`，数量由 `amount` 提供，不受产出模板的堆叠数量限制。
 
 AI 只返回候选奖励 ID，不能修改条目数量。入账保存完整奖励快照，修改目录不会改写已经获得的权益。正常签到必须成功调用 AI；成就固定奖励不受此要求影响。
 
 ## 数据包目录
 
-完整可复制的示例位于 [examples/commerce-pack](../examples/commerce-pack)。把该目录复制到服务器存档的 `datapacks/` 下，使用正常的数据包加载流程或 `/reload`。示例不会自动安装，不进入发布 JAR。`pack.mcmeta` 格式根据当前依赖的 Minecraft 26.1.2 `version.json` 设置为 101.1。
+完整可复制的示例位于 [examples/commerce-pack](../examples/commerce-pack)。把该目录复制到服务器存档的 `datapacks/` 下，启用后重开世界或重启服务器，使原生注册表读取条目。示例同时向默认商城 / 抽奖 tag 追加新增条目，不会自动安装，也不进入发布 JAR。`pack.mcmeta` 格式根据当前依赖的 Minecraft 26.1.2 `version.json` 设置为 101.1。
 
-| 文件路径 | 条目 ID | 用途 |
+| 注册表 | 文件路径 | tag 文件路径 |
 | --- | --- | --- |
-| `data/<namespace>/system/signin_rewards/<path>.json` | `<namespace>:<path>` | AI 签到候选奖励包 |
-| `data/<namespace>/system/shop_offers/<path>.json` | `<namespace>:<path>` | 商城商品和价格 |
-| `data/<namespace>/system/lottery_pools/<path>.json` | `<namespace>:<path>` | 抽奖奖池、奖品权重和单次消耗 |
+| `system:signin_rewards` | `data/<namespace>/system/signin_rewards/<path>.json` | `data/<namespace>/tags/system/signin_rewards/<path>.json` |
+| `system:shop_offers` | `data/<namespace>/system/shop_offers/<path>.json` | `data/<namespace>/tags/system/shop_offers/<path>.json` |
+| `system:lottery_pools` | `data/<namespace>/system/lottery_pools/<path>.json` | `data/<namespace>/tags/system/lottery_pools/<path>.json` |
 
 三个目录的所有有效资源按条目 ID 汇总：不同路径会新增条目，同路径按数据包优先级覆盖。JAR 内置奖励为 `system:food`、`system:mining`、`system:building`，商品为 `system:torch_bundle`，奖池为 `system:supplies`，默认内容和自定义内容使用同一加载流程。`{"enabled":false}` 可以覆盖并禁用单个条目；需要空目录时，禁用该类所有有效条目，或通过数据包过滤移除资源。移除覆盖文件会恢复下层数据包的同路径条目；若最终没有有效资源则保持空目录，不从配置补回。奖励包、商品、奖池及奖品总数和资源文件大小不设额外硬上限；每个奖励包内产出使用上述 1～36 项限制，付款材料列表不设额外项数上限。
+
+tag 使用原版 `values` / `replace`、嵌套 `#tag`、可选成员 `{ "id": "...", "required": false }`，以及 NeoForge 的 `remove`。三张表各有自己的 `#system:default`，即使 tag 名称相同，也不跨表匹配。禁用条目仍占用原生注册表 ID，但不会参与任何目录展示或发奖。若通过资源过滤移除条目，也要调整引用它的必需 tag 成员。
+
+## 模块目录可选项
+
+在 `data/<namespace>/system/system_module/<path>.json` 的 `server` 内指定该模块可使用的内容：
+
+| 模块类型 | 字段 | 引用注册表 |
+| --- | --- | --- |
+| `system:signin` | `rewards` | `system:signin_rewards` |
+| `system:shop` | `offers` | `system:shop_offers` |
+| `system:lottery` | `pools` | `system:lottery_pools` |
+
+```json
+{
+  "server": {
+    "type": "system:shop",
+    "offers": ["system:torch_bundle", "#example:starter"]
+  },
+  "client": "system:shop"
+}
+```
+
+单条可简写为 `"offers": "system:torch_bundle"` 或 `"offers": "#example:starter"`；签到和抽奖分别替换为 `rewards` / `pools`。省略字段表示允许该表全部有效条目，`[]` 表示不允许任何条目。未知 ID、空 / 未定义 tag 和已禁用条目不会回退为全表；重复 ID 或重叠 tag 只显示一次。条目按 ID 排序，同一玩家启用多个同类型模块时，合并各模块允许的集合；没有启用对应模块时集合为空。
+
+例如上面的商城 tag 定义在 `data/example/tags/system/shop_offers/starter.json`：
+
+```json
+{
+  "values": ["system:torch_bundle", "system:coin_food"]
+}
+```
+
+内置 `system:signin` / `system:shop` / `system:lottery` 模块都显式引用对应表的 `#system:default`。新增条目后，可以向默认 tag 追加它，也可以自建模块与 tag，再在系统定义中启用这个模块。仅新增条目而不修改默认 tag，不会自动加入默认系统。
+
+字段复用 Saturn `RegistryCodecs.keyOrTagList`，不在 Codec 解码阶段展开 tag；模块同步时只传资源键和 tag 名，不要求客户端加载服务端目录。服务端列表、签到候选与提交、收件箱签到状态、报价和最终扣款均检查玩家当前允许的集合；直接输入 `/buy` / `/draw` 的 ID 或点击旧报价也不能绕过限制。移除模块或 tag 成员后，在确认与扣款前重新检查来源；成就事件的固定奖励仍读取完整奖励注册表，不受签到候选范围限制。
+
+修改目录条目或模块可选字段需重开世界 / 重启服务器；tag 成员按原版 `/reload` 更新，后续查询读取当前 tag，旧报价在来源不再可用时拒绝执行。已入账奖励和订单保留原快照。
+
+## 条目内容
 
 签到包文件：
 
@@ -228,19 +270,19 @@ AI 只返回候选奖励 ID，不能修改条目数量。入账保存完整奖�
 }
 ```
 
-资源需要先在 `data/example/saturn/resource/system_coin.json` 定义，例如 `{"default_value":0,"max":1000000000}`；示例包已附带该资源和 `system:coin_food` 商品，初始余额为 0，不会自动发币。资源注册表在世界加载时读取，添加或修改资源定义需重开世界 / 重启服务器，不能只 `/reload`。已有资源的商品费用可随商品正常重载。资源名称使用 Saturn 的翻译键格式，例如 `saturn.resource.example.system_coin`；客户端资源包未翻译时显示资源 ID。
+资源需要先在 `data/example/saturn/resource/system_coin.json` 定义，例如 `{"default_value":0,"max":1000000000}`；示例包已附带该资源和 `system:coin_food` 商品，初始余额为 0，不会自动发币。资源与商品注册表均在世界加载时读取，添加或修改资源、商品费用需重开世界 / 重启服务器，不能只 `/reload`。资源名称使用 Saturn 的翻译键格式，例如 `saturn.resource.example.system_coin`；客户端资源包未翻译时显示资源 ID。
 
 `amount` 交由 Saturn `NumberProvider` 解析，支持其常量、公式和注册类型。浏览及生成报价均在服务端游戏线程求值，确认报价保留本次求值后的账单，两分钟内确认不会重新计算动态金额；确认仍会重新检查当前支付条件。客户端和模型只收到展示快照及报价引用，不能提供可执行 Cost。新增费用类型在 Saturn 注册，无需修改 System 的支付分支。
 
 Saturn 逐项模拟后按列表顺序扣款，不合并重复或重叠的需求。因此同一种材料 / 资源尽量合并成一条 Cost，避免多个独立费用共享同一份余额导致部分扣款。若真实扣款失败或抛出异常，System 将订单标为 `PAYMENT_UNKNOWN` 并锁住奖励，不自动重试或退款，需管理员核对；不保证跨多个 Cost 的原子回滚。
 
-标签为非空纯文本；无效物品 ID、不在原版范围内的数量、无法解析的组件、产出列表不在 1～36 项范围内或缺失价格都会拒绝本轮重载，不发布半份目录。依赖最终物品组件的校验留到运行时；商品产出无法创建时会在扣款前失败，奖励无法创建时保留为待领取。未知字段遵循原版 Codec 行为忽略。成功重载会更换目录版本，旧报价失效；正在推理的签到决策提交前需要校验版本。已入账的签到/商城奖励、订单和当日唯一标记均保留。
+`label` 为非空纯文本；无效物品 ID、不在原版范围内的数量、无法解析的组件、产出列表不在 1～36 项范围内或缺失价格都会由注册表 Codec 报错，拒绝加载该数据包注册表。依赖最终物品组件的校验留到运行时；商品产出无法创建时会在扣款前失败，奖励无法创建时保留为待领取。未知字段遵循原版 Codec 行为忽略。目录版本按服务端实例生成，旧会话报价不跨重启；正在推理的签到决策提交前仍校验版本及当前候选。已入账的签到/商城奖励、订单和当日唯一标记均保留。
 
 成就 `rewardId` 引用当前奖励池中的完整资源 ID，例如 `system:mining`。
 
 ## 抽奖奖池
 
-奖池通过同一个目录重载监听器加载，奖池 ID 来自 `data/<namespace>/system/lottery_pools/<path>.json` 的路径。默认 `system:supplies` 消耗 1 个绿宝石，奖品分别为 16 个火把（60%）、8 个面包（30%）、4 个铁锭（10%）；可覆盖同路径文件或用 `{"enabled":false}` 禁用。可复制的示例在 [supplies.json](../examples/commerce-pack/data/example/system/lottery_pools/supplies.json)。
+奖池使用原生 `system:lottery_pools` 数据包注册表，奖池 ID 来自 `data/<namespace>/system/lottery_pools/<path>.json` 的路径。默认 `system:supplies` 消耗 1 个绿宝石，奖品分别为 16 个火把（60%）、8 个面包（30%）、4 个铁锭（10%）；可覆盖同路径文件或用 `{"enabled":false}` 禁用。可复制的示例在 [supplies.json](../examples/commerce-pack/data/example/system/lottery_pools/supplies.json)。
 
 ```json
 {
@@ -273,7 +315,7 @@ Saturn 逐项模拟后按列表顺序扣款，不合并重复或重叠的需求�
 
 `costs` 为每次单抽的消耗，使用与商城相同的 Saturn `Cost.LIST_CODEC`，支持物品、资源和扩展费用。省略或设为 `[]` 表示免费，免费奖池可重复抽取。无法完成 Cost 定价的奖池可查看失败原因，不提供确认按钮；余额不足在确认时拒绝支付。旧的 `price` / `ITEMS` / `SYSTEM_COIN` 格式已移除，请按新格式重写，模组尚未发布，不提供旧数据迁移。
 
-完整界面进入“系统抽奖”，或输入 `/lottery [关键词]`；`/draw <奖池ID>` / `单抽 <奖池ID>` 只预览，显示奖品概率和费用后，必须单独点击或用 `选择 编号` 确认。奖池与奖品均按每页 8 项展示。确认引用有效期两分钟，绑定玩家、操作类型及目录版本；成功重载会使旧确认失效。模型和本地语义路由只能浏览或预览，不能直接确认扣款、修改权重或指定中奖奖品。
+完整界面进入“系统抽奖”，或输入 `/lottery [关键词]`；`/draw <奖池ID>` / `单抽 <奖池ID>` 只预览，显示奖品概率和费用后，必须单独点击或用 `选择 编号` 确认。奖池与奖品均按每页 8 项展示。确认引用有效期两分钟，绑定玩家、操作类型及目录版本；确认和扣款前仍检查当前模块及 tag 是否允许该奖池。模型和本地语义路由只能浏览或预览，不能直接确认扣款、修改权重或指定中奖奖品。
 
 服务端在确认时抽样并持久化中奖快照，共用商城的订单、扣款与收件箱结算流程；重复确认同一引用只返回原结果，不重复扣款或重抽。待支付与结果未知订单不展示未结算奖品。扣款前在游戏线程验证整个奖池的物品模板，任何奖品无法构建时均失败；资源重载阶段不会构建 `ItemStack`。已结算奖品保留快照，目录修改不会改写；仍需从收件箱领取。
 
@@ -309,4 +351,4 @@ Saturn 逐项模拟后按列表顺序扣款，不合并重复或重叠的需求�
 
 `system-agent.json` 中 `policies` 的键是模块 ID，值必须提供全部 `ExecutionPolicy` 字段。不同模块有自己的模型数、工具数、写步骤、tokens 与期限。`0` 模型次数表示禁止，不能写负数表示无限。未知模块配置会导致助手初始化失败并停止奖励写入。
 
-配置错误不会回退到不校验的发奖方式。诊断在服务端日志中；修改配置文件需要正常重启，修改奖励、商品或奖池数据包可正常重载。FTB 自身任务配置仍是独立入口。
+配置错误不会回退到不校验的发奖方式。诊断在服务端日志中；修改配置文件或奖励、商品、奖池注册表条目需要正常重启，提示词和 tag 使用原版重载流程。FTB 自身任务配置仍是独立入口。

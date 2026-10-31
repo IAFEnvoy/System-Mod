@@ -53,6 +53,7 @@
 | 领域词表、稀疏 TF-IDF、阈值、玩家意图缓存、只读直达与模型兜底 | [本地意图路由](docs/semantic-routing.md) |
 | 10MB 分发约束、路由方案比较、校准与后续方向 | [路由选型与计划](docs/semantic-routing-plan.md) |
 | 系统定义、system_module 配置实例与 server.type/client、grant 指定系统与单绑定/多系统结构预留、模块 ID/tag/condition、模块增删 action、签到奖励、商城商品、抽奖奖池、提示词、成就规则 | [数据包与扩展配置](docs/datapacks.md) |
+| 三张服务端 Data Pack Registry：signin_rewards / shop_offers / lottery_pools；CatalogModule 的 rewards / offers / pools 支持 ID、tag、混合数组；玩家并集权限与扣款前复核 | [目录可选项](docs/datapacks.md#模块目录可选项)、[注册表](docs/registries.md#数据包注册表与外部注册表)、[CommerceCatalog](src/main/java/com/iafenvoy/system/agent/commerce/CommerceCatalog.java) |
 | TTS 接口、流式播放、语种、音色、取消 session、Python 设计 / 复刻 / 临时上传 | [语音合成与音色设计](docs/tts.md) |
 | ASR、NLS AccessKey 自动签发与 Token 缓存刷新、停止 / 自然 EOF 与设备关闭解耦、session 超时、可选 SVC、按键录音与按次估价 | [语音识别](docs/asr.md) |
 | 服务端 AI/联网用量 SavedData、仅本地可见的个人 TTS / ASR 用量、字符与 Token、客户端计费配置、撤销后保留 | [用量统计](docs/token-usage.md) |

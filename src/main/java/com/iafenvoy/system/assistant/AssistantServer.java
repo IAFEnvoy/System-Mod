@@ -2,13 +2,13 @@ package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentEngine;
+import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.commerce.CommerceTransactions;
 import com.iafenvoy.system.agent.database.AgentDatabases;
 import com.iafenvoy.system.agent.model.OpenAiCompatibleClient;
 import com.iafenvoy.system.agent.store.FileAgentStore;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import com.iafenvoy.system.command.SystemCommand;
-import com.iafenvoy.system.data.CatalogReloadListener;
 import com.iafenvoy.system.data.PromptReloadListener;
 import com.iafenvoy.system.event.AssistantRegistrationEvent;
 import com.iafenvoy.system.module.ModuleContext;
@@ -44,13 +44,11 @@ public final class AssistantServer {
     private final AssistantUsage usage;
     private final ModuleManager moduleManager;
     private final GameTaskQueue gameQueue = new GameTaskQueue();
-    private CatalogReloadListener catalogListener;
     private PromptReloadListener promptListener;
 
     private AssistantServer(MinecraftServer server) throws Exception {
         this.server = server;
-        this.catalogListener = server.getServerResources().managers().getListener(CatalogReloadListener.KEY);
-        this.engine = new AgentEngine(this.catalogListener.catalog(),
+        this.engine = new AgentEngine(CommerceCatalog.create(server.registryAccess()),
                 new FileAgentStore(server.getWorldPath(LevelResource.ROOT).resolve("system-agent")), new OpenAiCompatibleClient(),
                 new AgentDatabases(server.getWorldPath(LevelResource.ROOT).resolve("system-database")));
         try {
@@ -99,13 +97,6 @@ public final class AssistantServer {
 
     public AssistantUsage usage() {
         return this.usage;
-    }
-
-    private void refreshCatalog() {
-        CatalogReloadListener listener = this.server.getServerResources().managers().getListener(CatalogReloadListener.KEY);
-        if (this.catalogListener == listener) return;
-        this.engine.catalog(listener.catalog());
-        this.catalogListener = listener;
     }
 
     private void refreshPrompts() {
@@ -167,7 +158,6 @@ public final class AssistantServer {
         AssistantServer runtime = get(event.getServer());
         if (runtime != null) {
             runtime.usage.drain();
-            runtime.refreshCatalog();
             runtime.refreshPrompts();
             runtime.moduleManager.tick();
             runtime.gameQueue.tick();
@@ -176,7 +166,6 @@ public final class AssistantServer {
 
     @SubscribeEvent
     public static void reloadListeners(AddServerReloadListenersEvent event) {
-        event.addRetainedListener(CatalogReloadListener.KEY, new CatalogReloadListener());
         event.addRetainedListener(PromptReloadListener.KEY, new PromptReloadListener());
     }
 }

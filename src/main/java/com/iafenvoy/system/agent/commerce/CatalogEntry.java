@@ -25,10 +25,16 @@ public record CatalogEntry(String label, List<ItemStackTemplate> items, Optional
             PlayerData.Reward.ITEMS_CODEC.optionalFieldOf("items", List.of()).forGetter(CatalogEntry::items),
             Cost.LIST_CODEC.optionalFieldOf("costs").forGetter(CatalogEntry::costs),
             Codec.BOOL.optionalFieldOf("enabled", true).forGetter(CatalogEntry::enabled)
-    ).apply(i, CatalogEntry::new)).validate(CatalogEntry::validate);
+    ).apply(i, CatalogEntry::new)).validate(entry -> validate(entry).flatMap(value -> value.enabled && value.costs.isEmpty()
+            ? DataResult.error(() -> "Enabled shop offers must define costs") : DataResult.success(value)));
+
+    public CatalogEntry {
+        items = List.copyOf(items);
+        costs = costs.map(List::copyOf);
+    }
 
     private static DataResult<CatalogEntry> validate(CatalogEntry entry) {
-        return entry.enabled && entry.items.isEmpty()
-                ? DataResult.error(() -> "Enabled catalog entries must contain items") : DataResult.success(entry);
+        return entry.enabled && (entry.label.isBlank() || entry.items.isEmpty())
+                ? DataResult.error(() -> "Enabled catalog entries need a label and items") : DataResult.success(entry);
     }
 }

@@ -50,14 +50,14 @@ public final class InboxModule extends BuiltinModule<InboxInput> {
         return context.store().read(context.player(), data -> {
             List<CardUpdate> cards = new ArrayList<>();
             // Payment-pending rewards stay private; unresolved transactions are shown by their order summaries below.
-            for (PlayerData.Delivery delivery : ModuleData.get(data, InboxSystemModule.STORAGE).deliveries.values().stream()
+            for (PlayerData.Delivery delivery : ModuleData.get(data, InboxSystemModule.STORAGE).streamDeliveries()
                     .filter(value -> !Set.of("DELIVERED", "PAYMENT_PENDING", "PAYMENT_UNKNOWN").contains(value.state)).limit(32).toList()) {
                 cards.add(CardUpdate.show(new CreditReceiptOutput(delivery.id, delivery.reward, delivery.state)));
             }
-            cards.add(CardUpdate.show(new ResultTypes.SignInStatus(day, ModuleData.get(data, SignInSystemModule.STORAGE).rewards.containsKey(day),
-                    context.catalog().rewards(), data.saveHistory, data.externalModel)));
+            cards.add(CardUpdate.show(new ResultTypes.SignInStatus(day, ModuleData.get(data, SignInSystemModule.STORAGE).hasReward(day),
+                    context.availableCatalog().rewards(), data.saveHistory, data.externalModel)));
             for (PlayerData.Purchase purchase : ModuleData.values(data, CommerceDataStorage.class, this.modules)
-                    .flatMap(storage -> storage.purchases.values().stream()).filter(value -> !"COMPLETED".equals(value.state) && !"FAILED".equals(value.state)).limit(8).toList())
+                    .flatMap(CommerceDataStorage::streamPurchases).filter(value -> !"COMPLETED".equals(value.state) && !"FAILED".equals(value.state)).limit(8).toList())
                 cards.add(CardUpdate.show(new ResultTypes.ShopOrder(purchase.id, purchase.order.label(), purchase.state, purchase.error)));
             return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.inbox", "", cards);
         });

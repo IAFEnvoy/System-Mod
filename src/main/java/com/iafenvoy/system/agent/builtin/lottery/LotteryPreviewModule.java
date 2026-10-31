@@ -39,7 +39,7 @@ public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInpu
 
     @Override
     public AgentResult execute(ExecutionContext context, LotteryPreviewInput input) throws Exception {
-        CommerceCatalog catalog = context.catalog();
+        CommerceCatalog catalog = context.availableCatalog();
         if (!input.catalogRevision().orElse(catalog.revision()).equals(catalog.revision()))
             throw new AgentException("STALE_QUOTE");
         LotteryPool pool = catalog.lotteries().stream().filter(value -> value.id().equals(input.poolId())).findFirst()

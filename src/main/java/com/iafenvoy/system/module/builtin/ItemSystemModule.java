@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.ItemQueryInput;
@@ -15,7 +16,7 @@ import net.minecraft.resources.Identifier;
 import java.util.List;
 
 public final class ItemSystemModule implements SharedModule {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "items");
+    public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "items");
     public static final MapCodec<ItemSystemModule> CODEC = MapCodec.unit(new ItemSystemModule());
 
     @Override

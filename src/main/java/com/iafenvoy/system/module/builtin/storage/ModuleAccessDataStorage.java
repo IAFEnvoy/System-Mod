@@ -1,6 +1,7 @@
 package com.iafenvoy.system.module.builtin.storage;
 
 import com.iafenvoy.saturn.data.storage.DataStorage;
+import com.iafenvoy.saturn.util.codec.CollectionCodecs;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;
@@ -14,8 +15,8 @@ import java.util.Set;
  */
 public final class ModuleAccessDataStorage extends DataStorage {
     public static final MapCodec<ModuleAccessDataStorage> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Identifier.CODEC.listOf().optionalFieldOf("added", List.of()).forGetter(value -> List.copyOf(value.added)),
-            Identifier.CODEC.listOf().optionalFieldOf("removed", List.of()).forGetter(value -> List.copyOf(value.removed))
+            CollectionCodecs.set(Identifier.CODEC).optionalFieldOf("added", Set.of()).forGetter(ModuleAccessDataStorage::added),
+            CollectionCodecs.set(Identifier.CODEC).optionalFieldOf("removed", Set.of()).forGetter(ModuleAccessDataStorage::removed)
     ).apply(i, (added, removed) -> new ModuleAccessDataStorage(new LinkedHashSet<>(added), new LinkedHashSet<>(removed))));
     private final Set<Identifier> added = new LinkedHashSet<>(), removed = new LinkedHashSet<>();
 
@@ -40,6 +41,7 @@ public final class ModuleAccessDataStorage extends DataStorage {
     }
 
     public void replace(Selection selection) {
+        if (this.added.equals(selection.added()) && this.removed.equals(selection.removed())) return;
         this.added.clear();
         this.added.addAll(selection.added());
         this.removed.clear();

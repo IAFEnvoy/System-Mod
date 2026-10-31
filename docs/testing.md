@@ -1,5 +1,13 @@
 # 编译与验收
 
+## 2026-10-31 目录注册表、tag 与模块可选项
+
+将签到奖励、商城商品和奖池登记为服务端专用的原生 system:signin_rewards / system:shop_offers / system:lottery_pools 数据包注册表；文件路径不变，删除 CatalogReloadListener 以及 AssistantServer 的目录监听器和逐 tick 刷新。CommerceCatalog 从 RegistryAccess 构建当前服务器的业务快照，条目禁用、原版 ItemStackTemplate 与 Saturn Cost 继续沿用。新增三张表各自的默认 tag、内置模块字段和商业示例包的追加 tag / 混合选择模块。
+
+对实际依赖 Saturn 9349648 JAR 使用 javap 核对 keyOrTagList / matchesKeys / combineCodec，确认单值与数组格式、ResourceKey 编码不要求客户端持有服务端目录。阅读 MC 26.1.2.114 的 RegistryDataLoader、WorldLoader、MinecraftServer.reloadResources 和 TagLoader：Data Pack Registry 在世界加载时读取条目，普通 /reload 为现有注册表更新 tag，不重新读取条目。CatalogModule 使用 rewards / offers / pools 保存可选 ResourceKey/TagKey，同玩家已启用的同类配置取并集，所有业务入口统一读取 availableCatalog；成交前与实际支付前复核来源，成就固定奖励仍使用完整目录。修正同类型多个配置重复装配同一交易存储时被拒绝的问题。
+
+执行 `gradlew compileJava --console=plain` 和 `gradlew testModClasses --console=plain` 编译通过，未运行测试、启动 Minecraft 或请求外部 API。原生数据包的实际世界加载、服务器专用注册表与客户端配置同步、tag 重载、模块条件切换及签到 / 商城 / 抽奖交互仍需游戏内验收。
+
 ## 2026-10-30 完整聊天布局与滚动
 
 删除“对话”导航与侧栏分组标题，SETTINGS 类入口由 ClientModuleBindingsCache 放到右上角，模块工具栏移至聊天记录与输入框之间。WorkspaceContext 统一处理当前工具栏入口的重复点击，收起时跳过原打开回调，避免重复查询；即时查询和独立设置页面保持原动作。聊天内容放入普通文档流容器，通过 flex 自动上边距让短对话靠近输入框，长卡片不压缩。

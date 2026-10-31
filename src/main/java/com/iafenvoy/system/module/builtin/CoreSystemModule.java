@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.builtin.core.HelpModule;
 import com.iafenvoy.system.agent.builtin.input.HelpInput;
@@ -28,10 +29,10 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.List;
 
 public final class CoreSystemModule implements CoreModule {
-    public static final Identifier ID = Identifier.fromNamespaceAndPath("system", "core");
+    public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "core");
     public static final MapCodec<CoreSystemModule> CODEC = MapCodec.unit(new CoreSystemModule());
-    public static final ModuleStorage<AgentJournalDataStorage> JOURNAL = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath("system", "agent_journal"), AgentJournalDataStorage.class, AgentJournalDataStorage.CODEC, AgentJournalDataStorage::new);
-    public static final ModuleStorage<ModuleAccessDataStorage> ACCESS = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath("system", "module_access"), ModuleAccessDataStorage.class, ModuleAccessDataStorage.CODEC, ModuleAccessDataStorage::new);
+    public static final ModuleStorage<AgentJournalDataStorage> JOURNAL = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "agent_journal"), AgentJournalDataStorage.class, AgentJournalDataStorage.CODEC, AgentJournalDataStorage::new);
+    public static final ModuleStorage<ModuleAccessDataStorage> ACCESS = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "module_access"), ModuleAccessDataStorage.class, ModuleAccessDataStorage.CODEC, ModuleAccessDataStorage::new);
 
     @Override
     public MapCodec<CoreSystemModule> codec() {
@@ -51,7 +52,7 @@ public final class CoreSystemModule implements CoreModule {
     @Override
     public void installed(ModuleContext context) {
         context.engine().modules().root(HelpInput.INSTANCE);
-        context.engine().modules().reject(Identifier.fromNamespaceAndPath("system", "semantic_reject"), RoutingProfile.hints(
+        context.engine().modules().reject(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "semantic_reject"), RoutingProfile.hints(
                 List.of("不要替我签到", "签到奖励有哪些", "如果签到会怎么样", "帮我建造房子"),
                 List.of("Do not sign me in", "Explain daily sign-in rewards", "What happens if I sign in?", "Build me a house")));
     }

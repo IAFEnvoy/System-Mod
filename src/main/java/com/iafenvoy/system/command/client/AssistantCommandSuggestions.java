@@ -1,6 +1,7 @@
 package com.iafenvoy.system.command.client;
 
 import com.iafenvoy.saturn.util.MiscUtil;
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.AssistantCommandInput;
 import com.iafenvoy.system.command.AssistantCommandSource;
@@ -49,7 +50,7 @@ public final class AssistantCommandSuggestions {
         // Local candidates remain usable even when a new vanilla suggestion request cancels an older one.
         local.thenAccept(receive);
         ClientPacketListener connection = Minecraft.getInstance().getConnection();
-        if (connection == null || connection.getCommands().getRoot().getChild("system") == null) return;
+        if (connection == null || connection.getCommands().getRoot().getChild(SystemMod.MOD_ID) == null) return;
         String serverInput = "system " + draft.substring(input.start());
         // Use the received permission-filtered tree and its native server suggestion providers.
         CommandDispatcher<ClientSuggestionProvider> server = connection.getCommands();

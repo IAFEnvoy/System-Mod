@@ -33,13 +33,14 @@
 | `WorkflowModule` | 提供 `List<AgentModule<?>>`，包括成就等服务端事件工作流 |
 | `SharedModule extends WorkflowModule` | 额外提供 `serverCommands(root)`；不再继承 ClientModule |
 | `CoreModule extends SharedModule` | 基础设施；已安装的对应配置对绑定玩家始终启用且不可移除 |
+| `CatalogModule<T> extends SharedModule` | 签到、商城、抽奖声明目录注册表与可选 ID/tag，按玩家已启用定义合并目录权限 |
 | `ClientModule` | 仅客户端的页面、命令和本地卡片动作 |
 
 类型由接口表达，`available()` 仅检查可选依赖。核心、绑定、用量实现 CoreModule，玩家、物品、签到、收件箱、商城、抽奖和任务实现 SharedModule，成就实现 WorkflowModule，搜索实现 ToolModule。聊天、设置、语音以及基础界面操作由客户端本地目录常驻，不依赖进入世界后的注册表同步。
 
 ## 服务端装配与指令
 
-`ServerModule.CODEC` 通过静态类型注册表 `byNameCodec().dispatch("type", ServerModule::codec, codec -> codec)` 分派。12 个内置类型目前没有参数，各自用 `MapCodec.unit(new ...())` 返回单例。动态注册表保存独立的 SystemModule 包装，不将同一单例重复注册为多个 MC 注册表值。
+`ServerModule.CODEC` 通过静态类型注册表 `byNameCodec().dispatch("type", ServerModule::codec, codec -> codec)` 分派。无参数内置类型用 `MapCodec.unit(new ...())` 返回单例；签到、商城和抽奖是带 rewards / offers / pools 的不可变 record，使用 RecordCodecBuilder.mapCodec。动态注册表保存独立的 SystemModule 包装，不将同一单例重复注册为多个 MC 注册表值。
 
 类型 Codec 的扩展示例：
 
@@ -55,6 +56,8 @@ public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<Ex
 ModuleManager 从当前服务器 RegistryAccess 读取动态配置，筛选 available() 后先安装纯工具，再安装工作流，最后创建各实例的 PlayerModule。每份配置有独立 ModuleContext，提供当前条目 `id()`、完整 `modules()` 注册表、引擎、交易与游戏桥接；上下文工具缓存只在该配置内共享。不要把服务器、玩家或运行时对象保存在全局单例定义里。
 
 不同配置可以提供相同动作 ID 的同类工作流。ModuleRegistry 按配置实例 ID 保存候选，命令/模型/语义目录只声明一次，执行时选择该玩家已启用的候选与对应工具。入口 Codec、工作流类型、版本、交互/事件属性、工具契约和只读权限必须一致；参数可影响执行和预算，不应让同一动作类型声明不同的路由契约。同一玩家同时启用多个候选时按模块实例 ID 排序选择第一个；数据包通常应让同类变体的条件互斥。流程选中后保留 owner，移除该配置会取消其在途和排队操作，不会中途换用另一份参数。
+
+三类目录的可选项另由 CatalogModule 声明，按玩家启用的同类配置取并集，不仅限于执行工作流时选中的第一份配置。对应注册表为 system:signin_rewards、system:shop_offers、system:lottery_pools；字段支持 ID、tag 或混合数组，复用 Saturn keyOrTagList，省略为全表、空数组为空，内置模块显式使用对应 #system:default。AgentEngine.availableCatalog 与 ExecutionContext.availableCatalog 是统一的玩家目录入口，列表、模型候选、状态、报价与扣款共用筛选。详见[目录选项](datapacks.md#模块目录可选项)。
 
 每个服务端实现类型的游戏指令只装配一次。SystemCommand 只创建 `/system` 根节点、收集 SharedModule.serverCommands，再连接 Agent 通用指令。绑定、用量和核心模块分别负责 grant/revoke/reset、usage 与打开界面/ask/routing/module 管理。补全和模块管理从当前世界的 system_module 注册表读取 ID。
 

@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.database.AgentDatabase;
 import com.iafenvoy.system.agent.database.DatabaseTable;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
@@ -23,7 +24,7 @@ import java.util.concurrent.TimeUnit;
  * Only worker threads access disk, and callers must recheck native visibility before using an entry.
  */
 final class QuestBackgrounds {
-    private static final DatabaseTable<Entry> TABLE = new DatabaseTable<>(Identifier.fromNamespaceAndPath("system", "quest_backgrounds"), Entry.CODEC);
+    private static final DatabaseTable<Entry> TABLE = new DatabaseTable<>(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_backgrounds"), Entry.CODEC);
     private final AgentDatabase database;
     private final Map<String, CompletableFuture<String>> loading = new ConcurrentHashMap<>();
     private final Map<String, Long> retryAfter = new ConcurrentHashMap<>();

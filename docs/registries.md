@@ -39,6 +39,7 @@
 | WorkflowModule | 服务端工作流与生命周期，成就使用此类型 |
 | SharedModule | 继承 WorkflowModule，增加服务端游戏指令；不继承 ClientModule |
 | CoreModule | 继承 SharedModule，绑定后必需且不能移除 |
+| CatalogModule | 继承 SharedModule，提供三类业务目录的注册表键与可选 ResourceKey/TagKey 列表 |
 | ClientModule | 客户端界面、本地动作及 clientCommands |
 
 分类使用接口，available() 仅检查依赖。纯工具和工作流都按配置 ID 保存 owner。Agent 工作流和工具目录支持同类型配置的多个候选，根据当前玩家已启用的模块选择实现；客户端缓存按 client ID 分组，仅装配一份 UI。详见[功能模块化](feature-modules.md)。
@@ -109,6 +110,9 @@ JSON 使用完整 ID，例如 `{"type":"system:items","items":"{{result_items}}"
 | --- | --- | --- |
 | System 模块数据包注册表 `system:system_module` | `SystemDataPackRegistries`、`SystemResourceKeys.SYSTEM_MODULE` | `modules/moduleIds(RegistryAccess)`；模块配置、server 类型分派与 client ID |
 | System 数据包注册表 `system:system` | `SystemDataPackRegistries`、`SystemResourceKeys.SYSTEM` | `SystemDataPackRegistries.get/ids(RegistryAccess, ...)`；系统名、介绍与模块定义 |
+| 签到奖励注册表 `system:signin_rewards` | `SystemDataPackRegistries`、`SystemResourceKeys.SIGNIN_REWARDS` | 服务端 CatalogEntry.REWARD；模块 rewards 筛选 |
+| 商城商品注册表 `system:shop_offers` | `SystemDataPackRegistries`、`SystemResourceKeys.SHOP_OFFERS` | 服务端 CatalogEntry.OFFER；模块 offers 筛选 |
+| 抽奖奖池注册表 `system:lottery_pools` | `SystemDataPackRegistries`、`SystemResourceKeys.LOTTERY_POOLS` | 服务端 LotteryPool.Definition；模块 pools 筛选 |
 | Saturn `SaturnResourceKeys.ENTITY_ACTION_TYPE` | `SystemEntityActions` | `system:add_module`、`system:remove_module` |
 | Saturn `SaturnResourceKeys.ENTITY_CONDITION_TYPE` | `SystemEntityConditions` | `system:has_module`、`system:has_system` |
 | Saturn `SaturnRegistries.DATA_STORAGE_TYPE` | `SystemDataStorages` | 模块权限、成就、Agent 日志、交易、收件箱、签到的 DataStorage Codec |
@@ -116,6 +120,8 @@ JSON 使用完整 ID，例如 `{"type":"system:items","items":"{{result_items}}"
 | 客户端按键注册事件 | `SystemKeyMappings` | `CATEGORY`、`TOGGLE_INTERFACE`、`VOICE_INPUT`；使用 NeoForge 专用事件登记 |
 
 系统与模块定义通过 `RegistryAccess` 查询，在世界加载时读取、连接时同步；修改定义或参数需要重开世界或重启服务器，tag 仍遵循原版资源重载规则。不能用静态 `SystemRegistries` 查询世界数据包条目。系统文件路径为 `data/<条目命名空间>/system/system/<路径>.json`，格式见[数据包文档](datapacks.md)。
+
+三张目录表仅服务端加载，不注册网络 Codec；路径保持 data/<namespace>/system/signin_rewards、shop_offers、lottery_pools，tag 分别位于 data/<namespace>/tags/system/<对应表名>/<path>.json。模块选择字段使用 Saturn RegistryCodecs.keyOrTagList / matchesKeys，支持 ID、#tag、混合数组，配置同步只编码资源键。内置三模块引用各表的 #system:default，tag 不跨表混用；具体语义与示例见[模块目录可选项](datapacks.md#模块目录可选项)。不再登记 CatalogReloadListener，修改条目需重新加载世界。
 
 系统定义的 modules 可引用动态 SYSTEM_MODULE 条目或 tag，例如 "system:signin"、"#example:basic"、{ "id": "#example:basic", "condition": ... }。ModuleDefinition 的 Either 为 Holder<SystemModule> 或 TagKey<SystemModule>，由 Saturn RegistryCodecs.holderOrTag / matches 在当前世界注册表求值。模块 tag 路径为 data/<namespace>/tags/system/system_module/<path>.json；客户端状态同步实际启用的配置 ID。完整数据格式见[数据包](datapacks.md#系统模块定义)。
 

@@ -38,7 +38,8 @@ public final class CommerceQuotes {
     public Quote require(UUID player, String id, CommerceCatalog catalog, PurchaseType type) {
         Quote quote = this.quotes.get(id);
         if (quote == null || quote.type() != type || !quote.player().equals(player) || quote.expires() < System.currentTimeMillis()
-                || !quote.revision().equals(catalog.revision())) throw new AgentException("STALE_QUOTE");
+                || !quote.revision().equals(catalog.revision()) || !catalog.contains(type, quote.source()))
+            throw new AgentException("STALE_QUOTE");
         return quote;
     }
 

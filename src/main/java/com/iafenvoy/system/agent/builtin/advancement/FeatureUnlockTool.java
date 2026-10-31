@@ -25,7 +25,7 @@ public final class FeatureUnlockTool implements ToolRegistry.Handler<FeatureInpu
         String id = input.featureId();
         if (!id.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) throw new AgentException("INVALID_INPUT");
         return CompletableFuture.completedFuture(context.store().update(context.player(), data -> {
-            ModuleData.get(data, AdvancementSystemModule.STORAGE).unlocked.add(id);
+            ModuleData.get(data, AdvancementSystemModule.STORAGE).unlock(id);
             return new FeatureOutput(id, true);
         }));
     }

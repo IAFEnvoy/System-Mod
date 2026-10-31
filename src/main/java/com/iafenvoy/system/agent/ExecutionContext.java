@@ -11,6 +11,7 @@ import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.CoreSystemModule;
+import com.iafenvoy.system.module.builtin.storage.AgentJournalDataStorage;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
@@ -70,7 +71,7 @@ public final class ExecutionContext {
         this.policy = initial;
         this.expires = started + initial.ttlMillis();
         if (eventKey != null) store.read(player, data -> {
-            PlayerData.EventTask task = ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.get(eventKey);
+            PlayerData.EventTask task = ModuleData.get(data, CoreSystemModule.JOURNAL).getTask(eventKey);
             this.eventOwner = task.owner;
             this.models = task.modelCalls;
             this.tools = task.toolCalls;
@@ -152,6 +153,10 @@ public final class ExecutionContext {
 
     public CommerceCatalog catalog() {
         return this.engine.catalog();
+    }
+
+    public CommerceCatalog availableCatalog() {
+        return this.engine.availableCatalog(this.player);
     }
 
     public List<String> commandUsages() {
@@ -238,12 +243,8 @@ public final class ExecutionContext {
     private void persist() {
         if (!this.isEvent()) return;
         this.store().update(this.player, data -> {
-            PlayerData.EventTask task = ModuleData.get(data, CoreSystemModule.JOURNAL).tasks.get(this.eventKey);
-            task.modelCalls = this.models;
-            task.toolCalls = this.tools;
-            task.workflowSteps = this.steps;
-            task.writeSteps = this.writes;
-            task.tokens = this.tokens;
+            ModuleData.get(data, CoreSystemModule.JOURNAL).updateTaskUsage(this.eventKey,
+                    this.models, this.tools, this.steps, this.writes, this.tokens);
             return null;
         });
     }
@@ -329,10 +330,10 @@ public final class ExecutionContext {
         // Replay completed writes by task/step; an unfinished non-idempotent write has an unknown effect.
         if (tool.write()) {
             Dynamic<?> previous = this.store().read(this.player, data -> {
-                PlayerData.Step receipt = ModuleData.get(data, CoreSystemModule.JOURNAL).operations.get(operationKey);
+                PlayerData.Step receipt = ModuleData.get(data, CoreSystemModule.JOURNAL).getOperation(operationKey);
                 if (receipt == null) return null;
                 if (!fingerprint.equals(receipt.fingerprint)) throw new AgentException("INVALID_INPUT");
-                if ("DONE".equals(receipt.state)) return receipt.result;
+                if (receipt.state == PlayerData.State.DONE) return receipt.result;
                 if (!tool.idempotent()) throw new AgentException("EFFECT_UNKNOWN");
                 return null;
             });
@@ -346,11 +347,11 @@ public final class ExecutionContext {
         this.persist();
         // Persist RUNNING before invoking a write so a crash cannot silently turn it into a fresh operation.
         if (tool.write()) this.store().update(this.player, data -> {
-            if (ModuleData.get(data, CoreSystemModule.JOURNAL).operations.size() >= 8192 && !ModuleData.get(data, CoreSystemModule.JOURNAL).operations.containsKey(operationKey))
-                throw new AgentException("STORAGE_FULL");
+            AgentJournalDataStorage storage = ModuleData.get(data, CoreSystemModule.JOURNAL);
+            storage.assertOperationCount(operationKey);
             PlayerData.Step receipt = new PlayerData.Step();
             receipt.fingerprint = fingerprint;
-            ModuleData.get(data, CoreSystemModule.JOURNAL).operations.put(operationKey, receipt);
+            storage.putOperation(operationKey, receipt);
             return null;
         });
         try {
@@ -361,9 +362,8 @@ public final class ExecutionContext {
                 if (!this.engine.toolAvailable(this.player, id)) throw new AgentException("CAPABILITY_UNAVAILABLE");
             }
             if (tool.write()) this.store().update(this.player, data -> {
-                PlayerData.Step receipt = ModuleData.get(data, CoreSystemModule.JOURNAL).operations.get(operationKey);
-                receipt.state = "DONE";
-                receipt.result = new Dynamic<>(JsonOps.INSTANCE, type.resultCodec().encodeStart(JsonOps.INSTANCE, result).getOrThrow());
+                ModuleData.get(data, CoreSystemModule.JOURNAL).completeOperation(operationKey,
+                        new Dynamic<>(JsonOps.INSTANCE, type.resultCodec().encodeStart(JsonOps.INSTANCE, result).getOrThrow()));
                 return null;
             });
             if (tool.write()) this.completedLocalSteps.add(stepId);

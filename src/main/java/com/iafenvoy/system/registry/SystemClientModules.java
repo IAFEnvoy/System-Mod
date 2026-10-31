@@ -1,5 +1,6 @@
 package com.iafenvoy.system.registry;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.module.builtin.*;
 import com.iafenvoy.system.module.client.ClientModule;
 import net.minecraft.resources.Identifier;
@@ -39,7 +40,7 @@ public final class SystemClientModules {
     }
 
     private static <T extends ClientModule> T register(String id, T module) {
-        return register(Identifier.fromNamespaceAndPath("system", id), module);
+        return register(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, id), module);
     }
 
     public static <T extends ClientModule> T register(Identifier id, T module) {
@@ -49,7 +50,7 @@ public final class SystemClientModules {
     }
 
     private static <T extends ClientModule> T local(String id, T module) {
-        Identifier key = Identifier.fromNamespaceAndPath("system", id);
+        Identifier key = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, id);
         register(key, module);
         LOCAL.put(key, module);
         return module;

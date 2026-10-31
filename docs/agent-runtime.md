@@ -49,6 +49,8 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 
 存储由 `ServerModule.storages()` 返回 ModuleStorage 声明，包含 owner、Codec ID、Java 类型、MapCodec 和工厂；声明从当前世界 system:system_module 的 server 配置读取；静态 SystemRegistries.SERVER_MODULE 只注册 MapCodec 类型。内置 Codec 由 SystemDataStorages 的 DeferredRegister 注册到 Saturn DATA_STORAGE_TYPE，扩展的 Codec 需另行注册。不同模块可以复用同一存储类型与 Codec；数据按 ModuleStorage.owner 区分，内置同类配置共用该功能账本。业务访问统一用 `ModuleData.get(data, SomeSystemModule.STORAGE)`，不要在 PlayerData 加功能访问器。完整声明与生命周期见[功能模块化](feature-modules.md#玩家生命周期)。
 
+内置 Storage 的集合字段保持 private，完整集合 getter 供 Codec 使用；业务在事务中通过 `getTask`、`putDelivery`、`streamPurchases` 等方法查询、写入和遍历，容量检查也封装在对应 Storage。集合增删、任务状态与预算、步骤回执、订单状态及发奖状态均通过 Storage 的修改方法调用 `markDirty()`；重复解锁、重复发奖和相同状态赋值不产生新的脏标记。读取返回的账本对象仅用于查询，新建对象在写入前可直接填充。跨存储的签到与发奖、扣款与订单提交继续在原事务中由调用方统一编排。
+
 ModuleManager 统一处理模块启停、Session 创建/初始化/ready/tick/close、Saturn DataStorage tick 与异步保存。只向 Agent 和客户端发布已初始化的模块；旧连接、旧系统代次或已移除模块的回调不能重新激活会话。主线程存储 tick 只尝试内存事务，文件写入在维护线程合并执行；普通业务写事务继续原子落盘。读取和事务结果不暴露可变缓存引用，失败事务不污染已提交内存数据。停用保留签到、订单和幂等记录；revoke/reset 删除玩家文件及缓存，用量 SavedData 独立保留。
 
 `TaskExecutor` 不改变各队列的规模：交互 4/32、事件 2/64、维护 2/32。队列满立即返回 `BUSY`，关闭时排队但尚未执行的 Future 返回 `CANCELLED`。这些队列不在游戏线程等待模型；游戏 API 继续由平台队列安排到主线程。
@@ -109,6 +111,8 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 ```
 
 不要给 Tool 增加 `operation` 字段来分派一组行为。同一工具由多个模块使用时，复用同一个实例和 `ToolRegistry.Type`。写工具声明幂等及事件权限；恢复时稳定的 `stepId` 对应既有回执，已完成操作不会重复执行。存档只保留一份全局操作回执，不额外保留未使用的任务内步骤表。
+
+事件任务和写步骤回执共用 `PlayerData.State` 枚举。事件缺省为 `QUEUED`，执行中为 `RUNNING`，玩家离线时为 `WAITING`，这三种状态允许恢复；终态按执行结果记录为 `SUCCEEDED`、`FAILED` 或 `PARTIALLY_SUCCEEDED`。步骤缺省为 `RUNNING`，表示已记录执行意图但未确认结果；`DONE` 表示结果已持久化、可按原结果 Codec 回放。存档仍使用同名字符串；显式无效状态由 Codec 拒绝，不把未知业务状态当作新操作重试。未完成的非幂等工具仍报告 EFFECT_UNKNOWN。
 
 Descriptor 的 `tools` 为必需工具，`optionalTools` 为可选只读工具 ID，二者不能重叠。可选项只在导出模块已启用时才能调用，缺席不会禁用本地工作流，也不自动注册处理器或授予模块。ExecutionContext.tool 同时检查声明、导出模块权限与只读属性；必需和可选调用共用原有工具 / 步数预算。知识问答使用该机制接入 FTB 说明书与网页搜索。
 

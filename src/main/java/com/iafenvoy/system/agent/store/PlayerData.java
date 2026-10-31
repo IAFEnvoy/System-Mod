@@ -13,8 +13,10 @@ import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.StringRepresentable;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStackTemplate;
+import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 
@@ -194,7 +196,7 @@ public final class PlayerData {
                 ExecutionPolicy.CODEC.optionalFieldOf("policy").forGetter(v -> Optional.ofNullable(v.policy)),
                 Codec.LONG.optionalFieldOf("created", 0L).forGetter(v -> v.created),
                 Codec.LONG.optionalFieldOf("expires", 0L).forGetter(v -> v.expires),
-                Codec.STRING.optionalFieldOf("state", "QUEUED").forGetter(v -> v.state),
+                State.CODEC.optionalFieldOf("state", State.QUEUED).forGetter(v -> v.state),
                 Codec.INT.optionalFieldOf("modelCalls", 0).forGetter(v -> v.modelCalls),
                 Codec.INT.optionalFieldOf("toolCalls", 0).forGetter(v -> v.toolCalls),
                 Codec.INT.optionalFieldOf("workflowSteps", 0).forGetter(v -> v.workflowSteps),
@@ -208,7 +210,7 @@ public final class PlayerData {
         public AgentAction call;
         public ExecutionPolicy policy;
         public long created, expires;
-        public String state = "QUEUED";
+        public State state = State.QUEUED;
         public int modelCalls, toolCalls, workflowSteps, writeSteps, tokens;
         public AgentResult result;
 
@@ -216,7 +218,7 @@ public final class PlayerData {
         }
 
         private EventTask(Optional<String> id, Optional<String> key, Optional<Identifier> owner, int moduleVersion, AgentAction call, String ruleId,
-                          Optional<ExecutionPolicy> policy, long created, long expires, String state, int modelCalls,
+                          Optional<ExecutionPolicy> policy, long created, long expires, State state, int modelCalls,
                           int toolCalls, int workflowSteps, int writeSteps, int tokens, Optional<AgentResult> result) {
             this.id = id.orElse(null);
             this.key = key.orElse(null);
@@ -237,11 +239,18 @@ public final class PlayerData {
         }
 
         public boolean pending() {
-            return Set.of("QUEUED", "RUNNING", "WAITING").contains(this.state);
+            return switch (this.state) {
+                case QUEUED, RUNNING, WAITING -> true;
+                default -> false;
+            };
         }
 
         public void complete(AgentResult result) {
-            this.state = result.messageKey().equals("system.error.player_offline") ? "WAITING" : result.status().name();
+            this.state = result.messageKey().equals("system.error.player_offline") ? State.WAITING : switch (result.status()) {
+                case SUCCEEDED -> State.SUCCEEDED;
+                case FAILED -> State.FAILED;
+                case PARTIALLY_SUCCEEDED -> State.PARTIALLY_SUCCEEDED;
+            };
             this.result = result;
         }
 
@@ -254,17 +263,18 @@ public final class PlayerData {
 
     public static final class Step {
         public static final Codec<Step> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.optionalFieldOf("state", "RUNNING").forGetter(v -> v.state),
+                State.CODEC.optionalFieldOf("state", State.RUNNING).forGetter(v -> v.state),
                 Codec.STRING.optionalFieldOf("fingerprint").forGetter(v -> Optional.ofNullable(v.fingerprint)),
                 Codec.PASSTHROUGH.optionalFieldOf("result").forGetter(v -> Optional.ofNullable(v.result))
         ).apply(i, Step::new));
-        public String state = "RUNNING", fingerprint;
+        public State state = State.RUNNING;
+        public String fingerprint;
         public Dynamic<?> result;
 
         public Step() {
         }
 
-        private Step(String state, Optional<String> fingerprint, Optional<Dynamic<?>> result) {
+        private Step(State state, Optional<String> fingerprint, Optional<Dynamic<?>> result) {
             this.state = state;
             this.fingerprint = fingerprint.orElse(null);
             this.result = result.orElse(null);
@@ -274,6 +284,18 @@ public final class PlayerData {
             Dynamic<?> resultCopy = this.result == null ? null :
                     new Dynamic<>(JsonOps.INSTANCE, this.result.convert(JsonOps.INSTANCE).getValue().deepCopy());
             return new Step(this.state, Optional.ofNullable(this.fingerprint), Optional.ofNullable(resultCopy));
+        }
+    }
+
+    public enum State implements StringRepresentable {
+        QUEUED, RUNNING, WAITING, DONE, SUCCEEDED, FAILED, PARTIALLY_SUCCEEDED;
+
+        public static final Codec<State> CODEC = StringRepresentable.fromEnum(State::values);
+
+        @Override
+        public @NonNull String getSerializedName() {
+            // Event tasks and step receipts share states while preserving their stored names.
+            return this.name();
         }
     }
 

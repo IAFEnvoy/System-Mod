@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.command.AssistantCommandSource;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -19,7 +20,7 @@ public record AgentCommand<I extends AgentAction>(List<String> names,
                                                   Function<String, LiteralArgumentBuilder<AssistantCommandSource>> node) {
     public AgentCommand {
         names = List.copyOf(names);
-        if (names.isEmpty() || names.stream().anyMatch(name -> name.isBlank() || name.equals("system") || name.contains("/")
+        if (names.isEmpty() || names.stream().anyMatch(name -> name.isBlank() || name.equals(SystemMod.MOD_ID) || name.contains("/")
                 || name.chars().anyMatch(Character::isWhitespace) || !name.equals(name.toLowerCase(Locale.ROOT))))
             throw new IllegalArgumentException("Invalid command names");
         Objects.requireNonNull(node);

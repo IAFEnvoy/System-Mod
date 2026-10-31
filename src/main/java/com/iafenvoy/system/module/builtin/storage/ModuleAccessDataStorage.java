@@ -7,7 +7,6 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;
 
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 
 /**

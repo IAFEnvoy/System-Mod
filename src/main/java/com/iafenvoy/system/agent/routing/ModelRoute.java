@@ -9,6 +9,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.ExtraCodecs;
 
 import java.util.Collection;
@@ -22,15 +23,13 @@ import java.util.Map;
 public record ModelRoute(AgentAction call) {
     public static Codec<ModelRoute> codec(Collection<MapCodec<? extends AgentAction>> capabilities) {
         Map<String, MapCodec<? extends ModelRoute>> types = new LinkedHashMap<>();
-        types.put("clarify", EmptyInput.CODEC.codec().fieldOf("input")
-                .xmap(_ -> new ModelRoute(null), _ -> EmptyInput.INSTANCE));
-        for (MapCodec<? extends AgentAction> codec : capabilities)
-            types.put(SystemRegistries.ACTION_TYPE.getKey(codec).toString(), choice(codec));
-        Codec<String> ids = Codec.STRING.validate(id -> types.containsKey(id)
-                ? DataResult.success(id) : DataResult.error(() -> "Unavailable model capability " + id));
-        return ids.dispatch("capabilityId",
-                value -> value.call == null ? "clarify" : value.call.id().toString(),
-                types::get);
+        types.put("clarify", EmptyInput.CODEC.codec().fieldOf("input").xmap(_ -> new ModelRoute(null), _ -> EmptyInput.INSTANCE));
+        for (MapCodec<? extends AgentAction> codec : capabilities) {
+            Identifier id = SystemRegistries.ACTION_TYPE.getKey(codec);
+            if (id != null) types.put(id.toString(), choice(codec));
+        }
+        Codec<String> ids = Codec.STRING.validate(id -> types.containsKey(id) ? DataResult.success(id) : DataResult.error(() -> "Unavailable model capability " + id));
+        return ids.dispatch("capabilityId", value -> value.call == null ? "clarify" : value.call.id().toString(), types::get);
     }
 
     private static <I extends AgentAction> MapCodec<ModelRoute> choice(MapCodec<I> codec) {

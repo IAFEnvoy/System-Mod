@@ -41,8 +41,7 @@ public record LotteryPool(Identifier id, String label, List<Cost> costs, List<En
         ).apply(i, Entry::new));
     }
 
-    public record Definition(String label, List<Cost> costs, List<Entry> entries,
-                             boolean enabled) {
+    public record Definition(String label, List<Cost> costs, List<Entry> entries, boolean enabled) {
         public static final Codec<Definition> CODEC = RecordCodecBuilder.<Definition>create(i -> i.group(
                 Codec.STRING.optionalFieldOf("label", "").forGetter(Definition::label),
                 Cost.LIST_CODEC.optionalFieldOf("costs", List.of()).forGetter(Definition::costs),

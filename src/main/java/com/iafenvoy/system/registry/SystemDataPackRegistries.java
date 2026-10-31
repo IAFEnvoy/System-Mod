@@ -4,16 +4,9 @@ import com.iafenvoy.system.agent.commerce.CatalogEntry;
 import com.iafenvoy.system.agent.commerce.LotteryPool;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.SystemModule;
-import net.minecraft.core.Registry;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.registries.DataPackRegistryEvent;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Systems and modules synchronize to clients; commerce definitions remain server-owned registries.
@@ -27,23 +20,5 @@ public final class SystemDataPackRegistries {
         event.dataPackRegistry(SystemResourceKeys.SIGNIN_REWARDS, CatalogEntry.REWARD);
         event.dataPackRegistry(SystemResourceKeys.SHOP_OFFERS, CatalogEntry.OFFER);
         event.dataPackRegistry(SystemResourceKeys.LOTTERY_POOLS, LotteryPool.Definition.CODEC);
-    }
-
-    public static Optional<SystemDefinition> get(RegistryAccess access, Identifier id) {
-        return access.lookup(SystemResourceKeys.SYSTEM).flatMap(registry -> registry.getOptional(id));
-    }
-
-    public static List<Identifier> ids(RegistryAccess access) {
-        return access.lookup(SystemResourceKeys.SYSTEM).map(registry -> registry.listElementIds()
-                .map(ResourceKey::identifier).sorted().toList()).orElse(List.of());
-    }
-
-    public static Optional<Registry<SystemModule>> modules(RegistryAccess access) {
-        return access.lookup(SystemResourceKeys.SYSTEM_MODULE);
-    }
-
-    public static List<Identifier> moduleIds(RegistryAccess access) {
-        return modules(access).map(registry -> registry.listElementIds()
-                .map(ResourceKey::identifier).sorted().toList()).orElse(List.of());
     }
 }

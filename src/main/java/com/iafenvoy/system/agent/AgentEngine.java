@@ -247,9 +247,9 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     public long requestTimeoutMillis(UUID player) {
-        long timeout = this.modules.descriptors().stream().filter(AgentModule.Descriptor::interactive)
-                .filter(value -> this.available(player, value.id()))
-                .mapToLong(value -> this.policy(this.modules.get(value.id())).ttlMillis()).max().orElse(50000);
+        long timeout = this.modules.descriptors().stream().filter(AgentModule.Descriptor::interactive).map(AgentModule.Descriptor::id)
+                .filter(id -> this.available(player, id)).map(this.modules::get).filter(Objects::nonNull)
+                .mapToLong(value -> this.policy(value).ttlMillis()).max().orElse(50000);
         // Include a transport margin so a configured slow workflow is not discarded by the client.
         return Math.max(60000, timeout + 10000);
     }
@@ -269,8 +269,7 @@ public final class AgentEngine implements AutoCloseable {
 
     public CommerceCatalog availableCatalog(UUID player) {
         // Resolve enabled definitions on every use, including confirmations issued before module changes.
-        return this.catalog.available(this.catalogs.entrySet().stream()
-                .filter(entry -> this.moduleEnabled(player, entry.getKey())).map(Map.Entry::getValue).toList());
+        return this.catalog.available(this.catalogs.entrySet().stream().filter(entry -> this.moduleEnabled(player, entry.getKey())).map(Map.Entry::getValue).toList());
     }
 
     public CommerceQuotes commerceQuotes() {

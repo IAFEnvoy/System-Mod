@@ -1,8 +1,9 @@
 package com.iafenvoy.system.module.client;
 
+import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.card.CardRef;
 import com.iafenvoy.system.registry.SystemClientModules;
-import com.iafenvoy.system.registry.SystemDataPackRegistries;
+import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.sighs.apricityui.init.Document;
@@ -17,10 +18,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.event.TagsUpdatedEvent;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -55,9 +53,8 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
         try {
             SystemClientModules.local().forEach((id, module) -> this.register(id, module, List.of()));
             Map<Identifier, List<Identifier>> definitions = new LinkedHashMap<>();
-            SystemDataPackRegistries.modules(access).ifPresent(registry ->
-                    SystemDataPackRegistries.moduleIds(access).forEach(id -> registry.getValue(id).client().ifPresent(type ->
-                            definitions.computeIfAbsent(type, _ -> new ArrayList<>()).add(id))));
+            access.lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE).listElements().sorted(Comparator.comparing(HolderHelper::id))
+                    .forEach(holder -> holder.value().client().ifPresent(type -> definitions.computeIfAbsent(type, _ -> new ArrayList<>()).add(HolderHelper.id(holder))));
             definitions.forEach((type, ids) -> {
                 if (SystemClientModules.local().containsKey(type)) return;
                 ClientModule module = SystemClientModules.get(type);

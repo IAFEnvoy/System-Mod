@@ -17,6 +17,7 @@ import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.tree.ArgumentCommandNode;
 import com.mojang.brigadier.tree.CommandNode;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -79,23 +80,26 @@ public final class CommandRegistry {
             if (root.getChild(node.getName()) == null) root.addChild(this.copy(node, available, execute));
     }
 
-    private <S> CommandNode<S> copy(CommandNode<AssistantCommandSource> node,
-                                    Function<S, Predicate<Identifier>> available, Command<S> execute) {
+    private <S> CommandNode<S> copy(CommandNode<AssistantCommandSource> node, Function<S, Predicate<Identifier>> available, Command<S> execute) {
         ArgumentBuilder<S, ?> builder;
-        if (node instanceof ArgumentCommandNode<AssistantCommandSource, ?> argument) {
-            RequiredArgumentBuilder<S, Object> argumentBuilder = RequiredArgumentBuilder.argument(node.getName(), cast(argument.getType()));
-            if (argument.getCustomSuggestions() != null)
-                argumentBuilder.suggests((context, _) -> this.suggest("/" + context.getInput(), available.apply(context.getSource()))
-                        .thenApply(suggestions -> Suggestions.create(context.getInput(), suggestions.getList().stream()
-                                .map(suggestion -> new Suggestion(StringRange.between(suggestion.getRange().getStart() - 1,
-                                        suggestion.getRange().getEnd() - 1), suggestion.getText(), suggestion.getTooltip())).toList())));
-            builder = argumentBuilder;
-        } else builder = LiteralArgumentBuilder.literal(node.getName());
+        if (node instanceof ArgumentCommandNode<AssistantCommandSource, ?> argument)
+            builder = this.buildArgument(node, available, argument);
+        else builder = LiteralArgumentBuilder.literal(node.getName());
         builder.requires(source -> node.canUse(new AssistantCommandSource("", available.apply(source))));
         if (node.getCommand() != null) builder.executes(execute);
         for (CommandNode<AssistantCommandSource> child : node.getChildren())
             builder.then(this.copy(child, available, execute));
         return builder.build();
+    }
+
+    private <S> @NonNull RequiredArgumentBuilder<S, Object> buildArgument(CommandNode<AssistantCommandSource> node, Function<S, Predicate<Identifier>> available, ArgumentCommandNode<AssistantCommandSource, ?> argument) {
+        RequiredArgumentBuilder<S, Object> argumentBuilder = RequiredArgumentBuilder.argument(node.getName(), cast(argument.getType()));
+        if (argument.getCustomSuggestions() != null)
+            argumentBuilder.suggests((context, _) -> this.suggest("/" + context.getInput(), available.apply(context.getSource()))
+                    .thenApply(suggestions -> Suggestions.create(context.getInput(), suggestions.getList().stream()
+                            .map(suggestion -> new Suggestion(StringRange.between(suggestion.getRange().getStart() - 1,
+                                    suggestion.getRange().getEnd() - 1), suggestion.getText(), suggestion.getTooltip())).toList())));
+        return argumentBuilder;
     }
 
     @SuppressWarnings("unchecked")

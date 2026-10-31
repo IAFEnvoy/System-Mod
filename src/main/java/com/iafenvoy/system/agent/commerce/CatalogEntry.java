@@ -5,6 +5,7 @@ import com.iafenvoy.system.agent.store.PlayerData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.List;
@@ -13,8 +14,7 @@ import java.util.Optional;
 /**
  * Data-pack entries get their IDs from resource paths; disabled entries may omit their contents.
  */
-public record CatalogEntry(String label, List<ItemStackTemplate> items, Optional<List<Cost>> costs,
-                           boolean enabled) {
+public record CatalogEntry(String label, List<ItemStackTemplate> items, Optional<List<Cost>> costs, boolean enabled) {
     public static final Codec<CatalogEntry> REWARD = RecordCodecBuilder.<CatalogEntry>create(i -> i.group(
             Codec.STRING.optionalFieldOf("label", "").forGetter(CatalogEntry::label),
             PlayerData.Reward.ITEMS_CODEC.optionalFieldOf("items", List.of()).forGetter(CatalogEntry::items),
@@ -36,5 +36,13 @@ public record CatalogEntry(String label, List<ItemStackTemplate> items, Optional
     private static DataResult<CatalogEntry> validate(CatalogEntry entry) {
         return entry.enabled && (entry.label.isBlank() || entry.items.isEmpty())
                 ? DataResult.error(() -> "Enabled catalog entries need a label and items") : DataResult.success(entry);
+    }
+
+    public PlayerData.Reward resolveReward(Identifier id) {
+        return new PlayerData.Reward(id, this.label, this.items);
+    }
+
+    public CommerceCatalog.Offer resolveOffer(Identifier id) {
+        return new CommerceCatalog.Offer(id, this.label, this.items, this.costs.orElseThrow());
     }
 }

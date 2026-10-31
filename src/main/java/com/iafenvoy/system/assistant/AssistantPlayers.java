@@ -11,7 +11,7 @@ import com.iafenvoy.system.card.data.BindingCardData;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import com.iafenvoy.system.registry.SystemDataPackRegistries;
+import com.iafenvoy.system.registry.SystemResourceKeys;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -86,7 +86,7 @@ public final class AssistantPlayers {
     }
 
     public void grant(ServerPlayer player, Identifier system, Consumer<AgentResult> feedback) {
-        SystemDefinition definition = SystemDataPackRegistries.get(this.server.registryAccess(), system).orElse(null);
+        SystemDefinition definition = this.server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM).getValue(system);
         if (definition == null) {
             AgentResult answer = AgentResult.error("SYSTEM_UNAVAILABLE");
             feedback.accept(answer);

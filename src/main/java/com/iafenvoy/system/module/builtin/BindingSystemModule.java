@@ -5,7 +5,7 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.CoreModule;
 import com.iafenvoy.system.module.ModuleCommands;
-import com.iafenvoy.system.registry.SystemDataPackRegistries;
+import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -53,7 +53,7 @@ public final class BindingSystemModule implements CoreModule {
 
     private static RequiredArgumentBuilder<CommandSourceStack, Identifier> systemArgument() {
         return Commands.argument("system", IdentifierArgument.id()).suggests((context, builder) ->
-                SharedSuggestionProvider.suggestResource(SystemDataPackRegistries.ids(context.getSource().getServer().registryAccess()), builder));
+                SharedSuggestionProvider.suggestResource(context.getSource().getServer().registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM).keySet(), builder));
     }
 
     private static int grant(CommandContext<CommandSourceStack> context, ServerPlayer target) {

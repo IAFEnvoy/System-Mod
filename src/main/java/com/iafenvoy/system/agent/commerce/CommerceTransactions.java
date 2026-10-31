@@ -62,7 +62,8 @@ public final class CommerceTransactions {
                                 commerce.setPurchaseState(purchase.id, "PAYMENT_UNKNOWN", "EFFECT_UNKNOWN");
                                 InboxDataStorage inbox = ModuleData.get(data, InboxSystemModule.STORAGE);
                                 String entitlement = purchase.order.type().entitlement(purchase.id);
-                                if (inbox.getDelivery(entitlement) != null) inbox.setDeliveryState(entitlement, "PAYMENT_UNKNOWN");
+                                if (inbox.getDelivery(entitlement) != null)
+                                    inbox.setDeliveryState(entitlement, "PAYMENT_UNKNOWN");
                             });
                 };
             }

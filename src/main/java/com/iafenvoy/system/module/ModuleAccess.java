@@ -11,7 +11,6 @@ import com.iafenvoy.system.data.ModuleDefinition;
 import com.iafenvoy.system.data.SystemModule;
 import com.iafenvoy.system.module.builtin.CoreSystemModule;
 import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
-import com.iafenvoy.system.registry.SystemDataPackRegistries;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
@@ -47,10 +46,9 @@ final class ModuleAccess implements PlayerModule {
         this.server = server;
         this.engine = engine;
         this.installed = Set.copyOf(installed);
-        Registry<SystemModule> registry = SystemDataPackRegistries.modules(server.registryAccess()).orElseThrow();
-        this.required = registry.keySet().stream().filter(id -> registry.getValue(id).server()
-                        .filter(CoreModule.class::isInstance).isPresent()).filter(this.installed::contains)
-                .collect(Collectors.toUnmodifiableSet());
+        Registry<SystemModule> registry = server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE);
+        this.required = registry.keySet().stream().filter(id -> registry.getOptional(id).flatMap(SystemModule::server).filter(CoreModule.class::isInstance).isPresent())
+                .filter(this.installed::contains).collect(Collectors.toUnmodifiableSet());
     }
 
     public void onChange(Consumer<ServerPlayer> changed) {
@@ -146,7 +144,7 @@ final class ModuleAccess implements PlayerModule {
             @Override
             public void ready() {
                 // A removed definition never falls back to a different system or grants its modules.
-                if (SystemDataPackRegistries.get(ModuleAccess.this.server.registryAccess(), system.get()).isEmpty())
+                if (!ModuleAccess.this.server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM).containsKey(system.get()))
                     throw new AgentException("SYSTEM_UNAVAILABLE");
                 ModuleAccess.this.players.put(player.getUUID(), player);
                 ModuleAccess.this.systems.put(player.getUUID(), system.get());
@@ -194,7 +192,7 @@ final class ModuleAccess implements PlayerModule {
             this.player = player;
             this.selection = ModuleAccess.this.overrides.getOrDefault(player.getUUID(), new ModuleAccessDataStorage()).selection();
             Identifier system = ModuleAccess.this.systems.get(player.getUUID());
-            this.definitions = SystemDataPackRegistries.get(ModuleAccess.this.server.registryAccess(), system)
+            this.definitions = ModuleAccess.this.server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM).getOptional(system)
                     .orElseThrow(() -> new AgentException("SYSTEM_UNAVAILABLE")).modules();
         }
 

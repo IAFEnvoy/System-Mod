@@ -1,19 +1,22 @@
 package com.iafenvoy.system.agent.commerce;
 
 import com.iafenvoy.saturn.data.cost.Cost;
+import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStackTemplate;
 
-import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,24 +32,18 @@ public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, 
     }
 
     public static CommerceCatalog create(RegistryAccess registries) {
-        var rewards = registries.lookupOrThrow(SystemResourceKeys.SIGNIN_REWARDS);
-        var offers = registries.lookupOrThrow(SystemResourceKeys.SHOP_OFFERS);
-        var pools = registries.lookupOrThrow(SystemResourceKeys.LOTTERY_POOLS);
-        // IDs belong to registry keys; item templates remain unmaterialized until payment or delivery.
+        Registry<CatalogEntry> rewards = registries.lookupOrThrow(SystemResourceKeys.SIGNIN_REWARDS);
+        Registry<CatalogEntry> offers = registries.lookupOrThrow(SystemResourceKeys.SHOP_OFFERS);
+        Registry<LotteryPool.Definition> pools = registries.lookupOrThrow(SystemResourceKeys.LOTTERY_POOLS);
+        Comparator<Holder<?>> comparator = Comparator.comparing(HolderHelper::id);
         return new CommerceCatalog(UUID.randomUUID().toString(),
-                rewards.keySet().stream().sorted().filter(id -> rewards.getValue(id).enabled()).map(id -> {
-                    CatalogEntry entry = rewards.getValue(id);
-                    return new PlayerData.Reward(id, entry.label(), entry.items());
-                }).toList(),
-                offers.keySet().stream().sorted().filter(id -> offers.getValue(id).enabled()).map(id -> {
-                    CatalogEntry entry = offers.getValue(id);
-                    return new Offer(id, entry.label(), entry.items(), entry.costs().orElseThrow());
-                }).toList(),
-                pools.keySet().stream().sorted().filter(id -> pools.getValue(id).enabled())
-                        .map(id -> pools.getValue(id).resolve(id)).toList(), registries);
+                rewards.listElements().sorted(comparator).filter(holder -> holder.value().enabled()).map(holder -> holder.value().resolveReward(HolderHelper.id(holder))).toList(),
+                offers.listElements().sorted(comparator).filter(holder -> holder.value().enabled()).map(holder -> holder.value().resolveOffer(HolderHelper.id(holder))).toList(),
+                pools.listElements().sorted(comparator).filter(holder -> holder.value().enabled()).map(holder -> holder.value().resolve(HolderHelper.id(holder))).toList(),
+                registries);
     }
 
-    public CommerceCatalog available(Collection<CatalogModule<?>> modules) {
+    public CommerceCatalog available(List<? extends CatalogModule<?>> modules) {
         return new CommerceCatalog(this.revision,
                 this.rewards.stream().filter(reward -> modules.stream().anyMatch(module -> module.catalog().equals(SystemResourceKeys.SIGNIN_REWARDS) && module.allows(this.registries, reward.id()))).toList(),
                 this.offers.stream().filter(offer -> modules.stream().anyMatch(module -> module.catalog().equals(SystemResourceKeys.SHOP_OFFERS) && module.allows(this.registries, offer.id()))).toList(),

@@ -7,12 +7,13 @@ import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.module.client.ClientModuleBindingsCache;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.screen.AssistantPages;
+import com.iafenvoy.system.screen.card.CardPageState;
 import com.iafenvoy.system.screen.card.CardTemplates;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import com.sighs.apricityui.layout.Box;
 
-import java.util.List;
+import java.util.*;
 
 import static com.iafenvoy.system.screen.gui.AssistantView.*;
 
@@ -20,6 +21,8 @@ import static com.iafenvoy.system.screen.gui.AssistantView.*;
  * AUI only receives plain text and code-created actions, never model HTML.
  */
 public final class AssistantScreen extends AssistantInputScreen {
+    // Keep independent card pages across transcript redraws and window resizing, only for this screen's lifetime.
+    private final Map<UUID, CardPageState> cardPages = new HashMap<>();
     private long revision = -1;
     private long templateRevision = -1;
     private String page = "chat";
@@ -63,8 +66,12 @@ public final class AssistantScreen extends AssistantInputScreen {
                 navigation.setInlineStyleProperty("display", entry.available() ? "block" : "none");
                 navigation.setClassName(!entry.page().isBlank() && entry.page().equals(this.page) ? "nav active" : "nav");
             }
-            if (!entry.page().isBlank())
-                document.getElementById("page_" + entry.page()).setInlineStyleProperty("display", entry.available() && entry.page().equals(this.page) ? "flex" : "none");
+            if (!entry.page().isBlank()) {
+                // A module may be present in the registry while its page is omitted by a custom template.
+                Element page = document.getElementById("page_" + entry.page());
+                if (page != null)
+                    page.setInlineStyleProperty("display", entry.available() && entry.page().equals(this.page) ? "flex" : "none");
+            }
         }
     }
 
@@ -94,17 +101,22 @@ public final class AssistantScreen extends AssistantInputScreen {
             Element list = document.getElementById("conversation_entries");
             list.setInnerHTML("");
             List<AssistantClientState.ChatEntry> entries = AssistantClient.state().entries();
+            Set<UUID> visibleCards = new HashSet<>();
             for (AssistantClientState.ChatEntry entry : entries) {
                 Element row = element(document, "div", entry.player() ? "message user" : "message assistant", "");
                 row.appendChild(element(document, "div", "message_label", tr(entry.player() ? "system.ui.you" : AssistantClient.system().name())));
                 if (!entry.text().isBlank()) row.appendChild(element(document, "div", "message_text", entry.text()));
                 AgentResult result = entry.result();
                 if (result != null) {
-                    for (CardUpdate card : result.cards())
-                        row.appendChild(renderCard(document, card, result.messageKey()));
+                    for (CardUpdate card : result.cards()) {
+                        UUID id = card.ref().id();
+                        visibleCards.add(id);
+                        row.appendChild(renderCard(document, card, result.messageKey(), this.cardPages.computeIfAbsent(id, unused -> new CardPageState())));
+                    }
                 }
                 list.appendChild(row);
             }
+            this.cardPages.keySet().retainAll(visibleCards);
             document.getElementById("welcome").setInlineStyleProperty("display", entries.isEmpty() ? "flex" : "none");
             document.getElementById("conversation").setInlineStyleProperty("display", entries.isEmpty() ? "none" : "flex");
             text(document.getElementById("status"), tr(AssistantClient.state().busy() ? "system.ui.working" : "system.ui.ready"));

@@ -708,3 +708,11 @@ AgentCommand、CommandRegistry 与客户端命令声明已接入 Brigadier；Cli
 实际执行 `gradlew compileJava testModClasses jar --console=plain` 成功。静态检查通过：中英文各 519 键且集合相同，23 份卡片 JSON 无重复键、节点均在 14 个注册类型内、translate 键存在；JAR 包含新增节点 / 元素和更新后的玩家模板，产物 `build/libs/system-1.0-beta.1.jar` 为 1,555,739 字节，`git diff --check` 通过。
 
 未运行测试、启动 Minecraft、创建临时世界或请求收费 API；本次只有编译、源码和资源检查。仍需游戏内确认完整 / 简约 / HUD 的缩放和裁剪、外观 / 装备层、模型与文字淡入淡出、窄屏换行、重生后重新解析玩家、模型不可用时的占位，以及缺少 FTB / SVC 的专用服务端加载。仅修改当前 master / 26.1.2，尚未移植到 1.21.1。
+
+## 2026-10-31 完整模式分页、定位与语音计费同步
+
+1.21.1 全部工作区改动已提交为 `c6fc689`，随后切换 master 并执行 `git pull --ff-only`，远端无更新。以 master `1ef5d80` 为基线，同步完整模式任务列表每页 10 项及按卡片 UUID 保存页码、共享 CSS 固定定位、模块页面节点缺失保护、语音价格表静态初始化和数字金额 Codec、语音账本异常隔离，以及识别完整堆栈日志。逐项核对时保留目标已有的玩家独立渲染状态、原生输入法、自然 EOF 发布顺序、版本和依赖。
+
+实际执行 `gradlew compileJava testModClasses --console=plain` 成功，主代码和开发源集重新编译通过。静态检查通过：中英文各 519 键且集合完全相同，任务卡片页大小为 10，PRICE 在外层 Codec / INSTANCE 之前初始化，保留目标 NonNull 注解；源码无旧分页字段，全部 renderCard 调用已同步，`git diff --check` 无空白错误。
+
+没有运行测试、启动 Minecraft、创建存档或请求收费 API；未修改两份 README，未推送远端。仍需游戏内验收分页与缩放后的页码、界面定位、自定义模板缺页，以及成功识别后的填入 / 自动发送和本地费用。当前进程若已经发生价格类初始化失败，更新后需重启客户端，F3+T 不能恢复该 JVM 类状态。

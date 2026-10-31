@@ -4,7 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Local page positions belong to one displayed notification, including its retained back-navigation view.
+ * Local page positions belong to one full-mode card or notification, including its retained back-navigation view.
  */
 public final class CardPageState {
     private final Map<String, Integer> pages = new HashMap<>();

@@ -6,6 +6,9 @@ import com.iafenvoy.system.config.ConfigInstance;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.codecs.PrimitiveCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.StringRepresentable;
@@ -22,9 +25,21 @@ import java.util.*;
  */
 public final class SpeechPricingConfig {
     public static final String FILE_NAME = "system-speech-pricing.json";
+    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final Codec<BigDecimal> PRICE = MiscCodecs.checked(Codec.withAlternative(new PrimitiveCodec<BigDecimal>() {
+        @Override
+        public <T> DataResult<BigDecimal> read(DynamicOps<T> ops, T input) {
+            return ops.getNumberValue(input).flatMap(value -> MiscCodecs.mapOrError(() -> new BigDecimal(value.toString())));
+        }
+
+        @Override
+        public <T> T write(DynamicOps<T> ops, BigDecimal value) {
+            return ops.createNumeric(value);
+        }
+    }, Codec.STRING.comapFlatMap(value -> MiscCodecs.mapOrError(() -> new BigDecimal(value)), BigDecimal::toString)), value -> value.signum() >= 0);
+    // ConfigInstance loads immediately, so every codec dependency and the logger must be ready first.
     public static final Codec<SpeechPricingConfig> CODEC = Table.CODEC.xmap(SpeechPricingConfig::new, value -> value.table);
     public static final ConfigInstance<SpeechPricingConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, new SpeechPricingConfig(new Table(1, "CNY", LocalDate.EPOCH.toString(), List.of())));
-    private static final Logger LOGGER = LogUtils.getLogger();
     private final Table table;
     private final Map<Key, Rate> rates;
 
@@ -71,13 +86,6 @@ public final class SpeechPricingConfig {
         } catch (ArithmeticException error) {
             return OptionalLong.empty();
         }
-    }
-
-    private static final Codec<BigDecimal> PRICE;
-
-    static {
-        Codec<BigDecimal> codec = Codec.STRING.comapFlatMap(x -> MiscCodecs.mapOrError(() -> new BigDecimal(x)), BigDecimal::toString);
-        PRICE = MiscCodecs.checked(codec, value -> value.signum() >= 0);
     }
 
     private record Entry(String provider, String model, String region, Optional<Unit> unit, int units,

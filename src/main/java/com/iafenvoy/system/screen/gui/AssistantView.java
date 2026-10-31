@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.iafenvoy.system.card.CardButton;
 import com.iafenvoy.system.card.CardContext;
 import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.screen.card.CardPageState;
 import com.iafenvoy.system.screen.card.CardPresentation;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
@@ -31,8 +32,8 @@ public final class AssistantView {
         return CardPresentation.format(card, textItems);
     }
 
-    public static Element renderCard(Document document, CardUpdate card, String messageKey) {
-        return CardPresentation.of(card, messageKey, CardContext.Mode.FULL, 0).render(document);
+    public static Element renderCard(Document document, CardUpdate card, String messageKey, CardPageState pages) {
+        return CardPresentation.of(card, messageKey, CardContext.Mode.FULL, 0, pages).render(document);
     }
 
     public static String format(JsonElement value, int depth) {

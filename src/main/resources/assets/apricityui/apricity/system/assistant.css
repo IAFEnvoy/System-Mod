@@ -49,7 +49,10 @@ body {
 }
 
 #workspace {
-    position: relative;
+    /* AUI can resolve body flex sizing before the viewport is committed; anchor the main panel directly. */
+    position: fixed;
+    left: max(3vw, calc(50vw - 530px));
+    top: max(3vh, calc(50vh - 370px));
     width: min(1060px, 94vw);
     height: min(740px, 90vh);
     min-height: 0;
@@ -1075,6 +1078,7 @@ body.simple {
     /* Keep the panel anchored even when completion nodes invalidate the document layout. */
     position: fixed;
     left: max(3vw, calc(50vw - 420px));
+    top: auto;
     bottom: 6vh;
     height: min(460px, 76vh);
     padding: 20px 26px 0;
@@ -1156,6 +1160,7 @@ html.message_hud, .notification, .notification * {
     /* Anchor the border box directly; changing content height must not move its bottom edge. */
     position: fixed;
     left: max(3vw, calc(50vw - 420px));
+    top: auto;
     bottom: 6vh;
     height: auto;
     max-height: 64vh;

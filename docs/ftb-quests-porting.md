@@ -89,3 +89,17 @@
 26.1.2 的 AssistantInputScreen 原生文本输入 / preedit、TokenUsageData 的 Identifier / SavedDataType，以及版本、依赖和 Mixin 配置保持原实现。2026-10-30 查询 [IMBlocker 的 Modrinth 26.1.2 版本列表](https://api.modrinth.com/v2/project/imblocker/version?game_versions=%5B%2226.1.2%22%5D) 为空，未将仅核对过 1.21.1 的白名单 Mixin 加入目标；没有增加平台专用输入法代码。
 
 实际执行 `gradlew compileJava testModClasses jar --console=plain` 成功。静态 / 产物检查：中英文各 517 键且集合相同，23 份卡片 JSON 可解析，三个修改类均为 Java 25 字节码；`system-1.0-beta.1.jar` 为 1,548,823 字节，无内嵌 Saturn、旧 screen/input 类或 IMBlocker Mixin。没有运行测试、启动游戏、创建存档或调用收费 API；分页点击、设备结束与取消、识别自动发送仍待游戏内验收。改动未提交或推送。
+
+## 2026-10-31 完整模式分页、定位与语音计费同步
+
+1.21.1 的全部工作区内容已提交为 `c6fc689`；随后切换 master 并执行 `git pull --ff-only`，远端无更新，目标基线为 `1ef5d80`。本次逐项比较两版本，仅同步 master 尚缺少的公共修复：
+
+| 范围 | 同步内容 |
+| --- | --- |
+| 完整模式任务列表 | `ActionsNode.page_size=10` 同时用于完整模式与通知；`AssistantScreen` 按卡片 UUID 保存页码，经 `AssistantView` 传入，聊天刷新和窗口缩放保留状态。按钮仅重绘本地节点，不发包或推进通知。 |
+| 界面定位 | 共享 CSS 直接用视口固定完整模式位置，简约模式与通知显式覆盖 `top: auto`，保留底部锚点。 |
+| 页面缺失 | `AssistantScreen.updatePage` 检查目标页面节点，允许自定义模板省略模块页面，避免空指针。目标 CoreSystemClientModule 已无旧聊天入口，无需重复改动。 |
+| 语音价格表 | `SpeechPricingConfig` 先初始化 PRICE / LOGGER，再构建外层 Codec / INSTANCE；金额接受 JSON 数字或十进制字符串，并直接用 BigDecimal 保存数字。 |
+| 统计隔离与日志 | `LocalSpeechUsage.Ledger` 在同步 update 中集中隔离 RuntimeException / LinkageError，保留上一次快照，不阻断成功的识别或播报；`AssistantRecognition` 保留完整异常堆栈。 |
+
+26.1.2 的玩家模型已经通过独立 LivingEntityRenderState 与 FeatureRenderDispatcher 在 AUI 内提交，无需移入 1.21.1 的旧实体渲染调用。保留 master 的自然 EOF 在设备关闭前发布、原生输入法、SavedDataType、外置 Saturn、版本和依赖；不复制 1.21.1 的注解、ResourceLocation 或渲染实现。未改两份 README，未推送远端。

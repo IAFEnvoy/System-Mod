@@ -18,6 +18,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.UnaryOperator;
 
 /**
  * Personal voice usage stays on this installation, across server changes and binding resets.
@@ -66,24 +67,30 @@ public final class LocalSpeechUsage {
             return this.value;
         }
 
-        public synchronized void beginSpeech() {
-            this.value = new Snapshot(this.value.speech().begin(), this.value.recognition());
-            this.save();
+        public void beginSpeech() {
+            this.update(value -> new Snapshot(value.speech().begin(), value.recognition()));
         }
 
-        public synchronized void completeSpeech(String provider, String model, String region, TtsProvider.Usage usage, boolean successful) {
-            this.value = new Snapshot(this.value.speech().complete(provider, model, region, usage, successful), this.value.recognition());
-            this.save();
+        public void completeSpeech(String provider, String model, String region, TtsProvider.Usage usage, boolean successful) {
+            this.update(value -> new Snapshot(value.speech().complete(provider, model, region, usage, successful), value.recognition()));
         }
 
-        public synchronized void beginRecognition() {
-            this.value = new Snapshot(this.value.speech(), this.value.recognition().begin());
-            this.save();
+        public void beginRecognition() {
+            this.update(value -> new Snapshot(value.speech(), value.recognition().begin()));
         }
 
-        public synchronized void completeRecognition(String provider, String region, boolean successful) {
-            this.value = new Snapshot(this.value.speech(), this.value.recognition().complete(provider, region, successful));
-            this.save();
+        public void completeRecognition(String provider, String region, boolean successful) {
+            this.update(value -> new Snapshot(value.speech(), value.recognition().complete(provider, region, successful)));
+        }
+
+        private synchronized void update(UnaryOperator<Snapshot> action) {
+            try {
+                this.value = action.apply(this.value);
+                this.save();
+            } catch (RuntimeException | LinkageError error) {
+                // Preserve the last snapshot and deliver audio/text even if pricing or accounting fails.
+                SystemMod.LOGGER.error("Unable to update local speech usage {}", this.path, error);
+            }
         }
 
         private void save() {

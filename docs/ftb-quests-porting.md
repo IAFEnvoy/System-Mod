@@ -103,3 +103,9 @@
 | 统计隔离与日志 | `LocalSpeechUsage.Ledger` 在同步 update 中集中隔离 RuntimeException / LinkageError，保留上一次快照，不阻断成功的识别或播报；`AssistantRecognition` 保留完整异常堆栈。 |
 
 26.1.2 的玩家模型已经通过独立 LivingEntityRenderState 与 FeatureRenderDispatcher 在 AUI 内提交，无需移入 1.21.1 的旧实体渲染调用。保留 master 的自然 EOF 在设备关闭前发布、原生输入法、SavedDataType、外置 Saturn、版本和依赖；不复制 1.21.1 的注解、ResourceLocation 或渲染实现。未改两份 README，未推送远端。
+
+### 2026-10-31 语音账本后台处理（1.21.1 待同步）
+
+用户反馈点击抽奖后短暂卡住再恢复，日志无语音异常。阅读源码确认 TTS HTTP / SSE / 解码在后台，但 `AssistantSpeech.start` 构建记账器时会通过 `LocalSpeechUsage.current()` 同步读取本地文件，且用量快照与价格计算 / 写盘共用账本锁。master 将账本首次加载、计算、归并和写盘统一移到 `system-speech-usage` 单线程队列；首次加载排在更新之前，界面通过 volatile 读取不可变快照，回调去重和账号隔离保持不变。JVM 关闭时独立 hook 最多三秒排空队列，不在渲染线程等待。两版本原 LocalSpeechUsage 内容相同，后续 1.21.1 可同步此类及语音文档。
+
+此结论是源码审计发现的阻塞风险，不代表已确认本次卡顿唯一根因。对用户已有的 Prism 1.21.1 进程只读抓取线程堆栈时，渲染线程已经在正常帧限速等待，没有抓到卡顿现场。未启动或操作游戏，未执行运行时探针，未调用收费 API。

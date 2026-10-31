@@ -18,13 +18,37 @@ import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.UnaryOperator;
 
 /**
  * Personal voice usage stays on this installation, across server changes and binding resets.
  */
 public final class LocalSpeechUsage {
+    private static final ThreadPoolExecutor WORKER = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(), runnable -> {
+        Thread thread = new Thread(runnable, "system-speech-usage");
+        thread.setDaemon(true);
+        return thread;
+    });
     private static final Map<UUID, Ledger> ACCOUNTS = new ConcurrentHashMap<>();
+
+    static {
+        WORKER.allowCoreThreadTimeOut(true);
+        // Drain queued writes on JVM shutdown without making the render thread wait for disk I/O.
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            WORKER.shutdown();
+            try {
+                if (!WORKER.awaitTermination(3, TimeUnit.SECONDS)) WORKER.shutdownNow();
+            } catch (InterruptedException error) {
+                WORKER.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }, "system-speech-usage-shutdown"));
+    }
 
     private LocalSpeechUsage() {
     }
@@ -52,19 +76,26 @@ public final class LocalSpeechUsage {
      */
     public static final class Ledger {
         private final Path path;
-        private Snapshot value = Snapshot.EMPTY;
+        private volatile Snapshot value;
 
         private Ledger(Path path) {
             this.path = path;
+            // Queue loading before any updates; acquiring an account never reads or parses a file.
+            WORKER.execute(this::load);
+        }
+
+        private void load() {
+            this.value = Snapshot.EMPTY;
             try {
-                if (Files.exists(path)) this.value = CodecIO.parse(Snapshot.CODEC, Files.readString(path));
-            } catch (IOException | RuntimeException error) {
-                SystemMod.LOGGER.error("Unable to load local speech usage {}", path, error);
+                if (Files.exists(this.path)) this.value = CodecIO.parse(Snapshot.CODEC, Files.readString(this.path));
+            } catch (IOException | RuntimeException | LinkageError error) {
+                SystemMod.LOGGER.error("Unable to load local speech usage {}", this.path, error);
             }
         }
 
-        public synchronized Snapshot snapshot() {
-            return this.value;
+        public Snapshot snapshot() {
+            Snapshot value = this.value;
+            return value == null ? Snapshot.EMPTY : value;
         }
 
         public void beginSpeech() {
@@ -83,13 +114,19 @@ public final class LocalSpeechUsage {
             this.update(value -> new Snapshot(value.speech(), value.recognition().complete(provider, region, successful)));
         }
 
-        private synchronized void update(UnaryOperator<Snapshot> action) {
+        private void update(UnaryOperator<Snapshot> action) {
             try {
-                this.value = action.apply(this.value);
-                this.save();
-            } catch (RuntimeException | LinkageError error) {
-                // Preserve the last snapshot and deliver audio/text even if pricing or accounting fails.
-                SystemMod.LOGGER.error("Unable to update local speech usage {}", this.path, error);
+                WORKER.execute(() -> {
+                    try {
+                        this.value = action.apply(this.value);
+                        this.save();
+                    } catch (RuntimeException | LinkageError error) {
+                        // Preserve the last snapshot and deliver audio/text even if pricing or accounting fails.
+                        SystemMod.LOGGER.error("Unable to update local speech usage {}", this.path, error);
+                    }
+                });
+            } catch (RejectedExecutionException error) {
+                SystemMod.LOGGER.warn("Local speech usage update arrived after shutdown");
             }
         }
 

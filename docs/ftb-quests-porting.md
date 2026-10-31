@@ -130,3 +130,11 @@ RecognitionRecording 手动停止与帧入队共用锁，耗尽缓冲后直接�
 ### 语音价格表初始化与统计隔离（master 待核对同步）
 
 2026-10-31：根据 1.21.1 整合包实际堆栈，将 `SpeechPricingConfig` 的 PRICE Codec 和 LOGGER 移到外层 CODEC / INSTANCE 之前，避免静态初始化期间读取 null。金额 Codec 同时接受 JSON 数字和十进制字符串，保存数字，不经 double 转换；原 Codec.STRING 无法读取默认价格文件的数字字段。`LocalSpeechUsage.Ledger` 集中在同步 update 中隔离 RuntimeException / LinkageError，计算失败保留旧快照并记录完整堆栈，不阻断 ASR 文本交付或 TTS 播放；`AssistantRecognition` 也保留完整错误堆栈。后续在 master / 26.1.2 核对同源问题再同步上述三类及语音文档，无需改玩家存档或清空统计。
+
+### 2026-10-31 语音记账后台修复回同步 1.21.1
+
+master 已在 `4eee04b` 同步价格表初始化及统计异常隔离，随后在 `c212876` 移除语音记账对渲染线程的阻塞。本轮先提交 master，再切换 1.21.1 执行 `git pull --ff-only`，远端无更新，目标基线为 `c6fc689`。
+
+同步 LocalSpeechUsage 及语音文档：账本构建只捕获路径，初始加载、费用计算、TTS / ASR 归并和写盘由独立 `system-speech-usage` 单线程队列串行完成；初始加载先于该账本的更新，界面读取 volatile 不可变快照，不等待后台锁。账号隔离、回调去重和文件格式不变；JVM 退出的独立 hook 最多三秒排空队列，不在渲染线程等待。本类只使用两个分支均已采用的 JDK API，无 Minecraft / NeoForge 签名迁移；保留 1.21.1 版本、内联 Saturn 与输入 / 渲染实现。
+
+这是已确认的同步读盘和锁等待风险修复，尚无卡顿现场堆栈证明它是用户短暂卡顿的唯一根因。未启动 Minecraft、插入探针或请求收费 API，游戏内改善与退出排空仍待验收。

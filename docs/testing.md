@@ -783,3 +783,9 @@ AgentCommand、CommandRegistry 与客户端命令声明已接入 Brigadier；Cli
 保留 1.21.1 工作区已有改动，手工同步 master 的近期存储与目录改动：`PlayerData.State`、事件任务和步骤状态改为共享枚举；内置 DataStorage 集合改为私有字段并统一通过 getter / 事务方法修改，变更调用 `markDirty()`；签到奖励、商城商品和抽奖奖池改为原生 `system:signin_rewards`、`system:shop_offers`、`system:lottery_pools` 数据包注册表，模块通过 ID / tag 过滤可用目录，移除旧 `CatalogReloadListener`。所有 1.21.1 代码继续使用 `ResourceLocation`，没有带入 26.x 的 `Identifier` 或客户端渲染 API。同步更新目录、模块和注册表文档，保留用户未提交的其他修改。
 
 执行 `gradlew compileJava testModClasses --console=plain` 成功；主源码和测试源集编译通过。脚本校验 `src/main/resources` 与 `src/test-mod/resources` 共 65 个 JSON，无重复键；`git diff --check` 通过。没有启动 Minecraft、创建临时存档或进行游戏内验收；数据包注册表加载、tag 过滤、目录交易和存档回写仍需实际运行检查。
+
+## 2026-10-31 1.21.1 语音记账后台处理
+
+master 的阻塞修复先提交为 `c212876`，再切换 1.21.1 执行 `git pull --ff-only`，远端无更新。仅同步 LocalSpeechUsage 及语音 / 跨版本文档，保留 1.21.1 的版本、依赖、输入法与渲染代码。初始加载、价格计算、归并和写盘进入独立单线程，界面只读 volatile 快照；同步后的 LocalSpeechUsage 与 master 完全一致。
+
+实际执行 `gradlew compileJava testModClasses --console=plain` 成功，主代码及开发源集重新编译通过，仅有已有弃用 API 提示。静态检查确认账本构造不调用 Files / CodecIO，加载先排队，快照与更新不再共享同步锁，退出等待只存在于独立 hook；`git diff --check` 通过，版本配置与两份 README 未改。没有运行测试、启动游戏或调用收费 API；不能将编译通过视为卡顿问题已经实际验收。

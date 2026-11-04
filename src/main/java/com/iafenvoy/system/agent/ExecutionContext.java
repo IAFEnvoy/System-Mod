@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
+import com.iafenvoy.system.agent.builtin.BuiltinTools;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;

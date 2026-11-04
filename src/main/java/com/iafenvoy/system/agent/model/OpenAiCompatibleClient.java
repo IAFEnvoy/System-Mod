@@ -54,8 +54,7 @@ public final class OpenAiCompatibleClient implements ModelClient {
         String json = new String(response.body(), StandardCharsets.UTF_8);
         Usage usage;
         try {
-            usage = CodecIO.parse(ChatCompletion.Usage.ENVELOPE, json)
-                    .map(ChatCompletion.Usage::counted).orElse(Usage.UNKNOWN);
+            usage = CodecIO.parse(ChatCompletion.Usage.ENVELOPE, json).map(ChatCompletion.Usage::counted).orElse(Usage.UNKNOWN);
         } catch (RuntimeException invalidUsage) {
             usage = Usage.UNKNOWN;
         }

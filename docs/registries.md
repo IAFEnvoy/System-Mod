@@ -59,7 +59,7 @@ CardData card = snapshot;
 AgentAction call = QuestDetailInput.byId(id);
 ```
 
-`ResultTypes` 只保留共用 DTO，不再承担类型注册。卡片实现提供 `MapCodec`、`codec()` 和 `buildCard()`，模板与展示内容由 CardBuilder 一次描述，根 `CardData.CODEC` 使用正式注册表的 `byNameCodec().dispatch("type", ...)`，数据字段平铺。`AgentAction.CODEC` 从 ACTION_TYPE 按 `moduleId` 分派动作自己的 MapCodec，参数直接平铺：
+`agent` 包的共用 DTO（`ClientState`、`History`、`SignInStatus`、`ShopOrder`、`QuestList`、`QuestNotice`、`QuestEvent`）各自一个文件，只保存数据，不承担类型注册。卡片实现提供 `MapCodec`、`codec()` 和 `buildCard()`，模板与展示内容由 CardBuilder 一次描述，根 `CardData.CODEC` 使用正式注册表的 `byNameCodec().dispatch("type", ...)`，数据字段平铺。`AgentAction.CODEC` 从 ACTION_TYPE 按 `moduleId` 分派动作自己的 MapCodec，参数直接平铺：
 
 ```jsonl
 {"type":"system:player","name":"..."}

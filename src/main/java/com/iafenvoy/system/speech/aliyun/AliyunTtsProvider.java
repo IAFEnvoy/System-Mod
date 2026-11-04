@@ -42,8 +42,7 @@ public final class AliyunTtsProvider implements TtsProvider {
         this.validate(request);
         boolean custom = request.model().startsWith("qwen-audio-");
         String body = CodecIO.write(AliyunTtsMessage.Request.CODEC, AliyunTtsMessage.Request.of(request, "pcm"));
-        String path = custom ? "/api/v1/services/audio/tts/SpeechSynthesizer"
-                : "/api/v1/services/aigc/multimodal-generation/generation";
+        String path = custom ? "/api/v1/services/audio/tts/SpeechSynthesizer" : "/api/v1/services/aigc/multimodal-generation/generation";
         StreamResult result = new StreamResult(request.model(), audio, observer);
         ServerSentEvents events = new ServerSentEvents(2 * 1024 * 1024, result::event);
         HttpRequest http = HttpRequest.newBuilder(URI.create(baseUrl(request) + path)).timeout(Duration.ofSeconds(90))
@@ -133,8 +132,7 @@ public final class AliyunTtsProvider implements TtsProvider {
         if (!url.isBlank()) {
             // The API may return HTTP OSS links. Upgrade to TLS and never forward Authorization to OSS.
             URI source = audioUrl(url);
-            HttpResponse<byte[]> download = this.transport.send(HttpRequest.newBuilder(source)
-                    .timeout(Duration.ofSeconds(25)).GET().build(), MAX_AUDIO_BYTES);
+            HttpResponse<byte[]> download = this.transport.send(HttpRequest.newBuilder(source).timeout(Duration.ofSeconds(25)).GET().build(), MAX_AUDIO_BYTES);
             checkStatus(download.statusCode());
             return nonempty(download.body());
         }

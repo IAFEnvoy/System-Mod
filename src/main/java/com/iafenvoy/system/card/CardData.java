@@ -4,6 +4,7 @@ import com.iafenvoy.system.registry.SystemRegistries;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -15,4 +16,11 @@ public interface CardData {
     MapCodec<? extends CardData> codec();
 
     CardBuilder buildCard();
+
+    /**
+     * Optional digest for the routing prompt; cards that carry no referable entity keep the empty default.
+     */
+    default Optional<CardFact> memoryFact() {
+        return Optional.empty();
+    }
 }

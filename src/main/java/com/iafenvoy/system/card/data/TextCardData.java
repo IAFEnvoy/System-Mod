@@ -1,5 +1,6 @@
 package com.iafenvoy.system.card.data;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.iafenvoy.system.util.LegacyText;
@@ -25,6 +26,6 @@ public record TextCardData(Component text) implements CardData {
 
     @Override
     public CardBuilder buildCard() {
-        return CardBuilder.template(Identifier.parse("system:text")).summary(this.text);
+        return CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "text")).summary(this.text);
     }
 }

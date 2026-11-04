@@ -179,6 +179,9 @@ public final class FileAgentStore implements AgentStore {
                 data.conversation.requestInputs.remove(request);
                 bytes = CodecIO.write(PlayerData.CODEC, data).getBytes(StandardCharsets.UTF_8);
             }
+            // TODO: only conversation history is reclaimable here, so a journal-heavy player file that still
+            //  exceeds MAX_BYTES fails every write permanently after its history is gone. Shrink moduleData
+            //  through an injected callback (or split the replay cache into its own file) before enforcing the cap.
             if (bytes.length > MAX_BYTES) throw new AgentException("STORAGE_FULL");
             try (FileChannel file = FileChannel.open(temp, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
                 ByteBuffer buffer = ByteBuffer.wrap(bytes);

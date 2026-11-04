@@ -2,7 +2,7 @@ package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentModule;
-import com.iafenvoy.system.agent.builtin.core.HelpModule;
+import com.iafenvoy.system.agent.builtin.HelpModule;
 import com.iafenvoy.system.agent.builtin.input.HelpInput;
 import com.iafenvoy.system.agent.builtin.knowledge.DatabaseQueryTool;
 import com.iafenvoy.system.agent.builtin.knowledge.QuestionModule;

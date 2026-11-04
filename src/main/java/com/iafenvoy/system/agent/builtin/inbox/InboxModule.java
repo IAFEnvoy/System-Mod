@@ -1,9 +1,14 @@
 package com.iafenvoy.system.agent.builtin.inbox;
 
-import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.AgentCommand;
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.ExecutionContext;
+import com.iafenvoy.system.agent.ExecutionPolicy;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
 import com.iafenvoy.system.agent.builtin.input.InboxInput;
 import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
+import com.iafenvoy.system.agent.result.ShopOrder;
+import com.iafenvoy.system.agent.result.SignInStatus;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.store.Delivery;
@@ -55,11 +60,11 @@ public final class InboxModule extends BuiltinModule<InboxInput> {
                     .filter(value -> !Set.of("DELIVERED", "PAYMENT_PENDING", "PAYMENT_UNKNOWN").contains(value.state)).limit(32).toList()) {
                 cards.add(CardUpdate.show(new CreditReceiptOutput(delivery.id, delivery.reward, delivery.state)));
             }
-            cards.add(CardUpdate.show(new ResultTypes.SignInStatus(day, ModuleData.get(data, SignInSystemModule.STORAGE).hasReward(day),
+            cards.add(CardUpdate.show(new SignInStatus(day, ModuleData.get(data, SignInSystemModule.STORAGE).hasReward(day),
                     context.availableCatalog().rewards(), data.saveHistory, data.externalModel)));
             for (Purchase purchase : ModuleData.values(data, CommerceDataStorage.class, this.modules)
                     .flatMap(CommerceDataStorage::streamPurchases).filter(value -> !"COMPLETED".equals(value.state) && !"FAILED".equals(value.state)).limit(8).toList())
-                cards.add(CardUpdate.show(new ResultTypes.ShopOrder(purchase.id, purchase.order.label(), purchase.state, purchase.error)));
+                cards.add(CardUpdate.show(new ShopOrder(purchase.id, purchase.order.label(), purchase.state, purchase.error)));
             return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.inbox", "", cards);
         });
     }

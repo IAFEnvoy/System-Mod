@@ -11,6 +11,7 @@ import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -19,6 +20,12 @@ import java.util.stream.Stream;
  * Durable event tasks and idempotent tool receipts belong to the Agent execution subsystem.
  */
 public final class AgentJournalDataStorage extends DataStorage {
+    private static final int MAX_TASKS = 4096;
+    private static final int MAX_OPERATIONS = 8192;
+    /**
+     * Free one eighth of a full table so eviction stays amortised; terminal entries only.
+     */
+    private static final int EVICT_DIVISOR = 8;
     public static final MapCodec<AgentJournalDataStorage> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.unboundedMap(Codec.STRING, EventTask.CODEC).optionalFieldOf("tasks", Map.of()).forGetter(AgentJournalDataStorage::getTasks),
             Codec.unboundedMap(Codec.STRING, Step.CODEC).optionalFieldOf("operations", Map.of()).forGetter(AgentJournalDataStorage::getOperations)
@@ -44,6 +51,7 @@ public final class AgentJournalDataStorage extends DataStorage {
     }
 
     public void putTask(String key, EventTask task) {
+        this.evictFinishedTasks();
         this.tasks.put(key, task);
         this.markDirty();
     }
@@ -81,7 +89,20 @@ public final class AgentJournalDataStorage extends DataStorage {
     }
 
     public void assertTaskCount() {
-        if (this.tasks.size() >= 4096) throw new AgentException("STORAGE_FULL");
+        // A full table still accepts new tasks once finished ones can be dropped; never fail for lack of space.
+        if (this.tasks.size() >= MAX_TASKS && this.tasks.values().stream().allMatch(EventTask::pending))
+            throw new AgentException("STORAGE_FULL");
+    }
+
+    /**
+     * Oldest first, finished only: an unfinished task is a crash-recovery marker and is never dropped here.
+     */
+    private void evictFinishedTasks() {
+        if (this.tasks.size() < MAX_TASKS) return;
+        int target = MAX_TASKS - MAX_TASKS / EVICT_DIVISOR;
+        Iterator<Map.Entry<String, EventTask>> iterator = this.tasks.entrySet().iterator();
+        while (this.tasks.size() > target && iterator.hasNext())
+            if (!iterator.next().getValue().pending()) iterator.remove();
     }
 
     public Step getOperation(String key) {
@@ -89,6 +110,7 @@ public final class AgentJournalDataStorage extends DataStorage {
     }
 
     public void putOperation(String key, Step step) {
+        this.evictCompletedOperations();
         this.operations.put(key, step);
         this.markDirty();
     }
@@ -101,8 +123,21 @@ public final class AgentJournalDataStorage extends DataStorage {
     }
 
     public void assertOperationCount(String key) {
-        if (this.operations.size() >= 8192 && !this.operations.containsKey(key))
+        // Only a table with no completed receipt to reclaim is genuinely full.
+        if (this.operations.size() >= MAX_OPERATIONS && !this.operations.containsKey(key)
+                && this.operations.values().stream().noneMatch(step -> step.state == State.DONE))
             throw new AgentException("STORAGE_FULL");
+    }
+
+    /**
+     * Oldest first, completed only: a RUNNING receipt is the crash marker that prevents a repeated write.
+     */
+    private void evictCompletedOperations() {
+        if (this.operations.size() < MAX_OPERATIONS) return;
+        int target = MAX_OPERATIONS - MAX_OPERATIONS / EVICT_DIVISOR;
+        Iterator<Map.Entry<String, Step>> iterator = this.operations.entrySet().iterator();
+        while (this.operations.size() > target && iterator.hasNext())
+            if (iterator.next().getValue().state == State.DONE) iterator.remove();
     }
 
     public boolean hasCompletedOperation(String taskId) {

@@ -1,9 +1,9 @@
 package com.iafenvoy.system.module.builtin;
 
-import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.builtin.input.QuestGuideInput;
 import com.iafenvoy.system.agent.builtin.input.QuestQueryInput;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
+import com.iafenvoy.system.agent.result.QuestList;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.card.CardUpdate;
@@ -51,7 +51,7 @@ public final class QuestSystemClientModule implements ClientModule {
         AssistantClientState.ChatEntry current = AssistantClient.state().current();
         if (current == null || current.result() == null) return builder.buildFuture();
         for (CardUpdate card : current.result().cards()) {
-            if (!(ClientCards.latest(card).data().orElse(null) instanceof ResultTypes.QuestList(
+            if (!(ClientCards.latest(card).data().orElse(null) instanceof QuestList(
                     List<QuestBriefOutput> quests
             ))) continue;
             for (QuestBriefOutput quest : quests) {

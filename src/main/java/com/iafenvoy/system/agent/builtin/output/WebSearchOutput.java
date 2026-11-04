@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.builtin.search.SearchObservation;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
@@ -35,7 +36,7 @@ public record WebSearchOutput(String answer, List<SearchObservation.Source> sour
     public CardBuilder buildCard() {
         Component text = this.answer.isBlank() ? Component.translatable(this.incomplete && !this.sources.isEmpty() ? "system.search.incomplete" : "system.search.no_results")
                 : Component.literal(this.answer);
-        CardBuilder builder = CardBuilder.template(Identifier.parse("system:web_search")).title("system.result.web_search").summary(text).speech(text);
+        CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "web_search")).title("system.result.web_search").summary(text).speech(text);
         return builder.list("sources", this.sources, (prefix, source) -> builder.put(prefix + "id", source.id())
                 .put(prefix + "title", source.title()).put(prefix + "url", source.url()).put(prefix + "snippet", source.snippet()));
     }

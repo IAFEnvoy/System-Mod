@@ -1,6 +1,6 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.result.QuestList;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.MapCodec;
@@ -20,7 +20,7 @@ public record QuestUnlockedOutput(List<QuestBriefOutput> quests) implements Card
 
     @Override
     public CardBuilder buildCard() {
-        return new ResultTypes.QuestList(this.quests).buildCard()
+        return new QuestList(this.quests).buildCard()
                 .title("system.result.quest_unlocked").summary("system.tts.message.quests_unlocked", this.quests.size())
                 .enable("unlock_notice", true);
     }

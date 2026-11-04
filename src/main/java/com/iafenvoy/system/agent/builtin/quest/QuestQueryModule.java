@@ -2,9 +2,10 @@ package com.iafenvoy.system.agent.builtin.quest;
 
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
+import com.iafenvoy.system.agent.builtin.BuiltinTools;
 import com.iafenvoy.system.agent.builtin.input.QuestQueryInput;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
-import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
+import com.iafenvoy.system.agent.result.QuestList;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 
@@ -47,6 +48,6 @@ public final class QuestQueryModule extends BuiltinModule<QuestQueryInput> {
 
     static AgentResult questList(List<QuestBriefOutput> quests, String key) {
         if (quests.isEmpty()) return AgentResult.ok("system.result.empty");
-        return AgentResult.data(key, new ResultTypes.QuestList(quests));
+        return AgentResult.data(key, new QuestList(quests));
     }
 }

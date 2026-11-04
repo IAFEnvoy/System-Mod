@@ -45,7 +45,7 @@ public final class AssistantMessages {
     private static final int MAX_PENDING = 32;
     private static final Deque<Pending> QUEUE = new ArrayDeque<>();
     private static final Deque<Message> BACK = new ArrayDeque<>();
-    private static CardRef navigationSource;
+    private static CardReference navigationSource;
     private static Message current;
     private static Pending replacement;
     private static AssistantSpeech.Session speech;
@@ -106,7 +106,7 @@ public final class AssistantMessages {
     /**
      * Direct action replies replace the active slot; a dismissed source cannot reopen or displace another notice.
      */
-    public static void reply(AgentResult result, CardRef source) {
+    public static void reply(AgentResult result, CardReference source) {
         // A local back action may already be fading this source out in favor of its retained parent.
         boolean active = current != null && replacement == null && source.id().equals(current.cardId());
         Message parent = active && source.equals(navigationSource) ? current : null;
@@ -195,7 +195,7 @@ public final class AssistantMessages {
         renderNavigation();
     }
 
-    public static boolean actionStarted(CardRef source, CardButton.Behavior behavior) {
+    public static boolean actionStarted(CardReference source, CardButton.Behavior behavior) {
         if (!hasVoiceTarget() || !source.id().equals(current.cardId())) return false;
         navigationSource = behavior == CardButton.Behavior.PUSH ? source : null;
         if (behavior == CardButton.Behavior.CLOSE) dismiss(current);
@@ -536,7 +536,7 @@ public final class AssistantMessages {
                 && minecraft.screen instanceof ChatScreen && !minecraft.options.hideGui;
     }
 
-    public static boolean canActivate(CardRef source) {
+    public static boolean canActivate(CardReference source) {
         return canInteract(current) && current.result().cards().stream().anyMatch(card -> card.ref().equals(source));
     }
 

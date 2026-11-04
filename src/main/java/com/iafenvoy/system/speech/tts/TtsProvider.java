@@ -10,6 +10,12 @@ import java.util.function.Consumer;
  */
 public interface TtsProvider extends AutoCloseable {
     /**
+     * Sockets and transports close without a checked failure; narrow the inherited signature for try-with-resources.
+     */
+    @Override
+    void close();
+
+    /**
      * Validate locally, without a network request or billable operation.
      */
     void validate(Request request) throws SpeechException;

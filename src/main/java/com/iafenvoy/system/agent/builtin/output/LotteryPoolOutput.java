@@ -1,8 +1,10 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.card.CardFact;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -29,7 +31,7 @@ public record LotteryPoolOutput(Identifier id, String label, Optional<CommerceCa
             Codec.STRING.optionalFieldOf("quoteRef").forGetter(LotteryPoolOutput::quoteRef),
             Codec.STRING.fieldOf("catalogRevision").forGetter(LotteryPoolOutput::catalogRevision)
     ).apply(i, LotteryPoolOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:lottery_pool");
+    public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_pool");
 
     public LotteryPoolOutput {
         prizes = List.copyOf(prizes);
@@ -44,9 +46,9 @@ public record LotteryPoolOutput(Identifier id, String label, Optional<CommerceCa
         this.price().ifPresent(builder::price);
         if (this.paymentAvailable) {
             if (this.quoteRef.isPresent())
-                builder.serverButton("draw", "system.action.lottery_confirm", Identifier.parse("system:lottery_draw"), Map.of("quote", this.quoteRef.get()));
+                builder.serverButton("draw", "system.action.lottery_confirm", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_draw"), Map.of("quote", this.quoteRef.get()));
             else
-                builder.serverButton("preview", "system.action.lottery_preview", Identifier.parse("system:lottery_preview"), Map.of("pool", this.id.toString(), "revision", this.catalogRevision));
+                builder.serverButton("preview", "system.action.lottery_preview", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_preview"), Map.of("pool", this.id.toString(), "revision", this.catalogRevision));
         }
         return builder;
     }
@@ -54,6 +56,11 @@ public record LotteryPoolOutput(Identifier id, String label, Optional<CommerceCa
     @Override
     public MapCodec<LotteryPoolOutput> codec() {
         return CODEC;
+    }
+
+    @Override
+    public Optional<CardFact> memoryFact() {
+        return Optional.of(new CardFact("lottery_pool", this.id().toString(), this.label(), "", List.of()));
     }
 
 }

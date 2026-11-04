@@ -10,9 +10,6 @@ import java.util.List;
  */
 public sealed interface CardText permits CardText.Items, CardText.Price {
     record Items(List<ItemPreviewOutput> items) implements CardText {
-        public Items {
-            items = List.copyOf(items);
-        }
     }
 
     record Price(CommerceCatalog.Price price, boolean includeItems) implements CardText {

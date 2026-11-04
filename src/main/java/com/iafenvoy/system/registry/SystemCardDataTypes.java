@@ -1,11 +1,11 @@
 package com.iafenvoy.system.registry;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.ResultTypes.QuestList;
-import com.iafenvoy.system.agent.ResultTypes.QuestNotice;
-import com.iafenvoy.system.agent.ResultTypes.ShopOrder;
-import com.iafenvoy.system.agent.ResultTypes.SignInStatus;
 import com.iafenvoy.system.agent.builtin.output.*;
+import com.iafenvoy.system.agent.result.QuestList;
+import com.iafenvoy.system.agent.result.QuestNotice;
+import com.iafenvoy.system.agent.result.ShopOrder;
+import com.iafenvoy.system.agent.result.SignInStatus;
 import com.iafenvoy.system.card.CardData;
 import com.iafenvoy.system.card.data.BindingCardData;
 import com.iafenvoy.system.card.data.SelectionCardData;

@@ -31,6 +31,7 @@ public final class ModuleManager implements AutoCloseable {
     private final Map<UUID, PlayerSession> players = new HashMap<>();
     private final Map<UUID, Set<Identifier>> active = new ConcurrentHashMap<>();
     private final Set<UUID> flushing = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> flushPending = ConcurrentHashMap.newKeySet();
     private Consumer<ServerPlayer> changed = _ -> {
     };
     private boolean closed;
@@ -364,7 +365,11 @@ public final class ModuleManager implements AutoCloseable {
     }
 
     private void flush(UUID player) {
-        if (!this.flushing.add(player)) return;
+        if (!this.flushing.add(player)) {
+            // Never drop a later request: an in-flight flush may have read the cache before these changes.
+            this.flushPending.add(player);
+            return;
+        }
         long incarnation = this.engine.incarnation(player);
         AgentStore store = this.engine.playerStore(player);
         this.engine.maintenance(() -> {
@@ -374,6 +379,8 @@ public final class ModuleManager implements AutoCloseable {
             this.flushing.remove(player);
             if (error != null && this.engine.current(player, incarnation))
                 SystemMod.LOGGER.warn("Unable to flush player module data for {}", player, error);
+            // The closed manager has already handed pending data to the store; the store flushes on close.
+            if (!this.closed && this.flushPending.remove(player)) this.flush(player);
         });
     }
 

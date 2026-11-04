@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.card.CardBuilder;
@@ -37,9 +38,9 @@ public record ShopQuoteOutput(String quoteRef, String label, List<ItemStackTempl
 
     @Override
     public CardBuilder buildCard() {
-        return CardBuilder.template(Identifier.parse("system:shop_offer")).title("system.result.shop_offer").summary("system.result.shop_confirm")
+        return CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop_offer")).title("system.result.shop_offer").summary("system.result.shop_confirm")
                 .put("label", this.label).put("id", "").put("items", new CardText.Items(this.items.stream().map(ItemPreviewOutput::of).toList()))
                 .put("offer_items", this.items.stream().map(ItemPreviewOutput::of).toList()).put("payment_available", true).price(this.price)
-                .serverButton("purchase", "system.action.shop_confirm", Identifier.parse("system:shop_purchase"), Map.of("quote", this.quoteRef));
+                .serverButton("purchase", "system.action.shop_confirm", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop_purchase"), Map.of("quote", this.quoteRef));
     }
 }

@@ -27,8 +27,7 @@ public final class Step {
     }
 
     public Step copy() {
-        Dynamic<?> resultCopy = this.result == null ? null :
-                new Dynamic<>(JsonOps.INSTANCE, this.result.convert(JsonOps.INSTANCE).getValue().deepCopy());
+        Dynamic<?> resultCopy = this.result == null ? null : new Dynamic<>(JsonOps.INSTANCE, this.result.convert(JsonOps.INSTANCE).getValue().deepCopy());
         return new Step(this.state, Optional.ofNullable(this.fingerprint), Optional.ofNullable(resultCopy));
     }
 }

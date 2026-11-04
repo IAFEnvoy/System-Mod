@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
@@ -33,17 +34,17 @@ public record ItemPageOutput(String query, List<ItemInfoOutput> items, int nextO
 
     @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(Identifier.parse("system:items")).title("system.result.items").summary("system.result.items")
-                .list("items", this.items, (prefix, item) -> {
-                })
-                .put("result_items", this.items.stream().map(item -> ItemPreviewOutput.of(item.item())).toList());
+        CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "items")).title("system.result.items").summary("system.result.items")
+                .list("items", this.items, (_, _) -> {
+                }).put("result_items", this.items.stream().map(item -> ItemPreviewOutput.of(item.item())).toList());
         for (int i = 0; i < this.items.size(); i++) {
             ItemInfoOutput item = this.items.get(i);
             builder.put("items." + i + ".item_name", item.name()).put("items." + i + ".item_id", item.id())
                     .put("items." + i + ".max_stack", item.maxStack());
         }
-        if (this.hasMore) builder.serverButton("next", "system.action.next", Identifier.parse("system:item_query"),
-                Map.of("query", this.query, "offset", Integer.toString(this.nextOffset)));
+        if (this.hasMore)
+            builder.serverButton("next", "system.action.next", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_query"),
+                    Map.of("query", this.query, "offset", Integer.toString(this.nextOffset)));
         return builder;
     }
 }

@@ -9,6 +9,12 @@ import java.util.function.Consumer;
  * Streaming recognition protocol; microphone ownership and Minecraft UI stay with the caller.
  */
 public interface AsrProvider extends AutoCloseable {
+    /**
+     * Sockets and transports close without a checked failure; narrow the inherited signature for try-with-resources.
+     */
+    @Override
+    void close();
+
     void validate(Request request) throws SpeechException;
 
     /**

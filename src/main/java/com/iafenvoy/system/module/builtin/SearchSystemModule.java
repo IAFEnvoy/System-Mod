@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.search.WebFetchTool;
 import com.iafenvoy.system.agent.builtin.search.WebSearchTool;
@@ -14,7 +15,7 @@ import java.util.List;
  * Optional exported tools only; the local-first question workflow owns consent and invocation order.
  */
 public final class SearchSystemModule implements ToolModule {
-    public static final Identifier ID = Identifier.parse("system:web_search");
+    public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "web_search");
     public static final MapCodec<SearchSystemModule> CODEC = MapCodec.unit(new SearchSystemModule());
 
     @Override

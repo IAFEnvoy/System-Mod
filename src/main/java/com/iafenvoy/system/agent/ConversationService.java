@@ -48,7 +48,7 @@ final class ConversationService {
         }));
     }
 
-    public CompletionStage<ResultTypes.History> history(UUID player) {
+    public CompletionStage<History> history(UUID player) {
         AgentStore store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
             if (!data.bound()) throw new AgentException("NOT_BOUND");
@@ -60,11 +60,11 @@ final class ConversationService {
                 if (entry instanceof Message.Assistant assistant
                         && CodecIO.write(AgentResult.CODEC, assistant.result()).length() > 4096)
                     entry = new Message.Assistant("", assistant.time(), clip(assistant.result()));
-                size += ResultTypes.History.MESSAGE_CODEC.encodeStart(JsonOps.INSTANCE, entry).getOrThrow().toString().length();
+                size += Message.CODEC.encodeStart(JsonOps.INSTANCE, entry).getOrThrow().toString().length();
                 if (size > 44000) break;
                 selected.add(entry);
             }
-            return new ResultTypes.History(selected.reversed());
+            return new History(selected.reversed());
         }));
     }
 

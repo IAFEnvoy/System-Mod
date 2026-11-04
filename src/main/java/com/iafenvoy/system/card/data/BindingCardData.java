@@ -1,5 +1,6 @@
 package com.iafenvoy.system.card.data;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
@@ -28,9 +29,9 @@ public record BindingCardData(String player, String nameKey, String descriptionK
     @Override
     public CardBuilder buildCard() {
         Component name = Component.translatable(this.nameKey), description = Component.translatable(this.descriptionKey);
-        return CardBuilder.template(Identifier.parse("system:text"))
+        return CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "text"))
                 .summary(Component.translatable("system.ui.binding_text", this.player, name, description))
                 .speech(Component.translatable("system.tts.message.binding", name, description))
-                .localButton("open", "system.ui.message_open_button", Identifier.parse("system:open"), Map.of());
+                .localButton("open", "system.ui.message_open_button", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "open"), Map.of());
     }
 }

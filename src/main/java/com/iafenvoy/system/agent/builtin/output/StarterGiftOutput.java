@@ -1,7 +1,9 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.card.CardFact;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -23,7 +25,7 @@ public record StarterGiftOutput(List<Gift> gifts, List<ItemPreviewOutput> items,
             ItemPreviewOutput.CODEC.listOf().fieldOf("items").forGetter(StarterGiftOutput::items),
             QuestIconOutput.CODEC.listOf().fieldOf("icons").forGetter(StarterGiftOutput::icons)
     ).apply(i, StarterGiftOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:starter_gift");
+    public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "starter_gift");
 
     public StarterGiftOutput {
         gifts = List.copyOf(gifts);
@@ -47,14 +49,19 @@ public record StarterGiftOutput(List<Gift> gifts, List<ItemPreviewOutput> items,
                 .put(prefix + "error", gift.error().map(error -> Component.translatable("system.error." + error.toLowerCase(Locale.ROOT))).orElse(Component.empty())));
         List<String> refs = this.gifts.stream().flatMap(gift -> gift.claimRef().stream()).toList();
         if (!refs.isEmpty())
-            builder.serverButton("claim_gifts", "system.action.claim_starter_gift", Identifier.parse("system:starter_gift"), Map.of("references", String.join(",", refs)));
+            builder.serverButton("claim_gifts", "system.action.claim_starter_gift", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "starter_gift"), Map.of("references", String.join(",", refs)));
         return builder.summary("system.result.starter_gift").speech(Component.translatable("system.tts.message.starter_gift"))
-                .serverButton("refresh_gifts", "system.action.refresh_starter_gift", Identifier.parse("system:starter_gifts"), Map.of());
+                .serverButton("refresh_gifts", "system.action.refresh_starter_gift", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "starter_gifts"), Map.of());
     }
 
     @Override
     public MapCodec<StarterGiftOutput> codec() {
         return CODEC;
+    }
+
+    @Override
+    public Optional<CardFact> memoryFact() {
+        return Optional.of(new CardFact("starter_gift", "", Integer.toString(this.gifts().size()), "", List.of()));
     }
 
 }

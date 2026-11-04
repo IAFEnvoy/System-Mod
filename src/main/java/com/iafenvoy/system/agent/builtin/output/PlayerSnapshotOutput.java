@@ -1,7 +1,9 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.card.CardFact;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -9,6 +11,7 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -27,7 +30,7 @@ public record PlayerSnapshotOutput(UUID playerId, String name, float health, flo
             Codec.STRING.fieldOf("language").forGetter(PlayerSnapshotOutput::language),
             PlayerInformationOutput.CODEC.listOf().optionalFieldOf("information", List.of()).forGetter(PlayerSnapshotOutput::information)
     ).apply(i, PlayerSnapshotOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:player");
+    public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "player");
 
     public PlayerSnapshotOutput {
         information = List.copyOf(information);
@@ -46,6 +49,11 @@ public record PlayerSnapshotOutput(UUID playerId, String name, float health, flo
     @Override
     public MapCodec<PlayerSnapshotOutput> codec() {
         return CODEC;
+    }
+
+    @Override
+    public Optional<CardFact> memoryFact() {
+        return Optional.of(new CardFact("player", "", this.name(), "", List.of()));
     }
 
 }

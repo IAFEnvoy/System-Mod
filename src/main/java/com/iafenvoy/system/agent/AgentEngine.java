@@ -342,7 +342,7 @@ public final class AgentEngine implements AutoCloseable {
         return this.conversations.preferences(player, history, external);
     }
 
-    public CompletionStage<ResultTypes.History> history(UUID player) {
+    public CompletionStage<History> history(UUID player) {
         return this.conversations.history(player);
     }
 
@@ -408,7 +408,7 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
         if (!this.closed.compareAndSet(false, true)) return;
         this.interactive.close();
         this.events.close();

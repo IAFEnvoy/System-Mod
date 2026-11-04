@@ -1,4 +1,4 @@
-package com.iafenvoy.system.agent.builtin.tool;
+package com.iafenvoy.system.agent.builtin;
 
 import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.*;

@@ -1,10 +1,9 @@
-package com.iafenvoy.system.agent.builtin.core;
+package com.iafenvoy.system.agent.builtin;
 
 import com.iafenvoy.system.agent.AgentCommand;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.ExecutionPolicy;
-import com.iafenvoy.system.agent.builtin.BuiltinModule;
 import com.iafenvoy.system.agent.builtin.input.HelpInput;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;

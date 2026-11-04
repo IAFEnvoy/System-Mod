@@ -1,8 +1,10 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.card.CardFact;
 import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -40,11 +42,16 @@ public record RewardOutput(Reward reward, Optional<String> entitlementId, Compon
     }
 
     @Override
+    public Optional<CardFact> memoryFact() {
+        return Optional.of(OutputFacts.reward("", "", this.reward()));
+    }
+
+    @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(Identifier.parse("system:reward")).title("system.result.reward")
+        CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "reward")).title("system.result.reward")
                 .summary(this.summary).reward("", this.reward).put("reason", this.reason);
         this.entitlementId.ifPresent(id -> builder.serverButton("deliver", "system.action.deliver",
-                Identifier.parse("system:deliver"), Map.of("entitlement", id)));
+                Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "deliver"), Map.of("entitlement", id)));
         return builder;
     }
 }

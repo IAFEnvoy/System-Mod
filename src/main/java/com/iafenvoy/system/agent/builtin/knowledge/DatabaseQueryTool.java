@@ -1,13 +1,14 @@
 package com.iafenvoy.system.agent.builtin.knowledge;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.builtin.BuiltinTools;
 import com.iafenvoy.system.agent.builtin.input.DatabaseQueryInput;
 import com.iafenvoy.system.agent.builtin.input.QuestGuideInput;
 import com.iafenvoy.system.agent.builtin.output.DatabaseQueryOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestGuideOutput;
-import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.database.AgentDatabase;
 import com.iafenvoy.system.agent.database.DatabaseTable;
 import com.iafenvoy.system.agent.database.KnowledgeIndex;
@@ -25,7 +26,7 @@ import java.util.stream.Collectors;
  */
 public record DatabaseQueryTool(
         AgentEngine engine) implements ToolRegistry.Handler<DatabaseQueryInput, DatabaseQueryOutput> {
-    public static final DatabaseTable<List<KnowledgeIndex.Document>> KNOWLEDGE = AgentDatabase.documents(Identifier.parse("system:knowledge"));
+    public static final DatabaseTable<List<KnowledgeIndex.Document>> KNOWLEDGE = AgentDatabase.documents(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "knowledge"));
 
     public ToolRegistry.Tool<DatabaseQueryInput, DatabaseQueryOutput> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.DATABASE_QUERY, false, true, false, this);

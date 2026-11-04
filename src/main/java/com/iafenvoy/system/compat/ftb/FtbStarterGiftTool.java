@@ -3,9 +3,9 @@ package com.iafenvoy.system.compat.ftb;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.builtin.BuiltinTools;
 import com.iafenvoy.system.agent.builtin.input.StarterGiftInput;
 import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
-import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 

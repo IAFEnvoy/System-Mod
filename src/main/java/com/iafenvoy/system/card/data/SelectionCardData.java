@@ -1,5 +1,6 @@
 package com.iafenvoy.system.card.data;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.card.CardAction;
 import com.iafenvoy.system.card.CardBuilder;
@@ -56,7 +57,7 @@ public record SelectionCardData(Component summary, Component speech, List<Choice
 
     @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(Identifier.parse("system:selection")).summary(this.summary).speech(this.speech);
+        CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "selection")).summary(this.summary).speech(this.speech);
         for (int i = 0; i < this.choices.size(); i++) {
             Choice choice = this.choices.get(i);
             builder.serverButton("choice_" + i, choice.labelKey(), choice.action.id(), choice.action.arguments(),

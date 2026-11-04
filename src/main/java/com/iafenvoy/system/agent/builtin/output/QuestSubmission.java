@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.builtin.input.QuestSubmitInput;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.util.ActionArguments;
@@ -23,7 +24,7 @@ public enum QuestSubmission implements StringRepresentable {
         if (this == NONE) return;
         QuestSubmitInput input = new QuestSubmitInput("", Optional.empty(), questId, this == CHECKMARK);
         builder.serverButton("submit", this == CHECKMARK ? "system.action.complete_quest" : "system.action.submit_quest",
-                Identifier.parse("system:quest_submit"), ActionArguments.encode(input));
+                Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_submit"), ActionArguments.encode(input));
     }
 
     @Override

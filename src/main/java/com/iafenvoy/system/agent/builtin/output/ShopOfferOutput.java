@@ -1,9 +1,11 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.card.CardFact;
 import com.iafenvoy.system.card.CardText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -14,6 +16,7 @@ import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Complete server snapshot; card construction only reads these fields.
@@ -39,12 +42,17 @@ public record ShopOfferOutput(Identifier id, String label, List<ItemStackTemplat
     }
 
     @Override
+    public Optional<CardFact> memoryFact() {
+        return Optional.of(new CardFact("offer", this.id().toString(), this.label(), "", List.of()));
+    }
+
+    @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(Identifier.parse("system:shop_offer")).title("system.result.shop_offer").summary(Component.literal(this.label))
+        CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop_offer")).title("system.result.shop_offer").summary(Component.literal(this.label))
                 .put("label", this.label).put("id", this.id.toString()).put("items", new CardText.Items(this.items.stream().map(ItemPreviewOutput::of).toList()))
                 .put("offer_items", this.items.stream().map(ItemPreviewOutput::of).toList()).put("payment_available", this.paymentAvailable).price(this.price);
         if (this.paymentAvailable)
-            builder.serverButton("quote", "system.action.shop_quote", Identifier.parse("system:shop_quote"), Map.of("offer", this.id.toString(), "revision", this.catalogRevision));
+            builder.serverButton("quote", "system.action.shop_quote", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop_quote"), Map.of("offer", this.id.toString(), "revision", this.catalogRevision));
         return builder;
     }
 }

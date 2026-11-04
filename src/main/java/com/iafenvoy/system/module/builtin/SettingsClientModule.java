@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
 import com.iafenvoy.system.module.client.WorkspaceGroup;
@@ -15,7 +16,7 @@ import net.minecraft.resources.Identifier;
 public final class SettingsClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
-        module.localAction(Identifier.parse("system:settings"), (_, _) -> {
+        module.localAction(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "settings"), (_, _) -> {
             Minecraft minecraft = Minecraft.getInstance();
             minecraft.setScreen(new AssistantSettingsScreen(minecraft.screen, AssistantSettingsScreen.Tab.GENERAL));
         });

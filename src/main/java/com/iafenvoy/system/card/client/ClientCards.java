@@ -14,10 +14,10 @@ public final class ClientCards {
     private static final Map<UUID, Entry> CARDS = new HashMap<>();
     private static final Map<UUID, Long> REMOVED = new HashMap<>();
 
-    private record Entry(CardRef ref, CardData data, CardView view, boolean active) {
+    private record Entry(CardReference ref, CardData data, CardView view, boolean active) {
     }
 
-    public record Choice(CardRef source, CardButton button) {
+    public record Choice(CardReference source, CardButton button) {
         public String labelKey() {
             return this.button.labelKey();
         }
@@ -57,7 +57,7 @@ public final class ClientCards {
         return true;
     }
 
-    public static boolean active(CardRef ref) {
+    public static boolean active(CardReference ref) {
         Entry entry = CARDS.get(ref.id());
         return entry != null && entry.active && entry.ref.equals(ref);
     }
@@ -72,7 +72,7 @@ public final class ClientCards {
         return entry == null ? build(update.ref(), update.data().orElseThrow()) : entry.view;
     }
 
-    private static CardView build(CardRef ref, CardData data) {
+    private static CardView build(CardReference ref, CardData data) {
         CardBuilder builder = data.buildCard();
         // Shared data stays pure; client extensions run before the immutable context is captured.
         NeoForge.EVENT_BUS.post(new CardBuildEvent(ref, data, builder));

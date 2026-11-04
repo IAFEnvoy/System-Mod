@@ -2,7 +2,7 @@ package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.card.CardRef;
+import com.iafenvoy.system.card.CardReference;
 import com.iafenvoy.system.card.CardUpdate;
 
 import java.util.*;
@@ -22,7 +22,7 @@ public final class ServerCards {
         }
     }
 
-    public record Ticket(UUID player, CardRef source, long revision, Object generation) {
+    public record Ticket(UUID player, CardReference source, long revision, Object generation) {
     }
 
     private ServerCards() {
@@ -45,7 +45,7 @@ public final class ServerCards {
         }
     }
 
-    public static synchronized Ticket begin(UUID player, CardRef source) {
+    public static synchronized Ticket begin(UUID player, CardReference source) {
         Map<UUID, Version> cards = PLAYERS.get(player);
         Version version = cards == null ? null : cards.get(source.id());
         if (version == null || version.issued != source.revision()) throw new AgentException("STALE_REFERENCE");
@@ -58,7 +58,7 @@ public final class ServerCards {
         if (current != ticket.generation() || current.reserved != ticket.revision())
             throw new AgentException("CANCELLED");
         if (!result.silent() || !result.isSuccess()) return result;
-        CardRef ref = new CardRef(ticket.source().id(), ticket.revision());
+        CardReference ref = new CardReference(ticket.source().id(), ticket.revision());
         List<CardUpdate> updates = new ArrayList<>();
         if (result.cards().isEmpty()) updates.add(new CardUpdate(ref, CardUpdate.Mode.REMOVE, Optional.empty()));
         else {

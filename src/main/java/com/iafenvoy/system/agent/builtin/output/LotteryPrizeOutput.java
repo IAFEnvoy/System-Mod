@@ -1,8 +1,10 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.card.CardFact;
 import com.iafenvoy.system.card.SpeechContent;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -12,6 +14,7 @@ import net.minecraft.resources.Identifier;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.util.Optional;
 
 /**
  * Integer weights preserve exact odds while the client adds a readable percentage.
@@ -22,7 +25,7 @@ public record LotteryPrizeOutput(Reward reward, int weight, long totalWeight) im
             Codec.INT.fieldOf("weight").forGetter(LotteryPrizeOutput::weight),
             Codec.LONG.fieldOf("totalWeight").forGetter(LotteryPrizeOutput::totalWeight)
     ).apply(i, LotteryPrizeOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:lottery_prize");
+    public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_prize");
 
     @Override
     public CardBuilder buildCard() {
@@ -40,6 +43,11 @@ public record LotteryPrizeOutput(Reward reward, int weight, long totalWeight) im
     @Override
     public MapCodec<LotteryPrizeOutput> codec() {
         return CODEC;
+    }
+
+    @Override
+    public Optional<CardFact> memoryFact() {
+        return Optional.of(OutputFacts.reward("", "", this.reward()));
     }
 
 }

@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.card.client.ClientCards;
@@ -27,9 +28,9 @@ import java.util.concurrent.CompletableFuture;
 public final class CoreSystemClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
-        module.localAction(Identifier.parse("system:close"), (source, _) -> AssistantMessages.dismissCard(source.id()));
-        module.localAction(Identifier.parse("system:open"), (_, _) -> AssistantClient.open(AssistantClient.simpleMode(), ""));
-        module.localAction(Identifier.parse("system:workspace"), (_, arguments) -> {
+        module.localAction(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "close"), (source, _) -> AssistantMessages.dismissCard(source.id()));
+        module.localAction(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "open"), (_, _) -> AssistantClient.open(AssistantClient.simpleMode(), ""));
+        module.localAction(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "workspace"), (_, arguments) -> {
             AssistantClient.open(false, "");
             if (Minecraft.getInstance().screen instanceof AssistantScreen screen)
                 screen.showPage(arguments.getOrDefault("page", "chat"));

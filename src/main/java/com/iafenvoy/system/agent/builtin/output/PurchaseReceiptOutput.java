@@ -1,8 +1,10 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.card.CardFact;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -24,7 +26,7 @@ public record PurchaseReceiptOutput(String orderId, String entitlementId, Reward
             Codec.STRING.fieldOf("state").forGetter(PurchaseReceiptOutput::state),
             Identifier.CODEC.optionalFieldOf("sourcePool").forGetter(PurchaseReceiptOutput::sourcePool)
     ).apply(i, PurchaseReceiptOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:purchase");
+    public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "purchase");
 
     public PurchaseReceiptOutput(String orderId, String entitlementId, Reward reward, String state) {
         this(orderId, entitlementId, reward, state, Optional.empty());
@@ -38,14 +40,19 @@ public record PurchaseReceiptOutput(String orderId, String entitlementId, Reward
         builder.reward("", this.reward())
                 .put("order_id", this.orderId()).put("entitlement_id", this.entitlementId()).put("state", this.state());
         if (this.state.equals("COMPLETED"))
-            builder.serverButton("deliver", "system.action.deliver", Identifier.parse("system:deliver"), Map.of("entitlement", this.entitlementId));
-        this.sourcePool.ifPresent(id -> builder.serverButton("again", "system.action.lottery_again", Identifier.parse("system:lottery_preview"), Map.of("pool", id.toString())));
+            builder.serverButton("deliver", "system.action.deliver", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "deliver"), Map.of("entitlement", this.entitlementId));
+        this.sourcePool.ifPresent(id -> builder.serverButton("again", "system.action.lottery_again", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_preview"), Map.of("pool", id.toString())));
         return builder;
     }
 
     @Override
     public MapCodec<PurchaseReceiptOutput> codec() {
         return CODEC;
+    }
+
+    @Override
+    public Optional<CardFact> memoryFact() {
+        return Optional.of(OutputFacts.reward(this.entitlementId(), this.state(), this.reward()));
     }
 
 }

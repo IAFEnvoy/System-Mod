@@ -4,7 +4,7 @@ import com.iafenvoy.system.agent.request.CardActionRequest;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.card.CardAction;
 import com.iafenvoy.system.card.CardButton;
-import com.iafenvoy.system.card.CardRef;
+import com.iafenvoy.system.card.CardReference;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.screen.AssistantMessages;
 import net.minecraft.resources.Identifier;
@@ -19,11 +19,11 @@ public final class CardController {
     private CardController() {
     }
 
-    public static void activate(CardRef source, CardButton button) {
+    public static void activate(CardReference source, CardButton button) {
         activate(source, button, false);
     }
 
-    public static void activate(CardRef source, CardButton button, boolean notification) {
+    public static void activate(CardReference source, CardButton button, boolean notification) {
         if (!ClientCards.active(source) || button.action() instanceof CardAction.Server && AssistantClient.state().busy())
             return;
         if (notification && !AssistantMessages.actionStarted(source, button.behavior())) return;

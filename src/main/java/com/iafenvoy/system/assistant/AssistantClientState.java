@@ -2,10 +2,11 @@ package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.ClientState;
+import com.iafenvoy.system.agent.History;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.store.Message;
-import com.iafenvoy.system.card.CardRef;
+import com.iafenvoy.system.card.CardReference;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.card.client.ClientCards;
 import net.minecraft.resources.Identifier;
@@ -16,14 +17,14 @@ import java.util.*;
  * Immutable connection state; visual cards, history and nonvisual server state have separate paths.
  */
 public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending> pending,
-                                   ResultTypes.ClientState serverState, ChatEntry current) {
+                                   ClientState serverState, ChatEntry current) {
     public static final AssistantClientState EMPTY = new AssistantClientState(List.of(), Map.of(),
-            new ResultTypes.ClientState(Optional.empty(), true, true, List.of(), List.of(), 60000), null);
+            new ClientState(Optional.empty(), true, true, List.of(), List.of(), 60000), null);
 
     public record ChatEntry(boolean player, String text, AgentResult result) {
     }
 
-    public record Pending(long deadline, Object owner, Optional<CardRef> notification) {
+    public record Pending(long deadline, Object owner, Optional<CardReference> notification) {
     }
 
     public AssistantClientState {
@@ -59,7 +60,7 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return this.append(result, false, true);
     }
 
-    AssistantClientState requested(String id, AgentRequest request, Object owner, Optional<CardRef> notification) {
+    AssistantClientState requested(String id, AgentRequest request, Object owner, Optional<CardReference> notification) {
         List<ChatEntry> entries = new ArrayList<>(this.entries);
         if (!request.text().isBlank()) entries.add(new ChatEntry(true, request.text(), null));
         Map<String, Pending> pending = new HashMap<>(this.pending);
@@ -80,7 +81,7 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return new AssistantClientState(this.entries, Map.of(), this.serverState, this.current);
     }
 
-    AssistantClientState synchronizedState(String id, ResultTypes.ClientState value) {
+    AssistantClientState synchronizedState(String id, ClientState value) {
         return new AssistantClientState(this.entries, this.complete(id).pending, value, this.current);
     }
 
@@ -117,7 +118,7 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return new AssistantClientState(entries, this.pending, this.serverState, current);
     }
 
-    AssistantClientState history(String id, ResultTypes.History history) {
+    AssistantClientState history(String id, History history) {
         List<ChatEntry> entries = new ArrayList<>();
         for (Message message : history.messages()) {
             switch (message) {

@@ -120,11 +120,11 @@ public final class AssistantRequests {
                 .thenApply(_ -> new OpenResponse(OpenResponse.View.CURRENT, Optional.of(context.requestId()))));
     }
 
-    private CompletionStage<ResultTypes.ClientState> state(UUID player) {
+    private CompletionStage<ClientState> state(UUID player) {
         AgentStore store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
             if (!data.bound()) throw new AgentException("NOT_BOUND");
-            return new ResultTypes.ClientState(data.systems.current(), data.saveHistory, data.externalModel,
+            return new ClientState(data.systems.current(), data.saveHistory, data.externalModel,
                     this.modules.enabled(player),
                     this.engine.modules().commands().suggestions(id -> this.engine.available(player, id)),
                     this.engine.requestTimeoutMillis(player));

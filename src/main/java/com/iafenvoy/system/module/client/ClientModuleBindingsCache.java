@@ -1,7 +1,7 @@
 package com.iafenvoy.system.module.client;
 
 import com.iafenvoy.saturn.util.HolderHelper;
-import com.iafenvoy.system.card.CardRef;
+import com.iafenvoy.system.card.CardReference;
 import com.iafenvoy.system.registry.SystemClientModules;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
@@ -29,7 +29,7 @@ import java.util.function.Supplier;
 @EventBusSubscriber(Dist.CLIENT)
 public final class ClientModuleBindingsCache implements Supplier<ClientModuleBindingsCache> {
     private List<Workspace> workspace = List.of();
-    private Map<Identifier, BiConsumer<CardRef, Map<String, String>>> localActions = Map.of();
+    private Map<Identifier, BiConsumer<CardReference, Map<String, String>>> localActions = Map.of();
     private RegistryAccess registries;
     private boolean building;
 
@@ -104,14 +104,14 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
         return this;
     }
 
-    void localAction(Identifier id, BiConsumer<CardRef, Map<String, String>> handler) {
+    void localAction(Identifier id, BiConsumer<CardReference, Map<String, String>> handler) {
         if (!this.building) throw new IllegalStateException("Client module registration has finished");
         if (this.localActions.putIfAbsent(id, handler) != null)
             throw new IllegalArgumentException("Duplicate local card action " + id);
     }
 
-    public void localAction(Identifier id, CardRef source, Map<String, String> arguments) {
-        BiConsumer<CardRef, Map<String, String>> handler = this.localActions.get(id);
+    public void localAction(Identifier id, CardReference source, Map<String, String> arguments) {
+        BiConsumer<CardReference, Map<String, String>> handler = this.localActions.get(id);
         if (handler != null) handler.accept(source, arguments);
     }
 

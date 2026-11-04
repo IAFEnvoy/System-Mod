@@ -3,7 +3,7 @@ package com.iafenvoy.system.agent.builtin.search;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.ToolRegistry;
-import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
+import com.iafenvoy.system.agent.builtin.BuiltinTools;
 import com.iafenvoy.system.search.SearchException;
 import com.iafenvoy.system.search.SearchGateway;
 import com.iafenvoy.system.search.SearchProvider;

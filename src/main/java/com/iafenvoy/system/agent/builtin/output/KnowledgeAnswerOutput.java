@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
@@ -31,7 +32,7 @@ public record KnowledgeAnswerOutput(String answer, List<DatabaseQueryOutput.Sour
     @Override
     public CardBuilder buildCard() {
         Component text = this.answer.isBlank() ? Component.translatable("system.knowledge.sources_only") : Component.literal(this.answer);
-        CardBuilder builder = CardBuilder.template(Identifier.parse("system:knowledge_answer"))
+        CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "knowledge_answer"))
                 .title("system.result.knowledge").summary(text).speech(text);
         return builder.list("sources", this.sources, (prefix, source) -> builder.put(prefix + "title", source.title())
                 .put(prefix + "category", source.category()).put(prefix + "passage", source.passage()));

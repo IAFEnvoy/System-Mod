@@ -2,9 +2,9 @@ package com.iafenvoy.system.agent.builtin.advancement;
 
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.builtin.BuiltinTools;
 import com.iafenvoy.system.agent.builtin.input.RewardCreditInput;
 import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
-import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.store.Delivery;
 import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.module.ModuleData;

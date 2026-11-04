@@ -1,7 +1,9 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.card.CardFact;
 import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -11,6 +13,7 @@ import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
+import java.util.Optional;
 
 public record QuestSubmitOutput(String questId, Component title, List<QuestTaskOutput> tasks, boolean changed,
                                 boolean completed) implements CardData {
@@ -21,7 +24,7 @@ public record QuestSubmitOutput(String questId, Component title, List<QuestTaskO
             Codec.BOOL.fieldOf("changed").forGetter(QuestSubmitOutput::changed),
             Codec.BOOL.fieldOf("completed").forGetter(QuestSubmitOutput::completed)
     ).apply(i, QuestSubmitOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:quest_submit");
+    public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_submit");
 
     public QuestSubmitOutput {
         title = LegacyText.snapshot(title);
@@ -41,6 +44,12 @@ public record QuestSubmitOutput(String questId, Component title, List<QuestTaskO
     @Override
     public MapCodec<QuestSubmitOutput> codec() {
         return CODEC;
+    }
+
+    @Override
+    public Optional<CardFact> memoryFact() {
+        return Optional.of(new CardFact("quest_submit", this.questId(), this.title().getString(),
+                this.completed() ? "COMPLETED" : "INCOMPLETE", List.of()));
     }
 
 }

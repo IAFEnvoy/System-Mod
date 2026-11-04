@@ -1,13 +1,10 @@
 package com.iafenvoy.system.assistant;
 
-import com.iafenvoy.system.agent.AgentAction;
-import com.iafenvoy.system.agent.AgentRequest;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.request.ChatRequest;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.request.InvokeRequest;
-import com.iafenvoy.system.card.CardRef;
+import com.iafenvoy.system.card.CardReference;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.command.client.AssistantClientCommands;
@@ -172,13 +169,13 @@ public final class AssistantClient {
         return true;
     }
 
-    public static void synchronizedState(String requestId, ResultTypes.ClientState value) {
+    public static void synchronizedState(String requestId, ClientState value) {
         if (!requestId.isEmpty() && !state.pending().containsKey(requestId)) return;
         state = state.synchronizedState(requestId, value);
         revision++;
     }
 
-    public static void history(String requestId, ResultTypes.History value) {
+    public static void history(String requestId, History value) {
         if (!state.pending().containsKey(requestId)) return;
         state = state.history(requestId, value);
         revision++;
@@ -199,7 +196,7 @@ public final class AssistantClient {
         send(request, Optional.empty());
     }
 
-    public static void send(AgentRequest request, Optional<CardRef> notification) {
+    public static void send(AgentRequest request, Optional<CardReference> notification) {
         ClientPacketListener connection = Minecraft.getInstance().getConnection();
         if (connection == null || state.busy()) return;
         String id = UUID.randomUUID().toString();

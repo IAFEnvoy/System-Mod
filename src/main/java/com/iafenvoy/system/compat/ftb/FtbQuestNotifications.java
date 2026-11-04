@@ -3,12 +3,13 @@ package com.iafenvoy.system.compat.ftb;
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
 import com.iafenvoy.system.agent.builtin.output.QuestStartupOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestSubmission;
 import com.iafenvoy.system.agent.builtin.output.QuestUnlockedOutput;
 import com.iafenvoy.system.agent.builtin.quest.StarterGiftModule;
+import com.iafenvoy.system.agent.result.QuestEvent;
+import com.iafenvoy.system.agent.result.QuestNotice;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.module.builtin.QuestSystemModule;
@@ -246,13 +247,13 @@ final class FtbQuestNotifications {
         List<Reward> claimable = quest.getRewards().stream().filter(reward -> FtbQuestReader.canClaim(player, team, reward)).toList();
         Optional<String> claimRef = claimable.size() == 1 && !(claimable.getFirst() instanceof ChoiceReward)
                 ? FtbQuestAccess.reference(player, team, quest, claimable.getFirst(), this.access.references) : Optional.empty();
-        return AgentResult.data(key, new ResultTypes.QuestNotice(id, FtbQuestText.title(player, quest), FtbQuestText.title(player, quest.getChapter()),
+        return AgentResult.data(key, new QuestNotice(id, FtbQuestText.title(player, quest), FtbQuestText.title(player, quest.getChapter()),
                 quest.getRewards().stream().filter(reward -> !team.isRewardBlocked(reward) && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE)
                         .flatMap(reward -> FtbQuestAccess.previewItems(reward).stream()).toList(),
                 "", List.of(),
                 quest.getRewards().stream().filter(reward -> !team.isRewardBlocked(reward) && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE
                         && FtbQuestAccess.previewItems(reward).isEmpty()).flatMap(reward -> FtbQuestPreviews.reward(player, team, reward).stream()).toList(),
-                List.of(), false, ResultTypes.QuestEvent.COMPLETED,
+                List.of(), false, QuestEvent.COMPLETED,
                 QuestSubmission.NONE, !claimable.isEmpty(), claimRef,
                 FtbQuestSpeech.content(player, team, quest, "completed")));
     }

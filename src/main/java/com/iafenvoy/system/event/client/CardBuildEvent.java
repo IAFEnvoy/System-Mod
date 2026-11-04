@@ -2,7 +2,7 @@ package com.iafenvoy.system.event.client;
 
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
-import com.iafenvoy.system.card.CardRef;
+import com.iafenvoy.system.card.CardReference;
 import net.neoforged.bus.api.Event;
 
 /**
@@ -10,17 +10,17 @@ import net.neoforged.bus.api.Event;
  * Listeners may enrich the builder synchronously; keep no reference to it after dispatch.
  */
 public final class CardBuildEvent extends Event {
-    private final CardRef ref;
+    private final CardReference ref;
     private final CardData data;
     private final CardBuilder builder;
 
-    public CardBuildEvent(CardRef ref, CardData data, CardBuilder builder) {
+    public CardBuildEvent(CardReference ref, CardData data, CardBuilder builder) {
         this.ref = ref;
         this.data = data;
         this.builder = builder;
     }
 
-    public CardRef ref() {
+    public CardReference ref() {
         return this.ref;
     }
 

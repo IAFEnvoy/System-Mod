@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.builtin.output;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.iafenvoy.system.util.LegacyText;
@@ -20,7 +21,7 @@ public record QuestGuideOutput(String query, List<Entry> entries) implements Car
             Codec.STRING.fieldOf("query").forGetter(QuestGuideOutput::query),
             Entry.CODEC.listOf().fieldOf("entries").forGetter(QuestGuideOutput::entries)
     ).apply(i, QuestGuideOutput::new));
-    public static final Identifier TEMPLATE = Identifier.parse("system:quest_guide");
+    public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_guide");
 
     public QuestGuideOutput {
         entries = List.copyOf(entries);

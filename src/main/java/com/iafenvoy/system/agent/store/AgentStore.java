@@ -23,4 +23,10 @@ public interface AgentStore extends AutoCloseable {
     void delete(UUID player);
 
     List<UUID> players();
+
+    /**
+     * Releases the file lock; a failed last write is reported by the implementation, never thrown at shutdown.
+     */
+    @Override
+    void close();
 }

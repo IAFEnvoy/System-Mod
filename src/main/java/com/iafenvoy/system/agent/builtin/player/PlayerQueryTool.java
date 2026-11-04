@@ -2,9 +2,9 @@ package com.iafenvoy.system.agent.builtin.player;
 
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.builtin.BuiltinTools;
 import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
-import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.assistant.PlayerInformationView;
 

@@ -74,7 +74,7 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
 
 ### 物品来源查询
 
-`system:items` 装配两个工作流：`system:item_query`（名称/ID 检索）与 `system:item_sources`（单个物品的来源）。后者提供 `/system recipe <物品ID> [范围]`、语义路由和稳定动作 ID；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`，输出 Codec 直接就是返回给调用方的 JSON：
+`system:items` 装配两个工作流：`system:item_query`（名称/ID 检索）与 `system:item_sources`（单个物品的来源）。后者提供 `/system recipe <物品ID> [范围]`、语义路由、稳定动作 ID 和物品卡片上的「查看获取方式」按钮（检索结果只有一个匹配时出现，按钮带注册 ID，不需要玩家重抄）；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`，输出 Codec 直接就是返回给调用方的 JSON：
 
 ```json
 {"item":"minecraft:diamond_pickaxe","scope":"loot","sources":[
@@ -82,7 +82,7 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
    "outputs":[{"items":["minecraft:iron_ingot"],"count":1}],"notes":["weight 1"]}],"truncated":false}
 ```
 
-`scope` 缺省为 `all`，即完整查询，跑所有已注册来源；也可以只写某个来源的路径（`recipe`、`loot`、`tag`）或它的完整 ID（`system:recipe`）。范围由 `ItemSourceProviders` 在装配时枚举，新增 Provider 后自动出现在补全里；未注册的范围会被拒绝（`INVALID_INPUT`），不会静默返回空列表。命令行写作 `/system recipe minecraft:diamond loot`，省略第二个词即为完整查询；语义路由只在请求里出现「掉落 / 战利品 / 配方 / 合成 / 标签」这类关键词时收窄到对应范围，其余情况保持完整查询。
+`scope` 缺省为 `all`，即完整查询，跑所有已注册来源；也可以只写某个来源的路径（`recipe`、`loot`、`tag`）或它的完整 ID（`system:recipe`）。范围由 `ItemSourceProviders` 在装配时枚举，新增 Provider 后自动出现在补全里；未注册的范围会被拒绝（`INVALID_INPUT`），不会静默返回空列表。命令行写作 `/system recipe minecraft:diamond loot`，省略第二个词即为完整查询；语义路由只在请求里出现「掉落 / 战利品 / 配方 / 合成 / 标签」这类关键词时收窄到对应范围，其余情况保持完整查询。语义路由优先取请求里的显式注册 ID（`CommandArguments.singleItemId`），没有 ID 时再用 `ItemNameIndex` 在本地显示名表里做最长匹配（「如何获取钻石镐」→ `minecraft:diamond_pickaxe`，更长的名字优先于更短的前缀词）；该表在服务器启动装配 `system:items` 时构建一次，名称取自服务端语言，专用服务端只用服务端资源，中文名可能匹配不到，此时退回模型路由。
 
 默认值不会写进 JSON：`type` 缺省为空串，`station`、`inputs`、`notes` 缺省为空数组，`count` 缺省为 1，`scope` 缺省为 `all`。`kind`、`id`、`outputs` 始终存在，`outputs` 一定包含被查询的物品。结果上限 64 条，超出时置 `truncated`，单个配方最多 16 个输入槽、每槽最多 8 个候选，掉落最多检查 4096 张表，标签最多 64 个。
 

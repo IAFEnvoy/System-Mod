@@ -9,6 +9,7 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.itemsource.ItemSourceProviders;
 import com.iafenvoy.system.util.CodecIO;
+import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Locale;
@@ -17,22 +18,31 @@ import java.util.Locale;
  * Returns the JSON description of the requested sources of one item.
  */
 public final class ItemSourceQueryModule extends BuiltinModule<ItemSourceQueryInput> {
-    public ItemSourceQueryModule(ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput> sources) {
+    private final ItemNameIndex names;
+
+    public ItemSourceQueryModule(ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput> sources, ItemNameIndex names) {
         super(ItemSourceQueryInput.CODEC, "List every recipe, loot table or item tag that yields one item registry ID.", List.of(sources), true, false, ExecutionPolicy.quick(2, 0));
+        this.names = names;
     }
 
     @Override
     public ModuleRouting<ItemSourceQueryInput> routing() {
         return ModuleRouting.<ItemSourceQueryInput>defaults()
+                // Item cards carry the registry ID, so the row never needs the player to retype it.
+                .button(arguments -> new ItemSourceQueryInput(arguments.required("item_id"), arguments.text("scope")))
                 .command(AgentCommand.identifierWithScope("item", "scope", ItemSourceProviders.scopes(),
                         (id, scope) -> new ItemSourceQueryInput(id.toString(), scope), "recipe", "配方", "来源"))
                 .semantic(RoutingProfile.read(text -> {
+                            String scope = scopeOf(text);
                             String id = CommandArguments.singleItemId(text);
-                            return id == null ? null : new ItemSourceQueryInput(id, scopeOf(text));
+                            if (id != null) return new ItemSourceQueryInput(id, scope);
+                            // A bare display name is enough: "how do I get a diamond pickaxe" needs no registry syntax.
+                            Identifier resolved = this.names.resolve(text);
+                            return resolved == null ? null : new ItemSourceQueryInput(resolved.toString(), scope);
                         },
-                        List.of("钻石镐的配方", "怎么做钻石镐", "钻石从哪获得", "钻石的掉落", "木板是什么标签"),
-                        List.of("Recipes for minecraft:diamond_pickaxe", "How do I craft a torch", "Where do I get diamonds",
-                                "Loot tables for minecraft:diamond", "Tags of minecraft:oak_planks")));
+                        List.of("钻石镐的配方", "怎么做钻石镐", "如何获取钻石镐", "钻石从哪获得", "钻石的掉落", "木板是什么标签"),
+                        List.of("Recipes for minecraft:diamond_pickaxe", "How do I craft a torch", "How do I obtain a diamond pickaxe",
+                                "Where do I get diamonds", "Loot tables for minecraft:diamond", "Tags of minecraft:oak_planks")));
     }
 
     /**

@@ -10,6 +10,7 @@
   "system.action.claim_starter_gift": "Claim starter gift",
   "system.action.refresh_starter_gift": "View gift",
   "system.action.deliver": "Move to inventory",
+  "system.action.item_sources": "How to obtain",
   "system.action.more_choices": "More choices",
   "system.action.more_description": "Continue quest description",
   "system.action.more_rewards": "More rewards",

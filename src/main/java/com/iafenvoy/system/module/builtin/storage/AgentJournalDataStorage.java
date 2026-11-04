@@ -6,11 +6,14 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.store.EventTask;
 import com.iafenvoy.system.agent.store.State;
 import com.iafenvoy.system.agent.store.Step;
+import com.iafenvoy.system.config.file.StorageConfig;
+import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -18,10 +21,9 @@ import java.util.stream.Stream;
 
 /**
  * Durable event tasks and idempotent tool receipts belong to the Agent execution subsystem.
+ * Both tables are capped by entry count and by encoded size, so one wide result cannot fill the player file.
  */
 public final class AgentJournalDataStorage extends DataStorage {
-    private static final int MAX_TASKS = 4096;
-    private static final int MAX_OPERATIONS = 8192;
     /**
      * Free one eighth of a full table so eviction stays amortised; terminal entries only.
      */
@@ -32,6 +34,10 @@ public final class AgentJournalDataStorage extends DataStorage {
     ).apply(i, AgentJournalDataStorage::new));
     private final Map<String, EventTask> tasks;
     private final Map<String, Step> operations;
+    // Sizes lag behind a decoded table; the first mutation measures every entry once.
+    private final Map<String, Integer> taskSizes = new LinkedHashMap<>();
+    private final Map<String, Integer> operationSizes = new LinkedHashMap<>();
+    private boolean measured;
 
     public AgentJournalDataStorage() {
         this(Map.of(), Map.of());
@@ -51,8 +57,10 @@ public final class AgentJournalDataStorage extends DataStorage {
     }
 
     public void putTask(String key, EventTask task) {
-        this.evictFinishedTasks();
+        this.measure();
         this.tasks.put(key, task);
+        this.taskSizes.put(key, size(EventTask.CODEC, task));
+        this.evictFinishedTasks();
         this.markDirty();
     }
 
@@ -64,11 +72,14 @@ public final class AgentJournalDataStorage extends DataStorage {
         EventTask task = this.tasks.get(key);
         if (task.state == state) return;
         task.state = state;
+        this.remeasureTask(key, task);
         this.markDirty();
     }
 
     public void completeTask(String key, AgentResult result) {
-        this.tasks.get(key).complete(result);
+        EventTask task = this.tasks.get(key);
+        task.complete(result);
+        this.remeasureTask(key, task);
         this.markDirty();
     }
 
@@ -81,6 +92,7 @@ public final class AgentJournalDataStorage extends DataStorage {
         task.workflowSteps = workflowSteps;
         task.writeSteps = writeSteps;
         task.tokens = tokens;
+        this.remeasureTask(key, task);
         this.markDirty();
     }
 
@@ -90,19 +102,31 @@ public final class AgentJournalDataStorage extends DataStorage {
 
     public void assertTaskCount() {
         // A full table still accepts new tasks once finished ones can be dropped; never fail for lack of space.
-        if (this.tasks.size() >= MAX_TASKS && this.tasks.values().stream().allMatch(EventTask::pending))
+        if (this.tasks.size() >= config().taskEntries() && this.tasks.values().stream().allMatch(EventTask::pending))
             throw new AgentException("STORAGE_FULL");
+    }
+
+    private void remeasureTask(String key, EventTask task) {
+        this.measure();
+        this.taskSizes.put(key, size(EventTask.CODEC, task));
+        this.evictFinishedTasks();
     }
 
     /**
      * Oldest first, finished only: an unfinished task is a crash-recovery marker and is never dropped here.
      */
     private void evictFinishedTasks() {
-        if (this.tasks.size() < MAX_TASKS) return;
-        int target = MAX_TASKS - MAX_TASKS / EVICT_DIVISOR;
+        int maxEntries = config().taskEntries(), maxBytes = config().taskBytes();
+        long bytes = this.total(this.taskSizes);
+        if (this.tasks.size() < maxEntries && bytes <= maxBytes) return;
+        int target = maxEntries - maxEntries / EVICT_DIVISOR;
         Iterator<Map.Entry<String, EventTask>> iterator = this.tasks.entrySet().iterator();
-        while (this.tasks.size() > target && iterator.hasNext())
-            if (!iterator.next().getValue().pending()) iterator.remove();
+        while (iterator.hasNext() && (this.tasks.size() > target || bytes > maxBytes)) {
+            Map.Entry<String, EventTask> entry = iterator.next();
+            if (entry.getValue().pending()) continue;
+            iterator.remove();
+            bytes -= this.taskSizes.remove(entry.getKey());
+        }
     }
 
     public Step getOperation(String key) {
@@ -110,8 +134,10 @@ public final class AgentJournalDataStorage extends DataStorage {
     }
 
     public void putOperation(String key, Step step) {
-        this.evictCompletedOperations();
+        this.measure();
         this.operations.put(key, step);
+        this.operationSizes.put(key, size(Step.CODEC, step));
+        this.evictCompletedOperations();
         this.markDirty();
     }
 
@@ -119,12 +145,15 @@ public final class AgentJournalDataStorage extends DataStorage {
         Step step = this.operations.get(key);
         step.state = State.DONE;
         step.result = result;
+        this.measure();
+        this.operationSizes.put(key, size(Step.CODEC, step));
+        this.evictCompletedOperations();
         this.markDirty();
     }
 
     public void assertOperationCount(String key) {
         // Only a table with no completed receipt to reclaim is genuinely full.
-        if (this.operations.size() >= MAX_OPERATIONS && !this.operations.containsKey(key)
+        if (this.operations.size() >= config().journalEntries() && !this.operations.containsKey(key)
                 && this.operations.values().stream().noneMatch(step -> step.state == State.DONE))
             throw new AgentException("STORAGE_FULL");
     }
@@ -133,15 +162,42 @@ public final class AgentJournalDataStorage extends DataStorage {
      * Oldest first, completed only: a RUNNING receipt is the crash marker that prevents a repeated write.
      */
     private void evictCompletedOperations() {
-        if (this.operations.size() < MAX_OPERATIONS) return;
-        int target = MAX_OPERATIONS - MAX_OPERATIONS / EVICT_DIVISOR;
+        int maxEntries = config().journalEntries(), maxBytes = config().journalBytes();
+        long bytes = this.total(this.operationSizes);
+        if (this.operations.size() < maxEntries && bytes <= maxBytes) return;
+        int target = maxEntries - maxEntries / EVICT_DIVISOR;
         Iterator<Map.Entry<String, Step>> iterator = this.operations.entrySet().iterator();
-        while (this.operations.size() > target && iterator.hasNext())
-            if (iterator.next().getValue().state == State.DONE) iterator.remove();
+        while (iterator.hasNext() && (this.operations.size() > target || bytes > maxBytes)) {
+            Map.Entry<String, Step> entry = iterator.next();
+            if (entry.getValue().state != State.DONE) continue;
+            iterator.remove();
+            bytes -= this.operationSizes.remove(entry.getKey());
+        }
     }
 
     public boolean hasCompletedOperation(String taskId) {
         return this.operations.entrySet().stream().anyMatch(entry -> entry.getKey().startsWith(taskId + ":") && entry.getValue().state == State.DONE);
+    }
+
+    private static StorageConfig config() {
+        return StorageConfig.INSTANCE.get();
+    }
+
+    private void measure() {
+        if (this.measured) return;
+        this.measured = true;
+        this.tasks.forEach((key, task) -> this.taskSizes.put(key, size(EventTask.CODEC, task)));
+        this.operations.forEach((key, step) -> this.operationSizes.put(key, size(Step.CODEC, step)));
+    }
+
+    private long total(Map<String, Integer> sizes) {
+        long total = 0;
+        for (int size : sizes.values()) total += size;
+        return total;
+    }
+
+    private static <T> int size(Codec<T> codec, T value) {
+        return CodecIO.write(codec, value).getBytes(StandardCharsets.UTF_8).length;
     }
 
     @Override
@@ -155,6 +211,12 @@ public final class AgentJournalDataStorage extends DataStorage {
         this.tasks.forEach((key, value) -> taskCopy.put(key, value.copy()));
         Map<String, Step> operationCopy = new LinkedHashMap<>();
         this.operations.forEach((key, value) -> operationCopy.put(key, value.copy()));
-        return new AgentJournalDataStorage(taskCopy, operationCopy);
+        AgentJournalDataStorage copy = new AgentJournalDataStorage(taskCopy, operationCopy);
+        copy.measured = this.measured;
+        if (this.measured) {
+            copy.taskSizes.putAll(this.taskSizes);
+            copy.operationSizes.putAll(this.operationSizes);
+        }
+        return copy;
     }
 }

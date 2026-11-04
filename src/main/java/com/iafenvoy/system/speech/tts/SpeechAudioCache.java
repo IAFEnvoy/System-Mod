@@ -124,7 +124,7 @@ final class SpeechAudioCache {
     }
 
     private static Path directory() {
-        return ConfigInstance.getConfigFolder().resolve("tts-cache");
+        return ConfigInstance.CONFIG_FOLDER.resolve("tts-cache");
     }
 
     private static MessageDigest digest() {

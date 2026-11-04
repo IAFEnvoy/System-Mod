@@ -45,11 +45,11 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 
 ## 玩家模块存储
 
-玩家私有记录位于 `<存档>/system-agent/<UUID>.json`。PlayerData.moduleData 使用 Saturn `DataStorageHolder<Identifier>`；Holder 键为 ServerModule ID，具体 Java 类型区分同一模块的多项存储，Codec 类型 ID 独立。
+玩家私有记录位于 `<存档>/system-agent/<UUID>.json`，对话与请求回放缓存在同目录的 `chat/<UUID>.dat`（NBT）；两者独立设上限并各自原子替换，缓存写不动不会阻塞业务写。PlayerData.moduleData 使用 Saturn `DataStorageHolder<Identifier>`；Holder 键为 ServerModule ID，具体 Java 类型区分同一模块的多项存储，Codec 类型 ID 独立。
 
 存储由 `ServerModule.storages()` 返回 ModuleStorage 声明，包含 owner、Codec ID、Java 类型、MapCodec 和工厂；声明从当前世界 system:system_module 的 server 配置读取；静态 SystemRegistries.SERVER_MODULE 只注册 MapCodec 类型。内置 Codec 由 SystemDataStorages 的 DeferredRegister 注册到 Saturn DATA_STORAGE_TYPE，扩展的 Codec 需另行注册。不同模块可以复用同一存储类型与 Codec；数据按 ModuleStorage.owner 区分，内置同类配置共用该功能账本。业务访问统一用 `ModuleData.get(data, SomeSystemModule.STORAGE)`，不要在 PlayerData 加功能访问器。完整声明与生命周期见[功能模块化](feature-modules.md#玩家生命周期)。
 
-内置 Storage 的集合字段保持 private，完整集合 getter 供 Codec 使用；业务在事务中通过 `getTask`、`putDelivery`、`streamPurchases` 等方法查询、写入和遍历，容量检查也封装在对应 Storage。集合增删、任务状态与预算、步骤回执、订单状态及发奖状态均通过 Storage 的修改方法调用 `markDirty()`；重复解锁、重复发奖和相同状态赋值不产生新的脏标记。读取返回的账本对象仅用于查询，新建对象在写入前可直接填充。跨存储的签到与发奖、扣款与订单提交继续在原事务中由调用方统一编排。
+内置 Storage 的集合字段保持 private，完整集合 getter 供 Codec 使用；业务在事务中通过 `getTask`、`putDelivery`、`streamPurchases` 等方法查询、写入和遍历，容量检查也封装在对应 Storage。集合增删、任务状态与预算、步骤回执、订单状态及发奖状态均通过 Storage 的修改方法调用 `markDirty()`；重复解锁、重复发奖和相同状态赋值不产生新的脏标记。事件任务与步骤回执同时受条数和编码字节数限制：超限时按插入顺序回收已终态条目，`QUEUED`/`RUNNING` 等崩溃恢复标记永不回收，只有整表都是未终态条目时才报 `STORAGE_FULL`。读取返回的账本对象仅用于查询，新建对象在写入前可直接填充。跨存储的签到与发奖、扣款与订单提交继续在原事务中由调用方统一编排。
 
 ModuleManager 统一处理模块启停、Session 创建/初始化/ready/tick/close、Saturn DataStorage tick 与异步保存。只向 Agent 和客户端发布已初始化的模块；旧连接、旧系统代次或已移除模块的回调不能重新激活会话。主线程存储 tick 只尝试内存事务，文件写入在维护线程合并执行；普通业务写事务继续原子落盘。读取和事务结果不暴露可变缓存引用，失败事务不污染已提交内存数据。停用保留签到、订单和幂等记录；revoke/reset 删除玩家文件及缓存，用量 SavedData 独立保留。
 

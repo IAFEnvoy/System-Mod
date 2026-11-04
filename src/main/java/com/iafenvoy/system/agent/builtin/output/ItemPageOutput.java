@@ -45,6 +45,10 @@ public record ItemPageOutput(String query, List<ItemInfoOutput> items, int nextO
         if (this.hasMore)
             builder.serverButton("next", "system.action.next", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_query"),
                     Map.of("query", this.query, "offset", Integer.toString(this.nextOffset)));
+        // A single match is a specific item lookup, so its card links to the source query without retyping the ID.
+        if (this.items.size() == 1)
+            builder.serverButton("sources", "system.action.item_sources", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_sources"),
+                    Map.of("item_id", this.items.getFirst().id()));
         return builder;
     }
 }

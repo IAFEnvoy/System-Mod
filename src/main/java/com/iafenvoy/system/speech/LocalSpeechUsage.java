@@ -52,8 +52,7 @@ public final class LocalSpeechUsage {
 
     public static Ledger current() {
         UUID player = Minecraft.getInstance().getUser().getProfileId();
-        return ACCOUNTS.computeIfAbsent(player, id -> new Ledger(ConfigInstance.getConfigFolder()
-                .resolve("speech-usage").resolve(id + ".json")));
+        return ACCOUNTS.computeIfAbsent(player, id -> new Ledger(ConfigInstance.CONFIG_FOLDER.resolve("speech-usage").resolve(id + ".json")));
     }
 
     public static Snapshot snapshot() {

@@ -4,7 +4,7 @@
 
 ## 作用域与文件
 
-每个存档的 AgentEngine 拥有一个 AgentDatabases，随服务端实例关闭，不能跨存档共享静态单例。
+每个存档由 AssistantServer 创建并关闭一个 AgentDatabases，通过 ModuleContext 注入查询工具和任务服务；AgentEngine 不持有业务数据库。不能跨存档共享静态单例。
 
 ```text
 <存档>/system-database/
@@ -13,12 +13,12 @@
     <玩家UUID>.json
 ```
 
-- **共享数据库**：`engine.databases().shared()`。同一存档所有玩家复用静态知识；FTB 说明书和任务背景分类均保存在这里。
-- **玩家独立数据库**：`engine.databases().player(uuid)`。每个 UUID 独立文件、数据表和内存索引，首次实际读写时加载，首次写入时建文件。问答读取当前玩家的私有知识，其他扩展仍可声明独立表；未把现有 PlayerData 或语音密钥搬进来。
+- **共享数据库**：`databases.shared()`。同一存档所有玩家复用静态知识；FTB 说明书和任务背景分类均保存在这里。
+- **玩家独立数据库**：`databases.player(uuid)`。每个 UUID 独立文件、数据表和内存索引，首次实际读写时加载，首次写入时建文件。问答读取当前玩家的私有知识，其他扩展仍可声明独立表；未把现有 PlayerData 或语音密钥搬进来。
 
 两个作用域使用相同的 AgentDatabase API，不会自动合并搜索或回退到其他玩家的数据。数据库入口属于可信服务端扩展接口；未来 Tool 必须从当前执行上下文取得玩家 UUID，不能直接接受模型提供的任意 UUID。共享知识也不意味着任何玩家都能阅读全部来源，权限仍由业务模块检查。
 
-独立数据库在 revoke / reset 时删除，旧句柄同时失效；共享库和累计用量不删除。关闭存档后所有已打开的数据库句柄失效。当前没有玩家独立数据库的用户界面、跨玩家查询或客户端同步入口。
+独立数据库在 revoke / reset 时删除，旧句柄同时失效（由服务端注册的 AgentLifecycle.revoked 钩子处理）；共享库和累计用量不删除。关闭存档后所有已打开的数据库句柄失效。当前没有玩家独立数据库的用户界面、跨玩家查询或客户端同步入口。
 
 ## 类型化数据表
 
@@ -28,9 +28,9 @@
 public static final DatabaseTable<String> NOTES = new DatabaseTable<>(
         Identifier.fromNamespaceAndPath("example", "notes"), Codec.STRING);
 
-// All database operations run on workers, including the first read.
+// Capture databases from ModuleContext at installation; all file access stays on workers.
 engine.maintenance(() -> {
-    AgentDatabase database = engine.databases().player(playerId);
+    AgentDatabase database = databases.player(playerId);
     database.put(NOTES, "home", "A private note");
     return database.get(NOTES, "home");
 });
@@ -51,8 +51,8 @@ FTB 的表 ID 为 `system:ftb_guides`，背景判定为 `system:quest_background
 
 ```java
 engine.maintenance(() -> {
-    engine.databases().shared().put(DatabaseQueryTool.KNOWLEDGE, "zh_cn", publicDocuments);
-    engine.databases().player(playerId).put(DatabaseQueryTool.KNOWLEDGE, "zh_cn", privateDocuments);
+    databases.shared().put(DatabaseQueryTool.KNOWLEDGE, "zh_cn", publicDocuments);
+    databases.player(playerId).put(DatabaseQueryTool.KNOWLEDGE, "zh_cn", privateDocuments);
     return null;
 });
 ```

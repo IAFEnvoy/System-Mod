@@ -1,7 +1,7 @@
 package com.iafenvoy.system.module.builtin;
 
-import com.iafenvoy.system.agent.builtin.input.InboxInput;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.data.input.InboxInput;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
 

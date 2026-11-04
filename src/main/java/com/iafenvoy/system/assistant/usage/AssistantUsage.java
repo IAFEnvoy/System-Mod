@@ -6,6 +6,7 @@ import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
+import com.iafenvoy.system.search.SearchGateway;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.Permissions;
@@ -27,11 +28,11 @@ public final class AssistantUsage {
     private final Map<UUID, String> usageNames = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastUsageRequest = new HashMap<>();
 
-    public AssistantUsage(MinecraftServer server, AgentEngine engine) {
+    public AssistantUsage(MinecraftServer server, AgentEngine engine, SearchGateway search) {
         this.tokenUsage = server.getDataStorage().computeIfAbsent(TokenUsageData.TYPE);
         engine.onModelUsage((player, usage, successful, time) -> this.pendingUsage.add(new UsageRecord(
                 player, this.usageNames.getOrDefault(player, player.toString()), usage, successful, time)));
-        engine.search().onUsage((player, fetch, successful, billable, unknown, nanoYuan, time) -> this.pendingSearch.add(new SearchRecord(
+        search.onUsage((player, fetch, successful, billable, unknown, nanoYuan, time) -> this.pendingSearch.add(new SearchRecord(
                 player, this.usageNames.getOrDefault(player, player.toString()), fetch, successful, billable, unknown, nanoYuan, time)));
     }
 

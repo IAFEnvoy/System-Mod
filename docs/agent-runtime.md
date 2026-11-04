@@ -1,12 +1,12 @@
 # Agent 运行结构与扩展
 
-Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类型、单行为 Tool、组合流程的 `AgentModule`，以及工作流自己的入口信息；外层 `ServerModule` / `ClientModule` 通过 ToolModule、WorkflowModule、SharedModule、CoreModule 子接口区分纯工具、服务端工作流、双端业务和核心基础设施，见[功能模块化](feature-modules.md)。指令解析器和路由器不包含模块 ID 的业务 switch。
+`com.iafenvoy.system.agent` 只负责执行、路由、预算、会话记忆与 Agent 契约。具体工作流位于 `module.builtin.<功能>`，Minecraft 业务、主线程桥接和游戏 Tool 位于 `assistant`，数据与加载位于 `data`，任务文案和语音行为位于 `speech`。完整依赖方向及扩展入口见[包职责与数据流](architecture.md)。指令解析器和路由器不包含模块 ID 的业务 switch。
 
-外层内置模块及辅助类统一放在 `com.iafenvoy.system.module.builtin`，内置 DataStorage 实现统一放在其 `storage` 子包；接口、ModuleManager 和通用存储访问工具继续保留在 `module` 根包。Agent 内部的 `agent.builtin.<功能>` 仍按工作流和工具业务归类。
+外层内置模块定义位于 `module.builtin`；其业务 DataStorage 位于 `module.builtin.storage`。Agent 执行账本的接口 `AgentJournal` 留在 `agent`，实现 `AgentJournalDataStorage` 与文件存储位于 `data.store`，在服务端装配时注入。`AgentStore` 同样只声明事务接口；引擎不直接依赖 CoreSystemModule、Saturn 存储实现或具体功能模块。
 
-根包集中引擎、执行器、上下文、Module/Tool 契约、注册表、指令与请求结果。路由、模型、存储、商城和提示词分别归入 `routing`、`model`、`store`、`commerce`、`prompt`，各包同时包含自身的接口、数据与实现。内置工作流与工具位于 `builtin/<功能>`；共享类型键、输入及输出分别保留在 `builtin.tool`、`builtin.input`、`builtin.output`。共用 Codec、Schema 和 JSON 工具直接位于外层 `com.iafenvoy.system.util`，配置位于 `com.iafenvoy.system.config`。
+Agent 根包保留引擎、执行器、上下文、Module/Tool 契约、注册表、指令与请求结果；`routing`、`model`、`request`、`response` 分别保存对应协议和实现。`AbstractAgentModule` 为具体工作流提供注册 ID、Schema 与工具白名单的共用实现。业务输入输出统一放在 `data.input` / `data.output`，共享工具键放在 `module.builtin.BuiltinTools`。共用 Codec、Schema 和 HTTP 工具继续放在外层 `util`。
 
-执行配置、模型连接、语义路由与成就绑定分别由 `AgentSettings`、`ModelSettings`、`SemanticSettings`、`AdvancementSettings` 管理，各配置类保存 `ConfigInstance<T> INSTANCE`。容器统一复制缺失的默认文件并解析，读取使用 `INSTANCE.get()`，提交使用 `INSTANCE.set(next)` 并自动 `markDirty()`，由 tick 或关闭事件保存。资源重载会更新容器；引擎、模型客户端与 MC 事件桥接仍持有启动时快照，完整应用其变化需要重启。引擎接收执行配置、语义配置和已经过数据包校验的 `CommerceCatalog`；模型客户端只接收 `ModelSettings`，不再通过 `AgentSettings` 访问业务定义。
+执行预算、模型连接、语义路由与成就规则由 `AgentConfig`、`ModelConfig`、`SemanticConfig`、`AdvancementConfig` 的 ConfigInstance 管理，读取使用 `INSTANCE.get()`，提交使用 `INSTANCE.set(next)` 并自动标记保存。引擎构造只接收 AgentStore、ModelClient 与事务账本解析函数；商城目录、搜索、数据库与任务口播由 AssistantServer 装配，通过 ModuleContext 注入需要它们的模块。配置的动态读取与启动时快照仍遵循各使用方原有行为。
 
 ## 一次注册，多种入口
 
@@ -27,7 +27,11 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 
 | 类型 | 负责 |
 | --- | --- |
-| `AgentEngine` | 服务与玩家生命周期、公开入口、统一模块执行 |
+| `AgentEngine` | 执行生命周期、公开入口、统一模块执行与失效代次；不拥有具体业务服务 |
+| `AgentStore` / `AgentJournal` | 玩家事务与执行回执接口，由宿主注入实现 |
+| `AgentLifecycle` | 撤销、断线和权限变化钩子，业务自行清理缓存 |
+| `AssistantBindings` / `CommerceTransactions` | 绑定与删除业务数据、交易及其报价；均位于 assistant |
+| `ModuleContext` | 安装时显式提供游戏、交易、目录、数据库、搜索和任务口播服务 |
 | `InteractiveExecutor` | 交互队列、玩家独占、取消、指纹去重与历史写回 |
 | `EventExecutor` | 持久事件、规则授权、状态变更、恢复和事件去重 |
 | `ConversationService` | 清空历史、偏好与有界历史读取 |
@@ -49,7 +53,7 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 
 存储由 `ServerModule.storages()` 返回 ModuleStorage 声明，包含 owner、Codec ID、Java 类型、MapCodec 和工厂；声明从当前世界 system:system_module 的 server 配置读取；静态 SystemRegistries.SERVER_MODULE 只注册 MapCodec 类型。内置 Codec 由 SystemDataStorages 的 DeferredRegister 注册到 Saturn DATA_STORAGE_TYPE，扩展的 Codec 需另行注册。不同模块可以复用同一存储类型与 Codec；数据按 ModuleStorage.owner 区分，内置同类配置共用该功能账本。业务访问统一用 `ModuleData.get(data, SomeSystemModule.STORAGE)`，不要在 PlayerData 加功能访问器。完整声明与生命周期见[功能模块化](feature-modules.md#玩家生命周期)。
 
-内置 Storage 的集合字段保持 private，完整集合 getter 供 Codec 使用；业务在事务中通过 `getTask`、`putDelivery`、`streamPurchases` 等方法查询、写入和遍历，容量检查也封装在对应 Storage。集合增删、任务状态与预算、步骤回执、订单状态及发奖状态均通过 Storage 的修改方法调用 `markDirty()`；重复解锁、重复发奖和相同状态赋值不产生新的脏标记。事件任务与步骤回执同时受条数和编码字节数限制：超限时按插入顺序回收已终态条目，`QUEUED`/`RUNNING` 等崩溃恢复标记永不回收，只有整表都是未终态条目时才报 `STORAGE_FULL`。读取返回的账本对象仅用于查询，新建对象在写入前可直接填充。跨存储的签到与发奖、扣款与订单提交继续在原事务中由调用方统一编排。
+除位于 `data.store` 的 Agent 执行账本外，内置业务 Storage 位于 `module.builtin.storage`。Storage 的集合字段保持 private，完整集合 getter 供 Codec 使用；业务在事务中通过 `getTask`、`putDelivery`、`streamPurchases` 等方法查询、写入和遍历，容量检查也封装在对应 Storage。集合增删、任务状态与预算、步骤回执、订单状态及发奖状态均通过 Storage 的修改方法调用 `markDirty()`；重复解锁、重复发奖和相同状态赋值不产生新的脏标记。事件任务与步骤回执同时受条数和编码字节数限制：超限时按插入顺序回收已终态条目，`QUEUED`/`RUNNING` 等崩溃恢复标记永不回收，只有整表都是未终态条目时才报 `STORAGE_FULL`。读取返回的账本对象仅用于查询，新建对象在写入前可直接填充。跨存储的签到与发奖、扣款与订单提交继续在原事务中由调用方统一编排。
 
 ModuleManager 统一处理模块启停、Session 创建/初始化/ready/tick/close、Saturn DataStorage tick 与异步保存。只向 Agent 和客户端发布已初始化的模块；旧连接、旧系统代次或已移除模块的回调不能重新激活会话。主线程存储 tick 只尝试内存事务，文件写入在维护线程合并执行；普通业务写事务继续原子落盘。读取和事务结果不暴露可变缓存引用，失败事务不污染已提交内存数据。停用保留签到、订单和幂等记录；revoke/reset 删除玩家文件及缓存，用量 SavedData 独立保留。
 
@@ -112,7 +116,7 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 
 不要给 Tool 增加 `operation` 字段来分派一组行为。同一工具由多个模块使用时，复用同一个实例和 `ToolRegistry.Type`。写工具声明幂等及事件权限；恢复时稳定的 `stepId` 对应既有回执，已完成操作不会重复执行。存档只保留一份全局操作回执，不额外保留未使用的任务内步骤表。
 
-事件任务和写步骤回执共用 `State` 枚举（`agent.store` 包）。事件缺省为 `QUEUED`，执行中为 `RUNNING`，玩家离线时为 `WAITING`，这三种状态允许恢复；终态按执行结果记录为 `SUCCEEDED`、`FAILED` 或 `PARTIALLY_SUCCEEDED`。步骤缺省为 `RUNNING`，表示已记录执行意图但未确认结果；`DONE` 表示结果已持久化、可按原结果 Codec 回放。存档仍使用同名字符串；显式无效状态由 Codec 拒绝，不把未知业务状态当作新操作重试。未完成的非幂等工具仍报告 EFFECT_UNKNOWN。
+事件任务和写步骤回执共用 `State` 枚举（`data.store` 包）。事件缺省为 `QUEUED`，执行中为 `RUNNING`，玩家离线时为 `WAITING`，这三种状态允许恢复；终态按执行结果记录为 `SUCCEEDED`、`FAILED` 或 `PARTIALLY_SUCCEEDED`。步骤缺省为 `RUNNING`，表示已记录执行意图但未确认结果；`DONE` 表示结果已持久化、可按原结果 Codec 回放。存档仍使用同名字符串；显式无效状态由 Codec 拒绝，不把未知业务状态当作新操作重试。未完成的非幂等工具仍报告 EFFECT_UNKNOWN。
 
 Descriptor 的 `tools` 为必需工具，`optionalTools` 为可选只读工具 ID，二者不能重叠。可选项只在导出模块已启用时才能调用，缺席不会禁用本地工作流，也不自动注册处理器或授予模块。ExecutionContext.tool 同时检查声明、导出模块权限与只读属性；必需和可选调用共用原有工具 / 步数预算。知识问答使用该机制接入 FTB 说明书与网页搜索。
 

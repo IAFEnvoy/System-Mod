@@ -2,6 +2,7 @@ package com.iafenvoy.system.agent.model;
 
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.config.file.ModelConfig;
+import com.iafenvoy.system.data.store.Message;
 import com.iafenvoy.system.util.CodecIO;
 import com.iafenvoy.system.util.HttpTransport;
 

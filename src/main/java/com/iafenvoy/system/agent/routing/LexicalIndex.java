@@ -14,6 +14,13 @@ public final class LexicalIndex<T> {
     }
 
     public record Ranking<T>(List<Match<T>> matches, boolean hasTopic, boolean writeRequest) {
+        public Match<T> first() {
+            return this.matches.isEmpty() ? null : this.matches.getFirst();
+        }
+
+        public double margin() {
+            return this.matches.size() < 2 ? 0 : this.matches.getFirst().score() - this.matches.get(1).score();
+        }
     }
 
     private record Document<T>(T value, String language, LexicalEncoder.Features features) {

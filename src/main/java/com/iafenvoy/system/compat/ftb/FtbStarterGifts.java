@@ -2,7 +2,7 @@ package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
+import com.iafenvoy.system.data.output.StarterGiftOutput;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;

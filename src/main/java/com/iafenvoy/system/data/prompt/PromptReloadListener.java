@@ -1,7 +1,6 @@
 package com.iafenvoy.system.data.prompt;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;

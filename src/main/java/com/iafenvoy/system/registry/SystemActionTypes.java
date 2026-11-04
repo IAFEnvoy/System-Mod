@@ -2,7 +2,7 @@ package com.iafenvoy.system.registry;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentAction;
-import com.iafenvoy.system.agent.builtin.input.*;
+import com.iafenvoy.system.data.input.*;
 import com.mojang.serialization.MapCodec;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;

@@ -1,19 +1,13 @@
 package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.builtin.BuiltinTools;
-import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.model.ModelClient;
-import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.routing.RouteSource;
-import com.iafenvoy.system.agent.store.AgentStore;
-import com.iafenvoy.system.agent.store.EventTask;
-import com.iafenvoy.system.agent.store.State;
-import com.iafenvoy.system.agent.store.Step;
 import com.iafenvoy.system.config.file.AgentConfig;
-import com.iafenvoy.system.module.ModuleData;
-import com.iafenvoy.system.module.builtin.CoreSystemModule;
-import com.iafenvoy.system.module.builtin.storage.AgentJournalDataStorage;
+import com.iafenvoy.system.data.prompt.SystemPrompts;
+import com.iafenvoy.system.data.store.EventTask;
+import com.iafenvoy.system.data.store.State;
+import com.iafenvoy.system.data.store.Step;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
@@ -55,7 +49,7 @@ public final class ExecutionContext {
     private ExecutionPolicy policy;
     private long expires;
     private int models, tools, steps, writes, tokens;
-    private boolean webSearchAuthorized;
+    private final Set<String> authorizedExternalTools = new HashSet<>();
 
     ExecutionContext(AgentEngine engine, UUID player, String taskId, String eventKey,
                      long started, long epoch, ExecutionPolicy initial, AgentStore store, long incarnation) {
@@ -73,7 +67,7 @@ public final class ExecutionContext {
         this.policy = initial;
         this.expires = started + initial.ttlMillis();
         if (eventKey != null) store.read(player, data -> {
-            EventTask task = ModuleData.get(data, CoreSystemModule.JOURNAL).getTask(eventKey);
+            EventTask task = this.engine.journal(data).getTask(eventKey);
             this.eventOwner = task.owner;
             this.models = task.modelCalls;
             this.tools = task.toolCalls;
@@ -91,7 +85,7 @@ public final class ExecutionContext {
         this.owner = owner;
         this.module = descriptor;
         this.policy = value;
-        this.webSearchAuthorized = false;
+        this.authorizedExternalTools.clear();
         // Routing time remains charged, but selecting a slow module may use its own deadline.
         this.expires = this.started + value.ttlMillis();
         if (this.models > value.modelCalls() || this.tokens > value.totalTokens())
@@ -153,14 +147,6 @@ public final class ExecutionContext {
         return this.store;
     }
 
-    public CommerceCatalog catalog() {
-        return this.engine.catalog();
-    }
-
-    public CommerceCatalog availableCatalog() {
-        return this.engine.availableCatalog(this.player);
-    }
-
     public List<String> commandUsages() {
         return this.engine.modules().commands().usages(this::available);
     }
@@ -187,19 +173,23 @@ public final class ExecutionContext {
     }
 
     /**
-     * The trusted question workflow opens this gate only after an empty local result and current consent.
+     * Trusted workflows authorize optional paid tools only after their own business preconditions succeed.
      */
-    public void authorizeWebSearch() {
+    public void authorizeExternalTools(ToolRegistry.Type<?, ?>... types) {
         if (this.isEvent()) throw new AgentException("NOT_AUTHORIZED");
-        this.webSearchAuthorized = true;
-        this.requireWebSearch();
+        this.requireExternalServices();
+        for (ToolRegistry.Type<?, ?> type : types)
+            if (!this.toolAvailable(type)) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        for (ToolRegistry.Type<?, ?> type : types) this.authorizedExternalTools.add(type.id());
     }
 
-    public void requireWebSearch() {
+    public void requireExternalTools(ToolRegistry.Type<?, ?>... types) {
         this.requireExternalServices();
-        if (!this.webSearchAuthorized) throw new AgentException("NOT_AUTHORIZED");
-        if (!this.toolAvailable(BuiltinTools.WEB_SEARCH) || !this.toolAvailable(BuiltinTools.WEB_FETCH))
-            throw new AgentException("CAPABILITY_UNAVAILABLE");
+        if (this.isEvent()) throw new AgentException("NOT_AUTHORIZED");
+        for (ToolRegistry.Type<?, ?> type : types) {
+            if (!this.authorizedExternalTools.contains(type.id())) throw new AgentException("NOT_AUTHORIZED");
+            if (!this.toolAvailable(type)) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        }
     }
 
     public long remainingMillis() {
@@ -245,7 +235,7 @@ public final class ExecutionContext {
     private void persist() {
         if (!this.isEvent()) return;
         this.store().update(this.player, data -> {
-            ModuleData.get(data, CoreSystemModule.JOURNAL).updateTaskUsage(this.eventKey,
+            this.engine.journal(data).updateTaskUsage(this.eventKey,
                     this.models, this.tools, this.steps, this.writes, this.tokens);
             return null;
         });
@@ -332,7 +322,7 @@ public final class ExecutionContext {
         // Replay completed writes by task/step; an unfinished non-idempotent write has an unknown effect.
         if (tool.write()) {
             Dynamic<?> previous = this.store().read(this.player, data -> {
-                Step receipt = ModuleData.get(data, CoreSystemModule.JOURNAL).getOperation(operationKey);
+                Step receipt = this.engine.journal(data).getOperation(operationKey);
                 if (receipt == null) return null;
                 if (!fingerprint.equals(receipt.fingerprint)) throw new AgentException("INVALID_INPUT");
                 if (receipt.state == State.DONE) return receipt.result;
@@ -349,7 +339,7 @@ public final class ExecutionContext {
         this.persist();
         // Persist RUNNING before invoking a write so a crash cannot silently turn it into a fresh operation.
         if (tool.write()) this.store().update(this.player, data -> {
-            AgentJournalDataStorage storage = ModuleData.get(data, CoreSystemModule.JOURNAL);
+            AgentJournal storage = this.engine.journal(data);
             storage.assertOperationCount(operationKey);
             Step receipt = new Step();
             receipt.fingerprint = fingerprint;
@@ -364,7 +354,7 @@ public final class ExecutionContext {
                 if (!this.engine.toolAvailable(this.player, id)) throw new AgentException("CAPABILITY_UNAVAILABLE");
             }
             if (tool.write()) this.store().update(this.player, data -> {
-                ModuleData.get(data, CoreSystemModule.JOURNAL).completeOperation(operationKey,
+                this.engine.journal(data).completeOperation(operationKey,
                         new Dynamic<>(JsonOps.INSTANCE, type.resultCodec().encodeStart(JsonOps.INSTANCE, result).getOrThrow()));
                 return null;
             });
@@ -393,6 +383,6 @@ public final class ExecutionContext {
     public boolean hasCompletedSteps() {
         if (!this.completedLocalSteps.isEmpty()) return true;
         // A resumed event may fail before reaching a write already completed in an earlier run.
-        return this.isEvent() && this.store().read(this.player, data -> ModuleData.get(data, CoreSystemModule.JOURNAL).hasCompletedOperation(this.taskId));
+        return this.isEvent() && this.store().read(this.player, data -> this.engine.journal(data).hasCompletedOperation(this.taskId));
     }
 }

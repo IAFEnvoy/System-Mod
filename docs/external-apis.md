@@ -55,8 +55,8 @@ DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的�
 - [模型 HTTP 客户端](../src/main/java/com/iafenvoy/system/agent/model/OpenAiCompatibleClient.java)
 - [模型连接配置](../src/main/java/com/iafenvoy/system/config/file/ModelConfig.java)
 - [意图路由](../src/main/java/com/iafenvoy/system/agent/routing/HybridRouter.java)
-- [签到模型输入](../src/main/java/com/iafenvoy/system/agent/builtin/signin/SignInDecision.java)
-- [任务播报整理](../src/main/java/com/iafenvoy/system/agent/QuestNarration.java) / [背景筛选缓存](../src/main/java/com/iafenvoy/system/agent/QuestBackgrounds.java)
+- [签到模型输入](../src/main/java/com/iafenvoy/system/data/output/SignInDecision.java)
+- [任务播报整理](../src/main/java/com/iafenvoy/system/speech/quest/QuestNarration.java) / [背景筛选缓存](../src/main/java/com/iafenvoy/system/speech/quest/QuestBackgrounds.java)
 
 ## 2. 客户端 TTS API
 

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.screen.card.node;
 
-import com.iafenvoy.system.agent.builtin.output.PlayerInformationOutput;
 import com.iafenvoy.system.data.card.CardContext;
+import com.iafenvoy.system.data.output.PlayerInformationOutput;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.iafenvoy.system.screen.card.CardRenderer;
 import com.iafenvoy.system.screen.gui.AssistantView;

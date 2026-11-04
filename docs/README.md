@@ -8,6 +8,7 @@
 | [模型接口与 DeepSeek 兼容](model-api.md) | OpenAI Chat Completions、提供商配置、DeepSeek 思考参数与用量格式 |
 | [数据库优先问答与网页搜索](search-api.md) | 当前玩家 / 共享知识、授权说明书、空结果与本次联网许可、可选搜索工具、预算和按次计费 |
 | [外部 API 请求清单](external-apis.md) | 模组与独立音色工具访问的接口、客户端/服务端归属、触发条件和发送的数据 |
+| [包职责与数据流](architecture.md) | Agent / assistant / data / module / speech 边界、依赖注入、线程与关闭顺序 |
 | [开发与架构](development.md) | Agent 包组织、模块与工具接口、预算、持久化、MC 接入和当前限制 |
 | [功能模块化](feature-modules.md) | 功能装配、两端指令、生命周期、页面/通知/口播注册与可选集成 |
 | [FTB Quests 跨版本修复记录](ftb-quests-porting.md) | 1.21.1 标题 / 勾选礼包 / 领奖修复，以及待同步到 26.1.2 的入口与 API 差异 |

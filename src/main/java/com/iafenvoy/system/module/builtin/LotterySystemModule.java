@@ -4,20 +4,19 @@ import com.iafenvoy.saturn.util.codec.RegistryCodecs;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.ToolRegistry;
-import com.iafenvoy.system.agent.builtin.BuiltinTools;
-import com.iafenvoy.system.agent.builtin.CommercePreviewTool;
-import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
-import com.iafenvoy.system.agent.builtin.lottery.LotteryDrawModule;
-import com.iafenvoy.system.agent.builtin.lottery.LotteryDrawTool;
-import com.iafenvoy.system.agent.builtin.lottery.LotteryModule;
-import com.iafenvoy.system.agent.builtin.lottery.LotteryPreviewModule;
-import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
-import com.iafenvoy.system.agent.commerce.PurchaseType;
+import com.iafenvoy.system.assistant.tool.CommercePreviewTool;
+import com.iafenvoy.system.assistant.tool.lottery.LotteryDrawTool;
 import com.iafenvoy.system.data.LotteryPool;
+import com.iafenvoy.system.data.input.CommercePreviewInput;
+import com.iafenvoy.system.data.output.CommercePreviewOutput;
+import com.iafenvoy.system.data.store.PurchaseType;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;
+import com.iafenvoy.system.module.builtin.lottery.LotteryDrawModule;
+import com.iafenvoy.system.module.builtin.lottery.LotteryModule;
+import com.iafenvoy.system.module.builtin.lottery.LotteryPreviewModule;
 import com.iafenvoy.system.module.builtin.storage.CommerceDataStorage;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.datafixers.util.Either;
@@ -71,6 +70,6 @@ public record LotterySystemModule(
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
         ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview = context.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(context.commerce()).tool());
-        return List.of(new LotteryModule(), new LotteryPreviewModule(preview), new LotteryDrawModule(new LotteryDrawTool(context.commerce()).tool()));
+        return List.of(new LotteryModule(context.catalogs()), new LotteryPreviewModule(context.catalogs(), preview), new LotteryDrawModule(new LotteryDrawTool(context.commerce()).tool()));
     }
 }

@@ -3,7 +3,6 @@ package com.iafenvoy.system.speech.tts;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.screen.card.CardPresentation;
 
-
 /**
  * Feature-owned narration is shared by assistant pages and HUD notifications.
  */

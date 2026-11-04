@@ -1,6 +1,6 @@
 package com.iafenvoy.system.compat.ftb.client;
 
-import com.iafenvoy.system.agent.builtin.output.QuestIconOutput;
+import com.iafenvoy.system.data.output.QuestIconOutput;
 import com.iafenvoy.system.screen.gui.AssistantTooltip;
 import com.iafenvoy.system.util.LegacyText;
 import com.mojang.blaze3d.vertex.PoseStack;

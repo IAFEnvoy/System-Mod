@@ -2,13 +2,14 @@ package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentModule;
-import com.iafenvoy.system.agent.builtin.advancement.AdvancementFollowupModule;
-import com.iafenvoy.system.agent.builtin.advancement.FeatureUnlockTool;
-import com.iafenvoy.system.agent.builtin.advancement.RewardCreditTool;
+import com.iafenvoy.system.assistant.AdvancementTracker;
+import com.iafenvoy.system.assistant.tool.advancement.FeatureUnlockTool;
+import com.iafenvoy.system.assistant.tool.advancement.RewardCreditTool;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.module.WorkflowModule;
+import com.iafenvoy.system.module.builtin.advancement.AdvancementFollowupModule;
 import com.iafenvoy.system.module.builtin.storage.AdvancementDataStorage;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
@@ -32,7 +33,7 @@ public final class AdvancementSystemModule implements WorkflowModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new AdvancementFollowupModule(new FeatureUnlockTool().tool(), new RewardCreditTool().tool()));
+        return List.of(new AdvancementFollowupModule(context.catalogs(), new FeatureUnlockTool().tool(), new RewardCreditTool().tool()));
     }
 
     @Override

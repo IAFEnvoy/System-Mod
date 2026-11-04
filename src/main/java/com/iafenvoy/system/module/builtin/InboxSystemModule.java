@@ -2,10 +2,10 @@ package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentModule;
-import com.iafenvoy.system.agent.builtin.inbox.DeliverModule;
-import com.iafenvoy.system.agent.builtin.inbox.DeliverTool;
-import com.iafenvoy.system.agent.builtin.inbox.InboxModule;
+import com.iafenvoy.system.assistant.tool.inbox.DeliverTool;
 import com.iafenvoy.system.module.*;
+import com.iafenvoy.system.module.builtin.inbox.DeliverModule;
+import com.iafenvoy.system.module.builtin.inbox.InboxModule;
 import com.iafenvoy.system.module.builtin.storage.InboxDataStorage;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
@@ -30,7 +30,7 @@ public final class InboxSystemModule implements SharedModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new InboxModule(context.modules()), new DeliverModule(new DeliverTool(context.engine(), context.game()).tool()));
+        return List.of(new InboxModule(context.catalogs(), context.modules()), new DeliverModule(new DeliverTool(context.engine(), context.game()).tool()));
     }
 
     @Override

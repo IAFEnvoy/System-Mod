@@ -1,8 +1,8 @@
 package com.iafenvoy.system.data.catalog;
 
 import com.iafenvoy.saturn.data.cost.Cost;
-import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.data.EnabledEntry;
+import com.iafenvoy.system.data.store.Reward;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;

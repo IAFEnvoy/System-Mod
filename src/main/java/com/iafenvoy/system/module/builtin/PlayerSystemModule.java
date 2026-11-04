@@ -3,13 +3,12 @@ package com.iafenvoy.system.module.builtin;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.ToolRegistry;
-import com.iafenvoy.system.agent.builtin.BuiltinTools;
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
-import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
-import com.iafenvoy.system.agent.builtin.player.PlayerQueryModule;
-import com.iafenvoy.system.agent.builtin.player.PlayerQueryTool;
+import com.iafenvoy.system.assistant.tool.player.PlayerQueryTool;
+import com.iafenvoy.system.data.input.EmptyInput;
+import com.iafenvoy.system.data.output.PlayerSnapshotOutput;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.SharedModule;
+import com.iafenvoy.system.module.builtin.player.PlayerQueryModule;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 

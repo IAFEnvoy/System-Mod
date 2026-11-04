@@ -2,10 +2,10 @@ package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.ToolRegistry;
-import com.iafenvoy.system.agent.builtin.search.WebFetchTool;
-import com.iafenvoy.system.agent.builtin.search.WebSearchTool;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ToolModule;
+import com.iafenvoy.system.module.builtin.search.WebFetchTool;
+import com.iafenvoy.system.module.builtin.search.WebSearchTool;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 
@@ -25,6 +25,6 @@ public final class SearchSystemModule implements ToolModule {
 
     @Override
     public List<ToolRegistry.Tool<?, ?>> tools(ModuleContext context) {
-        return List.of(new WebSearchTool(context.engine().search()).tool(), new WebFetchTool(context.engine().search()).tool());
+        return List.of(new WebSearchTool(context.search()).tool(), new WebFetchTool(context.search()).tool());
     }
 }

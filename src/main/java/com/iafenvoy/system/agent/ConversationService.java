@@ -1,9 +1,9 @@
 package com.iafenvoy.system.agent;
 
 import com.iafenvoy.saturn.util.MiscUtil;
-import com.iafenvoy.system.agent.store.AgentStore;
-import com.iafenvoy.system.agent.store.Message;
+import com.iafenvoy.system.data.History;
 import com.iafenvoy.system.data.card.CardUpdate;
+import com.iafenvoy.system.data.store.Message;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.JsonOps;
 

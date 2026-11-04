@@ -2,10 +2,12 @@ package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
-import com.iafenvoy.system.agent.builtin.output.*;
 import com.iafenvoy.system.assistant.MinecraftTools;
+import com.iafenvoy.system.data.database.AgentDatabase;
+import com.iafenvoy.system.data.input.QuestDetailInput;
+import com.iafenvoy.system.data.output.*;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
@@ -32,10 +34,15 @@ final class FtbQuestAccess {
     final FtbStarterGifts gifts = new FtbStarterGifts();
     final FtbQuestKnowledge knowledge;
 
-    FtbQuestAccess(AgentEngine engine, MinecraftTools game) {
+    FtbQuestAccess(AgentEngine engine, MinecraftTools game, AgentDatabase database) {
         this.game = game;
-        this.knowledge = FtbQuestNotifications.knowledge(engine, game.server());
-        engine.onRevoke(this::clear);
+        this.knowledge = FtbQuestNotifications.knowledge(engine, database, game.server());
+        engine.lifecycle(new AgentLifecycle() {
+            @Override
+            public void revoked(UUID player) {
+                FtbQuestAccess.this.clear(player);
+            }
+        });
     }
 
     void clear(UUID player) {

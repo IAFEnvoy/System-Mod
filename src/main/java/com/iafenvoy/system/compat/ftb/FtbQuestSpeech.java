@@ -1,11 +1,12 @@
 package com.iafenvoy.system.compat.ftb;
 
+
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.QuestNarration;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.data.card.SpeechContent;
 import com.iafenvoy.system.module.builtin.QuestSystemModule;
+import com.iafenvoy.system.speech.quest.QuestNarration;
 import com.iafenvoy.system.util.LegacyText;
 import com.iafenvoy.system.util.TypeDispatch;
 import dev.ftb.mods.ftbquests.integration.item_filtering.ItemMatchingSystem;
@@ -78,7 +79,7 @@ final class FtbQuestSpeech implements QuestNarration.Source {
         Component main = Component.translatable("system.tts.message.quest_" + event, FtbQuestText.title(player, quest));
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
         return runtime == null ? SpeechContent.of(main)
-                : runtime.engine().questNarration().content(player.getUUID(), FtbQuestAccess.hex(quest.getId()), snapshot(player, team, quest), main);
+                : runtime.narration().content(player.getUUID(), FtbQuestAccess.hex(quest.getId()), snapshot(player, team, quest), main);
     }
 
     private static QuestNarration.Line unknown(ServerPlayer player, Task task) {

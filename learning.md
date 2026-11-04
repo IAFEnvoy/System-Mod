@@ -1,6 +1,6 @@
 # Agent 快速索引
 
-从 [README](README.md)、[中文 README](README-zh.md) 的版本信息与文档导航整理，供恢复上下文时快速定位。整理日期：2026-10-27。
+从 [README](README.md)、[中文 README](README-zh.md) 的版本信息与文档导航整理，供恢复上下文时快速定位。整理日期：2026-11-04。
 
 先阅读 [AGENTS.md](AGENTS.md) 的仓库约定，再按下表查阅相关文档；本文件仅作导航，不替代源码或详细设计。文档描述与实现不一致时，以当前源码和构建配置为准。
 
@@ -25,6 +25,17 @@
 
 改版本或依赖时同步维护本索引、两份 README 及 [开发文档版本表](docs/development.md)；实际配置集中在 `gradle.properties`、`build.gradle` 和 Wrapper 配置。可选依赖的安装检测与类隔离约定见 `AGENTS.md`。
 
+## 架构快速定位
+
+| 需要修改的内容 | 入口 |
+| --- | --- |
+| Agent 循环、路由、预算、会话记忆和 Tool/Module/Store/Journal 契约 | [agent](src/main/java/com/iafenvoy/system/agent)；引擎不再拥有商城、搜索、数据库或任务口播 |
+| MC 服务组装、绑定/撤销、玩家和主线程业务、交易与游戏工具 | [assistant](src/main/java/com/iafenvoy/system/assistant)；AssistantServer 创建服务，ModuleContext 显式注入 |
+| 参数/结果 DTO、玩家文件事务、执行账本实现、数据库与提示词加载 | [data](src/main/java/com/iafenvoy/system/data)；data/input、output、store、database、prompt |
+| 功能定义、工作流和单行为工具组合 | [module/builtin](src/main/java/com/iafenvoy/system/module/builtin)；共用工具键 BuiltinTools；业务存储位于 storage |
+| TTS/ASR、播报会话和任务文案整理/背景缓存 | [speech](src/main/java/com/iafenvoy/system/speech)；任务相关服务位于 quest 子包 |
+| 依赖方向、线程、失效与资源关闭；本次只做编译和静态检查 | [包职责与数据流](docs/architecture.md)、[验证记录](docs/testing.md) |
+
 ## 文档导航
 
 完整入口：[docs/README.md](docs/README.md)。按修改主题直接查阅：
@@ -41,7 +52,7 @@
 | AgentDatabases 共享库 / 玩家独立库、Codec 数据表与段落索引、/system ftb reload、revoke / reset 清理私有库 | [分层本地数据库](docs/databases.md) |
 | JVector 4.0.2 分发体积、磁盘图索引、Java / SIMD、TF-IDF 适配、性能边界与后续测量；仅评估未实施 | [JVector 索引评估](docs/jvector-evaluation.md) |
 | 按键、声音、action/condition、模块目录、卡片节点注册与语音供应商工厂 Map；公开静态入口 | [registry 包](src/main/java/com/iafenvoy/system/registry)、[目录与职责](docs/development.md#目录与职责) |
-| 内置功能平铺 module.builtin、DataStorage 集中 module.builtin.storage、available() 可选依赖检查、模块侧栏 / 顶栏设置、底部工具栏开关、对话底部对齐与滚动跟随、模块条件/手动覆盖、两端指令与 ModuleManager 生命周期 | [功能模块化](docs/feature-modules.md)、[界面与滚动](docs/ui-localization.md)、[内置模块](src/main/java/com/iafenvoy/system/module/builtin) |
+| 内置功能定义与工作流集中 module.builtin、业务 DataStorage 位于 module.builtin.storage、执行账本位于 data.store、available() 可选依赖检查、模块侧栏 / 顶栏设置、底部工具栏开关、对话底部对齐与滚动跟随、模块条件/手动覆盖、两端指令与 ModuleManager 生命周期 | [功能模块化](docs/feature-modules.md)、[界面与滚动](docs/ui-localization.md)、[内置模块](src/main/java/com/iafenvoy/system/module/builtin) |
 | ServerModule / ClientModule 及 ToolModule / WorkflowModule / SharedModule / CoreModule 分类、按接口判断类型、配置 owner 权限、服务端 MapCodec dispatch、动态 system_module、客户端独立实现 Map | [功能模块化](docs/feature-modules.md)、[注册表](src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)、[编译与验收](docs/testing.md) |
 | 注册表 ID 与公开字段速查、协议/载荷/卡片节点注册表、语音工厂 Map、注册时序及扩展示例 | [注册表速查](docs/registries.md) |
 | CardData.buildCard、公共 CardBuilder/CardView/CardUpdate、客户端 CardPresentation、纯文本无按钮约定、JSON 节点与平铺 Context、宿主双栏卡片 / player 模型跟随、朝向、缩放和偏移、明确本地/服务端动作 | [客户端 JSON 卡片](docs/cards.md) |
@@ -53,7 +64,7 @@
 | 领域词表、稀疏 TF-IDF、阈值、玩家意图缓存、只读直达与模型兜底 | [本地意图路由](docs/semantic-routing.md) |
 | 10MB 分发约束、路由方案比较、校准与后续方向 | [路由选型与计划](docs/semantic-routing-plan.md) |
 | 系统定义、system_module 配置实例与 server.type/client、grant 指定系统与单绑定/多系统结构预留、模块 ID/tag/condition、模块增删 action、签到奖励、商城商品、抽奖奖池、提示词、成就规则 | [数据包与扩展配置](docs/datapacks.md) |
-| 三张服务端 Data Pack Registry：signin_rewards / shop_offers / lottery_pools；CatalogModule 的 rewards / offers / pools 支持 ID、tag、混合数组；玩家并集权限与扣款前复核 | [目录可选项](docs/datapacks.md#模块目录可选项)、[注册表](docs/registries.md#数据包注册表与外部注册表)、[CommerceCatalog](src/main/java/com/iafenvoy/system/agent/commerce/CommerceCatalog.java) |
+| 三张服务端 Data Pack Registry：signin_rewards / shop_offers / lottery_pools；CatalogModule 的 rewards / offers / pools 支持 ID、tag、混合数组；玩家并集权限与扣款前复核 | [目录可选项](docs/datapacks.md#模块目录可选项)、[注册表](docs/registries.md#数据包注册表与外部注册表)、[CommerceCatalog](src/main/java/com/iafenvoy/system/data/catalog/CommerceCatalog.java) |
 | TTS 接口、流式播放、语种、音色、取消 session、Python 设计 / 复刻 / 临时上传 | [语音合成与音色设计](docs/tts.md) |
 | ASR、NLS AccessKey 自动签发与 Token 缓存刷新、停止 / 自然 EOF 与设备关闭解耦、session 超时、可选 SVC、按键录音与按次估价 | [语音识别](docs/asr.md) |
 | 服务端 AI/联网用量 SavedData、仅本地可见的个人 TTS / ASR 用量、字符与 Token、客户端计费配置、撤销后保留 | [用量统计](docs/token-usage.md) |

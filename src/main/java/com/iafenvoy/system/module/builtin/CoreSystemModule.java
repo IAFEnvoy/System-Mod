@@ -2,19 +2,18 @@ package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentModule;
-import com.iafenvoy.system.agent.builtin.HelpModule;
-import com.iafenvoy.system.agent.builtin.input.HelpInput;
-import com.iafenvoy.system.agent.builtin.knowledge.DatabaseQueryTool;
-import com.iafenvoy.system.agent.builtin.knowledge.QuestionModule;
 import com.iafenvoy.system.agent.response.OpenResponse;
 import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.assistant.AssistantServer;
+import com.iafenvoy.system.data.input.HelpInput;
+import com.iafenvoy.system.data.store.AgentJournalDataStorage;
 import com.iafenvoy.system.module.CoreModule;
 import com.iafenvoy.system.module.ModuleCommands;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
-import com.iafenvoy.system.module.builtin.storage.AgentJournalDataStorage;
+import com.iafenvoy.system.module.builtin.knowledge.DatabaseQueryTool;
+import com.iafenvoy.system.module.builtin.knowledge.QuestionModule;
 import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -46,7 +45,7 @@ public final class CoreSystemModule implements CoreModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.engine()).tool()));
+        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.databases()).tool()));
     }
 
     @Override

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.response;
 
 import com.iafenvoy.system.agent.AgentResponse;
-import com.iafenvoy.system.agent.ClientState;
+import com.iafenvoy.system.data.ClientState;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;

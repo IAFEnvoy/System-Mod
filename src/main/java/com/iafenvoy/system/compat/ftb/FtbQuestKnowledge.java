@@ -4,8 +4,8 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.database.AgentDatabase;
-import com.iafenvoy.system.agent.database.KnowledgeIndex;
+import com.iafenvoy.system.data.database.AgentDatabase;
+import com.iafenvoy.system.data.database.KnowledgeIndex;
 import com.iafenvoy.system.util.LegacyText;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
@@ -31,10 +31,10 @@ final class FtbQuestKnowledge {
     private final AtomicBoolean reloading = new AtomicBoolean();
     private final Object updates = new Object();
 
-    FtbQuestKnowledge(AgentEngine engine, MinecraftServer server) {
+    FtbQuestKnowledge(AgentEngine engine, AgentDatabase database, MinecraftServer server) {
         this.engine = engine;
         this.server = server;
-        this.database = engine.databases().shared();
+        this.database = database;
     }
 
     record Snapshot(ServerQuestFile file, long generation, String language, List<KnowledgeIndex.Document> documents) {

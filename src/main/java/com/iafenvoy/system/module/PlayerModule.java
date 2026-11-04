@@ -1,6 +1,6 @@
 package com.iafenvoy.system.module;
 
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.data.store.PlayerData;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 

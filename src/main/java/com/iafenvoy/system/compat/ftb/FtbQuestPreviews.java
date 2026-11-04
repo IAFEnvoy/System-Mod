@@ -1,7 +1,8 @@
 package com.iafenvoy.system.compat.ftb;
 
-import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestIconOutput;
+
+import com.iafenvoy.system.data.output.ItemPreviewOutput;
+import com.iafenvoy.system.data.output.QuestIconOutput;
 import de.marhali.json5.Json5Object;
 import dev.ftb.mods.ftblibrary.json5.Json5Util;
 import dev.ftb.mods.ftbquests.quest.TeamData;

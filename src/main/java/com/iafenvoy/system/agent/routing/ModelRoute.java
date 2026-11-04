@@ -2,8 +2,8 @@ package com.iafenvoy.system.agent.routing;
 
 import com.google.gson.JsonElement;
 import com.iafenvoy.system.agent.AgentAction;
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
-import com.iafenvoy.system.agent.store.ConversationMemory;
+import com.iafenvoy.system.agent.ConversationMemory;
+import com.iafenvoy.system.data.input.EmptyInput;
 import com.iafenvoy.system.registry.SystemRegistries;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;

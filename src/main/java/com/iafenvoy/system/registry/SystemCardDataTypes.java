@@ -1,15 +1,15 @@
 package com.iafenvoy.system.registry;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.builtin.output.*;
-import com.iafenvoy.system.agent.result.QuestList;
-import com.iafenvoy.system.agent.result.QuestNotice;
-import com.iafenvoy.system.agent.result.ShopOrder;
-import com.iafenvoy.system.agent.result.SignInStatus;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.data.BindingCardData;
 import com.iafenvoy.system.data.card.data.SelectionCardData;
 import com.iafenvoy.system.data.card.data.TextCardData;
+import com.iafenvoy.system.data.output.*;
+import com.iafenvoy.system.data.result.QuestList;
+import com.iafenvoy.system.data.result.QuestNotice;
+import com.iafenvoy.system.data.result.ShopOrder;
+import com.iafenvoy.system.data.result.SignInStatus;
 import com.mojang.serialization.MapCodec;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;

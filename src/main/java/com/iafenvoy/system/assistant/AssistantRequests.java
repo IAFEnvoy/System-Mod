@@ -1,14 +1,14 @@
 package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.*;
-import com.iafenvoy.system.agent.builtin.input.StarterGiftsInput;
-import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
 import com.iafenvoy.system.agent.request.*;
 import com.iafenvoy.system.agent.response.HistoryResponse;
 import com.iafenvoy.system.agent.response.OpenResponse;
 import com.iafenvoy.system.agent.response.ReplyResponse;
 import com.iafenvoy.system.agent.response.StateResponse;
-import com.iafenvoy.system.agent.store.AgentStore;
+import com.iafenvoy.system.data.ClientState;
+import com.iafenvoy.system.data.input.StarterGiftsInput;
+import com.iafenvoy.system.data.output.StarterGiftOutput;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.util.TypeDispatch;

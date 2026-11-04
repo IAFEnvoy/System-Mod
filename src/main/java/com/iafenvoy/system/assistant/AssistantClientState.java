@@ -2,13 +2,13 @@ package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ClientState;
-import com.iafenvoy.system.agent.History;
 import com.iafenvoy.system.agent.request.ControlRequest;
-import com.iafenvoy.system.agent.store.Message;
+import com.iafenvoy.system.data.ClientState;
+import com.iafenvoy.system.data.History;
 import com.iafenvoy.system.data.card.CardReference;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.client.ClientCards;
+import com.iafenvoy.system.data.store.Message;
 import net.minecraft.resources.Identifier;
 
 import java.util.*;

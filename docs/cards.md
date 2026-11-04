@@ -39,7 +39,7 @@ public CardBuilder buildCard() {
 例如，其他模组在客户端监听并扩展宿主信息卡片：
 
 ```java
-import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
+import com.iafenvoy.system.data.output.PlayerSnapshotOutput;
 import com.iafenvoy.system.event.client.CardBuildEvent;
 import net.minecraft.network.chat.Component;
 import net.neoforged.api.distmarker.Dist;

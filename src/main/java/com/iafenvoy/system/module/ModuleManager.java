@@ -5,9 +5,9 @@ import com.iafenvoy.saturn.util.formula.FormulaContext;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentModule;
-import com.iafenvoy.system.agent.store.AgentStore;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.AgentStore;
 import com.iafenvoy.system.data.module.SystemModule;
+import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
@@ -55,7 +55,7 @@ public final class ModuleManager implements AutoCloseable {
         }));
         // Configured definitions create fresh workflows before any per-server runtime is constructed.
         modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
-            if (module instanceof CatalogModule<?> catalog) this.engine.registerCatalog(id, catalog);
+            if (module instanceof CatalogModule<?> catalog) context.catalogs().register(id, catalog);
             if (module instanceof WorkflowModule workflows)
                 for (AgentModule<?> workflow : workflows.workflows(contexts.get(id)))
                     this.engine.registerModule(id, workflow);

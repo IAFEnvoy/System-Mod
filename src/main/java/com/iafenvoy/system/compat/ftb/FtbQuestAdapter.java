@@ -3,17 +3,17 @@ package com.iafenvoy.system.compat.ftb;
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.ToolRegistry;
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
-import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
-import com.iafenvoy.system.agent.builtin.input.QuestGuideInput;
-import com.iafenvoy.system.agent.builtin.output.QuestGuideOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestOutput;
-import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
-import com.iafenvoy.system.agent.builtin.quest.*;
-import com.iafenvoy.system.agent.store.PlayerData;
 import com.iafenvoy.system.assistant.MinecraftTools;
+import com.iafenvoy.system.data.input.EmptyInput;
+import com.iafenvoy.system.data.input.QuestDetailInput;
+import com.iafenvoy.system.data.input.QuestGuideInput;
+import com.iafenvoy.system.data.output.QuestGuideOutput;
+import com.iafenvoy.system.data.output.QuestOutput;
+import com.iafenvoy.system.data.output.StarterGiftOutput;
+import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.PlayerModule;
+import com.iafenvoy.system.module.builtin.quest.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -58,8 +58,8 @@ public final class FtbQuestAdapter {
     public static List<AgentModule<?>> modules(ModuleContext context) {
         AgentEngine engine = context.engine();
         MinecraftTools game = context.game();
-        FtbQuestAccess access = new FtbQuestAccess(engine, game);
-        engine.questNarration().source(new FtbQuestSpeech(access));
+        FtbQuestAccess access = new FtbQuestAccess(engine, game, context.databases().shared());
+        context.narration().source(new FtbQuestSpeech(access));
         FtbQuestNotifications.install(game.server(), access);
         ToolRegistry.Tool<EmptyInput, StarterGiftOutput> gifts = new FtbStarterGiftQueryTool(access).tool();
         ToolRegistry.Tool<QuestDetailInput, QuestOutput> detail = new FtbQuestDetailTool(access).tool();

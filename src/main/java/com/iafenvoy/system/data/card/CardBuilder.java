@@ -1,8 +1,8 @@
 package com.iafenvoy.system.data.card;
 
-import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
-import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.store.Reward;
+import com.iafenvoy.system.data.catalog.CommerceCatalog;
+import com.iafenvoy.system.data.output.ItemPreviewOutput;
+import com.iafenvoy.system.data.store.Reward;
 import com.iafenvoy.system.util.LegacyText;
 import com.iafenvoy.system.util.PersistHolder;
 import net.minecraft.network.chat.Component;

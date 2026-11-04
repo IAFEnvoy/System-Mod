@@ -8,22 +8,9 @@ import java.util.*;
 import java.util.function.Predicate;
 
 /**
- * Small immutable TF-IDF index; OOV features stay in the query norm and coverage denominator.
+ * Builds routing examples and filters shared lexical rankings to available workflows.
  */
 final class SemanticIndex {
-    record Match(RoutingProfile.Bound profile, double score, double coverage, boolean topicsCovered) {
-    }
-
-    record Ranking(List<Match> matches, boolean hasTopic, boolean writeRequest) {
-        Match first() {
-            return this.matches.isEmpty() ? null : this.matches.getFirst();
-        }
-
-        double margin() {
-            return this.matches.size() < 2 ? 0 : this.matches.getFirst().score() - this.matches.get(1).score();
-        }
-    }
-
     private final LexicalIndex<RoutingProfile.Bound> index;
 
     SemanticIndex(Collection<RoutingProfile.Bound> profiles) throws IOException {
@@ -47,15 +34,11 @@ final class SemanticIndex {
         return this.index.size();
     }
 
-    Ranking search(String text, String language) {
-        return this.search(text, language, _ -> true);
-    }
-
-    Ranking search(String text, String language, Predicate<Identifier> available) {
+    LexicalIndex.Ranking<RoutingProfile.Bound> search(String text, String language, Predicate<Identifier> available) {
         LexicalIndex.Ranking<RoutingProfile.Bound> ranking = this.index.search(text, language);
-        return new Ranking(ranking.matches().stream().map(match -> new Match(match.value(), match.score(), match.coverage(), match.topicsCovered()))
-                .filter(match -> available.test(match.profile().moduleId()))
-                .sorted(Comparator.comparingDouble(Match::score).reversed().thenComparing(match -> match.profile().moduleId().toString()))
+        return new LexicalIndex.Ranking<>(ranking.matches().stream()
+                .filter(match -> available.test(match.value().moduleId()))
+                .sorted(Comparator.comparingDouble(LexicalIndex.Match<RoutingProfile.Bound>::score).reversed().thenComparing(match -> match.value().moduleId().toString()))
                 .limit(5).toList(), ranking.hasTopic(), ranking.writeRequest());
     }
 }

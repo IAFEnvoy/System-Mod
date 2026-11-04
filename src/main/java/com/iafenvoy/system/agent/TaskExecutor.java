@@ -7,17 +7,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Bounded scheduling and shutdown are shared by chat, durable events and store maintenance.
  */
-final class TaskExecutor implements AutoCloseable {
+public final class TaskExecutor implements AutoCloseable {
     private final ExecutorService workers;
     private final Set<CompletableFuture<?>> pending = ConcurrentHashMap.newKeySet();
     private final AtomicBoolean closed = new AtomicBoolean();
 
-    TaskExecutor(String name, int workers, int queue) {
+    public TaskExecutor(String name, int workers, int queue) {
         this.workers = new ThreadPoolExecutor(workers, workers, 0, TimeUnit.SECONDS, new ArrayBlockingQueue<>(queue),
                 Thread.ofPlatform().daemon().name(name + "-", 0).factory(), new ThreadPoolExecutor.AbortPolicy());
     }
 
-    <T> CompletableFuture<T> submit(Callable<T> work) {
+    public <T> CompletableFuture<T> submit(Callable<T> work) {
         CompletableFuture<T> result = new CompletableFuture<>();
         this.pending.add(result);
         result.whenComplete((value, error) -> this.pending.remove(result));

@@ -3,16 +3,17 @@ package com.iafenvoy.system.compat.ftb;
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
-import com.iafenvoy.system.agent.builtin.output.QuestStartupOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestSubmission;
-import com.iafenvoy.system.agent.builtin.output.QuestUnlockedOutput;
-import com.iafenvoy.system.agent.builtin.quest.StarterGiftModule;
-import com.iafenvoy.system.agent.result.QuestEvent;
-import com.iafenvoy.system.agent.result.QuestNotice;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.data.card.CardUpdate;
+import com.iafenvoy.system.data.database.AgentDatabase;
+import com.iafenvoy.system.data.input.QuestDetailInput;
+import com.iafenvoy.system.data.output.QuestStartupOutput;
+import com.iafenvoy.system.data.output.QuestSubmission;
+import com.iafenvoy.system.data.output.QuestUnlockedOutput;
+import com.iafenvoy.system.data.result.QuestEvent;
+import com.iafenvoy.system.data.result.QuestNotice;
 import com.iafenvoy.system.module.builtin.QuestSystemModule;
+import com.iafenvoy.system.module.builtin.quest.StarterGiftModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressEventData;
 import dev.ftb.mods.ftbquests.api.event.progress.ProgressType;
@@ -50,9 +51,9 @@ final class FtbQuestNotifications {
         this.access = access;
     }
 
-    static FtbQuestKnowledge knowledge(AgentEngine engine, MinecraftServer server) {
+    static FtbQuestKnowledge knowledge(AgentEngine engine, AgentDatabase database, MinecraftServer server) {
         FtbQuestAccess access = ACCESS.get(server);
-        return access == null ? new FtbQuestKnowledge(engine, server) : access.knowledge;
+        return access == null ? new FtbQuestKnowledge(engine, database, server) : access.knowledge;
     }
 
     static void install(MinecraftServer server, FtbQuestAccess access) {

@@ -4,16 +4,15 @@ import com.iafenvoy.saturn.util.codec.RegistryCodecs;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.ToolRegistry;
-import com.iafenvoy.system.agent.builtin.BuiltinTools;
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
-import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
-import com.iafenvoy.system.agent.builtin.player.PlayerQueryTool;
-import com.iafenvoy.system.agent.builtin.signin.SignInCreditTool;
-import com.iafenvoy.system.agent.builtin.signin.SignInModule;
+import com.iafenvoy.system.assistant.tool.player.PlayerQueryTool;
+import com.iafenvoy.system.assistant.tool.signin.SignInCreditTool;
 import com.iafenvoy.system.data.catalog.SignInRewardEntry;
+import com.iafenvoy.system.data.input.EmptyInput;
+import com.iafenvoy.system.data.output.PlayerSnapshotOutput;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
+import com.iafenvoy.system.module.builtin.signin.SignInModule;
 import com.iafenvoy.system.module.builtin.storage.SignInDataStorage;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.datafixers.util.Either;
@@ -62,6 +61,6 @@ public record SignInSystemModule(
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
         ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player = context.tool(BuiltinTools.PLAYER, () -> new PlayerQueryTool(context.game()).tool());
-        return List.of(new SignInModule(player, new SignInCreditTool().tool()));
+        return List.of(new SignInModule(context.catalogs(), player, new SignInCreditTool(context.catalogs()).tool()));
     }
 }

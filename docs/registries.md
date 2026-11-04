@@ -159,7 +159,7 @@ public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<Exa
 ACTIONS.register(bus);
 ```
 
-工作流 `inputCodec()` 与输入对象 `codec()` 必须返回同一个已注册实例；业务调用直接传 `new ExampleInput(...)`。`BuiltinModule` 从传入的 SchemaMapCodec 同时取得注册 ID 与输入 Schema，不再额外传类型包装。无参数动作也各自定义 Codec，内置使用 HelpInput、PlayerQueryInput、InboxInput、SignInInput、StarterGiftsInput；工具内部仍可共享未注册为动作的 EmptyInput。
+工作流 `inputCodec()` 与输入对象 `codec()` 必须返回同一个已注册实例；业务调用直接传 `new ExampleInput(...)`。`AbstractAgentModule` 从传入的 SchemaMapCodec 同时取得注册 ID 与输入 Schema，不再额外传类型包装。无参数动作也各自定义 Codec，内置使用 HelpInput、PlayerQueryInput、InboxInput、SignInInput、StarterGiftsInput；工具内部仍可共享未注册为动作的 EmptyInput。
 
 ### 新卡片节点
 

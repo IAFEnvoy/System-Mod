@@ -3,7 +3,7 @@ package com.iafenvoy.system.assistant;
 import com.iafenvoy.saturn.data.information.PlayerInformation;
 import com.iafenvoy.saturn.data.information.PlayerViews;
 import com.iafenvoy.saturn.data.information.model.InformationContext;
-import com.iafenvoy.system.agent.builtin.output.PlayerInformationOutput;
+import com.iafenvoy.system.data.output.PlayerInformationOutput;
 import com.mojang.logging.LogUtils;
 import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;

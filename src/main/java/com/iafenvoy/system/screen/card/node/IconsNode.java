@@ -1,8 +1,8 @@
 package com.iafenvoy.system.screen.card.node;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.builtin.output.QuestIconOutput;
 import com.iafenvoy.system.data.card.CardContext;
+import com.iafenvoy.system.data.output.QuestIconOutput;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.iafenvoy.system.screen.card.CardRenderer;
 import com.iafenvoy.system.screen.gui.AssistantView;

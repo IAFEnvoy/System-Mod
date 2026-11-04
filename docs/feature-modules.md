@@ -1,6 +1,6 @@
 # 功能模块化
 
-公共接口与运行时位于 `com.iafenvoy.system.module`，客户端缓存位于 `module.client`。内置服务端定义和客户端实现分别为 `module.builtin.*SystemModule`、`*SystemClientModule`，存储类集中在 `module.builtin.storage`。Agent 工作流和单行为工具仍位于独立的 `com.iafenvoy.system.agent.builtin`。
+公共接口与运行时位于 `com.iafenvoy.system.module`，客户端缓存位于 `module.client`。内置服务端定义和客户端实现分别为 `module.builtin.*SystemModule`、`*SystemClientModule`，存储类集中在 `module.builtin.storage`。具体 Agent 工作流位于 `module.builtin.<功能>`；Minecraft 单行为工具位于 `assistant.tool`，本地知识与搜索工具随工作流放置。`agent` 保留 AgentModule、AbstractAgentModule、ToolRegistry 等通用契约和执行机制。执行账本实现独立放在 `data.store`。
 
 ## 两层模块
 
@@ -56,11 +56,11 @@ public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<Ex
 
 扩展模组在公共入口绑定 TYPES。没有参数时使用 MapCodec.unit；需要参数时实现不可变 record，并用 RecordCodecBuilder.mapCodec 读取字段，codec() 返回同一个已注册实例。参数位于数据文件的 server 对象内，和 type 平铺；不增加第二套 JSON 手动解析。客户端也会解码同步的 server 数据，因此模块类及 Codec 必须不引用 net.minecraft.client 或可选模组实现类。
 
-ModuleManager 从当前服务器 RegistryAccess 读取动态配置，筛选 available() 后先安装纯工具，再安装工作流，最后创建各实例的 PlayerModule。每份配置有独立 ModuleContext，提供当前条目 `id()`、完整 `modules()` 注册表、引擎、交易与游戏桥接；上下文工具缓存只在该配置内共享。不要把服务器、玩家或运行时对象保存在全局单例定义里。
+ModuleManager 从当前服务器 RegistryAccess 读取动态配置，筛选 available() 后先安装纯工具，再安装工作流，最后创建各实例的 PlayerModule。每份配置有独立 ModuleContext，提供当前条目 `id()`、完整 `modules()` 注册表、引擎、游戏桥接、交易、目录权限、数据库、搜索与任务口播服务；服务由 AssistantServer 创建并显式注入，上下文工具缓存只在该配置内共享。不要把服务器、玩家或运行时对象保存在全局单例定义里。
 
 不同配置可以提供相同动作 ID 的同类工作流。ModuleRegistry 按配置实例 ID 保存候选，命令/模型/语义目录只声明一次，执行时选择该玩家已启用的候选与对应工具。入口 Codec、工作流类型、版本、交互/事件属性、工具契约和只读权限必须一致；参数可影响执行和预算，不应让同一动作类型声明不同的路由契约。同一玩家同时启用多个候选时按模块实例 ID 排序选择第一个；数据包通常应让同类变体的条件互斥。流程选中后保留 owner，移除该配置会取消其在途和排队操作，不会中途换用另一份参数。
 
-三类目录的可选项另由 CatalogModule 声明，按玩家启用的同类配置取并集，不仅限于执行工作流时选中的第一份配置。对应注册表为 system:signin_rewards、system:shop_offers、system:lottery_pools；字段支持 ID、tag 或混合数组，复用 Saturn keyOrTagList，省略为全表、空数组为空，内置模块显式使用对应 #system:default。AgentEngine.availableCatalog 与 ExecutionContext.availableCatalog 是统一的玩家目录入口，列表、模型候选、状态、报价与扣款共用筛选。详见[目录选项](datapacks.md#模块目录可选项)。
+三类目录的可选项另由 CatalogModule 声明，按玩家启用的同类配置取并集，不仅限于执行工作流时选中的第一份配置。对应注册表为 system:signin_rewards、system:shop_offers、system:lottery_pools；字段支持 ID、tag 或混合数组，复用 Saturn keyOrTagList，省略为全表、空数组为空，内置模块显式使用对应 #system:default。`assistant.commerce.CommerceCatalogs.available(player)` 是统一的玩家目录入口，通过 ModuleContext 注入工作流和交易服务，列表、模型候选、状态、报价与扣款共用筛选。详见[目录选项](datapacks.md#模块目录可选项)。
 
 每个服务端实现类型的游戏指令只装配一次。SystemCommand 只创建 `/system` 根节点、收集 SharedModule.serverCommands，再连接 Agent 通用指令。绑定、用量和核心模块分别负责 grant/revoke/reset、usage 与打开界面/ask/routing/module 管理。补全和模块管理从当前世界的 system_module 注册表读取 ID。
 

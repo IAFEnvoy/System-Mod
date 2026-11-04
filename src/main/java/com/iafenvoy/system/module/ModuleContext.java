@@ -2,9 +2,13 @@ package com.iafenvoy.system.module;
 
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.ToolRegistry;
-import com.iafenvoy.system.agent.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.MinecraftTools;
+import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
+import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
+import com.iafenvoy.system.data.database.AgentDatabases;
 import com.iafenvoy.system.data.module.SystemModule;
+import com.iafenvoy.system.search.SearchGateway;
+import com.iafenvoy.system.speech.quest.QuestNarration;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
 
@@ -20,18 +24,28 @@ public final class ModuleContext {
     private final AgentEngine engine;
     private final MinecraftTools game;
     private final CommerceTransactions commerce;
+    private final CommerceCatalogs catalogs;
+    private final AgentDatabases databases;
+    private final SearchGateway search;
+    private final QuestNarration narration;
     private final Registry<SystemModule> modules;
     private final Identifier id;
     private final Map<ToolRegistry.Type<?, ?>, ToolRegistry.Tool<?, ?>> tools = new HashMap<>();
 
-    public ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce, Registry<SystemModule> modules) {
-        this(engine, game, commerce, modules, null);
+    public ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce, CommerceCatalogs catalogs,
+                         AgentDatabases databases, SearchGateway search, QuestNarration narration, Registry<SystemModule> modules) {
+        this(engine, game, commerce, catalogs, databases, search, narration, modules, null);
     }
 
-    private ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce, Registry<SystemModule> modules, Identifier id) {
+    private ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce, CommerceCatalogs catalogs,
+                          AgentDatabases databases, SearchGateway search, QuestNarration narration, Registry<SystemModule> modules, Identifier id) {
         this.engine = engine;
         this.game = game;
         this.commerce = commerce;
+        this.catalogs = catalogs;
+        this.databases = databases;
+        this.search = search;
+        this.narration = narration;
         this.modules = modules;
         this.id = id;
     }
@@ -48,6 +62,22 @@ public final class ModuleContext {
         return this.commerce;
     }
 
+    public CommerceCatalogs catalogs() {
+        return this.catalogs;
+    }
+
+    public AgentDatabases databases() {
+        return this.databases;
+    }
+
+    public SearchGateway search() {
+        return this.search;
+    }
+
+    public QuestNarration narration() {
+        return this.narration;
+    }
+
     public Registry<SystemModule> modules() {
         return this.modules;
     }
@@ -57,7 +87,8 @@ public final class ModuleContext {
     }
 
     ModuleContext forModule(Identifier id) {
-        return new ModuleContext(this.engine, this.game, this.commerce, this.modules, id);
+        return new ModuleContext(this.engine, this.game, this.commerce, this.catalogs, this.databases,
+                this.search, this.narration, this.modules, id);
     }
 
     /**

@@ -1,6 +1,6 @@
 package com.iafenvoy.system.screen.gui;
 
-import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
+import com.iafenvoy.system.data.output.ItemPreviewOutput;
 import com.sighs.apricityui.element.Item;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;

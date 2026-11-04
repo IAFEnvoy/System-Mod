@@ -1,5 +1,17 @@
 # 编译与验收
 
+## 2026-11-04 重复包装检查
+
+静态检查 Agent / assistant / module 的服务装配、工具适配与结果转换：抽奖回执改为由交易事务直接填充已有 sourcePool 字段，移除工作流的二次玩家存档读取、临时 LotteryPreviewInput 和第二份回执；商城报价与购买复用 AgentResult.data。语义路由复用 LexicalIndex.Match / Ranking，移除同字段 DTO 复制，保留可用模块过滤、候选排序及覆盖率 / 分差检查。带工具身份、计费、目录权限、玩家代次校验的适配继续保留。
+
+执行 `gradlew compileJava testModClasses --console=plain` 通过，`git diff --check` 通过。testModClasses 仅做开发源集编译检查；未运行测试、启动 Minecraft 或请求收费 API。实际抽奖确认 / 再抽一次、商店展示、语义候选排序与低置信度回退尚未游戏内验收。
+
+## 2026-11-04 Agent 与 MC 业务职责整理
+
+AgentEngine 移除商城目录/报价、数据库、搜索和任务口播的业务所有权；具体工作流移入 module.builtin，游戏 Tool、绑定与交易移入 assistant，输入输出、存储实现、数据库与提示词移入 data，任务口播与背景缓存移入 speech.quest。新增 AgentJournal、AgentLifecycle 和 AssistantBindings；ModuleContext 显式注入服务。存储接口与执行账本契约留在 agent，具体业务存储由宿主注入。目录权限每次使用仍重新求值，搜索的数据库优先及本次联网许可由工作流维持。
+
+执行 `gradlew compileJava testModClasses --console=plain` 与 `gradlew jar --console=plain` 编译、打包通过。静态检查覆盖旧包引用、Agent 对具体功能/游戏运行时类的依赖、Java 包路径、资源与语言键集合，以及 diff 格式。注册表 ID、Codec 字段、配置路径和协议 1 未改变；仅 Java 扩展的导入路径与构造 API 需调整。未运行测试、启动 Minecraft、创建存档或调用外部 API；实际绑定/撤销、商城/签到/抽奖、FTB、语音、客户端展示与专用服务端加载尚未运行验收。
+
 ## 2026-10-31 目录注册表、tag 与模块可选项
 
 将签到奖励、商城商品和奖池登记为服务端专用的原生 system:signin_rewards / system:shop_offers / system:lottery_pools 数据包注册表；文件路径不变，删除 CatalogReloadListener 以及 AssistantServer 的目录监听器和逐 tick 刷新。CommerceCatalog 从 RegistryAccess 构建当前服务器的业务快照，条目禁用、原版 ItemStackTemplate 与 Saturn Cost 继续沿用。新增三张表各自的默认 tag、内置模块字段和商业示例包的追加 tag / 混合选择模块。

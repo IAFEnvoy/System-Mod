@@ -38,9 +38,9 @@ sequenceDiagram
 
 ## 一次描述，一次构建
 
-[CardData](../src/main/java/com/iafenvoy/system/card/CardData.java) 提供 codec() 与 buildCard()。各实现通过 [SystemCardDataTypes](../src/main/java/com/iafenvoy/system/registry/SystemCardDataTypes.java) 注册 MapCodec，根 Codec 按 type 分派；不再提供独立 template/buildContext，也不登记渲染工厂或 ClientCardBindings。
+[CardData](../src/main/java/com/iafenvoy/system/data/card/CardData.java) 提供 codec() 与 buildCard()。各实现通过 [SystemCardDataTypes](../src/main/java/com/iafenvoy/system/registry/SystemCardDataTypes.java) 注册 MapCodec，根 Codec 按 type 分派；不再提供独立 template/buildContext，也不登记渲染工厂或 ClientCardBindings。
 
-[CardBuilder](../src/main/java/com/iafenvoy/system/card/CardBuilder.java) 一处设置模板、summary、可选标题、平铺参数、按钮和 SpeechContent。客户端 ClientCards 在 build 前向 NeoForge.EVENT_BUS 发布 CardBuildEvent，让扩展按 CardData 类型向已有 Builder 补充参数；公共契约保持纯构建。build 复制为 [CardView](../src/main/java/com/iafenvoy/system/card/CardView.java)。CardContext 仍是 states、parameters、callbacks 三表，整张卡片一份；公共构建不接收 Runnable。客户端 CardPresentation 解析 Component/CardText，补模式、标签和版本受控 callback 后渲染。事件生命周期与监听实例见[构建事件](cards.md#构建事件给现有卡片补充参数)。
+[CardBuilder](../src/main/java/com/iafenvoy/system/data/card/CardBuilder.java) 一处设置模板、summary、可选标题、平铺参数、按钮和 SpeechContent。客户端 ClientCards 在 build 前向 NeoForge.EVENT_BUS 发布 CardBuildEvent，让扩展按 CardData 类型向已有 Builder 补充参数；公共契约保持纯构建。build 复制为 [CardView](../src/main/java/com/iafenvoy/system/data/card/CardView.java)。CardContext 仍是 states、parameters、callbacks 三表，整张卡片一份；公共构建不接收 Runnable。客户端 CardPresentation 解析 Component/CardText，补模式、标签和版本受控 callback 后渲染。事件生命周期与监听实例见[构建事件](cards.md#构建事件给现有卡片补充参数)。
 
 普通消息沿用同一数据流：**仅一个纯文本节点、没有按钮、没有其他可见内容**时省去卡片外框；带按钮的文字仍是卡片。容器、物品、分割线、多节点等继续作为卡片。该约定由通用渲染入口判定。
 
@@ -111,7 +111,7 @@ FTB 的 § 在适配入口解析为 Component，客户端安全转为格式片�
 
 AgentResult 不再继承 Saturn 的结果类型（`Result<T>` 在 1.2 是 sealed，只允许 Saturn 自己的成功/失败记录实现），改为自己持有状态并由 Status 派生 `isSuccess()` / `isFailure()`。Status 为 SUCCEEDED、FAILED、PARTIALLY_SUCCEEDED，Codec 使用稳定小写字符串；部分成功算失败，不能写成功缓存。投递模式与执行状态分开。便捷 ok/error 为普通文字创建 TextCardData，显式零更新回复不额外生成消息。
 
-[BuiltinTools](../src/main/java/com/iafenvoy/system/agent/builtin/tool/BuiltinTools.java) 仍是工具契约清单，每个常量为 ToolRegistry.Type<I,O>，声明工具 ID、输入 MapCodec 和输出 Codec。实际操作在 Handler，模块用 List 组合并复用同一 Tool 实例；ExecutionContext 统一检查权限、预算、写入与幂等回执。输入 Codec 用于参数指纹，输出 Codec 用于恢复结果。它不负责布局、消息按钮或客户端注册。
+[BuiltinTools](../src/main/java/com/iafenvoy/system/module/builtin/BuiltinTools.java) 仍是工具契约清单，每个常量为 ToolRegistry.Type<I,O>，声明工具 ID、输入 MapCodec 和输出 Codec。实际操作在 Handler，模块用 List 组合并复用同一 Tool 实例；ExecutionContext 统一检查权限、预算、写入与幂等回执。输入 Codec 用于参数指纹，输出 Codec 用于恢复结果。它不负责布局、消息按钮或客户端注册。
 
 ## 校验范围
 

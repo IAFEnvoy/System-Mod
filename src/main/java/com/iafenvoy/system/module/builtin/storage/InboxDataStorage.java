@@ -2,7 +2,7 @@ package com.iafenvoy.system.module.builtin.storage;
 
 import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.store.Delivery;
+import com.iafenvoy.system.data.store.Delivery;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;

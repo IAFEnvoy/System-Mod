@@ -4,11 +4,11 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.AgentStore;
 import com.iafenvoy.system.agent.response.BindingResponse;
-import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
-import com.iafenvoy.system.data.card.data.BindingCardData;
 import com.iafenvoy.system.data.SystemDefinition;
+import com.iafenvoy.system.data.card.data.BindingCardData;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.registry.SystemResourceKeys;
@@ -26,6 +26,7 @@ import java.util.function.Consumer;
 public final class AssistantPlayers {
     private final MinecraftServer server;
     private final AgentEngine engine;
+    private final AssistantBindings bindings;
     private final ModuleManager modules;
     private final AssistantUsage usage;
     private final Map<UUID, Long> lastRequest = new HashMap<>();
@@ -37,6 +38,7 @@ public final class AssistantPlayers {
     AssistantPlayers(MinecraftServer server, AgentEngine engine, ModuleManager modules, AssistantUsage usage) {
         this.server = server;
         this.engine = engine;
+        this.bindings = new AssistantBindings(engine);
         this.modules = modules;
         this.usage = usage;
     }
@@ -95,7 +97,7 @@ public final class AssistantPlayers {
         }
         if (!this.beginBindingChange(player, feedback)) return;
         UUID uuid = player.getUUID(), connection = ServerNetworkHandler.connectionId(player);
-        this.engine.grant(uuid, system, this.modules.binding(player)).whenComplete((result, error) -> this.server.execute(() -> {
+        this.bindings.grant(uuid, system, this.modules.binding(player)).whenComplete((result, error) -> this.server.execute(() -> {
             this.bindingChanges.remove(uuid);
             AgentResult answer = error == null ? result : AgentResult.error(AgentEngine.errorCode(error));
             feedback.accept(answer);
@@ -123,7 +125,7 @@ public final class AssistantPlayers {
         if (!this.beginBindingChange(player, feedback)) return;
         UUID uuid = player.getUUID();
         long previous = this.engine.incarnation(uuid);
-        CompletionStage<AgentResult> work = reset ? this.engine.reset(uuid) : this.engine.revoke(uuid);
+        CompletionStage<AgentResult> work = this.bindings.clear(uuid, reset);
         if (this.engine.incarnation(uuid) != previous) ServerNetworkHandler.connected(player);
         UUID connection = ServerNetworkHandler.connectionId(player);
         work.whenComplete((result, error) -> this.server.execute(() -> {

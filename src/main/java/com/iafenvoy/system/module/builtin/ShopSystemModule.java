@@ -4,20 +4,19 @@ import com.iafenvoy.saturn.util.codec.RegistryCodecs;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.ToolRegistry;
-import com.iafenvoy.system.agent.builtin.BuiltinTools;
-import com.iafenvoy.system.agent.builtin.CommercePreviewTool;
-import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
-import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
-import com.iafenvoy.system.agent.builtin.shop.ShopModule;
-import com.iafenvoy.system.agent.builtin.shop.ShopPurchaseModule;
-import com.iafenvoy.system.agent.builtin.shop.ShopPurchaseTool;
-import com.iafenvoy.system.agent.builtin.shop.ShopQuoteModule;
-import com.iafenvoy.system.agent.commerce.PurchaseType;
+import com.iafenvoy.system.assistant.tool.CommercePreviewTool;
+import com.iafenvoy.system.assistant.tool.shop.ShopPurchaseTool;
 import com.iafenvoy.system.data.catalog.ShopOfferEntry;
+import com.iafenvoy.system.data.input.CommercePreviewInput;
+import com.iafenvoy.system.data.output.CommercePreviewOutput;
+import com.iafenvoy.system.data.store.PurchaseType;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;
+import com.iafenvoy.system.module.builtin.shop.ShopModule;
+import com.iafenvoy.system.module.builtin.shop.ShopPurchaseModule;
+import com.iafenvoy.system.module.builtin.shop.ShopQuoteModule;
 import com.iafenvoy.system.module.builtin.storage.CommerceDataStorage;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.datafixers.util.Either;
@@ -71,7 +70,7 @@ public record ShopSystemModule(
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
         ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview = context.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(context.commerce()).tool());
-        return List.of(new ShopModule(), new ShopQuoteModule(preview),
+        return List.of(new ShopModule(context.catalogs()), new ShopQuoteModule(context.catalogs(), preview),
                 new ShopPurchaseModule(new ShopPurchaseTool(context.commerce()).tool()));
     }
 }

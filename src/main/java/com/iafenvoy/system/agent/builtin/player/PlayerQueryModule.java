@@ -16,7 +16,7 @@ import java.util.List;
  */
 public final class PlayerQueryModule extends BuiltinModule<PlayerQueryInput> {
     public PlayerQueryModule(ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player) {
-        super(PlayerQueryInput.CODEC, "Read my current health, experience and dimension; public online player names only.", List.of(player), true, false, ExecutionPolicy.quick(2, 0));
+        super(PlayerQueryInput.CODEC, "Read my own current health, experience, dimension and standard player information.", List.of(player), true, false, ExecutionPolicy.quick(2, 0));
     }
 
     @Override

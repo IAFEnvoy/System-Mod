@@ -39,7 +39,7 @@ Agent 代码统一在 `com.iafenvoy.system.agent`。新增能力声明参数类�
 | `AgentModule<I>` | 在自己的策略内组合流程与多个工具 |
 | `ToolRegistry.Tool<I, O>` | 一个工具类型、一个 Handler、一个行为 |
 
-执行结果 `AgentResult` 复用 Saturn `ResultWithData<List<CardUpdate>>`：调用方统一用 `isSuccess()` / `isFailure()` 分支，Agent 自己保留文案、静默输出和 Status 枚举；SUCCEEDED、FAILED、PARTIALLY_SUCCEEDED 按稳定小写字符串编码。`partial()` 标记部分成功，但仍属于失败；`withPresentation(...)` 只生成展示副本。跨网络与存档继续使用 `AgentResult.CODEC`，不传输 Failure 的实现类。商城的 `CommerceCosts.Prepared` 同样复用 `ResultWithData<Price>`，同时保留原始定价失败原因与相关资源。搜索条目、模型回复及音频流解析状态属于数据载荷，不套用操作成功/失败契约。
+执行结果 `AgentResult` **不再继承** Saturn 的结果类型：Saturn 1.2 的 `Result<T>` 是 `sealed interface`，只允许它自己的 `SuccessResult` / `FailureResult` 实现，因此携带额外字段的类型改为自己持有状态、由 `Status` 派生 `isSuccess()` / `isFailure()`（`PARTIALLY_SUCCEEDED` 算失败）。Agent 自己保留文案、静默输出和 Status 枚举；SUCCEEDED、FAILED、PARTIALLY_SUCCEEDED 按稳定小写字符串编码。`partial()` 标记部分成功，但仍属于失败；`withPresentation(...)` 只生成展示副本。跨网络与存档继续使用 `AgentResult.CODEC`，不传输 Failure 的实现类。商城的 `CommerceCosts.Prepared` 用 `Optional<Failure>` 表达拒绝：报价无论定价成功与否都要给出展示价格，所以价格单独持有，只有「拒绝原因」是可选的。搜索条目、模型回复及音频流解析状态属于数据载荷，不套用操作成功/失败契约。
 
 外层 ServerModule 注册工作流时记录 ownerId，ModuleManager 在模块成功激活后发布按玩家计算的权限快照；帮助、补全、语义候选、模型目录与执行器共用可用性过滤，ExecutionContext 在工具和模型入口再次检查权限。基础设施与无 owner 的独立扩展工作流不属于可选业务模块。结构化按钮、精确指令、本地语义与模型选择最终都生成相同的 `AgentAction`。交互与事件共享 `AgentEngine.execute`，权限、策略选择与部分成功报告集中处理；事件恢复继续使用持久化策略和已完成操作回执。
 

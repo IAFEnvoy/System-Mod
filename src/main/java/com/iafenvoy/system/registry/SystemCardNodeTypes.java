@@ -22,6 +22,7 @@ public final class SystemCardNodeTypes {
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<DividerNode>> DIVIDER = REGISTRY.register("divider", () -> DividerNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<ItemsNode>> ITEMS = REGISTRY.register("items", () -> ItemsNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<PlayerNode>> PLAYER = REGISTRY.register("player", () -> PlayerNode.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<PlayerInformationNode>> PLAYER_INFORMATION = REGISTRY.register("player_information", () -> PlayerInformationNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<IconsNode>> ICONS = REGISTRY.register("icons", () -> IconsNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<ActionsNode>> ACTIONS = REGISTRY.register("actions", () -> ActionsNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<ButtonNode>> BUTTON = REGISTRY.register("button", () -> ButtonNode.CODEC);

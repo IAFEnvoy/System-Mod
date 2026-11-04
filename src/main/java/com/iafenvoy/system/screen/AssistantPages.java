@@ -3,6 +3,7 @@ package com.iafenvoy.system.screen;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.layout.Size;
 import com.sighs.apricityui.parser.HTML;
+import com.sighs.apricityui.render.GeometryQueryScope;
 import com.sighs.apricityui.resource.async.style.StyleAsyncHandler;
 import com.sighs.apricityui.viewport.ApricityViewport;
 import net.minecraft.client.Minecraft;
@@ -31,7 +32,9 @@ public final class AssistantPages {
     }
 
     public static void commit(Document document) {
-        try (Document.ContextScope ignored = Document.withContext(document)) {
+        // Manual commits need the same style and measurement caches as AUI's normal frame pipeline.
+        try (Document.ContextScope ignored = Document.withContext(document);
+             GeometryQueryScope geometry = GeometryQueryScope.open()) {
             document.commitStyleRecalc();
             if (document.hasPendingRenderState()) document.commitRenderState();
         }

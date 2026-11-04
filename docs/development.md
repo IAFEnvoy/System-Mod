@@ -13,15 +13,19 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 | 模组与 Agent Java toolchain / 字节码 | 25 / Java 25 |
 | Gradle / ModDev | 9.2.1 / 2.0.148 |
 | Minecraft / NeoForge | 26.1.2 / 26.1.2.114 |
-| ApricityUI | 1.2.6 |
+| ApricityUI | 1.2.9；客户端最低版本 1.2.9 |
 | Jupiter | CurseMaven 8569832 |
-| Saturn | 1.0-beta.3 / CurseMaven 9349648；客户端和服务端均必装，统一 Cost、模块 DataStorage 与 Codec 工具 |
+| Saturn | 1.2.3 / CurseMaven 9414074；客户端和服务端均必装，统一 Cost、模块 DataStorage、Codec 工具及玩家信息视图 |
 | Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
 | Gson | 2.13.2；主项目直接声明依赖，Minecraft 提供运行时类 |
 | FTB Quests / Library / Teams | 26.1.2.8 / 26.1.2.9 / 26.1.2.4，可选 compileOnly |
 | LangChain4J | 已移除；使用 JDK HTTP 网关 |
 | 本地意图路由 | `lexical-tfidf-v1`，JDK + 已有 Gson；无新增第三方依赖、native 或模型文件 |
 | 产物体积上限 | 完整 System JAR 不超过 10,000,000 字节，`jar` 任务强制检查 |
+
+AUI 1.2.9 将布局状态从 `RenderElement` 拆到 `LayoutState`。卡片折叠与分页刷新通过 `Element.getLayout().invalidateLayoutSubtree()` 使布局失效，再由 `AssistantPages.commit` 提交更新。
+
+玩家查询与卡片使用 Saturn 的 `data.information.PlayerViews`、`PlayerInformation` 与 `InformationText`，展示结果类型为 `data.information.model.InformationEntry`。查询仍选取 basic/status 分组和既有行白名单，并保留 32 行、每行 256 字的上限；分组按 ResourceKey 从当前世界解析为 Holder，结果通过 entry.value()/label()/tooltip() 直接使用；排序和 importance 从原始行定义读取。Saturn 为必装依赖，最低版本为 1.2.3。
 
 Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎、执行器、执行上下文、模块/工具接口、注册表、指令与请求结果；`builtin/<功能>` 包含该功能的工作流与单行为工具，`routing`、`model`、`store`、`commerce`、`prompt` 按职责组织。外层 `module/builtin` 平铺内置功能的两端指令、装配、生命周期与界面贡献，全部内置 DataStorage 实现集中在 `module/builtin/storage`，详见[功能模块化](feature-modules.md)。通用 Codec、Schema 和 JSON 工具直接归入外层 `com.iafenvoy.system.util`，配置统一位于外层 `config`。游戏生命周期、界面、网络、语音和可选模组桥接继续位于模组的对应包；所有代码共用主源码集、依赖和 Java 25 工具链，不单独发布 Agent 核心库。
 
@@ -164,7 +168,7 @@ public record Search(String query, int offset) {
 
 ### 结果卡片与动作
 
-AgentResult 继承 Saturn ResultWithData<List<CardUpdate>>。Status 为 SUCCEEDED/FAILED/PARTIALLY_SUCCEEDED，按稳定小写字符串编码，部分成功仍带 Failure，不能写成功缓存。CardUpdate 以 CardRef(UUID, revision) 标识一条消息，支持 SHOW、REPLACE、REMOVE；更新投递语义独立于业务成功状态。
+AgentResult 不再继承 Saturn 的结果类型：`Result<T>` 在 Saturn 1.2 是 `sealed interface`，只允许它自己的 `SuccessResult` / `FailureResult` 实现，因此 AgentResult 自己持有 cards 字段，并由 Status 派生 `isSuccess()` / `isFailure()`。Status 为 SUCCEEDED/FAILED/PARTIALLY_SUCCEEDED，按稳定小写字符串编码，部分成功算失败，不能写成功缓存。CardUpdate 以 CardRef(UUID, revision) 标识一条消息，支持 SHOW、REPLACE、REMOVE；更新投递语义独立于业务成功状态。
 
 公共 card 包定义 CardData、CardBuilder/CardView、CardButton/CardAction、CardContext 和 SpeechContent；不加载客户端、AUI、FTB 或服务端运行时。CardData 自己提供 MapCodec 和 buildCard，客户端调用后得到完整的模板、参数、主文案、按钮与播报。CardPresentation 负责本地翻译、CardText 延迟物品解析、通用模式和受控 callback，JSON 仅控制布局。仅一个纯文本节点且没有按钮或额外内容时显示为普通消息，文字带按钮继续作为卡片。
 
@@ -254,7 +258,7 @@ ModuleAccess 在登录事务中取得绑定 ID，在主线程确认定义仍存�
 
 商城 / 抽奖模块共用只读 `CommercePreviewTool`，由 `CommerceTransactions.preview` 在游戏线程按目录 ID 获取可信费用并生成 `CommerceCosts.Prepared`。Cost 只定价一次，短期报价保留绑定玩家实体、支付目标及金额的 Saturn `CostPayment`；确认沿用该账单，掉线 / 重生导致实体更换时拒绝旧账单。`CostContext` 包含 `origin=system:shop` / `system:lottery` 和 `system:source`，扩展 Cost 可读取。System 不再保留单独的系统币接口或自定义物品扣款器；币可由 Saturn 资源或扩展 Cost 表达。
 
-`Prepared` 继承 Saturn `ResultWithData<CommerceCatalog.Price>`，以 `getData()` 读取展示价格，以 `isSuccess()` 判断是否可生成报价，保留定价失败的原始 `Failure` 和 `failedResource`。失败说明在创建不可变价格快照前加入，并由 `Failure.message(failedResource)` 格式化；账单、支付玩家及扣款跟踪留在服务端，不进入客户端快照。客户端 DTO 中的 `available` 仅是上述成功状态的投影。
+`Prepared` 用 `Optional<Failure>` 表达定价拒绝（空即成功），展示价格单独作为字段持有——定价失败时预览仍需显示价格与失败说明，因此价格不能塞进「成败」里。对外以 `getData()` 读取展示价格、以 `isSuccess()` 判断是否可生成报价、以 `failure()` 读取拒绝原因；资源名由 `Failure.resource()` 提供（构造时会用 `withResource` 带上失败资源）。失败说明在创建不可变价格快照前加入，并由 `Failure.message(failedResource)` 格式化；账单、支付玩家及扣款跟踪留在服务端，不进入客户端快照。客户端 DTO 中的 `available` 仅是上述成功状态的投影。
 
 支付全部通过 Saturn 的 `test()` / `pay()` 执行。当前依赖会在实际扣款出错后继续其他费用并可能返回成功，因此 `CommerceCosts` 包装绑定事务，额外追踪每项真实扣款的失败与异常；一旦出现部分 / 不确定扣款，订单和权益保持 `PAYMENT_UNKNOWN`，不发奖、不自动重试。Saturn 不统一预留重复 / 重叠费用，不保证跨费用回滚，数据包应合并同一种需求。扩展 Cost 必须遵守 `prepare`、`execute(true)` 只读的契约。
 

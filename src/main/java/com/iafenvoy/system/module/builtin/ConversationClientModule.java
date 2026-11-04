@@ -20,7 +20,6 @@ public final class ConversationClientModule implements ClientModule {
         module.command(() -> preferences(AssistantClient.state().saveHistory(), true), "ai on");
         module.command(() -> preferences(AssistantClient.state().saveHistory(), false), "ai off");
         module.workspace("", "", workspace -> {
-            workspace.labels("history", "forget");
             workspace.click("forget", () -> AssistantClient.send(ControlRequest.FORGET));
             workspace.click("history", () -> {
                 workspace.show("chat");

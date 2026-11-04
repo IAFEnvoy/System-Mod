@@ -8,10 +8,6 @@ import com.sighs.apricityui.init.Document;
 
 public record WorkspaceContext(AssistantScreen screen, Document document,
                                ClientModuleBindingsCache.Workspace workspace) {
-    public void labels(String... ids) {
-        for (String id : ids) AssistantView.text(this.document.getElementById(id), AssistantView.tr("system.ui." + id));
-    }
-
     public void click(String id, Runnable action) {
         AssistantView.bind(this.document, id, () -> {
             if (!this.workspace.available()) AssistantClient.local(AgentResult.error("CAPABILITY_UNAVAILABLE"));

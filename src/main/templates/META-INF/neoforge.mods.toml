@@ -33,14 +33,14 @@ side = "BOTH"
 [[dependencies.${mod_id}]]
 modId = "saturn"
 type = "required"
-versionRange = "[0,)"
+versionRange = "[1.2.3,)"
 ordering = "AFTER"
 side = "BOTH"
 
 [[dependencies.${mod_id}]]
 modId = "apricityui"
 type = "required"
-versionRange = "[1.2.6,)"
+versionRange = "[1.2.9,)"
 ordering = "AFTER"
 side = "CLIENT"
 

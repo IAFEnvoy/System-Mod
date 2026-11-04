@@ -6,6 +6,7 @@ import com.iafenvoy.system.agent.builtin.input.EmptyInput;
 import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.assistant.MinecraftTools;
+import com.iafenvoy.system.assistant.PlayerInformationView;
 
 import java.util.concurrent.CompletionStage;
 
@@ -21,7 +22,6 @@ public record PlayerQueryTool(MinecraftTools game) implements ToolRegistry.Handl
     public CompletionStage<PlayerSnapshotOutput> execute(ExecutionContext context, EmptyInput input) {
         return this.game.onPlayer(context, player -> new PlayerSnapshotOutput(player.getUUID(), player.getName().getString(), player.getHealth(), player.getMaxHealth(),
                 player.experienceLevel, player.level().dimension().identifier().toString(),
-                player.level().getServer().getPlayerList().getPlayers().stream().limit(64).map(online -> online.getName().getString()).toList(),
-                player.clientInformation().language()));
+                player.clientInformation().language(), PlayerInformationView.collect(player)));
     }
 }

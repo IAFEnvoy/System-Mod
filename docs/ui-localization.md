@@ -6,7 +6,13 @@ JSON 模板在 assets/system/cards 中，通过 CardNode 的 dispatch Codec 解�
 
 所有界面只加载 `assets/apricityui/apricity/system/assistant.css` 这一份共享样式。完整界面使用同目录下的 `assistant.html`，由 `AssistantScreen` 承载。使用青蓝半透明面板、细边框和暖金色重点色；模块工具栏位于对话记录下方、输入框上方，点击当前模块入口可收起，关闭时不重复触发查询。
 
+固定文案直接写在模板里，用 AUI 的 `<translation>键</translation>` 承载，由文档在布局和绘制时按当前语言解析，不再由 Java 逐个元素写入；模块工具栏按钮、标题和说明因此随模板走，自定义模板只需替换标记就能自带上这些文案。只有随状态变化的文本（`status`、`send`、`asr_toggle`、设置页状态、`usage_scope`、`usage_page`、区域名、识别后端名）、输入框占位符（`placeholder`）、`aria-label` 以及语种下拉选项仍由 Java 提供，因为这些是属性或运行时取值，节点文本无法表达。子节点文本就是完整键，不能带首尾空白；键缺失时与原版一致直接显示原键。AUI 的 `text-align` 只作用于元素自身的直接文本，内容区被拉伸又需要居中的按钮（`.settings_tab`、`.settings_modes button`）改为 `display:flex` + `justify-content:center`，与已有的 `.shop_controls button` 一致。
+
 对话滚动区通过独立的普通文档流容器承载消息，用自动上边距将短对话靠近输入区，长卡片不收缩。内容或工具栏变化前先记录滚动位置，布局提交后按“内容高度减可视高度”的实际范围恢复；原本位于底部时跟随新消息，向上阅读历史或仍在向上滚动时保留当前及目标位置，不再把偏移直接设成内容总高度。
+
+完整模式的新消息以 240ms、18px 的上移配合淡入出现，只使用 transform / opacity，不逐帧改变卡片高度。底部跟随复用 AUI 的目标滚动缓动，连续到达的消息更新目标位置，向上翻阅时不强制拉回底部。首次打开、窗口重建与模板重载不重播历史入场动画；仅忙碌状态变化时保留已有消息节点，卡片更新按 UUID 识别，不视为新消息。
+
+滚动范围读取只使用 AUI 已提交的 scrollHeight，不再调用 commitScrollMetricsFromLayout 重测聊天子树。布局提交与滚动位置读取 / 恢复均开启 AUI GeometryQueryScope，复用样式、矩形及自然尺寸测量缓存；修改 DOM 前后使用独立作用域，避免读取旧几何。setScrollTop 内部也会查询容器尺寸，因此必须在该作用域内执行。
 
 客户端“系统”按键映射默认未绑定；玩家可在控制设置中自行分配。游戏内按下打开当前选择的完整或简约界面，任一助手系统页面内再次按下即可返回游戏；其他游戏页面不受影响。
 

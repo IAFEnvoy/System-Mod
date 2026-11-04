@@ -8,8 +8,7 @@ and HUD notifications that keep gameplay uninterrupted, with optional speech out
 
 ## Features
 
-- **Player and item queries:** view your own status and public online-player names, or search for items by name or
-  registry ID.
+- **Player and item queries:** view your own status, or search for items by name or registry ID.
 - **FTB Quests integration:** browse visible, unlocked, actionable and unfinished quests in a compact list. Open details
   by number or name, then explicitly select and claim rewards. Quest completion and newly unlocked quests appear as
   queued System notifications.

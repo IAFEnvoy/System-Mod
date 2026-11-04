@@ -9,7 +9,6 @@ public final class LotterySystemClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
         module.workspace("lottery", "nav_lottery", workspace -> {
-            workspace.labels("nav_lottery", "lottery_search", "lottery_refresh", "lottery_text");
             workspace.input("lottery_query", "system.ui.lottery_placeholder", "lottery_search");
             workspace.click("nav_lottery", () -> {
                 workspace.show("lottery");

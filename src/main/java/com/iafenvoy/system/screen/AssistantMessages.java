@@ -291,7 +291,6 @@ public final class AssistantMessages {
         Element scroll = document.getElementById("notification_scroll");
         scroll.scrollTop = 0;
         scroll.targetScrollTop = 0;
-        text(document.getElementById("notification_title"), tr("system.ui.assistant"));
         text(document.getElementById("notification_text"), "");
         Element cards = document.getElementById("notification_cards");
         cards.setInnerHTML("");

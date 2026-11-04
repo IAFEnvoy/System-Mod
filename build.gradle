@@ -31,6 +31,7 @@ repositories {
     maven { url = "https://cursemaven.com" }
     maven { url = "https://maven.sighs.cc/repository/maven-public/" }
     maven { url = 'https://maven.ftb.dev/releases' }
+    maven { url = "https://maven.blamejared.com/" }
 }
 
 base {
@@ -109,12 +110,16 @@ configurations {
 
 dependencies {
     implementation "curse.maven:jupiter-1072905:8569832"
-    implementation "curse.maven:saturn-lib-1767455:9349648"
+    implementation "curse.maven:saturn-lib-1767455:9415373"
     implementation "com.sighs:ApricityUI-neoforge-26.1:${apricityui_version}"
 
     // SVC for optional voice input support
     compileOnly "curse.maven:simple-voice-chat-416089:${voicechat_file_id}"
     localRuntime "curse.maven:simple-voice-chat-416089:${voicechat_file_id}"
+
+    implementation "curse.maven:jade-324717:8651070"
+    compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
+    runtimeOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
 
     // FTB Quests
     compileOnly "dev.ftb.mods:ftb-library-neoforge:${ftb_library_version}"

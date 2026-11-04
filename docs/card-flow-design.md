@@ -109,7 +109,7 @@ FTB 的 § 在适配入口解析为 Component，客户端安全转为格式片�
 
 ## AgentResult 与 BuiltinTools
 
-AgentResult 继承 Saturn ResultWithData<List<CardUpdate>>。Status 为 SUCCEEDED、FAILED、PARTIALLY_SUCCEEDED，Codec 使用稳定小写字符串；部分成功仍带 Failure，不能写成功缓存。投递模式与执行状态分开。便捷 ok/error 为普通文字创建 TextCardData，显式零更新回复不额外生成消息。
+AgentResult 不再继承 Saturn 的结果类型（`Result<T>` 在 1.2 是 sealed，只允许 Saturn 自己的成功/失败记录实现），改为自己持有状态并由 Status 派生 `isSuccess()` / `isFailure()`。Status 为 SUCCEEDED、FAILED、PARTIALLY_SUCCEEDED，Codec 使用稳定小写字符串；部分成功算失败，不能写成功缓存。投递模式与执行状态分开。便捷 ok/error 为普通文字创建 TextCardData，显式零更新回复不额外生成消息。
 
 [BuiltinTools](../src/main/java/com/iafenvoy/system/agent/builtin/tool/BuiltinTools.java) 仍是工具契约清单，每个常量为 ToolRegistry.Type<I,O>，声明工具 ID、输入 MapCodec 和输出 Codec。实际操作在 Handler，模块用 List 组合并复用同一 Tool 实例；ExecutionContext 统一检查权限、预算、写入与幂等回执。输入 Codec 用于参数指纹，输出 Codec 用于恢复结果。它不负责布局、消息按钮或客户端注册。
 

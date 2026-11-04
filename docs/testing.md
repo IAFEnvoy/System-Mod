@@ -701,6 +701,12 @@ AgentCommand、CommandRegistry 与客户端命令声明已接入 Brigadier；Cli
 
 没有请求收费 API、创建存档 / 临时配置或执行运行时探针。尚未实际验收：通知翻页点击及返回页码、Java Sound / SVC 录音结束、设备延迟关闭、取消 / 超时后的迟到回调、识别填入与自动发送。完整范围及来源审计见 [跨版本同步记录](ftb-quests-porting.md#2026-10-30-本轮补充移植)。
 
+## 2026-11-03 滚动范围查询重复布局修正
+
+阅读实际 ApricityUI 26.1 / 1.2.6 依赖源码确认：LayoutCommit.commit 已更新滚动元素的 scrollHeight，而原 AssistantScreen.scrollLimit 会额外调用 commitScrollMetricsFromLayout，重新查询聊天内容的子元素位置和自然尺寸；该调用及 setScrollTop 内部的 Box 查询均未开启 GeometryQueryScope。移除重复测量，读取范围与恢复位置分别使用几何查询作用域；AssistantPages 的手动布局提交也开启同样的样式 / 测量缓存。DOM 修改前后的查询分开，避免共享失效的矩形缓存。
+
+实际执行 `gradlew compileJava testModClasses --console=plain` 成功；testModClasses 仅检查开发源集编译。静态检查确认 System 不再主动调用 commitScrollMetricsFromLayout，两处 scrollLimit 及滚动恢复均位于 GeometryQueryScope 内。未启动 Minecraft、运行测试、插入运行时探针或请求外部 API，未取得本次卡死时的线程堆栈；长聊天、嵌套卡片、滚动保持和实际卡死是否消除尚待游戏内验收。
+
 ## 2026-10-30 宿主信息双栏卡片（26.1.2）
 
 核对实际 Minecraft 26.1.2 InventoryScreen、GuiEntityRenderer、EntityRenderDispatcher 的源码及 AUI 26.1 / 1.2.6 MinecraftElement、Mask、物品后端与深度区间。新增 system:player 节点和客户端 PlayerModelElement，服务端快照携带 UUID；player.json 用现有 row / column 组合模型和信息，在线列表折叠，统一 CSS 控制尺寸和窄屏换行。客户端每次按 UUID 解析玩家，不缓存实体，不修改真实实体，不新增依赖或服务端客户端类引用。

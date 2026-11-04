@@ -6,6 +6,7 @@
       "children": [
         {
           "type": "system:player",
+          "style": ["player_preview", "player_preview_bare"],
           "player": "{{player_id}}",
           "follow_mouse": true,
           "yaw": 15,
@@ -23,32 +24,8 @@
               "translate": "system.ui.player_info"
             },
             {
-              "type": "system:text",
-              "text": "{{field:name}}: {{name}}"
-            },
-            {
-              "type": "system:text",
-              "text": "{{field:health}}: {{health}} / {{max_health}}"
-            },
-            {
-              "type": "system:text",
-              "text": "{{field:experience_level}}: {{experience_level}}"
-            },
-            {
-              "type": "system:text",
-              "text": "{{field:dimension}}: {{dimension}}"
-            },
-            {
-              "type": "system:details",
-              "summary": "{{field:online_players}}",
-              "when": "online_players",
-              "children": [
-                {
-                  "type": "system:text",
-                  "text": "{{online_players.*.player_name}}",
-                  "repeat": "online_players"
-                }
-              ]
+              "type": "system:player_information",
+              "importance": 40
             }
           ]
         }

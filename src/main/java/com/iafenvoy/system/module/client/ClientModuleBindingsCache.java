@@ -53,14 +53,22 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
         try {
             SystemClientModules.local().forEach((id, module) -> this.register(id, module, List.of()));
             Map<Identifier, List<Identifier>> definitions = new LinkedHashMap<>();
+            Map<Identifier, Integer> orders = new HashMap<>();
             access.lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE).listElements().sorted(Comparator.comparing(HolderHelper::id))
-                    .forEach(holder -> holder.value().client().ifPresent(type -> definitions.computeIfAbsent(type, _ -> new ArrayList<>()).add(HolderHelper.id(holder))));
+                    .forEach(holder -> {
+                        Identifier id = HolderHelper.id(holder);
+                        orders.put(id, holder.value().order());
+                        holder.value().client().ifPresent(type -> definitions.computeIfAbsent(type, _ -> new ArrayList<>()).add(id));
+                    });
             definitions.forEach((type, ids) -> {
                 if (SystemClientModules.local().containsKey(type)) return;
                 ClientModule module = SystemClientModules.get(type);
                 if (module != null) this.register(type, module, ids);
             });
-            this.workspace = List.copyOf(this.workspace);
+            // Shared client implementations use their highest configured order; ties keep declaration order.
+            this.workspace = this.workspace.stream().sorted(Comparator.<Workspace>comparingInt(entry ->
+                    entry.context().definitions().stream().mapToInt(id -> orders.getOrDefault(id, 0)).max()
+                            .orElse(orders.getOrDefault(entry.context().id(), 0))).reversed()).toList();
             this.localActions = Map.copyOf(this.localActions);
             ClientModuleCaches.COMMAND.finish();
             this.registries = access;

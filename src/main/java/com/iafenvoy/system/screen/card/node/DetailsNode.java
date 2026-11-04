@@ -50,11 +50,11 @@ public record DetailsNode(String summary, List<CardTemplate.Node> children, bool
         toggle.appendChild(arrow);
         toggle.appendChild(AssistantView.element(view.document(), "span", "card_control_label", label));
         this.expanded(toggle, arrow, content, this.open);
-        toggle.addEventListener("click", event -> {
+        toggle.addEventListener("click", _ -> {
             if (!view.interactive()) return;
             this.expanded(toggle, arrow, content, !"true".equals(toggle.getAttribute("aria-expanded")));
             // Reflow the revealed subtree before painting or querying the next pointer position.
-            content.getRenderer().invalidateLayoutSubtree();
+            content.getLayout().invalidateLayoutSubtree();
             AssistantPages.commit(view.document());
         });
         Element element = view.element("div", "");

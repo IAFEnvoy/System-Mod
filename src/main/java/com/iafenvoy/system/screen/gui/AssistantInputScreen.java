@@ -99,7 +99,6 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         message.focus();
         AssistantView.bind(document, "asr_toggle", this::toggleRecognition);
         AssistantView.bind(document, "asr_cancel", this::stopRecognition);
-        AssistantView.text(document.getElementById("asr_cancel"), AssistantView.tr("system.asr.ui.cancel"));
         this.renderRecognition();
         // Blur fires before AUI commits the next focus; polling observes the completed transition.
         this.syncTextInputFocus();

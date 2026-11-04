@@ -62,33 +62,8 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
     @Override
     protected void initPage(Document document) {
         super.initPage(document);
-        for (String id : List.of("settings_title", "settings_back", "settings_view_heading", "settings_mode_full", "settings_mode_simple"))
-            text(document.getElementById(id), tr("system.ui." + id));
-        for (String id : List.of("privacy_heading", "privacy_text"))
-            text(document.getElementById(id), tr("system.ui." + id));
-        text(document.getElementById("settings_history_label"), tr("system.ui.history_toggle"));
-        text(document.getElementById("settings_model_label"), tr("system.ui.model_toggle"));
-        text(document.getElementById("settings_speech_enabled_label"), tr("system.tts.ui.enabled"));
-        text(document.getElementById("settings_speech_notification_sound_label"), tr("system.tts.ui.notification_sound"));
-        text(document.getElementById("speech_notification_sound_hint"), tr("system.tts.ui.notification_sound_hint"));
-        text(document.getElementById("settings_speech_cache_label"), tr("system.tts.ui.cache_enabled"));
-        text(document.getElementById("speech_cache_hint"), tr("system.tts.ui.cache_hint"));
-        for (String part : List.of("requirements", "rewards", "description"))
-            text(document.getElementById("speech_quest_" + part + "_label"), tr("system.tts.ui.quest_" + part));
-        text(document.getElementById("speech_quest_hint"), tr("system.tts.ui.quest_hint"));
-        text(document.getElementById("speech_language_label"), tr("system.tts.ui.language"));
-        text(document.getElementById("settings_asr_enabled_label"), tr("system.asr.ui.enabled"));
-        text(document.getElementById("settings_asr_auto_send_label"), tr("system.asr.ui.auto_send"));
-        for (Tab value : Tab.values()) {
-            String id = "settings_tab_" + value.key();
-            text(document.getElementById(id), tr("system.ui." + id));
-            bind(document, id, () -> this.selectTab(value));
-        }
-        for (String id : List.of("speech_note", "speech_key_step", "speech_voice_step", "speech_key_label", "speech_workspace_label",
-                "speech_model_label", "speech_voice_label", "speech_volume_label", "speech_hint", "speech_preview", "speech_stop"))
-            text(document.getElementById(id), tr("system.tts.ui." + id));
-        for (String id : List.of("asr_note", "asr_key_step", "asr_appkey_label", "asr_access_key_id_label", "asr_access_key_secret_label", "asr_hint"))
-            text(document.getElementById(id), tr("system.asr.ui." + id));
+        for (Tab value : Tab.values())
+            bind(document, "settings_tab_" + value.key(), () -> this.selectTab(value));
         document.getElementById("speech_key").setAttribute("placeholder", tr("system.tts.ui.key_placeholder"));
         Element languageSelect = document.getElementById("speech_language");
         for (String language : SpeechConfig.LANGUAGES) {
@@ -295,7 +270,6 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         Element languageSelect = document.getElementById("speech_language");
         if (!languageSelect.getValue().equals(this.speechForm.language()))
             languageSelect.setValue(this.speechForm.language());
-        text(document.getElementById("speech_language_hint"), tr("system.tts.ui.language_hint"));
         for (String id : List.of("speech_workspace", "speech_model", "speech_voice", "speech_language", "speech_volume", "speech_preview"))
             document.getElementById(id).setDisabled(!this.speechForm.hasKey());
         switchChecked(document.getElementById("asr_enabled"), this.asrForm.enabled());

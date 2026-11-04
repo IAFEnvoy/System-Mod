@@ -9,7 +9,6 @@ public final class ItemSystemClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
         module.workspace("items", "nav_items", workspace -> {
-            workspace.labels("nav_items", "item_search");
             workspace.input("item_query", "system.ui.item_placeholder", "item_search");
             workspace.click("nav_items", () -> workspace.show("items"));
             workspace.click("item_search", () -> {

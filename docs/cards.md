@@ -152,6 +152,7 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 | `divider` | `card_divider` | 分割线 |
 | `items` | `item_groups` | 原版物品图标、数量及 tooltip |
 | `player` | `player_preview` | 按快照 UUID 渲染客户端玩家模型、皮肤和装备 |
+| `player_information` | `card_column` | 显示 Saturn 生成的玩家信息，只保留重要度严格大于 `importance` 的行 |
 | `icons` | `quest_icon_group` | FTB 任务 / 奖励的原生类型图标、数量 / 进度及文字 tooltip |
 | `actions` | `card_actions` | 已有可信动作列表 |
 | `button` | `card_action` | 通过 callback ID 绑定 Java 操作 |
@@ -160,7 +161,7 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 
 ### 宿主信息与玩家模型
 
-内置 `player.json` 用 row / column 排出左侧模型、右侧信息；生命值显示当前 / 上限，保留等级、维度与默认折叠的在线玩家列表。布局、边框、预览宽高均在共享 `assistant.css`，窄容器允许换行，不改变 HUD 的宿主宽度或限高。
+内置 `player.json` 用 row / column 排出左侧模型、右侧信息：右侧由独立的 `system:player_information` 节点显示 Saturn 玩家信息，不再单独重复名称 / 生命 / 等级 / 维度，也不显示在线玩家列表。模型区域默认**无边框**：节点 `style` 写成 `["player_preview", "player_preview_bare"]`，把 `player_preview_bare` 从 `style` 去掉即可恢复边框。布局、预览宽高仍在共享 `assistant.css`，窄容器允许换行，不改变 HUD 的宿主宽度或限高。
 
 ```json
 {
@@ -185,11 +186,24 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 | `offset_x` | 0 | 模型中心水平偏移，单位为文档 CSS 像素；正数向右 |
 | `offset_y` | 0 | 模型中心垂直偏移，单位为文档 CSS 像素；正数向下 |
 
-以上配置字段使用 lenientOptionalFieldOf，缺失或类型错误时采用默认值，非正数或非有限的 scale 同样回退为 1。节点没有额外文字投影，不影响纯文本导出或 TTS。区域尺寸仍由 CSS 的 player_preview 样式控制，缩放和偏移只调整框内模型，超出区域的部分继续裁剪。
+以上配置字段使用 lenientOptionalFieldOf，缺失或类型错误时采用默认值，非正数或非有限的 scale 同样回退为 1。节点没有额外文字投影，不影响纯文本导出或 TTS。区域尺寸仍由 CSS 的 player_preview 样式控制，缩放和偏移只调整框内模型，超出区域的部分继续裁剪。节点自身的类名可被 `Node.style` 覆盖：内置模板用 `["player_preview", "player_preview_bare"]` 保留尺寸与背景、去掉预览边框；要在自定义模板里恢复边框，只写 `player_preview` 即可。
 
 跟随在客户端绘制时读取实时光标，先通过 AUI 的文档视口与 CSS transform 逆变换转换坐标，再与偏移后的模型中心比较，适配 GUI 缩放、滚动和容器变换。游戏锁定鼠标时使用 yaw / pitch，不强制释放光标，不拦截按键或点击。固定朝向模式保持头部与身体的水平朝向一致，跟随模式则保留原版预览的头部偏转。
 
 `PlayerQueryTool` 在服务端读取当前宿主 UUID 和数值，`PlayerSnapshotOutput` 的 Codec 携带 playerId，buildCard 写入 player_id；公共数据不持有 Entity、皮肤或客户端类。客户端 `PlayerModelElement` 每次按 UUID 解析当前世界玩家，复用原版 InventoryScreen / GuiEntityRenderer 的独立渲染状态与实体提交链路，沿用 MC 皮肤、装备和模型层。数值属于服务端查询时的快照，模型使用当前客户端状态；不按名字找人、不把离线卡片替换成本机玩家，也不自行请求皮肤接口。
+
+玩家信息节点只接受一个业务配置字段：
+
+```json
+{
+  "type": "system:player_information",
+  "importance": 40
+}
+```
+
+`importance` 默认 0，缺失或类型错误时回退为默认值。仅显示 Saturn 行定义中 `importance` **严格大于**此值的行，等于阈值也不显示；内置模板设为 40。通用的 `style/when/unless/repeat` 仍由节点宿主处理，没有字段 / 分组白名单或额外行数、字符数裁剪。数据包新增的 Saturn 信息行自动参与显示；调整行的重要度、可见条件或格式应修改 Saturn 数据定义。
+
+`PlayerInformationView` 在服务端游戏线程通过 `PlayerViews.parse(player)` + `PlayerInformation.collectAll(...)` 采集信息，enabled、visible、missing、顺序和内容格式均由 Saturn 决定。`PlayerInformationOutput` 仅保存每行的重要度与 `InformationText.lines(row)` 生成的 Component 列表，避免把原生 InformationDocument 的注册表 Holder 引用带入无注册表上下文的 JSON 聊天历史；不重新实现 Saturn 的求值或文本格式化。Component 的翻译键和样式保留到客户端处理。`PlayerSnapshotOutput.buildCard()` 把列表放进固定参数 `player_information`，节点统一处理卡片渲染与纯文本投影，过滤后为空时显示 `system.ui.player_information_empty`。采集整体失败只记录日志并返回空列表，不影响玩家查询本身。
 
 模型在 AUI 当前输出目标、变换与裁剪中绘制，深度使用其物品保留区间，避免 CSS 尺寸改变后覆盖其他文档；不调用会切换投影 / 输出目标的整套 GuiRenderer。只调整临时 render state，移除姓名、阴影、火焰和轮廓，不修改真实实体的朝向或姿态。节点不保留实体引用或单独 GPU 资源，玩家暂不在客户端世界中时显示本地化占位，重新可用后恢复。
 
@@ -331,7 +345,7 @@ CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并等待回�
 
 | 模板 | 参数 |
 | --- | --- |
-| player | player_id（UUID）、name/health/max_health/experience_level/dimension/language，online_players.<下标>.player_name |
+| player | player_id（UUID）、name/health/max_health/experience_level/dimension/language，information.<下标>.text |
 | items | items.<下标>.item_name/item_id/max_stack，result_items |
 | sign_in_status | date/signed_in/history_saved/external_model，candidates.<下标>.reward_label/reward_items/result_items |
 | reward/entitlement/purchase | reward_label/reward_items/result_items；回执另有 entitlement_id/state，购买另有 order_id |

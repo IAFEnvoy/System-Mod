@@ -53,7 +53,6 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
         if (document == null) return;
         this.revision = AssistantClient.revision();
         this.templateRevision = CardTemplates.revision();
-        text(document.getElementById("speaker"), tr("system.ui.assistant"));
         AssistantClientState.ChatEntry current = AssistantClient.state().current();
         String request = current == null ? "" : current.text();
         text(document.getElementById("current_request"), request);

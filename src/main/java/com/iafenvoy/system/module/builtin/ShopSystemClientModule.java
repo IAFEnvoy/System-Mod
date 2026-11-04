@@ -9,7 +9,6 @@ public final class ShopSystemClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
         module.workspace("shop", "nav_shop", workspace -> {
-            workspace.labels("nav_shop", "shop_search", "shop_refresh", "shop_text");
             workspace.input("shop_query", "system.ui.shop_placeholder", "shop_search");
             workspace.click("nav_shop", () -> {
                 workspace.show("shop");

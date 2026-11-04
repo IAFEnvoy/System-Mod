@@ -17,12 +17,15 @@
 
 ```json
 {
+  "order": 80,
   "server": { "type": "system:signin" },
   "client": "system:signin"
 }
 ```
 
 此配置实例 ID 为 `example:daily`，服务端实现类型为 `system:signin`。系统的 `modules` 写 `"example:daily"`；`/system module add/remove/list`、玩家手动覆盖与 `has_module` 也使用配置实例 ID。模块 tag 路径为 `data/<namespace>/tags/system/system_module/<path>.json`。
+
+顶层 `order` 是客户端入口的显示优先级，越高越靠前，默认 0；缺失或格式错误时采用默认值。ClientModuleBindingsCache 在发布 Workspace 快照前统一降序排列，同值保持原有顺序；共用 client 实现的配置取最高 order，本地常驻入口读取同 ID 的定义。内置玩家信息为 100，排在其他内置模块之前。此字段不影响模块权限、初始化依赖或服务端工作流候选选择。
 
 `server` 和 `client` 均可省略：纯服务端模块只写 server，纯客户端贡献只写 client。client 始终是 ID，不在服务端解码 ClientModule、客户端 Codec 或 UI 类。专用服务端只加载服务端模块类；原有 ClientHooks 已拆成相邻的客户端实现类。
 

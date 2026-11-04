@@ -226,8 +226,7 @@ public final class AgentEngine implements AutoCloseable {
      * This is intentionally separate from migration: malformed files are discarded explicitly by an administrator.
      */
     public CompletionStage<AgentResult> reset(UUID player) {
-        return this.revoke(player).thenApply(result ->
-                result.isSuccess() ? AgentResult.ok("system.result.reset") : result);
+        return this.revoke(player).thenApply(result -> result.isSuccess() ? AgentResult.ok("system.result.reset") : result);
     }
 
     public ModelGateway model() {
@@ -379,7 +378,7 @@ public final class AgentEngine implements AutoCloseable {
 
     CompletionStage<AgentResult> personalMaintenance(UUID player, Callable<AgentResult> work) {
         if (!this.maintenanceOwners.add(player)) return CompletableFuture.completedFuture(AgentResult.error("BUSY"));
-        return this.maintenance(work).whenComplete((ignored, error) -> this.maintenanceOwners.remove(player));
+        return this.maintenance(work).whenComplete((ignored, _) -> this.maintenanceOwners.remove(player));
     }
 
     public void cancel(UUID player) {

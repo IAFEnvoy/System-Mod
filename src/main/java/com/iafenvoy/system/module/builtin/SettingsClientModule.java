@@ -21,7 +21,6 @@ public final class SettingsClientModule implements ClientModule {
         });
         module.command(SettingsClientModule::open, "settings", "设置", "系统设置");
         module.workspace("", "nav_settings", WorkspaceGroup.SETTINGS, workspace -> {
-            workspace.labels("nav_settings");
             workspace.click("nav_settings", SettingsClientModule::open);
         });
     }

@@ -7,7 +7,7 @@ import com.iafenvoy.saturn.data.cost.Debit;
 import com.iafenvoy.saturn.data.cost.context.CostContext;
 import com.iafenvoy.saturn.registry.SaturnRegistries;
 import com.iafenvoy.saturn.runtime.resulting.Failure;
-import com.iafenvoy.saturn.runtime.resulting.ResultWithData;
+import com.iafenvoy.saturn.runtime.resulting.Result;
 import com.iafenvoy.saturn.runtime.resulting.failures.CostFailure;
 import com.iafenvoy.saturn.util.DefinitionText;
 import com.iafenvoy.saturn.util.matcher.ItemMatcher;
@@ -23,7 +23,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStackTemplate;
-import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -48,13 +47,13 @@ public final class CommerceCosts {
         Failure failure = null;
         Identifier failedResource = null;
         for (Cost cost : costs) {
-            ResultWithData<Cost.Transaction> result = cost.prepare(context);
-            if (result.isFailure()) {
-                failure = result.failure();
-                failedResource = result.failedResource();
+            Result<Cost.Transaction> result = cost.prepare(context);
+            if (result instanceof Result.FailureResult<?>) {
+                failure = result.getFailure().orElseThrow();
+                failedResource = result.getFailure().flatMap(Failure::resource).orElse(null);
                 break;
             }
-            Cost.Transaction transaction = result.getData();
+            Cost.Transaction transaction = result.getData().orElseThrow();
             if (!Double.isFinite(transaction.amount()) || transaction.amount() < 0) {
                 failure = CostFailure.INVALID_AMOUNT;
                 break;
@@ -62,7 +61,7 @@ public final class CommerceCosts {
             Optional<Failure> pricingFailure = bill.price(List.of(new BoundCost(cost, new TrackedTransaction(transaction, started, uncertain))));
             if (pricingFailure.isPresent()) {
                 failure = pricingFailure.get();
-                failedResource = bill.failedResource();
+                failedResource = bill.failedResource().orElse(null);
                 break;
             }
             if (transaction.amount() == 0) continue;
@@ -82,8 +81,13 @@ public final class CommerceCosts {
             } else
                 descriptions.add(Component.literal(transaction.target().label() + " × " + number(transaction.amount())));
         }
-        if (failure != null) descriptions.add(failure.message(failedResource));
-        return new Prepared(player, bill, new CommerceCatalog.Price(items, descriptions), failure, failedResource, started, uncertain);
+        // The quote always carries a display price, even when pricing was refused, so only the refusal is optional.
+        Optional<Failure> refusal = Optional.empty();
+        if (failure != null) {
+            descriptions.add(failure.message(failedResource));
+            refusal = Optional.of(failedResource == null ? failure : failure.withResource(failedResource));
+        }
+        return new Prepared(player, bill, new CommerceCatalog.Price(items, descriptions), refusal, started, uncertain);
     }
 
     private static Component describe(ItemMatcher.Entry entry) {
@@ -101,27 +105,49 @@ public final class CommerceCosts {
     }
 
     /**
-     * The result owns the immutable display price; the bound bill stays server-side for confirmation.
+     * The quote owns the immutable display price, which is produced whether or not pricing succeeded; the bound bill
+     * stays server-side for confirmation. Only the refusal is optional, so it is carried as a plain failure value
+     * rather than as a {@code Result} that never has data.
      */
-    public static final class Prepared extends ResultWithData<CommerceCatalog.Price> {
+    public static final class Prepared {
         private final ServerPlayer payer;
         private final CostPayment bill;
+        private final CommerceCatalog.Price price;
+        private final Optional<Failure> failure;
         private final AtomicBoolean started, uncertain;
 
-        private Prepared(ServerPlayer payer, CostPayment bill, CommerceCatalog.Price price, @Nullable Failure failure,
-                         @Nullable Identifier failedResource, AtomicBoolean started, AtomicBoolean uncertain) {
-            super(price, failure, failedResource);
+        private Prepared(ServerPlayer payer, CostPayment bill, CommerceCatalog.Price price, Optional<Failure> failure,
+                         AtomicBoolean started, AtomicBoolean uncertain) {
             this.payer = payer;
             this.bill = bill;
+            this.price = price;
+            this.failure = failure;
             this.started = started;
             this.uncertain = uncertain;
+        }
+
+        public CommerceCatalog.Price getData() {
+            return this.price;
+        }
+
+        /** {@return why pricing was refused, or empty when the quote is usable} */
+        public Optional<Failure> failure() {
+            return this.failure;
+        }
+
+        public boolean isSuccess() {
+            return this.failure.isEmpty();
+        }
+
+        public boolean isFailure() {
+            return this.failure.isPresent();
         }
 
         public void pay(ServerPlayer player, AtomicBoolean touched) {
             if (player != this.payer) throw new AgentException("STALE_QUOTE");
             if (this.isFailure()) throw new AgentException("INVALID_COST");
             if (this.bill.test().isPresent()) throw new AgentException("INSUFFICIENT_COST");
-            CostPayment.PaymentResult result;
+            Result<List<Debit>> result;
             try {
                 result = this.bill.pay();
             } finally {
@@ -129,7 +155,7 @@ public final class CommerceCosts {
             }
             // Saturn continues real fees after an error; never unlock goods for a partial or uncertain collection.
             if (this.uncertain.get()) throw new AgentException("EFFECT_UNKNOWN");
-            if (result.isFailure()) {
+            if (result instanceof Result.FailureResult<?>) {
                 throw new AgentException("INSUFFICIENT_COST");
             }
         }
@@ -137,8 +163,8 @@ public final class CommerceCosts {
 
     private record BoundCost(Cost definition, Cost.Transaction transaction) implements Cost {
         @Override
-        public ResultWithData<Transaction> prepare(CostContext context) {
-            return ResultWithData.success(this.transaction);
+        public Result<Transaction> prepare(CostContext context) {
+            return Result.success(this.transaction);
         }
 
         @Override
@@ -160,11 +186,11 @@ public final class CommerceCosts {
         }
 
         @Override
-        public ResultWithData<List<Debit>> execute(boolean simulate) {
+        public Result<List<Debit>> execute(boolean simulate) {
             if (!simulate) this.started.set(true);
             try {
-                ResultWithData<List<Debit>> result = this.delegate.execute(simulate);
-                if (!simulate && result.isFailure()) this.uncertain.set(true);
+                Result<List<Debit>> result = this.delegate.execute(simulate);
+                if (!simulate && result instanceof Result.FailureResult<?>) this.uncertain.set(true);
                 return result;
             } catch (RuntimeException error) {
                 if (!simulate) this.uncertain.set(true);

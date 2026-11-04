@@ -9,7 +9,6 @@ public final class InboxSystemClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
         module.workspace("", "nav_inbox", workspace -> {
-            workspace.labels("nav_inbox");
             workspace.click("nav_inbox", () -> {
                 workspace.show("chat");
                 AssistantClient.send(InboxInput.INSTANCE, "");

@@ -8,12 +8,13 @@ import net.minecraft.resources.Identifier;
 import java.util.Optional;
 
 /**
- * A datapack entry pairs configured server behavior with an optional client implementation ID.
+ * A datapack entry pairs configured behavior with a client implementation ID and display order.
  */
-public record SystemModule(Optional<ServerModule> server, Optional<Identifier> client) {
+public record SystemModule(Optional<ServerModule> server, Optional<Identifier> client, int order) {
     public static final Codec<SystemModule> CODEC = RecordCodecBuilder.create(i -> i.group(
             ServerModule.CODEC.optionalFieldOf("server").forGetter(SystemModule::server),
-            Identifier.CODEC.optionalFieldOf("client").forGetter(SystemModule::client)
+            Identifier.CODEC.optionalFieldOf("client").forGetter(SystemModule::client),
+            Codec.INT.lenientOptionalFieldOf("order", 0).forGetter(SystemModule::order)
     ).apply(i, SystemModule::new));
 
     public boolean available() {

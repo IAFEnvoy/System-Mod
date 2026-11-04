@@ -114,7 +114,7 @@ public record ActionsNode(String actions, int pageSize) implements CardNode {
             this.renderPage(view, root, actions, indices);
             Element scroll = view.document().getElementById("notification_scroll");
             if (scroll != null) scroll.scrollTop = scroll.targetScrollTop = 0;
-            root.getRenderer().invalidateLayoutSubtree();
+            root.getLayout().invalidateLayoutSubtree();
             AssistantPages.commit(view.document());
         });
         controls.appendChild(button);

@@ -17,11 +17,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 
 /**
@@ -76,7 +73,8 @@ public final class LocalSpeechUsage {
      */
     public static final class Ledger {
         private final Path path;
-        private volatile Snapshot value;
+        /** Null until the queued load ran; every update and the load itself commit through one atomic reference. */
+        private final AtomicReference<Snapshot> value = new AtomicReference<>();
 
         private Ledger(Path path) {
             this.path = path;
@@ -85,16 +83,18 @@ public final class LocalSpeechUsage {
         }
 
         private void load() {
-            this.value = Snapshot.EMPTY;
+            Snapshot loaded = Snapshot.EMPTY;
             try {
-                if (Files.exists(this.path)) this.value = CodecIO.parse(Snapshot.CODEC, Files.readString(this.path));
+                if (Files.exists(this.path)) loaded = CodecIO.parse(Snapshot.CODEC, Files.readString(this.path));
             } catch (IOException | RuntimeException | LinkageError error) {
                 SystemMod.LOGGER.error("Unable to load local speech usage {}", this.path, error);
             }
+            // An update that already committed wins; the file is the older copy in that case.
+            this.value.compareAndSet(null, loaded);
         }
 
         public Snapshot snapshot() {
-            Snapshot value = this.value;
+            Snapshot value = this.value.get();
             return value == null ? Snapshot.EMPTY : value;
         }
 
@@ -118,10 +118,11 @@ public final class LocalSpeechUsage {
             try {
                 WORKER.execute(() -> {
                     try {
-                        this.value = action.apply(this.value);
-                        this.save();
+                        // Read-modify-write on the reference itself, so it does not depend on the pool staying single-threaded.
+                        Snapshot updated = this.value.updateAndGet(value -> action.apply(value == null ? Snapshot.EMPTY : value));
+                        this.save(updated);
                     } catch (RuntimeException | LinkageError error) {
-                        // Preserve the last snapshot and deliver audio/text even if pricing or accounting fails.
+                        // A throwing action never commits; the last snapshot survives and audio/text are still delivered.
                         SystemMod.LOGGER.error("Unable to update local speech usage {}", this.path, error);
                     }
                 });
@@ -130,11 +131,12 @@ public final class LocalSpeechUsage {
             }
         }
 
-        private void save() {
+        /** Saves exactly the snapshot that was just committed, never whatever the reference holds by now. */
+        private void save(Snapshot value) {
             Path temporary = this.path.resolveSibling(this.path.getFileName() + ".tmp");
             try {
                 Files.createDirectories(this.path.getParent());
-                Files.writeString(temporary, CodecIO.write(Snapshot.CODEC, this.value));
+                Files.writeString(temporary, CodecIO.write(Snapshot.CODEC, value));
                 try {
                     Files.move(temporary, this.path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
                 } catch (AtomicMoveNotSupportedException error) {

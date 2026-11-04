@@ -26,7 +26,7 @@ import java.util.*;
 public final class SpeechPricingConfig {
     public static final String FILE_NAME = "system-speech-pricing.json";
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final Codec<BigDecimal> PRICE = MiscCodecs.checked(Codec.withAlternative(new PrimitiveCodec<BigDecimal>() {
+    private static final Codec<BigDecimal> PRICE = MiscCodecs.checked(Codec.withAlternative(new PrimitiveCodec<>() {
         @Override
         public <T> DataResult<BigDecimal> read(DynamicOps<T> ops, T input) {
             return ops.getNumberValue(input).flatMap(value -> MiscCodecs.mapOrError(() -> new BigDecimal(value.toString())));

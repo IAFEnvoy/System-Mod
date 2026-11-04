@@ -13,7 +13,7 @@
 | NeoForge | 开发配置 `26.1.2.114`；README 要求同一 MC 版本的此版本或更高版本 | [gradle.properties](gradle.properties) 的 `neo_version` |
 | Java | `25`，toolchain 与字节码均使用 Java 25 | [build.gradle](build.gradle)、[Mixin 配置](src/main/resources/system.mixins.json) |
 | Gradle / ModDev | `9.2.1` / `2.0.148` | [Wrapper 配置](gradle/wrapper/gradle-wrapper.properties)、[build.gradle](build.gradle) |
-| ApricityUI | 开发配置 `1.2.6`；客户端依赖，需兼容 MC `26.1.2` | [gradle.properties](gradle.properties) 的 `apricityui_version` |
+| ApricityUI | 开发配置与客户端最低版本 `1.2.9`；需兼容 MC `26.1.2` | [gradle.properties](gradle.properties) 的 `apricityui_version` |
 | Saturn | `1.0-beta.3`，CurseMaven 文件 ID `9349648`；两端必装，提供 Cost、DataStorage 与 Codec 工具 | [build.gradle](build.gradle)、[开发与架构](docs/development.md) |
 | Simple Voice Chat | 开发适配 `2.6.26+26.1.2`，CurseMaven 文件 ID `9307181`；可选客户端录音后端，不打入发布 JAR，服务端不要求安装 | [gradle.properties](gradle.properties)、[build.gradle](build.gradle) |
 | FTB Quests | `26.1.2.8`；可选集成 | [gradle.properties](gradle.properties) 的 `ftb_quests_version` |

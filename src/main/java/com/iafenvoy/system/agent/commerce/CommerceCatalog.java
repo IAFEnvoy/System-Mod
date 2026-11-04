@@ -4,6 +4,8 @@ import com.iafenvoy.saturn.data.cost.Cost;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.store.Reward;
+import com.iafenvoy.system.data.catalog.CatalogEntry;
+import com.iafenvoy.system.data.lottery.LotteryPool;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.serialization.Codec;

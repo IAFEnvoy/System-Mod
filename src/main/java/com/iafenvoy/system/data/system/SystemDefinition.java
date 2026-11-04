@@ -1,7 +1,8 @@
-package com.iafenvoy.system.data;
+package com.iafenvoy.system.data.system;
 
 import com.iafenvoy.saturn.util.codec.CollectionCodecs;
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.data.module.ModuleDefinition;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;

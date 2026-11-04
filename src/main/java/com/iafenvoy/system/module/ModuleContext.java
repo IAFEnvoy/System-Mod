@@ -4,7 +4,7 @@ import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.MinecraftTools;
-import com.iafenvoy.system.data.SystemModule;
+import com.iafenvoy.system.data.module.SystemModule;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
 

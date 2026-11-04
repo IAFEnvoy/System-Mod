@@ -16,6 +16,14 @@ import java.util.concurrent.CompletionStage;
  * Conversation storage operations share the engine's lifecycle-aware store and maintenance queue.
  */
 final class ConversationService {
+    /**
+     * One entry may carry a whole card snapshot; 4 KiB truncated real cards (the player card is routinely larger).
+     * The page budget is what actually bounds a history response, and the newest turn is always included.
+     */
+    private static final int MAX_ENTRY_CHARS = 128 * 1024;
+    private static final int MAX_PAGE_CHARS = 1024 * 1024;
+    private static final int MAX_ENTRIES = 24;
+    private static final int MAX_PROSE_CHARS = 1000;
     private final AgentEngine engine;
 
     ConversationService(AgentEngine engine) {
@@ -54,14 +62,16 @@ final class ConversationService {
             if (!data.bound()) throw new AgentException("NOT_BOUND");
             List<Message> selected = new ArrayList<>();
             int size = 0;
-            for (int index = data.conversation.history.size() - 1; index >= 0 && selected.size() < 24; index--) {
+            for (int index = data.conversation.history.size() - 1; index >= 0 && selected.size() < MAX_ENTRIES; index--) {
                 // The page never carries request IDs; oversized results keep complete cards and clipped prose.
                 Message entry = data.conversation.history.get(index).withRequestId("");
                 if (entry instanceof Message.Assistant assistant
-                        && CodecIO.write(AgentResult.CODEC, assistant.result()).length() > 4096)
+                        && CodecIO.write(AgentResult.CODEC, assistant.result()).length() > MAX_ENTRY_CHARS)
                     entry = new Message.Assistant("", assistant.time(), clip(assistant.result()));
-                size += Message.CODEC.encodeStart(JsonOps.INSTANCE, entry).getOrThrow().toString().length();
-                if (size > 44000) break;
+                int length = Message.CODEC.encodeStart(JsonOps.INSTANCE, entry).getOrThrow().toString().length();
+                // The newest turn is always sent; an entry that does not fit only stops older ones.
+                if (!selected.isEmpty() && size + length > MAX_PAGE_CHARS) break;
+                size += length;
                 selected.add(entry);
             }
             return new History(selected.reversed());
@@ -70,12 +80,13 @@ final class ConversationService {
 
     /**
      * Keeps a complete JSON result under the per-entry cap; never truncates the middle of a card or action.
+     * The first card always survives: an entry without cards renders as an empty row on the client.
      */
     private static AgentResult clip(AgentResult result) {
         List<CardUpdate> cards = new ArrayList<>();
         for (CardUpdate card : result.cards()) {
             cards.add(card);
-            if (CodecIO.write(AgentResult.CODEC, presentation(result, cards)).length() > 4096) {
+            if (cards.size() > 1 && CodecIO.write(AgentResult.CODEC, presentation(result, cards)).length() > MAX_ENTRY_CHARS) {
                 cards.removeLast();
                 break;
             }
@@ -84,7 +95,7 @@ final class ConversationService {
     }
 
     private static AgentResult presentation(AgentResult result, List<CardUpdate> cards) {
-        return result.withPresentation(result.messageKey(), MiscUtil.clip(result.text(), 1000), cards, result.silent());
+        return result.withPresentation(result.messageKey(), MiscUtil.clip(result.text(), MAX_PROSE_CHARS), cards, result.silent());
     }
 
 }

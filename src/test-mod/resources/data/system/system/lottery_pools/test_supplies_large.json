@@ -1,0 +1,111 @@
+{
+  "label": "测试：大补给池",
+  "costs": [
+    { "type": "saturn:item", "items": ["minecraft:emerald"], "amount": 1 }
+  ],
+  "entries": [
+    {
+      "weight": 40,
+      "reward": {
+        "id": "system:test_lottery/torches",
+        "label": "火把补给",
+        "items": [{ "id": "minecraft:torch", "count": 16 }]
+      }
+    },
+    {
+      "weight": 25,
+      "reward": {
+        "id": "system:test_lottery/bread",
+        "label": "面包补给",
+        "items": [{ "id": "minecraft:bread", "count": 8 }]
+      }
+    },
+    {
+      "weight": 12,
+      "reward": {
+        "id": "system:test_lottery/iron",
+        "label": "铁锭补给",
+        "items": [{ "id": "minecraft:iron_ingot", "count": 4 }]
+      }
+    },
+    {
+      "weight": 8,
+      "reward": {
+        "id": "system:test_lottery/arrows",
+        "label": "箭矢补给",
+        "items": [{ "id": "minecraft:arrow", "count": 32 }]
+      }
+    },
+    {
+      "weight": 5,
+      "reward": {
+        "id": "system:test_lottery/tools",
+        "label": "石制工具包",
+        "items": [
+          { "id": "minecraft:stone_pickaxe", "count": 1 },
+          { "id": "minecraft:stone_axe", "count": 1 },
+          { "id": "minecraft:stone_shovel", "count": 1 }
+        ]
+      }
+    },
+    {
+      "weight": 3,
+      "reward": {
+        "id": "system:test_lottery/food",
+        "label": "熟食套餐",
+        "items": [
+          { "id": "minecraft:cooked_beef", "count": 4 },
+          { "id": "minecraft:cooked_chicken", "count": 4 }
+        ]
+      }
+    },
+    {
+      "weight": 2,
+      "reward": {
+        "id": "system:test_lottery/redstone",
+        "label": "红石粉",
+        "items": [{ "id": "minecraft:redstone", "count": 16 }]
+      }
+    },
+    {
+      "weight": 2,
+      "reward": {
+        "id": "system:test_lottery/quartz",
+        "label": "下界石英",
+        "items": [{ "id": "minecraft:quartz", "count": 8 }]
+      }
+    },
+    {
+      "weight": 1,
+      "reward": {
+        "id": "system:test_lottery/emerald",
+        "label": "绿宝石",
+        "items": [{ "id": "minecraft:emerald", "count": 8 }]
+      }
+    },
+    {
+      "weight": 1,
+      "reward": {
+        "id": "system:test_lottery/ender_pearl",
+        "label": "末影珍珠",
+        "items": [{ "id": "minecraft:ender_pearl", "count": 2 }]
+      }
+    },
+    {
+      "weight": 1,
+      "reward": {
+        "id": "system:test_lottery/diamond",
+        "label": "钻石",
+        "items": [{ "id": "minecraft:diamond", "count": 1 }]
+      }
+    },
+    {
+      "weight": 1,
+      "reward": {
+        "id": "system:test_lottery/golden_apple",
+        "label": "金苹果",
+        "items": [{ "id": "minecraft:golden_apple", "count": 1 }]
+      }
+    }
+  ]
+}

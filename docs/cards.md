@@ -121,7 +121,7 @@ summary 提供模板缺失时的回退和通知主句，模板正文已有相同
   "style": ["result_card"],
   "show_title": false,
   "body": [
-    { "type": "system:header", "text": "{{title}}" },
+    { "type": "system:title", "level": 2, "text": "{{title}}" },
     { "type": "system:items", "items": "{{result_items}}", "label": "{{field:reward}}" },
     { "type": "system:button", "text": "领取奖励", "callback": "claim", "when": "can_claim" }
   ]
@@ -134,6 +134,7 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 | --- | --- | --- |
 | `style` | `result_card` | CSS 类名；接受字符串或字符串数组，数组用空格拼接 |
 | `show_title` | true | `show_card_title` 状态开启时自动展示通用标题 |
+| `hide_summary` | false | 不在正文上方显示摘要行；标题已由模板给出、或摘要与正文重复时使用，聊天消息与语音仍保留摘要 |
 | `body` | 必填 | 节点列表 |
 | `actions` | 默认样式 | 可信动作列表的容器、按钮、编号及标签配置 |
 
@@ -142,7 +143,7 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 | type | 默认 CSS | 功能 |
 | --- | --- | --- |
 | `text` | `card_body` | 正文 |
-| `header` | `card_title` | 标题 |
+| `title` | `card_title` / `card_title_2..4` | 标题，`level` 取 1～4；正文顶层第一个 1 级标题作为卡片标题，其余级别在原位显示 |
 | `context` | `card_context` | 次要文字 |
 | `container` | `card_container` | 普通流布局 |
 | `row` | `card_row` | 横向排列并允许换行 |
@@ -151,13 +152,19 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 | `link` | `card_link` | 调用 Minecraft 原版打开 URL 的流程 |
 | `divider` | `card_divider` | 分割线 |
 | `items` | `item_groups` | 原版物品图标、数量及 tooltip |
+| `offer_grid` | `offer_grid` | 货架网格，单元格绑定 `actions.<下标>.click`；`columns`、`max_row`、`cell` 可调 |
+| `prize_grid` | `offer_grid` | 抽奖奖品货架，悬停显示概率与物品清单 |
 | `player` | `player_preview` | 按快照 UUID 渲染客户端玩家模型、皮肤和装备 |
 | `player_information` | `card_column` | 显示 Saturn 生成的玩家信息，只保留重要度严格大于 `importance` 的行 |
 | `icons` | `quest_icon_group` | FTB 任务 / 奖励的原生类型图标、数量 / 进度及文字 tooltip |
 | `actions` | `card_actions` | 已有可信动作列表 |
 | `button` | `card_action` | 通过 callback ID 绑定 Java 操作 |
 
-`text/header/context` 共享 `text/translate/args/inline`：优先使用 translate，先替换 args 中占位符再翻译，inline 默认 false。容器的 children 必填，text_separator 可选，仅影响纯文本连接。
+`text/context/title` 共享 `text/translate/args/inline`：优先使用 translate，先替换 args 中占位符再翻译，inline 默认 false。容器的 children 必填，text_separator 可选，仅影响纯文本连接。
+
+`title` 另有 `level`（1～4，默认 1），对应 h1～h4 的字号层级。正文**顶层**第一个 1 级标题会被提升为卡片标题：渲染器把它排在摘要之前，正文里不再重复绘制，即使标题键与结果消息键相同也会显示；放在容器或 repeat 里的 1 级标题、以及 2～4 级标题都在原位渲染。标题节点不参与纯文本折叠判定，带标题的模板始终保留卡片外观。
+
+被提升的标题同时抑制卡片正文里的摘要行，避免“标题 + 同一句话”重复；摘要仍保留在卡片数据里，聊天消息与语音播报照常使用，因此隐藏摘要不影响口播内容。
 
 ### 宿主信息与玩家模型
 
@@ -348,10 +355,11 @@ CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并等待回�
 | player | player_id（UUID）、name/health/max_health/experience_level/dimension/language，information.<下标>.text |
 | items | items.<下标>.item_name/item_id/max_stack，result_items |
 | sign_in_status | date/signed_in/history_saved/external_model，candidates.<下标>.reward_label/reward_items/result_items |
-| reward/entitlement/purchase | reward_label/reward_items/result_items；回执另有 entitlement_id/state，购买另有 order_id |
+| reward/entitlement/purchase | reward_label/reward_items/result_items；回执另有 entitlement_id/state，购买另有 order_id；状态 delivered 表示已交付，按钮区显示不可点的“已领取” |
 | shop_offer | label/id/items/price/price_text/payment_available，offer_items/price_items |
 | shop_order | order_id/label/state/error |
-| lottery_pool | label/id/prize_count/preview_count/price/price_text/free/payment_available/price_items；prizes.<下标>.reward_label/chance/result_items |
+| lottery_catalog | revision/query/truncated；pools.<下标>.label/prizeCount/prizes.<下标>.label/chance/items，单元格由 pool.<下标> 服务端按钮驱动 |
+| lottery_pool | label/id/prize_count/preview_count/price/price_text/free/payment_available/price_items/prize_list；状态 priced 表示有单次消耗；prizes.<下标>.reward_label/chance/result_items |
 | lottery_prize | reward_label/reward_items/chance/result_items，概率数值不含百分号 |
 | delivery_state | state |
 | quest/quest_submit | title，tasks.<下标>.task_title/task_progress/task_required/task_items；详情另有 chapter/description/progress/completed；submission 枚举由 CardData 构建提交或勾选按钮 |
@@ -364,6 +372,8 @@ CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并等待回�
 
 price 是非物品费用文字，price_text 包含物品文字。text 使用 summary，selection 使用已声明的动作。状态和历史没有卡片模板。
 
+交付（`system.action.deliver`）成功后不再发送“已交付”状态卡：服务端用 silent 回复重建同一张回执并原地替换来源卡，`delivered` 状态把“领取到背包”换成不可点的“已领取”。`reward` / `entitlement` / `purchase` 三张卡都适用，重建所需的 kind、订单号与奖池随按钮参数下发。
+
 ## 类型扩展与重载
 
 节点实现位于 `screen/card/node`，各自独立文件。根接口 `CardNode` 定义：
@@ -373,7 +383,7 @@ price 是非物品费用文字，price_text 包含物品文字。text 使用 sum
 - `render(view)`：生成 AUI 节点，返回 null 隐藏。
 - `text(view)`：纯文本投影，默认空字符串。
 
-`CardTemplate.Node` 只包装共用的 style/when/unless/repeat，不保存泛型类型包装或渲染函数。渲染器遍历后直接调用节点方法。TextNode 的 HeaderNode/ContextNode 子类复用文字实现，ContainerNode 的 RowNode/ColumnNode 子类复用容器实现；每种节点仍有自己的 MapCodec 和默认样式。
+`CardTemplate.Node` 只包装共用的 style/when/unless/repeat，不保存泛型类型包装或渲染函数。渲染器遍历后直接调用节点方法。TextNode 的 TitleNode/ContextNode 子类复用文字实现，ContainerNode 的 RowNode/ColumnNode 子类复用容器实现；每种节点仍有自己的 MapCodec 和默认样式。
 
 新增节点使用独立 Java 文件，例如：
 

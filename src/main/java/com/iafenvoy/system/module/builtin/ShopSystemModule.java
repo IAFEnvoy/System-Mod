@@ -12,7 +12,7 @@ import com.iafenvoy.system.agent.builtin.shop.ShopModule;
 import com.iafenvoy.system.agent.builtin.shop.ShopPurchaseModule;
 import com.iafenvoy.system.agent.builtin.shop.ShopPurchaseTool;
 import com.iafenvoy.system.agent.builtin.shop.ShopQuoteModule;
-import com.iafenvoy.system.agent.commerce.CatalogEntry;
+import com.iafenvoy.system.data.catalog.CatalogEntry;
 import com.iafenvoy.system.agent.commerce.PurchaseType;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.module.ModuleContext;
@@ -71,7 +71,7 @@ public record ShopSystemModule(
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
         ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview = context.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(context.commerce()).tool());
-        return List.of(new ShopModule(preview), new ShopQuoteModule(preview),
+        return List.of(new ShopModule(), new ShopQuoteModule(preview),
                 new ShopPurchaseModule(new ShopPurchaseTool(context.commerce()).tool()));
     }
 }

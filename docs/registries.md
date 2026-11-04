@@ -48,7 +48,7 @@
 
 ### 卡片数据与动作载荷
 
-卡片类型共 26 个：`text`、`selection`、`binding`、`shop_offer`、`shop_quote`、`player`、`items`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
+卡片类型共 27 个：`text`、`selection`、`binding`、`shop_offer`、`shop_quote`、`player`、`items`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
 
 动作类型共 21 个：`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`。
 
@@ -87,7 +87,7 @@ Codec 在第一次编解码时才访问注册表，避免静态初始化时提�
 
 ### 卡片节点
 
-内置节点：`system:text`、`system:header`、`system:context`、`system:container`、`system:row`、`system:column`、`system:details`、`system:link`、`system:divider`、`system:items`、`system:player`、`system:player_information`、`system:icons`、`system:actions`、`system:button`。
+内置节点：`system:text`、`system:title`、`system:context`、`system:container`、`system:row`、`system:column`、`system:details`、`system:link`、`system:divider`、`system:items`、`system:offer_grid`、`system:prize_grid`、`system:player`、`system:player_information`、`system:icons`、`system:actions`、`system:button`。
 
 `player` 通过 `SystemCardNodeTypes.PLAYER` 暴露，绑定参数表中的 UUID，客户端解析原版玩家模型；尺寸使用共享 CSS，follow_mouse 控制光标跟随，yaw / pitch 控制固定朝向，scale 和 offset_x / offset_y 调整框内缩放和位置。服务端 player 卡片数据仅增加 playerId，不加载 PlayerModelElement，也不新增业务动作或网络包。其数据类型 ID 与节点类型 ID 同为 system:player，分属两张注册表。
 

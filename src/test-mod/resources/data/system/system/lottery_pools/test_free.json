@@ -1,0 +1,37 @@
+{
+  "label": "测试：免费抽奖",
+  "entries": [
+    {
+      "weight": 50,
+      "reward": {
+        "id": "system:test_lottery/free_bread",
+        "label": "免费面包",
+        "items": [{ "id": "minecraft:bread", "count": 2 }]
+      }
+    },
+    {
+      "weight": 30,
+      "reward": {
+        "id": "system:test_lottery/free_torch",
+        "label": "免费火把",
+        "items": [{ "id": "minecraft:torch", "count": 8 }]
+      }
+    },
+    {
+      "weight": 15,
+      "reward": {
+        "id": "system:test_lottery/free_apple",
+        "label": "免费苹果",
+        "items": [{ "id": "minecraft:apple", "count": 4 }]
+      }
+    },
+    {
+      "weight": 5,
+      "reward": {
+        "id": "system:test_lottery/free_diamond",
+        "label": "免费钻石",
+        "items": [{ "id": "minecraft:diamond", "count": 1 }]
+      }
+    }
+  ]
+}

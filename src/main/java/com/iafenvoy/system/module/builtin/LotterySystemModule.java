@@ -12,7 +12,7 @@ import com.iafenvoy.system.agent.builtin.lottery.LotteryDrawTool;
 import com.iafenvoy.system.agent.builtin.lottery.LotteryModule;
 import com.iafenvoy.system.agent.builtin.lottery.LotteryPreviewModule;
 import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
-import com.iafenvoy.system.agent.commerce.LotteryPool;
+import com.iafenvoy.system.data.lottery.LotteryPool;
 import com.iafenvoy.system.agent.commerce.PurchaseType;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.module.ModuleContext;
@@ -71,6 +71,6 @@ public record LotterySystemModule(
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
         ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview = context.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(context.commerce()).tool());
-        return List.of(new LotteryModule(preview), new LotteryPreviewModule(preview), new LotteryDrawModule(new LotteryDrawTool(context.commerce()).tool()));
+        return List.of(new LotteryModule(), new LotteryPreviewModule(preview), new LotteryDrawModule(new LotteryDrawTool(context.commerce()).tool()));
     }
 }

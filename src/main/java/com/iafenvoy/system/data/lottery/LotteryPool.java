@@ -1,4 +1,4 @@
-package com.iafenvoy.system.agent.commerce;
+package com.iafenvoy.system.data.lottery;
 
 import com.iafenvoy.saturn.data.cost.Cost;
 import com.iafenvoy.system.agent.store.Reward;

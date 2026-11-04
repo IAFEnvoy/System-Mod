@@ -20,7 +20,8 @@
           "style": ["card_column", "player_info"],
           "children": [
             {
-              "type": "system:header",
+              "type": "system:title",
+              "level": 2,
               "translate": "system.ui.player_info"
             },
             {

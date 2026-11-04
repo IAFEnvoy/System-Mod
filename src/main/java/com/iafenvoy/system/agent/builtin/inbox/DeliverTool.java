@@ -11,6 +11,7 @@ import com.iafenvoy.system.agent.store.Delivery;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemStackTemplate;
@@ -69,6 +70,9 @@ public final class DeliverTool implements ToolRegistry.Handler<EntitlementInput,
                     if (!player.getInventory().add(stack) || !stack.isEmpty())
                         throw new AgentException("EFFECT_UNKNOWN");
                 }
+                // Same feedback as a vanilla pickup, so the items feel collected rather than teleported in.
+                player.playSound(SoundEvents.ITEM_PICKUP, 0.2F,
+                        ((player.getRandom().nextFloat() - player.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F);
                 return new StateOutput("DELIVERED");
             }).whenComplete((result, error) -> {
                 // This callback runs on the game thread: persistence is delegated below.

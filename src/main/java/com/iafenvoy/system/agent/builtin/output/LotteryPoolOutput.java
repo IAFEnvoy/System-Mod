@@ -42,7 +42,11 @@ public record LotteryPoolOutput(Identifier id, String label, Optional<CommerceCa
         CardBuilder builder = CardBuilder.template(TEMPLATE).title("system.result.lottery_pool").summary(Component.literal(this.label));
         builder.put("label", this.label()).put("id", this.id().toString()).put("prize_count", this.prizeCount())
                 .put("preview_count", this.prizes().size()).put("payment_available", this.paymentAvailable())
-                .put("free", this.price().isEmpty()).list("prizes", this.prizes(), (prefix, prize) -> prize.fill(builder, prefix));
+                // The cost keeps its own body line, so prize tooltips stay limited to the item and its odds.
+                .enable("priced", this.price().isPresent())
+                .put("free", this.price().isEmpty()).list("prizes", this.prizes(), (prefix, prize) -> prize.fill(builder, prefix))
+                // The shelf preview needs the prize objects themselves, not only the per-index fields.
+                .put("prize_list", this.prizes());
         this.price().ifPresent(builder::price);
         if (this.paymentAvailable) {
             if (this.quoteRef.isPresent())

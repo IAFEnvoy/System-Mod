@@ -10,6 +10,7 @@ import com.iafenvoy.system.module.client.ClientMessage;
 import com.iafenvoy.system.screen.AssistantMessages;
 import com.iafenvoy.system.screen.card.node.ActionsNode;
 import com.iafenvoy.system.screen.card.node.TextNode;
+import com.iafenvoy.system.screen.card.node.TitleNode;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.util.LegacyText;
 import com.sighs.apricityui.init.Document;
@@ -23,7 +24,7 @@ import java.util.Optional;
 /**
  * The single client construction path resolves local text, templates and trusted button callbacks.
  */
-public record CardPresentation(CardTemplate template, CardContext context) {
+public record CardPresentation(CardTemplate template, CardContext context, int hoistedTitle) {
     private static final CardFormatting FORMAT = LegacyText::formatted;
 
     public static CardPresentation of(CardUpdate original, String messageKey, CardContext.Mode mode, int actionOffset) {
@@ -33,14 +34,20 @@ public record CardPresentation(CardTemplate template, CardContext context) {
     public static CardPresentation of(CardUpdate original, String messageKey, CardContext.Mode mode, int actionOffset, CardPageState pages) {
         CardUpdate update = ClientCards.latest(original);
         CardView view = ClientCards.view(update);
+        CardTemplate template = CardTemplates.get(view.template());
+        if (template == null) template = CardTemplate.fallback();
+        // The first top-level level-1 title is the card heading; the presentation draws it above the summary.
+        int hoisted = hoistedTitle(template, view.context());
+        String bodyTitle = hoisted < 0 ? "" : CardRenderer.text(List.of(template.body().get(hoisted)), template, view.context(), List.of(), "");
+        boolean titled = !bodyTitle.isBlank();
         CardContext.Builder builder = CardContext.builder();
         view.context().parameters().forEach((key, value) -> builder.put(key, value instanceof Component || value instanceof CardText ? FORMAT.value(value) : value));
         view.context().states().forEach((key, value) -> {
             Object parameter = view.context().parameters().get(key);
             if (!(parameter instanceof Component) && !(parameter instanceof CardText)) builder.enable(key, value);
         });
-        builder.put("summary", FORMAT.text(view.summary())).put("card_title", view.titleKey().isBlank() ? "" : AssistantView.tr(view.titleKey()))
-                .enable("show_card_title", !view.titleKey().isBlank() && !view.titleKey().equals(messageKey))
+        builder.put("summary", FORMAT.text(view.summary())).put("card_title", titled ? bodyTitle : view.titleKey().isBlank() ? "" : AssistantView.tr(view.titleKey()))
+                .enable("show_card_title", titled || !view.titleKey().isBlank() && !view.titleKey().equals(messageKey))
                 .enable("text_items", mode == CardContext.Mode.TEXT)
                 .enable("full", mode == CardContext.Mode.FULL).enable("simple", mode == CardContext.Mode.SIMPLE)
                 .enable("notification", mode == CardContext.Mode.NOTIFICATION).put(CardContext.RESULT_ACTIONS, view.buttons())
@@ -54,9 +61,19 @@ public record CardPresentation(CardTemplate template, CardContext context) {
                     CardController.activate(update.ref(), button, mode == CardContext.Mode.NOTIFICATION);
             });
         }
-        CardTemplate template = CardTemplates.get(view.template());
-        if (template == null) template = CardTemplate.fallback();
-        return new CardPresentation(template, builder.build());
+        return new CardPresentation(template, builder.build(), hoisted);
+    }
+
+    /**
+     * Only a visible top-level h1 can become the card heading; deeper levels keep their place in the body.
+     */
+    private static int hoistedTitle(CardTemplate template, CardContext context) {
+        List<CardTemplate.Node> body = template.body();
+        for (int index = 0; index < body.size(); index++) {
+            if (!(body.get(index).content() instanceof TitleNode title) || !title.cardHeading()) continue;
+            return CardRenderer.text(List.of(body.get(index)), template, context, List.of(), "").isBlank() ? -1 : index;
+        }
+        return -1;
     }
 
     public static String format(CardUpdate update, boolean textItems) {
@@ -113,16 +130,29 @@ public record CardPresentation(CardTemplate template, CardContext context) {
                 node.content() instanceof TextNode
                         && LegacyText.plain(main).equals(LegacyText.plain(
                         CardRenderer.text(List.of(node), this.template, this.context, List.of(), "\n"))));
-        if (!summaryInBody) {
+        // A template-authored heading already names the card, so the summary would repeat it on screen. The summary
+        // stays in the card data, which keeps the chat line and the speech output intact.
+        if (this.hoistedTitle < 0 && !this.template.hideSummary() && !summaryInBody) {
             String summary = this.context.get("summary", String.class);
             if (summary != null && !LegacyText.plain(summary).isBlank())
                 result.appendChild(AssistantView.element(document, "div", "message_text", summary));
         }
-        CardRenderer.render(document, result, this.template.body(), this.template, this.context, List.of());
+        CardRenderer.render(document, result, this.body(), this.template, this.context, List.of());
         // A text template can still carry Java-defined buttons, as with the binding notice.
         if (this.template.textOnly()) CardRenderer.render(document, result,
                 List.of(CardTemplate.Node.of(new ActionsNode("{{result_actions}}"))),
                 this.template, this.context, List.of());
         return result;
+    }
+
+    /**
+     * The hoisted heading is already drawn above the summary, so the body skips exactly that node.
+     */
+    private List<CardTemplate.Node> body() {
+        List<CardTemplate.Node> body = this.template.body();
+        if (this.hoistedTitle < 0 || this.hoistedTitle >= body.size()) return body;
+        List<CardTemplate.Node> visible = new ArrayList<>(body);
+        visible.remove(this.hoistedTitle);
+        return visible;
     }
 }

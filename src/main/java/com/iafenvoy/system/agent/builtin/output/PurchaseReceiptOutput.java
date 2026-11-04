@@ -38,9 +38,13 @@ public record PurchaseReceiptOutput(String orderId, String entitlementId, Reward
                 .summary(this.sourcePool.isPresent() ? Component.translatable("system.tts.message.lottery_drawn", this.reward.label())
                         : Component.translatable("system.result.shop_purchased"));
         builder.reward("", this.reward())
-                .put("order_id", this.orderId()).put("entitlement_id", this.entitlementId()).put("state", this.state());
+                .put("order_id", this.orderId()).put("entitlement_id", this.entitlementId()).put("state", this.state())
+                .enable("delivered", "DELIVERED".equals(this.state()));
         if (this.state.equals("COMPLETED"))
-            builder.serverButton("deliver", "system.action.deliver", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "deliver"), Map.of("entitlement", this.entitlementId));
+            builder.serverButton("deliver", "system.action.deliver", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "deliver"),
+                    // The delivery action rebuilds this same card, so it carries what the rebuild cannot look up.
+                    Map.of("entitlement", this.entitlementId(), "kind", "purchase", "order", this.orderId(),
+                            "pool", this.sourcePool.map(Identifier::toString).orElse("")));
         this.sourcePool.ifPresent(id -> builder.serverButton("again", "system.action.lottery_again", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_preview"), Map.of("pool", id.toString())));
         return builder;
     }

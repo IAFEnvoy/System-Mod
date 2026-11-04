@@ -20,6 +20,12 @@
       "label": "{{field:reward}}"
     },
     {
+      "type": "system:button",
+      "text": "{{tr:system.state.claimed}}",
+      "callback": "delivered",
+      "when": "delivered"
+    },
+    {
       "type": "system:actions",
       "actions": "{{result_actions}}"
     }

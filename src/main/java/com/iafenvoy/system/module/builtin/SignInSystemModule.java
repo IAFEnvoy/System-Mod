@@ -10,7 +10,7 @@ import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
 import com.iafenvoy.system.agent.builtin.player.PlayerQueryTool;
 import com.iafenvoy.system.agent.builtin.signin.SignInCreditTool;
 import com.iafenvoy.system.agent.builtin.signin.SignInModule;
-import com.iafenvoy.system.agent.commerce.CatalogEntry;
+import com.iafenvoy.system.data.catalog.CatalogEntry;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;

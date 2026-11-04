@@ -1,4 +1,4 @@
-package com.iafenvoy.system.data;
+package com.iafenvoy.system.data.module;
 
 import com.iafenvoy.saturn.data.condition.AlwaysCondition;
 import com.iafenvoy.saturn.data.condition.EntityCondition;

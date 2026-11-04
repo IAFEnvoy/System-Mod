@@ -15,7 +15,7 @@
       "style": "guide_entry",
       "repeat": "entries",
       "children": [
-        {"type": "system:header", "text": "{{entries.*.title}}"},
+        {"type": "system:title", "level": 2, "text": "{{entries.*.title}}"},
         {"type": "system:context", "text": "{{entries.*.chapter}}"},
         {"type": "system:text", "text": "{{entries.*.passage}}"},
         {

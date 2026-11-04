@@ -9,7 +9,7 @@
 | 入口 | 内容 |
 | --- | --- |
 | `SystemRegistries.SERVER_MODULE` / `system:server_module` | 静态 `MapCodec<? extends ServerModule>` 类型注册表，由 `SystemServerModules` 注册 |
-| `SystemResourceKeys.SYSTEM_MODULE` / `system:system_module` | 原生同步数据包注册表，条目是 `data.SystemModule`，按 `server.type` 解码服务端配置 |
+| `SystemResourceKeys.SYSTEM_MODULE` / `system:system_module` | 原生同步数据包注册表，条目是 `data.module.SystemModule`，按 `server.type` 解码服务端配置 |
 | `SystemClientModules` | 仅客户端初始化的普通实现 Map；数据包的 `client` 只保存该表的 Identifier |
 | `SystemResourceKeys.SYSTEM` / `system:system` | 系统名称、介绍与模块 ID/tag/condition；引用上述动态模块实例 |
 

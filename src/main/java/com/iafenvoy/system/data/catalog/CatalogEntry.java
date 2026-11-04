@@ -1,6 +1,7 @@
-package com.iafenvoy.system.agent.commerce;
+package com.iafenvoy.system.data.catalog;
 
 import com.iafenvoy.saturn.data.cost.Cost;
+import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.store.Reward;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;

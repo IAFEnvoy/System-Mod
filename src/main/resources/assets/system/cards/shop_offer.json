@@ -6,24 +6,28 @@
     },
     {
       "type": "system:text",
-      "text": "{{id}}",
-      "when": "id"
-    },
-    {
-      "type": "system:text",
       "text": "{{items}}",
       "when": "text_items"
     },
     {
       "type": "system:items",
       "items": "{{offer_items}}",
-      "label": "{{field:items}}"
+      "show_labels": false,
+      "unless": "text_items",
+      "columns": 4,
+      "cell": 76,
+      "icon": 52,
+      "tooltip": [
+        {
+          "type": "system:text",
+          "text": "{{field:price}}: {{price_text}}"
+        }
+      ]
     },
     {
       "type": "system:text",
-      "text": "{{field:price}}: {{price}}",
-      "when": "price",
-      "unless": "text_items"
+      "translate": "system.ui.lottery_unavailable",
+      "unless": "payment_available"
     },
     {
       "type": "system:text",
@@ -32,13 +36,16 @@
     },
     {
       "type": "system:text",
-      "translate": "system.ui.lottery_unavailable",
-      "unless": "payment_available"
+      "text": "{{field:price}}: {{price_text}}",
+      "when": "confirm",
+      "unless": "text_items"
     },
     {
       "type": "system:items",
       "items": "{{price_items}}",
-      "label": "{{field:price}}"
+      "label": "{{field:price}}",
+      "when": "confirm",
+      "unless": "text_items"
     },
     {
       "type": "system:actions",

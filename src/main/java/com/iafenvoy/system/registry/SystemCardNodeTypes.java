@@ -12,7 +12,7 @@ public final class SystemCardNodeTypes {
     public static final DeferredRegister<MapCodec<? extends CardNode>> REGISTRY = DeferredRegister.create(SystemResourceKeys.CARD_NODE_TYPE, SystemMod.MOD_ID);
 
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<TextNode>> TEXT = REGISTRY.register("text", () -> TextNode.CODEC);
-    public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<HeaderNode>> HEADER = REGISTRY.register("header", () -> HeaderNode.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<TitleNode>> TITLE = REGISTRY.register("title", () -> TitleNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<ContextNode>> CONTEXT = REGISTRY.register("context", () -> ContextNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<ContainerNode>> CONTAINER = REGISTRY.register("container", () -> ContainerNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<RowNode>> ROW = REGISTRY.register("row", () -> RowNode.CODEC);
@@ -21,6 +21,8 @@ public final class SystemCardNodeTypes {
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<LinkNode>> LINK = REGISTRY.register("link", () -> LinkNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<DividerNode>> DIVIDER = REGISTRY.register("divider", () -> DividerNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<ItemsNode>> ITEMS = REGISTRY.register("items", () -> ItemsNode.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<OfferGridNode>> OFFER_GRID = REGISTRY.register("offer_grid", () -> OfferGridNode.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<PrizeGridNode>> PRIZE_GRID = REGISTRY.register("prize_grid", () -> PrizeGridNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<PlayerNode>> PLAYER = REGISTRY.register("player", () -> PlayerNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<PlayerInformationNode>> PLAYER_INFORMATION = REGISTRY.register("player_information", () -> PlayerInformationNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<IconsNode>> ICONS = REGISTRY.register("icons", () -> IconsNode.CODEC);

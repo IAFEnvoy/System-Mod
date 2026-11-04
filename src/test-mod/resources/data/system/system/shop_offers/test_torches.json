@@ -1,0 +1,18 @@
+{
+  "label": "火把一捆",
+  "items": [
+    {
+      "count": 16,
+      "id": "minecraft:torch"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 4,
+      "items": [
+        "minecraft:coal"
+      ]
+    }
+  ]
+}

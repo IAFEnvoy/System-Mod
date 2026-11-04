@@ -8,7 +8,7 @@ import com.iafenvoy.system.agent.response.BindingResponse;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import com.iafenvoy.system.card.data.BindingCardData;
-import com.iafenvoy.system.data.SystemDefinition;
+import com.iafenvoy.system.data.system.SystemDefinition;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.registry.SystemResourceKeys;

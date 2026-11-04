@@ -6,7 +6,8 @@
       "text_separator": " · ",
       "children": [
         {
-          "type": "system:header",
+          "type": "system:title",
+          "level": 2,
           "text": "{{reward_label}}",
           "style": "lottery_name"
         },

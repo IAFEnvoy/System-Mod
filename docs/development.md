@@ -55,11 +55,12 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 | `agent/model` | 模型接口、统一请求与计量入口、OpenAI 兼容协议及报文 |
 | `search` | 独立 Search / Fetch 接口、DeepSeek 协议客户端和类型化结果，尚未注册为 Agent 能力 |
 | `agent/store` | 存储接口、文件事务存储、玩家业务记录与对话投影 |
-| `agent/commerce、agent/prompt` | 商城目录、Saturn Cost 账单、报价与订单；提示词快照与占位符模板 |
+| `agent/commerce、agent/prompt` | 商城目录运行时快照、Saturn Cost 账单、报价与订单；提示词快照与占位符模板 |
+| `data` | 数据包驱动的定义，按注册表种类分包：`system`（系统定义）、`module`（模块定义与配置）、`catalog`（签到奖励 / 商城商品条目）、`lottery`（奖池定义）、`prompt`（提示词重载）、`action`/`condition`（Saturn 扩展类型）、`speech`/`usage`（网络载荷） |
 | `config` | Agent/路由配置，以及模组客户端、语音和计费配置 |
 | `command、command/client` | 两端指令装配入口与补全桥接；具体指令由功能模块提供 |
 | `util、util/codec` | 类型处理 Map、Codec/Schema 工具、共享 HTTP/SSE；配置目录由 ConfigInstance 提供 |
-| `assistant、data` | 服务端组装、绑定与玩家会话、请求分派、主线程队列及数据包重载 |
+| `assistant、data/prompt` | 服务端组装、绑定与玩家会话、请求分派、主线程队列及提示词重载 |
 | `assistant/usage、data/usage` | 用量服务、独立 SavedData、AI/TTS/ASR 归并与不可变快照，不随 revoke 删除 |
 | `assistant、screen/gui、screen` | 客户端不可变会话状态、导航及副作用、助手界面、设置、用量与通知队列 |
 | `card` / `card/client` | 公共 CardData/Builder/View/Update 与动作/播报描述；客户端快照和统一动作控制器 |
@@ -254,7 +255,7 @@ ModuleAccess 在登录事务中取得绑定 ID，在主线程确认定义仍存�
 
 `system:lottery` 浏览奖池、`system:lottery_preview` 分页展示奖品权重并签发确认、`system:lottery_draw` 只接受结构化确认。浏览与预览声明指令及语义 profile；实际抽奖不进入模型能力目录。`LotteryPool` 通过 JDK `ThreadLocalRandom.nextLong(totalWeight)` 选择一个奖励，结果在支付前存入订单；整个奖池的物品模板在扣款前创建验证，避免错误奖品改变成功抽奖的概率。待支付或支付未知权益不进入收件箱奖励展示，仅返回订单状态；完成后重复确认返回原回执。
 
-奖池列表的 `LotteryPoolOutput.prizes` 通过 Codec 携带首个奖品页的公开奖励模板、权重及完整总权重，供共享物品投影显示图标和概率；列表与详情使用同一个 8 项分页常量。详情已发送独立 `LotteryPrizeOutput` 卡片，顶部摘要不重复携带奖品。预览不会生成抽奖结果、扣款或调用模型。单物品消耗统一由 `AssistantItems` 渲染，免费、资源及其他 Cost 使用文字；签到候选的物品卡片保留所属奖励包名称。
+奖池浏览只发送一张 `LotteryCatalogOutput` 卡片：单元格携带奖池名与最多 2 件最稀有奖品的公开模板，点击格子才展开该奖池的 `system:lottery_preview`（沿用 `pool.<下标>` 服务端按钮，参数含目录版本），报价仍只在实际打开时求值。详情卡片 `LotteryPoolOutput.prizes` 通过 Codec 携带最多 64 个公开奖励模板、权重及完整总权重，货架与 tooltip 由同一份数据生成；`lottery_prize` 卡片类型保留给旧历史，不再逐奖品发送。预览不会生成抽奖结果、扣款或调用模型。单物品消耗统一由 `AssistantItems` 渲染，免费、资源及其他 Cost 使用文字；签到候选的物品卡片保留所属奖励包名称。
 
 商城 / 抽奖模块共用只读 `CommercePreviewTool`，由 `CommerceTransactions.preview` 在游戏线程按目录 ID 获取可信费用并生成 `CommerceCosts.Prepared`。Cost 只定价一次，短期报价保留绑定玩家实体、支付目标及金额的 Saturn `CostPayment`；确认沿用该账单，掉线 / 重生导致实体更换时拒绝旧账单。`CostContext` 包含 `origin=system:shop` / `system:lottery` 和 `system:source`，扩展 Cost 可读取。System 不再保留单独的系统币接口或自定义物品扣款器；币可由 Saturn 资源或扩展 Cost 表达。
 

@@ -1,0 +1,18 @@
+{
+  "label": "面包补给",
+  "items": [
+    {
+      "count": 8,
+      "id": "minecraft:bread"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 4,
+      "items": [
+        "minecraft:wheat"
+      ]
+    }
+  ]
+}

@@ -35,9 +35,19 @@ public record LotteryPrizeOutput(Reward reward, int weight, long totalWeight) im
     }
 
     public void fill(CardBuilder builder, String prefix) {
-        String chance = BigDecimal.valueOf(this.weight()).multiply(BigDecimal.valueOf(100))
-                .divide(BigDecimal.valueOf(this.totalWeight()), new MathContext(4)).stripTrailingZeros().toPlainString();
-        builder.reward(prefix, this.reward()).put(prefix + "chance", chance);
+        builder.reward(prefix, this.reward()).put(prefix + "chance", this.chance());
+    }
+
+    /**
+     * Readable odds derived from the integer weights; the pool shelf and the prize tooltip share the same value.
+     */
+    public String chance() {
+        return chance(this.weight(), this.totalWeight());
+    }
+
+    public static String chance(int weight, long totalWeight) {
+        return BigDecimal.valueOf(weight).multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(totalWeight), new MathContext(4)).stripTrailingZeros().toPlainString();
     }
 
     @Override

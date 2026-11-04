@@ -1,0 +1,18 @@
+{
+  "label": "下界石英",
+  "items": [
+    {
+      "count": 8,
+      "id": "minecraft:quartz"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 16,
+      "items": [
+        "minecraft:cobblestone"
+      ]
+    }
+  ]
+}

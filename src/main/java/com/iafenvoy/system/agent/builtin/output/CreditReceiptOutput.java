@@ -28,9 +28,11 @@ public record CreditReceiptOutput(String entitlementId, Reward reward, String st
     public CardBuilder buildCard() {
         CardBuilder builder = CardBuilder.template(TEMPLATE).title("system.result.reward").summary("system.result.reward");
         builder.reward("", this.reward())
-                .put("entitlement_id", this.entitlementId()).put("state", this.state());
+                .put("entitlement_id", this.entitlementId()).put("state", this.state())
+                .enable("delivered", "DELIVERED".equals(this.state()));
         if (this.state.equals("PENDING"))
-            builder.serverButton("deliver", "system.action.deliver", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "deliver"), Map.of("entitlement", this.entitlementId));
+            builder.serverButton("deliver", "system.action.deliver", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "deliver"),
+                    Map.of("entitlement", this.entitlementId(), "kind", "credit"));
         return builder;
     }
 

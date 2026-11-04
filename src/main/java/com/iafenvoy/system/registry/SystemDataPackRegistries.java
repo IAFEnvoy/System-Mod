@@ -1,9 +1,9 @@
 package com.iafenvoy.system.registry;
 
-import com.iafenvoy.system.agent.commerce.CatalogEntry;
-import com.iafenvoy.system.agent.commerce.LotteryPool;
-import com.iafenvoy.system.data.SystemDefinition;
-import com.iafenvoy.system.data.SystemModule;
+import com.iafenvoy.system.data.catalog.CatalogEntry;
+import com.iafenvoy.system.data.lottery.LotteryPool;
+import com.iafenvoy.system.data.system.SystemDefinition;
+import com.iafenvoy.system.data.module.SystemModule;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.registries.DataPackRegistryEvent;

@@ -9,7 +9,7 @@ import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.command.client.AssistantClientCommands;
 import com.iafenvoy.system.config.file.ClientConfig;
-import com.iafenvoy.system.data.SystemDefinition;
+import com.iafenvoy.system.data.system.SystemDefinition;
 import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.iafenvoy.system.screen.AssistantMessages;

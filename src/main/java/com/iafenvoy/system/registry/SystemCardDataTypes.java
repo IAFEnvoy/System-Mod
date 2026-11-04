@@ -27,6 +27,7 @@ public final class SystemCardDataTypes {
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<SelectionCardData>> SELECTION = REGISTRY.register("selection", () -> SelectionCardData.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<BindingCardData>> BINDING = REGISTRY.register("binding", () -> BindingCardData.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ShopOfferOutput>> SHOP_OFFER = REGISTRY.register("shop_offer", () -> ShopOfferOutput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ShopCatalogOutput>> SHOP_CATALOG = REGISTRY.register("shop_catalog", () -> ShopCatalogOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ShopQuoteOutput>> SHOP_QUOTE = REGISTRY.register("shop_quote", () -> ShopQuoteOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<PlayerSnapshotOutput>> PLAYER = REGISTRY.register("player", () -> PlayerSnapshotOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ItemPageOutput>> ITEMS = REGISTRY.register("items", () -> ItemPageOutput.CODEC);
@@ -39,6 +40,7 @@ public final class SystemCardDataTypes {
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<QuestClaimOutput>> CLAIM = REGISTRY.register("claim", () -> QuestClaimOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<SignInStatus>> SIGN_IN_STATUS = REGISTRY.register("sign_in_status", () -> SignInStatus.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ShopOrder>> SHOP_ORDER = REGISTRY.register("shop_order", () -> ShopOrder.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<LotteryCatalogOutput>> LOTTERY_CATALOG = REGISTRY.register("lottery_catalog", () -> LotteryCatalogOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<LotteryPoolOutput>> LOTTERY_POOL = REGISTRY.register("lottery_pool", () -> LotteryPoolOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<LotteryPrizeOutput>> LOTTERY_PRIZE = REGISTRY.register("lottery_prize", () -> LotteryPrizeOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<QuestList>> QUEST_LIST = REGISTRY.register("quest_list", () -> QuestList.CODEC);

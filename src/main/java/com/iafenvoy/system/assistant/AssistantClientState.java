@@ -126,7 +126,9 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
                 case Message.Assistant assistant -> {
                     AgentResult result = assistant.result();
                     result.cards().forEach(card -> ClientCards.apply(card, true));
-                    if (!result.silent()) entries.add(new ChatEntry(false, "", ClientCards.latest(result)));
+                    // A restored entry without cards has no text either, so it would render as an empty row.
+                    AgentResult latest = ClientCards.latest(result);
+                    if (!result.silent() && !latest.cards().isEmpty()) entries.add(new ChatEntry(false, "", latest));
                 }
             }
         }

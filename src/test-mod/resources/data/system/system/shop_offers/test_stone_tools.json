@@ -1,0 +1,26 @@
+{
+  "label": "石制工具包",
+  "items": [
+    {
+      "count": 1,
+      "id": "minecraft:stone_pickaxe"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:stone_axe"
+    },
+    {
+      "count": 1,
+      "id": "minecraft:stone_shovel"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 12,
+      "items": [
+        "minecraft:cobblestone"
+      ]
+    }
+  ]
+}

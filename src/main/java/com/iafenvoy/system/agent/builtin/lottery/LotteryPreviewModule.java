@@ -6,21 +6,16 @@ import com.iafenvoy.system.agent.builtin.BuiltinTools;
 import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryPreviewInput;
 import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
-import com.iafenvoy.system.agent.builtin.output.LotteryPoolOutput;
-import com.iafenvoy.system.agent.builtin.output.LotteryPrizeOutput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.commerce.LotteryPool;
+import com.iafenvoy.system.data.lottery.LotteryPool;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.card.CardUpdate;
-import com.iafenvoy.system.card.data.SelectionCardData;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Paged prize odds and a short-lived confirmation are produced from the same immutable catalog snapshot.
+ * One pool's odds and a short-lived confirmation are produced from the same immutable catalog snapshot.
  */
 public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInput> {
     public LotteryPreviewModule(ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
@@ -46,16 +41,7 @@ public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInpu
                 .orElseThrow(() -> new AgentException("INVALID_INPUT"));
         CommercePreviewOutput price = context.tool(BuiltinTools.COMMERCE_PREVIEW, "quote",
                 new CommercePreviewInput(List.of(), List.of(pool.id()), true, catalog.revision())).getFirst();
-        LotteryPoolOutput summary = LotteryModule.summary(pool, price, false, catalog.revision());
-        List<CardUpdate> cards = new ArrayList<>();
-        cards.add(CardUpdate.show(summary));
-        long totalWeight = pool.totalWeight();
-        for (LotteryPool.Entry entry : pool.entries().stream().skip(input.offset()).limit(LotteryModule.PAGE_SIZE).toList())
-            cards.add(CardUpdate.show(new LotteryPrizeOutput(entry.reward(), entry.weight(), totalWeight)));
-        if (pool.entries().size() - input.offset() > LotteryModule.PAGE_SIZE)
-            cards.add(CardUpdate.show(SelectionCardData.fromActions(List.of(
-                    new AgentResult.Action("system.action.next",
-                            new LotteryPreviewInput(pool.id(), input.offset() + LotteryModule.PAGE_SIZE, Optional.of(catalog.revision())))))));
-        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.lottery_preview", "", cards);
+        // One detail card carries the whole shelf; the previous per-prize cards would spam the transcript.
+        return AgentResult.data("system.result.lottery_preview", LotteryModule.summary(pool, price, catalog.revision()));
     }
 }

@@ -1,0 +1,18 @@
+{
+  "label": "铁镐",
+  "items": [
+    {
+      "count": 1,
+      "id": "minecraft:iron_pickaxe"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 3,
+      "items": [
+        "minecraft:iron_ingot"
+      ]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-package com.iafenvoy.system.data;
+package com.iafenvoy.system.data.module;
 
 import com.iafenvoy.system.module.ServerModule;
 import com.mojang.serialization.Codec;

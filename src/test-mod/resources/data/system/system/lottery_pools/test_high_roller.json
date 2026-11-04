@@ -1,0 +1,48 @@
+{
+  "label": "测试：高价值池",
+  "costs": [
+    { "type": "saturn:item", "items": ["minecraft:diamond"], "amount": 1 }
+  ],
+  "entries": [
+    {
+      "weight": 50,
+      "reward": {
+        "id": "system:test_lottery/high_diamond",
+        "label": "钻石四颗",
+        "items": [{ "id": "minecraft:diamond", "count": 4 }]
+      }
+    },
+    {
+      "weight": 25,
+      "reward": {
+        "id": "system:test_lottery/high_emerald",
+        "label": "绿宝石一组",
+        "items": [{ "id": "minecraft:emerald", "count": 16 }]
+      }
+    },
+    {
+      "weight": 15,
+      "reward": {
+        "id": "system:test_lottery/high_golden_apple",
+        "label": "金苹果两颗",
+        "items": [{ "id": "minecraft:golden_apple", "count": 2 }]
+      }
+    },
+    {
+      "weight": 8,
+      "reward": {
+        "id": "system:test_lottery/high_pearl",
+        "label": "末影珍珠",
+        "items": [{ "id": "minecraft:ender_pearl", "count": 8 }]
+      }
+    },
+    {
+      "weight": 2,
+      "reward": {
+        "id": "system:test_lottery/high_scrap",
+        "label": "下界合金碎片",
+        "items": [{ "id": "minecraft:netherite_scrap", "count": 2 }]
+      }
+    }
+  ]
+}

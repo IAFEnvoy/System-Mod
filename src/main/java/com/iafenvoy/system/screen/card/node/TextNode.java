@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Header and context nodes reuse the same immutable text data and formatting.
+ * Context and title nodes reuse the same immutable text data and formatting.
  */
 public class TextNode implements CardNode {
     public static final MapCodec<TextNode> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(

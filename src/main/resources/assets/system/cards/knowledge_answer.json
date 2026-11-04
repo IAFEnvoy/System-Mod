@@ -11,7 +11,7 @@
           "style": "guide_entry",
           "repeat": "sources",
           "children": [
-            {"type": "system:header", "text": "{{sources.*.title}}"},
+            {"type": "system:title", "level": 2, "text": "{{sources.*.title}}"},
             {"type": "system:context", "text": "{{sources.*.category}}", "when": "sources.*.category"},
             {"type": "system:text", "text": "{{sources.*.passage}}"}
           ]

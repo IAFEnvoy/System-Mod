@@ -12,14 +12,15 @@ import java.util.Optional;
 /**
  * The common envelope owns conditions and repeats; dispatched content owns its layout fields.
  */
-public record CardTemplate(String css, boolean showTitle, List<Node> body, Actions actions) {
+public record CardTemplate(String css, boolean showTitle, boolean hideSummary, List<Node> body, Actions actions) {
     public static final Codec<CardTemplate> CODEC = RecordCodecBuilder.create(i -> i.group(
             CardNode.STYLE_CODEC.optionalFieldOf("style", "result_card").forGetter(CardTemplate::css),
             Codec.BOOL.optionalFieldOf("show_title", true).forGetter(CardTemplate::showTitle),
+            Codec.BOOL.optionalFieldOf("hide_summary", false).forGetter(CardTemplate::hideSummary),
             Node.CODEC.listOf().fieldOf("body").forGetter(CardTemplate::body),
             Actions.CODEC.optionalFieldOf("actions", Actions.DEFAULT).forGetter(CardTemplate::actions)
     ).apply(i, CardTemplate::new));
-    private static final CardTemplate FALLBACK = new CardTemplate("result_card", true, List.of(
+    private static final CardTemplate FALLBACK = new CardTemplate("result_card", true, false, List.of(
             Node.of(new TextNode("{{summary}}", "", List.of(), false)),
             Node.of(new ActionsNode("{{result_actions}}"))
     ), Actions.DEFAULT);

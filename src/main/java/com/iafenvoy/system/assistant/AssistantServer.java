@@ -9,7 +9,7 @@ import com.iafenvoy.system.agent.model.OpenAiCompatibleClient;
 import com.iafenvoy.system.agent.store.FileAgentStore;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import com.iafenvoy.system.command.SystemCommand;
-import com.iafenvoy.system.data.PromptReloadListener;
+import com.iafenvoy.system.data.prompt.PromptReloadListener;
 import com.iafenvoy.system.event.AssistantRegistrationEvent;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleManager;

@@ -15,7 +15,7 @@ import com.iafenvoy.system.agent.store.Delivery;
 import com.iafenvoy.system.agent.store.Purchase;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.config.file.AgentConfig;
-import com.iafenvoy.system.data.SystemModule;
+import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
 import com.iafenvoy.system.module.builtin.SignInSystemModule;

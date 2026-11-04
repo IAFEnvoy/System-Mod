@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.commerce;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.data.lottery.LotteryPool;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;

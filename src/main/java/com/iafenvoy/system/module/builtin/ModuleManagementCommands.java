@@ -2,7 +2,7 @@ package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.assistant.AssistantServer;
-import com.iafenvoy.system.data.SystemModule;
+import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.module.CoreModule;
 import com.iafenvoy.system.module.ModuleCommands;
 import com.iafenvoy.system.module.ModuleManager;

@@ -6,7 +6,8 @@
       "text_separator": " · ",
       "children": [
         {
-          "type": "system:header",
+          "type": "system:title",
+          "level": 2,
           "text": "{{label}}",
           "style": "lottery_name"
         },
@@ -28,77 +29,15 @@
       "style": "lottery_id"
     },
     {
-      "type": "system:row",
-      "when": "price",
-      "style": "lottery_cost",
-      "text_separator": ": ",
-      "children": [
-        {
-          "type": "system:text",
-          "translate": "system.ui.lottery_cost",
-          "inline": true,
-          "style": "lottery_cost_label"
-        },
-        {
-          "type": "system:text",
-          "text": "{{price}}",
-          "inline": true,
-          "style": "lottery_cost_value"
-        }
-      ],
-      "unless": "text_items"
-    },
-    {
-      "type": "system:row",
-      "when": "text_items",
-      "style": "lottery_cost",
-      "text_separator": ": ",
-      "children": [
-        {
-          "type": "system:text",
-          "translate": "system.ui.lottery_cost",
-          "inline": true,
-          "style": "lottery_cost_label"
-        },
-        {
-          "type": "system:text",
-          "text": "{{price_text}}",
-          "inline": true,
-          "style": "lottery_cost_value"
-        }
-      ],
-      "unless": "free"
-    },
-    {
-      "type": "system:row",
-      "when": "free",
-      "style": "lottery_cost",
-      "text_separator": ": ",
-      "children": [
-        {
-          "type": "system:text",
-          "translate": "system.ui.lottery_cost",
-          "inline": true,
-          "style": "lottery_cost_label"
-        },
-        {
-          "type": "system:text",
-          "inline": true,
-          "style": "lottery_cost_value",
-          "translate": "system.ui.lottery_no_cost"
-        }
-      ]
+      "type": "system:text",
+      "text": "{{field:price}}: {{price_text}}",
+      "when": "priced"
     },
     {
       "type": "system:context",
       "translate": "system.ui.lottery_unavailable",
       "unless": "payment_available",
       "style": "lottery_unavailable"
-    },
-    {
-      "type": "system:items",
-      "items": "{{price_items}}",
-      "label": "{{tr:system.ui.lottery_cost}}"
     },
     {
       "type": "system:container",
@@ -115,22 +54,16 @@
           "style": "item_group_label"
         },
         {
-          "type": "system:items",
-          "items": "{{prizes.*.result_items}}",
-          "repeat": "prizes",
-          "description": [
-            {
-              "type": "system:text",
-              "text": "{{prizes.*.reward_label}}"
-            },
-            {
-              "type": "system:text",
-              "translate": "system.ui.lottery_chance",
-              "args": [
-                "{{prizes.*.chance}}%"
-              ]
-            }
-          ]
+          "type": "system:prize_grid",
+          "prizes": "{{prize_list}}",
+          "columns": 6,
+          "max_row": 3,
+          "cell": 104
+        },
+        {
+          "type": "system:context",
+          "translate": "system.ui.lottery_hint",
+          "style": "lottery_hint"
         }
       ]
     },
@@ -143,5 +76,6 @@
     "result_card",
     "lottery_card"
   ],
-  "show_title": false
+  "show_title": false,
+  "hide_summary": true
 }

@@ -1,4 +1,4 @@
-package com.iafenvoy.system.data;
+package com.iafenvoy.system.data.prompt;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;

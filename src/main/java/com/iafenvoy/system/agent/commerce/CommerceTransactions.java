@@ -10,6 +10,7 @@ import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.agent.store.Delivery;
 import com.iafenvoy.system.agent.store.Purchase;
 import com.iafenvoy.system.assistant.MinecraftTools;
+import com.iafenvoy.system.data.lottery.LotteryPool;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;

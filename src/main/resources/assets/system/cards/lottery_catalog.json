@@ -1,0 +1,20 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.ui.nav_lottery"
+    },
+    {
+      "type": "system:offer_grid",
+      "entries": "{{pools}}",
+      "columns": 6,
+      "max_row": 3,
+      "cell": 104
+    },
+    {
+      "type": "system:text",
+      "translate": "system.ui.lottery_truncated",
+      "when": "truncated"
+    }
+  ]
+}

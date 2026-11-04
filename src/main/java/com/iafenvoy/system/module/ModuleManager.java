@@ -7,7 +7,7 @@ import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.store.AgentStore;
 import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.data.SystemModule;
+import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;

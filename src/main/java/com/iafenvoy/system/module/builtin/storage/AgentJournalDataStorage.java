@@ -3,7 +3,9 @@ package com.iafenvoy.system.module.builtin.storage;
 import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.EventTask;
+import com.iafenvoy.system.agent.store.State;
+import com.iafenvoy.system.agent.store.Step;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.MapCodec;
@@ -18,40 +20,40 @@ import java.util.stream.Stream;
  */
 public final class AgentJournalDataStorage extends DataStorage {
     public static final MapCodec<AgentJournalDataStorage> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Codec.unboundedMap(Codec.STRING, PlayerData.EventTask.CODEC).optionalFieldOf("tasks", Map.of()).forGetter(AgentJournalDataStorage::getTasks),
-            Codec.unboundedMap(Codec.STRING, PlayerData.Step.CODEC).optionalFieldOf("operations", Map.of()).forGetter(AgentJournalDataStorage::getOperations)
+            Codec.unboundedMap(Codec.STRING, EventTask.CODEC).optionalFieldOf("tasks", Map.of()).forGetter(AgentJournalDataStorage::getTasks),
+            Codec.unboundedMap(Codec.STRING, Step.CODEC).optionalFieldOf("operations", Map.of()).forGetter(AgentJournalDataStorage::getOperations)
     ).apply(i, AgentJournalDataStorage::new));
-    private final Map<String, PlayerData.EventTask> tasks;
-    private final Map<String, PlayerData.Step> operations;
+    private final Map<String, EventTask> tasks;
+    private final Map<String, Step> operations;
 
     public AgentJournalDataStorage() {
         this(Map.of(), Map.of());
     }
 
-    private AgentJournalDataStorage(Map<String, PlayerData.EventTask> tasks, Map<String, PlayerData.Step> operations) {
+    private AgentJournalDataStorage(Map<String, EventTask> tasks, Map<String, Step> operations) {
         this.tasks = new LinkedHashMap<>(tasks);
         this.operations = new LinkedHashMap<>(operations);
     }
 
-    public Map<String, PlayerData.EventTask> getTasks() {
+    public Map<String, EventTask> getTasks() {
         return this.tasks;
     }
 
-    public Map<String, PlayerData.Step> getOperations() {
+    public Map<String, Step> getOperations() {
         return this.operations;
     }
 
-    public void putTask(String key, PlayerData.EventTask task) {
+    public void putTask(String key, EventTask task) {
         this.tasks.put(key, task);
         this.markDirty();
     }
 
-    public PlayerData.EventTask getTask(String key) {
+    public EventTask getTask(String key) {
         return this.tasks.get(key);
     }
 
-    public void setTaskState(String key, PlayerData.State state) {
-        PlayerData.EventTask task = this.tasks.get(key);
+    public void setTaskState(String key, State state) {
+        EventTask task = this.tasks.get(key);
         if (task.state == state) return;
         task.state = state;
         this.markDirty();
@@ -63,7 +65,7 @@ public final class AgentJournalDataStorage extends DataStorage {
     }
 
     public void updateTaskUsage(String key, int modelCalls, int toolCalls, int workflowSteps, int writeSteps, int tokens) {
-        PlayerData.EventTask task = this.tasks.get(key);
+        EventTask task = this.tasks.get(key);
         if (task.modelCalls == modelCalls && task.toolCalls == toolCalls && task.workflowSteps == workflowSteps
                 && task.writeSteps == writeSteps && task.tokens == tokens) return;
         task.modelCalls = modelCalls;
@@ -74,7 +76,7 @@ public final class AgentJournalDataStorage extends DataStorage {
         this.markDirty();
     }
 
-    public Stream<PlayerData.EventTask> streamTasks() {
+    public Stream<EventTask> streamTasks() {
         return this.tasks.values().stream();
     }
 
@@ -82,18 +84,18 @@ public final class AgentJournalDataStorage extends DataStorage {
         if (this.tasks.size() >= 4096) throw new AgentException("STORAGE_FULL");
     }
 
-    public PlayerData.Step getOperation(String key) {
+    public Step getOperation(String key) {
         return this.operations.get(key);
     }
 
-    public void putOperation(String key, PlayerData.Step step) {
+    public void putOperation(String key, Step step) {
         this.operations.put(key, step);
         this.markDirty();
     }
 
     public void completeOperation(String key, Dynamic<?> result) {
-        PlayerData.Step step = this.operations.get(key);
-        step.state = PlayerData.State.DONE;
+        Step step = this.operations.get(key);
+        step.state = State.DONE;
         step.result = result;
         this.markDirty();
     }
@@ -104,7 +106,7 @@ public final class AgentJournalDataStorage extends DataStorage {
     }
 
     public boolean hasCompletedOperation(String taskId) {
-        return this.operations.entrySet().stream().anyMatch(entry -> entry.getKey().startsWith(taskId + ":") && entry.getValue().state == PlayerData.State.DONE);
+        return this.operations.entrySet().stream().anyMatch(entry -> entry.getKey().startsWith(taskId + ":") && entry.getValue().state == State.DONE);
     }
 
     @Override
@@ -114,9 +116,9 @@ public final class AgentJournalDataStorage extends DataStorage {
 
     @Override
     public AgentJournalDataStorage copy() {
-        Map<String, PlayerData.EventTask> taskCopy = new LinkedHashMap<>();
+        Map<String, EventTask> taskCopy = new LinkedHashMap<>();
         this.tasks.forEach((key, value) -> taskCopy.put(key, value.copy()));
-        Map<String, PlayerData.Step> operationCopy = new LinkedHashMap<>();
+        Map<String, Step> operationCopy = new LinkedHashMap<>();
         this.operations.forEach((key, value) -> operationCopy.put(key, value.copy()));
         return new AgentJournalDataStorage(taskCopy, operationCopy);
     }

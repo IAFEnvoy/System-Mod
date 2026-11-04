@@ -12,9 +12,6 @@ public interface RecognitionCapture extends AsrProvider.AudioSource, AutoCloseab
 
     void finish();
 
-    @Override
-    void close();
-
     static boolean voicechatInstalled() {
         return ModList.get().isLoaded("voicechat");
     }

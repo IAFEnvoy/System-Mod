@@ -2,7 +2,7 @@ package com.iafenvoy.system.module.builtin.storage;
 
 import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Purchase;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -17,40 +17,40 @@ import java.util.stream.Stream;
  */
 public final class CommerceDataStorage extends DataStorage {
     public static final MapCodec<CommerceDataStorage> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Codec.unboundedMap(Codec.STRING, PlayerData.Purchase.CODEC).optionalFieldOf("purchases", Map.of()).forGetter(CommerceDataStorage::getPurchases)
+            Codec.unboundedMap(Codec.STRING, Purchase.CODEC).optionalFieldOf("purchases", Map.of()).forGetter(CommerceDataStorage::getPurchases)
     ).apply(i, CommerceDataStorage::new));
-    private final Map<String, PlayerData.Purchase> purchases;
+    private final Map<String, Purchase> purchases;
 
     public CommerceDataStorage() {
         this(Map.of());
     }
 
-    private CommerceDataStorage(Map<String, PlayerData.Purchase> purchases) {
+    private CommerceDataStorage(Map<String, Purchase> purchases) {
         this.purchases = new LinkedHashMap<>(purchases);
     }
 
-    public Map<String, PlayerData.Purchase> getPurchases() {
+    public Map<String, Purchase> getPurchases() {
         return this.purchases;
     }
 
-    public PlayerData.Purchase getPurchase(String id) {
+    public Purchase getPurchase(String id) {
         return this.purchases.get(id);
     }
 
-    public void putPurchase(String id, PlayerData.Purchase purchase) {
+    public void putPurchase(String id, Purchase purchase) {
         this.purchases.put(id, purchase);
         this.markDirty();
     }
 
     public void setPurchaseState(String id, String state, String error) {
-        PlayerData.Purchase purchase = this.purchases.get(id);
+        Purchase purchase = this.purchases.get(id);
         if (Objects.equals(purchase.state, state) && Objects.equals(purchase.error, error)) return;
         purchase.state = state;
         purchase.error = error;
         this.markDirty();
     }
 
-    public Stream<PlayerData.Purchase> streamPurchases() {
+    public Stream<Purchase> streamPurchases() {
         return this.purchases.values().stream();
     }
 
@@ -65,7 +65,7 @@ public final class CommerceDataStorage extends DataStorage {
 
     @Override
     public CommerceDataStorage copy() {
-        Map<String, PlayerData.Purchase> copy = new LinkedHashMap<>();
+        Map<String, Purchase> copy = new LinkedHashMap<>();
         this.purchases.forEach((key, value) -> copy.put(key, value.copy()));
         return new CommerceDataStorage(copy);
     }

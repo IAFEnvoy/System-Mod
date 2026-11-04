@@ -408,7 +408,7 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     @Override
-    public void close() {
+    public void close() throws Exception {
         if (!this.closed.compareAndSet(false, true)) return;
         this.interactive.close();
         this.events.close();

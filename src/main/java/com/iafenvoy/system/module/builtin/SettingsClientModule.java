@@ -20,9 +20,7 @@ public final class SettingsClientModule implements ClientModule {
             minecraft.setScreen(new AssistantSettingsScreen(minecraft.screen, AssistantSettingsScreen.Tab.GENERAL));
         });
         module.command(SettingsClientModule::open, "settings", "设置", "系统设置");
-        module.workspace("", "nav_settings", WorkspaceGroup.SETTINGS, workspace -> {
-            workspace.click("nav_settings", SettingsClientModule::open);
-        });
+        module.workspace("", "nav_settings", WorkspaceGroup.SETTINGS, workspace -> workspace.click("nav_settings", SettingsClientModule::open));
     }
 
     public static void open() {

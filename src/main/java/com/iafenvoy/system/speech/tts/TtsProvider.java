@@ -67,7 +67,4 @@ public interface TtsProvider extends AutoCloseable {
             return "TtsRequest[model=" + this.model + ", voice=" + this.voice + "]";
         }
     }
-
-    @Override
-    void close();
 }

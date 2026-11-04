@@ -18,7 +18,7 @@ public record ItemsNode(String items, String label, List<CardTemplate.Node> desc
     public static final MapCodec<ItemsNode> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("items").forGetter(ItemsNode::items),
             Codec.STRING.optionalFieldOf("label", "").forGetter(ItemsNode::label),
-            Codec.lazyInitialized(() -> CardTemplate.Node.CODEC).listOf().optionalFieldOf("description", List.of()).forGetter(ItemsNode::description),
+            CardTemplate.Node.CODEC.listOf().optionalFieldOf("description", List.of()).forGetter(ItemsNode::description),
             Codec.BOOL.optionalFieldOf("compact").forGetter(ItemsNode::compact),
             Codec.BOOL.optionalFieldOf("show_labels", true).forGetter(ItemsNode::showLabels)
     ).apply(i, ItemsNode::new));

@@ -90,7 +90,4 @@ public interface SearchProvider extends AutoCloseable {
                 Codec.STRING.fieldOf("content").forGetter(Page::content)
         ).apply(i, Page::new));
     }
-
-    @Override
-    void close();
 }

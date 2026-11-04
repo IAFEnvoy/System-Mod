@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.commerce;
 
 import com.iafenvoy.saturn.data.cost.Cost;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Reward;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -25,7 +25,7 @@ public record LotteryPool(Identifier id, String label, List<Cost> costs, List<En
         return this.entries.stream().mapToLong(Entry::weight).sum();
     }
 
-    public static PlayerData.Reward draw(List<Entry> entries) {
+    public static Reward draw(List<Entry> entries) {
         long value = ThreadLocalRandom.current().nextLong(entries.stream().mapToLong(Entry::weight).sum());
         for (Entry entry : entries) {
             value -= entry.weight();
@@ -34,9 +34,9 @@ public record LotteryPool(Identifier id, String label, List<Cost> costs, List<En
         throw new IllegalStateException("Empty lottery pool");
     }
 
-    public record Entry(PlayerData.Reward reward, int weight) {
+    public record Entry(Reward reward, int weight) {
         public static final Codec<Entry> CODEC = RecordCodecBuilder.create(i -> i.group(
-                PlayerData.Reward.CODEC.fieldOf("reward").forGetter(Entry::reward),
+                Reward.CODEC.fieldOf("reward").forGetter(Entry::reward),
                 ExtraCodecs.POSITIVE_INT.optionalFieldOf("weight", 1).forGetter(Entry::weight)
         ).apply(i, Entry::new));
     }

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.builtin.output;
 
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.iafenvoy.system.card.CardText;
@@ -23,7 +23,7 @@ public record ShopOfferOutput(Identifier id, String label, List<ItemStackTemplat
     public static final MapCodec<ShopOfferOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Identifier.CODEC.fieldOf("id").forGetter(ShopOfferOutput::id),
             Codec.STRING.fieldOf("label").forGetter(ShopOfferOutput::label),
-            PlayerData.Reward.ITEMS_CODEC.fieldOf("items").forGetter(ShopOfferOutput::items),
+            Reward.ITEMS_CODEC.fieldOf("items").forGetter(ShopOfferOutput::items),
             CommerceCatalog.Price.CODEC.fieldOf("price").forGetter(ShopOfferOutput::price),
             Codec.BOOL.fieldOf("paymentAvailable").forGetter(ShopOfferOutput::paymentAvailable),
             Codec.STRING.fieldOf("catalogRevision").forGetter(ShopOfferOutput::catalogRevision)

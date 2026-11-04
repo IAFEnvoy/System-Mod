@@ -8,11 +8,9 @@ import com.iafenvoy.system.module.client.ClientModuleContext;
 public final class InboxSystemClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
-        module.workspace("", "nav_inbox", workspace -> {
-            workspace.click("nav_inbox", () -> {
-                workspace.show("chat");
-                AssistantClient.send(InboxInput.INSTANCE, "");
-            });
-        });
+        module.workspace("", "nav_inbox", workspace -> workspace.click("nav_inbox", () -> {
+            workspace.show("chat");
+            AssistantClient.send(InboxInput.INSTANCE, "");
+        }));
     }
 }

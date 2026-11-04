@@ -4,11 +4,10 @@ import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ResultTypes;
 import com.iafenvoy.system.agent.request.ControlRequest;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Message;
 import com.iafenvoy.system.card.CardRef;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.card.client.ClientCards;
-import com.iafenvoy.system.util.CodecIO;
 import net.minecraft.resources.Identifier;
 
 import java.util.*;
@@ -120,14 +119,14 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
 
     AssistantClientState history(String id, ResultTypes.History history) {
         List<ChatEntry> entries = new ArrayList<>();
-        for (PlayerData.Message message : history.messages()) {
-            if (message.role().equals("user")) entries.add(new ChatEntry(true, message.text(), null));
-            else try {
-                AgentResult result = CodecIO.parse(AgentResult.CODEC, message.text());
-                result.cards().forEach(card -> ClientCards.apply(card, true));
-                if (!result.silent()) entries.add(new ChatEntry(false, "", ClientCards.latest(result)));
-            } catch (RuntimeException error) {
-                entries.add(new ChatEntry(false, message.text(), null));
+        for (Message message : history.messages()) {
+            switch (message) {
+                case Message.User user -> entries.add(new ChatEntry(true, user.text(), null));
+                case Message.Assistant assistant -> {
+                    AgentResult result = assistant.result();
+                    result.cards().forEach(card -> ClientCards.apply(card, true));
+                    if (!result.silent()) entries.add(new ChatEntry(false, "", ClientCards.latest(result)));
+                }
             }
         }
         // Live notices received while history was in flight keep their active snapshots and order.

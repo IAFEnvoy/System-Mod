@@ -6,7 +6,8 @@ import com.iafenvoy.system.agent.builtin.input.InboxInput;
 import com.iafenvoy.system.agent.builtin.output.CreditReceiptOutput;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Delivery;
+import com.iafenvoy.system.agent.store.Purchase;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.data.SystemModule;
@@ -50,13 +51,13 @@ public final class InboxModule extends BuiltinModule<InboxInput> {
         return context.store().read(context.player(), data -> {
             List<CardUpdate> cards = new ArrayList<>();
             // Payment-pending rewards stay private; unresolved transactions are shown by their order summaries below.
-            for (PlayerData.Delivery delivery : ModuleData.get(data, InboxSystemModule.STORAGE).streamDeliveries()
+            for (Delivery delivery : ModuleData.get(data, InboxSystemModule.STORAGE).streamDeliveries()
                     .filter(value -> !Set.of("DELIVERED", "PAYMENT_PENDING", "PAYMENT_UNKNOWN").contains(value.state)).limit(32).toList()) {
                 cards.add(CardUpdate.show(new CreditReceiptOutput(delivery.id, delivery.reward, delivery.state)));
             }
             cards.add(CardUpdate.show(new ResultTypes.SignInStatus(day, ModuleData.get(data, SignInSystemModule.STORAGE).hasReward(day),
                     context.availableCatalog().rewards(), data.saveHistory, data.externalModel)));
-            for (PlayerData.Purchase purchase : ModuleData.values(data, CommerceDataStorage.class, this.modules)
+            for (Purchase purchase : ModuleData.values(data, CommerceDataStorage.class, this.modules)
                     .flatMap(CommerceDataStorage::streamPurchases).filter(value -> !"COMPLETED".equals(value.state) && !"FAILED".equals(value.state)).limit(8).toList())
                 cards.add(CardUpdate.show(new ResultTypes.ShopOrder(purchase.id, purchase.order.label(), purchase.state, purchase.error)));
             return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.inbox", "", cards);

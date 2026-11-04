@@ -130,7 +130,9 @@ public final class CommerceCosts {
             return this.price;
         }
 
-        /** {@return why pricing was refused, or empty when the quote is usable} */
+        /**
+         * {@return why pricing was refused, or empty when the quote is usable}
+         */
         public Optional<Failure> failure() {
             return this.failure;
         }

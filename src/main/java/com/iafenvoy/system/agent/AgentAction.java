@@ -7,12 +7,13 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * An action is its typed input; the registered MapCodec supplies its identity and dispatch format.
  */
 public interface AgentAction {
-    Codec<AgentAction> CODEC = SystemRegistries.ACTION_TYPE.byNameCodec().dispatch("moduleId", AgentAction::codec, codec -> codec);
+    Codec<AgentAction> CODEC = SystemRegistries.ACTION_TYPE.byNameCodec().dispatch("moduleId", AgentAction::codec, Function.identity());
 
     MapCodec<? extends AgentAction> codec();
 

@@ -73,7 +73,9 @@ public final class LocalSpeechUsage {
      */
     public static final class Ledger {
         private final Path path;
-        /** Null until the queued load ran; every update and the load itself commit through one atomic reference. */
+        /**
+         * Null until the queued load ran; every update and the load itself commit through one atomic reference.
+         */
         private final AtomicReference<Snapshot> value = new AtomicReference<>();
 
         private Ledger(Path path) {
@@ -131,7 +133,9 @@ public final class LocalSpeechUsage {
             }
         }
 
-        /** Saves exactly the snapshot that was just committed, never whatever the reference holds by now. */
+        /**
+         * Saves exactly the snapshot that was just committed, never whatever the reference holds by now.
+         */
         private void save(Snapshot value) {
             Path temporary = this.path.resolveSibling(this.path.getFileName() + ".tmp");
             try {

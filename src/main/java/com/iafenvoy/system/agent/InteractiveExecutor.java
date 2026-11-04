@@ -2,7 +2,7 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.agent.routing.RouteDecision;
 import com.iafenvoy.system.agent.store.AgentStore;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Message;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.util.CodecIO;
 import net.minecraft.resources.Identifier;
@@ -78,7 +78,7 @@ final class InteractiveExecutor implements AutoCloseable {
             this.checkGeneration(player, generation);
             data.conversation.requestInputs.put(id, fingerprint);
             if (data.saveHistory && !text.isBlank())
-                data.conversation.history.add(new PlayerData.Message(id, "user", received, text));
+                data.conversation.history.add(new Message.User(id, received, text));
             return data.conversation.memoryEpoch;
         });
         AgentModule<?> direct = this.engine.module(player, Identifier.tryParse(moduleId));
@@ -108,7 +108,7 @@ final class InteractiveExecutor implements AutoCloseable {
             if (data.saveHistory && data.conversation.memoryEpoch == epoch) {
                 data.conversation.requests.put(id, completed);
                 if (!completed.silent())
-                    data.conversation.history.add(new PlayerData.Message(id, "assistant", System.currentTimeMillis(), CodecIO.write(AgentResult.CODEC, completed)));
+                    data.conversation.history.add(new Message.Assistant(id, System.currentTimeMillis(), completed));
             } else data.conversation.requestInputs.remove(id);
             return null;
         });

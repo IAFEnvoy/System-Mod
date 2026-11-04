@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.builtin.signin;
 
 import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Reward;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -34,10 +34,10 @@ public record SignInDecision(Identifier rewardId, String reason) {
         }
     }
 
-    public record Input(Player player, List<PlayerData.Reward> candidates, String date) {
+    public record Input(Player player, List<Reward> candidates, String date) {
         public static final MapCodec<Input> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 Player.CODEC.fieldOf("player").forGetter(Input::player),
-                PlayerData.Reward.CODEC.listOf().fieldOf("candidates").forGetter(Input::candidates),
+                Reward.CODEC.listOf().fieldOf("candidates").forGetter(Input::candidates),
                 Codec.STRING.fieldOf("date").forGetter(Input::date)
         ).apply(i, Input::new));
     }

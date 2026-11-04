@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 public record DetailsNode(String summary, List<CardTemplate.Node> children, boolean open) implements CardNode {
     public static final MapCodec<DetailsNode> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("summary").forGetter(DetailsNode::summary),
-            Codec.lazyInitialized(() -> CardTemplate.Node.CODEC).listOf().fieldOf("children").forGetter(DetailsNode::children),
+            CardTemplate.Node.CODEC.listOf().fieldOf("children").forGetter(DetailsNode::children),
             Codec.BOOL.optionalFieldOf("open", false).forGetter(DetailsNode::open)
     ).apply(i, DetailsNode::new));
 

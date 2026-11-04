@@ -7,7 +7,8 @@ import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
 import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
 import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Delivery;
+import com.iafenvoy.system.agent.store.Purchase;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.ModuleStorage;
@@ -106,7 +107,7 @@ public final class CommerceTransactions {
             throw new AgentException("INVALID_INPUT");
         }
         ModuleStorage<CommerceDataStorage> storage = this.storage(type);
-        PlayerData.Purchase previous = context.store().read(context.player(), data -> ModuleData.get(data, storage).getPurchase(id));
+        Purchase previous = context.store().read(context.player(), data -> ModuleData.get(data, storage).getPurchase(id));
         if (previous != null) {
             if (previous.order.type() != type) throw new AgentException("NOT_AUTHORIZED");
             if (previous.state.equals("COMPLETED")) return CompletableFuture.completedFuture(receipt(previous));
@@ -123,13 +124,13 @@ public final class CommerceTransactions {
                 commerce.assertPurchaseCount();
                 InboxDataStorage inbox = ModuleData.get(data, InboxSystemModule.STORAGE);
                 inbox.assertDeliveryCount();
-                PlayerData.Purchase purchase = new PlayerData.Purchase();
+                Purchase purchase = new Purchase();
                 purchase.id = id;
                 purchase.order = quote.select();
                 purchase.created = System.currentTimeMillis();
                 commerce.putPurchase(id, purchase);
                 // Reserve the reward before payment; delivery becomes available only after payment is recorded.
-                PlayerData.Delivery held = new PlayerData.Delivery(type.entitlement(id), purchase.order.reward());
+                Delivery held = new Delivery(type.entitlement(id), purchase.order.reward());
                 held.state = "PAYMENT_PENDING";
                 inbox.putDelivery(held.id, held);
                 return null;
@@ -157,7 +158,7 @@ public final class CommerceTransactions {
             String code = error == null ? "" : touched.get() ? "EFFECT_UNKNOWN" : AgentEngine.errorCode(error);
             PurchaseReceiptOutput committed = context.store().update(context.player(), data -> {
                 CommerceDataStorage commerce = ModuleData.get(data, storage);
-                PlayerData.Purchase order = commerce.getPurchase(id);
+                Purchase order = commerce.getPurchase(id);
                 InboxDataStorage inbox = ModuleData.get(data, InboxSystemModule.STORAGE);
                 if (error == null) {
                     String entitlement = type.entitlement(id);
@@ -186,7 +187,7 @@ public final class CommerceTransactions {
         return result.whenComplete((ignored, error) -> this.active.remove(key));
     }
 
-    private static PurchaseReceiptOutput receipt(PlayerData.Purchase purchase) {
+    private static PurchaseReceiptOutput receipt(Purchase purchase) {
         return new PurchaseReceiptOutput(purchase.id, purchase.order.type().entitlement(purchase.id), purchase.order.reward(), purchase.state);
     }
 

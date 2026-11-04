@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.commerce;
 
 import com.iafenvoy.saturn.data.cost.Cost;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Reward;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -17,12 +17,12 @@ import java.util.Optional;
 public record CatalogEntry(String label, List<ItemStackTemplate> items, Optional<List<Cost>> costs, boolean enabled) {
     public static final Codec<CatalogEntry> REWARD = RecordCodecBuilder.<CatalogEntry>create(i -> i.group(
             Codec.STRING.optionalFieldOf("label", "").forGetter(CatalogEntry::label),
-            PlayerData.Reward.ITEMS_CODEC.optionalFieldOf("items", List.of()).forGetter(CatalogEntry::items),
+            Reward.ITEMS_CODEC.optionalFieldOf("items", List.of()).forGetter(CatalogEntry::items),
             Codec.BOOL.optionalFieldOf("enabled", true).forGetter(CatalogEntry::enabled)
     ).apply(i, (label, items, enabled) -> new CatalogEntry(label, items, Optional.empty(), enabled))).validate(CatalogEntry::validate);
     public static final Codec<CatalogEntry> OFFER = RecordCodecBuilder.<CatalogEntry>create(i -> i.group(
             Codec.STRING.optionalFieldOf("label", "").forGetter(CatalogEntry::label),
-            PlayerData.Reward.ITEMS_CODEC.optionalFieldOf("items", List.of()).forGetter(CatalogEntry::items),
+            Reward.ITEMS_CODEC.optionalFieldOf("items", List.of()).forGetter(CatalogEntry::items),
             Cost.LIST_CODEC.optionalFieldOf("costs").forGetter(CatalogEntry::costs),
             Codec.BOOL.optionalFieldOf("enabled", true).forGetter(CatalogEntry::enabled)
     ).apply(i, CatalogEntry::new)).validate(entry -> validate(entry).flatMap(value -> value.enabled && value.costs.isEmpty()
@@ -38,8 +38,8 @@ public record CatalogEntry(String label, List<ItemStackTemplate> items, Optional
                 ? DataResult.error(() -> "Enabled catalog entries need a label and items") : DataResult.success(entry);
     }
 
-    public PlayerData.Reward resolveReward(Identifier id) {
-        return new PlayerData.Reward(id, this.label, this.items);
+    public Reward resolveReward(Identifier id) {
+        return new Reward(id, this.label, this.items);
     }
 
     public CommerceCatalog.Offer resolveOffer(Identifier id) {

@@ -112,7 +112,7 @@ Receipt receipt = context.tool(CREDIT_TYPE, "credit", creditInput);
 
 不要给 Tool 增加 `operation` 字段来分派一组行为。同一工具由多个模块使用时，复用同一个实例和 `ToolRegistry.Type`。写工具声明幂等及事件权限；恢复时稳定的 `stepId` 对应既有回执，已完成操作不会重复执行。存档只保留一份全局操作回执，不额外保留未使用的任务内步骤表。
 
-事件任务和写步骤回执共用 `PlayerData.State` 枚举。事件缺省为 `QUEUED`，执行中为 `RUNNING`，玩家离线时为 `WAITING`，这三种状态允许恢复；终态按执行结果记录为 `SUCCEEDED`、`FAILED` 或 `PARTIALLY_SUCCEEDED`。步骤缺省为 `RUNNING`，表示已记录执行意图但未确认结果；`DONE` 表示结果已持久化、可按原结果 Codec 回放。存档仍使用同名字符串；显式无效状态由 Codec 拒绝，不把未知业务状态当作新操作重试。未完成的非幂等工具仍报告 EFFECT_UNKNOWN。
+事件任务和写步骤回执共用 `State` 枚举（`agent.store` 包）。事件缺省为 `QUEUED`，执行中为 `RUNNING`，玩家离线时为 `WAITING`，这三种状态允许恢复；终态按执行结果记录为 `SUCCEEDED`、`FAILED` 或 `PARTIALLY_SUCCEEDED`。步骤缺省为 `RUNNING`，表示已记录执行意图但未确认结果；`DONE` 表示结果已持久化、可按原结果 Codec 回放。存档仍使用同名字符串；显式无效状态由 Codec 拒绝，不把未知业务状态当作新操作重试。未完成的非幂等工具仍报告 EFFECT_UNKNOWN。
 
 Descriptor 的 `tools` 为必需工具，`optionalTools` 为可选只读工具 ID，二者不能重叠。可选项只在导出模块已启用时才能调用，缺席不会禁用本地工作流，也不自动注册处理器或授予模块。ExecutionContext.tool 同时检查声明、导出模块权限与只读属性；必需和可选调用共用原有工具 / 步数预算。知识问答使用该机制接入 FTB 说明书与网页搜索。
 
@@ -137,7 +137,7 @@ Descriptor 的 `tools` 为必需工具，`optionalTools` 为可选只读工具 I
 {"type":"system:preferences","history":true,"external":true}
 ```
 
-响应类型为 `system:reply`、`system:notice`、`system:open`、`system:binding`、`system:state` 和 `system:history`。状态与历史不占用卡片类型；历史恢复为只读，不播报、不执行按钮。回复关联请求 UUID，通知直接进入消息队列；导航携带 `CURRENT/SIMPLE/FULL`，绑定变更携带 `BOUND/REVOKED/INVALIDATED`。请求 ID 只作关联，不再传递 `bound/open/event/revoked` 等操作字符串。网络协议为 1，两端需一起更新。
+响应类型为 `system:reply`、`system:notice`、`system:open`、`system:binding`、`system:state` 和 `system:history`。状态与历史不占用卡片类型；历史恢复为只读，不播报、不执行按钮；历史条目按 `role` 判别，`assistant` 直接携带 `AgentResult` 对象，不再嵌套 JSON 字符串。回复关联请求 UUID，通知直接进入消息队列；导航携带 `CURRENT/SIMPLE/FULL`，绑定变更携带 `BOUND/REVOKED/INVALIDATED`。请求 ID 只作关联，不再传递 `bound/open/event/revoked` 等操作字符串。网络协议为 1，两端需一起更新。
 
 服务端请求和客户端响应使用 util.TypeDispatch 分派运行行为；控制动作和 NLS 事件使用 Map。卡片本身通过 buildCard 提供展示与播报，ClientCards 按 ID/版本处理 SHOW/REPLACE/REMOVE，不再登记按类型刷新或口播处理器。ReplyResponse 完成请求与是否含卡片无关；客户端跟踪页面归属和超时，迟到更新不能抢新页。详见[卡片数据流](card-flow-design.md)。
 

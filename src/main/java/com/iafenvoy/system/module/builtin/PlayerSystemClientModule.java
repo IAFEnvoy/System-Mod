@@ -8,11 +8,9 @@ import com.iafenvoy.system.module.client.ClientModuleContext;
 public final class PlayerSystemClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
-        module.workspace("", "nav_player", workspace -> {
-            workspace.click("nav_player", () -> {
-                workspace.show("chat");
-                AssistantClient.send(PlayerQueryInput.INSTANCE, "");
-            });
-        });
+        module.workspace("", "nav_player", workspace -> workspace.click("nav_player", () -> {
+            workspace.show("chat");
+            AssistantClient.send(PlayerQueryInput.INSTANCE, "");
+        }));
     }
 }

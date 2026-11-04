@@ -31,7 +31,4 @@ public interface AsrProvider extends AutoCloseable {
             return "AsrRequest[region=" + this.region + "]";
         }
     }
-
-    @Override
-    void close();
 }

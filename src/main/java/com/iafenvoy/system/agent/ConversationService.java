@@ -2,7 +2,7 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.saturn.util.MiscUtil;
 import com.iafenvoy.system.agent.store.AgentStore;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Message;
 import com.iafenvoy.system.card.CardUpdate;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.JsonOps;
@@ -52,31 +52,39 @@ final class ConversationService {
         AgentStore store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
             if (!data.bound()) throw new AgentException("NOT_BOUND");
-            List<PlayerData.Message> selected = new ArrayList<>();
+            List<Message> selected = new ArrayList<>();
             int size = 0;
             for (int index = data.conversation.history.size() - 1; index >= 0 && selected.size() < 24; index--) {
-                PlayerData.Message message = data.conversation.history.get(index);
-                String text = message.text();
-                if (message.role().equals("assistant") && text.length() > 4096) {
-                    AgentResult result = CodecIO.parse(AgentResult.CODEC, text);
-                    // Keep a complete JSON result; never truncate the middle of a card or action.
-                    List<CardUpdate> cards = new ArrayList<>();
-                    for (CardUpdate card : result.cards()) {
-                        cards.add(card);
-                        if (CodecIO.write(AgentResult.CODEC, result.withPresentation(result.messageKey(), MiscUtil.clip(result.text(), 1000), cards, result.silent())).length() > 4096) {
-                            cards.removeLast();
-                            break;
-                        }
-                    }
-                    text = CodecIO.write(AgentResult.CODEC, result.withPresentation(result.messageKey(), MiscUtil.clip(result.text(), 1000), cards, result.silent()));
-                }
-                PlayerData.Message entry = new PlayerData.Message("", message.role(), message.time(), text);
+                // The page never carries request IDs; oversized results keep complete cards and clipped prose.
+                Message entry = data.conversation.history.get(index).withRequestId("");
+                if (entry instanceof Message.Assistant assistant
+                        && CodecIO.write(AgentResult.CODEC, assistant.result()).length() > 4096)
+                    entry = new Message.Assistant("", assistant.time(), clip(assistant.result()));
                 size += ResultTypes.History.MESSAGE_CODEC.encodeStart(JsonOps.INSTANCE, entry).getOrThrow().toString().length();
                 if (size > 44000) break;
                 selected.add(entry);
             }
             return new ResultTypes.History(selected.reversed());
         }));
+    }
+
+    /**
+     * Keeps a complete JSON result under the per-entry cap; never truncates the middle of a card or action.
+     */
+    private static AgentResult clip(AgentResult result) {
+        List<CardUpdate> cards = new ArrayList<>();
+        for (CardUpdate card : result.cards()) {
+            cards.add(card);
+            if (CodecIO.write(AgentResult.CODEC, presentation(result, cards)).length() > 4096) {
+                cards.removeLast();
+                break;
+            }
+        }
+        return presentation(result, cards);
+    }
+
+    private static AgentResult presentation(AgentResult result, List<CardUpdate> cards) {
+        return result.withPresentation(result.messageKey(), MiscUtil.clip(result.text(), 1000), cards, result.silent());
     }
 
 }

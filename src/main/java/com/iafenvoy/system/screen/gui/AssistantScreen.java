@@ -115,7 +115,8 @@ public final class AssistantScreen extends AssistantInputScreen {
                     String css = entry.player() ? "message user" : "message assistant";
                     Element row = element(document, "div", css + (index >= firstNew ? " message_new" : ""), "");
                     row.appendChild(element(document, "div", "message_label", tr(entry.player() ? "system.ui.you" : AssistantClient.system().name())));
-                    if (!entry.text().isBlank()) row.appendChild(element(document, "div", "message_text", entry.text()));
+                    if (!entry.text().isBlank())
+                        row.appendChild(element(document, "div", "message_text", entry.text()));
                     AgentResult result = entry.result();
                     if (result != null) {
                         for (CardUpdate card : result.cards()) {

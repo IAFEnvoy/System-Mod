@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.builtin.output;
 
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.iafenvoy.system.card.CardText;
@@ -22,7 +22,7 @@ public record ShopQuoteOutput(String quoteRef, String label, List<ItemStackTempl
     public static final MapCodec<ShopQuoteOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("quoteRef").forGetter(ShopQuoteOutput::quoteRef),
             Codec.STRING.fieldOf("label").forGetter(ShopQuoteOutput::label),
-            PlayerData.Reward.ITEMS_CODEC.fieldOf("items").forGetter(ShopQuoteOutput::items),
+            Reward.ITEMS_CODEC.fieldOf("items").forGetter(ShopQuoteOutput::items),
             CommerceCatalog.Price.CODEC.fieldOf("price").forGetter(ShopQuoteOutput::price)
     ).apply(i, ShopQuoteOutput::new));
 

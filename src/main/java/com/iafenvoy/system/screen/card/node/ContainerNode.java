@@ -17,7 +17,7 @@ import java.util.Optional;
  */
 public class ContainerNode implements CardNode {
     public static final MapCodec<ContainerNode> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Codec.lazyInitialized(() -> CardTemplate.Node.CODEC).listOf().fieldOf("children").forGetter(ContainerNode::children),
+            CardTemplate.Node.CODEC.listOf().fieldOf("children").forGetter(ContainerNode::children),
             Codec.STRING.optionalFieldOf("text_separator").forGetter(ContainerNode::textSeparator)
     ).apply(i, ContainerNode::new));
     private final List<CardTemplate.Node> children;

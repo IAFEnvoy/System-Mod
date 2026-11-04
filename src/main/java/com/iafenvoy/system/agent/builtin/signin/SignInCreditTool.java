@@ -7,7 +7,8 @@ import com.iafenvoy.system.agent.builtin.input.SignInCreditInput;
 import com.iafenvoy.system.agent.builtin.output.RewardOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Delivery;
+import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
@@ -36,7 +37,7 @@ public final class SignInCreditTool implements ToolRegistry.Handler<SignInCredit
         CommerceCatalog catalog = context.availableCatalog();
         if (!catalog.revision().equals(input.catalogRevision()))
             throw new AgentException("CATALOG_CHANGED");
-        PlayerData.Reward reward = catalog.rewards().stream().filter(value -> value.id().equals(rewardId)).findFirst()
+        Reward reward = catalog.rewards().stream().filter(value -> value.id().equals(rewardId)).findFirst()
                 .orElseThrow(() -> new AgentException("MODEL_INVALID"));
         context.ensureMemoryCurrent();
         return CompletableFuture.completedFuture(context.store().update(context.player(), data -> {
@@ -49,7 +50,7 @@ public final class SignInCreditTool implements ToolRegistry.Handler<SignInCredit
             InboxDataStorage inbox = ModuleData.get(data, InboxSystemModule.STORAGE);
             inbox.assertDeliveryCount();
             signIn.putReward(day, reward);
-            inbox.putDelivery("daily:" + day, new PlayerData.Delivery("daily:" + day, reward));
+            inbox.putDelivery("daily:" + day, new Delivery("daily:" + day, reward));
             return new RewardOutput(reward);
         }));
     }

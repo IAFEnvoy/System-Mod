@@ -13,7 +13,7 @@ import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.SignInSystemModule;
@@ -48,7 +48,7 @@ public final class SignInModule extends BuiltinModule<SignInInput> {
         // AI selects an existing reward ID; the server owns quantities and commits the daily entitlement.
         ZoneId zone = ZoneId.of(AgentConfig.INSTANCE.get().timeZone());
         String day = LocalDate.now(zone).toString();
-        PlayerData.Reward existing = context.store().read(context.player(), data -> ModuleData.get(data, SignInSystemModule.STORAGE).getReward(day));
+        Reward existing = context.store().read(context.player(), data -> ModuleData.get(data, SignInSystemModule.STORAGE).getReward(day));
         if (existing != null)
             return AgentResult.data("system.result.already", new RewardOutput(existing, Optional.of("daily:" + day), Component.translatable("system.result.already"), ""));
         CommerceCatalog catalog = context.availableCatalog();
@@ -58,14 +58,14 @@ public final class SignInModule extends BuiltinModule<SignInInput> {
                 new SignInDecision.Input(state, catalog.rewards(), day), SignInDecision.CODEC);
         Identifier selectedId = decision.rewardId();
         String reason = MiscUtil.clip(decision.reason(), 240);
-        PlayerData.Reward reward = catalog.rewards().stream().filter(value -> value.id().equals(selectedId)).findFirst()
+        Reward reward = catalog.rewards().stream().filter(value -> value.id().equals(selectedId)).findFirst()
                 .orElseThrow(() -> new AgentException("MODEL_INVALID"));
         // Recheck date, player and catalog after inference; a successful reply alone does not grant a reward.
         context.ensureMemoryCurrent();
         if (!day.equals(LocalDate.now(zone).toString())) throw new AgentException("EXPIRED");
         context.tool(BuiltinTools.PLAYER, "revalidate", EmptyInput.INSTANCE);
         RewardOutput committed = context.tool(BuiltinTools.SIGN_IN_CREDIT, "credit", new SignInCreditInput(day, reward.id(), catalog.revision()));
-        PlayerData.Reward chosen = committed.reward();
+        Reward chosen = committed.reward();
         return AgentResult.data("system.result.sign_in", new RewardOutput(chosen, Optional.of("daily:" + day),
                 Component.translatable("system.result.sign_in"), reason));
     }

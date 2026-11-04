@@ -1,6 +1,6 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
@@ -13,10 +13,10 @@ import java.util.Map;
 /**
  * Built-in result data and its serialization codec.
  */
-public record CreditReceiptOutput(String entitlementId, PlayerData.Reward reward, String state) implements CardData {
+public record CreditReceiptOutput(String entitlementId, Reward reward, String state) implements CardData {
     public static final MapCodec<CreditReceiptOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("entitlementId").forGetter(CreditReceiptOutput::entitlementId),
-            PlayerData.Reward.CODEC.fieldOf("reward").forGetter(CreditReceiptOutput::reward),
+            Reward.CODEC.fieldOf("reward").forGetter(CreditReceiptOutput::reward),
             Codec.STRING.fieldOf("state").forGetter(CreditReceiptOutput::state)
     ).apply(i, CreditReceiptOutput::new));
     public static final Identifier TEMPLATE = Identifier.parse("system:entitlement");

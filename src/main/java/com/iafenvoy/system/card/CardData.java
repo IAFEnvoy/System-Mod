@@ -10,7 +10,7 @@ import java.util.function.Function;
  * Server-built snapshots describe cards without loading any client or optional-mod classes.
  */
 public interface CardData {
-    Codec<CardData> CODEC = Codec.lazyInitialized(SystemRegistries.CARD_DATA_TYPE::byNameCodec).dispatch("type", CardData::codec, Function.identity());
+    Codec<CardData> CODEC = SystemRegistries.CARD_DATA_TYPE.byNameCodec().dispatch("type", CardData::codec, Function.identity());
 
     MapCodec<? extends CardData> codec();
 

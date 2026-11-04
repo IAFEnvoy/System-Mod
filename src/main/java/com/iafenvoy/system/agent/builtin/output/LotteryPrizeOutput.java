@@ -1,6 +1,6 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.iafenvoy.system.card.SpeechContent;
@@ -16,9 +16,9 @@ import java.math.MathContext;
 /**
  * Integer weights preserve exact odds while the client adds a readable percentage.
  */
-public record LotteryPrizeOutput(PlayerData.Reward reward, int weight, long totalWeight) implements CardData {
+public record LotteryPrizeOutput(Reward reward, int weight, long totalWeight) implements CardData {
     public static final MapCodec<LotteryPrizeOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            PlayerData.Reward.CODEC.fieldOf("reward").forGetter(LotteryPrizeOutput::reward),
+            Reward.CODEC.fieldOf("reward").forGetter(LotteryPrizeOutput::reward),
             Codec.INT.fieldOf("weight").forGetter(LotteryPrizeOutput::weight),
             Codec.LONG.fieldOf("totalWeight").forGetter(LotteryPrizeOutput::totalWeight)
     ).apply(i, LotteryPrizeOutput::new));

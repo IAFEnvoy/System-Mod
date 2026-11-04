@@ -7,7 +7,7 @@ import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.agent.builtin.input.EntitlementInput;
 import com.iafenvoy.system.agent.builtin.output.StateOutput;
 import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Delivery;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
@@ -42,7 +42,7 @@ public final class DeliverTool implements ToolRegistry.Handler<EntitlementInput,
         String id = input.entitlementId();
         Object lock = this.deliveryLocks.computeIfAbsent(context.player(), ignored -> new Object());
         synchronized (lock) {
-            PlayerData.Delivery delivery = context.store().read(context.player(), data -> ModuleData.get(data, InboxSystemModule.STORAGE).getDelivery(id));
+            Delivery delivery = context.store().read(context.player(), data -> ModuleData.get(data, InboxSystemModule.STORAGE).getDelivery(id));
             if (delivery == null) throw new AgentException("NOT_AUTHORIZED");
             if ("DELIVERED".equals(delivery.state))
                 return CompletableFuture.completedFuture(new StateOutput("DELIVERED"));

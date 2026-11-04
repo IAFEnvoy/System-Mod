@@ -3,7 +3,7 @@ package com.iafenvoy.system.agent.commerce;
 import com.iafenvoy.saturn.data.cost.Cost;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.serialization.Codec;
@@ -23,7 +23,7 @@ import java.util.UUID;
 /**
  * Immutable trusted definitions shared by sign-in, shop and lottery workflows.
  */
-public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, List<Offer> offers,
+public record CommerceCatalog(String revision, List<Reward> rewards, List<Offer> offers,
                               List<LotteryPool> lotteries, RegistryAccess registries) {
     public CommerceCatalog {
         rewards = List.copyOf(rewards);
@@ -62,7 +62,7 @@ public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, 
         public static final Codec<Offer> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Identifier.CODEC.fieldOf("id").forGetter(Offer::id),
                 Codec.STRING.fieldOf("label").forGetter(Offer::label),
-                PlayerData.Reward.ITEMS_CODEC.fieldOf("items").forGetter(Offer::items),
+                Reward.ITEMS_CODEC.fieldOf("items").forGetter(Offer::items),
                 Cost.LIST_CODEC.fieldOf("costs").forGetter(Offer::costs)
         ).apply(i, Offer::new));
 
@@ -73,8 +73,8 @@ public record CommerceCatalog(String revision, List<PlayerData.Reward> rewards, 
             costs = List.copyOf(costs);
         }
 
-        public PlayerData.Reward reward() {
-            return new PlayerData.Reward(this.id, this.label, this.items);
+        public Reward reward() {
+            return new Reward(this.id, this.label, this.items);
         }
     }
 

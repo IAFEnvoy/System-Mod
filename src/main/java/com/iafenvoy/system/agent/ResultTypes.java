@@ -4,7 +4,8 @@ import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestIconOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestSubmission;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Message;
+import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardButton;
 import com.iafenvoy.system.card.CardData;
@@ -50,8 +51,8 @@ public final class ResultTypes {
 
     }
 
-    public record History(List<PlayerData.Message> messages) {
-        public static final Codec<PlayerData.Message> MESSAGE_CODEC = PlayerData.Message.CODEC;
+    public record History(List<Message> messages) {
+        public static final Codec<Message> MESSAGE_CODEC = Message.CODEC;
         public static final MapCodec<History> CODEC = MESSAGE_CODEC.listOf().fieldOf("messages").xmap(History::new, History::messages);
 
         public History {
@@ -60,12 +61,12 @@ public final class ResultTypes {
 
     }
 
-    public record SignInStatus(String date, boolean signedIn, List<PlayerData.Reward> candidates, boolean historySaved,
+    public record SignInStatus(String date, boolean signedIn, List<Reward> candidates, boolean historySaved,
                                boolean externalModel) implements CardData {
         public static final MapCodec<SignInStatus> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 Codec.STRING.fieldOf("date").forGetter(SignInStatus::date),
                 Codec.BOOL.fieldOf("signedIn").forGetter(SignInStatus::signedIn),
-                PlayerData.Reward.CODEC.listOf().fieldOf("candidates").forGetter(SignInStatus::candidates),
+                Reward.CODEC.listOf().fieldOf("candidates").forGetter(SignInStatus::candidates),
                 Codec.BOOL.fieldOf("historySaved").forGetter(SignInStatus::historySaved),
                 Codec.BOOL.fieldOf("externalModel").forGetter(SignInStatus::externalModel)
         ).apply(i, SignInStatus::new));

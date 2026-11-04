@@ -23,7 +23,4 @@ public interface AgentStore extends AutoCloseable {
     void delete(UUID player);
 
     List<UUID> players();
-
-    @Override
-    void close();
 }

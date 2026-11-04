@@ -1,6 +1,6 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.iafenvoy.system.util.LegacyText;
@@ -17,10 +17,10 @@ import java.util.Optional;
 /**
  * Reward presentation includes the actual workflow outcome, independently of the outer response key.
  */
-public record RewardOutput(PlayerData.Reward reward, Optional<String> entitlementId, Component summary,
+public record RewardOutput(Reward reward, Optional<String> entitlementId, Component summary,
                            String reason) implements CardData {
     public static final MapCodec<RewardOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            PlayerData.Reward.CODEC.fieldOf("reward").forGetter(RewardOutput::reward),
+            Reward.CODEC.fieldOf("reward").forGetter(RewardOutput::reward),
             Codec.STRING.optionalFieldOf("entitlementId").forGetter(RewardOutput::entitlementId),
             ComponentSerialization.CODEC.fieldOf("summary").forGetter(RewardOutput::summary),
             Codec.STRING.optionalFieldOf("reason", "").forGetter(RewardOutput::reason)
@@ -30,7 +30,7 @@ public record RewardOutput(PlayerData.Reward reward, Optional<String> entitlemen
         summary = LegacyText.snapshot(summary);
     }
 
-    public RewardOutput(PlayerData.Reward reward) {
+    public RewardOutput(Reward reward) {
         this(reward, Optional.empty(), Component.translatable("system.result.reward"), "");
     }
 

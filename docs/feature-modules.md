@@ -72,6 +72,32 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
 
 必需工具缺失会禁用工作流；Descriptor.optionalTools 则声明可选只读依赖，缺少对应功能不影响工作流的本地路径。执行时仍检查工具所属模块，不因为声明可选项就自动启用该模块。FTB 模块也可在安装时导出其说明书 Tool，供通用问答复用同一权限与检索处理器。
 
+### 物品来源查询
+
+`system:items` 装配两个工作流：`system:item_query`（名称/ID 检索）与 `system:item_sources`（单个物品的来源）。后者提供 `/system recipe <物品ID> [范围]`、语义路由和稳定动作 ID；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`，输出 Codec 直接就是返回给调用方的 JSON：
+
+```json
+{"item":"minecraft:diamond_pickaxe","scope":"loot","sources":[
+  {"kind":"loot","id":"minecraft:entities/zombie","type":"loot_table",
+   "outputs":[{"items":["minecraft:iron_ingot"],"count":1}],"notes":["weight 1"]}],"truncated":false}
+```
+
+`scope` 缺省为 `all`，即完整查询，跑所有已注册来源；也可以只写某个来源的路径（`recipe`、`loot`、`tag`）或它的完整 ID（`system:recipe`）。范围由 `ItemSourceProviders` 在装配时枚举，新增 Provider 后自动出现在补全里；未注册的范围会被拒绝（`INVALID_INPUT`），不会静默返回空列表。命令行写作 `/system recipe minecraft:diamond loot`，省略第二个词即为完整查询；语义路由只在请求里出现「掉落 / 战利品 / 配方 / 合成 / 标签」这类关键词时收窄到对应范围，其余情况保持完整查询。
+
+默认值不会写进 JSON：`type` 缺省为空串，`station`、`inputs`、`notes` 缺省为空数组，`count` 缺省为 1，`scope` 缺省为 `all`。`kind`、`id`、`outputs` 始终存在，`outputs` 一定包含被查询的物品。结果上限 64 条，超出时置 `truncated`，单个配方最多 16 个输入槽、每槽最多 8 个候选，掉落最多检查 4096 张表，标签最多 64 个。
+
+来源由 `ItemSourceProvider` 提供，`ItemSourceProviders` 按 ID 排序执行并逐个捕获异常，一个可选集成出错不影响其余来源。内置三个：
+
+| Provider | `kind` | 内容 |
+| --- | --- | --- |
+| `system:recipe` | `recipe` | 读服务端 `RecipeManager`，用 `Recipe#display()` 取输出、`placementInfo().ingredients()` 取材料，`type` 是配方类型 ID |
+| `system:loot` | `loot` | 把每张战利品表用 `LootTable.DIRECT_CODEC` 编码一次并扫描 item/tag 条目，索引按表实例放在 WeakHashMap 里，数据包重载后旧表被回收即自然失效 |
+| `system:tag` | `tag` | 该物品所属的物品标签，一条一个标签；这是分类维度，不是制作步骤，所以只有 `outputs` |
+
+其他模组可在构造阶段调用 `ItemSourceProviders.register(...)` 增加自己的来源，可以返回自定义 `kind`，新的 Provider 路径会同时成为合法的 `scope`。
+
+三个内置来源都有覆盖边界，结果不会假装完整：`Recipe#display()` 默认返回空列表，只被 9 个原版配方类覆盖，因此修复物品、地图扩展、旗帜复制、烟花等 `CustomRecipe` 子类和未实现 `display()` 的模组配方查不到输入输出；酿造不是 `Recipe`，也不在 `RecipeManager` 里。战利品这边只解析静态条目，tag 会展开为物品（每表最多 8 个），嵌套 `minecraft:loot_table`、`minecraft:dynamic` 和 `minecraft:empty` 直接跳过，`set_count` 的随机数量不会折算进 `count`。标签来源只报归属关系，不说明该标签从哪获得。这些配方缺口需要 JEI 的类别投影才能补齐，而它只在客户端，服务端工具不依赖它。
+
 ## 玩家生命周期
 
 ServerModule.runtime(context) 返回每服务器、每模块配置的 PlayerModule：

@@ -8,9 +8,11 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.resources.Identifier;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -47,5 +49,23 @@ public record AgentCommand<I extends AgentAction>(List<String> names,
         return new AgentCommand<>(List.of(names), name -> LiteralArgumentBuilder.<AssistantCommandSource>literal(name)
                 .then(RequiredArgumentBuilder.<AssistantCommandSource, Identifier>argument(argument, IdentifierArgument.id())
                         .executes(context -> context.getSource().action(parser.apply(context.getArgument(argument, Identifier.class))))));
+    }
+
+    /**
+     * A registry ID with one optional trailing word, e.g. {@code /system recipe minecraft:diamond loot}.
+     * Omitting the second argument passes an empty string, which callers treat as the default scope.
+     */
+    public static <I extends AgentAction> AgentCommand<I> identifierWithScope(String argument, String scope, Collection<String> scopes,
+                                                                              BiFunction<Identifier, String, I> parser, String... names) {
+        return new AgentCommand<>(List.of(names), name -> LiteralArgumentBuilder.<AssistantCommandSource>literal(name)
+                .then(RequiredArgumentBuilder.<AssistantCommandSource, Identifier>argument(argument, IdentifierArgument.id())
+                        .executes(context -> context.getSource().action(parser.apply(context.getArgument(argument, Identifier.class), "")))
+                        .then(RequiredArgumentBuilder.<AssistantCommandSource, String>argument(scope, StringArgumentType.word())
+                                .suggests((_, builder) -> {
+                                    scopes.forEach(builder::suggest);
+                                    return builder.buildFuture();
+                                })
+                                .executes(context -> context.getSource().action(parser.apply(context.getArgument(argument, Identifier.class),
+                                        StringArgumentType.getString(context, scope)))))));
     }
 }

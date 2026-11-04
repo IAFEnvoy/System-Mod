@@ -104,7 +104,7 @@ tag 来自动态模块配置注册表 `system:system_module`，成员为模块�
 | 功能 | 模块 ID |
 | --- | --- |
 | 玩家查询 | `system:player` |
-| 物品查询 | `system:items` |
+| 物品查询与来源 | `system:items` |
 | 签到 | `system:signin` |
 | 收件箱与交付 | `system:inbox` |
 | 商城（浏览、报价、购买） | `system:shop` |

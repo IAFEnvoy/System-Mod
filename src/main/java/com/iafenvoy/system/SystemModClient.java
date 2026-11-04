@@ -11,8 +11,8 @@ import net.neoforged.fml.common.Mod;
  * Client registry contributions and caches initialize only from the physical client entrypoint.
  */
 @Mod(value = SystemMod.MOD_ID, dist = Dist.CLIENT)
-public final class SystemClientMod {
-    public SystemClientMod(IEventBus bus) {
+public final class SystemModClient {
+    public SystemModClient(IEventBus bus) {
         SystemCardNodeTypes.REGISTRY.register(bus);
         SystemClientModules.init();
         ClientModuleCaches.init();

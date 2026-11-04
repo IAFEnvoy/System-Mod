@@ -3,7 +3,6 @@ package com.iafenvoy.system.agent.store;
 import com.google.gson.JsonParser;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.JsonOps;
 
@@ -80,18 +79,6 @@ public final class FileAgentStore implements AgentStore {
             throw new IOException("Unable to decode agent store: " + path.getFileName(), error);
         }
         if (data.version != 1) throw new IOException("Invalid agent store version");
-        int historySize = data.conversation.history.size();
-        data.conversation.history.removeIf(message -> {
-            if (!message.role().equals("assistant")) return false;
-            try {
-                CodecIO.parse(AgentResult.CODEC, message.text());
-                return false;
-            } catch (RuntimeException ignored) {
-                return true;
-            }
-        });
-        if (data.conversation.history.size() != historySize)
-            SystemMod.LOGGER.warn("Discarded {} invalid assistant history entries from {}", historySize - data.conversation.history.size(), path);
         prune(data.conversation);
         return data;
     }
@@ -210,7 +197,7 @@ public final class FileAgentStore implements AgentStore {
         }
     }
 
-    private static void prune(PlayerData.Conversation conversation) {
+    private static void prune(Conversation conversation) {
         // Chat retention prunes replay caches only; reward, order and event records keep their own lifetimes.
         long cutoff = System.currentTimeMillis() - 30L * 86400000L;
         conversation.history.removeIf(message -> message.time() < cutoff);

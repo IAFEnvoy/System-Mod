@@ -7,7 +7,9 @@ import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.routing.RouteSource;
 import com.iafenvoy.system.agent.store.AgentStore;
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.EventTask;
+import com.iafenvoy.system.agent.store.State;
+import com.iafenvoy.system.agent.store.Step;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.CoreSystemModule;
@@ -71,7 +73,7 @@ public final class ExecutionContext {
         this.policy = initial;
         this.expires = started + initial.ttlMillis();
         if (eventKey != null) store.read(player, data -> {
-            PlayerData.EventTask task = ModuleData.get(data, CoreSystemModule.JOURNAL).getTask(eventKey);
+            EventTask task = ModuleData.get(data, CoreSystemModule.JOURNAL).getTask(eventKey);
             this.eventOwner = task.owner;
             this.models = task.modelCalls;
             this.tools = task.toolCalls;
@@ -330,10 +332,10 @@ public final class ExecutionContext {
         // Replay completed writes by task/step; an unfinished non-idempotent write has an unknown effect.
         if (tool.write()) {
             Dynamic<?> previous = this.store().read(this.player, data -> {
-                PlayerData.Step receipt = ModuleData.get(data, CoreSystemModule.JOURNAL).getOperation(operationKey);
+                Step receipt = ModuleData.get(data, CoreSystemModule.JOURNAL).getOperation(operationKey);
                 if (receipt == null) return null;
                 if (!fingerprint.equals(receipt.fingerprint)) throw new AgentException("INVALID_INPUT");
-                if (receipt.state == PlayerData.State.DONE) return receipt.result;
+                if (receipt.state == State.DONE) return receipt.result;
                 if (!tool.idempotent()) throw new AgentException("EFFECT_UNKNOWN");
                 return null;
             });
@@ -349,7 +351,7 @@ public final class ExecutionContext {
         if (tool.write()) this.store().update(this.player, data -> {
             AgentJournalDataStorage storage = ModuleData.get(data, CoreSystemModule.JOURNAL);
             storage.assertOperationCount(operationKey);
-            PlayerData.Step receipt = new PlayerData.Step();
+            Step receipt = new Step();
             receipt.fingerprint = fingerprint;
             storage.putOperation(operationKey, receipt);
             return null;

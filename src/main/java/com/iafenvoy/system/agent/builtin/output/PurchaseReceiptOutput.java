@@ -1,6 +1,6 @@
 package com.iafenvoy.system.agent.builtin.output;
 
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.card.CardBuilder;
 import com.iafenvoy.system.card.CardData;
 import com.mojang.serialization.Codec;
@@ -15,18 +15,18 @@ import java.util.Optional;
 /**
  * Built-in result data and its serialization codec.
  */
-public record PurchaseReceiptOutput(String orderId, String entitlementId, PlayerData.Reward reward, String state,
+public record PurchaseReceiptOutput(String orderId, String entitlementId, Reward reward, String state,
                                     Optional<Identifier> sourcePool) implements CardData {
     public static final MapCodec<PurchaseReceiptOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("orderId").forGetter(PurchaseReceiptOutput::orderId),
             Codec.STRING.fieldOf("entitlementId").forGetter(PurchaseReceiptOutput::entitlementId),
-            PlayerData.Reward.CODEC.fieldOf("reward").forGetter(PurchaseReceiptOutput::reward),
+            Reward.CODEC.fieldOf("reward").forGetter(PurchaseReceiptOutput::reward),
             Codec.STRING.fieldOf("state").forGetter(PurchaseReceiptOutput::state),
             Identifier.CODEC.optionalFieldOf("sourcePool").forGetter(PurchaseReceiptOutput::sourcePool)
     ).apply(i, PurchaseReceiptOutput::new));
     public static final Identifier TEMPLATE = Identifier.parse("system:purchase");
 
-    public PurchaseReceiptOutput(String orderId, String entitlementId, PlayerData.Reward reward, String state) {
+    public PurchaseReceiptOutput(String orderId, String entitlementId, Reward reward, String state) {
         this(orderId, entitlementId, reward, state, Optional.empty());
     }
 

@@ -77,23 +77,12 @@ public final class ConversationMemory {
         List<Entry> selected = new ArrayList<>();
         int bytes = 2;
         for (int i = data.conversation.history.size() - 1; i >= 0 && selected.size() < 6; i--) {
-            PlayerData.Message message = data.conversation.history.get(i);
+            Message message = data.conversation.history.get(i);
             if (message.requestId().equals(currentRequest)) continue;
-            Entry entry;
-            if (message.role().equals("user")) entry = new Entry("USER_STATEMENT", message.text(), "", List.of());
-            else {
-                try {
-                    AgentResult result = CodecIO.parse(AgentResult.CODEC, message.text());
-                    List<Fact> facts = new ArrayList<>(result.cards().stream().limit(2).map(ConversationMemory::fields).filter(Objects::nonNull).toList());
-                    entry = new Entry("HISTORICAL_RESULT_REQUIRES_REVALIDATION", "", result.messageKey(), List.copyOf(facts));
-                    while (!facts.isEmpty() && size(entry) > byteBudget * 3 / 4) {
-                        facts.removeLast();
-                        entry = new Entry(entry.source(), "", entry.status(), List.copyOf(facts));
-                    }
-                } catch (RuntimeException ignored) {
-                    continue;
-                }
-            }
+            Entry entry = switch (message) {
+                case Message.User user -> new Entry("USER_STATEMENT", user.text(), "", List.of());
+                case Message.Assistant assistant -> assistant(assistant.result(), byteBudget);
+            };
             int length = size(entry) + 1;
             if (bytes + length > byteBudget) continue;
             bytes += length;
@@ -101,6 +90,16 @@ public final class ConversationMemory {
         }
         Collections.reverse(selected);
         return List.copyOf(selected);
+    }
+
+    private static Entry assistant(AgentResult result, int byteBudget) {
+        List<Fact> facts = new ArrayList<>(result.cards().stream().limit(2).map(ConversationMemory::fields).filter(Objects::nonNull).toList());
+        Entry entry = new Entry("HISTORICAL_RESULT_REQUIRES_REVALIDATION", "", result.messageKey(), List.copyOf(facts));
+        while (!facts.isEmpty() && size(entry) > byteBudget * 3 / 4) {
+            facts.removeLast();
+            entry = new Entry(entry.source(), "", entry.status(), List.copyOf(facts));
+        }
+        return entry;
     }
 
     private static int size(Entry entry) {
@@ -115,7 +114,7 @@ public final class ConversationMemory {
         return new Fact(kind, MiscUtil.clip(id, 96), MiscUtil.clip(label, 96), MiscUtil.clip(state, 96), List.of());
     }
 
-    private static Fact reward(String entitlementId, String state, PlayerData.Reward reward) {
+    private static Fact reward(String entitlementId, String state, Reward reward) {
         return new Fact("reward", MiscUtil.clip(entitlementId, 96), "", MiscUtil.clip(state, 96),
                 List.of(new Reference(reward.id().toString(), MiscUtil.clip(reward.label(), 96), "", List.of(), 0)));
     }

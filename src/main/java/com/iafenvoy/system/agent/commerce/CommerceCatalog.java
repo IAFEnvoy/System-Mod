@@ -1,11 +1,11 @@
 package com.iafenvoy.system.agent.commerce;
 
-import com.iafenvoy.saturn.data.cost.Cost;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
-import com.iafenvoy.system.agent.store.Reward;
-import com.iafenvoy.system.data.catalog.CatalogEntry;
-import com.iafenvoy.system.data.lottery.LotteryPool;
+import com.iafenvoy.system.data.EnabledEntry;
+import com.iafenvoy.system.data.catalog.ShopOfferEntry;
+import com.iafenvoy.system.data.catalog.SignInRewardEntry;
+import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.serialization.Codec;
@@ -16,17 +16,19 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.resources.ResourceKey;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Immutable trusted definitions shared by sign-in, shop and lottery workflows.
+ * Immutable trusted view of the three server-owned catalogues. Entries stay registry-backed holders, so callers read
+ * the definition and its id from the same object instead of carrying a copied id next to copied values.
  */
-public record CommerceCatalog(String revision, List<Reward> rewards, List<Offer> offers,
-                              List<LotteryPool> lotteries, RegistryAccess registries) {
+public record CommerceCatalog(String revision, List<Holder<SignInRewardEntry>> rewards,
+                              List<Holder<ShopOfferEntry>> offers, List<Holder<LotteryPool>> lotteries,
+                              RegistryAccess registries) {
     public CommerceCatalog {
         rewards = List.copyOf(rewards);
         offers = List.copyOf(offers);
@@ -34,50 +36,37 @@ public record CommerceCatalog(String revision, List<Reward> rewards, List<Offer>
     }
 
     public static CommerceCatalog create(RegistryAccess registries) {
-        Registry<CatalogEntry> rewards = registries.lookupOrThrow(SystemResourceKeys.SIGNIN_REWARDS);
-        Registry<CatalogEntry> offers = registries.lookupOrThrow(SystemResourceKeys.SHOP_OFFERS);
-        Registry<LotteryPool.Definition> pools = registries.lookupOrThrow(SystemResourceKeys.LOTTERY_POOLS);
         Comparator<Holder<?>> comparator = Comparator.comparing(HolderHelper::id);
         return new CommerceCatalog(UUID.randomUUID().toString(),
-                rewards.listElements().sorted(comparator).filter(holder -> holder.value().enabled()).map(holder -> holder.value().resolveReward(HolderHelper.id(holder))).toList(),
-                offers.listElements().sorted(comparator).filter(holder -> holder.value().enabled()).map(holder -> holder.value().resolveOffer(HolderHelper.id(holder))).toList(),
-                pools.listElements().sorted(comparator).filter(holder -> holder.value().enabled()).map(holder -> holder.value().resolve(HolderHelper.id(holder))).toList(),
+                entries(registries.lookupOrThrow(SystemResourceKeys.SIGNIN_REWARDS), comparator),
+                entries(registries.lookupOrThrow(SystemResourceKeys.SHOP_OFFERS), comparator),
+                entries(registries.lookupOrThrow(SystemResourceKeys.LOTTERY_POOLS), comparator),
                 registries);
     }
 
     public CommerceCatalog available(List<? extends CatalogModule<?>> modules) {
         return new CommerceCatalog(this.revision,
-                this.rewards.stream().filter(reward -> modules.stream().anyMatch(module -> module.catalog().equals(SystemResourceKeys.SIGNIN_REWARDS) && module.allows(this.registries, reward.id()))).toList(),
-                this.offers.stream().filter(offer -> modules.stream().anyMatch(module -> module.catalog().equals(SystemResourceKeys.SHOP_OFFERS) && module.allows(this.registries, offer.id()))).toList(),
-                this.lotteries.stream().filter(pool -> modules.stream().anyMatch(module -> module.catalog().equals(SystemResourceKeys.LOTTERY_POOLS) && module.allows(this.registries, pool.id()))).toList(),
+                this.filter(this.rewards, SystemResourceKeys.SIGNIN_REWARDS, modules),
+                this.filter(this.offers, SystemResourceKeys.SHOP_OFFERS, modules),
+                this.filter(this.lotteries, SystemResourceKeys.LOTTERY_POOLS, modules),
                 this.registries);
     }
 
     public boolean contains(PurchaseType type, Identifier id) {
         return switch (type) {
-            case SHOP -> this.offers.stream().anyMatch(offer -> offer.id().equals(id));
-            case LOTTERY -> this.lotteries.stream().anyMatch(pool -> pool.id().equals(id));
+            case SHOP -> this.offers.stream().anyMatch(offer -> HolderHelper.id(offer).equals(id));
+            case LOTTERY -> this.lotteries.stream().anyMatch(pool -> HolderHelper.id(pool).equals(id));
         };
     }
 
-    public record Offer(Identifier id, String label, List<ItemStackTemplate> items, List<Cost> costs) {
-        public static final Codec<Offer> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Identifier.CODEC.fieldOf("id").forGetter(Offer::id),
-                Codec.STRING.fieldOf("label").forGetter(Offer::label),
-                Reward.ITEMS_CODEC.fieldOf("items").forGetter(Offer::items),
-                Cost.LIST_CODEC.fieldOf("costs").forGetter(Offer::costs)
-        ).apply(i, Offer::new));
+    private static <T extends EnabledEntry> List<Holder<T>> entries(Registry<T> registry, Comparator<Holder<?>> comparator) {
+        return registry.listElements().sorted(comparator).filter(holder -> holder.value().enabled())
+                .map(holder -> (Holder<T>) holder).toList();
+    }
 
-        public Offer {
-            if (label.isBlank())
-                throw new IllegalArgumentException("Invalid offer");
-            items = List.copyOf(items);
-            costs = List.copyOf(costs);
-        }
-
-        public Reward reward() {
-            return new Reward(this.id, this.label, this.items);
-        }
+    private <T> List<Holder<T>> filter(List<Holder<T>> entries, ResourceKey<Registry<T>> catalog,
+                                       List<? extends CatalogModule<?>> modules) {
+        return entries.stream().filter(entry -> modules.stream().anyMatch(module -> module.catalog().equals(catalog) && module.allows(this.registries, HolderHelper.id(entry)))).toList();
     }
 
     // Only the evaluated display snapshot crosses the wire or enters the order journal.

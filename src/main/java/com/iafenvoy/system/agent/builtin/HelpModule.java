@@ -7,7 +7,7 @@ import com.iafenvoy.system.agent.ExecutionPolicy;
 import com.iafenvoy.system.agent.builtin.input.HelpInput;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.card.data.SelectionCardData;
+import com.iafenvoy.system.data.card.data.SelectionCardData;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;

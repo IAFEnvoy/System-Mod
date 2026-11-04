@@ -1,10 +1,10 @@
-package com.iafenvoy.system.card.client;
+package com.iafenvoy.system.data.card.client;
 
 import com.iafenvoy.system.agent.request.CardActionRequest;
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.card.CardAction;
-import com.iafenvoy.system.card.CardButton;
-import com.iafenvoy.system.card.CardReference;
+import com.iafenvoy.system.data.card.CardAction;
+import com.iafenvoy.system.data.card.CardButton;
+import com.iafenvoy.system.data.card.CardReference;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.screen.AssistantMessages;
 import net.minecraft.resources.Identifier;

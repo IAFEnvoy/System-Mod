@@ -1,9 +1,9 @@
 package com.iafenvoy.system.screen.gui;
 
 import com.google.gson.JsonElement;
-import com.iafenvoy.system.card.CardButton;
-import com.iafenvoy.system.card.CardContext;
-import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.data.card.CardButton;
+import com.iafenvoy.system.data.card.CardContext;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.screen.card.CardPageState;
 import com.iafenvoy.system.screen.card.CardPresentation;
 import com.sighs.apricityui.init.Document;

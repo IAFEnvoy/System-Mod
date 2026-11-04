@@ -3,12 +3,14 @@ package com.iafenvoy.system.agent.builtin.output;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.store.Reward;
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardData;
-import com.iafenvoy.system.card.CardText;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.CardText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStackTemplate;
 
@@ -18,11 +20,11 @@ import java.util.Map;
 /**
  * Complete server snapshot; card construction only reads these fields.
  */
-public record ShopQuoteOutput(String quoteRef, String label, List<ItemStackTemplate> items,
+public record ShopQuoteOutput(String quoteRef, Component label, List<ItemStackTemplate> items,
                               CommerceCatalog.Price price) implements CardData {
     public static final MapCodec<ShopQuoteOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("quoteRef").forGetter(ShopQuoteOutput::quoteRef),
-            Codec.STRING.fieldOf("label").forGetter(ShopQuoteOutput::label),
+            ComponentSerialization.CODEC.fieldOf("label").forGetter(ShopQuoteOutput::label),
             Reward.ITEMS_CODEC.fieldOf("items").forGetter(ShopQuoteOutput::items),
             CommerceCatalog.Price.CODEC.fieldOf("price").forGetter(ShopQuoteOutput::price)
     ).apply(i, ShopQuoteOutput::new));

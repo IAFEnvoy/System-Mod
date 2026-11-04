@@ -14,7 +14,7 @@ import java.util.function.Function;
 /**
  * One declaration supplies commands, local intent matching, model visibility and clarification actions.
  */
-public record ModuleRouting<I extends AgentAction>(List<AgentCommand<I>> commands, Optional<RoutingProfile<I>> semantic,
+public record ModuleRouting<I extends AgentAction>(List<AgentCommand> commands, Optional<RoutingProfile<I>> semantic,
                                                    Optional<Shortcut<I>> shortcut, Selection selection,
                                                    Function<ActionArguments, I> buttonDecoder,
                                                    Optional<Function<String, I>> explicit) {
@@ -32,8 +32,8 @@ public record ModuleRouting<I extends AgentAction>(List<AgentCommand<I>> command
         }, Optional.empty());
     }
 
-    public ModuleRouting<I> command(AgentCommand<I> command) {
-        List<AgentCommand<I>> commands = new ArrayList<>(this.commands);
+    public ModuleRouting<I> command(AgentCommand command) {
+        List<AgentCommand> commands = new ArrayList<>(this.commands);
         commands.add(command);
         return new ModuleRouting<>(commands, this.semantic, this.shortcut, this.selection, this.buttonDecoder, this.explicit);
     }

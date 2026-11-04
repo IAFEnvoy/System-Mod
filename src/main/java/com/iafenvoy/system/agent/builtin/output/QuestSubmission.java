@@ -2,7 +2,7 @@ package com.iafenvoy.system.agent.builtin.output;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.builtin.input.QuestSubmitInput;
-import com.iafenvoy.system.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.util.ActionArguments;
 import com.mojang.serialization.Codec;
 import net.minecraft.resources.Identifier;

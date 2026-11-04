@@ -1,8 +1,8 @@
-package com.iafenvoy.system.card.data;
+package com.iafenvoy.system.data.card.data;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.network.chat.Component;

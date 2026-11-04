@@ -4,7 +4,7 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.QuestNarration;
 import com.iafenvoy.system.assistant.AssistantServer;
-import com.iafenvoy.system.card.SpeechContent;
+import com.iafenvoy.system.data.card.SpeechContent;
 import com.iafenvoy.system.module.builtin.QuestSystemModule;
 import com.iafenvoy.system.util.LegacyText;
 import com.iafenvoy.system.util.TypeDispatch;

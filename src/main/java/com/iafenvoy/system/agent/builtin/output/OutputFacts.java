@@ -1,7 +1,8 @@
 package com.iafenvoy.system.agent.builtin.output;
 
 import com.iafenvoy.system.agent.store.Reward;
-import com.iafenvoy.system.card.CardFact;
+import com.iafenvoy.system.data.card.CardFact;
+import com.iafenvoy.system.util.PersistHolder;
 
 import java.util.List;
 
@@ -12,8 +13,8 @@ final class OutputFacts {
     private OutputFacts() {
     }
 
-    static CardFact reward(String entitlementId, String state, Reward reward) {
+    static CardFact reward(String entitlementId, String state, PersistHolder<Reward> reward) {
         return new CardFact("reward", entitlementId, "", state, List.of(new CardFact.Reference(
-                reward.id().toString(), reward.label(), "", List.of(), 0)));
+                reward.id().toString(), reward.value().label().getString(), "", List.of(), 0)));
     }
 }

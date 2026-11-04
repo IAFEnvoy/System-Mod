@@ -2,8 +2,8 @@ package com.iafenvoy.system.agent.builtin.output;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.builtin.search.SearchObservation;
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;

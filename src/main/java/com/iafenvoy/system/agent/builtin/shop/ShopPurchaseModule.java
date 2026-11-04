@@ -10,7 +10,7 @@ import com.iafenvoy.system.agent.builtin.input.ShopPurchaseInput;
 import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.data.card.CardUpdate;
 
 import java.util.List;
 

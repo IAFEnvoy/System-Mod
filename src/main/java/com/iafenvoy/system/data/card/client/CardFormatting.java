@@ -1,8 +1,8 @@
-package com.iafenvoy.system.card.client;
+package com.iafenvoy.system.data.card.client;
 
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.card.CardText;
+import com.iafenvoy.system.data.card.CardText;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;

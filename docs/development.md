@@ -84,7 +84,7 @@ Agent 统一放在独立外包 `com.iafenvoy.system.agent`：根包集中引擎�
 
 SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system 和 system:system_module，两者均使用同一个数据/网络 Codec 同步。SystemDefinition 保存名称/介绍翻译键及模块引用；ModuleDefinition 的 Either 指向 Holder<SystemModule> 或 TagKey<SystemModule>，condition 使用 Saturn EntityCondition。模块配置文件为 data/<namespace>/system/system_module/<path>.json，server 通过 ServerModule.CODEC 分派，client 仅为本地实现 ID。系统仍按玩家绑定 ID 从 RegistryAccess 读取，不缓存跨世界快照。ModuleManager 以配置 ID 管理启停、运行时和权限，当前参数配置只在世界加载时读取，不是 /reload retained listener。手动覆盖仍由玩家 ModuleAccessDataStorage 保存，撤销删除业务数据但保留用量。
 
-同一入口还登记服务端专用的 system:signin_rewards、system:shop_offers、system:lottery_pools 三张原生数据包注册表，分别使用 CatalogEntry.REWARD / OFFER 和 LotteryPool.Definition.CODEC，不提供网络 Codec。模块的 rewards / offers / pools 使用 Saturn RegistryCodecs.keyOrTagList，在同步配置中只传 ResourceKey / TagKey，不要求客户端解析服务端 Cost 或全目录。三张目录注册表的条目在世界加载时读取，tag 由原版流程加载与重载。
+同一入口还登记服务端专用的 system:signin_rewards、system:shop_offers、system:lottery_pools 三张原生数据包注册表，分别使用 SignInRewardEntry、ShopOfferEntry 和 LotteryPool 的 CODEC，不提供网络 Codec。模块的 rewards / offers / pools 使用 Saturn RegistryCodecs.keyOrTagList，在同步配置中只传 ResourceKey / TagKey，不要求客户端解析服务端 Cost 或全目录。三张目录注册表的条目在世界加载时读取，tag 由原版流程加载与重载。
 
 配置类各自声明 `FILE_NAME`、`CODEC` 和 `ConfigInstance<T> INSTANCE = ConfigInstance.of(...)`。容器首次初始化时从 `/defaults/<文件名>` 复制缺失的默认文件，再通过 Codec 读取；已有文件不覆盖，加载失败时记录错误并在内存中使用默认值。读取使用 `INSTANCE.get()`，提交不可变新值使用 `INSTANCE.set(next)`，实际变化由容器自动调用 `markDirty()`。若未来使用可变配置并原地修改，则必须显式调用 `INSTANCE.markDirty()`，不能绕过变更标记。
 
@@ -218,6 +218,8 @@ CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式
 长期 AI 用量使用服务器全局 SavedData，保存在 `<存档>/data/system/token_usage.dat`，不进入上述业务文件或玩家附件，也不随 revoke 清理。所有 AI 请求统一经过 `ModelGateway`，按 API 实际 usage 累计。TTS / ASR 由客户端使用私人凭据请求，用量按客户端账号 UUID 只存本机 `config/system/speech-usage/<UUID>.json`，费用读取客户端 `SpeechPricingConfig`。服务端没有语音上报消息、存储字段或快照字段；管理员全服视图只有 AI，个人语音面板跨服务器累计，协议保持 1。详情见[用量统计](token-usage.md)。
 
 业务文件包含每日签到、收件箱、业务操作回执、事件任务、成就状态及模块覆盖，各业务状态分属独立 DataStorage；对话与请求回放单独存放在 `chat/` 下，清空对话不影响业务唯一标记。配置不进入玩家文件；密钥始终来自服务端环境变量。请用宿主机权限保护存档、临时文件和备份。
+
+数据包条目的持久化引用统一用 `PersistHolder<T>(id, value)`（`agent/store`）：codec 把 value 的字段平铺在 `id` 旁边，数据包 JSON 与旧存档形状都不变；订单、收件箱交付、签到历史、回执和奖励卡片保存写入当时的 id 与取值，数据包后续被修改或删除都不会改写已落盘的内容。运行时读取注册表时用 `Holder<T>`（`CommerceCatalog`），只有落盘和跨线程传递才转成 `PersistHolder`。
 
 `PlayerData` 顶层 `RecordCodecBuilder` 只保存版本、绑定与偏好、`DataStorageHolder<Identifier>` 和 `ModelQuota` 共 6 项；`Conversation` 由独立的聊天文件按同一事务写入，`copy()` 仍复制两份以保持读取快照一致。签到、收件箱、事件/操作回执、商城、成就状态和模块覆盖分别实现 Saturn `DataStorage`，由 ServerModule.storages 声明，内置 Codec 由 `SystemDataStorages` 注册，扩展 Codec 独立注册到 Saturn DATA_STORAGE_TYPE，并由 `DataStorageHolder.codec(Identifier.CODEC)` 分派；扩展模块可用自己的 DataStorage 避免继续扩大共享玩家记录。访问入口为 `ModuleData.get(data, SomeSystemModule.STORAGE)`，底层按 Holder 键和类型调用 `get` / `set`，与 DataStorage Codec 类型 ID 分开；复制必须隔离可变集合和其中的可变记录。玩家文件仍由 `AgentStore.update` 整体事务化写入，不属于玩家附件。对话历史和请求回放由 `Conversation` 管理，`Conversation.clear()` 统一清理并推进记忆代次；内部交付、事件、步骤回执和订单使用 `RecordCodecBuilder`。
 

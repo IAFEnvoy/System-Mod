@@ -21,7 +21,7 @@ public record ModuleDefinition(Either<Holder<SystemModule>, TagKey<SystemModule>
     private static final Codec<Either<Holder<SystemModule>, TagKey<SystemModule>>> ID_CODEC = RegistryCodecs.holderOrTag(SystemResourceKeys.SYSTEM_MODULE);
     private static final Codec<ModuleDefinition> OBJECT_CODEC = RecordCodecBuilder.create(i -> i.group(
             ID_CODEC.fieldOf("id").forGetter(ModuleDefinition::id),
-            EntityCondition.CODEC.optionalFieldOf("condition", AlwaysCondition.INSTANCE).forGetter(ModuleDefinition::condition)
+            EntityCondition.optionalCodec("condition").forGetter(ModuleDefinition::condition)
     ).apply(i, ModuleDefinition::new));
     public static final Codec<ModuleDefinition> CODEC = Codec.withAlternative(OBJECT_CODEC, ID_CODEC.xmap(ModuleDefinition::new, ModuleDefinition::id));
 

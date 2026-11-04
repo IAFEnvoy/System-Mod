@@ -1,6 +1,6 @@
 package com.iafenvoy.system.screen.card;
 
-import com.iafenvoy.system.card.CardContext;
+import com.iafenvoy.system.data.card.CardContext;
 import com.iafenvoy.system.screen.card.node.ActionsNode;
 import com.iafenvoy.system.screen.card.node.TextNode;
 import com.mojang.serialization.Codec;

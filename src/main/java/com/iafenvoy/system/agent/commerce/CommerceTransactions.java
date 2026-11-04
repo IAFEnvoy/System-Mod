@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.commerce;
 
+import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
@@ -10,13 +11,15 @@ import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.agent.store.Delivery;
 import com.iafenvoy.system.agent.store.Purchase;
 import com.iafenvoy.system.assistant.MinecraftTools;
-import com.iafenvoy.system.data.lottery.LotteryPool;
+import com.iafenvoy.system.data.catalog.ShopOfferEntry;
+import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
 import com.iafenvoy.system.module.builtin.storage.CommerceDataStorage;
 import com.iafenvoy.system.module.builtin.storage.InboxDataStorage;
+import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStackTemplate;
@@ -82,19 +85,19 @@ public final class CommerceTransactions {
             if (!catalog.revision().equals(input.revision())) throw new AgentException("STALE_QUOTE");
             List<CommercePreviewOutput> previews = new ArrayList<>();
             for (Identifier id : input.offers()) {
-                CommerceCatalog.Offer offer = catalog.offers().stream().filter(value -> value.id().equals(id)).findFirst()
+                Holder<ShopOfferEntry> offer = catalog.offers().stream().filter(value -> HolderHelper.id(value).equals(id)).findFirst()
                         .orElseThrow(() -> new AgentException("STALE_QUOTE"));
-                CommerceCosts.Prepared payment = CommerceCosts.prepare(offer.costs(), player, PurchaseType.SHOP, id);
+                CommerceCosts.Prepared payment = CommerceCosts.prepare(offer.value().costs(), player, PurchaseType.SHOP, id);
                 Optional<String> reference = input.quote() && payment.isSuccess()
                         ? Optional.of(this.engine.commerceQuotes().create(context.player(), catalog, offer, payment).id()) : Optional.empty();
                 previews.add(new CommercePreviewOutput(id, payment.getData(), payment.isSuccess(), reference));
             }
             for (Identifier id : input.lotteries()) {
-                LotteryPool pool = catalog.lotteries().stream().filter(value -> value.id().equals(id)).findFirst()
+                Holder<LotteryPool> pool = catalog.lotteries().stream().filter(value -> HolderHelper.id(value).equals(id)).findFirst()
                         .orElseThrow(() -> new AgentException("STALE_QUOTE"));
-                CommerceCosts.Prepared payment = CommerceCosts.prepare(pool.costs(), player, PurchaseType.LOTTERY, id);
+                CommerceCosts.Prepared payment = CommerceCosts.prepare(pool.value().costs(), player, PurchaseType.LOTTERY, id);
                 Optional<String> reference = input.quote() && payment.isSuccess()
-                        ? Optional.of(this.engine.commerceQuotes().create(context.player(), catalog, pool, payment).id()) : Optional.empty();
+                        ? Optional.of(this.engine.commerceQuotes().createPool(context.player(), catalog, pool, payment).id()) : Optional.empty();
                 previews.add(new CommercePreviewOutput(id, payment.getData(), payment.isSuccess(), reference));
             }
             return List.copyOf(previews);
@@ -147,7 +150,7 @@ public final class CommerceTransactions {
             this.engine.commerceQuotes().require(context.player(), id, context.availableCatalog(), type);
             // Reject the whole pool before payment if any prize cannot be created; failed draws cannot bias its odds.
             for (LotteryPool.Entry entry : quote.entries())
-                for (ItemStackTemplate item : entry.reward().items())
+                for (ItemStackTemplate item : entry.reward().value().items())
                     if (item.create().isEmpty()) throw new AgentException("INVALID_REWARD");
             context.check();
             quote.payment().pay(player, touched);

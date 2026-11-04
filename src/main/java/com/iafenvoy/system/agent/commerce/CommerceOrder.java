@@ -1,8 +1,11 @@
 package com.iafenvoy.system.agent.commerce;
 
 import com.iafenvoy.system.agent.store.Reward;
+import com.iafenvoy.system.util.PersistHolder;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 
 import java.util.Optional;
@@ -10,13 +13,13 @@ import java.util.Optional;
 /**
  * Durable terms include the chosen reward, so confirmation retries cannot reroll a lottery result.
  */
-public record CommerceOrder(PurchaseType type, Identifier source, String label, Reward reward,
+public record CommerceOrder(PurchaseType type, Identifier source, Component label, PersistHolder<Reward> reward,
                             Optional<CommerceCatalog.Price> price) {
     public static final Codec<CommerceOrder> CODEC = RecordCodecBuilder.create(i -> i.group(
             PurchaseType.CODEC.fieldOf("type").forGetter(CommerceOrder::type),
             Identifier.CODEC.fieldOf("source").forGetter(CommerceOrder::source),
-            Codec.STRING.fieldOf("label").forGetter(CommerceOrder::label),
-            Reward.CODEC.fieldOf("reward").forGetter(CommerceOrder::reward),
+            ComponentSerialization.CODEC.fieldOf("label").forGetter(CommerceOrder::label),
+            PersistHolder.mapCodec(Reward.CODEC).fieldOf("reward").forGetter(CommerceOrder::reward),
             CommerceCatalog.Price.CODEC.optionalFieldOf("price").forGetter(CommerceOrder::price)
     ).apply(i, CommerceOrder::new));
 }

@@ -2,10 +2,11 @@ package com.iafenvoy.system.agent.builtin.output;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.store.Reward;
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardData;
-import com.iafenvoy.system.card.CardFact;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.CardFact;
 import com.iafenvoy.system.util.LegacyText;
+import com.iafenvoy.system.util.PersistHolder;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -19,10 +20,11 @@ import java.util.Optional;
 /**
  * Reward presentation includes the actual workflow outcome, independently of the outer response key.
  */
-public record RewardOutput(Reward reward, Optional<String> entitlementId, Component summary, String reason,
+public record RewardOutput(PersistHolder<Reward> reward, Optional<String> entitlementId, Component summary,
+                           String reason,
                            boolean delivered) implements CardData {
     public static final MapCodec<RewardOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Reward.CODEC.fieldOf("reward").forGetter(RewardOutput::reward),
+            PersistHolder.mapCodec(Reward.CODEC).fieldOf("reward").forGetter(RewardOutput::reward),
             Codec.STRING.optionalFieldOf("entitlementId").forGetter(RewardOutput::entitlementId),
             ComponentSerialization.CODEC.fieldOf("summary").forGetter(RewardOutput::summary),
             Codec.STRING.optionalFieldOf("reason", "").forGetter(RewardOutput::reason),
@@ -33,11 +35,11 @@ public record RewardOutput(Reward reward, Optional<String> entitlementId, Compon
         summary = LegacyText.snapshot(summary);
     }
 
-    public RewardOutput(Reward reward, Optional<String> entitlementId, Component summary, String reason) {
+    public RewardOutput(PersistHolder<Reward> reward, Optional<String> entitlementId, Component summary, String reason) {
         this(reward, entitlementId, summary, reason, false);
     }
 
-    public RewardOutput(Reward reward) {
+    public RewardOutput(PersistHolder<Reward> reward) {
         this(reward, Optional.empty(), Component.translatable("system.result.reward"), "");
     }
 

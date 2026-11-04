@@ -1,4 +1,4 @@
-package com.iafenvoy.system.card;
+package com.iafenvoy.system.data.card;
 
 import com.iafenvoy.saturn.util.MiscUtil;
 import com.mojang.serialization.Codec;

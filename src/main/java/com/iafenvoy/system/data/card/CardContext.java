@@ -1,4 +1,4 @@
-package com.iafenvoy.system.card;
+package com.iafenvoy.system.data.card;
 
 import com.iafenvoy.system.util.LegacyText;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;

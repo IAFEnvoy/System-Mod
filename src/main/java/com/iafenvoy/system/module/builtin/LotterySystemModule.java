@@ -12,8 +12,8 @@ import com.iafenvoy.system.agent.builtin.lottery.LotteryDrawTool;
 import com.iafenvoy.system.agent.builtin.lottery.LotteryModule;
 import com.iafenvoy.system.agent.builtin.lottery.LotteryPreviewModule;
 import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
-import com.iafenvoy.system.data.lottery.LotteryPool;
 import com.iafenvoy.system.agent.commerce.PurchaseType;
+import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Optional;
 
 public record LotterySystemModule(
-        Optional<List<Either<ResourceKey<LotteryPool.Definition>, TagKey<LotteryPool.Definition>>>> pools) implements CatalogModule<LotteryPool.Definition> {
+        Optional<List<Either<ResourceKey<LotteryPool>, TagKey<LotteryPool>>>> pools) implements CatalogModule<LotteryPool> {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery");
     public static final MapCodec<LotterySystemModule> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             RegistryCodecs.keyOrTagList(SystemResourceKeys.LOTTERY_POOLS).optionalFieldOf("pools").forGetter(LotterySystemModule::pools)
@@ -44,12 +44,12 @@ public record LotterySystemModule(
     }
 
     @Override
-    public ResourceKey<Registry<LotteryPool.Definition>> catalog() {
+    public ResourceKey<Registry<LotteryPool>> catalog() {
         return SystemResourceKeys.LOTTERY_POOLS;
     }
 
     @Override
-    public Optional<List<Either<ResourceKey<LotteryPool.Definition>, TagKey<LotteryPool.Definition>>>> options() {
+    public Optional<List<Either<ResourceKey<LotteryPool>, TagKey<LotteryPool>>>> options() {
         return this.pools;
     }
 

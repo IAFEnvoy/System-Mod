@@ -4,7 +4,7 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestIconOutput;
 import com.iafenvoy.system.agent.builtin.output.QuestSubmission;
-import com.iafenvoy.system.card.*;
+import com.iafenvoy.system.data.card.*;
 import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;

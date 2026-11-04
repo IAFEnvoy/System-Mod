@@ -1,4 +1,4 @@
-package com.iafenvoy.system.card;
+package com.iafenvoy.system.data.card;
 
 import com.iafenvoy.system.registry.SystemRegistries;
 import com.mojang.serialization.Codec;

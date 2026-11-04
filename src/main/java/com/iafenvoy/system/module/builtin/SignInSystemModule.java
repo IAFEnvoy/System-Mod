@@ -10,7 +10,7 @@ import com.iafenvoy.system.agent.builtin.output.PlayerSnapshotOutput;
 import com.iafenvoy.system.agent.builtin.player.PlayerQueryTool;
 import com.iafenvoy.system.agent.builtin.signin.SignInCreditTool;
 import com.iafenvoy.system.agent.builtin.signin.SignInModule;
-import com.iafenvoy.system.data.catalog.CatalogEntry;
+import com.iafenvoy.system.data.catalog.SignInRewardEntry;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Optional;
 
 public record SignInSystemModule(
-        Optional<List<Either<ResourceKey<CatalogEntry>, TagKey<CatalogEntry>>>> rewards) implements CatalogModule<CatalogEntry> {
+        Optional<List<Either<ResourceKey<SignInRewardEntry>, TagKey<SignInRewardEntry>>>> rewards) implements CatalogModule<SignInRewardEntry> {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "signin");
     public static final MapCodec<SignInSystemModule> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             RegistryCodecs.keyOrTagList(SystemResourceKeys.SIGNIN_REWARDS).optionalFieldOf("rewards").forGetter(SignInSystemModule::rewards)
@@ -40,12 +40,12 @@ public record SignInSystemModule(
     }
 
     @Override
-    public ResourceKey<Registry<CatalogEntry>> catalog() {
+    public ResourceKey<Registry<SignInRewardEntry>> catalog() {
         return SystemResourceKeys.SIGNIN_REWARDS;
     }
 
     @Override
-    public Optional<List<Either<ResourceKey<CatalogEntry>, TagKey<CatalogEntry>>>> options() {
+    public Optional<List<Either<ResourceKey<SignInRewardEntry>, TagKey<SignInRewardEntry>>>> options() {
         return this.rewards;
     }
 

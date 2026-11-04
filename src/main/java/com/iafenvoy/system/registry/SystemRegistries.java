@@ -3,7 +3,7 @@ package com.iafenvoy.system.registry;
 import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResponse;
-import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.module.ServerModule;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.mojang.serialization.MapCodec;

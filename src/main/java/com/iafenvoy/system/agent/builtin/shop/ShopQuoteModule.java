@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.builtin.shop;
 
+import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
 import com.iafenvoy.system.agent.builtin.BuiltinTools;
@@ -10,7 +11,9 @@ import com.iafenvoy.system.agent.builtin.output.ShopQuoteOutput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.data.card.CardUpdate;
+import com.iafenvoy.system.data.catalog.ShopOfferEntry;
+import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
@@ -40,11 +43,11 @@ public final class ShopQuoteModule extends BuiltinModule<ShopQuoteInput> {
         if (!input.catalogRevision().orElse(catalog.revision()).equals(catalog.revision()))
             throw new AgentException("STALE_QUOTE");
         Identifier id = input.offerId();
-        CommerceCatalog.Offer offer = catalog.offers().stream().filter(value -> value.id().equals(id)).findFirst()
+        Holder<ShopOfferEntry> offer = catalog.offers().stream().filter(value -> HolderHelper.id(value).equals(id)).findFirst()
                 .orElseThrow(() -> new AgentException("STALE_QUOTE"));
         CommercePreviewOutput price = context.tool(BuiltinTools.COMMERCE_PREVIEW, "quote",
                 new CommercePreviewInput(List.of(id), List.of(), true, catalog.revision())).getFirst();
         if (!price.available()) throw new AgentException("INVALID_COST");
-        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.shop_confirm", "", List.of(CardUpdate.show(new ShopQuoteOutput(price.quoteRef().orElseThrow(), offer.label(), offer.items(), price.price()))));
+        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.shop_confirm", "", List.of(CardUpdate.show(new ShopQuoteOutput(price.quoteRef().orElseThrow(), offer.value().label(), offer.value().items(), price.price()))));
     }
 }

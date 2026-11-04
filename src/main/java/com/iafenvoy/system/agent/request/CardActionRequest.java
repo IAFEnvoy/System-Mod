@@ -1,8 +1,8 @@
 package com.iafenvoy.system.agent.request;
 
 import com.iafenvoy.system.agent.AgentRequest;
-import com.iafenvoy.system.card.CardAction;
-import com.iafenvoy.system.card.CardReference;
+import com.iafenvoy.system.data.card.CardAction;
+import com.iafenvoy.system.data.card.CardReference;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 

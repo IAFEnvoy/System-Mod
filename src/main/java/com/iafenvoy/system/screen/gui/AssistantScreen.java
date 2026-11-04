@@ -3,7 +3,7 @@ package com.iafenvoy.system.screen.gui;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
-import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.module.client.ClientModuleBindingsCache;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.screen.AssistantPages;

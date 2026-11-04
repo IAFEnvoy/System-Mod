@@ -1,8 +1,8 @@
 package com.iafenvoy.system.event.client;
 
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardData;
-import com.iafenvoy.system.card.CardReference;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.CardReference;
 import net.neoforged.bus.api.Event;
 
 /**

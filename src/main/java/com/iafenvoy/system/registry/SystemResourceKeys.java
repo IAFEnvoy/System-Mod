@@ -4,11 +4,12 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResponse;
-import com.iafenvoy.system.data.catalog.CatalogEntry;
-import com.iafenvoy.system.data.lottery.LotteryPool;
-import com.iafenvoy.system.card.CardData;
-import com.iafenvoy.system.data.system.SystemDefinition;
+import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.catalog.ShopOfferEntry;
+import com.iafenvoy.system.data.catalog.SignInRewardEntry;
+import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.data.module.SystemModule;
+import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.module.ServerModule;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.mojang.serialization.MapCodec;
@@ -28,9 +29,9 @@ public final class SystemResourceKeys {
     // Datapack
     public static final ResourceKey<Registry<SystemModule>> SYSTEM_MODULE = create("system_module");
     public static final ResourceKey<Registry<SystemDefinition>> SYSTEM = create("system");
-    public static final ResourceKey<Registry<CatalogEntry>> SIGNIN_REWARDS = create("signin_rewards");
-    public static final ResourceKey<Registry<CatalogEntry>> SHOP_OFFERS = create("shop_offers");
-    public static final ResourceKey<Registry<LotteryPool.Definition>> LOTTERY_POOLS = create("lottery_pools");
+    public static final ResourceKey<Registry<SignInRewardEntry>> SIGNIN_REWARDS = create("signin_rewards");
+    public static final ResourceKey<Registry<ShopOfferEntry>> SHOP_OFFERS = create("shop_offers");
+    public static final ResourceKey<Registry<LotteryPool>> LOTTERY_POOLS = create("lottery_pools");
 
     private static <T> ResourceKey<Registry<T>> create(String id) {
         return ResourceKey.createRegistryKey(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, id));

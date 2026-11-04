@@ -10,7 +10,7 @@ import com.iafenvoy.system.agent.builtin.input.LotteryDrawInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryPreviewInput;
 import com.iafenvoy.system.agent.builtin.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.LotterySystemModule;
 

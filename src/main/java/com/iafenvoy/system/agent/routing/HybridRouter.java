@@ -3,8 +3,8 @@ package com.iafenvoy.system.agent.routing;
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.store.ConversationMemory;
-import com.iafenvoy.system.card.CardUpdate;
-import com.iafenvoy.system.card.data.SelectionCardData;
+import com.iafenvoy.system.data.card.CardUpdate;
+import com.iafenvoy.system.data.card.data.SelectionCardData;
 import com.iafenvoy.system.util.CodecIO;
 import net.minecraft.resources.Identifier;
 

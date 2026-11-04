@@ -2,7 +2,7 @@ package com.iafenvoy.system.agent;
 
 import com.iafenvoy.system.agent.prompt.SystemPrompts;
 import com.iafenvoy.system.agent.store.AgentStore;
-import com.iafenvoy.system.card.SpeechContent;
+import com.iafenvoy.system.data.card.SpeechContent;
 import com.iafenvoy.system.config.file.ModelConfig;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;

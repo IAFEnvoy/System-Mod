@@ -1,4 +1,4 @@
-package com.iafenvoy.system.card;
+package com.iafenvoy.system.data.card;
 
 /**
  * Fixed labels are presentation and voice vocabulary, never dispatch keys.

@@ -1,4 +1,4 @@
-package com.iafenvoy.system.card;
+package com.iafenvoy.system.data.card;
 
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;

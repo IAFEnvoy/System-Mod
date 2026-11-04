@@ -2,9 +2,10 @@ package com.iafenvoy.system.agent.builtin.output;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.store.Reward;
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardData;
-import com.iafenvoy.system.card.CardFact;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.CardFact;
+import com.iafenvoy.system.util.PersistHolder;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -16,10 +17,11 @@ import java.util.Optional;
 /**
  * Built-in result data and its serialization codec.
  */
-public record CreditReceiptOutput(String entitlementId, Reward reward, String state) implements CardData {
+public record CreditReceiptOutput(String entitlementId, PersistHolder<Reward> reward,
+                                  String state) implements CardData {
     public static final MapCodec<CreditReceiptOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("entitlementId").forGetter(CreditReceiptOutput::entitlementId),
-            Reward.CODEC.fieldOf("reward").forGetter(CreditReceiptOutput::reward),
+            PersistHolder.mapCodec(Reward.CODEC).fieldOf("reward").forGetter(CreditReceiptOutput::reward),
             Codec.STRING.fieldOf("state").forGetter(CreditReceiptOutput::state)
     ).apply(i, CreditReceiptOutput::new));
     public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "entitlement");

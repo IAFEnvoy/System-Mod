@@ -9,7 +9,7 @@ import java.util.List;
  * lottery pools share the shelf so both catalogues render through the same node.
  */
 public interface ShelfEntry {
-    String label();
+    Component label();
 
     List<ItemPreviewOutput> items();
 

@@ -6,6 +6,7 @@ import com.iafenvoy.system.screen.card.CardNode;
 import com.iafenvoy.system.screen.card.CardRenderer;
 import com.iafenvoy.system.screen.gui.AssistantItems;
 import com.iafenvoy.system.screen.gui.AssistantView;
+import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -70,7 +71,7 @@ public record OfferGridNode(String entries, int columns, int maxRow, int cell) i
                 if (slot != null) items.appendChild(slot);
             }
             if (!items.children.isEmpty()) cell.appendChild(items);
-            cell.appendChild(AssistantView.element(view.document(), "div", "offer_cell_label", entry.label()));
+            cell.appendChild(AssistantView.element(view.document(), "div", "offer_cell_label", LegacyText.formatted(entry.label())));
             // A restored card has no live callbacks; the cell then renders as a plain label.
             Runnable callback = view.context().callbacks().get("actions." + index + ".click");
             if (callback != null) cell.addEventListener("click", event -> callback.run());

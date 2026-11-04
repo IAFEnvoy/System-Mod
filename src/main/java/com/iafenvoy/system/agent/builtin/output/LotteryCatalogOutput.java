@@ -1,13 +1,14 @@
 package com.iafenvoy.system.agent.builtin.output;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
@@ -24,9 +25,9 @@ public record LotteryCatalogOutput(String revision, String query, List<Pool> poo
     /**
      * One pool prize as the shelf tooltip shows it: its name, odds and the previewed items of that reward.
      */
-    public record Prize(String label, String chance, List<ItemPreviewOutput> items) {
+    public record Prize(Component label, String chance, List<ItemPreviewOutput> items) {
         public static final Codec<Prize> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.fieldOf("label").forGetter(Prize::label),
+                ComponentSerialization.CODEC.fieldOf("label").forGetter(Prize::label),
                 Codec.STRING.optionalFieldOf("chance", "").forGetter(Prize::chance),
                 ItemPreviewOutput.CODEC.listOf().optionalFieldOf("items", List.of()).forGetter(Prize::items)
         ).apply(i, Prize::new));
@@ -36,12 +37,12 @@ public record LotteryCatalogOutput(String revision, String query, List<Pool> poo
         }
     }
 
-    public record Pool(String id, String label, int prizeCount, List<Prize> prizes) implements ShelfEntry {
+    public record Pool(String id, Component label, int prizeCount, List<Prize> prizes) implements ShelfEntry {
         private static final int MAX_ICONS = 2;
 
         public static final Codec<Pool> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("id").forGetter(Pool::id),
-                Codec.STRING.fieldOf("label").forGetter(Pool::label),
+                ComponentSerialization.CODEC.fieldOf("label").forGetter(Pool::label),
                 Codec.INT.optionalFieldOf("prizeCount", 0).forGetter(Pool::prizeCount),
                 Prize.CODEC.listOf().optionalFieldOf("prizes", List.of()).forGetter(Pool::prizes)
         ).apply(i, Pool::new));
@@ -75,7 +76,7 @@ public record LotteryCatalogOutput(String revision, String query, List<Pool> poo
                 lines.add(Component.translatable("system.ui.lottery_tooltip_top", this.prizeCount, this.prizes.size())
                         .withStyle(ChatFormatting.DARK_GRAY));
             for (Prize prize : this.prizes) {
-                lines.add(Component.literal(prize.label()).append("  ")
+                lines.add(prize.label().copy().append("  ")
                         .append(Component.translatable("system.ui.lottery_odds", prize.chance() + "%").withStyle(ChatFormatting.DARK_GRAY)));
                 for (ItemPreviewOutput preview : prize.items()) {
                     ItemStack stack = preview.item().create();

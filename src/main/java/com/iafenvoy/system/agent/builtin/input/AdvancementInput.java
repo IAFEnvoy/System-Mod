@@ -12,8 +12,7 @@ import java.util.Optional;
  * Built-in parameters with boundary validation.
  */
 public record AdvancementInput(Optional<String> featureId, Optional<Identifier> rewardId,
-                               Optional<String> advancementId,
-                               Optional<String> ruleId) implements AgentAction {
+                               Optional<String> advancementId, Optional<String> ruleId) implements AgentAction {
     public static final SchemaMapCodec<AdvancementInput> CODEC = SchemaCodecs.record((i, f) -> i.group(
             f.optional("featureId", SchemaCodecs.STRING).forGetter(AdvancementInput::featureId),
             f.optional("rewardId", SchemaCodecs.IDENTIFIER).forGetter(AdvancementInput::rewardId),

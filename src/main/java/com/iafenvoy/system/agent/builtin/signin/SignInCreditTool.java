@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.builtin.signin;
 
+import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.ExecutionContext;
 import com.iafenvoy.system.agent.ToolRegistry;
@@ -15,6 +16,7 @@ import com.iafenvoy.system.module.builtin.InboxSystemModule;
 import com.iafenvoy.system.module.builtin.SignInSystemModule;
 import com.iafenvoy.system.module.builtin.storage.InboxDataStorage;
 import com.iafenvoy.system.module.builtin.storage.SignInDataStorage;
+import com.iafenvoy.system.util.PersistHolder;
 import net.minecraft.resources.Identifier;
 
 import java.time.LocalDate;
@@ -37,7 +39,8 @@ public final class SignInCreditTool implements ToolRegistry.Handler<SignInCredit
         CommerceCatalog catalog = context.availableCatalog();
         if (!catalog.revision().equals(input.catalogRevision()))
             throw new AgentException("CATALOG_CHANGED");
-        Reward reward = catalog.rewards().stream().filter(value -> value.id().equals(rewardId)).findFirst()
+        PersistHolder<Reward> reward = catalog.rewards().stream().filter(value -> HolderHelper.id(value).equals(rewardId))
+                .map(value -> value.value().reward(rewardId)).findFirst()
                 .orElseThrow(() -> new AgentException("MODEL_INVALID"));
         context.ensureMemoryCurrent();
         return CompletableFuture.completedFuture(context.store().update(context.player(), data -> {

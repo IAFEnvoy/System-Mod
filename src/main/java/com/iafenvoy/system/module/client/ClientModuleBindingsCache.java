@@ -1,7 +1,7 @@
 package com.iafenvoy.system.module.client;
 
 import com.iafenvoy.saturn.util.HolderHelper;
-import com.iafenvoy.system.card.CardReference;
+import com.iafenvoy.system.data.card.CardReference;
 import com.iafenvoy.system.registry.SystemClientModules;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.iafenvoy.system.screen.gui.AssistantScreen;

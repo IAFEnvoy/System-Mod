@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.builtin.inbox;
 
+import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.AgentCommand;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ExecutionContext;
@@ -13,7 +14,7 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.store.Delivery;
 import com.iafenvoy.system.agent.store.Purchase;
-import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.module.ModuleData;
@@ -61,7 +62,9 @@ public final class InboxModule extends BuiltinModule<InboxInput> {
                 cards.add(CardUpdate.show(new CreditReceiptOutput(delivery.id, delivery.reward, delivery.state)));
             }
             cards.add(CardUpdate.show(new SignInStatus(day, ModuleData.get(data, SignInSystemModule.STORAGE).hasReward(day),
-                    context.availableCatalog().rewards(), data.saveHistory, data.externalModel)));
+                    context.availableCatalog().rewards().stream()
+                            .map(holder -> holder.value().reward(HolderHelper.id(holder))).toList(),
+                    data.saveHistory, data.externalModel)));
             for (Purchase purchase : ModuleData.values(data, CommerceDataStorage.class, this.modules)
                     .flatMap(CommerceDataStorage::streamPurchases).filter(value -> !"COMPLETED".equals(value.state) && !"FAILED".equals(value.state)).limit(8).toList())
                 cards.add(CardUpdate.show(new ShopOrder(purchase.id, purchase.order.label(), purchase.state, purchase.error)));

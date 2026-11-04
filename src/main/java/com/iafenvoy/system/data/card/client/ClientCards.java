@@ -1,7 +1,8 @@
-package com.iafenvoy.system.card.client;
+package com.iafenvoy.system.data.card.client;
 
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.card.*;
+import com.iafenvoy.system.data.card.*;
 import com.iafenvoy.system.event.client.CardBuildEvent;
 import net.neoforged.neoforge.common.NeoForge;
 

@@ -15,10 +15,11 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.store.Delivery;
 import com.iafenvoy.system.agent.store.Reward;
-import com.iafenvoy.system.card.CardData;
-import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
+import com.iafenvoy.system.util.PersistHolder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
@@ -58,7 +59,7 @@ public final class DeliverModule extends BuiltinModule<EntitlementInput> {
      * Rebuilds the originating card from the stored reward and the delivery button's own arguments.
      */
     private CardData receipt(ExecutionContext context, EntitlementInput input) {
-        Reward reward = context.store().read(context.player(), data -> {
+        PersistHolder<Reward> reward = context.store().read(context.player(), data -> {
             Delivery delivery = ModuleData.get(data, InboxSystemModule.STORAGE).getDelivery(input.entitlementId());
             return delivery == null ? null : delivery.reward;
         });

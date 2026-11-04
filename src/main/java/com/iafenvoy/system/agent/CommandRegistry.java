@@ -32,15 +32,15 @@ public final class CommandRegistry {
     private final Map<String, Identifier> owners = new LinkedHashMap<>();
     private AgentAction root;
 
-    <I extends AgentAction> void validate(List<AgentCommand<I>> commands) {
+    void validate(List<AgentCommand> commands) {
         Set<String> names = new HashSet<>(this.owners.keySet());
-        for (AgentCommand<I> command : commands)
+        for (AgentCommand command : commands)
             for (String name : command.names())
                 if (!names.add(name)) throw new IllegalArgumentException("Duplicate command alias " + name);
     }
 
-    <I extends AgentAction> void register(Identifier id, List<AgentCommand<I>> commands) {
-        for (AgentCommand<I> command : commands)
+    void register(Identifier id, List<AgentCommand> commands) {
+        for (AgentCommand command : commands)
             for (String name : command.names()) {
                 LiteralArgumentBuilder<AssistantCommandSource> node = command.node().apply(name);
                 Predicate<AssistantCommandSource> requirement = node.getRequirement();

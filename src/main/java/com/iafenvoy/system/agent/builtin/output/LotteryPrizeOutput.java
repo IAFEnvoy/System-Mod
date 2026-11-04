@@ -2,14 +2,14 @@ package com.iafenvoy.system.agent.builtin.output;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.store.Reward;
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardData;
-import com.iafenvoy.system.card.CardFact;
-import com.iafenvoy.system.card.SpeechContent;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.CardFact;
+import com.iafenvoy.system.data.card.SpeechContent;
+import com.iafenvoy.system.util.PersistHolder;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import java.math.BigDecimal;
@@ -19,9 +19,9 @@ import java.util.Optional;
 /**
  * Integer weights preserve exact odds while the client adds a readable percentage.
  */
-public record LotteryPrizeOutput(Reward reward, int weight, long totalWeight) implements CardData {
+public record LotteryPrizeOutput(PersistHolder<Reward> reward, int weight, long totalWeight) implements CardData {
     public static final MapCodec<LotteryPrizeOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Reward.CODEC.fieldOf("reward").forGetter(LotteryPrizeOutput::reward),
+            PersistHolder.mapCodec(Reward.CODEC).fieldOf("reward").forGetter(LotteryPrizeOutput::reward),
             Codec.INT.fieldOf("weight").forGetter(LotteryPrizeOutput::weight),
             Codec.LONG.fieldOf("totalWeight").forGetter(LotteryPrizeOutput::totalWeight)
     ).apply(i, LotteryPrizeOutput::new));
@@ -29,7 +29,7 @@ public record LotteryPrizeOutput(Reward reward, int weight, long totalWeight) im
 
     @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(TEMPLATE).summary(Component.literal(this.reward.label())).speech(SpeechContent.EMPTY);
+        CardBuilder builder = CardBuilder.template(TEMPLATE).summary(this.reward.value().label()).speech(SpeechContent.EMPTY);
         this.fill(builder, "");
         return builder;
     }

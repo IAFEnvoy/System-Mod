@@ -10,6 +10,7 @@ import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
 import com.iafenvoy.system.module.builtin.storage.InboxDataStorage;
+import com.iafenvoy.system.util.PersistHolder;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -25,7 +26,7 @@ public final class RewardCreditTool implements ToolRegistry.Handler<RewardCredit
     @Override
     public CompletionStage<CreditReceiptOutput> execute(ExecutionContext context, RewardCreditInput input) {
         String id = input.entitlementId();
-        Reward reward = input.reward();
+        PersistHolder<Reward> reward = input.reward();
         return CompletableFuture.completedFuture(context.store().update(context.player(), data -> {
             InboxDataStorage storage = ModuleData.get(data, InboxSystemModule.STORAGE);
             storage.assertDeliveryCount(id);

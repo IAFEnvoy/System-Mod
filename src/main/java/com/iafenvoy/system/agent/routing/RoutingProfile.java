@@ -27,7 +27,7 @@ public record RoutingProfile<I extends AgentAction>(Map<String, List<String>> ex
     }
 
     public static <I extends AgentAction> RoutingProfile<I> hints(List<String> chinese, List<String> english) {
-        return new RoutingProfile<>(Map.of("zh", chinese, "en", english), false, text -> null);
+        return new RoutingProfile<>(Map.of("zh", chinese, "en", english), false, _ -> null);
     }
 
     public Bound bind(Identifier id, MapCodec<I> codec, boolean readOnly) {

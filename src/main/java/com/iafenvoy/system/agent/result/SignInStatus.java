@@ -2,9 +2,10 @@ package com.iafenvoy.system.agent.result;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.store.Reward;
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardData;
-import com.iafenvoy.system.card.CardFact;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.CardFact;
+import com.iafenvoy.system.util.PersistHolder;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -16,12 +17,12 @@ import java.util.Optional;
 /**
  * Daily sign-in outcome with today's candidate rewards.
  */
-public record SignInStatus(String date, boolean signedIn, List<Reward> candidates, boolean historySaved,
+public record SignInStatus(String date, boolean signedIn, List<PersistHolder<Reward>> candidates, boolean historySaved,
                            boolean externalModel) implements CardData {
     public static final MapCodec<SignInStatus> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("date").forGetter(SignInStatus::date),
             Codec.BOOL.fieldOf("signedIn").forGetter(SignInStatus::signedIn),
-            Reward.CODEC.listOf().fieldOf("candidates").forGetter(SignInStatus::candidates),
+            PersistHolder.codec(Reward.CODEC).listOf().fieldOf("candidates").forGetter(SignInStatus::candidates),
             Codec.BOOL.fieldOf("historySaved").forGetter(SignInStatus::historySaved),
             Codec.BOOL.fieldOf("externalModel").forGetter(SignInStatus::externalModel)
     ).apply(i, SignInStatus::new));

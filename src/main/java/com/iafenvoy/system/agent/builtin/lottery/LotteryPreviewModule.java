@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.builtin.lottery;
 
+import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.builtin.BuiltinModule;
 import com.iafenvoy.system.agent.builtin.BuiltinTools;
@@ -7,9 +8,10 @@ import com.iafenvoy.system.agent.builtin.input.CommercePreviewInput;
 import com.iafenvoy.system.agent.builtin.input.LotteryPreviewInput;
 import com.iafenvoy.system.agent.builtin.output.CommercePreviewOutput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
-import com.iafenvoy.system.data.lottery.LotteryPool;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.data.LotteryPool;
+import net.minecraft.core.Holder;
 
 import java.util.List;
 import java.util.Optional;
@@ -37,10 +39,10 @@ public final class LotteryPreviewModule extends BuiltinModule<LotteryPreviewInpu
         CommerceCatalog catalog = context.availableCatalog();
         if (!input.catalogRevision().orElse(catalog.revision()).equals(catalog.revision()))
             throw new AgentException("STALE_QUOTE");
-        LotteryPool pool = catalog.lotteries().stream().filter(value -> value.id().equals(input.poolId())).findFirst()
+        Holder<LotteryPool> pool = catalog.lotteries().stream().filter(value -> HolderHelper.id(value).equals(input.poolId())).findFirst()
                 .orElseThrow(() -> new AgentException("INVALID_INPUT"));
         CommercePreviewOutput price = context.tool(BuiltinTools.COMMERCE_PREVIEW, "quote",
-                new CommercePreviewInput(List.of(), List.of(pool.id()), true, catalog.revision())).getFirst();
+                new CommercePreviewInput(List.of(), List.of(HolderHelper.id(pool)), true, catalog.revision())).getFirst();
         // One detail card carries the whole shelf; the previous per-prize cards would spam the transcript.
         return AgentResult.data("system.result.lottery_preview", LotteryModule.summary(pool, price, catalog.revision()));
     }

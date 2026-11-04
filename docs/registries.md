@@ -114,9 +114,9 @@ JSON 使用完整 ID，例如 `{"type":"system:items","items":"{{result_items}}"
 | --- | --- | --- |
 | System 模块数据包注册表 `system:system_module` | `SystemDataPackRegistries`、`SystemResourceKeys.SYSTEM_MODULE` | `modules/moduleIds(RegistryAccess)`；模块配置、server 类型分派与 client ID |
 | System 数据包注册表 `system:system` | `SystemDataPackRegistries`、`SystemResourceKeys.SYSTEM` | `SystemDataPackRegistries.get/ids(RegistryAccess, ...)`；系统名、介绍与模块定义 |
-| 签到奖励注册表 `system:signin_rewards` | `SystemDataPackRegistries`、`SystemResourceKeys.SIGNIN_REWARDS` | 服务端 CatalogEntry.REWARD；模块 rewards 筛选 |
-| 商城商品注册表 `system:shop_offers` | `SystemDataPackRegistries`、`SystemResourceKeys.SHOP_OFFERS` | 服务端 CatalogEntry.OFFER；模块 offers 筛选 |
-| 抽奖奖池注册表 `system:lottery_pools` | `SystemDataPackRegistries`、`SystemResourceKeys.LOTTERY_POOLS` | 服务端 LotteryPool.Definition；模块 pools 筛选 |
+| 签到奖励注册表 `system:signin_rewards` | `SystemDataPackRegistries`、`SystemResourceKeys.SIGNIN_REWARDS` | 服务端 SignInRewardEntry；模块 rewards 筛选 |
+| 商城商品注册表 `system:shop_offers` | `SystemDataPackRegistries`、`SystemResourceKeys.SHOP_OFFERS` | 服务端 ShopOfferEntry；模块 offers 筛选 |
+| 抽奖奖池注册表 `system:lottery_pools` | `SystemDataPackRegistries`、`SystemResourceKeys.LOTTERY_POOLS` | 服务端 LotteryPool；模块 pools 筛选 |
 | Saturn `SaturnResourceKeys.ENTITY_ACTION_TYPE` | `SystemEntityActions` | `system:add_module`、`system:remove_module` |
 | Saturn `SaturnResourceKeys.ENTITY_CONDITION_TYPE` | `SystemEntityConditions` | `system:has_module`、`system:has_system` |
 | Saturn `SaturnRegistries.DATA_STORAGE_TYPE` | `SystemDataStorages` | 模块权限、成就、Agent 日志、交易、收件箱、签到的 DataStorage Codec |

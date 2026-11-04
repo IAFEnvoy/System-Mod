@@ -6,6 +6,7 @@ import com.iafenvoy.system.screen.card.CardNode;
 import com.iafenvoy.system.screen.card.CardRenderer;
 import com.iafenvoy.system.screen.gui.AssistantItems;
 import com.iafenvoy.system.screen.gui.AssistantView;
+import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -74,7 +75,7 @@ public record PrizeGridNode(String prizes, int columns, int maxRow, int cell) im
                 if (slot != null) items.appendChild(slot);
             }
             if (!items.children.isEmpty()) cell.appendChild(items);
-            cell.appendChild(AssistantView.element(view.document(), "div", "offer_cell_label", prize.reward().label()));
+            cell.appendChild(AssistantView.element(view.document(), "div", "offer_cell_label", LegacyText.formatted(prize.reward().value().label())));
             grid.appendChild(cell);
         }
         return grid;
@@ -91,6 +92,6 @@ public record PrizeGridNode(String prizes, int columns, int maxRow, int cell) im
     }
 
     private static List<ItemPreviewOutput> previews(LotteryPrizeOutput prize) {
-        return prize.reward().items().stream().map(ItemPreviewOutput::of).toList();
+        return prize.reward().value().items().stream().map(ItemPreviewOutput::of).toList();
     }
 }

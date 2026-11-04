@@ -2,9 +2,10 @@ package com.iafenvoy.system.agent.builtin.output;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.store.Reward;
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardData;
-import com.iafenvoy.system.card.CardFact;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.CardFact;
+import com.iafenvoy.system.util.PersistHolder;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -17,25 +18,25 @@ import java.util.Optional;
 /**
  * Built-in result data and its serialization codec.
  */
-public record PurchaseReceiptOutput(String orderId, String entitlementId, Reward reward, String state,
+public record PurchaseReceiptOutput(String orderId, String entitlementId, PersistHolder<Reward> reward, String state,
                                     Optional<Identifier> sourcePool) implements CardData {
     public static final MapCodec<PurchaseReceiptOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("orderId").forGetter(PurchaseReceiptOutput::orderId),
             Codec.STRING.fieldOf("entitlementId").forGetter(PurchaseReceiptOutput::entitlementId),
-            Reward.CODEC.fieldOf("reward").forGetter(PurchaseReceiptOutput::reward),
+            PersistHolder.mapCodec(Reward.CODEC).fieldOf("reward").forGetter(PurchaseReceiptOutput::reward),
             Codec.STRING.fieldOf("state").forGetter(PurchaseReceiptOutput::state),
             Identifier.CODEC.optionalFieldOf("sourcePool").forGetter(PurchaseReceiptOutput::sourcePool)
     ).apply(i, PurchaseReceiptOutput::new));
     public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "purchase");
 
-    public PurchaseReceiptOutput(String orderId, String entitlementId, Reward reward, String state) {
+    public PurchaseReceiptOutput(String orderId, String entitlementId, PersistHolder<Reward> reward, String state) {
         this(orderId, entitlementId, reward, state, Optional.empty());
     }
 
     @Override
     public CardBuilder buildCard() {
         CardBuilder builder = CardBuilder.template(TEMPLATE).title("system.result.reward")
-                .summary(this.sourcePool.isPresent() ? Component.translatable("system.tts.message.lottery_drawn", this.reward.label())
+                .summary(this.sourcePool.isPresent() ? Component.translatable("system.tts.message.lottery_drawn", this.reward.value().label())
                         : Component.translatable("system.result.shop_purchased"));
         builder.reward("", this.reward())
                 .put("order_id", this.orderId()).put("entitlement_id", this.entitlementId()).put("state", this.state())

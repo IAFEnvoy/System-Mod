@@ -56,7 +56,7 @@ public final class DeliverTool implements ToolRegistry.Handler<EntitlementInput,
             this.game.onPlayer(context, player -> {
                 List<ItemStack> stacks = new ArrayList<>();
                 // create() validates bound components and the actual stack limit on the game thread.
-                for (ItemStackTemplate item : delivery.reward.items()) {
+                for (ItemStackTemplate item : delivery.reward.value().items()) {
                     ItemStack stack = item.create();
                     if (stack.isEmpty()) throw new AgentException("INVALID_REWARD");
                     stacks.add(stack);

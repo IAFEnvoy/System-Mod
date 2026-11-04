@@ -1,8 +1,8 @@
 package com.iafenvoy.system.agent.builtin.output;
 
 import com.iafenvoy.system.agent.result.QuestList;
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardData;
 import com.mojang.serialization.MapCodec;
 
 import java.util.List;

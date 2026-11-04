@@ -1,10 +1,10 @@
 package com.iafenvoy.system.screen.card;
 
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.card.*;
-import com.iafenvoy.system.card.client.CardController;
-import com.iafenvoy.system.card.client.CardFormatting;
-import com.iafenvoy.system.card.client.ClientCards;
+import com.iafenvoy.system.data.card.*;
+import com.iafenvoy.system.data.card.client.CardController;
+import com.iafenvoy.system.data.card.client.CardFormatting;
+import com.iafenvoy.system.data.card.client.ClientCards;
 import com.iafenvoy.system.config.file.SpeechConfig;
 import com.iafenvoy.system.module.client.ClientMessage;
 import com.iafenvoy.system.screen.AssistantMessages;

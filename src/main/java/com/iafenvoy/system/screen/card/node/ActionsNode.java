@@ -1,9 +1,9 @@
 package com.iafenvoy.system.screen.card.node;
 
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.card.CardAction;
-import com.iafenvoy.system.card.CardButton;
-import com.iafenvoy.system.card.CardContext;
+import com.iafenvoy.system.data.card.CardAction;
+import com.iafenvoy.system.data.card.CardButton;
+import com.iafenvoy.system.data.card.CardContext;
 import com.iafenvoy.system.screen.AssistantPages;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.iafenvoy.system.screen.card.CardPageState;

@@ -1,11 +1,13 @@
 package com.iafenvoy.system.agent.builtin.output;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
@@ -17,10 +19,10 @@ import java.util.Map;
  */
 public record ShopCatalogOutput(String revision, String query, List<Offer> offers,
                                 boolean truncated) implements CardData {
-    public record Offer(String id, String label, List<ItemPreviewOutput> items) implements ShelfEntry {
+    public record Offer(String id, Component label, List<ItemPreviewOutput> items) implements ShelfEntry {
         public static final Codec<Offer> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("id").forGetter(Offer::id),
-                Codec.STRING.fieldOf("label").forGetter(Offer::label),
+                ComponentSerialization.CODEC.fieldOf("label").forGetter(Offer::label),
                 ItemPreviewOutput.CODEC.listOf().optionalFieldOf("items", List.of()).forGetter(Offer::items)
         ).apply(i, Offer::new));
 

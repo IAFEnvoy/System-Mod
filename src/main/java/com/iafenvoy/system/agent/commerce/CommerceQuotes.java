@@ -1,7 +1,13 @@
 package com.iafenvoy.system.agent.commerce;
 
+import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.data.lottery.LotteryPool;
+import com.iafenvoy.system.agent.store.Reward;
+import com.iafenvoy.system.data.catalog.ShopOfferEntry;
+import com.iafenvoy.system.data.LotteryPool;
+import com.iafenvoy.system.util.PersistHolder;
+import net.minecraft.core.Holder;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
@@ -16,17 +22,20 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class CommerceQuotes {
     private final Map<String, Quote> quotes = new ConcurrentHashMap<>();
 
-    public synchronized Quote create(UUID player, CommerceCatalog catalog, CommerceCatalog.Offer offer, CommerceCosts.Prepared payment) {
-        return this.create(player, catalog, PurchaseType.SHOP, offer.id(), offer.label(), payment,
-                List.of(new LotteryPool.Entry(offer.reward(), 1)));
+    public synchronized Quote create(UUID player, CommerceCatalog catalog, Holder<ShopOfferEntry> offer, CommerceCosts.Prepared payment) {
+        Identifier id = HolderHelper.id(offer);
+        ShopOfferEntry entry = offer.value();
+        return this.create(player, catalog, PurchaseType.SHOP, id, entry.label(), payment,
+                List.of(new LotteryPool.Entry(new PersistHolder<>(id, new Reward(entry.label(), entry.items())), 1)));
     }
 
-    public synchronized Quote create(UUID player, CommerceCatalog catalog, LotteryPool pool, CommerceCosts.Prepared payment) {
-        return this.create(player, catalog, PurchaseType.LOTTERY, pool.id(), pool.label(), payment, pool.entries());
+    public synchronized Quote createPool(UUID player, CommerceCatalog catalog, Holder<LotteryPool> pool, CommerceCosts.Prepared payment) {
+        return this.create(player, catalog, PurchaseType.LOTTERY, HolderHelper.id(pool), pool.value().label(), payment,
+                pool.value().entries());
     }
 
     private Quote create(UUID player, CommerceCatalog catalog, PurchaseType type, Identifier source,
-                         String label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries) {
+                         Component label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries) {
         long now = System.currentTimeMillis();
         this.quotes.values().removeIf(quote -> quote.expires() < now);
         if (this.quotes.size() >= 4096 || this.quotes.values().stream().filter(quote -> quote.player().equals(player)).count() >= 32)
@@ -49,7 +58,7 @@ public final class CommerceQuotes {
     }
 
     public record Quote(String id, UUID player, String revision, PurchaseType type, Identifier source,
-                        String label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries,
+                        Component label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries,
                         long expires) {
         public Quote {
             entries = List.copyOf(entries);

@@ -18,8 +18,7 @@ import java.util.function.Function;
 /**
  * Workflows supply native Brigadier nodes; execution only produces an action for the normal Agent pipeline.
  */
-public record AgentCommand<I extends AgentAction>(List<String> names,
-                                                  Function<String, LiteralArgumentBuilder<AssistantCommandSource>> node) {
+public record AgentCommand(List<String> names, Function<String, LiteralArgumentBuilder<AssistantCommandSource>> node) {
     public AgentCommand {
         names = List.copyOf(names);
         if (names.isEmpty() || names.stream().anyMatch(name -> name.isBlank() || name.equals(SystemMod.MOD_ID) || name.contains("/")
@@ -28,16 +27,16 @@ public record AgentCommand<I extends AgentAction>(List<String> names,
         Objects.requireNonNull(node);
     }
 
-    public static <I extends AgentAction> AgentCommand<I> literal(I input, String... names) {
+    public static <I extends AgentAction> AgentCommand literal(I input, String... names) {
         Objects.requireNonNull(input);
-        return new AgentCommand<>(List.of(names), name -> LiteralArgumentBuilder.<AssistantCommandSource>literal(name)
+        return new AgentCommand(List.of(names), name -> LiteralArgumentBuilder.<AssistantCommandSource>literal(name)
                 .executes(context -> context.getSource().action(input)));
     }
 
-    public static <I extends AgentAction> AgentCommand<I> argument(String usage, Function<String, I> parser, String... names) {
+    public static <I extends AgentAction> AgentCommand argument(String usage, Function<String, I> parser, String... names) {
         boolean optional = usage.startsWith("[");
         String argument = usage.substring(1, usage.length() - 1);
-        return new AgentCommand<>(List.of(names), name -> {
+        return new AgentCommand(List.of(names), name -> {
             LiteralArgumentBuilder<AssistantCommandSource> root = LiteralArgumentBuilder.literal(name);
             if (optional) root.executes(context -> context.getSource().action(parser.apply("")));
             return root.then(RequiredArgumentBuilder.<AssistantCommandSource, String>argument(argument, StringArgumentType.greedyString())
@@ -45,8 +44,8 @@ public record AgentCommand<I extends AgentAction>(List<String> names,
         });
     }
 
-    public static <I extends AgentAction> AgentCommand<I> identifier(String argument, Function<Identifier, I> parser, String... names) {
-        return new AgentCommand<>(List.of(names), name -> LiteralArgumentBuilder.<AssistantCommandSource>literal(name)
+    public static <I extends AgentAction> AgentCommand identifier(String argument, Function<Identifier, I> parser, String... names) {
+        return new AgentCommand(List.of(names), name -> LiteralArgumentBuilder.<AssistantCommandSource>literal(name)
                 .then(RequiredArgumentBuilder.<AssistantCommandSource, Identifier>argument(argument, IdentifierArgument.id())
                         .executes(context -> context.getSource().action(parser.apply(context.getArgument(argument, Identifier.class))))));
     }
@@ -55,9 +54,9 @@ public record AgentCommand<I extends AgentAction>(List<String> names,
      * A registry ID with one optional trailing word, e.g. {@code /system recipe minecraft:diamond loot}.
      * Omitting the second argument passes an empty string, which callers treat as the default scope.
      */
-    public static <I extends AgentAction> AgentCommand<I> identifierWithScope(String argument, String scope, Collection<String> scopes,
-                                                                              BiFunction<Identifier, String, I> parser, String... names) {
-        return new AgentCommand<>(List.of(names), name -> LiteralArgumentBuilder.<AssistantCommandSource>literal(name)
+    public static <I extends AgentAction> AgentCommand identifierWithScope(String argument, String scope, Collection<String> scopes,
+                                                                           BiFunction<Identifier, String, I> parser, String... names) {
+        return new AgentCommand(List.of(names), name -> LiteralArgumentBuilder.<AssistantCommandSource>literal(name)
                 .then(RequiredArgumentBuilder.<AssistantCommandSource, Identifier>argument(argument, IdentifierArgument.id())
                         .executes(context -> context.getSource().action(parser.apply(context.getArgument(argument, Identifier.class), "")))
                         .then(RequiredArgumentBuilder.<AssistantCommandSource, String>argument(scope, StringArgumentType.word())

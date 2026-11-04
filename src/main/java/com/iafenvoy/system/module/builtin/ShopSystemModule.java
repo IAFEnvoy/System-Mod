@@ -12,8 +12,8 @@ import com.iafenvoy.system.agent.builtin.shop.ShopModule;
 import com.iafenvoy.system.agent.builtin.shop.ShopPurchaseModule;
 import com.iafenvoy.system.agent.builtin.shop.ShopPurchaseTool;
 import com.iafenvoy.system.agent.builtin.shop.ShopQuoteModule;
-import com.iafenvoy.system.data.catalog.CatalogEntry;
 import com.iafenvoy.system.agent.commerce.PurchaseType;
+import com.iafenvoy.system.data.catalog.ShopOfferEntry;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Optional;
 
 public record ShopSystemModule(
-        Optional<List<Either<ResourceKey<CatalogEntry>, TagKey<CatalogEntry>>>> offers) implements CatalogModule<CatalogEntry> {
+        Optional<List<Either<ResourceKey<ShopOfferEntry>, TagKey<ShopOfferEntry>>>> offers) implements CatalogModule<ShopOfferEntry> {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop");
     public static final MapCodec<ShopSystemModule> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             RegistryCodecs.keyOrTagList(SystemResourceKeys.SHOP_OFFERS).optionalFieldOf("offers").forGetter(ShopSystemModule::offers)
@@ -44,12 +44,12 @@ public record ShopSystemModule(
     }
 
     @Override
-    public ResourceKey<Registry<CatalogEntry>> catalog() {
+    public ResourceKey<Registry<ShopOfferEntry>> catalog() {
         return SystemResourceKeys.SHOP_OFFERS;
     }
 
     @Override
-    public Optional<List<Either<ResourceKey<CatalogEntry>, TagKey<CatalogEntry>>>> options() {
+    public Optional<List<Either<ResourceKey<ShopOfferEntry>, TagKey<ShopOfferEntry>>>> options() {
         return this.offers;
     }
 

@@ -1,9 +1,9 @@
 package com.iafenvoy.system.agent.store;
 
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.card.CardData;
-import com.iafenvoy.system.card.CardFact;
-import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.CardFact;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;

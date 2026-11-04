@@ -1,4 +1,4 @@
-package com.iafenvoy.system.data.system;
+package com.iafenvoy.system.data;
 
 import com.iafenvoy.saturn.util.codec.CollectionCodecs;
 import com.iafenvoy.system.SystemMod;

@@ -2,9 +2,9 @@ package com.iafenvoy.system.agent.result;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.builtin.output.QuestBriefOutput;
-import com.iafenvoy.system.card.CardBuilder;
-import com.iafenvoy.system.card.CardButton;
-import com.iafenvoy.system.card.CardData;
+import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardButton;
+import com.iafenvoy.system.data.card.CardData;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 

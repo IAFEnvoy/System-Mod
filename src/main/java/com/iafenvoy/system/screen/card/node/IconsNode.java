@@ -2,7 +2,7 @@ package com.iafenvoy.system.screen.card.node;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.builtin.output.QuestIconOutput;
-import com.iafenvoy.system.card.CardContext;
+import com.iafenvoy.system.data.card.CardContext;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.iafenvoy.system.screen.card.CardRenderer;
 import com.iafenvoy.system.screen.gui.AssistantView;
@@ -36,8 +36,7 @@ public record IconsNode(String icons, String label) implements CardNode {
     private static Method factory() {
         if (!ModList.get().isLoaded("ftbquests")) return null;
         try {
-            return Class.forName("com.iafenvoy.system.compat.ftb.client.FtbQuestIconElement")
-                    .getMethod("create", Document.class, QuestIconOutput.class);
+            return Class.forName("com.iafenvoy.system.compat.ftb.client.FtbQuestIconElement").getMethod("create", Document.class, QuestIconOutput.class);
         } catch (ReflectiveOperationException | LinkageError error) {
             SystemMod.LOGGER.warn("FTB quest icons are unavailable; using text previews", error);
             return null;

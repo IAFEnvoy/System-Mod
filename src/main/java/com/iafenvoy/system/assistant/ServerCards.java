@@ -2,8 +2,8 @@ package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.card.CardReference;
-import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.data.card.CardReference;
+import com.iafenvoy.system.data.card.CardUpdate;
 
 import java.util.*;
 

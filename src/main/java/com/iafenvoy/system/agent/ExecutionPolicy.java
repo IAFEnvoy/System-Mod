@@ -20,12 +20,9 @@ public record ExecutionPolicy(int modelCalls, int toolCalls, int steps, int writ
             ExtraCodecs.POSITIVE_LONG.fieldOf("ttlMillis").forGetter(ExecutionPolicy::ttlMillis),
             ExtraCodecs.POSITIVE_LONG.fieldOf("modelTimeoutMillis").forGetter(ExecutionPolicy::modelTimeoutMillis)
     ).apply(i, ExecutionPolicy::new));
+    public static final ExecutionPolicy EVENT = new ExecutionPolicy(4, 8, 16, 3, 8192, 512, 32768, 300000, 20000);
 
     public static ExecutionPolicy quick(int models, int writes) {
         return new ExecutionPolicy(models, 4, 12, writes, 8192, 512, 16384, 14500, 4000);
-    }
-
-    public static ExecutionPolicy event() {
-        return new ExecutionPolicy(4, 8, 16, 3, 8192, 512, 32768, 300000, 20000);
     }
 }

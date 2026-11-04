@@ -1,9 +1,10 @@
-package com.iafenvoy.system.card;
+package com.iafenvoy.system.data.card;
 
 import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.store.Reward;
 import com.iafenvoy.system.util.LegacyText;
+import com.iafenvoy.system.util.PersistHolder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
@@ -70,9 +71,9 @@ public final class CardBuilder {
         return this;
     }
 
-    public CardBuilder reward(String prefix, Reward reward) {
-        List<ItemPreviewOutput> items = reward.items().stream().map(ItemPreviewOutput::of).toList();
-        return this.put(prefix + "reward_label", reward.label()).put(prefix + "reward_items", new CardText.Items(items))
+    public CardBuilder reward(String prefix, PersistHolder<Reward> reward) {
+        List<ItemPreviewOutput> items = reward.value().items().stream().map(ItemPreviewOutput::of).toList();
+        return this.put(prefix + "reward_label", reward.value().label()).put(prefix + "reward_items", new CardText.Items(items))
                 .put(prefix + "result_items", items);
     }
 

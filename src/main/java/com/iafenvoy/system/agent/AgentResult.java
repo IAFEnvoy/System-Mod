@@ -1,8 +1,8 @@
 package com.iafenvoy.system.agent;
 
-import com.iafenvoy.system.card.CardData;
-import com.iafenvoy.system.card.CardUpdate;
-import com.iafenvoy.system.card.data.TextCardData;
+import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.CardUpdate;
+import com.iafenvoy.system.data.card.data.TextCardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;

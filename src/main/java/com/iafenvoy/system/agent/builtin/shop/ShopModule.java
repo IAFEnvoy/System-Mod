@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.builtin.shop;
 
+import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.AgentCommand;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.ExecutionContext;
@@ -11,6 +12,8 @@ import com.iafenvoy.system.agent.builtin.output.ShopCatalogOutput;
 import com.iafenvoy.system.agent.commerce.CommerceCatalog;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.data.catalog.ShopOfferEntry;
+import net.minecraft.core.Holder;
 
 import java.util.List;
 import java.util.Locale;
@@ -41,13 +44,13 @@ public final class ShopModule extends BuiltinModule<ShopQueryInput> {
     public AgentResult execute(ExecutionContext context, ShopQueryInput input) {
         String query = input.query().toLowerCase(Locale.ROOT);
         CommerceCatalog catalog = context.availableCatalog();
-        List<CommerceCatalog.Offer> matches = catalog.offers().stream().filter(offer -> offer.id().toString().contains(query)
-                || offer.label().toLowerCase(Locale.ROOT).contains(query)
-                || offer.items().stream().anyMatch(item -> item.item().getRegisteredName().contains(query))).toList();
+        List<Holder<ShopOfferEntry>> matches = catalog.offers().stream().filter(holder -> HolderHelper.id(holder).toString().contains(query)
+                || holder.value().label().getString().toLowerCase(Locale.ROOT).contains(query)
+                || holder.value().items().stream().anyMatch(item -> item.item().getRegisteredName().contains(query))).toList();
         // Prices are evaluated only for the offer the player actually opens.
         List<ShopCatalogOutput.Offer> offers = matches.stream().limit(MAX_OFFERS)
-                .map(offer -> new ShopCatalogOutput.Offer(offer.id().toString(), offer.label(),
-                        offer.items().stream().map(ItemPreviewOutput::of).toList())).toList();
+                .map(holder -> new ShopCatalogOutput.Offer(HolderHelper.id(holder).toString(), holder.value().label(),
+                        holder.value().items().stream().map(ItemPreviewOutput::of).toList())).toList();
         return AgentResult.data("system.result.shop",
                 new ShopCatalogOutput(catalog.revision(), query, offers, matches.size() > MAX_OFFERS));
     }

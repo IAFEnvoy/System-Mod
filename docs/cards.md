@@ -264,7 +264,7 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 
 | 占位符 | 含义 |
 | --- | --- |
-| `{{title}}` | 字符串、数值或布尔参数 |
+| `{{title}}` | 字符串、数值、布尔或 `Component` 参数；组件在客户端按当前语言格式化为带格式码的字符串 |
 | `{{tr:system.ui.lottery_cost}}` | 翻译完整语言键 |
 | `{{field:reward}}` | 翻译 `system.field.reward` |
 | `{{bool:signed_in}}` | 根据状态翻译“是/否” |

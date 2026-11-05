@@ -19,23 +19,38 @@ html, body {
 }
 
 body, button, input, textarea, select {
-    font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", sans-serif;
+    font-family: var(--font-body, "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", sans-serif);
 }
 
 body {
-    --assistant-ink: #dff8ff;
-    --assistant-accent: #61e6ff;
-    --assistant-accent-hover: #9befff;
-    --assistant-accent-shadow: #187d98;
-    --assistant-line: rgba(97, 230, 255, 0.42);
-    --assistant-line-soft: rgba(97, 230, 255, 0.18);
-    --assistant-surface: rgba(10, 28, 40, 0.3);
-    --assistant-surface-deep: rgba(6, 19, 29, 0.38);
-    --assistant-panel-soft: rgba(5, 31, 43, 0.18);
-    --assistant-button: rgba(8, 31, 43, 0.22);
-    --assistant-button-hover: rgba(23, 89, 106, 0.4);
-    --assistant-primary: rgba(19, 101, 119, 0.44);
-    --assistant-primary-hover: rgba(37, 139, 157, 0.58);
+    /* AUI's public theme tokens drive every System surface, including the HUD and custom card nodes. */
+    --assistant-ink: var(--color-foreground, var(--ink, #dff8ff));
+    --assistant-muted: var(--color-muted, var(--ink-muted, #b6cfd5));
+    --assistant-heading: var(--ink, #f0bb7b);
+    --assistant-user: var(--color-secondary, var(--purple, #e0a66d));
+    --assistant-accent: var(--color-primary, var(--green, #61e6ff));
+    --assistant-accent-hover: var(--color-primary-hover, var(--green-hover, #9befff));
+    --assistant-accent-shadow: var(--color-primary-active, var(--green-shadow, #187d98));
+    --assistant-focus: var(--color-focus, var(--focus, #f0fdff));
+    --assistant-line: var(--line, var(--color-border, var(--edge, rgba(97, 230, 255, 0.42))));
+    --assistant-line-soft: var(--line-soft, var(--color-border-light, var(--edge-light, rgba(97, 230, 255, 0.18))));
+    --assistant-surface: var(--color-surface, var(--surface, rgba(10, 28, 40, 0.3)));
+    --assistant-surface-deep: var(--color-surface-deep, var(--surface-deep, rgba(6, 19, 29, 0.38)));
+    --assistant-panel-soft: var(--panel-soft-background, var(--surface, rgba(5, 31, 43, 0.18)));
+    --assistant-window: var(--panel-strong-background, var(--canvas, rgba(3, 14, 23, 0.72)));
+    --assistant-popup: var(--surface-deep, rgba(3, 14, 23, 0.98));
+    --assistant-card-hover: var(--card-hover-background, var(--surface-hover, var(--surface-deep, rgba(11, 54, 69, 0.3))));
+    --assistant-highlight: var(--accent-soft, var(--surface-soft, rgba(97, 230, 255, 0.12)));
+    --assistant-button: var(--button-background, var(--surface-deep, rgba(8, 31, 43, 0.22)));
+    --assistant-button-hover: var(--button-hover-background, var(--surface-hover, var(--surface, rgba(23, 89, 106, 0.4))));
+    --assistant-primary: var(--button-primary-background, var(--color-primary, var(--green, rgba(19, 101, 119, 0.44))));
+    --assistant-primary-hover: var(--button-primary-hover-background, var(--color-primary-hover, var(--green-hover, rgba(37, 139, 157, 0.58))));
+    --assistant-primary-ink: var(--ink-on-accent, var(--ink-on-dark, #efffff));
+    --assistant-shadow: var(--elev-ring, none);
+    --assistant-glow: var(--elev-whisper, none);
+    --assistant-window-art: var(--canvas-art, none);
+    --assistant-radius: var(--radius-md, 0);
+    --assistant-control-radius: var(--radius-sm, 0);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -44,8 +59,20 @@ body {
     color: var(--assistant-ink);
     font-size: 14px;
     font-weight: 400;
-    selection-color: rgba(97, 230, 255, 0.24);
+    selection-color: var(--assistant-highlight);
     caret-color: var(--assistant-accent);
+}
+
+body.t09-arwes-transparent-theme {
+    --assistant-heading: #f0bb7b;
+    --assistant-window: rgba(3, 14, 23, 0.72);
+    --assistant-popup: rgba(3, 14, 23, 0.98);
+    --assistant-primary-ink: #efffff;
+    --assistant-window-art: linear-gradient(135deg, rgba(97, 230, 255, 0.04), transparent 35%, transparent 70%, rgba(97, 230, 255, 0.025));
+}
+
+body.t08-arwes-theme {
+    --assistant-primary-ink: var(--ink-on-dark, #efffff);
 }
 
 #workspace {
@@ -59,10 +86,10 @@ body {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--assistant-line);
-    border-radius: 0;
-    background-color: rgba(3, 14, 23, 0.72);
-    background-image: linear-gradient(135deg, rgba(97, 230, 255, 0.04), transparent 35%, transparent 70%, rgba(97, 230, 255, 0.025));
-    box-shadow: 0 0 0 1px rgba(1, 7, 12, 0.96) inset, 0 0 28px rgba(24, 158, 194, 0.22);
+    border-radius: var(--assistant-radius);
+    background-color: var(--assistant-window);
+    background-image: var(--assistant-window-art);
+    box-shadow: var(--assistant-shadow), var(--assistant-glow);
     overflow: hidden;
 }
 
@@ -81,7 +108,7 @@ button {
     color: var(--assistant-ink);
     background-color: var(--assistant-button);
     border: 1px solid var(--assistant-line);
-    border-radius: 0;
+    border-radius: var(--assistant-control-radius);
     min-height: 34px;
     padding: 8px 12px;
     cursor: pointer;
@@ -94,11 +121,11 @@ button {
 button:hover {
     border-color: var(--assistant-accent-hover);
     background-color: var(--assistant-button-hover);
-    color: #efffff;
+    color: var(--assistant-ink);
 }
 
 button:focus {
-    border-color: #f0fdff;
+    border-color: var(--assistant-focus);
     box-shadow: 0 0 0 1px var(--assistant-accent-shadow);
 }
 
@@ -106,26 +133,26 @@ button:active {
     background-color: var(--assistant-accent-shadow);
 }
 
-.primary {
+#workspace .primary {
     border-color: var(--assistant-accent);
     background-color: var(--assistant-primary);
-    color: #efffff;
-    box-shadow: 0 0 14px rgba(97, 230, 255, 0.12);
+    color: var(--assistant-primary-ink);
+    box-shadow: var(--assistant-glow);
 }
 
-.primary:hover {
+#workspace .primary:hover {
     background-color: var(--assistant-primary-hover);
 }
 
-.primary:active {
+#workspace .primary:active {
     background-color: var(--assistant-accent-shadow);
 }
 
 input, textarea, select {
     background-color: var(--assistant-surface-deep);
-    color: #edf5f7;
+    color: var(--assistant-ink);
     border: 1px solid var(--assistant-line);
-    border-radius: 0;
+    border-radius: var(--assistant-control-radius);
     padding: 11px;
     font-size: 15px;
     font-weight: 400;
@@ -138,20 +165,20 @@ input:focus, textarea:focus, select:focus {
 
 h1 {
     margin: 10px 0;
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 26px;
     font-weight: 500;
 }
 
 h2 {
     margin: 0;
-    color: #f3ca95;
+    color: var(--assistant-heading);
     font-size: 18px;
     font-weight: 600;
 }
 
 p {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     line-height: 1.6;
     margin: 8px 0 0;
     font-size: 14px;
@@ -200,7 +227,7 @@ p {
 }
 
 #brand {
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 18px;
     font-weight: 600;
     letter-spacing: 2px;
@@ -276,7 +303,7 @@ p {
     border-left: 2px solid var(--assistant-accent);
     background-color: var(--assistant-button-hover);
     color: var(--assistant-accent-hover);
-    box-shadow: 0 0 14px rgba(97, 230, 255, 0.08);
+    box-shadow: var(--assistant-glow);
 }
 
 #privacy {
@@ -292,7 +319,7 @@ p {
 }
 
 #privacy_text {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.6;
 }
@@ -301,7 +328,7 @@ p {
     font-size: 12px;
     padding: 7px 8px;
     margin-bottom: 5px;
-    color: #c4dce2;
+    color: var(--assistant-muted);
 }
 
 .sidebar_actions {
@@ -427,7 +454,7 @@ p {
 }
 
 .user .message_label {
-    color: #e0a66d;
+    color: var(--assistant-user);
 }
 
 .message_text {
@@ -435,11 +462,11 @@ p {
     line-height: 1.7;
     word-break: break-all;
     white-space: pre-wrap;
-    color: #e3f0f3;
+    color: var(--assistant-ink);
 }
 
 .user {
-    border-left: 2px solid rgba(224, 166, 109, 0.5);
+    border-left: 2px solid var(--assistant-user);
     padding-left: 12px;
 }
 
@@ -450,7 +477,7 @@ p {
     border-left: 2px solid var(--assistant-accent);
     background-color: var(--assistant-panel-soft);
     margin-top: 5px;
-    box-shadow: 0 0 0 1px rgba(1, 7, 12, 0.82) inset;
+    box-shadow: var(--assistant-shadow);
     transition: border-color 100ms ease, background-color 100ms ease, box-shadow 100ms ease;
 }
 
@@ -468,8 +495,8 @@ p {
 
 .result_card:hover {
     border-color: var(--assistant-accent);
-    background-color: rgba(11, 54, 69, 0.3);
-    box-shadow: 0 0 18px rgba(97, 230, 255, 0.14);
+    background-color: var(--assistant-card-hover);
+    box-shadow: var(--assistant-glow);
 }
 
 .result_card:hover::after {
@@ -478,35 +505,35 @@ p {
 
 /* h1 is the card heading; deeper levels are inline section headings. */
 .card_title {
-    color: #baf7ff;
+    color: var(--assistant-ink);
     font-size: 16px;
     font-weight: 600;
     margin-bottom: 8px;
 }
 
 .card_title_2 {
-    color: #baf7ff;
+    color: var(--assistant-ink);
     font-size: 14px;
     font-weight: 600;
     margin-bottom: 6px;
 }
 
 .card_title_3 {
-    color: #cfe9ee;
+    color: var(--assistant-ink);
     font-size: 13px;
     font-weight: 600;
     margin: 4px 0 2px;
 }
 
 .card_title_4 {
-    color: #a9c6cd;
+    color: var(--assistant-muted);
     font-size: 12px;
     font-weight: 600;
     margin: 4px 0 2px;
 }
 
 .card_body {
-    color: #dcecf0;
+    color: var(--assistant-ink);
     font-size: 14px;
     line-height: 1.7;
     white-space: pre-wrap;
@@ -520,7 +547,7 @@ p {
 
 /* A delivered receipt keeps its claim slot as a marker: same position, no action. */
 .card_action:disabled, .card_action:disabled:hover {
-    color: #9fc3cf;
+    color: var(--assistant-muted);
     background-color: transparent;
     border-color: var(--assistant-line-soft);
     cursor: default;
@@ -579,7 +606,7 @@ p {
     flex: 2 1 240px;
     padding: 10px 14px;
     border: 1px solid var(--assistant-line-soft);
-    background-color: rgba(11, 54, 69, 0.16);
+    background-color: var(--assistant-panel-soft);
 }
 
 .player_info > .card_body {
@@ -596,7 +623,7 @@ p {
 }
 
 .card_context {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.6;
     white-space: pre-wrap;
@@ -716,7 +743,7 @@ p {
 }
 
 .item_group_label {
-    color: #dcecf0;
+    color: var(--assistant-ink);
     font-size: 14px;
     line-height: 1.5;
     margin-bottom: 5px;
@@ -752,8 +779,8 @@ p {
     min-width: 0;
     max-width: 100%;
     padding: 4px;
-    border: 1px solid rgba(77, 201, 211, 0.28);
-    background-color: rgba(8, 23, 31, 0.55);
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
 }
 
 .quest_type_icon {
@@ -766,7 +793,7 @@ p {
 }
 
 .quest_icon_amount {
-    color: #c7e6e8;
+    color: var(--assistant-ink);
     font-size: 11px;
 }
 
@@ -822,7 +849,7 @@ p {
     max-width: 100%;
     padding: 4px 9px 4px 4px;
     border: 1px solid var(--assistant-line-soft);
-    background-color: rgba(1, 12, 20, 0.5);
+    background-color: var(--assistant-surface-deep);
 }
 
 .item_entry.compact {
@@ -849,7 +876,7 @@ p {
     gap: 6px;
     padding: 10px;
     border: 1px solid var(--assistant-line-soft);
-    background-color: rgba(1, 12, 20, 0.35);
+    background-color: var(--assistant-surface-deep);
 }
 
 .item_row.table .item_entry {
@@ -875,7 +902,7 @@ p {
     gap: 6px;
     padding: 10px;
     border: 1px solid var(--assistant-line-soft);
-    background-color: rgba(1, 12, 20, 0.35);
+    background-color: var(--assistant-surface-deep);
 }
 
 .offer_cell {
@@ -885,13 +912,13 @@ p {
     gap: 4px;
     padding: 8px 6px;
     border: 1px solid var(--assistant-line-soft);
-    background-color: rgba(1, 12, 20, 0.5);
+    background-color: var(--assistant-surface-deep);
     cursor: pointer;
 }
 
 .offer_cell:hover {
-    border-color: #61e6ff;
-    background-color: rgba(97, 230, 255, 0.12);
+    border-color: var(--assistant-accent);
+    background-color: var(--assistant-highlight);
 }
 
 .offer_cell_items {
@@ -902,7 +929,7 @@ p {
 }
 
 .offer_cell_label {
-    color: #e3f4f8;
+    color: var(--assistant-ink);
     font-size: 11px;
     line-height: 1.3;
     text-align: center;
@@ -917,7 +944,7 @@ p {
 }
 
 .lottery_hint {
-    color: #9fc3cf;
+    color: var(--assistant-muted);
     font-size: 11px;
     line-height: 1.4;
     margin-top: 4px;
@@ -950,11 +977,11 @@ p {
 }
 
 .item_icon:hover {
-    background-color: rgba(97, 230, 255, 0.15);
+    background-color: var(--assistant-highlight);
 }
 
 .item_name {
-    color: #e3f4f8;
+    color: var(--assistant-ink);
     font-size: 13px;
     line-height: 1.5;
     word-break: break-all;
@@ -965,7 +992,7 @@ p {
 }
 
 .item_description {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.5;
     white-space: pre-wrap;
@@ -1008,7 +1035,7 @@ p {
 }
 
 .card_page_label {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     text-align: center;
 }
@@ -1051,7 +1078,7 @@ p {
 .lottery_name {
     flex: 1 1 180px;
     min-width: 0;
-    color: #baf7ff;
+    color: var(--assistant-ink);
     font-size: 16px;
     font-weight: 600;
     line-height: 1.5;
@@ -1067,11 +1094,11 @@ p {
 }
 
 .lottery_count, .lottery_id, .lottery_cost_label {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
 }
 
 .lottery_chance {
-    color: #f3ca95;
+    color: var(--assistant-heading);
     font-weight: 600;
 }
 
@@ -1101,14 +1128,14 @@ p {
 .lottery_cost_value {
     flex: 1;
     min-width: 0;
-    color: #edf5f7;
+    color: var(--assistant-ink);
     white-space: pre-wrap;
     word-break: break-all;
 }
 
 .lottery_unavailable {
     margin-top: 8px;
-    color: #f3ca95;
+    color: var(--assistant-heading);
     font-size: 12px;
     line-height: 1.6;
 }
@@ -1150,7 +1177,7 @@ p {
     flex: 0 0 auto;
     max-height: 54px;
     overflow: hidden;
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.6;
     white-space: pre-wrap;
@@ -1179,8 +1206,8 @@ p {
     padding: 6px;
     gap: 3px;
     border: 1px solid var(--assistant-line);
-    background-color: rgba(3, 14, 23, 0.98);
-    box-shadow: 0 0 18px rgba(24, 158, 194, 0.18);
+    background-color: var(--assistant-popup);
+    box-shadow: var(--assistant-glow);
 }
 
 .command_option {
@@ -1199,14 +1226,14 @@ p {
 .command_option.selected {
     border-color: var(--assistant-accent);
     background-color: var(--assistant-button-hover);
-    color: #efffff;
+    color: var(--assistant-ink);
 }
 
 .command_hint {
     flex: 0 0 auto;
     padding: 4px 8px;
     font-size: 12px;
-    color: #b6cfd5;
+    color: var(--assistant-muted);
 }
 
 /* A single speech surface; commands and numbered options replace navigation. */
@@ -1240,7 +1267,7 @@ body.simple {
 }
 
 #speaker {
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 16px;
     font-weight: 600;
     letter-spacing: 2px;
@@ -1255,8 +1282,8 @@ body.simple {
 }
 
 #current_request {
-    color: #b6cfd5;
-    border-left: 2px solid #e0a66d;
+    color: var(--assistant-muted);
+    border-left: 2px solid var(--assistant-user);
     padding-left: 10px;
     margin-bottom: 14px;
     font-size: 13px;
@@ -1266,7 +1293,7 @@ body.simple {
 }
 
 #current_result {
-    color: #e3f4f8;
+    color: var(--assistant-ink);
     font-size: 15px;
     font-weight: 400;
     line-height: 1.8;
@@ -1279,8 +1306,15 @@ body.simple {
 }
 
 /* HUD shares the simple anchor; only vanilla chat enables pointer targets on its panel. */
-html.message_hud, body.notification {
-    background: transparent;
+html.message_hud, html.message_hud body.notification {
+    /* Theme artwork belongs to the panel; a HUD document must never cover the game world. */
+    background: transparent !important;
+}
+
+html.message_hud::before, html.message_hud::after,
+html.message_hud body.notification::before, html.message_hud body.notification::after {
+    display: none !important;
+    content: none !important;
 }
 
 body.notification {
@@ -1349,7 +1383,7 @@ html.message_hud, .notification, .notification * {
 }
 
 #notification_title {
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 16px;
     font-weight: 600;
 }
@@ -1376,7 +1410,7 @@ html.message_hud, .notification, .notification * {
     flex: 0 0 auto;
     width: 100%;
     min-width: 0;
-    color: #e3f4f8;
+    color: var(--assistant-ink);
     font-size: 15px;
     line-height: 1.8;
     white-space: pre-wrap;
@@ -1452,7 +1486,7 @@ html.message_hud, .notification, .notification * {
 #notification_hint, #notification_voice {
     flex: 0 0 auto;
     min-width: 0;
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.5;
     white-space: normal;
@@ -1502,7 +1536,7 @@ html.message_hud, .notification, .notification * {
 
 #usage_scope {
     flex: 1;
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
 }
 
@@ -1559,13 +1593,13 @@ html.message_hud, .notification, .notification * {
 }
 
 .usage_label {
-    color: #b6d9e1;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.5;
 }
 
 .usage_total {
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 22px;
     font-weight: 600;
     line-height: 1.3;
@@ -1574,7 +1608,7 @@ html.message_hud, .notification, .notification * {
 
 .usage_counts {
     flex: 0 0 auto;
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.6;
 }
@@ -1596,7 +1630,7 @@ html.message_hud, .notification, .notification * {
 #usage_note, #usage_speech_note, #usage_recognition_note {
     flex: 0 0 auto;
     margin: 0;
-    color: #aac5cc;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.6;
 }
@@ -1632,13 +1666,13 @@ html.message_hud, .notification, .notification * {
 }
 
 .usage_uuid {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     word-break: break-all;
 }
 
 .usage_last_call {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     margin-left: auto;
 }
@@ -1681,7 +1715,7 @@ html.message_hud, .notification, .notification * {
 }
 
 #usage_page {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
 }
 
@@ -1697,7 +1731,7 @@ html.message_hud, .notification, .notification * {
 }
 
 #settings_title {
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 18px;
     font-weight: 600;
     letter-spacing: 2px;
@@ -1741,7 +1775,7 @@ html.message_hud, .notification, .notification * {
 }
 
 .settings #privacy_heading {
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 16px;
     margin: 0 0 4px;
 }
@@ -1769,8 +1803,20 @@ html.message_hud, .notification, .notification * {
     text-align: center;
 }
 
+.speech_step.settings_theme {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+}
+
+.settings_theme_description {
+    flex: 1;
+    min-width: 0;
+}
+
 /* Button activation keeps keyboard support without AUI's separately painted checkbox indicator. */
-button.assistant_switch {
+#workspace button.assistant_switch {
     position: relative;
     display: flex;
     align-items: center;
@@ -1781,7 +1827,7 @@ button.assistant_switch {
     margin: 0;
     padding: 0;
     border: 0;
-    border-radius: 0;
+    border-radius: var(--assistant-control-radius);
     background-color: transparent;
     color: var(--assistant-ink);
     box-shadow: none;
@@ -1790,7 +1836,7 @@ button.assistant_switch {
     font-weight: 400;
 }
 
-button.assistant_switch:hover, button.assistant_switch:focus, button.assistant_switch:active {
+#workspace button.assistant_switch:hover, #workspace button.assistant_switch:focus, #workspace button.assistant_switch:active {
     background-color: transparent;
     box-shadow: none;
 }
@@ -1801,7 +1847,7 @@ button.assistant_switch:hover, button.assistant_switch:focus, button.assistant_s
     flex: 0 0 38px;
     width: 38px;
     height: 22px;
-    border: 1px solid rgba(182, 207, 213, 0.55);
+    border: 1px solid var(--assistant-line-soft);
     border-radius: 11px;
     background-color: var(--assistant-surface-deep);
     pointer-events: none;
@@ -1815,7 +1861,7 @@ button.assistant_switch:hover, button.assistant_switch:focus, button.assistant_s
     width: 14px;
     height: 14px;
     border-radius: 7px;
-    background-color: #b6cfd5;
+    background-color: var(--assistant-muted);
     content: "";
     pointer-events: none;
     transition: transform 120ms ease, background-color 120ms ease;
@@ -1835,17 +1881,17 @@ button.assistant_switch:hover, button.assistant_switch:focus, button.assistant_s
 }
 
 .assistant_switch[aria-checked="true"] .switch_track::after {
-    background-color: var(--assistant-accent);
+    background-color: var(--assistant-primary-ink);
     transform: translateX(16px);
 }
 
 .assistant_switch:hover:not(:disabled) .switch_track {
     border-color: var(--assistant-accent-hover);
-    box-shadow: 0 0 8px rgba(97, 230, 255, 0.18);
+    box-shadow: var(--assistant-glow);
 }
 
 .assistant_switch:focus .switch_track {
-    border-color: #f0fdff;
+    border-color: var(--assistant-focus);
     box-shadow: 0 0 0 1px var(--assistant-accent-shadow);
 }
 
@@ -1859,7 +1905,7 @@ button.assistant_switch:disabled {
 }
 
 #speech_note, #speech_hint, #asr_note, #asr_hint {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 13px;
     line-height: 1.7;
     margin: 0;
@@ -1874,8 +1920,8 @@ button.assistant_switch:disabled {
     margin: 0;
 }
 
-.speech_step h2 {
-    color: #f0bb7b;
+.settings .speech_step h2 {
+    color: var(--assistant-heading);
     font-size: 16px;
     margin: 0 0 4px;
 }
@@ -1927,7 +1973,7 @@ button.assistant_switch:disabled {
 #settings_status {
     flex: 1 1 180px;
     min-width: 0;
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 13px;
     line-height: 1.6;
     white-space: pre-wrap;

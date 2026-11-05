@@ -417,6 +417,8 @@
   "system.ui.settings_tab_asr": "语音输入",
   "system.ui.settings_tab_general": "常规",
   "system.ui.settings_tab_tts": "语音播报",
+  "system.ui.settings_theme": "界面主题",
+  "system.ui.settings_theme_hint": "点击右侧切换主题，自动保存并应用于所有系统界面和通知。",
   "system.ui.settings_title": "设置",
   "system.ui.settings_view_heading": "界面模式",
   "system.ui.shop_placeholder": "商品名称或物品 ID",

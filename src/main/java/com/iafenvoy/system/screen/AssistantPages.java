@@ -35,6 +35,7 @@ public final class AssistantPages {
         // Manual commits need the same style and measurement caches as AUI's normal frame pipeline.
         try (Document.ContextScope ignored = Document.withContext(document);
              GeometryQueryScope geometry = GeometryQueryScope.open()) {
+            AssistantThemes.apply(document);
             document.commitStyleRecalc();
             if (document.hasPendingRenderState()) document.commitRenderState();
         }

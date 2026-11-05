@@ -5,11 +5,13 @@ import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.config.file.ClientConfig;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.config.file.SpeechConfig;
+import com.iafenvoy.system.screen.AssistantThemes;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.asr.RecognitionCapture;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.iafenvoy.system.speech.tts.SpeechState;
+import com.sighs.apricityui.element.ThemeSwitcher;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.client.gui.screens.Screen;
@@ -64,6 +66,12 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         super.initPage(document);
         for (Tab value : Tab.values())
             bind(document, "settings_tab_" + value.key(), () -> this.selectTab(value));
+        document.getElementById("settings_theme").addEventListener(ThemeSwitcher.THEME_CHANGE_EVENT, event -> {
+            if (event.detail instanceof String theme) {
+                this.generalStatus = tr(AssistantThemes.select(theme) ? "system.ui.settings_saved" : "system.ui.settings_config_error");
+                this.renderControls();
+            }
+        });
         document.getElementById("speech_key").setAttribute("placeholder", tr("system.tts.ui.key_placeholder"));
         Element languageSelect = document.getElementById("speech_language");
         for (String language : SpeechConfig.LANGUAGES) {

@@ -417,6 +417,8 @@
   "system.ui.settings_tab_asr": "Voice input",
   "system.ui.settings_tab_general": "General",
   "system.ui.settings_tab_tts": "Speech output",
+  "system.ui.settings_theme": "Interface theme",
+  "system.ui.settings_theme_hint": "Use the switcher on the right. Your choice is saved automatically and applies to all System pages and notifications.",
   "system.ui.settings_title": "Settings",
   "system.ui.settings_view_heading": "Assistant view",
   "system.ui.shop_placeholder": "Offer name or item ID",

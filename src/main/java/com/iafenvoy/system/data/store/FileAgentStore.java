@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -91,16 +90,9 @@ public final class FileAgentStore implements AgentStore {
         if (Files.size(path) > config().businessBytes()) throw new AgentException("STORAGE_FULL");
         byte[] bytes = Files.readAllBytes(path);
         // The replay cache used to share this file; read that layout once so an upgrade keeps its history.
-        Optional<PlayerData> data = hasLegacyConversation(bytes)
-                ? BUSINESS.decode(PlayerData.LEGACY_CODEC, bytes) : Optional.empty();
-        if (data.isEmpty()) data = BUSINESS.decode(PlayerData.CODEC, bytes);
-        PlayerData value = data.orElseThrow(() -> new IOException("Unable to decode agent store: " + path.getFileName()));
+        PlayerData value = BUSINESS.decode(PlayerData.CODEC, bytes).orElseThrow(() -> new IOException("Unable to decode agent store: " + path.getFileName()));
         if (value.version != 1) throw new IOException("Invalid agent store version");
         return value;
-    }
-
-    private static boolean hasLegacyConversation(byte[] bytes) {
-        return new String(bytes, StandardCharsets.UTF_8).contains("\"conversation\"");
     }
 
     private byte[] readChat(UUID player) throws IOException {

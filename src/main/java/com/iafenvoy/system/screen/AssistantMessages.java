@@ -568,8 +568,11 @@ public final class AssistantMessages {
         if (interactive == null || interactive != enabled || displayedBusy == null || displayedBusy != busy) {
             interactive = enabled;
             displayedBusy = busy;
-            document.body.setClassName("notification" + (expanded ? " expanded" : "")
-                    + (contentVisible ? " content_visible" : "") + (enabled ? " interactive" : ""));
+            // Preserve the selected theme scopes while changing notification animation and input state.
+            Element.DOMTokenList classes = document.body.getClassList();
+            classes.toggle("expanded", expanded);
+            classes.toggle("content_visible", contentVisible);
+            classes.toggle("interactive", enabled);
             for (Element button : document.querySelectorAll("#notification_cards button[data-requires-idle]"))
                 button.setDisabled(!enabled || busy);
             Element actions = document.getElementById("notification_actions");

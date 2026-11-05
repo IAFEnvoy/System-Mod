@@ -77,7 +77,7 @@ public final class AssistantClient {
     }
 
     public static void configureMode(boolean simple) {
-        ClientConfig.INSTANCE.set(new ClientConfig(simple));
+        ClientConfig.INSTANCE.set(new ClientConfig(simple, ClientConfig.INSTANCE.get().theme()));
     }
 
     public static void open(boolean simple, String draft) {

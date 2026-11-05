@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module.builtin.inbox;
 
+import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.agent.*;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
@@ -15,7 +16,6 @@ import com.iafenvoy.system.data.store.Reward;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
 import com.iafenvoy.system.module.builtin.InboxSystemModule;
-import com.iafenvoy.system.util.PersistHolder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 

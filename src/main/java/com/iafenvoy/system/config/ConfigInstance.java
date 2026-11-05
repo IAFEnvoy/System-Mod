@@ -1,7 +1,7 @@
 package com.iafenvoy.system.config;
 
 import com.iafenvoy.saturn.util.AbstractChangeTrackable;
-import com.iafenvoy.system.util.FileAccess;
+import com.iafenvoy.saturn.util.FileAccess;
 import com.mojang.serialization.Codec;
 import org.jetbrains.annotations.NotNull;
 

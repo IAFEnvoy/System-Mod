@@ -1,6 +1,7 @@
 package com.iafenvoy.system.assistant.commerce;
 
 import com.iafenvoy.saturn.util.HolderHelper;
+import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
@@ -8,7 +9,6 @@ import com.iafenvoy.system.data.catalog.ShopOfferEntry;
 import com.iafenvoy.system.data.store.CommerceOrder;
 import com.iafenvoy.system.data.store.PurchaseType;
 import com.iafenvoy.system.data.store.Reward;
-import com.iafenvoy.system.util.PersistHolder;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -28,8 +28,7 @@ public final class CommerceQuotes {
     public synchronized Quote create(UUID player, CommerceCatalog catalog, Holder<ShopOfferEntry> offer, CommerceCosts.Prepared payment) {
         Identifier id = HolderHelper.id(offer);
         ShopOfferEntry entry = offer.value();
-        return this.create(player, catalog, PurchaseType.SHOP, id, entry.label(), payment,
-                List.of(new LotteryPool.Entry(new PersistHolder<>(id, new Reward(entry.label(), entry.items())), 1)));
+        return this.create(player, catalog, PurchaseType.SHOP, id, entry.label(), payment, List.of(new LotteryPool.Entry(new PersistHolder<>(id, new Reward(entry.label(), entry.items())), 1)));
     }
 
     public synchronized Quote createPool(UUID player, CommerceCatalog catalog, Holder<LotteryPool> pool, CommerceCosts.Prepared payment) {
@@ -37,8 +36,7 @@ public final class CommerceQuotes {
                 pool.value().entries());
     }
 
-    private Quote create(UUID player, CommerceCatalog catalog, PurchaseType type, Identifier source,
-                         Component label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries) {
+    private Quote create(UUID player, CommerceCatalog catalog, PurchaseType type, Identifier source, Component label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries) {
         long now = System.currentTimeMillis();
         this.quotes.values().removeIf(quote -> quote.expires() < now);
         if (this.quotes.size() >= 4096 || this.quotes.values().stream().filter(quote -> quote.player().equals(player)).count() >= 32)

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.data.input;
 
+import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.data.store.Reward;
-import com.iafenvoy.system.util.PersistHolder;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;

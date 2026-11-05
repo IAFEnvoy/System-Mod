@@ -22,7 +22,8 @@ import java.util.Optional;
 /**
  * Complete server snapshot; card construction only reads these fields.
  */
-public record ShopOfferOutput(Identifier id, Component label, List<ItemStackTemplate> items, CommerceCatalog.Price price,
+public record ShopOfferOutput(Identifier id, Component label, List<ItemStackTemplate> items,
+                              CommerceCatalog.Price price,
                               boolean paymentAvailable, String catalogRevision) implements CardData {
     public static final MapCodec<ShopOfferOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Identifier.CODEC.fieldOf("id").forGetter(ShopOfferOutput::id),

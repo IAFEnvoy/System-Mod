@@ -1,8 +1,8 @@
 package com.iafenvoy.system.module.client;
 
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.data.card.CardReference;
 import com.iafenvoy.system.command.AssistantCommandSource;
+import com.iafenvoy.system.data.card.CardReference;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import net.minecraft.resources.Identifier;
 

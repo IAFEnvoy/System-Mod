@@ -66,7 +66,6 @@ public final class ClientNetworkHandler {
     }
 
     private static void bound(AgentResult result) {
-        Minecraft minecraft = Minecraft.getInstance();
         AssistantClient.notice(result);
         AssistantClient.send(ControlRequest.STATE);
     }

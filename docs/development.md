@@ -99,7 +99,7 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 
 `CodecIO` 统一 JSON 文本边界与 Codec 编解码。`Conversation` 的 `history` 与 `requests` 都用 Saturn `CollectionCodecs` 的容错容器：逐项解码，解析错误或构造异常只丢弃该项并记日志，不接受部分值，编码仍严格执行；外层 `lenientOptionalFieldOf` 处理整个字段类型无效的情况；不迁移旧载荷。`history` 的一轮对话是 sealed `Message`，`role` 是唯一判别字段：`user` 存原文，`assistant` 直接嵌套 `AgentResult`（与 `requests` 相同），读取方按变体取值，不再各自解析 JSON 字符串；新增 role 只需加一个 record 和 dispatch 的一个分支。绑定、奖励、订单、写步骤、请求输入指纹等保持严格读取。配置使用不可变 record、`RecordCodecBuilder` 和 record getter，按字段以 `lenientOptionalFieldOf` 读取。范围与字段语义在子 Codec 校验，枚举及嵌套构造异常通过 `ConfigCodecs` 转为解析错误。配置中缺失、null、类型错误、无效枚举、越界值或嵌套 Codec 构造异常只回退该字段，其他有效配置保留；配置集合返回不可变快照，玩家文件仍使用 FileAgentStore 的原有 force/原子替换事务。
 
-`AgentRequest` 表达聊天、模块调用、卡片按钮、控制请求和偏好，通过 `SystemRequestTypes` 向 `SystemRegistries.AGENT_REQUEST_TYPE` 登记 `MapCodec`；对象的 `codec()` 返回注册实例，根 Codec 按 `type` 分派。`AgentResponse` 使用对应的正式注册表分派，已删除旧 `DispatchRegistry`；任务查询按 Tool 声明固定返回单个数据对象或 List，不使用多态结果注册表。两端载荷通过原版 `ByteBufCodecs.fromCodecWithRegistries` 复用 Codec，直接传递类型对象；JSON 只用于文本边界。模型路由返回值按 `capabilityId` 从本次可选模块的 Codec Map 分派，签到仅接收 SignInDecision，发送的玩家投影不包含其他在线玩家。ConversationMemory 使用有界、允许字段组成的对象投影：每个卡片通过 `CardData.memoryFact()` 描述自己的可指代实体，默认返回空，截断与数量上限集中在 `CardFact`，新增卡片类型无需改动中心注册表。
+`AgentRequest` 表达聊天、模块调用、卡片按钮、控制请求和偏好，通过 `SystemRequestTypes` 向 `SystemRegistries.AGENT_REQUEST_TYPE` 登记 `StreamCodec`；对象的 `streamCodec()` 返回注册实例，根 `STREAM_CODEC` 按同步的注册表数字 ID 分派。`AgentResponse` 使用对应的正式注册表分派，已删除旧 `DispatchRegistry`；任务查询按 Tool 声明固定返回单个数据对象或 List，不使用多态结果注册表。两端载荷直接以 StreamCodec 编解码类型对象，不再先走 Codec；仅嵌套的持久化结构（`AgentResult`、`AgentAction`）仍复用其 Codec。JSON 只用于文本边界。模型路由返回值按 `capabilityId` 从本次可选模块的 Codec Map 分派，签到仅接收 SignInDecision，发送的玩家投影不包含其他在线玩家。ConversationMemory 使用有界、允许字段组成的对象投影：每个卡片通过 `CardData.memoryFact()` 描述自己的可指代实体，默认返回空，截断与数量上限集中在 `CardFact`，新增卡片类型无需改动中心注册表。
 
 固定业务数据、配置、存档、模型与语音报文使用 Codec。JSON 只保留在动态 JSON Schema 与通用界面格式化边界；工具写入回执使用原版 Dynamic/PASSTHROUGH 保存暂不解释的结果，回放时由对应工具结果 Codec 解码，不在业务中按键取值。
 
@@ -116,7 +116,7 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 | `TokenUsageRequestC2S` | `system:token_usage_request_c2s` |
 | `TokenUsageResponseS2C` | `system:token_usage_response_s2c` |
 
-当前协议版本为 **1**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航、绑定变更、状态与历史，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的 Codec 在网络解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
+当前协议版本为 **1**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航、绑定变更、状态与历史，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的流式解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
 
 ## 扩展模块
 

@@ -54,6 +54,7 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
         return this.operations;
     }
 
+    @Override
     public void putTask(String key, EventTask task) {
         this.measure();
         this.tasks.put(key, task);
@@ -62,10 +63,12 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
         this.markDirty();
     }
 
+    @Override
     public EventTask getTask(String key) {
         return this.tasks.get(key);
     }
 
+    @Override
     public void setTaskState(String key, State state) {
         EventTask task = this.tasks.get(key);
         if (task.state == state) return;
@@ -74,6 +77,7 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
         this.markDirty();
     }
 
+    @Override
     public void completeTask(String key, AgentResult result) {
         EventTask task = this.tasks.get(key);
         task.complete(result);
@@ -81,6 +85,7 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
         this.markDirty();
     }
 
+    @Override
     public void updateTaskUsage(String key, int modelCalls, int toolCalls, int workflowSteps, int writeSteps, int tokens) {
         EventTask task = this.tasks.get(key);
         if (task.modelCalls == modelCalls && task.toolCalls == toolCalls && task.workflowSteps == workflowSteps
@@ -94,10 +99,12 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
         this.markDirty();
     }
 
+    @Override
     public Stream<EventTask> streamTasks() {
         return this.tasks.values().stream();
     }
 
+    @Override
     public void assertTaskCount() {
         // A full table still accepts new tasks once finished ones can be dropped; never fail for lack of space.
         if (this.tasks.size() >= config().taskEntries() && this.tasks.values().stream().allMatch(EventTask::pending))
@@ -127,10 +134,12 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
         }
     }
 
+    @Override
     public Step getOperation(String key) {
         return this.operations.get(key);
     }
 
+    @Override
     public void putOperation(String key, Step step) {
         this.measure();
         this.operations.put(key, step);
@@ -139,6 +148,7 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
         this.markDirty();
     }
 
+    @Override
     public void completeOperation(String key, Dynamic<?> result) {
         Step step = this.operations.get(key);
         step.state = State.DONE;
@@ -149,6 +159,7 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
         this.markDirty();
     }
 
+    @Override
     public void assertOperationCount(String key) {
         // Only a table with no completed receipt to reclaim is genuinely full.
         if (this.operations.size() >= config().journalEntries() && !this.operations.containsKey(key)
@@ -173,6 +184,7 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
         }
     }
 
+    @Override
     public boolean hasCompletedOperation(String taskId) {
         return this.operations.entrySet().stream().anyMatch(entry -> entry.getKey().startsWith(taskId + ":") && entry.getValue().state == State.DONE);
     }

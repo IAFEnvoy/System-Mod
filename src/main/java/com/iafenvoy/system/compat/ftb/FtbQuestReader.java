@@ -29,8 +29,7 @@ public final class FtbQuestReader {
     }
 
     // Never load TaskClient on a dedicated server. Unknown resource handlers stay with FTB.
-    private static final TypeDispatch<Void, Submission> SUBMISSIONS = new TypeDispatch<Void, Submission>((_, value) ->
-            ((Task) value).consumesResources() ? Submission.FTB_ONLY : Submission.NONE)
+    private static final TypeDispatch<Void, Submission> SUBMISSIONS = new TypeDispatch<Void, Submission>((_, value) -> ((Task) value).consumesResources() ? Submission.FTB_ONLY : Submission.NONE)
             .register(ItemTask.class, (_, task) -> task.isTaskScreenOnly() ? Submission.FTB_ONLY : task.consumesResources() ? Submission.DIRECT : Submission.NONE)
             .register(CheckmarkTask.class, (_, _) -> Submission.DIRECT)
             .register(XPTask.class, (_, _) -> Submission.DIRECT)

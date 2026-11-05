@@ -1,16 +1,18 @@
 package com.iafenvoy.system.agent;
 
-import com.iafenvoy.system.registry.SystemRegistries;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
+import com.iafenvoy.system.registry.SystemResourceKeys;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 
 import java.util.function.Function;
 
 /**
- * Response kinds distinguish replies, notifications and navigation without reserving request IDs.
+ * Response kinds distinguish replies, notifications and navigation without reserving request IDs. The kind travels as
+ * the synced registry id of its stream codec, so no codec-level dispatch is involved.
  */
 public interface AgentResponse {
-    Codec<AgentResponse> CODEC = SystemRegistries.AGENT_RESPONSE_TYPE.byNameCodec().dispatch("type", AgentResponse::codec, Function.identity());
+    StreamCodec<RegistryFriendlyByteBuf, AgentResponse> STREAM_CODEC = ByteBufCodecs.registry(SystemResourceKeys.AGENT_RESPONSE_TYPE).dispatch(AgentResponse::streamCodec, Function.identity());
 
-    MapCodec<? extends AgentResponse> codec();
+    StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse> streamCodec();
 }

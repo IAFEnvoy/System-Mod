@@ -1,17 +1,18 @@
 package com.iafenvoy.system.agent.request;
 
 import com.iafenvoy.system.agent.AgentRequest;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 
 /**
  * Chat text enters the shared intent router.
  */
 public record ChatRequest(String text) implements AgentRequest {
-    public static final MapCodec<ChatRequest> CODEC = Codec.string(0, 2000).fieldOf("text").xmap(ChatRequest::new, ChatRequest::text);
+    public static final StreamCodec<ByteBuf, ChatRequest> STREAM_CODEC = ByteBufCodecs.stringUtf8(2000).map(ChatRequest::new, ChatRequest::text);
 
     @Override
-    public MapCodec<ChatRequest> codec() {
-        return CODEC;
+    public StreamCodec<ByteBuf, ChatRequest> streamCodec() {
+        return STREAM_CODEC;
     }
 }

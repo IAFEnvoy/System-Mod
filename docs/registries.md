@@ -12,15 +12,15 @@
 
 ## System 自有内置注册表
 
-下表字段对应 SystemResourceKeys 的键与 SystemRegistries 的实例。代码类型在两端创建，由 NewRegistryEvent / DeferredRegister 登记并冻结；不启用数字 ID 同步，按名称 Codec 编解码。
+下表字段对应 SystemResourceKeys 的键与 SystemRegistries 的实例。代码类型在两端创建，由 NewRegistryEvent / DeferredRegister 登记并冻结；除请求 / 响应两张协议表外不启用数字 ID 同步，按名称 Codec 编解码。
 
 | 注册表 ID | 公开字段 | 条目类型 | 内置声明 |
 | --- | --- | --- | --- |
 | `system:server_module` | `SERVER_MODULE` | `MapCodec<? extends ServerModule>` | SystemServerModules |
 | `system:card_data_type` | `CARD_DATA_TYPE` | `MapCodec<? extends CardData>` | SystemCardDataTypes |
 | `system:action_type` | `ACTION_TYPE` | `MapCodec<? extends AgentAction>` | SystemActionTypes |
-| `system:agent_request_type` | `AGENT_REQUEST_TYPE` | `MapCodec<? extends AgentRequest>` | SystemRequestTypes |
-| `system:agent_response_type` | `AGENT_RESPONSE_TYPE` | `MapCodec<? extends AgentResponse>` | SystemResponseTypes |
+| `system:agent_request_type` | `AGENT_REQUEST_TYPE` | `StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentRequest>` | SystemRequestTypes |
+| `system:agent_response_type` | `AGENT_RESPONSE_TYPE` | `StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>` | SystemResponseTypes |
 | `system:card_node_type` | `CARD_NODE_TYPE` | `MapCodec<? extends CardNode>` | SystemCardNodeTypes |
 
 共 6 张代码注册表。只有卡片节点的 DeferredRegister 在 SystemClientMod 绑定；专用服务端保留其空表。ClientModule 已移出 MC 注册表，SystemRegistries 与 SystemResourceKeys 不再引用该接口。
@@ -77,9 +77,9 @@ AgentAction call = QuestDetailInput.byId(id);
 | `system:agent_request_type` | `system:chat`、`system:invoke`、`system:control`、`system:preferences`、`system:card_action` | `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest`、`CardActionRequest` |
 | `system:agent_response_type` | `system:reply`、`system:notice`、`system:open`、`system:binding`、`system:state`、`system:history` | `ReplyResponse`、`NoticeResponse`、`OpenResponse`、`BindingResponse`、`StateResponse`、`HistoryResponse` |
 
-这些根接口通过 `codec()` 返回已注册的 MapCodec 实例；根 `CODEC` 从对应注册表的 `byNameCodec()` 按 `type` 分派。没有额外的 `DispatchRegistry.Type` 包装或 ID Map。未知 ID、未登记的 Codec 由原版注册表 Codec 拒绝，网络版本仍为 `1`。
+这两张协议表登记的是 `StreamCodec`：根 `STREAM_CODEC` 用 `ByteBufCodecs.registry(...)` 读取同步的数字 ID，再由 `StreamCodec.dispatch` 直接调用条目自己的 `streamCodec()`，不经过 `Codec` / JSON，也没有按 `type` 字符串或 ID Map 分派。两张表因此启用数字 ID 同步（`sync(true)`），两端登记顺序一致；未知 ID 由流式解码阶段抛出。网络版本仍为 `1`。
 
-请求与响应分别位于 `agent.request`、`agent.response` 的独立文件，各自定义 `CODEC`，`SystemRequestTypes` / `SystemResponseTypes` 只引用并登记这些实例。`ControlRequest` 保留枚举形式，其 MapCodec 编解码 `action` 字段；导航枚举为 `OpenResponse.View`，绑定变更枚举为 `BindingResponse.Change`。根接口只保留统一分派入口及公共契约。
+请求与响应分别位于 `agent.request`、`agent.response` 的独立文件，各自定义 `STREAM_CODEC`，`SystemRequestTypes` / `SystemResponseTypes` 只引用并登记这些实例。`ControlRequest` 保留枚举形式，按序号编码；导航枚举为 `OpenResponse.View`，绑定变更枚举为 `BindingResponse.Change`，同样按序号编码。根接口只保留统一分派入口及公共契约。
 
 任务读取不需要类型注册表：`ftb.query` / `ftb.find` 固定返回 `List<QuestBriefOutput>`，`ftb.detail` 固定返回 `QuestOutput`，新手礼包工具固定返回 `StarterGiftOutput`，各自直接使用对应 Codec。名称歧义选择和礼包展示由 `QuestDetailModule` 组合工具处理，详情见[FTB 适配与边界](development.md#ftb-适配与边界)。
 

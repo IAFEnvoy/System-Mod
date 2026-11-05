@@ -9,11 +9,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.BiPredicate;
 
 /**
@@ -49,7 +45,7 @@ public final class CommerceCatalogs {
     }
 
     private <T> List<Holder<T>> filter(List<Holder<T>> entries, ResourceKey<Registry<T>> registry,
-                                     List<CatalogModule<?>> modules) {
+                                       List<CatalogModule<?>> modules) {
         return entries.stream().filter(entry -> modules.stream().anyMatch(module ->
                 module.catalog().equals(registry) && module.allows(this.catalog.registries(), HolderHelper.id(entry)))).toList();
     }

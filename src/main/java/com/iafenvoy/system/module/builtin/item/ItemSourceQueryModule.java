@@ -64,7 +64,6 @@ public final class ItemSourceQueryModule extends AbstractAgentModule<ItemSourceQ
     @Override
     public AgentResult execute(ExecutionContext context, ItemSourceQueryInput input) throws Exception {
         ItemSourceOutput output = context.tool(BuiltinTools.ITEM_SOURCES, "sources", input);
-        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.item_sources",
-                CodecIO.write(ItemSourceOutput.CODEC, output), List.of());
+        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.item_sources", CodecIO.write(ItemSourceOutput.CODEC, output), List.of());
     }
 }

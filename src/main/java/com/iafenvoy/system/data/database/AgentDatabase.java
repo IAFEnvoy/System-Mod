@@ -1,18 +1,15 @@
 package com.iafenvoy.system.data.database;
 
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.util.CodecIO;
+import com.iafenvoy.system.util.FileAccess;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.Identifier;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 /**
@@ -118,8 +115,8 @@ public final class AgentDatabase implements AutoCloseable {
         if (this.closed) throw new AgentException("STORAGE_UNAVAILABLE");
         if (this.tables != null) return;
         try {
-            this.tables = Files.exists(this.file) ? CodecIO.parse(CODEC, Files.readString(this.file, StandardCharsets.UTF_8)) : Map.of();
-        } catch (IOException | RuntimeException error) {
+            this.tables = FileAccess.JSON.loadOrDefault(CODEC, this.file, Map.of());
+        } catch (Exception error) {
             // Preserve unreadable files instead of replacing potentially unrelated player/module data.
             throw new AgentException("STORAGE_UNAVAILABLE", new IOException("Unable to read agent database: " + this.file, error));
         }
@@ -129,15 +126,9 @@ public final class AgentDatabase implements AutoCloseable {
         Map<Identifier, Map<String, Dynamic<?>>> next = new LinkedHashMap<>(this.tables);
         if (entries.isEmpty()) next.remove(table);
         else next.put(table, Map.copyOf(entries));
-        Path temporary = this.file.resolveSibling(this.file.getFileName() + ".tmp");
         try {
             Files.createDirectories(this.file.getParent());
-            Files.writeString(temporary, CodecIO.write(CODEC, next), StandardCharsets.UTF_8);
-            try {
-                Files.move(temporary, this.file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException error) {
-                Files.move(temporary, this.file, StandardCopyOption.REPLACE_EXISTING);
-            }
+            FileAccess.JSON.save(CODEC, this.file, next);
             this.tables = Map.copyOf(next);
         } catch (IOException | RuntimeException error) {
             throw new AgentException("STORAGE_UNAVAILABLE", new IOException("Unable to save agent database: " + this.file, error));

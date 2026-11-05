@@ -379,8 +379,10 @@ p {
 }
 
 #conversation {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    align-content: safe end;
     flex: 1;
     min-height: 0;
     overflow-y: auto;
@@ -388,12 +390,10 @@ p {
     padding: 18px 4px 14px;
 }
 
-/* Auto margin anchors short transcripts; overflowing cards retain their full normal-flow height. */
+/* Use the same content-sized grid row for placement and scroll extents; safe end keeps long transcripts reachable. */
 #conversation_entries {
     display: block;
-    flex: 0 0 auto;
     min-width: 0;
-    margin-top: auto;
 }
 
 .message {

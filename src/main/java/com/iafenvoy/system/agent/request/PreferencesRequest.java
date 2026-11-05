@@ -1,22 +1,21 @@
 package com.iafenvoy.system.agent.request;
 
 import com.iafenvoy.system.agent.AgentRequest;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 
 /**
  * Player preferences update server-side history and external-model permissions.
  */
 public record PreferencesRequest(boolean history, boolean external) implements AgentRequest {
-    public static final MapCodec<PreferencesRequest> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Codec.BOOL.fieldOf("history").forGetter(PreferencesRequest::history),
-            Codec.BOOL.fieldOf("external").forGetter(PreferencesRequest::external)
-    ).apply(i, PreferencesRequest::new));
+    public static final StreamCodec<ByteBuf, PreferencesRequest> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.BOOL, PreferencesRequest::history,
+            ByteBufCodecs.BOOL, PreferencesRequest::external, PreferencesRequest::new);
 
     @Override
-    public MapCodec<PreferencesRequest> codec() {
-        return CODEC;
+    public StreamCodec<ByteBuf, PreferencesRequest> streamCodec() {
+        return STREAM_CODEC;
     }
 
     @Override

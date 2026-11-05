@@ -2,7 +2,10 @@ package com.iafenvoy.system.data.card;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.netty.buffer.ByteBuf;
 import net.minecraft.core.UUIDUtil;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 
 import java.util.UUID;
 
@@ -14,4 +17,7 @@ public record CardReference(UUID id, long revision) {
             UUIDUtil.STRING_CODEC.fieldOf("id").forGetter(CardReference::id),
             Codec.LONG.fieldOf("revision").forGetter(CardReference::revision)
     ).apply(i, CardReference::new));
+    public static final StreamCodec<ByteBuf, CardReference> STREAM_CODEC = StreamCodec.composite(
+            UUIDUtil.STREAM_CODEC, CardReference::id,
+            ByteBufCodecs.VAR_LONG, CardReference::revision, CardReference::new);
 }

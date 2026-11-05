@@ -16,7 +16,8 @@ import java.util.List;
 /**
  * One sign-in reward table entry; the id comes from the registry key, not from the payload.
  */
-public record SignInRewardEntry(Component label, List<ItemStackTemplate> items, boolean enabled) implements EnabledEntry {
+public record SignInRewardEntry(Component label, List<ItemStackTemplate> items,
+                                boolean enabled) implements EnabledEntry {
     public static final Codec<SignInRewardEntry> CODEC = RecordCodecBuilder.<SignInRewardEntry>create(i -> i.group(
             ComponentSerialization.CODEC.optionalFieldOf("label", Component.empty()).forGetter(SignInRewardEntry::label),
             Reward.ITEMS_CODEC.optionalFieldOf("items", List.of()).forGetter(SignInRewardEntry::items),

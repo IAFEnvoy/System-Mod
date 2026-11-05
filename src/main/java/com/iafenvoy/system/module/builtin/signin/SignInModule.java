@@ -33,6 +33,7 @@ import java.util.Optional;
  */
 public final class SignInModule extends AbstractAgentModule<SignInInput> {
     private final CommerceCatalogs catalogs;
+
     public SignInModule(CommerceCatalogs catalogs, ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player, ToolRegistry.Tool<SignInCreditInput, RewardOutput> credit) {
         super(SignInInput.CODEC, "Perform today's AI sign-in ONLY when explicitly requested. For status/reward questions use system:inbox.", List.of(player, credit), true, false, ExecutionPolicy.quick(2, 1));
         this.catalogs = catalogs;

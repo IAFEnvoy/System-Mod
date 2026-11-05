@@ -30,6 +30,7 @@ import java.util.concurrent.CompletionStage;
  */
 public final class SignInCreditTool implements ToolRegistry.Handler<SignInCreditInput, RewardOutput> {
     private final CommerceCatalogs catalogs;
+
     public SignInCreditTool(CommerceCatalogs catalogs) {
         this.catalogs = catalogs;
     }

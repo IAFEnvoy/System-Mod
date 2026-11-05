@@ -1,25 +1,27 @@
 package com.iafenvoy.system.agent.request;
 
 import com.iafenvoy.system.agent.AgentRequest;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
-
-import java.util.Arrays;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 
 /**
  * Session controls bypass chat routing and carry no conversation text.
  */
 public enum ControlRequest implements AgentRequest {
     STATE, HISTORY, FORGET, OPEN;
-    private static final Map<String, ControlRequest> VALUES = Arrays.stream(values()).collect(Collectors.toMap(Enum::name, Function.identity()));
-    public static final MapCodec<ControlRequest> CODEC = Codec.stringResolver(ControlRequest::name, VALUES::get).fieldOf("action");
+    private static final ControlRequest[] VALUES = values();
+    public static final StreamCodec<ByteBuf, ControlRequest> STREAM_CODEC = ByteBufCodecs.VAR_INT
+            .map(ControlRequest::byId, ControlRequest::ordinal);
+
+    static ControlRequest byId(int id) {
+        if (id < 0 || id >= VALUES.length) throw new IllegalArgumentException("Unknown control request id " + id);
+        return VALUES[id];
+    }
 
     @Override
-    public MapCodec<ControlRequest> codec() {
-        return CODEC;
+    public StreamCodec<ByteBuf, ControlRequest> streamCodec() {
+        return STREAM_CODEC;
     }
 
     @Override

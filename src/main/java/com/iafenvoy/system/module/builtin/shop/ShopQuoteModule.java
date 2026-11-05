@@ -23,6 +23,7 @@ import java.util.Optional;
  */
 public final class ShopQuoteModule extends AbstractAgentModule<ShopQuoteInput> {
     private final CommerceCatalogs catalogs;
+
     public ShopQuoteModule(CommerceCatalogs catalogs, ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
         super(ShopQuoteInput.CODEC, "Preview ONE shop purchase; player must then explicitly select the returned confirmation action.", List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
         this.catalogs = catalogs;

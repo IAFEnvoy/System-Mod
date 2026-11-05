@@ -1,6 +1,8 @@
 package com.iafenvoy.system.assistant;
 
-import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.AgentAction;
+import com.iafenvoy.system.agent.AgentRequest;
+import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.request.ChatRequest;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.request.InvokeRequest;

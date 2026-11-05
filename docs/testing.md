@@ -1,5 +1,17 @@
 # 编译与验收
 
+## 2026-11-05 AgentRequest / AgentResponse 流式分派
+
+请求与响应只用于网络传输，接口的 `codec()` 改为 `streamCodec()`；`SystemRegistries` / `SystemResourceKeys` 的两张协议表改为 `Registry<StreamCodec<? super RegistryFriendlyByteBuf, ? extends ...>>` 并保留 `sync(true)`。根分派用 `ByteBufCodecs.registry(...).dispatch(..., streamCodec -> streamCodec)`，不再经过 `Codec`、`byNameCodec()` 或 `fromCodecWithRegistries` 的整包 NBT。C2S / S2C 载荷直接组合根 `STREAM_CODEC`；`ClientState`、`History`、`Message`、`CardReference`、`CardAction.Server` 新增流式编解码，枚举按序号编码，`AgentResult` / `AgentAction` 因同时用于存档与模型 JSON 仍保留 Codec，并在流式字段中桥接。
+
+执行 `gradlew build testModClasses --console=plain` 通过，`git diff --check` 通过。未运行测试或启动 Minecraft；注册表数字 ID 同步、两端编解码一致性、请求 / 响应收发及未知 ID 的断线行为仍需游戏内验收。
+
+## 2026-11-05 聊天记录底部多余滚动区域
+
+用户截图与调试反馈显示，物品查询卡片已结束，下面仍可滚动到没有内容的区域，重新打开界面也存在。阅读当前 AUI 1.2.9 的 ScrollModel、Flex 和 Grid 源码：滚动范围按直接子元素的位置与整盒尺寸计算，原聊天包装容器还参与 flex 主轴高度分配。将 conversation 改为单列、max-content 行的网格，去掉包装容器的 flex 与自动上边距，让定位和滚动范围共用网格行的尺寸；safe end 在有剩余空间时靠下，溢出时从顶部排列。消息内部保留普通文档流，未增加手动 scrollHeight 修正或重复子树测量。
+
+执行 `gradlew compileJava processResources --console=plain` 编译与资源处理通过；未运行测试或启动 Minecraft。本次按源码检查调整布局，实际底部留白、短对话对齐、长卡片滚动及工具栏切换仍需游戏内验收。
+
 ## 2026-11-04 重复包装检查
 
 静态检查 Agent / assistant / module 的服务装配、工具适配与结果转换：抽奖回执改为由交易事务直接填充已有 sourcePool 字段，移除工作流的二次玩家存档读取、临时 LotteryPreviewInput 和第二份回执；商城报价与购买复用 AgentResult.data。语义路由复用 LexicalIndex.Match / Ranking，移除同字段 DTO 复制，保留可用模块过滤、候选排序及覆盖率 / 分差检查。带工具身份、计费、目录权限、玩家代次校验的适配继续保留。

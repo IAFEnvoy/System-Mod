@@ -13,7 +13,8 @@ public record TokenUsageRequestC2SPayload(String id, boolean all, int offset) im
     public static final StreamCodec<RegistryFriendlyByteBuf, TokenUsageRequestC2SPayload> CODEC = StreamCodec.composite(
             ByteBufCodecs.stringUtf8(36), TokenUsageRequestC2SPayload::id,
             ByteBufCodecs.BOOL, TokenUsageRequestC2SPayload::all,
-            ByteBufCodecs.VAR_INT, TokenUsageRequestC2SPayload::offset, TokenUsageRequestC2SPayload::new);
+            ByteBufCodecs.VAR_INT, TokenUsageRequestC2SPayload::offset,
+            TokenUsageRequestC2SPayload::new);
 
     @Override
     public @NonNull Type<? extends CustomPacketPayload> type() {

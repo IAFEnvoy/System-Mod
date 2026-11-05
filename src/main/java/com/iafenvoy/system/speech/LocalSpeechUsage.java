@@ -6,6 +6,7 @@ import com.iafenvoy.system.data.usage.RecognitionUsage;
 import com.iafenvoy.system.data.usage.SpeechUsage;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import com.iafenvoy.system.util.CodecIO;
+import com.iafenvoy.system.util.FileAccess;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.client.Minecraft;
@@ -84,14 +85,11 @@ public final class LocalSpeechUsage {
         }
 
         private void load() {
-            Snapshot loaded = Snapshot.EMPTY;
             try {
-                if (Files.exists(this.path)) loaded = CodecIO.parse(Snapshot.CODEC, Files.readString(this.path));
-            } catch (IOException | RuntimeException | LinkageError error) {
-                SystemMod.LOGGER.error("Unable to load local speech usage {}", this.path, error);
+                this.value.compareAndSet(null, FileAccess.JSON.loadOrDefault(Snapshot.CODEC, this.path, Snapshot.EMPTY));
+            } catch (Exception e) {
+                SystemMod.LOGGER.error("Unable to load local speech usage {}", this.path, e);
             }
-            // An update that already committed wins; the file is the older copy in that case.
-            this.value.compareAndSet(null, loaded);
         }
 
         public Snapshot snapshot() {

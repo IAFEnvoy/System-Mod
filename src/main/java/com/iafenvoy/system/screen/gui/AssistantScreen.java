@@ -133,7 +133,7 @@ public final class AssistantScreen extends AssistantInputScreen {
             for (Element button : list.querySelectorAll("button[data-requires-idle]"))
                 button.setDisabled(AssistantClient.state().busy());
             document.getElementById("welcome").setInlineStyleProperty("display", entries.isEmpty() ? "flex" : "none");
-            document.getElementById("conversation").setInlineStyleProperty("display", entries.isEmpty() ? "none" : "flex");
+            document.getElementById("conversation").setInlineStyleProperty("display", entries.isEmpty() ? "none" : "grid");
             text(document.getElementById("status"), tr(AssistantClient.state().busy() ? "system.ui.working" : "system.ui.ready"));
             text(document.getElementById("send"), tr(AssistantClient.state().busy() ? "system.ui.working" : "system.ui.send"));
         });

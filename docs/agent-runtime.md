@@ -128,11 +128,11 @@ Descriptor 的 `tools` 为必需工具，`optionalTools` 为可选只读工具 I
 
 ## 请求、响应与类型分派
 
-`AgentRequest.CODEC` 与 `AgentResponse.CODEC` 从正式内置注册表 `SystemRegistries.AGENT_REQUEST_TYPE / AGENT_RESPONSE_TYPE` 的 `byNameCodec()` 按 `type` 分派；实例的 `codec()` 返回同一个已注册 MapCodec。内置条目通过 `SystemRequestTypes / SystemResponseTypes` 的 DeferredRegister 在两端登记，不再维护 DispatchRegistry 或自建类型 Map。未知 ID 和未注册的 Codec 由原版注册表 Codec 拒绝，定义中不能引用可选模组的类。卡片数据实现公共 card 包的 `CardData`，根 Codec 按相同方式分派各实现的 MapCodec。buildCard 返回包含模板、参数、按钮和 SpeechContent 的 CardBuilder，客户端再 build 成 CardView；不查客户端模块表或业务服务。动作同样实现 AgentAction 并由注册 MapCodec 分派，卡片按钮通过 CardActionRequest 携带来源 CardRef 与动作 ID/字符串参数，ModuleRouting.button 负责适配并校验原输入 Codec。条目列表见[注册表速查](registries.md)。
+`AgentRequest.STREAM_CODEC` 与 `AgentResponse.STREAM_CODEC` 从正式内置注册表 `SystemRegistries.AGENT_REQUEST_TYPE / AGENT_RESPONSE_TYPE` 读取同步的数字 ID，并由 `StreamCodec.dispatch` 直接调用条目自己的 `streamCodec()`；实例的 `streamCodec()` 返回同一个已注册 StreamCodec。内置条目通过 `SystemRequestTypes / SystemResponseTypes` 的 DeferredRegister 在两端登记，不再维护 DispatchRegistry 或自建类型 Map。未知 ID 在流式解码阶段抛出，定义中不能引用可选模组的类。卡片数据实现公共 card 包的 `CardData`，根 Codec 按相同方式分派各实现的 MapCodec。buildCard 返回包含模板、参数、按钮和 SpeechContent 的 CardBuilder，客户端再 build 成 CardView；不查客户端模块表或业务服务。动作同样实现 AgentAction 并由注册 MapCodec 分派，卡片按钮通过 CardActionRequest 携带来源 CardRef 与动作 ID/字符串参数，ModuleRouting.button 负责适配并校验原输入 Codec。条目列表见[注册表速查](registries.md)。
 
-请求实现为 `agent.request` 下的 `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest` 和 `CardActionRequest`，响应实现为 `agent.response` 下的 `ReplyResponse`、`NoticeResponse`、`OpenResponse`、`BindingResponse`、`StateResponse` 和 `HistoryResponse`。每个实现维护静态 MapCodec，`SystemRequestTypes` / `SystemResponseTypes` 只负责注册；根接口不再内联实现。`ControlRequest` 是枚举，其 Codec 保留 `action` 字段；导航与绑定枚举分别由对应响应持有。
+请求实现为 `agent.request` 下的 `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest` 和 `CardActionRequest`，响应实现为 `agent.response` 下的 `ReplyResponse`、`NoticeResponse`、`OpenResponse`、`BindingResponse`、`StateResponse` 和 `HistoryResponse`。每个实现维护静态 `STREAM_CODEC`，`SystemRequestTypes` / `SystemResponseTypes` 只负责注册；根接口不再内联实现。`ControlRequest` 是枚举，按序号编码；导航与绑定枚举分别由对应响应持有。
 
-以下 JSON 仅示意 Codec 结构；网络实际通过 `ByteBufCodecs.fromCodecWithRegistries` 编码类型对象：
+以下是各请求的语义字段；线上不发送 JSON，`type` 对应的只是注册表数字 ID，其余字段按各自的流式编解码器写入：
 
 ```jsonl
 {"type":"system:chat","text":"查看我的背包"}

@@ -13,7 +13,8 @@ public record AssistantRequestC2SPayload(String id, AgentRequest request) implem
     public static final Type<AssistantRequestC2SPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "assistant_request_c2s"));
     public static final StreamCodec<RegistryFriendlyByteBuf, AssistantRequestC2SPayload> CODEC = StreamCodec.composite(
             ByteBufCodecs.stringUtf8(36), AssistantRequestC2SPayload::id,
-            ByteBufCodecs.fromCodecWithRegistries(AgentRequest.CODEC), AssistantRequestC2SPayload::request, AssistantRequestC2SPayload::new);
+            AgentRequest.STREAM_CODEC, AssistantRequestC2SPayload::request,
+            AssistantRequestC2SPayload::new);
 
     @Override
     public @NonNull Type<? extends CustomPacketPayload> type() {

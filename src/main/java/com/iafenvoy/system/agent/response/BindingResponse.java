@@ -2,32 +2,31 @@ package com.iafenvoy.system.agent.response;
 
 import com.iafenvoy.system.agent.AgentResponse;
 import com.iafenvoy.system.agent.AgentResult;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
-
-import java.util.Arrays;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 
 /**
  * Binding changes update the client's session and presentation together.
  */
 public record BindingResponse(Change change, AgentResult result) implements AgentResponse {
-    public static final MapCodec<BindingResponse> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Change.CODEC.fieldOf("change").forGetter(BindingResponse::change),
-            AgentResult.CODEC.fieldOf("result").forGetter(BindingResponse::result)
-    ).apply(i, BindingResponse::new));
+    public static final StreamCodec<RegistryFriendlyByteBuf, BindingResponse> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT.map(Change::byId, Change::ordinal), BindingResponse::change,
+            ByteBufCodecs.fromCodecWithRegistriesTrusted(AgentResult.CODEC), BindingResponse::result,
+            BindingResponse::new);
 
     @Override
-    public MapCodec<BindingResponse> codec() {
-        return CODEC;
+    public StreamCodec<RegistryFriendlyByteBuf, BindingResponse> streamCodec() {
+        return STREAM_CODEC;
     }
 
     public enum Change {
         BOUND, REVOKED, INVALIDATED;
-        private static final Map<String, Change> VALUES = Arrays.stream(values()).collect(Collectors.toMap(Enum::name, Function.identity()));
-        public static final Codec<Change> CODEC = Codec.stringResolver(Enum::name, VALUES::get);
+        private static final Change[] VALUES = values();
+
+        static Change byId(int id) {
+            if (id < 0 || id >= VALUES.length) throw new IllegalArgumentException("Unknown binding change id " + id);
+            return VALUES[id];
+        }
     }
 }

@@ -21,7 +21,7 @@ public abstract class AbstractAgentModule<I extends AgentAction> implements Agen
     }
 
     protected AbstractAgentModule(SchemaMapCodec<I> inputCodec, String description, List<ToolRegistry.Tool<?, ?>> tools,
-                            Set<String> optionalTools, boolean interactive, boolean event, ExecutionPolicy policy) {
+                                  Set<String> optionalTools, boolean interactive, boolean event, ExecutionPolicy policy) {
         this.inputCodec = inputCodec;
         this.tools = List.copyOf(tools);
         this.descriptor = new Descriptor(Objects.requireNonNull(SystemRegistries.ACTION_TYPE.getKey(inputCodec), "Unregistered Agent action codec"), 1, description, inputCodec.schema(), this.tools.stream().map(ToolRegistry.Tool::id).collect(Collectors.toSet()), optionalTools, interactive, event, policy);

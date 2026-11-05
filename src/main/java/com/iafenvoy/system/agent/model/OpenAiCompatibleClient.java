@@ -23,6 +23,20 @@ public final class OpenAiCompatibleClient implements ModelClient {
     private final HttpTransport http = new HttpTransport();
 
     @Override
+    public void checkConfigured() {
+        synchronized (ModelConfig.INSTANCE) {
+            apiKey(ModelConfig.INSTANCE.get());
+        }
+    }
+
+    private static String apiKey(ModelConfig config) {
+        String key = config.apiKeyEnvironment().isBlank() ? null : System.getenv(config.apiKeyEnvironment());
+        if ((key == null || key.isBlank()) && config.apiKeyRequired())
+            throw new AgentException("MODEL_NOT_CONFIGURED");
+        return key;
+    }
+
+    @Override
     public Reply complete(List<Message> messages, int maxOutputTokens, Duration timeout) throws Exception {
         return this.complete(messages, maxOutputTokens, timeout, ignored -> {
         });
@@ -35,9 +49,7 @@ public final class OpenAiCompatibleClient implements ModelClient {
         Map<String, String> headers;
         // Read one request's endpoint, credentials and body atomically with config reloads; HTTP holds no lock.
         synchronized (ModelConfig.INSTANCE) {
-            String key = System.getenv(ModelConfig.INSTANCE.get().apiKeyEnvironment());
-            if ((key == null || key.isBlank()) && ModelConfig.INSTANCE.get().apiKeyRequired())
-                throw new AgentException("MODEL_NOT_CONFIGURED");
+            String key = apiKey(ModelConfig.INSTANCE.get());
             request = ChatCompletion.Request.of(messages, maxOutputTokens);
             endpoint = ModelConfig.INSTANCE.get().chatCompletionsEndpoint();
             headers = key == null || key.isBlank() ? Map.of() : Map.of("Authorization", "Bearer " + key);

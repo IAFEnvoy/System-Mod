@@ -34,6 +34,10 @@
 
 远程地址使用 HTTPS；`localhost`、`127.0.0.1` 和 `[::1]` 允许 HTTP，便于本地模型服务。地址不允许内嵌用户名/密码、查询参数或 fragment，也不跟随重定向。出站目标始终来自服务端配置。
 
+消息提交与本地指令 / 向量匹配不要求配置模型。`ModelClient.checkConfigured()` 只验证本地配置，不发网络请求；`ExecutionContext.model` 在等待模型并发槽、扣每日调用额度和用量记账之前检查外部 AI 偏好及配置。OpenAI 适配器在 `apiKeyRequired=true` 且环境变量为空或未设置时报告 `MODEL_NOT_CONFIGURED`；`false` 继续支持无认证本地服务，空环境变量名也视为未提供密钥。真正构造请求时仍在配置锁内重新读取密钥和连接参数。
+
+路由阶段遇到未配置模型或 AI 关闭时，返回可点击的本地操作选项，不将整条消息转成密钥错误；正常的低置信度路由仍可交给已配置的模型。此降级仅发生在选择操作的阶段，不替代签到奖励决策等必需的 AI 行为。详见[本地意图路由](semantic-routing.md)。
+
 切换普通兼容服务时修改 `baseUrl`、`model` 和 `apiKeyEnvironment`，可显式设 `providerType=openai`。若服务使用新的输出限制字段，再设 `outputTokenParameter=max_completion_tokens`。某些模型不支持 JSON 模式，可关闭 `jsonMode`，但仍需遵守现有提示词并直接返回 JSON。
 
 以下片段用于合并到 `system-model.json`；完整默认示例见 [system-model.json](../examples/agent/system-model.json)：

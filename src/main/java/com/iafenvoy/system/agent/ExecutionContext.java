@@ -243,7 +243,8 @@ public final class ExecutionContext {
 
     public <I, O> O model(String instruction, MapCodec<I> inputCodec, I input, Codec<O> outputCodec) throws Exception {
         // Enforce consent, quotas and concurrency here; the gateway owns HTTP and actual usage accounting.
-        this.check();
+        this.requireExternalServices();
+        this.engine.model().checkConfigured();
         if (++this.steps > this.policy.steps() || this.models >= this.policy.modelCalls())
             throw new AgentException("BUDGET_EXCEEDED");
         String content = CodecIO.write(ModelInput.codec(inputCodec), new ModelInput<>(input, new RequestContext(this.language)));

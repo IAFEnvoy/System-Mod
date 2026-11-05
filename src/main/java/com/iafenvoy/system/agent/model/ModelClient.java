@@ -9,6 +9,12 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public interface ModelClient extends AutoCloseable {
+    /**
+     * Validate local connection settings without network I/O, before reserving inference quota.
+     */
+    default void checkConfigured() {
+    }
+
     Reply complete(List<Message> messages, int maxOutputTokens, Duration timeout) throws Exception;
 
     default Reply complete(List<Message> messages, int maxOutputTokens, Duration timeout, Consumer<Usage> usage) throws Exception {

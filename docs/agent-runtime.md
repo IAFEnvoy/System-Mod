@@ -86,6 +86,8 @@ CommandRegistry 每服务实例只构建一棵 Brigadier CommandDispatcher，解
 
 `RoutingProfile.read` 是本地直达申请，注册表还要求模块可交互、写预算为零、所有声明工具只读，并通过相似度、分差、覆盖率和语句保护。相似度不是正确概率。写流程使用 `RoutingProfile.hints` 提供样例，仍由模型决定或由明确入口调用。
 
+路由低置信度且模型未配置或玩家关闭 AI 时，`RouteDecision` 使用 `LOCAL_FALLBACK` 来源并携带只读候选动作，交互执行器显示 `SelectionCardData`。`ModuleRegistry.suggestions` 依据已登记的快捷入口、profile 参数提取器及可选的 `.choice(labelKey)` 生成选项；参数只从本次原文解析，没有合适候选时退回通用快捷入口。点击是一次新的结构化请求，经原卡片控制器和服务端授权执行，不再调用模型路由；候选本身不会执行或写入成功路由缓存。模型主动要求澄清时也优先展示本次候选。
+
 `.shortcut(labelKey, input)` 声明澄清提示中的只读按钮；不设置则不展示。模型选择策略通过 ModuleRouting.Selection 统一保存：
 
 | 声明 | 模型能力目录与返回值解码 | 本地语义 / 意图缓存直达 |

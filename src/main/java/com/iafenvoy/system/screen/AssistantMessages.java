@@ -31,6 +31,7 @@ import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 
 import java.util.*;
@@ -219,7 +220,7 @@ public final class AssistantMessages {
         }
         boolean chatting = minecraft.screen instanceof ChatScreen;
         // Chat releases the vanilla cursor; all other screens hide this HUD to avoid overlapping controls.
-        if (minecraft.screen != null && !chatting || minecraft.options.hideGui) {
+        if (!canShow(minecraft)) {
             unmount();
             return;
         }
@@ -391,6 +392,29 @@ public final class AssistantMessages {
         if (event.getScreen() instanceof ChatScreen) updateInteraction(false);
     }
 
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void beforeMouse(InputEvent.MouseButton.Pre event) {
+        prepareMouseInput();
+    }
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void beforeScroll(ScreenEvent.MouseScrolled.Pre event) {
+        prepareMouseInput();
+    }
+
+    private static boolean canShow(Minecraft minecraft) {
+        return minecraft.player != null && minecraft.level != null && !minecraft.options.hideGui
+                && (minecraft.screen == null || minecraft.screen instanceof ChatScreen);
+    }
+
+    private static void prepareMouseInput() {
+        if (document == null) return;
+        Minecraft minecraft = Minecraft.getInstance();
+        // AUI dispatches input globally, before vanilla widgets; never wait for the next HUD tick to detach.
+        if (!canShow(minecraft)) unmount();
+        else updateInteraction(minecraft.screen instanceof ChatScreen);
+    }
+
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void tooltip(ScreenEvent.Render.Foreground event) {
         if (document == null || !canInteract(current) || !(event.getScreen() instanceof ChatScreen))
@@ -519,9 +543,10 @@ public final class AssistantMessages {
         Document mounted = document;
         Element panel = mounted.getElementById("workspace");
         if (panel == null) return;
-        // Only the visible panel owns mouse input; document events also include clicks outside the HUD.
+        // External listeners count as consumed in AUI even when their guard returns without doing anything.
+        // Internal listeners consume native input explicitly, only for the visible, interactive panel.
         for (String type : List.of("mousedown", "mouseup", "wheel"))
-            panel.addEventListener(type, event -> {
+            panel.addInternalEventListener(type, event -> {
                 if (document == mounted && canInteract(displayedMessage) && event instanceof MouseEvent mouse) {
                     mouse.consumeNative();
                     mounted.clearFocus();

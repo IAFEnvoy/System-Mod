@@ -1323,17 +1323,18 @@ body.notification {
 }
 
 html.message_hud, .notification, .notification * {
-    pointer-events: none;
+    /* Theme styles must not turn a passive HUD into an input surface. */
+    pointer-events: none !important;
     user-select: none;
 }
 
 .notification.interactive #workspace, .notification.interactive #workspace * {
-    pointer-events: auto;
+    pointer-events: auto !important;
 }
 
 .notification.interactive #workspace .minecraft_text,
 .notification.interactive #workspace .minecraft_text span {
-    pointer-events: none;
+    pointer-events: none !important;
 }
 
 .notification #workspace {

@@ -42,7 +42,8 @@ public final class ItemSourceQueryModule extends AbstractAgentModule<ItemSourceQ
                         },
                         List.of("钻石镐的配方", "怎么做钻石镐", "如何获取钻石镐", "钻石从哪获得", "钻石的掉落", "木板是什么标签"),
                         List.of("Recipes for minecraft:diamond_pickaxe", "How do I craft a torch", "How do I obtain a diamond pickaxe",
-                                "Where do I get diamonds", "Loot tables for minecraft:diamond", "Tags of minecraft:oak_planks")));
+                                "Where do I get diamonds", "Loot tables for minecraft:diamond", "Tags of minecraft:oak_planks"))
+                        .choice("system.action.view_item_sources"));
     }
 
     /**

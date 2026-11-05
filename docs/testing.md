@@ -1,5 +1,11 @@
 # 编译与验收
 
+## 2026-11-05 通知 HUD 鼠标透传
+
+用户反馈背包内 FTBQ 左上角任务书偶发无法点击，当时通知已隐藏。阅读 AUI 1.2.9 的 Event / MouseEvent / Client 与 FTB Library 26.1.2.9 的侧栏实现，确认 AUI 在原版控件处理前全局分发输入，普通监听器会在回调执行前将事件视为已消费，不能靠回调内的条件判断实现透传。通知面板的鼠标监听改为内部监听，仅可交互状态显式 consumeNative；模板取消文档级自动拦截，HUD 指针规则固定优先于主题。鼠标按下、释放及界面滚轮事件以 HIGHEST 优先级重新检查实际界面，进入背包等非聊天界面时在 AUI 分发前移除残留通知文档。
+
+执行 `gradlew compileJava processResources --console=plain` 通过。未运行测试或启动 Minecraft，未复现并确认此次 FTBQ 按钮故障的唯一原因；背包侧栏点击、通知动画期间透传、聊天栏内通知按钮与滚动仍需游戏内验收。
+
 ## 2026-11-05 AgentRequest / AgentResponse 流式分派
 
 请求与响应只用于网络传输，接口的 `codec()` 改为 `streamCodec()`；`SystemRegistries` / `SystemResourceKeys` 的两张协议表改为 `Registry<StreamCodec<? super RegistryFriendlyByteBuf, ? extends ...>>` 并保留 `sync(true)`。根分派用 `ByteBufCodecs.registry(...).dispatch(..., streamCodec -> streamCodec)`，不再经过 `Codec`、`byNameCodec()` 或 `fromCodecWithRegistries` 的整包 NBT。C2S / S2C 载荷直接组合根 `STREAM_CODEC`；`ClientState`、`History`、`Message`、`CardReference`、`CardAction.Server` 新增流式编解码，枚举按序号编码，`AgentResult` / `AgentAction` 因同时用于存档与模型 JSON 仍保留 Codec，并在流式字段中桥接。

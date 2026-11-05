@@ -27,7 +27,8 @@ public final class ItemQueryModule extends AbstractAgentModule<ItemQueryInput> {
                             return id == null ? null : new ItemQueryInput(id, 0);
                         },
                         List.of("查询物品 minecraft:diamond", "查看 minecraft:torch 的物品信息", "查一下钻石物品", "搜索物品注册名称"),
-                        List.of("Look up item minecraft:diamond", "Find item information for minecraft:torch", "Search for a diamond item", "Look up an item registry ID")));
+                        List.of("Look up item minecraft:diamond", "Find item information for minecraft:torch", "Search for a diamond item", "Look up an item registry ID"))
+                        .choice("system.action.view_items"));
     }
 
     @Override

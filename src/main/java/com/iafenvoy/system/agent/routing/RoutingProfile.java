@@ -10,7 +10,7 @@ import java.util.*;
  * Examples and argument extraction belong to the module; registration supplies identity and read authority.
  */
 public record RoutingProfile<I extends AgentAction>(Map<String, List<String>> examples, boolean direct,
-                                                    Arguments<I> arguments) {
+                                                    Arguments<I> arguments, String choiceLabelKey) {
     public RoutingProfile {
         Map<String, List<String>> copy = new LinkedHashMap<>();
         examples.forEach((language, texts) -> {
@@ -20,14 +20,22 @@ public record RoutingProfile<I extends AgentAction>(Map<String, List<String>> ex
         });
         examples = Collections.unmodifiableMap(copy);
         Objects.requireNonNull(arguments);
+        Objects.requireNonNull(choiceLabelKey);
     }
 
     public static <I extends AgentAction> RoutingProfile<I> read(Arguments<I> parser, List<String> chinese, List<String> english) {
-        return new RoutingProfile<>(Map.of("zh", chinese, "en", english), true, parser);
+        return new RoutingProfile<>(Map.of("zh", chinese, "en", english), true, parser, "");
     }
 
     public static <I extends AgentAction> RoutingProfile<I> hints(List<String> chinese, List<String> english) {
-        return new RoutingProfile<>(Map.of("zh", chinese, "en", english), false, _ -> null);
+        return new RoutingProfile<>(Map.of("zh", chinese, "en", english), false, _ -> null, "");
+    }
+
+    /**
+     * A parameterized read may offer an explicit choice even when it has no parameter-free shortcut.
+     */
+    public RoutingProfile<I> choice(String labelKey) {
+        return new RoutingProfile<>(this.examples, this.direct, this.arguments, labelKey);
     }
 
     public Bound bind(Identifier id, MapCodec<I> codec, boolean readOnly) {
@@ -39,11 +47,11 @@ public record RoutingProfile<I extends AgentAction>(Map<String, List<String>> ex
             } catch (RuntimeException ignored) {
                 return null;
             }
-        });
+        }, this.choiceLabelKey);
     }
 
     public record Bound(Identifier moduleId, Map<String, List<String>> examples, boolean direct,
-                        Arguments<AgentAction> arguments) {
+                        Arguments<AgentAction> arguments, String choiceLabelKey) {
     }
 
     @FunctionalInterface

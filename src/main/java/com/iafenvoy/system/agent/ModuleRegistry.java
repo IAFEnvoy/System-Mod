@@ -88,7 +88,7 @@ public final class ModuleRegistry {
         this.checkMutable();
         if (profile.direct() || this.modules.containsKey(id) || this.profiles.containsKey(id))
             throw new IllegalArgumentException("Rejection examples require a unique non-callable ID");
-        this.profiles.put(id, new RoutingProfile.Bound(id, profile.examples(), false, text -> null));
+        this.profiles.put(id, new RoutingProfile.Bound(id, profile.examples(), false, text -> null, ""));
     }
 
     public synchronized void root(AgentAction input) {
@@ -173,6 +173,26 @@ public final class ModuleRegistry {
     public List<AgentResult.Action> shortcuts(Predicate<Identifier> available) {
         return this.modules.entrySet().stream().filter(entry -> available.test(entry.getKey()))
                 .map(entry -> entry.getValue().shortcut()).filter(Objects::nonNull).toList();
+    }
+
+    /**
+     * Low-confidence matches may suggest registered read-only actions, but never execute them automatically.
+     */
+    public List<AgentResult.Action> suggestions(String text, List<ModelRoute.Candidate> candidates, Predicate<Identifier> available) {
+        List<AgentResult.Action> choices = new ArrayList<>();
+        for (ModelRoute.Candidate candidate : candidates) {
+            if (candidate.similarity() <= 0) continue;
+            Identifier id = Identifier.tryParse(candidate.moduleId());
+            Entry<?> entry = this.modules.get(id);
+            if (entry == null || !entry.readOnly() || !available.test(id)) continue;
+            RoutingProfile.Bound profile = this.profiles.get(id);
+            AgentAction parsed = profile == null || !profile.direct() ? null : profile.arguments().parse(text);
+            String label = profile == null ? "" : profile.choiceLabelKey();
+            if (label.isBlank() && entry.shortcut() != null) label = entry.shortcut().labelKey();
+            if (parsed != null && !label.isBlank()) choices.add(new AgentResult.Action(label, parsed));
+            else if (entry.shortcut() != null) choices.add(entry.shortcut());
+        }
+        return choices.isEmpty() ? this.shortcuts(available) : List.copyOf(choices);
     }
 
     public Map<String, ModelRoute.Capability> capabilities() {

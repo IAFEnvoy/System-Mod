@@ -50,9 +50,17 @@ public final class HybridRouter implements AutoCloseable {
                         && context.available(Identifier.tryParse(candidate.moduleId()))).toList();
         // The decoder accepts exactly the advertised catalogue, including confirmation-only exclusions.
         List<ConversationMemory.Entry> history = context.store().read(context.player(), data -> ConversationMemory.recent(data, context.taskId(), 1600));
-        ModelRoute route = context.model(context.prompt(SystemPrompts.ROUTING, Map.of("capabilities", CodecIO.write(ModelRoute.Capability.CATALOGUE, this.modules.capabilities(context::available)))),
-                ModelRoute.Input.CODEC, new ModelRoute.Input(text, history, hints), this.modules.modelCodec(context::available));
-        return new RouteDecision(route.call(), RouteSource.LLM);
+        try {
+            ModelRoute route = context.model(context.prompt(SystemPrompts.ROUTING, Map.of("capabilities", CodecIO.write(ModelRoute.Capability.CATALOGUE, this.modules.capabilities(context::available)))),
+                    ModelRoute.Input.CODEC, new ModelRoute.Input(text, history, hints), this.modules.modelCodec(context::available));
+            return new RouteDecision(route.call(), RouteSource.LLM,
+                    route.call() == null ? this.modules.suggestions(text, hints, context::available) : List.of());
+        } catch (AgentException error) {
+            // Missing credentials or opt-out only disable model fallback, not registered local capabilities.
+            if (!error.code().equals("MODEL_NOT_CONFIGURED") && !error.code().equals("MODEL_DISABLED")) throw error;
+            context.ensureMemoryCurrent();
+            return new RouteDecision(null, RouteSource.LOCAL_FALLBACK, this.modules.suggestions(text, hints, context::available));
+        }
     }
 
     private RouteDecision direct(ExecutionContext context, AgentAction input, RouteSource source) {
@@ -67,9 +75,10 @@ public final class HybridRouter implements AutoCloseable {
         } catch (Exception ignored) { /* An optional cache must not change a completed read result. */ }
     }
 
-    public AgentResult clarify(ExecutionContext context) {
-        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.clarify", "", List.of(
-                CardUpdate.show(SelectionCardData.shortcuts("system.result.clarify", "system.result.clarify", context.shortcuts()))));
+    public AgentResult clarify(ExecutionContext context, RouteDecision decision) {
+        String key = decision.source() == RouteSource.LOCAL_FALLBACK ? "system.result.clarify_local" : "system.result.clarify";
+        return new AgentResult(AgentResult.Status.SUCCEEDED, key, "", List.of(
+                CardUpdate.show(SelectionCardData.shortcuts(key, key, decision.choices().isEmpty() ? context.shortcuts() : decision.choices()))));
     }
 
     public void clear(UUID player) {

@@ -21,10 +21,12 @@ public final class QuestGuideModule extends AbstractAgentModule<QuestGuideInput>
     @Override
     public ModuleRouting<QuestGuideInput> routing() {
         return ModuleRouting.<QuestGuideInput>defaults()
+                .button(a -> new QuestGuideInput(a.required("query")))
                 .command(AgentCommand.argument("<query>", QuestGuideInput::new, "guide", "说明书", "查说明"))
                 .semantic(RoutingProfile.read(QuestGuideInput::new,
                         List.of("查一下说明书", "搜索任务里的说明", "查找整合包指南", "说明书里灵力怎么恢复", "在本地指南里查找机器使用方法"),
-                        List.of("Search the local manual", "Find instructions in the quest book", "Look up modpack guidance", "How do I restore energy according to the guide?")));
+                        List.of("Search the local manual", "Find instructions in the quest book", "Look up modpack guidance", "How do I restore energy according to the guide?"))
+                        .choice("system.action.view_guide"));
     }
 
     @Override

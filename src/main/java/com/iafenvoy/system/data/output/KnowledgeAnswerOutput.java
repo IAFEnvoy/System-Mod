@@ -33,7 +33,7 @@ public record KnowledgeAnswerOutput(String answer, List<DatabaseQueryOutput.Sour
     public CardBuilder buildCard() {
         Component text = this.answer.isBlank() ? Component.translatable("system.knowledge.sources_only") : Component.literal(this.answer);
         CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "knowledge_answer"))
-                .title("system.result.knowledge").summary(text).speech(text);
+                .title("system.result.knowledge").summary(text).speech(text).put("answer", this.answer);
         return builder.list("sources", this.sources, (prefix, source) -> builder.put(prefix + "title", source.title())
                 .put(prefix + "category", source.category()).put(prefix + "passage", source.passage()));
     }

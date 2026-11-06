@@ -1,9 +1,13 @@
 {
   "body": [
     {
+      "type": "system:title",
+      "text": "{{title}}"
+    },
+    {
       "type": "system:text",
-      "text": "{{title}}",
-      "unless": "notification"
+      "text": "{{summary}}",
+      "when": "summary"
     },
     {
       "type": "system:container",

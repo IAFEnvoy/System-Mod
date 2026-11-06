@@ -1,0 +1,23 @@
+{
+  "chapter.5A71080000000000.title": "08 · Field Manual",
+  "quest.5A71080001000000.title": "Using Quest Pins",
+  "quest.5A71080001000000.quest_desc": [
+    "A pin appears at the top-right of every quest tile. Click to make it upright, and click again to unpin.",
+    "Quest details share the same pin state. Pins last for the client connection and never advance progress."
+  ],
+  "quest.5A71080002000000.title": "Detection and Manual Submission",
+  "quest.5A71080002000000.quest_desc": [
+    "Detection checks inventory contents without consuming items.",
+    "Manual submission requires an explicit action and may consume supplies. Review the target first.",
+    "Task-screen-only targets must be submitted in the native FTB screen."
+  ],
+  "quest.5A71080003000000.title": "Chapters and Pages",
+  "quest.5A71080003000000.quest_desc": [
+    "The left column contains only chapters represented in the current query. Select one to switch the results.",
+    "Page capacity follows the column count and three fixed rows. Short pages keep the space and controls. Paging does not confirm or close a notification."
+  ],
+  "quest.5A71080004000000.title": "A Manual Behind a Dependency",
+  "quest.5A71080004000000.quest_desc": [
+    "The twelve branches share one prerequisite. This manual becomes readable only after completing Unlock Twelve Branches."
+  ]
+}

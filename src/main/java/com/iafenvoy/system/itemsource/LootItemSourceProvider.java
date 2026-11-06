@@ -46,7 +46,7 @@ public final class LootItemSourceProvider implements ItemSourceProvider {
             List<String> notes = index(registries, holder.value()).get(item);
             if (notes == null) continue;
             sources.add(new ItemSource("loot", holder.key().identifier().toString(), "loot_table", List.of(), List.of(),
-                    List.of(new ItemSourceSlot(List.of(ItemSourceIds.of(item)), 1)), notes));
+                    List.of(ItemSourceSlot.of(item)), notes));
         }
         return sources;
     }

@@ -1,33 +1,72 @@
 {
   "body": [
     {
-      "type": "system:text",
+      "type": "system:title",
+      "translate": "system.ui.quest_list_title"
+    },
+    {
+      "type": "system:context",
       "translate": "system.ui.quest_list_hint",
       "unless": "unlock_notice"
     },
     {
-      "type": "system:actions",
+      "type": "system:grouped_actions",
       "actions": "{{result_actions}}",
-      "page_size": 10
+      "group": "{{actions.*.action_chapter_id}}",
+      "group_label": "{{actions.*.action_chapter}}",
+      "section": "{{actions.*.action_group_id}}",
+      "section_label": "{{actions.*.action_group}}",
+      "columns": 6,
+      "max_row": 3,
+      "cell": 104,
+      "children": [
+        {
+          "type": "system:quest_pin",
+          "quest": "{{actions.*.action_quest_id}}"
+        },
+        {
+          "type": "system:quest_icon",
+          "quest": "{{actions.*.action_quest_id}}",
+          "title": "{{actions.*.action_title}}"
+        },
+        {
+          "type": "system:text",
+          "style": "offer_cell_label",
+          "text": "{{actions.*.action_title}}",
+          "when": "actions.*.action_title"
+        },
+        {
+          "type": "system:text",
+          "style": "offer_cell_label",
+          "text": "{{actions.*.label}}",
+          "unless": "actions.*.action_title"
+        },
+        {
+          "type": "system:text",
+          "style": "card_action_cell_meta",
+          "text": "#{{actions.*.action_number}}",
+          "when": "actions.*.action_title",
+          "unless": "unlock_notice"
+        },
+        {
+          "type": "system:progress",
+          "value": "{{actions.*.action_progress}}"
+        }
+      ]
     }
   ],
   "actions": {
-    "container_style": "quest_list",
-    "button_style": [
-      "card_action",
-      "quest_row"
-    ],
     "numbered": false,
     "label": [
       {
         "type": "system:text",
-        "text": "{{actions.*.action_number}}. {{actions.*.action_title}} · {{actions.*.action_chapter}} · {{actions.*.action_progress}}%",
+        "text": "{{actions.*.action_number}}. {{actions.*.action_title}}\n{{actions.*.action_progress}}%",
         "when": "actions.*.action_title",
         "unless": "unlock_notice"
       },
       {
         "type": "system:text",
-        "text": "{{actions.*.action_title}} · {{actions.*.action_chapter}} · {{actions.*.action_progress}}%",
+        "text": "{{actions.*.action_title}}\n{{actions.*.action_progress}}%",
         "when": "unlock_notice"
       },
       {

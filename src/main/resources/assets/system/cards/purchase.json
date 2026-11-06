@@ -1,8 +1,13 @@
 {
   "body": [
     {
-      "type": "system:text",
+      "type": "system:title",
       "text": "{{reward_label}}"
+    },
+    {
+      "type": "system:text",
+      "text": "{{summary}}",
+      "when": "summary"
     },
     {
       "type": "system:text",

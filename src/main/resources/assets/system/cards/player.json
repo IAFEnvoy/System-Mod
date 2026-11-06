@@ -1,6 +1,10 @@
 {
   "body": [
     {
+      "type": "system:title",
+      "translate": "system.ui.player_info"
+    },
+    {
       "type": "system:row",
       "style": ["card_row", "player_card_layout"],
       "children": [
@@ -19,11 +23,6 @@
           "type": "system:column",
           "style": ["card_column", "player_info"],
           "children": [
-            {
-              "type": "system:title",
-              "level": 2,
-              "translate": "system.ui.player_info"
-            },
             {
               "type": "system:player_information",
               "importance": 40

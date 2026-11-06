@@ -48,7 +48,7 @@
 
 ### 卡片数据与动作载荷
 
-卡片类型共 27 个：`text`、`selection`、`binding`、`shop_offer`、`shop_quote`、`player`、`items`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
+卡片类型共 29 个：`text`、`selection`、`binding`、`shop_offer`、`shop_catalog`、`shop_quote`、`player`、`items`、`item_sources`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
 
 动作类型共 21 个：`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`。
 
@@ -87,7 +87,11 @@ Codec 在第一次编解码时才访问注册表，避免静态初始化时提�
 
 ### 卡片节点
 
-内置节点：`system:text`、`system:title`、`system:context`、`system:container`、`system:row`、`system:column`、`system:details`、`system:link`、`system:divider`、`system:items`、`system:offer_grid`、`system:prize_grid`、`system:player`、`system:player_information`、`system:icons`、`system:actions`、`system:button`。
+内置节点：`system:text`、`system:markdown`、`system:title`、`system:context`、`system:container`、`system:row`、`system:column`、`system:details`、`system:link`、`system:divider`、`system:items`、`system:item_sources`、`system:offer_grid`、`system:prize_grid`、`system:player`、`system:player_information`、`system:icons`、`system:quest_icon`、`system:quest_pin`、`system:progress`、`system:actions`、`system:grouped_actions`、`system:button`。
+
+`item_sources` 的数据 Codec 由 `SystemCardDataTypes.ITEM_SOURCES`（ItemSourceOutput）注册，节点 Codec 由 `SystemCardNodeTypes.ITEM_SOURCES`（ItemSourcesNode）注册；两者 ID 均为 system:item_sources，分属两张注册表。数据保存服务端来源快照，节点读取 sources 参数并分为配方 / 掉落 / 标签三个分类，复用 CardPagination 分别分页；分类选择与各类页码属于当前卡片，不额外注册动作或网络载荷。
+
+`markdown` 通过 `SystemCardNodeTypes.MARKDOWN` 暴露，MarkdownNode 自己提供 MapCodec 与 render / text。text 默认引用 summary，可绑定其他原始字符串；AssistantMarkdown 复用 AUI 1.2.9 内置 Txtmark，只生成已知展示元素和经原版确认的 HTTP / HTTPS 点击动作。text 节点及 FTBQ 格式化逻辑不变；knowledge_answer / web_search 模板的模型答案改用 markdown，来源仍用原有 text / context，不新增 CardData 类型或网络协议。
 
 `player` 通过 `SystemCardNodeTypes.PLAYER` 暴露，绑定参数表中的 UUID，客户端解析原版玩家模型；尺寸使用共享 CSS，follow_mouse 控制光标跟随，yaw / pitch 控制固定朝向，scale 和 offset_x / offset_y 调整框内缩放和位置。服务端 player 卡片数据仅增加 playerId，不加载 PlayerModelElement，也不新增业务动作或网络包。其数据类型 ID 与节点类型 ID 同为 system:player，分属两张注册表。
 
@@ -95,7 +99,13 @@ Codec 在第一次编解码时才访问注册表，避免静态初始化时提�
 
 `icons` 绑定服务端准备的 `QuestIconOutput` 列表，按类型 ID 在客户端读取 FTB 原生图标并显示 tooltip；仅在实际渲染且安装 FTB 时加载隔离适配器，不新增服务端图标注册表。
 
+`quest_icon` 由 `SystemCardNodeTypes.QUEST_ICON` 暴露，quest / title 支持占位符；前者是已展示任务的 ID，后者是 tooltip 文本。可选适配器从 ClientQuestFile 取 Quest.getIcon，显示任务自身设置的图标并沿用原生回退。缺少 FTB、任务文件或有效任务时不绘制；不新增查询包，不将 FTB 类型混入公共数据。
+
+`quest_pin` / `progress` 分别由 `SystemCardNodeTypes.QUEST_PIN` / `PROGRESS` 暴露，各自实现 MapCodec。前者按 quest 参数切换 `ClientModuleCaches.QUEST_PINS` 的连接内列表，仅客户端有效；后者按 value 数字参数绘制百分比进度条。二者均由 quest_list.json children 配置，在任务格子右上角和底边渲染，不增加服务端动作、网络类型或数据包注册表。
+
 `details` 通过 summary、children 和默认 false 的 open 控制本地折叠；`link` 通过 text/url 调用原版打开链接流程。两者都是通用客户端节点，不增加业务 CardData 类型、服务端动作或协议载荷。
+
+`grouped_actions` 由 `SystemCardNodeTypes.GROUPED_ACTIONS` 注册，只从给定动作的 group / group_label 和可选 section / section_label 构建分组导航，复用 `ActionsNode` 的可信绑定与本地分页。格子复用商店货架样式，由 columns / cell 与 children 控制布局；不把动作标签直接用作多行 flex 按钮内容。任务列表使用 FTB 查询返回的章节 ID 和章节组信息；没有结果的分组不出现，也不向 FTB 再请求章节列表。选中组与各组页码保存在当前卡片的 `CardPageState`。
 
 JSON 使用完整 ID，例如 `{"type":"system:items","items":"{{result_items}}"}`。节点自身实现 `codec/css/render/text`，`CardNode.CODEC` 通过正式注册表分派。资源包能调整布局与参数，不能新增 Java 节点类型。格式见[客户端 JSON 卡片](cards.md)。
 

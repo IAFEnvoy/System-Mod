@@ -1,0 +1,143 @@
+{
+  "id": "5A71070000000000",
+  "group": "",
+  "order_index": 107,
+  "filename": "system_test_07_text",
+  "icon": {
+    "id": "minecraft:writable_book",
+    "count": 1
+  },
+  "default_quest_shape": "square",
+  "default_hide_dependency_lines": false,
+  "progression_mode": "linear",
+  "consume_items": false,
+  "default_repeatable_quest": false,
+  "quests": [
+    {
+      "id": "5A71070001000000",
+      "x": 0.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:lime_dye",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71070001010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:lime_dye",
+            "count": 1
+          },
+          "count": 1
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71070001020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 20
+        }
+      ]
+    },
+    {
+      "id": "5A71070002000000",
+      "x": 2.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:anvil",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71070002010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:anvil",
+            "count": 1
+          },
+          "count": 1
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71070002020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 20
+        }
+      ]
+    },
+    {
+      "id": "5A71070003000000",
+      "x": 4.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:flower_pot",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71070003010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:flower_pot",
+            "count": 1
+          },
+          "count": 1
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71070003020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 20
+        }
+      ]
+    },
+    {
+      "id": "5A71070004000000",
+      "x": 6.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:filled_map",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71070004010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:compass",
+            "count": 1
+          },
+          "count": 1
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71070004020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    }
+  ],
+  "quest_links": [],
+  "images": []
+}

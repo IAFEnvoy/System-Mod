@@ -14,6 +14,7 @@ import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.card.CardReference;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.client.ClientCards;
+import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.iafenvoy.system.screen.AssistantMessages;
@@ -223,6 +224,7 @@ public final class AssistantClient {
         if (Minecraft.getInstance().screen instanceof AssistantInputScreen screen) screen.stopRecognition();
         AssistantMessages.clear();
         ClientCards.clear();
+        ClientModuleCaches.QUEST_PINS.clear();
         state = AssistantClientState.EMPTY;
         revision++;
     }

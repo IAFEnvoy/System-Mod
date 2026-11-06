@@ -1,0 +1,221 @@
+{
+  "id": "5A71040000000000",
+  "group": "",
+  "order_index": 104,
+  "filename": "system_test_04_submission",
+  "icon": {
+    "id": "minecraft:hopper",
+    "count": 1
+  },
+  "default_quest_shape": "square",
+  "default_hide_dependency_lines": false,
+  "progression_mode": "linear",
+  "consume_items": false,
+  "default_repeatable_quest": false,
+  "quests": [
+    {
+      "id": "5A71040001000000",
+      "x": 0.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:cobblestone",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71040001010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:cobblestone",
+            "count": 1
+          },
+          "count": 8,
+          "consume_items": true
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71040001020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:iron_ingot",
+            "count": 1
+          },
+          "count": 2
+        },
+        {
+          "id": "5A71040001020002",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    },
+    {
+      "id": "5A71040002000000",
+      "x": 2.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:apple",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71040002010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:apple",
+            "count": 1
+          },
+          "count": 4,
+          "consume_items": true
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71040002020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:golden_carrot",
+            "count": 1
+          },
+          "count": 2
+        },
+        {
+          "id": "5A71040002020002",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    },
+    {
+      "id": "5A71040003000000",
+      "x": 4.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:chest",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71040003010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:torch",
+            "count": 1
+          },
+          "count": 4,
+          "consume_items": false
+        },
+        {
+          "id": "5A71040003010002",
+          "type": "item",
+          "item": {
+            "id": "minecraft:oak_log",
+            "count": 1
+          },
+          "count": 4,
+          "consume_items": true
+        },
+        {
+          "id": "5A71040003010003",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71040003020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 150
+        }
+      ]
+    },
+    {
+      "id": "5A71040004000000",
+      "x": 6.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:paper",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71040004010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:cobblestone",
+            "count": 1
+          },
+          "count": 4,
+          "consume_items": true
+        },
+        {
+          "id": "5A71040004010002",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71040004020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "require_sequential_tasks": true
+    },
+    {
+      "id": "5A71040005000000",
+      "x": 8.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:crafting_table",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71040005010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:oak_planks",
+            "count": 1
+          },
+          "count": 4,
+          "consume_items": true,
+          "task_screen_only": true
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71040005020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    }
+  ],
+  "quest_links": [],
+  "images": []
+}

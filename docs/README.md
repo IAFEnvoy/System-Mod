@@ -11,12 +11,15 @@
 | [包职责与数据流](architecture.md) | Agent / assistant / data / module / speech 边界、依赖注入、线程与关闭顺序 |
 | [开发与架构](development.md) | Agent 包组织、模块与工具接口、预算、持久化、MC 接入和当前限制 |
 | [功能模块化](feature-modules.md) | 功能装配、两端指令、生命周期、页面/通知/口播注册与可选集成 |
+| [物品来源卡片](feature-modules.md#物品来源查询) | 本地配方 / 掉落 / 标签查询、材料格与产物图标、候选 tooltip、独立翻页及覆盖范围 |
 | [FTB Quests 跨版本修复记录](ftb-quests-porting.md) | 1.21.1 标题 / 勾选礼包 / 领奖修复，以及待同步到 26.1.2 的入口与 API 差异 |
 | [FTB 本地说明书检索](quest-guides.md) | 勾选说明任务收录、纯 Java 稀疏向量索引、查询入口、可见性与存档缓存 |
+| [FTBQ 开发任务集](test-quests.md) | 12 章 80 任务、开发配置安装、分页 / 图钉 / 提交 / 解锁通知 / 说明书检查 |
 | [分层本地数据库](databases.md) | 存档共享库、玩家独立库、Codec 数据表、FTB 重新收录指令与生命周期 |
 | [JVector 索引评估](jvector-evaluation.md) | 发布体积实测、Java / SIMD、磁盘存储、稀疏 TF-IDF 适配与性能取舍；尚未接入 |
 | [注册表速查](registries.md) | 正式注册表 ID、条目类型、公开入口、查询方式及扩展注册示例 |
 | [客户端 JSON 卡片](cards.md) | CardData/CardBuilder、纯文本约定、通用模板解析、按钮动作、物品和资源包覆盖 |
+| [Card JSON 离线编辑器](card-editor.md) | 单 HTML 工具、节点树与属性编辑、示例 Context、预览和资源包导出 |
 | [卡片与消息数据流](card-flow-design.md) | 已实现的两端边界、完整 DTO、按 ID/版本更新、结果状态枚举与 BuiltinTools 职责 |
 | [轻量本地意图路由](semantic-routing.md) | 纯 Java 领域词表/TF-IDF、玩家意图缓存、只读直达、低把握回退与扩展 API |
 | [路由选型与后续计划](semantic-routing-plan.md) | 10MB 分发约束、fastText/LIBLINEAR 等方案核实、校准与后续方向 |

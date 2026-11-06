@@ -74,23 +74,27 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
 
 ### 物品来源查询
 
-`system:items` 装配两个工作流：`system:item_query`（名称/ID 检索）与 `system:item_sources`（单个物品的来源）。后者提供 `/system recipe <物品ID> [范围]`、语义路由、稳定动作 ID 和物品卡片上的「查看获取方式」按钮（检索结果只有一个匹配时出现，按钮带注册 ID，不需要玩家重抄）；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`，输出 Codec 直接就是返回给调用方的 JSON：
+`system:items` 装配两个工作流：`system:item_query`（名称/ID 检索）与 `system:item_sources`（单个物品的来源）。后者提供 `/system recipe <物品ID> [范围]`、语义路由、稳定动作 ID 和物品卡片上的「查看获取方式」按钮（检索结果只有一个匹配时出现，按钮带注册 ID，不需要玩家重抄）；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`。`ItemSourceOutput` 同时是工具结果与已注册的 CardData，工作流通过 `AgentResult.data` 发送卡片，不再把序列化 JSON 拼进消息正文。以下仅为工具快照的编码示例：
 
 ```json
-{"item":"minecraft:diamond_pickaxe","scope":"loot","sources":[
+{"item":"minecraft:iron_ingot","scope":"loot","sources":[
   {"kind":"loot","id":"minecraft:entities/zombie","type":"loot_table",
    "outputs":[{"items":["minecraft:iron_ingot"],"count":1}],"notes":["weight 1"]}],"truncated":false}
 ```
 
 `scope` 缺省为 `all`，即完整查询，跑所有已注册来源；也可以只写某个来源的路径（`recipe`、`loot`、`tag`）或它的完整 ID（`system:recipe`）。范围由 `ItemSourceProviders` 在装配时枚举，新增 Provider 后自动出现在补全里；未注册的范围会被拒绝（`INVALID_INPUT`），不会静默返回空列表。命令行写作 `/system recipe minecraft:diamond loot`，省略第二个词即为完整查询；语义路由只在请求里出现「掉落 / 战利品 / 配方 / 合成 / 标签」这类关键词时收窄到对应范围，其余情况保持完整查询。语义路由优先取请求里的显式注册 ID（`CommandArguments.singleItemId`），没有 ID 时再用 `ItemNameIndex` 在本地显示名表里做最长匹配（「如何获取钻石镐」→ `minecraft:diamond_pickaxe`，更长的名字优先于更短的前缀词）；该表在服务器启动装配 `system:items` 时构建一次，名称取自服务端语言，专用服务端只用服务端资源，中文名可能匹配不到，此时退回模型路由。
 
-默认值不会写进 JSON：`type` 缺省为空串，`station`、`inputs`、`notes` 缺省为空数组，`count` 缺省为 1，`scope` 缺省为 `all`。`kind`、`id`、`outputs` 始终存在，`outputs` 一定包含被查询的物品。结果上限 64 条，超出时置 `truncated`，单个配方最多 16 个输入槽、每槽最多 8 个候选，掉落最多检查 4096 张表，标签最多 64 个。
+默认值不会写进 JSON：`type` 缺省为空串，`station`、`inputs`、`notes` 缺省为空数组，`count` 缺省为 1，`scope` 缺省为 `all`，`width` 缺省为 0。槽位的 `items` 使用 ItemStackTemplate.CODEC（可以是 ID 简写，也可以带 components），数量单独保存在 count；候选是可替换项，不是需要一起消耗的材料。`width > 0` 表示有序合成，inputs 保留空格与重复材料，不再按旧的 16 槽上限截断。每槽最多 8 个候选示例，掉落最多检查 4096 张表，标签最多 64 个。汇总结果优先配方、其次掉落与标签，同类按 ID 排序，再截取前 64 条并设置 `truncated`。
+
+客户端 `item_sources.json` 使用 `system:item_sources` 节点，正文先按「配方 / 掉落 / 标签」显示三个带数量的分类按钮，空分类置灰；默认选中第一个非空分类。配方默认每页 4 条、完整模式两列排列，简约 / 通知每页最多 2 条并单列显示；加工站以标题旁的紧凑图标表示。掉落默认每页 12 条，显示表 ID 与合并的条目备注；标签默认每页 24 条，用自动换行的紧凑标签排列。掉落 / 标签只显示一次分类说明，不逐项重复查询物品的图标。模板可用 recipe_page_size / loot_page_size / tag_page_size 调整容量，字段均为 lenientOptionalFieldOf。
+
+上页 / 页码 / 下页独立于通知底部按钮，单页和首尾不可用方向置灰。节点复用 CardPagination，分类选择与各分类页码分别保存在当前卡片的 CardPageState，切换分类或翻页只重建当前页 DOM，不发包、不请求 AI 或重播语音。配方仍显示材料格 → 产物与数量；有序合成保留位置，原版大小补齐 3×3，物品悬停使用原版 tooltip，多个候选标注 +N 并在 tooltip 列出示例。未知 Provider 的 kind 归入配方分类并保留完整来源展示，未知模组配方保留类型 ID 和可读取的材料，不猜测机器条件。没有来源或被截断时使用本地化提示。
 
 来源由 `ItemSourceProvider` 提供，`ItemSourceProviders` 按 ID 排序执行并逐个捕获异常，一个可选集成出错不影响其余来源。内置三个：
 
 | Provider | `kind` | 内容 |
 | --- | --- | --- |
-| `system:recipe` | `recipe` | 读服务端 `RecipeManager`，用 `Recipe#display()` 取输出、`placementInfo().ingredients()` 取材料，`type` 是配方类型 ID |
+| `system:recipe` | `recipe` | 读服务端 `RecipeManager`，按每个 RecipeDisplay 生成独立来源；识别有序 / 无序、炉类、锻造与切石展示，其他展示回退 placementInfo 材料。ItemStackTemplate 保留物品组件，type 仍为配方类型 ID，width 保留有序布局 |
 | `system:loot` | `loot` | 把每张战利品表用 `LootTable.DIRECT_CODEC` 编码一次并扫描 item/tag 条目，索引按表实例放在 WeakHashMap 里，数据包重载后旧表被回收即自然失效 |
 | `system:tag` | `tag` | 该物品所属的物品标签，一条一个标签；这是分类维度，不是制作步骤，所以只有 `outputs` |
 

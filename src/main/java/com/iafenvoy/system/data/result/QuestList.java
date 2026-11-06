@@ -28,8 +28,11 @@ public record QuestList(List<QuestBriefOutput> quests) implements CardData {
         for (QuestBriefOutput quest : this.quests) {
             builder.serverButton("quest_" + quest.id(), "system.action.quest_detail", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_detail"),
                             Map.of("quest", quest.id()), CardButton.Placement.BODY, CardButton.Behavior.PUSH)
+                    .actionParameter("action_quest_id", quest.id())
                     .actionParameter("action_number", quest.number()).actionParameter("action_title", quest.title())
-                    .actionParameter("action_chapter", quest.chapter()).actionParameter("action_progress", (int) quest.progress());
+                    .actionParameter("action_chapter", quest.chapter()).actionParameter("action_chapter_id", quest.chapterId())
+                    .actionParameter("action_group", quest.group()).actionParameter("action_group_id", quest.groupId())
+                    .actionParameter("action_progress", (int) quest.progress());
         }
         return builder;
     }

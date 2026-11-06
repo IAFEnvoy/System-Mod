@@ -1,6 +1,10 @@
 {
   "body": [
     {
+      "type": "system:title",
+      "translate": "system.ui.nav_items"
+    },
+    {
       "type": "system:text",
       "text": "{{items.*.item_name}} · {{items.*.item_id}} · {{field:max_stack}}: {{items.*.max_stack}}",
       "repeat": "items"

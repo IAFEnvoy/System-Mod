@@ -49,13 +49,16 @@
 | 旧卡片缓存自动丢弃、有效回放保留、历史清理与存储异常分类；业务账本保持严格读取 | [持久化与恢复](docs/development.md#持久化与恢复)、[CodecIO](src/main/java/com/iafenvoy/system/util/CodecIO.java) |
 | FTBQ 1.21.1 → 26.1.2 已同步：玩家语言、勾选礼包、图标 / tooltip、解锁汇总、分层数据库与数据库优先问答；分页点击与 ASR 收尾补充移植 | [跨版本同步记录](docs/ftb-quests-porting.md) |
 | 勾选 / 无目标说明书、存档本地稀疏向量索引、guide 指令和任务页查询、玩家可见性复核 | [本地说明书检索](docs/quest-guides.md) |
+| 12 章 80 个开发任务、JSON5 双语任务文件、显式安装到开发配置及手动检查步骤 | [FTBQ 开发任务集](docs/test-quests.md)、[测试配置](src/test-mod/ftbquests) |
 | AgentDatabases 共享库 / 玩家独立库、Codec 数据表与段落索引、/system ftb reload、revoke / reset 清理私有库 | [分层本地数据库](docs/databases.md) |
 | JVector 4.0.2 分发体积、磁盘图索引、Java / SIMD、TF-IDF 适配、性能边界与后续测量；仅评估未实施 | [JVector 索引评估](docs/jvector-evaluation.md) |
 | 按键、声音、action/condition、模块目录、卡片节点注册与语音供应商工厂 Map；公开静态入口 | [registry 包](src/main/java/com/iafenvoy/system/registry)、[目录与职责](docs/development.md#目录与职责) |
 | 内置功能定义与工作流集中 module.builtin、业务 DataStorage 位于 module.builtin.storage、执行账本位于 data.store、available() 可选依赖检查、模块侧栏 / 顶栏设置、底部工具栏开关、对话底部对齐与滚动跟随、模块条件/手动覆盖、两端指令与 ModuleManager 生命周期 | [功能模块化](docs/feature-modules.md)、[界面与滚动](docs/ui-localization.md)、[内置模块](src/main/java/com/iafenvoy/system/module/builtin) |
 | ServerModule / ClientModule 及 ToolModule / WorkflowModule / SharedModule / CoreModule 分类、按接口判断类型、配置 owner 权限、服务端 MapCodec dispatch、动态 system_module、客户端独立实现 Map | [功能模块化](docs/feature-modules.md)、[注册表](src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)、[编译与验收](docs/testing.md) |
 | 注册表 ID 与公开字段速查、协议/载荷/卡片节点注册表、语音工厂 Map、注册时序及扩展示例 | [注册表速查](docs/registries.md) |
-| CardData.buildCard、公共 CardBuilder/CardView/CardUpdate、客户端 CardPresentation、纯文本无按钮约定、JSON 节点与平铺 Context、宿主双栏卡片 / player 模型跟随、朝向、缩放和偏移、明确本地/服务端动作 | [客户端 JSON 卡片](docs/cards.md) |
+| CardData.buildCard、公共 CardBuilder/CardView/CardUpdate、客户端 CardPresentation、25 份结构化模板的 title 约定与格式化后标题解析、纯文本无按钮约定、JSON 节点与平铺 Context、MarkdownNode / AUI 解析与受控展示、FTBQ text、宿主双栏卡片 / player 模型跟随、朝向、缩放和偏移、明确本地/服务端动作 | [客户端 JSON 卡片](docs/cards.md) |
+| 单 HTML Card JSON 编辑器、节点树／属性／源码、平铺示例 Context、模式与分页预览、卡片／工作文件导出及快照更新 | [离线编辑器](docs/card-editor.md)、[工具入口](tools/card_editor.html) |
+| CardGrid / CardPagination：任务、商店、奖池与奖品共用分页；columns × max_row 自动容量、固定三行区域、单页置灰按钮、仅创建当前页 DOM | [共用分页网格](docs/cards.md#共用分页网格)、[CardGrid](src/main/java/com/iafenvoy/system/screen/card/CardGrid.java) |
 | 客户端 CardBuildEvent：按 CardData 类型给既有 Builder 补参数，再配合资源包 JSON；构建时触发，缓存读取不触发 | [卡片构建事件](docs/cards.md#构建事件给现有卡片补充参数)、[事件类](src/main/java/com/iafenvoy/system/event/client/CardBuildEvent.java) |
 | 已实施卡片数据流：完整业务 DTO、消息 ID/版本、SHOW/REPLACE/REMOVE、状态与历史响应、Status 枚举和 BuiltinTools | [卡片与消息数据流](docs/card-flow-design.md) |
 | OpenAI 兼容接口、DeepSeek 特殊参数、模型连接与 Token 响应 | [模型接口](docs/model-api.md) |
@@ -63,6 +66,7 @@
 | 模组和音色工具会请求哪些 API、触发条件、发送数据、客户端 / 服务端归属 | [外部 API 请求清单](docs/external-apis.md) |
 | 领域词表、稀疏 TF-IDF、阈值、玩家意图缓存、只读直达与模型兜底 | [本地意图路由](docs/semantic-routing.md) |
 | 10MB 分发约束、路由方案比较、校准与后续方向 | [路由选型与计划](docs/semantic-routing-plan.md) |
+| 物品来源工作流、typed CardData、RecipeDisplay 有序材料 / 组件快照、配方 / 掉落 / 标签分类及独立分页、tooltip 与读取边界 | [物品来源查询](docs/feature-modules.md#物品来源查询)、[ItemSourcesNode](src/main/java/com/iafenvoy/system/screen/card/node/ItemSourcesNode.java) |
 | 系统定义、system_module 配置实例与 server.type/client、grant 指定系统与单绑定/多系统结构预留、模块 ID/tag/condition、模块增删 action、签到奖励、商城商品、抽奖奖池、提示词、成就规则 | [数据包与扩展配置](docs/datapacks.md) |
 | 三张服务端 Data Pack Registry：signin_rewards / shop_offers / lottery_pools；CatalogModule 的 rewards / offers / pools 支持 ID、tag、混合数组；玩家并集权限与扣款前复核 | [目录可选项](docs/datapacks.md#模块目录可选项)、[注册表](docs/registries.md#数据包注册表与外部注册表)、[CommerceCatalog](src/main/java/com/iafenvoy/system/data/catalog/CommerceCatalog.java) |
 | TTS 接口、流式播放、语种、音色、取消 session、Python 设计 / 复刻 / 临时上传 | [语音合成与音色设计](docs/tts.md) |

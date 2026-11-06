@@ -1,0 +1,23 @@
+{
+  "chapter.5A71050000000000.title": "05 · Branching Paths",
+  "quest.5A71050001000000.title": "Unlock Twelve Branches",
+  "quest.5A71050001000000.quest_desc": [
+    "Turn in one cobblestone to unlock twelve quests together and exercise notification pagination."
+  ],
+  "quest.5A71050002000000.title": "Branch 01 · Gather Oak Logs",
+  "quest.5A71050003000000.title": "Branch 02 · Gather Birch Logs",
+  "quest.5A71050004000000.title": "Branch 03 · Gather Spruce Logs",
+  "quest.5A71050005000000.title": "Branch 04 · Gather Jungle Logs",
+  "quest.5A71050006000000.title": "Branch 05 · Gather Acacia Logs",
+  "quest.5A71050007000000.title": "Branch 06 · Gather Dark Oak Logs",
+  "quest.5A71050008000000.title": "Branch 07 · Gather Cobblestone",
+  "quest.5A71050009000000.title": "Branch 08 · Gather Stone",
+  "quest.5A7105000A000000.title": "Branch 09 · Gather Dirt",
+  "quest.5A7105000B000000.title": "Branch 10 · Gather Sand",
+  "quest.5A7105000C000000.title": "Branch 11 · Gather Gravel",
+  "quest.5A7105000D000000.title": "Branch 12 · Gather Glass",
+  "quest.5A7105000E000000.title": "Timber Meets Stone",
+  "quest.5A7105000E000000.quest_desc": [
+    "Complete both the oak-log and cobblestone branches to unlock this quest."
+  ]
+}

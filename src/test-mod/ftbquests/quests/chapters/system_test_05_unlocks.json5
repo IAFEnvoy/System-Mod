@@ -1,0 +1,514 @@
+{
+  "id": "5A71050000000000",
+  "group": "",
+  "order_index": 105,
+  "filename": "system_test_05_unlocks",
+  "icon": {
+    "id": "minecraft:tripwire_hook",
+    "count": 1
+  },
+  "default_quest_shape": "square",
+  "default_hide_dependency_lines": false,
+  "progression_mode": "linear",
+  "consume_items": false,
+  "default_repeatable_quest": false,
+  "quests": [
+    {
+      "id": "5A71050001000000",
+      "x": 0.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:tripwire_hook",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71050001010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:cobblestone",
+            "count": 1
+          },
+          "count": 1,
+          "consume_items": true
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71050001020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 50
+        }
+      ]
+    },
+    {
+      "id": "5A71050002000000",
+      "x": 2.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:oak_log",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71050002010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:oak_log",
+            "count": 1
+          },
+          "count": 16,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71050002020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true
+    },
+    {
+      "id": "5A71050003000000",
+      "x": 4.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:birch_log",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71050003010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:birch_log",
+            "count": 1
+          },
+          "count": 16,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71050003020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true
+    },
+    {
+      "id": "5A71050004000000",
+      "x": 6.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:spruce_log",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71050004010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:spruce_log",
+            "count": 1
+          },
+          "count": 16,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71050004020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true
+    },
+    {
+      "id": "5A71050005000000",
+      "x": 8.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:jungle_log",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71050005010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:jungle_log",
+            "count": 1
+          },
+          "count": 16,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71050005020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true
+    },
+    {
+      "id": "5A71050006000000",
+      "x": 0.0,
+      "y": 2.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:acacia_log",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71050006010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:acacia_log",
+            "count": 1
+          },
+          "count": 16,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71050006020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true
+    },
+    {
+      "id": "5A71050007000000",
+      "x": 2.0,
+      "y": 2.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:dark_oak_log",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71050007010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:dark_oak_log",
+            "count": 1
+          },
+          "count": 16,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71050007020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true
+    },
+    {
+      "id": "5A71050008000000",
+      "x": 4.0,
+      "y": 2.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:cobblestone",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71050008010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:cobblestone",
+            "count": 1
+          },
+          "count": 16,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71050008020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true
+    },
+    {
+      "id": "5A71050009000000",
+      "x": 6.0,
+      "y": 2.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:stone",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71050009010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:stone",
+            "count": 1
+          },
+          "count": 16,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71050009020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true
+    },
+    {
+      "id": "5A7105000A000000",
+      "x": 8.0,
+      "y": 2.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:dirt",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A7105000A010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:dirt",
+            "count": 1
+          },
+          "count": 16,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A7105000A020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true
+    },
+    {
+      "id": "5A7105000B000000",
+      "x": 0.0,
+      "y": 4.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:sand",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A7105000B010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:sand",
+            "count": 1
+          },
+          "count": 16,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A7105000B020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true
+    },
+    {
+      "id": "5A7105000C000000",
+      "x": 2.0,
+      "y": 4.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:gravel",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A7105000C010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:gravel",
+            "count": 1
+          },
+          "count": 16,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A7105000C020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true
+    },
+    {
+      "id": "5A7105000D000000",
+      "x": 4.0,
+      "y": 4.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:glass",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A7105000D010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:glass",
+            "count": 1
+          },
+          "count": 16,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A7105000D020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true
+    },
+    {
+      "id": "5A7105000E000000",
+      "x": 6.0,
+      "y": 4.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:compass",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A7105000E010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A7105000E020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 200
+        }
+      ],
+      "dependencies": [
+        "5A71050002000000",
+        "5A71050008000000"
+      ],
+      "hide_until_deps_complete": true
+    }
+  ],
+  "quest_links": [],
+  "images": []
+}

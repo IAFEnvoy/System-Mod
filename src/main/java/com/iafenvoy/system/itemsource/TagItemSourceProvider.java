@@ -34,7 +34,7 @@ public final class TagItemSourceProvider implements ItemSourceProvider {
                 .sorted()
                 .limit(MAX_TAGS)
                 .map(tag -> new ItemSource("tag", tag, "item_tag", List.of(), List.of(),
-                        List.of(new ItemSourceSlot(List.of(itemId), 1)), List.of()))
+                        List.of(ItemSourceSlot.of(item)), List.of()))
                 .toList();
     }
 }

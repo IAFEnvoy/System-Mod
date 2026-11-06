@@ -1,7 +1,10 @@
 package com.iafenvoy.system.screen.card.node;
 
+import com.iafenvoy.system.data.card.CardButton;
+import com.iafenvoy.system.data.card.CardContext;
 import com.iafenvoy.system.data.output.ItemPreviewOutput;
 import com.iafenvoy.system.data.output.ShelfEntry;
+import com.iafenvoy.system.screen.card.CardGrid;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.iafenvoy.system.screen.card.CardRenderer;
 import com.iafenvoy.system.screen.gui.AssistantItems;
@@ -12,28 +15,20 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.sighs.apricityui.init.Element;
 
-import java.util.Collections;
 import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * Shelf of catalogue entries shared by the shop and lottery catalogues: fixed-column cells bound to the card's own
- * actions. {@code maxRow} limits the visible rows and lets the rest scroll inside the card.
+ * actions. The shared grid creates one page and keeps a fixed row area and navigation controls.
  */
-public record OfferGridNode(String entries, int columns, int maxRow, int cell) implements CardNode {
+public record OfferGridNode(String entries, CardGrid grid) implements CardNode {
     private static final int MAX_CELL_ITEMS = 2;
-    private static final int GAP = 6;
 
     public static final MapCodec<OfferGridNode> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Codec.STRING.optionalFieldOf("entries", "{{entries}}").forGetter(OfferGridNode::entries),
-            Codec.INT.optionalFieldOf("columns", 4).forGetter(OfferGridNode::columns),
-            Codec.INT.optionalFieldOf("max_row", 3).forGetter(OfferGridNode::maxRow),
-            Codec.INT.optionalFieldOf("cell", 104).forGetter(OfferGridNode::cell)
+            Codec.STRING.lenientOptionalFieldOf("entries", "{{entries}}").forGetter(OfferGridNode::entries),
+            CardGrid.CODEC.forGetter(OfferGridNode::grid)
     ).apply(i, OfferGridNode::new));
-
-    public OfferGridNode {
-        columns = Math.max(1, columns);
-        cell = Math.max(48, cell);
-    }
 
     @Override
     public MapCodec<OfferGridNode> codec() {
@@ -48,21 +43,12 @@ public record OfferGridNode(String entries, int columns, int maxRow, int cell) i
     @Override
     public Element render(CardRenderer.Render view) {
         List<?> source = view.context().get(CardRenderer.binding(this.entries, view.indices()), List.class);
-        if (source == null || source.isEmpty()) return null;
-        Element grid = view.element("div", "");
-        grid.setInlineStyleProperty("display", "grid");
-        // Equal fractions fill the card width; `cell` is the row height, so only the column count is fixed.
-        grid.setInlineStyleProperty("grid-template-columns",
-                String.join(" ", Collections.nCopies(this.columns, "1fr")));
-        if (this.maxRow > 0) {
-            int height = this.maxRow * this.cell + Math.max(0, this.maxRow - 1) * GAP;
-            grid.setInlineStyleProperty("max-height", height + "px");
-            grid.setInlineStyleProperty("overflow", "auto");
-        }
-        for (int index = 0; index < source.size(); index++) {
-            if (!(source.get(index) instanceof ShelfEntry entry)) continue;
+        if (source == null) return null;
+        List<Integer> indices = IntStream.range(0, source.size()).filter(index -> source.get(index) instanceof ShelfEntry).boxed().toList();
+        return this.grid.render(view, "offers:" + CardRenderer.binding(this.entries, view.indices()), indices, view.css(), (parent, index) -> {
+            ShelfEntry entry = (ShelfEntry) source.get(index);
             Element cell = AssistantView.element(view.document(), "div", "offer_cell", "");
-            cell.setInlineStyleProperty("height", this.cell + "px");
+            cell.setInlineStyleProperty("height", this.grid.cell() + "px");
             Element items = AssistantView.element(view.document(), "div", "offer_cell_items", "");
             // Each preview carries its own tooltip lines, so a cell can show prizes with different odds.
             List<ItemPreviewOutput> previews = entry.items();
@@ -72,11 +58,11 @@ public record OfferGridNode(String entries, int columns, int maxRow, int cell) i
             }
             if (!items.children.isEmpty()) cell.appendChild(items);
             cell.appendChild(AssistantView.element(view.document(), "div", "offer_cell_label", LegacyText.formatted(entry.label())));
-            // A restored card has no live callbacks; the cell then renders as a plain label.
-            Runnable callback = view.context().callbacks().get("actions." + index + ".click");
-            if (callback != null) cell.addEventListener("click", event -> callback.run());
-            grid.appendChild(cell);
-        }
-        return grid;
+            // Keep original indices across pages; restored cards still have no live callbacks.
+            List<?> actions = view.context().get(CardContext.RESULT_ACTIONS, List.class);
+            if (actions != null && index < actions.size() && actions.get(index) instanceof CardButton action)
+                ActionsNode.bind(view, cell, action, index);
+            parent.appendChild(cell);
+        });
     }
 }

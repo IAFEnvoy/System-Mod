@@ -7,14 +7,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.display.RecipeDisplay;
-import net.minecraft.world.item.crafting.display.SlotDisplayContext;
+import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.display.*;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 
 /**
@@ -25,9 +23,6 @@ import java.util.List;
  * all. The category-based projection that fills those gaps lives on the client, in JEI.
  */
 public final class RecipeItemSourceProvider implements ItemSourceProvider {
-    private static final int MAX_SLOT_ITEMS = 8;
-    private static final int MAX_SLOTS = 16;
-
     @Override
     public Identifier id() {
         return Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "recipe");
@@ -38,59 +33,40 @@ public final class RecipeItemSourceProvider implements ItemSourceProvider {
         ContextMap context = SlotDisplayContext.fromLevel(level);
         List<ItemSource> sources = new ArrayList<>();
         for (RecipeHolder<?> holder : level.getServer().getRecipeManager().recipeMap().values()) {
-            ItemSource source = describe(holder, context, item);
-            if (source != null) sources.add(source);
+            try {
+                sources.addAll(describe(holder, context, item));
+            } catch (RuntimeException error) {
+                SystemMod.LOGGER.warn("Unable to describe item source recipe {}", holder.id().identifier(), error);
+            }
         }
         return sources;
     }
 
-    private static ItemSource describe(RecipeHolder<?> holder, ContextMap context, Item item) {
+    private static List<ItemSource> describe(RecipeHolder<?> holder, ContextMap context, Item item) {
         Recipe<?> recipe = holder.value();
-        List<RecipeDisplay> displays = recipe.display();
-        if (displays.isEmpty()) return null;
-        // Station slots are only resolved for recipes that actually produce the item.
-        boolean produces = false;
-        for (RecipeDisplay display : displays)
-            for (ItemStack stack : display.result().resolveForStacks(context))
-                if (stack.is(item)) produces = true;
-        if (!produces) return null;
-
-        List<ItemSourceSlot> outputs = new ArrayList<>();
-        List<String> station = new ArrayList<>();
-        for (RecipeDisplay display : displays) {
-            List<ItemStack> stacks = display.result().resolveForStacks(context);
-            if (!stacks.isEmpty()) outputs.add(slot(stacks));
-            for (ItemStack stack : display.craftingStation().resolveForStacks(context))
-                station.add(ItemSourceIds.of(stack));
-        }
-
-        List<ItemSourceSlot> inputs = new ArrayList<>();
-        for (Ingredient ingredient : recipe.placementInfo().ingredients()) {
-            if (inputs.size() == MAX_SLOTS) break;
-            List<String> ids = ingredient.display().resolveForStacks(context).stream()
-                    .map(ItemSourceIds::of)
-                    .filter(id -> !id.isEmpty())
-                    .distinct()
-                    .sorted()
-                    .limit(MAX_SLOT_ITEMS)
-                    .toList();
-            if (!ids.isEmpty()) inputs.add(new ItemSourceSlot(ids, 1));
-        }
-
         Identifier type = BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType());
-        return new ItemSource("recipe", holder.id().identifier().toString(), type == null ? "" : type.toString(),
-                List.copyOf(new LinkedHashSet<>(station)), inputs, outputs, List.of());
-    }
-
-    private static ItemSourceSlot slot(List<ItemStack> stacks) {
-        List<String> ids = stacks.stream()
-                .map(ItemSourceIds::of)
-                .filter(id -> !id.isEmpty())
-                .distinct()
-                .sorted()
-                .limit(MAX_SLOT_ITEMS)
-                .toList();
-        int count = stacks.stream().mapToInt(ItemStack::getCount).max().orElse(1);
-        return new ItemSourceSlot(ids, count);
+        List<ItemSource> sources = new ArrayList<>();
+        for (RecipeDisplay display : recipe.display()) {
+            List<ItemStack> results = display.result().resolveForStacks(context).stream().filter(stack -> stack.is(item)).toList();
+            if (results.isEmpty()) continue;
+            // Each display is a separate recipe variant; never merge different patterns into one material list.
+            List<SlotDisplay> ingredients = switch (display) {
+                case ShapedCraftingRecipeDisplay shaped -> shaped.ingredients();
+                case ShapelessCraftingRecipeDisplay shapeless -> shapeless.ingredients();
+                case FurnaceRecipeDisplay furnace -> List.of(furnace.ingredient());
+                case StonecutterRecipeDisplay stonecutter -> List.of(stonecutter.input());
+                case SmithingRecipeDisplay smithing -> List.of(smithing.template(), smithing.base(), smithing.addition());
+                default -> recipe.placementInfo().ingredients().stream().map(ingredient -> ingredient.display()).toList();
+            };
+            List<ItemSourceSlot> inputs = ingredients.stream().map(slot -> ItemSourceSlot.ofStacks(slot.resolveForStacks(context))).toList();
+            List<String> station = display.craftingStation().resolveForStacks(context).stream()
+                    .map(ItemSourceIds::of).filter(id -> !id.isEmpty()).distinct().toList();
+            int width = display instanceof ShapedCraftingRecipeDisplay shaped ? shaped.width() : 0;
+            List<String> notes = display instanceof FurnaceRecipeDisplay && recipe.getType() != RecipeType.CAMPFIRE_COOKING
+                    ? List.of("requires_fuel") : List.of();
+            sources.add(new ItemSource("recipe", holder.id().identifier().toString(), type == null ? "" : type.toString(),
+                    station, inputs, List.of(ItemSourceSlot.ofStacks(results)), notes, width));
+        }
+        return sources;
     }
 }

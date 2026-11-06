@@ -1,8 +1,13 @@
 {
   "body": [
     {
-      "type": "system:text",
+      "type": "system:title",
       "text": "{{label}}"
+    },
+    {
+      "type": "system:text",
+      "text": "{{summary}}",
+      "when": "confirm"
     },
     {
       "type": "system:text",

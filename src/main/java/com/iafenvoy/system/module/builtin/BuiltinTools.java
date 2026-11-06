@@ -17,7 +17,7 @@ public final class BuiltinTools {
     public static final ToolRegistry.Type<CommercePreviewInput, List<CommercePreviewOutput>> COMMERCE_PREVIEW = new ToolRegistry.Type<>("game.commerce.preview", CommercePreviewInput.CODEC, CommercePreviewOutput.CODEC.listOf());
     public static final ToolRegistry.Type<EmptyInput, PlayerSnapshotOutput> PLAYER = new ToolRegistry.Type<>("game.player", EmptyInput.CODEC, PlayerSnapshotOutput.CODEC.codec());
     public static final ToolRegistry.Type<ItemQueryInput, ItemPageOutput> ITEMS = new ToolRegistry.Type<>("game.items", ItemQueryInput.CODEC, ItemPageOutput.CODEC.codec());
-    public static final ToolRegistry.Type<ItemSourceQueryInput, ItemSourceOutput> ITEM_SOURCES = new ToolRegistry.Type<>("game.item_sources", ItemSourceQueryInput.CODEC, ItemSourceOutput.CODEC);
+    public static final ToolRegistry.Type<ItemSourceQueryInput, ItemSourceOutput> ITEM_SOURCES = new ToolRegistry.Type<>("game.item_sources", ItemSourceQueryInput.CODEC, ItemSourceOutput.CODEC.codec());
     public static final ToolRegistry.Type<EntitlementInput, StateOutput> DELIVER = new ToolRegistry.Type<>("game.deliver", EntitlementInput.CODEC, StateOutput.CODEC.codec());
     public static final ToolRegistry.Type<SignInCreditInput, RewardOutput> SIGN_IN_CREDIT = new ToolRegistry.Type<>("signin.credit", SignInCreditInput.CODEC, RewardOutput.CODEC.codec());
     public static final ToolRegistry.Type<RewardCreditInput, CreditReceiptOutput> REWARD_CREDIT = new ToolRegistry.Type<>("reward.credit", RewardCreditInput.CODEC, CreditReceiptOutput.CODEC.codec());

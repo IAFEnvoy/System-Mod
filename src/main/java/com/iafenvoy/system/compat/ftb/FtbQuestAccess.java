@@ -8,6 +8,8 @@ import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.data.database.AgentDatabase;
 import com.iafenvoy.system.data.input.QuestDetailInput;
 import com.iafenvoy.system.data.output.*;
+import dev.ftb.mods.ftbquests.quest.Chapter;
+import dev.ftb.mods.ftbquests.quest.ChapterGroup;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
@@ -18,6 +20,7 @@ import dev.ftb.mods.ftbquests.quest.reward.Reward;
 import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
 import dev.ftb.mods.ftbquests.quest.task.ItemTask;
 import dev.ftb.mods.ftbquests.quest.task.Task;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStackTemplate;
 
@@ -91,8 +94,12 @@ final class FtbQuestAccess {
     }
 
     static QuestBriefOutput brief(ServerPlayer player, TeamData team, Quest quest, int number) {
+        Chapter chapter = quest.getChapter();
+        ChapterGroup group = chapter.getGroup();
+        // Only metadata of matched quests is exported; no empty or hidden sibling chapters are added.
         return new QuestBriefOutput(number, hex(quest.getId()), FtbQuestText.title(player, quest),
-                FtbQuestText.title(player, quest.getChapter()), team.getRelativeProgress(quest));
+                FtbQuestText.title(player, chapter), team.getRelativeProgress(quest), hex(chapter.getId()), hex(group.getId()),
+                group.isDefaultGroup() ? Component.empty() : FtbQuestText.title(player, group));
     }
 
     static QuestOutput detail(ServerPlayer player, TeamData team, Quest quest, QuestDetailInput input, Map<String, RewardReference> references) {

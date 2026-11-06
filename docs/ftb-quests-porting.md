@@ -1,5 +1,29 @@
 # FTB Quests 跨版本同步记录
 
+## 2026-11-06 master：共用三行分页网格（1.21.1 待同步）
+
+本节替代下文旧版“每页 10 项”的任务布局约定。新增客户端 `CardPagination` 与 `CardGrid`，原 ActionsNode 分页移入前者，后者同时控制列数、三行固定区域及 `列数 × max_row` 容量；GroupedActionsNode / OfferGridNode / PrizeGridNode 共用，默认完整模式 18 项、通知 9 项。少量、空列表和最后一页保留区域及分页按钮，单页双按钮置灰；只有当前页创建 DOM、图标与 tooltip。保留原始业务下标、CardPageState、通知详情返回与完成通知语义。
+
+移植时同步两个共享类、四个节点、quest_list.json、共享 CSS（移除旧网格 max-height 裁切与通知列数覆盖）、文档及测试任务说明。三个网格节点将 `CardGrid.CODEC` 合并为扁平 fields，任务模板使用 `max_row: 3` 取代 `page_size: 10`；商店、抽奖的既有 max_row 从限高滚动改为分页。不得只复制 JSON/CSS，否则布局列数与分页容量会不一致。不新增注册表、依赖或网络数据格式；编译通过，尚未游戏内验收。
+
+## 2026-11-05 master：任务列表分组浏览（1.21.1 待同步）
+
+`QuestBriefOutput` 在原章节名称外补充 chapterId、groupId、group 名称；`FtbQuestAccess.brief` 仅从每个命中任务的 `getChapter().getGroup()` 读取这些元数据，不单独枚举全部章节或章节组。已核对 26.1.2.8 源码：Chapter.getGroup 返回 ChapterGroup，默认组使用 isDefaultGroup，不额外显示书名；正常查询的 getAllChapters 顺序是章节组顺序再章节顺序。
+
+`QuestList` 为按钮写入分组参数；客户端新增正式节点 `system:grouped_actions`，左侧列出结果中的非空章节及所属上级分组，右侧复用商店货架结构显示任务，复用 `ActionsNode` 每页 10 项的本地分页。CardPageState 增加选中章节，页码按章节键保存，PUSH / 返回保留原位置；全局任务编号和服务端列表快照不变。多项解锁共用该模板，完成通知和单项解锁逻辑不变。
+
+2026-11-06 布局修正也需一起移植：左栏用自然高度的内容容器，超出上限才滚动且不保留 gutter；右侧采用真正的 `offer_grid > offer_cell > offer_cell_label`，完整模式 6 列、104px 格子，HUD 3 列。移除右侧重复的章节名与条目数，货架直接顶到内容区顶部，章节信息只留在左栏。GroupedActionsNode 新增 columns / cell / children，通过通用节点把标题、编号和进度分块渲染；ActionsNode 将行渲染与分页分离并共用动作绑定。quest_list 顶层 title 把“任务列表”单独显示，提示改为短行，长摘要只留在数据与播报路径中。
+
+同日补充居中与任务图标：QuestList 为动作写入 action_quest_id；新增 `system:quest_icon` / QuestIconNode 与公开注册字段，通过反射调用 FtbQuestIconElement.createQuest，复用现有原生绘制和 tooltip。客户端先检查 ClientQuestFile.exists，再按 ID 取 Quest.getIcon；26.1.2.8 的该方法优先配置的 rawIcon，然后主题，最后目标默认图标。未安装 FTB 或任务不可用时省略图标。模板加入 32px 图标，把编号 / 进度合为一行；共享 CSS 对标题及格式化内部行块显式居中。移植时同步新节点、注册、适配器、动作参数、JSON 和 CSS，不需要扩展 QuestBriefOutput 或改网络协议。
+
+移植需同步公共 DTO / Codec、FTB brief 构建、QuestList、GroupedActionsNode 和注册、ActionsNode 的共享分页入口、CardPageState、quest_list.json、共享 CSS 与双语键；不能只复制资源文件。没有新增依赖、网络请求或任务进度操作。已执行 compileJava / processResources；未启动 Minecraft 或做功能验收。
+
+2026-11-06 另补左栏零范围滚动防护：AUI 1.2.9 的 MouseEvent 在路径没有真实滚动范围时，仍会选中 overflow:auto 元素，ScrollModel 随后产生弹性位移。GroupedActionsNode 在初始化后的左栏注册内部 wheel 监听，仅当路径中没有实际滚动范围时 preventDefault；保留长章节列表和外层聊天滚动，Shift 滚轮也考虑横向范围。移植时核对目标 AUI 的事件与范围 API；不只复制 overflow:auto 样式，也不要在布局回调中查询 scrollLimit。
+
+同日补任务格子的图钉与底边进度条：新增客户端节点 QuestPinNode / ProgressNode 及 SystemCardNodeTypes 公开注册项；quest_list.json 把百分比文字改为进度条、编号保留，右上角增加本地图钉。QuestPinCache 由 ClientModuleCaches.QUEST_PINS 持有，去重记录 ID，AssistantClient.clear 在登出、撤销或失效时清空。固定只改变按钮状态，尚不显示列表或排序；点击 stopPropagation 避免触发父格子的详情动作，并刷新已存在文档中的同任务按钮。移植时核对 AUI Document.getAll、SVG 与事件 API，一并同步两个新节点、缓存、清理入口、注册、JSON、共享 CSS 与双语键。不改变 FTB 进度、DTO 或网络协议。
+
+图钉后续修正需一并同步：共享 CSS 默认将 SVG 倾斜 35°，aria-pressed=true 后旋转归零；22px 按钮 / 16px 图标，透明且无外框，高于 AUI 主题的按钮状态选择器优先级，避免主题最小高度及选中背景撑出色块。QuestOutput.buildCard 增加已有 id 的上下文参数，quest.json 加 quest_detail_card 样式和 quest_pin 节点，详情与列表共用固定列表，不新增序列化字段。
+
 记录日期：2026-10-30。`1.21.1` 的功能修改已同步至 Minecraft **26.1.2 / master**。来源为 `b601fd7..03ca46a`；先切换 master，再执行 `git pull --ff-only`，目标从 `2c459f9` 更新至 `b6afc9d` 后才合入修改。此次不提交、不推送。
 
 ## 来源与范围

@@ -60,7 +60,7 @@ public record QuestOutput(String id, Component title, Component chapter, String 
                 .append(Component.literal(this.completed ? "✓ " : "✗ ").withStyle(this.completed ? ChatFormatting.GREEN : ChatFormatting.RED))
                 .append(this.title);
         CardBuilder builder = CardBuilder.template(TEMPLATE).summary(heading);
-        builder.put("title", heading).put("chapter", this.chapter()).put("description", this.description())
+        builder.put("id", this.id).put("title", heading).put("chapter", this.chapter()).put("description", this.description())
                 .put("progress", (int) this.progress()).put("completed", this.completed())
                 .list("tasks", this.tasks(), (prefix, task) -> task.fill(builder, prefix))
                 .list("rewards", this.rewards(), (prefix, reward) -> reward.fill(builder, prefix));

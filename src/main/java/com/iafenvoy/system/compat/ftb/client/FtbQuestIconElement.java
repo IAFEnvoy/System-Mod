@@ -13,6 +13,8 @@ import com.sighs.apricityui.layout.Size;
 import com.sighs.apricityui.render.Base;
 import com.sighs.apricityui.render.Rect;
 import dev.ftb.mods.ftblibrary.icon.Icon;
+import dev.ftb.mods.ftbquests.client.ClientQuestFile;
+import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.reward.RewardType;
 import dev.ftb.mods.ftbquests.quest.reward.RewardTypes;
 import dev.ftb.mods.ftbquests.quest.task.TaskType;
@@ -33,24 +35,44 @@ public final class FtbQuestIconElement extends MinecraftElement implements Assis
     private final Icon<?> icon;
     private final List<Component> tooltip;
 
-    private FtbQuestIconElement(Document document, Icon<?> icon, Component typeName, QuestIconOutput preview) {
+    private FtbQuestIconElement(Document document, Icon<?> icon, List<Component> tooltip) {
         super(document, "div");
         this.icon = icon;
-        List<Component> lines = new ArrayList<>();
-        lines.add(preview.title());
-        if (!preview.title().equals(typeName)) lines.add(typeName.copy().withStyle(ChatFormatting.GRAY));
-        lines.addAll(preview.tooltip());
-        this.tooltip = lines.stream().map(LegacyText::component).toList();
+        this.tooltip = tooltip.stream().map(LegacyText::component).toList();
         this.setClassName("quest_type_icon");
     }
 
     public static Element create(Document document, QuestIconOutput preview) {
         if (preview.kind() == QuestIconOutput.Kind.TASK) {
             TaskType type = TaskTypes.TYPES.get(preview.type());
-            return type == null ? null : new FtbQuestIconElement(document, type.getIcon(), type.getDisplayName(), preview);
+            return type == null ? null : createType(document, type.getIcon(), type.getDisplayName(), preview);
         }
         RewardType type = RewardTypes.TYPES.get(preview.type());
-        return type == null ? null : new FtbQuestIconElement(document, type.getIcon(), type.getDisplayName(), preview);
+        return type == null ? null : createType(document, type.getIcon(), type.getDisplayName(), preview);
+    }
+
+    private static Element createType(Document document, Icon<?> icon, Component typeName, QuestIconOutput preview) {
+        List<Component> lines = new ArrayList<>();
+        lines.add(preview.title());
+        if (!preview.title().equals(typeName)) lines.add(typeName.copy().withStyle(ChatFormatting.GRAY));
+        lines.addAll(preview.tooltip());
+        return new FtbQuestIconElement(document, icon, lines);
+    }
+
+    public static Element createQuest(Document document, String questId, String title) {
+        if (!ClientQuestFile.exists()) return null;
+        long id;
+        try {
+            id = Long.parseUnsignedLong(questId, 16);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+        Quest quest = ClientQuestFile.getInstance().getQuest(id);
+        if (quest == null || !quest.isValid()) return null;
+        // getIcon honors the configured icon and FTB's theme/task fallback; never replace it with a type icon.
+        Icon<?> icon = quest.getIcon();
+        if (icon.isEmpty()) return null;
+        return new FtbQuestIconElement(document, icon, title.isBlank() ? List.of() : List.of(Component.literal(title)));
     }
 
     @Override

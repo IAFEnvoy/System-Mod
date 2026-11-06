@@ -1,12 +1,12 @@
 {
   "body": [
     {
-      "type": "system:text",
-      "text": "{{field:order_id}}: {{order_id}}"
+      "type": "system:title",
+      "text": "{{label}}"
     },
     {
       "type": "system:text",
-      "text": "{{label}}"
+      "text": "{{field:order_id}}: {{order_id}}"
     },
     {
       "type": "system:text",

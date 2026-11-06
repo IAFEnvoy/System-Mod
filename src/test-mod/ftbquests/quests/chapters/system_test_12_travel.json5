@@ -1,0 +1,115 @@
+{
+  "id": "5A710C0000000000",
+  "group": "",
+  "order_index": 112,
+  "filename": "system_test_12_travel",
+  "icon": {
+    "id": "minecraft:compass",
+    "count": 1
+  },
+  "default_quest_shape": "square",
+  "default_hide_dependency_lines": false,
+  "progression_mode": "linear",
+  "consume_items": false,
+  "default_repeatable_quest": false,
+  "quests": [
+    {
+      "id": "5A710C0001000000",
+      "x": 0.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:water_bucket",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A710C0001010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:water_bucket",
+            "count": 1
+          },
+          "count": 1,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A710C0001020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 50
+        }
+      ]
+    },
+    {
+      "id": "5A710C0002000000",
+      "x": 2.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:oak_boat",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A710C0002010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:oak_boat",
+            "count": 1
+          },
+          "count": 1,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A710C0002020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 50
+        }
+      ]
+    },
+    {
+      "id": "5A710C0003000000",
+      "x": 4.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:ender_pearl",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A710C0003010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:ender_pearl",
+            "count": 1
+          },
+          "count": 4,
+          "consume_items": false
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A710C0003020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 50
+        }
+      ]
+    }
+  ],
+  "quest_links": [],
+  "images": []
+}

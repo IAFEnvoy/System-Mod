@@ -36,18 +36,14 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
         CardView view = ClientCards.view(update);
         CardTemplate template = CardTemplates.get(view.template());
         if (template == null) template = CardTemplate.fallback();
-        // The first top-level level-1 title is the card heading; the presentation draws it above the summary.
-        int hoisted = hoistedTitle(template, view.context());
-        String bodyTitle = hoisted < 0 ? "" : CardRenderer.text(List.of(template.body().get(hoisted)), template, view.context(), List.of(), "");
-        boolean titled = !bodyTitle.isBlank();
         CardContext.Builder builder = CardContext.builder();
         view.context().parameters().forEach((key, value) -> builder.put(key, value instanceof Component || value instanceof CardText ? FORMAT.value(value) : value));
         view.context().states().forEach((key, value) -> {
             Object parameter = view.context().parameters().get(key);
             if (!(parameter instanceof Component) && !(parameter instanceof CardText)) builder.enable(key, value);
         });
-        builder.put("summary", FORMAT.text(view.summary())).put("card_title", titled ? bodyTitle : view.titleKey().isBlank() ? "" : AssistantView.tr(view.titleKey()))
-                .enable("show_card_title", titled || !view.titleKey().isBlank() && !view.titleKey().equals(messageKey))
+        builder.put("summary", FORMAT.text(view.summary())).put("card_title", view.titleKey().isBlank() ? "" : AssistantView.tr(view.titleKey()))
+                .enable("show_card_title", !view.titleKey().isBlank() && !view.titleKey().equals(messageKey))
                 .enable("text_items", mode == CardContext.Mode.TEXT)
                 .enable("full", mode == CardContext.Mode.FULL).enable("simple", mode == CardContext.Mode.SIMPLE)
                 .enable("notification", mode == CardContext.Mode.NOTIFICATION).put(CardContext.RESULT_ACTIONS, view.buttons())
@@ -61,7 +57,14 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
                     CardController.activate(update.ref(), button, mode == CardContext.Mode.NOTIFICATION);
             });
         }
-        return new CardPresentation(template, builder.build(), hoisted);
+        // Resolve headings after components, summary and mode flags are ready, just like the card body.
+        CardContext context = builder.build();
+        int hoisted = hoistedTitle(template, context);
+        if (hoisted >= 0) {
+            String title = CardRenderer.text(List.of(template.body().get(hoisted)), template, context, List.of(), "");
+            context = builder.put("card_title", title).enable("show_card_title", true).build();
+        }
+        return new CardPresentation(template, context, hoisted);
     }
 
     /**
@@ -70,8 +73,9 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
     private static int hoistedTitle(CardTemplate template, CardContext context) {
         List<CardTemplate.Node> body = template.body();
         for (int index = 0; index < body.size(); index++) {
-            if (!(body.get(index).content() instanceof TitleNode title) || !title.cardHeading()) continue;
-            return CardRenderer.text(List.of(body.get(index)), template, context, List.of(), "").isBlank() ? -1 : index;
+            CardTemplate.Node node = body.get(index);
+            if (!(node.content() instanceof TitleNode title) || !title.cardHeading() || !node.repeat().isEmpty()) continue;
+            if (!LegacyText.plain(CardRenderer.text(List.of(node), template, context, List.of(), "")).isBlank()) return index;
         }
         return -1;
     }

@@ -13,6 +13,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
@@ -34,7 +35,14 @@ public record ItemSourceQueryTool(
         if (!ItemSourceProviders.isKnownScope(input.scope())) throw new AgentException("INVALID_INPUT");
         return this.game.onPlayer(context, player -> {
             Item item = BuiltInRegistries.ITEM.getValue(id);
-            List<ItemSource> found = ItemSourceProviders.find(player.level(), item, input.scope());
+            // Keep recipes ahead of large loot/tag collections before applying the reply-size bound.
+            List<ItemSource> found = ItemSourceProviders.find(player.level(), item, input.scope()).stream()
+                    .sorted(Comparator.comparingInt((ItemSource source) -> switch (source.kind()) {
+                        case "recipe" -> 0;
+                        case "loot" -> 1;
+                        case "tag" -> 2;
+                        default -> 3;
+                    }).thenComparing(ItemSource::id)).toList();
             if (found.size() <= MAX_SOURCES) return new ItemSourceOutput(id.toString(), input.scope(), found, false);
             return new ItemSourceOutput(id.toString(), input.scope(), found.subList(0, MAX_SOURCES), true);
         });

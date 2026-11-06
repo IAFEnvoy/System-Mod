@@ -1,5 +1,91 @@
 # 编译与验收
 
+## 2026-11-06 内置卡片标题统一
+
+逐项检查 26 份卡片模板及对应 CardData：25 份结构化卡片均使用 system:title，其中 23 份使用可提升的顶层一级标题；奖池／奖品保留原二级标题同行数量／概率布局，纯文本模板仍不加标题。商品、订单、奖励、任务名称提升为卡片标题；签到、宿主、查询、说明书、候选操作、礼包和任务通知补充短标题。兑换确认、回执、任务提交／完成／解锁及礼包主句显式保留在正文；物品来源保留物品名与数量。HUD 固定“系统”标题及独立 SpeechContent 不变。
+
+源码检查同时发现标题在组件和模式参数解析前读取，会令 Component 名称留下原始占位符、带模式条件的标题不生效。CardPresentation 调整为使用完整格式化 Context 后选择首个可见、非空、无 repeat 的一级标题，跳过隐藏标题继续查找；QuestNotice 提供按事件翻译的 notice_title。同步更新卡片编辑器的模板与双语快照。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功。静态核对 26 份 JSON 无重复键、节点与翻译引用有效、25 份有标题且 23 份恰有一个顶层一级标题、确认／结果主句仍存在；中英文各 574 键且集合相同，编辑器内嵌模板／语言／CSS 与资源一致，JavaScript 语法与 `git diff --check` 通过。未运行测试、浏览器或 Minecraft；实际商品／任务名称的样式、HUD 高度、确认文案、条件标题及资源重载后的显示仍需游戏内验收。
+
+## 2026-11-06 Card JSON 离线编辑器
+
+新增 tools/card_editor.html 单文件工具：内嵌 26 份卡片模板、双语语言表与共享 CSS 快照，提供 23 种节点的属性／JSON 编辑、节点树、平铺示例 Context、模式切换、本地分页与折叠预览，以及卡片／工作文件导出、草稿恢复。字段依据 CardTemplate、CardContext、CardRenderer 与实际节点 Codec 核对；未知字段保留，未知节点只作提示。物品、玩家模型和 FTB 图标采用占位，通知按钮及业务调用仅模拟。
+
+实际执行 JavaScript `node --check` 语法检查和 Python 静态核对：42 个 HTML ID 无重复、脚本引用的静态 ID 均存在、23 个节点 ID 与 SystemCardNodeTypes 一致、26 份内嵌模板及 CSS 与当前资源一致、中英文各 565 键且集合相同、文档本地链接存在，`git diff --check` 通过。HTML 约 219 KiB，没有外部脚本或资源标签；CSP 禁止连接和外部资源，预览文档不运行脚本。本次未运行测试、浏览器或 Minecraft，未调用 API；实际文件打开、表单与源码同步、导入导出、草稿恢复和交互布局仍未进行运行验收。
+
+## 2026-11-06 物品来源分类与紧凑分页
+
+在下方原物品来源卡片的基础上，将内容分成配方／掉落／标签三类，按查询结果计数，空类禁用，初始选择首个非空类。ItemSourcesNode 保留分类选择与各类页码，完整模式默认配方每页 4 条／两列，简约和通知最多 2 条／单列；掉落每页 12 条，标签每页 24 条。材料格缩至 36px，加工站并入标题，掉落压成行，标签压成流式小块，减少重复物品和说明。卡片 JSON 可独立配置三类分页容量，切换不发包或重新播报。
+
+此前实际执行 `gradlew compileJava processResources --console=plain` 成功；静态检查 26 份卡片 JSON 的节点与翻译引用有效、中英文各 565 键且集合相同，`git diff --check` 通过。未运行测试、启动游戏或调用 API；实际分类切换、各类翻页／恢复、不同模式的密度和 tooltip 仍需游戏内验收。当前仅修改 master / 26.1.2。
+
+## 2026-11-06 物品来源分页卡片
+
+源码确认原物品来源工作流把完整 ItemSourceOutput 经 CodecIO.write 拼进消息正文。改为注册的 CardData 与 assets/system/cards/item_sources.json，客户端 ItemSourcesNode 复用 CardPagination，每页一条来源，只创建当前页材料 / 产物 / 加工站的物品节点及 tooltip；首尾与单页方向按钮置灰。物品槽改为 ItemStackTemplate 候选与独立数量，保留物品组件；有序 RecipeDisplay 的空槽、重复材料和宽度随服务端快照传输，原版尺寸补齐 3×3。无序、炉类、锻造、切石读取各自展示输入；其他类型回退 placementInfo。候选示例在 tooltip 显示，掉落权重不冒充概率，营火不提示消耗燃料。配方在回复截断前优先排序，空结果与 64 条上限均有提示。
+
+核对实际 Minecraft 26.1.2 RecipeDisplay、PlacementInfo、ItemStackTemplate 及烹饪配方源码。实际执行 `gradlew compileJava processResources --console=plain` 成功；静态检查 26 份卡片 JSON 无重复键、节点与 translate 键均有效，中英文各 562 键且集合相同，git diff --check 无空白错误。没有运行测试、启动 Minecraft 或调用外部 API。完整 / 简约 / HUD 的实际布局、配方前后翻页与页码保持、物品组件和候选 tooltip、资源重载及大型整合包查询耗时仍待游戏内验收；目前仅修改 master / 26.1.2。
+
+## 2026-11-06 共享三行分页网格
+
+将 ActionsNode 的本地分页抽为 CardPagination，新增 CardGrid 统一 columns / max_row / cell 的扁平 MapCodec、真实列数与每页容量。任务、商品、奖池与奖品预览共用；完整模式 6 × 3 = 18 项，通知 / 简约格子最多 3 × 3 = 9 项。分页先切片再创建 DOM、物品与 tooltip，不再将全部货架节点塞进限高滚动区。空列表、少量结果和最后一页都通过固定轨道 / 高度保留三行，分页栏常驻，单页 / 首尾方向禁用按钮。保持原始回调下标，商品格子也复用忙碌 / 通知交互检查；切页不触发业务、发包或重新播报。CSS 移除任务网格的限高裁切与独立通知列数覆盖。
+
+阅读 AUI 1.2.9 的 Element.init、Grid 轨道与边盒计算、Event 传播 API；捕获分页根节点前先初始化，避免插入时替换实例。实际执行 `gradlew compileJava processResources --console=plain` 成功；25 份卡片 JSON 可解析，中英文各 538 键且集合一致，git diff --check 无空白错误。没有运行测试、启动 Minecraft 或调用 API；实际三行高度、少量 / 最后一页不缩小、单页双按钮置灰、后页商品与任务动作下标、章节页码恢复、HUD 详情返回及不同主题仍待游戏内验收。服务端结果上限和网络协议未变；修改仅在 master / 26.1.2，1.21.1 待同步。
+
+## 2026-11-06 多章节 FTBQ 开发任务集
+
+对照 FTB Quests 26.1.2.8 的 BaseQuestFile、Chapter、ItemTask、ItemReward、TranslationManager / TranslationKey 和 ReloadCommand，新增 src/test-mod/ftbquests 下的 12 章 80 任务及双语 JSON5。覆盖 25 项三页列表、6 份礼包、手动消耗 / 混合 / 顺序 / 原生界面限定目标、一次解锁 12 条支线、单任务章节、不同奖励 / 图标、长标题 / 颜色代码与可见性受限说明书。固定 ID 使用 5A71 前缀；测试配置不进发布资源。显式 Python 安装器默认保留修改过的测试文件，两份全局文件始终只在缺失时创建。
+
+实际执行静态检查：38 份 JSON5 均可解析，272 个对象 ID 唯一且为合法正 long，依赖均存在且无环，章节/任务中英标题与正文键、值类型一致，安装器语法可解析。执行安装器将 36 份新章节/翻译复制到 run-test-client/config/ftbquests/quests，保留现有 data.json5、chapter_groups.json5 和其他任务；比对已安装文件与源文件一致。未改 Java，本次未重新编译、运行测试或启动 Minecraft，未改变存档进度；FTB 实际加载、分页与通知等交互仍需按 [开发任务集](test-quests.md) 手动验收。
+
+## 2026-11-06 图钉样式与任务详情固定入口
+
+阅读 AUI 1.2.9 source JAR 的 Transform 及 t08-arwes 主题 CSS，确认支持 rotate / transform 过渡，且主题的最小高度、按下背景、聚焦外框与 hover translateY 会覆盖原图钉选择器。共享样式提高按钮状态的选择器优先级，固定 22px 尺寸、透明背景和无外框；16px SVG 未固定倾斜 35°、固定后转为竖直并着强调色。任务详情 JSON 复用 quest_pin，QuestOutput 只将已有 id 放入 Context，标题预留按钮空间，固定缓存与跨文档更新逻辑共用原实现。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功，25 份卡片 JSON 可解析、中英文各 538 键且集合一致，静态确认详情图钉绑定 id，`git diff --check` 无空白错误。未运行测试或启动 Minecraft；需人工确认主题切换 / 聚焦 / 悬停后图钉尺寸与方向、列表与详情同步、详情标题避让及通知内详情布局。
+
+## 2026-11-06 Markdown 卡片节点
+
+阅读实际 AUI 1.2.9 source JAR 的 Markdown、DOM 文本节点和初始化 API，确认内置 Txtmark 扩展解析器可复用，但 renderSafe 不过滤所有事件属性或 URL。新增 system:markdown / MarkdownNode 和 AssistantMarkdown：解析结果经 JDK 被动 HTML 读取器，只以固定标签和纯文本重建展示；链接限 HTTP / HTTPS 并调用原版流程，图片只保留 alt，未知属性和脚本不会进入 AUI。AI 知识问答与联网答案通过原始 answer 参数使用 Markdown，FTBQ、来源原文和内置提示保留 text，不改变模型 API、历史 Codec 或语音内容。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功；25 份卡片 JSON 可解析、中英文各 538 键且集合一致，静态确认两个答案模板只为原始 answer 启用 Markdown，`git diff --check` 无空白错误。问答 / 搜索提示词允许简短 Markdown，但仍要求返回 JSON。未运行测试、启动 Minecraft 或调用模型接口；标题 / 强调 / 嵌套列表 / 引用 / 围栏代码的布局、中文换行、带 & 的 URL / 代码、原版链接确认、HUD 交互及资源重载仍待游戏内验收。没有引入新依赖；不支持 GFM 表格、任务复选框或代码高亮。
+
+## 2026-11-06 任务格子图钉与底边进度条
+
+任务列表 JSON 新增 quest_pin / progress 节点；前者切换客户端连接内去重的任务 ID 列表、阻止点击冒泡并刷新同任务按钮，后者读取已同步的数字进度，在下边线上绘制 3px 横条。固定列表不展示、不影响原排序，系统状态清理时一并清空。核对实际 AUI 1.2.9 source JAR 的 Element.init、SVG、事件冒泡与 Document.getAll API，按钮在初始化后绑定，使用 SVG 避免 emoji 字形缺失；通知模式单独覆盖通用按钮最小宽度，避免图钉被撑大。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功，25 份卡片 JSON 可解析，中英文各 538 键且集合相同，`git diff --check` 无空白错误。未运行测试、启动 Minecraft 或做游戏内验收；需人工确认任务图标 / 图钉互不遮挡、点击固定不进入详情、翻页 / 重开后保留状态、同任务跨文档同步、登出清理及 0 / 50 / 100 进度条长度。
+
+## 2026-11-06 少量任务章节禁止滚动回弹
+
+阅读实际 AUI 1.2.9 source JAR 的 MouseEvent.resolveScrollTarget、ScrollModel 与 Element.init：overflow:auto 只控制滚动资格，零滚动范围仍可被选为回退目标并产生弹性位移；原始 Element 初始化时不会复制内部监听。GroupedActionsNode 先初始化左栏，再注册内部 wheel 监听；仅在事件路径没有实际滚动范围时阻止默认滚动，保留超长左栏及外层聊天的真实滚动，Shift 滚轮兼顾横向范围。范围查询只在滚轮事件中进行，没有增加逐帧或布局回调测量。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功，`git diff --check` 无空白错误。未运行测试、启动 Minecraft 或做游戏内验收。仍需人工确认单章节无回弹、多章节超高可滚动、外层聊天滚动及通知按 T 交互。修改位于 master / 26.1.2，1.21.1 待同步。
+
+## 2026-11-06 任务图标边缘裁剪
+
+根据用户截图检查任务格子的 CSS，确认 `.card_action_cell` 的 `overflow: hidden` 会裁掉 FTB 原生图标超出 32px 元素盒的边缘。保留格子尺寸与布局，只将任务格子、图标容器和原生图标元素改为 `overflow: visible`，避免方块 / 物品图标的透明边缘或立体模型被截断。
+
+执行 `gradlew compileJava processResources --console=plain` 前一轮通过；本次仅修改 CSS 与文档，未启动游戏或做视觉验收。仍需确认不同 FTB 图标、滚动边界和通知模式下不会溢出任务列表外框。
+
+## 2026-11-06 任务列表居中与原生 Quest 图标
+
+阅读 FTB 26.1.2.8 的 QuestObjectBase.getIcon、ClientQuestFile.exists / getInstance 和 BaseQuestFile.getQuest，确认任务图标的配置优先级与客户端同步入口。新增通用 `system:quest_icon` 节点，使用结果附带的任务 ID，在隔离适配器中读取 Quest.getIcon，复用原生图标绘制与 tooltip；数据不可用时省略图标。任务格子保留 104px 高度，32px 图标和标题居中，编号 / 进度合为一行；带格式文本的内部块与 span 同时指定居中。
+
+执行 `gradlew compileJava processResources --console=plain` 成功。未运行测试、启动游戏或做视觉验收；自定义物品 / 材质 / 动画图标、长标题居中与 tooltip、通知分页和任务文件尚未同步时的展示仍待游戏内验收。修改仅在 master / 26.1.2，1.21.1 待同步。
+
+## 2026-11-06 任务列表货架布局修正
+
+根据用户截图和源码阅读，旧任务格子把带格式的多行标签直接放在 flex 按钮中，标题没有独立块，且两列格子过宽。右侧改用商店 / 抽奖同一套货架 DOM 与 CSS，完整模式 6 列、104px 高，通知 3 列；标题、编号和进度由 JSON children 分块设置，分页仍复用 ActionsNode。左栏改为自然高度内容容器，只有超过高度上限才滚动，取消 gutter 预留。顶层 title 单独显示“任务列表”，提示缩短，保留原摘要播报。后续按截图移除右侧重复的章节名、数量及整行占位，任务货架直接与左侧导航顶部对齐。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功；静态检查通过：25 份卡片 JSON 可解析，中英文各 536 键且集合相同，git diff --check 无空白错误。未运行测试、启动 Minecraft 或做视觉验收；仍需游戏内确认少量章节无滚动、超长章节滚动、格子标题换行、分页 / 分组切换及通知查看后返回。修改位于 master / 26.1.2，1.21.1 尚未同步。
+
+## 2026-11-05 任务列表分组卡片
+
+静态阅读 FTB 26.1.2.8 的 Chapter / ChapterGroup / BaseQuestFile 确认章节归属和顺序，读取 AUI 1.2.9 的 Element.init 确认回调容器需在插入前初始化。任务列表现在仅从本次结果生成分组；章节 ID 避免同名合并，左右区域分别滚动，右侧每组每页 10 项，选中章节与各组页码保留在卡片本地状态中。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功；25 份卡片 JSON 可解析，中英文各 536 键且集合相同，git diff --check 无空白错误。未运行测试、启动游戏、创建存档或调用外部 API。仍需游戏内验收多章节 / 同名章节 / 空分组过滤、左右滚动、分页后原任务编号、HUD 点击详情后返回、窗口缩放及长标题换行。当前仅修改 master / 26.1.2，1.21.1 尚未同步。
+
 ## 2026-11-05 通知 HUD 鼠标透传
 
 用户反馈背包内 FTBQ 左上角任务书偶发无法点击，当时通知已隐藏。阅读 AUI 1.2.9 的 Event / MouseEvent / Client 与 FTB Library 26.1.2.9 的侧栏实现，确认 AUI 在原版控件处理前全局分发输入，普通监听器会在回调执行前将事件视为已消费，不能靠回调内的条件判断实现透传。通知面板的鼠标监听改为内部监听，仅可交互状态显式 consumeNative；模板取消文档级自动拦截，HUD 指针规则固定优先于主题。鼠标按下、释放及界面滚轮事件以 HIGHEST 优先级重新检查实际界面，进入背包等非聊天界面时在 AUI 分发前移除残留通知文档。

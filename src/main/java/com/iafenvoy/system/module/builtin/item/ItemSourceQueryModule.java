@@ -8,14 +8,13 @@ import com.iafenvoy.system.data.input.ItemSourceQueryInput;
 import com.iafenvoy.system.data.output.ItemSourceOutput;
 import com.iafenvoy.system.itemsource.ItemSourceProviders;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
-import com.iafenvoy.system.util.CodecIO;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Locale;
 
 /**
- * Returns the JSON description of the requested sources of one item.
+ * Returns a typed source card; paging and recipe presentation stay on the client.
  */
 public final class ItemSourceQueryModule extends AbstractAgentModule<ItemSourceQueryInput> {
     private final ItemNameIndex names;
@@ -65,6 +64,6 @@ public final class ItemSourceQueryModule extends AbstractAgentModule<ItemSourceQ
     @Override
     public AgentResult execute(ExecutionContext context, ItemSourceQueryInput input) throws Exception {
         ItemSourceOutput output = context.tool(BuiltinTools.ITEM_SOURCES, "sources", input);
-        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.item_sources", CodecIO.write(ItemSourceOutput.CODEC, output), List.of());
+        return AgentResult.data("system.result.item_sources", output);
     }
 }

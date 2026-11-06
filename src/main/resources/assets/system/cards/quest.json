@@ -1,8 +1,17 @@
 {
+  "style": [
+    "result_card",
+    "quest_detail_card"
+  ],
   "body": [
     {
-      "type": "system:text",
+      "type": "system:title",
       "text": "{{title}}"
+    },
+    {
+      "type": "system:quest_pin",
+      "quest": "{{id}}",
+      "when": "id"
     },
     {
       "type": "system:text",

@@ -1,0 +1,34 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.ui.card_title_item_sources"
+    },
+    {
+      "type": "system:context",
+      "text": "{{summary}}"
+    },
+    {
+      "type": "system:context",
+      "text": "{{item_id}}"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.ui.item_sources_empty",
+      "unless": "sources"
+    },
+    {
+      "type": "system:item_sources",
+      "sources": "{{sources}}",
+      "recipe_page_size": 4,
+      "loot_page_size": 12,
+      "tag_page_size": 24,
+      "when": "sources"
+    },
+    {
+      "type": "system:context",
+      "translate": "system.ui.item_sources_truncated",
+      "when": "truncated"
+    }
+  ]
+}

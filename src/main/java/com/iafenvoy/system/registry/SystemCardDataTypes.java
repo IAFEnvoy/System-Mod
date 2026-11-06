@@ -31,6 +31,7 @@ public final class SystemCardDataTypes {
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ShopQuoteOutput>> SHOP_QUOTE = REGISTRY.register("shop_quote", () -> ShopQuoteOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<PlayerSnapshotOutput>> PLAYER = REGISTRY.register("player", () -> PlayerSnapshotOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ItemPageOutput>> ITEMS = REGISTRY.register("items", () -> ItemPageOutput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ItemSourceOutput>> ITEM_SOURCES = REGISTRY.register("item_sources", () -> ItemSourceOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<StateOutput>> DELIVERY_STATE = REGISTRY.register("delivery_state", () -> StateOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<RewardOutput>> REWARD = REGISTRY.register("reward", () -> RewardOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<CreditReceiptOutput>> ENTITLEMENT = REGISTRY.register("entitlement", () -> CreditReceiptOutput.CODEC);

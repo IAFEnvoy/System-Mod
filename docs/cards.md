@@ -162,7 +162,7 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 | `player_information` | `card_column` | 显示 Saturn 生成的玩家信息，只保留重要度严格大于 `importance` 的行 |
 | `icons` | `quest_icon_group` | FTB 任务 / 奖励的原生类型图标、数量 / 进度及文字 tooltip |
 | `quest_icon` | `quest_card_icon` | 按任务 ID 读取 FTB Quest 自身配置的图标，悬停显示任务名 |
-| `quest_pin` | `quest_card_pin` | 按任务 ID 切换客户端固定状态，右上角图钉按钮 |
+| `quest_pin` | `quest_card_pin` | 按任务 ID 切换服务端保存的固定状态，右上角图钉按钮 |
 | `progress` | `card_progress` | 读取数字参数作为 0～100 的进度条，在任务格子中贴合下边线 |
 | `actions` | `card_actions` | 已有可信动作列表 |
 | `grouped_actions` | `card_grouped_actions` | 从已有动作生成左侧分组，溢出才滚动；右侧以货架格子和独立分页显示所选组 |
@@ -306,7 +306,7 @@ AUI 的 `renderSafe` 不是完整 HTML 过滤器，因此 `AssistantMarkdown` �
 
 `link` 的 url 必填，text 缺省时使用 URL。两者支持平铺占位符与循环下标，URL 以原值替换，不注入 Minecraft 格式重置符。点击复用 `Screen.clickUrlAction`，由原版校验外部 URL、读取 chatLinks/chatLinksPrompt，必要时显示原版确认界面，结束后返回当时的界面；非法链接不执行。链接不作为 AUI 导航或脚本执行，不触发服务端动作。完整、简约模式均可点击，HUD 需进入聊天栏；纯文本格式为标题与 URL。
 
-折叠标题与链接采用 flex 按钮和独立的 block 文字子元素，避免按钮直接文字与行内片段重复绘制；标题的箭头单独占位。展开 / 收起时立即清理内容子树的布局缓存并提交重排。搜索模板用 search_source 块纵向排列来源，摘要通过 line-clamp 显示最多三行，完整内容可点击链接查看；这些显示限制不裁剪模型取得的证据。
+折叠标题与链接采用 flex 按钮和独立的 block 文字子元素，避免按钮直接文字与行内片段重复绘制；标题的箭头单独占位。展开 / 收起只使内容子树的布局失效，交给 AUI 的下一次渲染处理，不在点击事件中同步提交整页布局；回调持有提前初始化的原生节点，避免插入时替换标签后引用失效。搜索模板用 search_source 块纵向排列来源，摘要通过 line-clamp 显示最多三行，完整内容可点击链接查看；这些显示限制不裁剪模型取得的证据。
 
 | 占位符 | 含义 |
 | --- | --- |
@@ -402,7 +402,7 @@ return this.grid.render(view, "example:" + binding, entries, "offer_grid", (pare
 
 任务列表使用 `system:grouped_actions`，复用上述可信动作绑定与分页逻辑。左侧是本次查询实际返回任务的章节，按 FTB 的章节组显示上级标题；左栏按内容自然撑高，只有超出高度上限才滚动，不预留滚动条空隙。左栏的内部 wheel 监听还会检查事件路径是否有实际滚动范围：有范围时保留 AUI 原生滚动（包括外层聊天记录），没有范围时阻止零范围回弹；Shift 滚轮同时考虑横向范围。不按章节数量猜测高度，也不在布局或逐帧回调中测量滚动范围。右侧使用商店、抽奖相同的 `offer_grid > offer_cell > offer_cell_label` 结构与样式，完整模式为 6 列 × 3 行、104px 高的格子，通知为 3 列 × 3 行。格子中依次显示 32px 原生任务图标、居中的任务标题，以及底部编号；解锁通知不显示编号。进度用沿格子下边线的 3px 进度条表示，右上角有图钉按钮。带格式标题的内部 minecraft_text 行块也显式居中，不把多行文本直接塞进 flex 按钮。卡片顶部单独显示“任务列表”，不重复显示原有长摘要；摘要仍供播报使用。
 
-`system:quest_pin` 的 `quest` 接受任务 ID 占位符，例如 `{{actions.*.action_quest_id}}`。固定列表保存在 `ClientModuleCaches.QUEST_PINS` / `QuestPinCache`，只记录去重且保持插入顺序的 ID，`ids()` 返回不可变快照。翻页、切换分组和重开界面保留；断开连接、撤销或失效清理系统状态时清空。不持久化、不上传服务端，也不改变原任务排序或显示额外固定列表。点击会阻止事件冒泡，避免打开任务详情，并同步所有已存在文档中同任务的图钉状态。图标使用 AUI 内置 SVG，避免依赖字体中的 emoji 字形。
+`system:quest_pin` 的 `quest` 接受任务 ID 占位符，例如 `{{actions.*.action_quest_id}}`。点击将 `DisplayCardKey(system:ftb_quests, 任务ID)` 和明确的固定 / 取消状态发给服务端；服务端重新检查任务可见性、详情解锁条件和模块权限，事务成功后回传实际固定状态。`ClientModuleCaches.DISPLAY_CARDS` / `DisplayCardCache` 只保存连接内的服务端镜像、版本和待确认请求，不负责持久化。等待确认时禁用同任务图钉，超时解除禁用；错误不会把未保存的状态显示为成功。点击阻止事件冒泡，避免打开任务详情，并同步已存在文档中同任务的图钉状态。图标使用 AUI 内置 SVG。
 
 图钉未固定时倾斜 35°，固定后平滑转为竖直并显示强调色；按钮固定 22px、图标 16px，所有主题按钮状态保持透明背景、无边框和外框，悬停 / 聚焦仅提亮图标。选择器覆盖主题的最小高度、按下填充与 hover transform，避免出现高色块。任务详情也使用同一个节点：QuestOutput 将已有任务 ID 放入 Context，quest.json 右上角绑定 `{{id}}`，与列表、其他详情及通知中同任务的固定状态同步。标题预留右侧空间；简约和通知布局单独调整图钉边距。
 
@@ -446,6 +446,20 @@ CardButton 显式描述 Local/Server 动作、BODY/FOOTER 位置以及 CLOSE/WAI
 CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并等待回复。REPLACE 同样等待，但把直接回复的新 SHOW 卡片放到当前通知的位置，旧内容淡出后新内容淡入，不收起面板或重复播放提示音；其余排队通知保持顺序。CardBuilder.serverButton 默认使用 REPLACE。任务列表查看按钮使用 PUSH：收到可显示的回复后保留来源视图，详情正文上方提供本地“返回列表”，返回时恢复原页码且不重复播报列表。失败的零卡片回复保留原列表；业务 REMOVE 会清除对应返回视图。底部确定结束整个当前窗口并清理返回栈，再取下一条通知。通知没有自动关闭计时，播报结束也不会切换到下一条。
 
 仅从 HUD 激活的 REPLACE / PUSH 按钮会在客户端 pending 中记录来源 CardRef，并按 requestId 关联回复；完整/简约页面中的同一按钮仍按页面流程处理。原通知已确认、关闭或返回上层时，迟到回复不重新弹出，也不替换其他通知。独立推送继续入队；业务 CardUpdate.REPLACE/REMOVE 仍沿用静默更新语义。等待期间禁用服务端按钮，失败、超时和零卡片回复也解除等待；本地翻页、返回和确定独立于服务端忙碌状态。语音优先匹配当前通知的业务按钮、返回及确定，失败或歧义才进入主聊天。
+
+## 常驻卡片 HUD
+
+常驻卡片使用独立的 `AssistantCardDisplay`、`assistant-cards.html` 和 Saturn HUD 项 `system.cards`，默认位于屏幕左侧；不进入聊天历史或通知队列，不播放提示音或 TTS，也没有自动关闭时间。正文仍由 `CardData.buildCard()`、`CardBuildEvent`、`CardPresentation` 和客户端 JSON 模板构建，共用 `assistant.css` 和主题。`CardContext.Mode.HUD` 对应 `hud` 状态；支持折叠、链接、图钉等客户端节点，当前任务跟踪模板不提供提交、领奖等业务动作。
+
+固定记录由核心模块的 `DisplayCardsDataStorage` 保存，存储声明为 `CoreSystemModule.DISPLAY_CARDS`，Saturn Codec 类型为 `system:display_cards`。去重且保持插入顺序的记录只含 `source` 和 `id`，不保存过期任务快照或客户端对象。更新通过 `AgentStore` 玩家事务执行，实际变化调用 `markDirty()`；沿用 `<存档>/system-agent/<玩家UUID>.json` 的 moduleData，因此按服务器 / 存档及玩家隔离，重新登录、重启仍保留。撤销 / reset 删除玩家业务数据时一起删除；普通登出只清空客户端镜像。
+
+服务端 `AssistantCardDisplays` 负责数据源与会话，由 `ModuleManager` 驱动登录、初始化、tick 和关闭。模块通过 `context.displays().register(context.id(), sourceId, reader)` 注册来源，reader 在服务端线程接收当前玩家及业务 ID，返回 `Optional<CardData>`。每秒重读当前数据，只在快照变化或确认固定操作时发送 `DisplayCardsS2CPayload`；C2S 只接受 key 和固定状态，不接受客户端提供的卡片正文。session / revision 防止过期快照覆盖，异步写回还会复核连接与玩家运行代次。
+
+FTB 来源为隔离适配器 `FtbQuestDisplay`：每次核对当前队伍、任务可见性及详情解锁条件，再生成 `QuestPinOutput`。`assets/system/cards/quest_pin.json` 显示标题、章节、前三项目标与底部进度，标题前用彩色勾 / 叉表示完成状态；额外目标只显示数量。完成后继续保留到手动取消 pin，不自动提交或领奖。任务不存在、变为隐藏或对应模块停用时，保留引用但不发送卡片正文；恢复可读后重新出现。
+
+左侧宽度由共享 CSS 控制为 `min(360px, 38vw)`，高度随内容增长，上限 72vh，超出后滚动。按聊天键后可滚动及取消固定，正常游戏不抢占鼠标；默认打开背包等其他 Screen 时立即禁用交互，退出动画完成后卸载 HUD，返回后恢复。“设置 → 常规”可关闭常驻卡片动画，或启用在其他界面继续展示；其他界面内保持被动，不拦截原版控件。F1 和退出世界仍立即卸载，HUD 编辑器始终使用预览。位置和显隐使用 Saturn 自带编辑器，详见[HUD 位置编辑](ui-localization.md#常驻卡片-hud)。常驻展示不注册通知 CardRef，不执行通知的确定、返回或排队逻辑。
+
+每张卡片使用独立包装层执行横向滑动和淡入淡出：Saturn 左侧锚点左进左出，右侧锚点右进右出；上下居中锚点按 HUD 所在屏幕半边选择方向。位移根据已保存的位置与屏幕边缘计算，并转换为文档像素。新增卡片等待原生首次布局完成再入场，取消固定、切换界面或数据暂时不可读时先退出、动画结束再移除；最后一张也保留到退出完成。退出途中返回游戏或恢复同一张卡片会反向进入，任务进度及模板更新只替换内部内容，不重播入场。切换界面只保留退出所需的被动绘制，不接受鼠标操作；编辑器自身预览不受影响。
 
 ## 通用参数与模块字段
 

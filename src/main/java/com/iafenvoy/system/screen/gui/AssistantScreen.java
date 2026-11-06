@@ -6,12 +6,12 @@ import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.module.client.ClientModuleBindingsCache;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
-import com.iafenvoy.system.screen.AssistantPages;
+import com.iafenvoy.system.screen.AssistantGeometry;
 import com.iafenvoy.system.screen.card.CardPageState;
 import com.iafenvoy.system.screen.card.CardTemplates;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
-import com.sighs.apricityui.layout.Box;
+import com.sighs.apricityui.render.Drawer;
 import com.sighs.apricityui.render.GeometryQueryScope;
 
 import java.util.*;
@@ -25,9 +25,14 @@ public final class AssistantScreen extends AssistantInputScreen {
     // Keep independent card pages across transcript redraws and window resizing, only for this screen's lifetime.
     private final Map<UUID, CardPageState> cardPages = new HashMap<>();
     private List<AssistantClientState.ChatEntry> renderedEntries = List.of();
+    private final List<Element> renderedRows = new ArrayList<>();
+    private PendingScroll pendingScroll;
     private long revision = -1;
     private long templateRevision = -1;
     private String page = "chat";
+
+    private record PendingScroll(double current, double target, boolean follow, boolean smooth) {
+    }
 
     public AssistantScreen() {
         this("");
@@ -49,6 +54,7 @@ public final class AssistantScreen extends AssistantInputScreen {
         bind(document, "send", this::sendMessage);
         ClientModuleCaches.BINDINGS.get().bindWorkspace(this, document);
         this.revision = -1;
+        this.pendingScroll = null;
         this.renderEntries();
     }
 
@@ -65,14 +71,15 @@ public final class AssistantScreen extends AssistantInputScreen {
         for (ClientModuleBindingsCache.Workspace entry : ClientModuleCaches.BINDINGS.get().workspace()) {
             if (!entry.navigation().isBlank()) {
                 Element navigation = document.getElementById(entry.navigation());
-                navigation.setInlineStyleProperty("display", entry.available() ? "block" : "none");
-                navigation.setClassName(!entry.page().isBlank() && entry.page().equals(this.page) ? "nav active" : "nav");
+                display(navigation, entry.available() ? "block" : "none");
+                String css = !entry.page().isBlank() && entry.page().equals(this.page) ? "nav active" : "nav";
+                if (!css.equals(navigation.getClassName())) navigation.setClassName(css);
             }
             if (!entry.page().isBlank()) {
                 // A module may be present in the registry while its page is omitted by a custom template.
                 Element page = document.getElementById("page_" + entry.page());
                 if (page != null)
-                    page.setInlineStyleProperty("display", entry.available() && entry.page().equals(this.page) ? "flex" : "none");
+                    display(page, entry.available() && entry.page().equals(this.page) ? "flex" : "none");
             }
         }
     }
@@ -94,10 +101,9 @@ public final class AssistantScreen extends AssistantInputScreen {
         Document document = this.getLinkedDocument();
         if (document == null) return;
         List<AssistantClientState.ChatEntry> entries = AssistantClient.state().entries();
-        boolean redraw = this.revision < 0 || this.templateRevision != CardTemplates.revision()
-                || !this.renderedEntries.equals(entries);
-        int firstNew = this.revision < 0 || this.templateRevision != CardTemplates.revision()
-                ? entries.size() : this.firstNewEntry(entries);
+        boolean reload = this.revision < 0 || this.templateRevision != CardTemplates.revision();
+        boolean redraw = reload || !this.renderedEntries.equals(entries);
+        int firstNew = reload ? entries.size() : this.firstNewEntry(entries);
         this.revision = AssistantClient.revision();
         this.templateRevision = CardTemplates.revision();
         this.updateLayout(document, firstNew < entries.size(), () -> {
@@ -106,41 +112,50 @@ public final class AssistantScreen extends AssistantInputScreen {
             text(document.getElementById("welcome_text"), tr(AssistantClient.system().description()));
             this.updatePage(document);
             Element list = document.getElementById("conversation_entries");
-            // Status-only updates keep live nodes so an entrance animation is not interrupted or restarted.
+            // Append/replace only changed rows; rebuilding the transcript also rebuilds every nested card grid.
             if (redraw) {
-                list.setInnerHTML("");
+                Map<AssistantClientState.ChatEntry, Deque<Element>> reusable = new HashMap<>();
+                // Resource reloads and screen reinitialization have a different DOM/template generation.
+                for (int index = 0; index < this.renderedRows.size(); index++) {
+                    Element row = this.renderedRows.get(index);
+                    if (!reload && row.isConnected() && row.document == document)
+                        reusable.computeIfAbsent(this.renderedEntries.get(index), unused -> new ArrayDeque<>()).add(row);
+                }
+                List<Element> rows = new ArrayList<>();
                 Set<UUID> visibleCards = new HashSet<>();
                 for (int index = 0; index < entries.size(); index++) {
                     AssistantClientState.ChatEntry entry = entries.get(index);
-                    String css = entry.player() ? "message user" : "message assistant";
-                    Element row = element(document, "div", css + (index >= firstNew ? " message_new" : ""), "");
-                    row.appendChild(element(document, "div", "message_label", tr(entry.player() ? "system.ui.you" : AssistantClient.system().name())));
-                    if (!entry.text().isBlank())
-                        row.appendChild(element(document, "div", "message_text", entry.text()));
+                    Deque<Element> candidates = reusable.get(entry);
+                    Element row = candidates == null || candidates.isEmpty() ? this.renderEntry(document, entry, index >= firstNew) : candidates.removeFirst();
+                    rows.add(row);
                     AgentResult result = entry.result();
-                    if (result != null) {
-                        for (CardUpdate card : result.cards()) {
-                            UUID id = card.ref().id();
-                            visibleCards.add(id);
-                            row.appendChild(renderCard(document, card, result.messageKey(), this.cardPages.computeIfAbsent(id, unused -> new CardPageState())));
-                        }
-                    }
-                    list.appendChild(row);
+                    if (result != null) for (CardUpdate card : result.cards()) visibleCards.add(card.ref().id());
                 }
+                reconcile(list, rows);
+                this.renderedRows.clear();
+                this.renderedRows.addAll(rows);
                 this.cardPages.keySet().retainAll(visibleCards);
                 this.renderedEntries = entries;
             }
             for (Element button : list.querySelectorAll("button[data-requires-idle]"))
-                button.setDisabled(AssistantClient.state().busy());
-            document.getElementById("welcome").setInlineStyleProperty("display", entries.isEmpty() ? "flex" : "none");
-            document.getElementById("conversation").setInlineStyleProperty("display", entries.isEmpty() ? "none" : "grid");
+                if (button.isDisabled() != AssistantClient.state().busy())
+                    button.setDisabled(AssistantClient.state().busy());
+            display(document.getElementById("welcome"), entries.isEmpty() ? "flex" : "none");
+            display(document.getElementById("conversation"), entries.isEmpty() ? "none" : "grid");
             text(document.getElementById("status"), tr(AssistantClient.state().busy() ? "system.ui.working" : "system.ui.ready"));
             text(document.getElementById("send"), tr(AssistantClient.state().busy() ? "system.ui.working" : "system.ui.send"));
         });
-        // Commit the starting pose first; removing it then starts AUI's bounded paint-only transitions.
-        if (firstNew < entries.size())
-            for (Element row : document.querySelectorAll(".message_new"))
-                row.getClassList().remove("message_new");
+    }
+
+    private Element renderEntry(Document document, AssistantClientState.ChatEntry entry, boolean animate) {
+        String css = entry.player() ? "message user" : "message assistant";
+        Element row = Element.init(element(document, "div", css + (animate ? " message_new" : ""), ""));
+        row.appendChild(element(document, "div", "message_label", tr(entry.player() ? "system.ui.you" : AssistantClient.system().name())));
+        if (!entry.text().isBlank()) row.appendChild(element(document, "div", "message_text", entry.text()));
+        AgentResult result = entry.result();
+        if (result != null) for (CardUpdate card : result.cards())
+            row.appendChild(renderCard(document, card, result.messageKey(), this.cardPages.computeIfAbsent(card.ref().id(), unused -> new CardPageState())));
+        return row;
     }
 
     private int firstNewEntry(List<AssistantClientState.ChatEntry> entries) {
@@ -159,29 +174,42 @@ public final class AssistantScreen extends AssistantInputScreen {
 
     private void updateLayout(Document document, boolean smooth, Runnable update) {
         try (Document.ContextScope ignored = Document.withContext(document)) {
-            AssistantPages.commit(document);
             Element list = document.getElementById("conversation");
             double current = list.getScrollTop(), target = list.getTargetScrollTop();
-            boolean follow;
-            try (GeometryQueryScope geometry = GeometryQueryScope.open()) {
-                // A target at the bottom keeps following during easing; scrolling upward cancels following.
-                follow = target >= scrollLimit(list) - 2 && target >= current - 2;
+            // Capture the old viewport before mutation; restore once the next frame has committed the new one.
+            if (this.pendingScroll == null) {
+                boolean atBottom = list.getLayout().getCommittedRectIfValid() == null
+                        ? target <= 2 : target >= AssistantGeometry.scrollLimit(list, false) - 2;
+                this.pendingScroll = new PendingScroll(current, target,
+                        atBottom && target >= current - 2, smooth);
             }
             update.run();
-            AssistantPages.commit(document);
-            // Do not share geometry caches across DOM mutations; setScrollTop also queries the box size.
-            try (GeometryQueryScope geometry = GeometryQueryScope.open()) {
-                double limit = scrollLimit(list);
-                list.setScrollTop(follow ? limit : Math.clamp(target, 0, limit));
-                // Let AUI ease toward the new target; initial layout still opens directly at the bottom.
-                list.scrollTop = follow && !smooth && target <= current ? limit : Math.clamp(current, 0, limit);
-            }
         }
     }
 
-    private static double scrollLimit(Element list) {
-        // AUI's layout commit already measured scrollHeight; querying a limit must not measure the subtree again.
-        return Math.max(0, list.scrollHeight - Box.of(list).innerSize().height());
+    @Override
+    protected void layoutReady(Document document) {
+        super.layoutReady(document);
+        Element list = document.getElementById("conversation");
+        if (this.pendingScroll != null && list.getLayout().getCommittedRectIfValid() != null) {
+            PendingScroll pending = this.pendingScroll;
+            this.pendingScroll = null;
+            try (Document.ContextScope ignored = Document.withContext(document);
+                 GeometryQueryScope geometry = GeometryQueryScope.open()) {
+                double limit = AssistantGeometry.scrollLimit(list, false);
+                list.setScrollTop(pending.follow ? limit : Math.clamp(pending.target, 0, limit));
+                double current = pending.follow && !pending.smooth && pending.target <= pending.current
+                        ? limit : Math.clamp(pending.current, 0, limit);
+                if (Double.compare(list.scrollTop, current) != 0) {
+                    list.scrollTop = current;
+                    list.getLayout().invalidateScrollVersion();
+                    document.markDirty(list, Drawer.REPAINT | Drawer.HITTEST);
+                }
+            }
+        }
+        // The frame boundary established the starting styles, so this only starts paint-only motion.
+        for (Element row : this.renderedRows)
+            if (row.getClassList().contains("message_new")) row.getClassList().remove("message_new");
     }
 
     @Override

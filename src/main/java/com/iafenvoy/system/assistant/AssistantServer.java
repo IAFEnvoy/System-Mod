@@ -57,6 +57,7 @@ public final class AssistantServer {
     private final AssistantRequests requests;
     private final AssistantUsage usage;
     private final ModuleManager moduleManager;
+    private final AssistantCardDisplays displays;
     private final GameTaskQueue gameQueue = new GameTaskQueue();
     private PromptReloadListener promptListener;
 
@@ -83,8 +84,9 @@ public final class AssistantServer {
             MinecraftTools game = new MinecraftTools(server, this.gameQueue);
             CommerceCatalogs catalogs = new CommerceCatalogs(CommerceCatalog.create(server.registryAccess()), this.engine::moduleEnabled);
             CommerceTransactions transactions = new CommerceTransactions(this.engine, game, catalogs);
+            this.displays = this.own(new AssistantCardDisplays(server, this.engine));
             ModuleContext modules = new ModuleContext(this.engine, game, transactions, catalogs, this.databases,
-                    this.search, this.narration, server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE));
+                    this.search, this.narration, this.displays, server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE));
             this.moduleManager = this.own(new ModuleManager(server, modules));
             this.engine.moduleAccess(this.moduleManager::hasModule);
             NeoForge.EVENT_BUS.post(new AssistantRegistrationEvent(this.engine));
@@ -137,6 +139,10 @@ public final class AssistantServer {
 
     public AgentEngine engine() {
         return this.engine;
+    }
+
+    public AssistantCardDisplays displays() {
+        return this.displays;
     }
 
     public AssistantPlayers players() {

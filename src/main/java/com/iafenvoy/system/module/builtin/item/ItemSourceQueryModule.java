@@ -32,16 +32,16 @@ public final class ItemSourceQueryModule extends AbstractAgentModule<ItemSourceQ
                 .command(AgentCommand.identifierWithScope("item", "scope", ItemSourceProviders.scopes(),
                         (id, scope) -> new ItemSourceQueryInput(id.toString(), scope), "recipe", "配方", "来源"))
                 .semantic(RoutingProfile.read(text -> {
-                            String scope = scopeOf(text);
-                            String id = CommandArguments.singleItemId(text);
-                            if (id != null) return new ItemSourceQueryInput(id, scope);
-                            // A bare display name is enough: "how do I get a diamond pickaxe" needs no registry syntax.
-                            Identifier resolved = this.names.resolve(text);
-                            return resolved == null ? null : new ItemSourceQueryInput(resolved.toString(), scope);
-                        },
-                        List.of("钻石镐的配方", "怎么做钻石镐", "如何获取钻石镐", "钻石从哪获得", "钻石的掉落", "木板是什么标签"),
-                        List.of("Recipes for minecraft:diamond_pickaxe", "How do I craft a torch", "How do I obtain a diamond pickaxe",
-                                "Where do I get diamonds", "Loot tables for minecraft:diamond", "Tags of minecraft:oak_planks"))
+                                    String scope = scopeOf(text);
+                                    String id = CommandArguments.singleItemId(text);
+                                    if (id != null) return new ItemSourceQueryInput(id, scope);
+                                    // A bare display name is enough: "how do I get a diamond pickaxe" needs no registry syntax.
+                                    Identifier resolved = this.names.resolve(text);
+                                    return resolved == null ? null : new ItemSourceQueryInput(resolved.toString(), scope);
+                                },
+                                List.of("钻石镐的配方", "怎么做钻石镐", "如何获取钻石镐", "钻石从哪获得", "钻石的掉落", "木板是什么标签"),
+                                List.of("Recipes for minecraft:diamond_pickaxe", "How do I craft a torch", "How do I obtain a diamond pickaxe",
+                                        "Where do I get diamonds", "Loot tables for minecraft:diamond", "Tags of minecraft:oak_planks"))
                         .choice("system.action.view_item_sources"));
     }
 

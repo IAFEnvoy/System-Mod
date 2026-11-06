@@ -1,6 +1,7 @@
 package com.iafenvoy.system.screen.gui;
 
 import com.iafenvoy.system.screen.AssistantPages;
+import com.iafenvoy.system.screen.AssistantThemes;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.screen.ApricityScreen;
 import net.minecraft.client.Minecraft;
@@ -11,7 +12,7 @@ import org.jspecify.annotations.NonNull;
 import java.net.URISyntaxException;
 
 /**
- * Publishes a page only after its styles, bindings and initial content have been laid out.
+ * Builds page bindings and observes layout published by AUI, without running a second render lifecycle.
  */
 public abstract class AssistantPageScreen extends ApricityScreen {
     private final String templatePath;
@@ -27,12 +28,9 @@ public abstract class AssistantPageScreen extends ApricityScreen {
         super.init();
         Document document = this.getLinkedDocument();
         if (document == null) return;
-        document.setManuallyRendered(true);
         try (Document.ContextScope ignored = Document.withContext(document)) {
+            AssistantThemes.apply(document);
             this.initPage(document);
-            document.applyViewport(true);
-            AssistantPages.commit(document);
-            document.setManuallyRendered(false);
         } catch (RuntimeException | Error error) {
             document.remove();
             throw error;
@@ -40,6 +38,9 @@ public abstract class AssistantPageScreen extends ApricityScreen {
     }
 
     protected abstract void initPage(Document document);
+
+    protected void layoutReady(Document document) {
+    }
 
     public static void openLink(String url) {
         Minecraft minecraft = Minecraft.getInstance();
@@ -52,8 +53,14 @@ public abstract class AssistantPageScreen extends ApricityScreen {
     @Override
     public void extractRenderState(@NonNull GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         Document document = this.getLinkedDocument();
-        // Commit content changes before geometry queries, rather than waiting for a mouse hit test.
-        if (document != null) AssistantPages.commit(document);
+        if (document != null && !document.isDisposed()) {
+            // Resource reloads may replace the body. Never advance layout or motion during extraction.
+            AssistantThemes.apply(document);
+            if (!document.getLayout().needsInitialFullCommit() && !document.hasPendingRenderState())
+                try (Document.ContextScope ignored = Document.withContext(document)) {
+                    this.layoutReady(document);
+                }
+        }
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
     }
 }

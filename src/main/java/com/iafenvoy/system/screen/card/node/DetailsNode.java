@@ -1,6 +1,5 @@
 package com.iafenvoy.system.screen.card.node;
 
-import com.iafenvoy.system.screen.AssistantPages;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.iafenvoy.system.screen.card.CardRenderer;
 import com.iafenvoy.system.screen.card.CardTemplate;
@@ -39,13 +38,13 @@ public record DetailsNode(String summary, List<CardTemplate.Node> children, bool
 
     @Override
     public Element render(CardRenderer.Render view) {
-        Element content = AssistantView.element(view.document(), "div", "card_details_body", "");
+        Element content = Element.init(AssistantView.element(view.document(), "div", "card_details_body", ""));
         CardRenderer.render(view.document(), content, this.children, view.template(), view.context(), view.indices());
         if (content.children.isEmpty()) return null;
         String label = CardRenderer.value(this.summary, view.context(), view.indices());
-        Element toggle = AssistantView.element(view.document(), "button", "card_details_toggle", "");
+        Element toggle = Element.init(AssistantView.element(view.document(), "button", "card_details_toggle", ""));
         toggle.setAttribute("type", "button");
-        Element arrow = AssistantView.element(view.document(), "span", "card_details_arrow", "");
+        Element arrow = Element.init(AssistantView.element(view.document(), "span", "card_details_arrow", ""));
         arrow.setAttribute("aria-hidden", "true");
         toggle.appendChild(arrow);
         toggle.appendChild(AssistantView.element(view.document(), "span", "card_control_label", label));
@@ -53,9 +52,8 @@ public record DetailsNode(String summary, List<CardTemplate.Node> children, bool
         toggle.addEventListener("click", _ -> {
             if (!view.interactive()) return;
             this.expanded(toggle, arrow, content, !"true".equals(toggle.getAttribute("aria-expanded")));
-            // Reflow the revealed subtree before painting or querying the next pointer position.
+            // Keep the live native nodes and let AUI reflow the revealed subtree before the next paint.
             content.getLayout().invalidateLayoutSubtree();
-            AssistantPages.commit(view.document());
         });
         Element element = view.element("div", "");
         element.appendChild(toggle);

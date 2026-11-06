@@ -11,8 +11,7 @@ import com.iafenvoy.system.screen.card.CardTemplates;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Objects;
 
 import static com.iafenvoy.system.screen.gui.AssistantView.*;
 
@@ -22,6 +21,8 @@ import static com.iafenvoy.system.screen.gui.AssistantView.*;
 public final class AssistantSimpleScreen extends AssistantInputScreen {
     private long revision = -1;
     private long templateRevision = -1;
+    private AgentResult renderedResult;
+    private String renderedFallback = "";
 
     public AssistantSimpleScreen(String draft) {
         super("system/assistant-simple.html", draft);
@@ -51,20 +52,27 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
     private void renderCurrent() {
         Document document = this.getLinkedDocument();
         if (document == null) return;
-        this.revision = AssistantClient.revision();
-        this.templateRevision = CardTemplates.revision();
         AssistantClientState.ChatEntry current = AssistantClient.state().current();
         String request = current == null ? "" : current.text();
         text(document.getElementById("current_request"), request);
-        document.getElementById("current_request").setInlineStyleProperty("display", request.isBlank() ? "none" : "block");
+        display(document.getElementById("current_request"), request.isBlank() ? "none" : "block");
         AgentResult result = current == null ? null : current.result();
+        boolean busy = AssistantClient.state().busy();
+        String fallback = result == null ? (busy ? "" : tr(AssistantClient.system().description()) + "\n\n")
+                + tr(busy ? "system.ui.simple_working" : "system.ui.simple_welcome") : "";
+        boolean redraw = this.revision < 0 || this.templateRevision != CardTemplates.revision()
+                || !Objects.equals(this.renderedResult, result) || !this.renderedFallback.equals(fallback);
+        this.revision = AssistantClient.revision();
+        this.templateRevision = CardTemplates.revision();
+        this.renderedResult = result;
+        this.renderedFallback = fallback;
+        text(document.getElementById("status"), tr(busy ? "system.ui.working" : "system.ui.ready"));
+        text(document.getElementById("send"), tr(busy ? "system.ui.working" : "system.ui.send"));
+        if (!redraw) return;
         Element speech = document.getElementById("current_result");
         speech.setInnerHTML("");
-        List<String> lines = new ArrayList<>();
-        if (result == null) {
-            if (!AssistantClient.state().busy()) lines.add(tr(AssistantClient.system().description()));
-            lines.add(tr(AssistantClient.state().busy() ? "system.ui.simple_working" : "system.ui.simple_welcome"));
-        } else {
+        if (result == null) text(speech, fallback);
+        else {
             int index = 1;
             for (CardUpdate card : result.cards()) {
                 speech.appendChild(CardPresentation.of(card, result.messageKey(), CardContext.Mode.SIMPLE, index - 1).render(document));
@@ -72,12 +80,9 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
             }
             if (index > 1) speech.appendChild(element(document, "div", "card_context", tr("system.ui.simple_actions")));
         }
-        if (result == null) text(speech, String.join("\n\n", lines));
         Element area = document.getElementById("speech");
         area.scrollTop = 0;
         area.targetScrollTop = 0;
-        text(document.getElementById("status"), tr(AssistantClient.state().busy() ? "system.ui.working" : "system.ui.ready"));
-        text(document.getElementById("send"), tr(AssistantClient.state().busy() ? "system.ui.working" : "system.ui.send"));
     }
 
     @Override

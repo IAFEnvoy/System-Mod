@@ -19,7 +19,8 @@ import java.util.List;
  *
  * @param scope requested provider scope, retained in the tool result and saved card
  */
-public record ItemSourceOutput(String item, String scope, List<ItemSource> sources, boolean truncated) implements CardData {
+public record ItemSourceOutput(String item, String scope, List<ItemSource> sources,
+                               boolean truncated) implements CardData {
     public static final MapCodec<ItemSourceOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("item").forGetter(ItemSourceOutput::item),
             Codec.STRING.lenientOptionalFieldOf("scope", ItemSourceProviders.ALL).forGetter(ItemSourceOutput::scope),

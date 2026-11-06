@@ -25,6 +25,7 @@
 | [路由选型与后续计划](semantic-routing-plan.md) | 10MB 分发约束、fastText/LIBLINEAR 等方案核实、校准与后续方向 |
 | [扩展配置](datapacks.md) | 服务端配置、成就规则及签到/商城数据包；不使用旧注册表 |
 | [界面与本地化](ui-localization.md) | 新工作台、AUI 文本安全、语言键约定 |
+| [页面布局审计](ui-layout-audit.md) | AUI 1.2.9 重复布局、只读几何、卡片增量更新与静态检查边界 |
 | [AI / 联网 / TTS / ASR 用量统计](token-usage.md) | 服务端 AI/联网账本、本地语音用量、按次估价与撤销后保留 |
 | [语音合成与音色设计](tts.md) | 阿里云 TTS、客户端密钥与语种、音色配置、Python 设计/临时上传工具 |
 | [语音识别](asr.md) | NLS 一句话流式识别、AccessKey 自动鉴权、Token 缓存刷新、麦克风 session 与按次估价 |

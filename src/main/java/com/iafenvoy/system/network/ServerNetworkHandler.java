@@ -10,10 +10,7 @@ import com.iafenvoy.system.agent.response.ReplyResponse;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.assistant.ServerCards;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
-import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
-import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
-import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
-import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
+import com.iafenvoy.system.network.payload.*;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -29,6 +26,12 @@ public final class ServerNetworkHandler {
     private static final Map<UUID, UUID> CONNECTIONS = new HashMap<>();
 
     private ServerNetworkHandler() {
+    }
+
+    public static void handleDisplayCard(DisplayCardC2SPayload payload, IPayloadContext context) {
+        if (!(context.player() instanceof ServerPlayer player)) return;
+        AssistantServer runtime = AssistantServer.get(player.level().getServer());
+        if (runtime != null) runtime.displays().change(player, payload.request(), payload.key(), payload.pinned());
     }
 
     public static void handleAssistantRequest(AssistantRequestC2SPayload payload, IPayloadContext context) {

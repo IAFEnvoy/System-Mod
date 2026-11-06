@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -55,8 +56,9 @@ public final class RecipeItemSourceProvider implements ItemSourceProvider {
                 case ShapelessCraftingRecipeDisplay shapeless -> shapeless.ingredients();
                 case FurnaceRecipeDisplay furnace -> List.of(furnace.ingredient());
                 case StonecutterRecipeDisplay stonecutter -> List.of(stonecutter.input());
-                case SmithingRecipeDisplay smithing -> List.of(smithing.template(), smithing.base(), smithing.addition());
-                default -> recipe.placementInfo().ingredients().stream().map(ingredient -> ingredient.display()).toList();
+                case SmithingRecipeDisplay smithing ->
+                        List.of(smithing.template(), smithing.base(), smithing.addition());
+                default -> recipe.placementInfo().ingredients().stream().map(Ingredient::display).toList();
             };
             List<ItemSourceSlot> inputs = ingredients.stream().map(slot -> ItemSourceSlot.ofStacks(slot.resolveForStacks(context))).toList();
             List<String> station = display.craftingStation().resolveForStacks(context).stream()

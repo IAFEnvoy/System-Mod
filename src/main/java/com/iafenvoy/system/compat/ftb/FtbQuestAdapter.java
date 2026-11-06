@@ -13,6 +13,7 @@ import com.iafenvoy.system.data.output.StarterGiftOutput;
 import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.PlayerModule;
+import com.iafenvoy.system.module.builtin.QuestSystemModule;
 import com.iafenvoy.system.module.builtin.quest.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -56,6 +57,7 @@ public final class FtbQuestAdapter {
     }
 
     public static List<AgentModule<?>> modules(ModuleContext context) {
+        context.displays().register(context.id(), QuestSystemModule.ID, FtbQuestDisplay::read);
         AgentEngine engine = context.engine();
         MinecraftTools game = context.game();
         FtbQuestAccess access = new FtbQuestAccess(engine, game, context.databases().shared());

@@ -1,5 +1,11 @@
 # 编译与验收
 
+## 2026-11-06 Saturn 通知 HUD 编辑器
+
+读取 Saturn 1.2.5 HUD 框架源码，并通过实际依赖 JAR 确认 AbstractHudEntry、HudAnchor 与 HudManager 签名。通知以 public static 的 SystemHudEntries.NOTIFICATIONS 登记，直接使用 Saturn 自带的编辑入口，不另加设置按钮或按键，复用 Saturn 拖动、锚点、显隐与 config/saturn/hud.json；真实 AUI 通知通过 GUI ↔ 文档坐标转换应用位置。尺寸只读取已提交、未变换的根面板矩形，放置未变化时不重复写样式；预览使用被动示意框，无消息队列、业务或播报副作用。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功。静态核对中英文各 576 键且集合一致，设置页 translation 与控件 ID 有效，26 份卡片 JSON 可解析，编辑器快照与资源一致，git diff --check 通过。未运行测试、Minecraft 或外部 API；拖拽／方向键、锚点切换、保存重启、GUI／文档缩放、内容高度变化、隐藏后恢复、动画与聊天按钮位置仍需游戏内验收。
+
 ## 2026-11-06 内置卡片标题统一
 
 逐项检查 26 份卡片模板及对应 CardData：25 份结构化卡片均使用 system:title，其中 23 份使用可提升的顶层一级标题；奖池／奖品保留原二级标题同行数量／概率布局，纯文本模板仍不加标题。商品、订单、奖励、任务名称提升为卡片标题；签到、宿主、查询、说明书、候选操作、礼包和任务通知补充短标题。兑换确认、回执、任务提交／完成／解锁及礼包主句显式保留在正文；物品来源保留物品名与数量。HUD 固定“系统”标题及独立 SpeechContent 不变。
@@ -844,3 +850,51 @@ AgentCommand、CommandRegistry 与客户端命令声明已接入 Brigadier；Cli
 源码审计确认合成请求与解码仍在 `system-speech`，但首次创建本地账本会在调用线程读盘，且用量页读取快照会等待统计计算 / 写盘锁。LocalSpeechUsage 改为独立单线程串行处理初始加载、费用计算、归并与保存，界面只读 volatile 不可变快照；取消的语音任务不会取消账本队列，JVM 退出由独立 hook 做有时限的排空。
 
 实际执行 `gradlew compileJava testModClasses --console=plain` 成功，主代码编译通过，开发源集编译任务为最新。只读抓取用户已启动的 1.21.1 进程时，渲染 / 服务端线程均在正常等待，没有取得卡顿时的堆栈；因此只能确认已移除上述阻塞路径，不能认定它就是用户这次卡顿的唯一根因。没有启动游戏、运行测试、创建存档或请求语音接口；并发记录、后台加载后的页面刷新、关闭时排空和实际卡顿改善仍待验收。当前仅修改 master，1.21.1 尚需同步。
+
+## 2026-11-06 常驻卡片 HUD
+
+本轮只执行 `gradlew compileJava processResources --console=plain`，结果为 `BUILD SUCCESSFUL`。同时用脚本检查 27 份卡片 JSON 无重复键、节点类型均已登记，中英文语言键集合一致（各 581 个），并刷新 `tools/card_editor.html` 的模板 / 语言 / CSS 快照。没有启动 Minecraft、创建存档或进行游戏内 HUD、图钉、FTB 任务刷新验收；位置、滚动、重登恢复及任务完成后的显示仍需客户端实测。
+
+## 2026-11-06 页面样式 / 布局卡顿审计
+
+按实际 ApricityUI 1.2.9 sources JAR 检查六类页面和共用节点，取消事件内整页布局提交、每帧重复提交和空闲 HUD class 重写，增加只读几何入口及消息 / 卡片增量协调；保留原生滚动缓动、通知动画及资源重载。详细原因与边界见[页面布局审计](ui-layout-audit.md)。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功。静态检查确认六份 HTML 无重复 ID、全部引用共享 CSS；27 份卡片 JSON 无重复键且节点属于已注册的 23 个类型；双语语言键集合相同（各 581 个）。源码扫描没有旧 AssistantPages.commit、直接 Box / Size / Rect 测量或原生滚动范围探测调用；离线编辑器可执行脚本的 `node --check` 和 `git diff --check` 通过。
+
+用户已关闭卡死的游戏，现有日志没有对应线程堆栈。本轮未启动游戏、执行运行时测试或添加探针；不能将编译 / 静态检查等同于卡顿已消除。任务翻页、长对话滚动与入场动画、输入法定位、连续通知、HUD 刷新及资源重载仍需游戏内验收。
+
+## 2026-11-06 打开页面卡顿后续修正
+
+用户反馈此前审计后每次打开仍卡数秒。读取新的 `run-test-client/logs/aui.log`：页面创建 175ms，首次布局 8786ms / 45 个元素；该首次布局记录为跨帧墙钟耗时，没有阻塞期间的线程堆栈。按实际 AUI 1.2.9 源码移除提取阶段的重复 prepareRender、初始化重复视口失效及无效的 manuallyRendered 切换；把非空草稿的光标范围设置延后到原生布局完成，空草稿保留默认光标。完整页面固定外壳改用定位边界，body 改块布局，减少嵌套 flex 自然测量。具体依据见[页面布局审计](ui-layout-audit.md)。
+
+实际执行 `gradlew compileJava processResources --console=plain`，结果 `BUILD SUCCESSFUL`。没有启动 Minecraft、运行功能测试或添加探针，不能据此承诺实际页面打开耗时；仍需后续运行日志和交互验收。
+
+## 2026-11-06 HUD 全屏背景修正
+
+阅读实际 AUI 1.2.9 的 HTML.normalizeDocumentMarkup 确认：存在 head/body 时会重新拼接无属性的 html 标签，原通知与常驻卡片的 html class 被丢弃，以它为前提的透明 CSS 未命中，留下共享 body 的半透明全屏背景。两种 HUD 改为在 body 声明 system_hud；AssistantThemes 在实际根节点补同一标记，统一清空根背景色、背景图、阴影、背景滤镜及装饰伪元素，保留面板背景和聊天栏内交互。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功，静态检查两份 HUD 的 body 标记与元素 ID、刷新编辑器 CSS 快照并通过 `git diff --check`。未启动 Minecraft 或运行功能测试，主题切换、资源重载和实际透明显示仍未游戏内验收。
+
+## 2026-11-06 常驻卡片左右出入动画
+
+阅读 Saturn 实际依赖的锚点 API 与 ApricityUI 1.2.9 的 Transition / Document 源码后，常驻卡片增加稳定包装层，左侧锚点左进左出、右侧锚点右进右出，居中锚点按屏幕半边决定。新增等待原生布局就绪，退出保留到 Transition 结束，进度 / 模板更新只替换内部内容；背包、F1、HUD 编辑器和退出世界继续立即卸载。仅修改 transform / opacity，使用像素位移与几何缓存作用域，不增加手动 prepareRender 或整页几何提交。
+
+实际执行 `gradlew compileJava processResources --console=plain`，结果为 `BUILD SUCCESSFUL`。未启动 Minecraft、运行功能测试或添加探针。左右锚点、居中位置、最后一张退出、快速取消再固定、连续进度更新、滚动容器裁剪和资源重载后的实际效果尚待游戏内验收。
+
+## 2026-11-06 切换界面保留常驻卡片退出动画
+
+用户实测入场正常，但切换界面会瞬间消失。源码确认 tick、ScreenEvent.Opening 和鼠标前置处理均把非聊天 Screen 当作立即卸载条件。现将文档保留条件与卡片显示条件分开：新界面打开时立即禁用交互、清空显示目标并启动既有退出过渡，AUI persistent overlay 继续绘制，所有卡片退出后才卸载。退出途中返回游戏会恢复同一包装层并反向进入；其他界面下不新建卡片，F1 和退出世界仍立即清理。按 AUI 1.2.9 的 Base.drawPersistentScreenDocuments / Client.drawScreen 源码核对跨界面绘制路径，未增加额外渲染或几何提交。
+
+本轮执行 `gradlew compileJava processResources --console=plain` 和 `git diff --check`；编译与静态检查通过。未启动 Minecraft 或运行功能测试。背包、暂停菜单、AUI 页面和 HUD 编辑器中的实际退出效果、快速返回时反向过渡及退出期间鼠标透传仍待游戏内验收。
+
+## 2026-11-06 常驻卡片展示配置
+
+ClientConfig 新增 `cardAnimations=true`、`cardsOnOtherScreens=false`，使用 lenientOptionalFieldOf 逐字段回退；默认文件与“设置 → 常规”开关同步。修改通过 ConfigInstance.set 标脏并立即保存，切换主题 / 界面模式保留新字段。关闭动画后 active 卡片直接切到最终样式，移除 animated class 取消已有过渡，inactive 卡片立即删除；开启其他页面显示后继续刷新快照，页面内保持被动，HUD 编辑器、F1 和登出保留各自边界。
+
+执行 `gradlew compileJava processResources --console=plain` 成功，`git diff --check` 通过。静态检查默认 JSON、设置页 ID 唯一性及翻译引用，中英文各 585 个键且集合一致；同步编辑器的语言快照。未启动 Minecraft 或运行功能测试。仍需游戏内验收两个开关的四种组合、动画中途关闭、背包控件透传及重启后的设置保持。
+
+## 2026-11-06 设置页打开卡死排查
+
+用户确认刚打开设置页就卡死。读取最新 run-test-client 日志：21:03:05 页面创建 147ms，21:03:06 首次布局 35ms / 79 个元素，之后没有对应阻塞段。只读检查进程时游戏已退出，无法补取卡住时的渲染线程堆栈。核对 AUI 1.2.9 Transition.build，确认 transform 过渡会在样式计算时调用 Size.of；设置开关伪元素与多层自动高度 flex 组合存在提前测量路径。设置内容、标签页、分组和开关按钮改为块流，轨道与主题切换器固定局部定位，滑块改用 left 过渡；控件刷新跳过相同的 class / aria-selected / display / disabled，保留两个新配置和即时保存。详见[页面布局审计](ui-layout-audit.md#设置页打开卡顿的后续修正)。
+
+执行 `gradlew compileJava processResources --console=plain` 成功，`git diff --check` 通过；静态检查设置页 ID、翻译引用、块布局与滑块过渡规则，中英文各 585 键且集合相同，同步编辑器 CSS 快照。未启动 Minecraft、运行功能测试或添加探针，未创建存档或改玩家配置。实际卡死是否消除尚未验收，仍需核对首次打开、三种标签、长表单滚动、开关动画、主题切换与不同缩放。

@@ -16,7 +16,16 @@
             </div>
             <div class="result_card speech_step settings_theme">
                 <div class="settings_theme_description"><h2><translation>system.ui.settings_theme</translation></h2><p><translation>system.ui.settings_theme_hint</translation></p></div>
-                <theme-switcher id="settings_theme" style="position:relative;right:auto;bottom:auto;flex:0 0 44px;"></theme-switcher>
+                <theme-switcher id="settings_theme" style="position:absolute;top:14px;right:18px;bottom:auto;margin:0;"></theme-switcher>
+            </div>
+            <div class="result_card speech_step">
+                <h2><translation>system.hud.cards</translation></h2>
+                <div class="speech_controls">
+                    <button id="settings_card_animations" class="assistant_switch" type="button" role="switch" aria-checked="true" aria-labelledby="settings_card_animations_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_card_animations_label" class="switch_label"><translation>system.ui.settings_card_animations</translation></span></button>
+                    <button id="settings_cards_other_screens" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_cards_other_screens_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_cards_other_screens_label" class="switch_label"><translation>system.ui.settings_cards_other_screens</translation></span></button>
+                </div>
+                <p><translation>system.ui.settings_card_animations_hint</translation></p>
+                <p><translation>system.ui.settings_cards_other_screens_hint</translation></p>
             </div>
             <div class="result_card speech_step">
                 <h2 id="privacy_heading"><translation>system.ui.privacy_heading</translation></h2>

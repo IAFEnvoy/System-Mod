@@ -8,12 +8,10 @@ import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.data.input.HelpInput;
 import com.iafenvoy.system.data.store.AgentJournalDataStorage;
-import com.iafenvoy.system.module.CoreModule;
-import com.iafenvoy.system.module.ModuleCommands;
-import com.iafenvoy.system.module.ModuleContext;
-import com.iafenvoy.system.module.ModuleStorage;
+import com.iafenvoy.system.module.*;
 import com.iafenvoy.system.module.builtin.knowledge.DatabaseQueryTool;
 import com.iafenvoy.system.module.builtin.knowledge.QuestionModule;
+import com.iafenvoy.system.module.builtin.storage.DisplayCardsDataStorage;
 import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -32,6 +30,7 @@ public final class CoreSystemModule implements CoreModule {
     public static final MapCodec<CoreSystemModule> CODEC = MapCodec.unit(new CoreSystemModule());
     public static final ModuleStorage<AgentJournalDataStorage> JOURNAL = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "agent_journal"), AgentJournalDataStorage.class, AgentJournalDataStorage.CODEC, AgentJournalDataStorage::new);
     public static final ModuleStorage<ModuleAccessDataStorage> ACCESS = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "module_access"), ModuleAccessDataStorage.class, ModuleAccessDataStorage.CODEC, ModuleAccessDataStorage::new);
+    public static final ModuleStorage<DisplayCardsDataStorage> DISPLAY_CARDS = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "display_cards"), DisplayCardsDataStorage.class, DisplayCardsDataStorage.CODEC, DisplayCardsDataStorage::new);
 
     @Override
     public MapCodec<CoreSystemModule> codec() {
@@ -40,7 +39,12 @@ public final class CoreSystemModule implements CoreModule {
 
     @Override
     public List<ModuleStorage<?>> storages() {
-        return List.of(JOURNAL, ACCESS);
+        return List.of(JOURNAL, ACCESS, DISPLAY_CARDS);
+    }
+
+    @Override
+    public PlayerModule runtime(ModuleContext context) {
+        return context.displays();
     }
 
     @Override

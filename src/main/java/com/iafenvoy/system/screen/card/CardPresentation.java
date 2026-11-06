@@ -46,6 +46,7 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
                 .enable("show_card_title", !view.titleKey().isBlank() && !view.titleKey().equals(messageKey))
                 .enable("text_items", mode == CardContext.Mode.TEXT)
                 .enable("full", mode == CardContext.Mode.FULL).enable("simple", mode == CardContext.Mode.SIMPLE)
+                .enable("hud", mode == CardContext.Mode.HUD)
                 .enable("notification", mode == CardContext.Mode.NOTIFICATION).put(CardContext.RESULT_ACTIONS, view.buttons())
                 .put("local_pages", pages);
         for (int i = 0; i < view.buttons().size(); i++) {
@@ -74,8 +75,10 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
         List<CardTemplate.Node> body = template.body();
         for (int index = 0; index < body.size(); index++) {
             CardTemplate.Node node = body.get(index);
-            if (!(node.content() instanceof TitleNode title) || !title.cardHeading() || !node.repeat().isEmpty()) continue;
-            if (!LegacyText.plain(CardRenderer.text(List.of(node), template, context, List.of(), "")).isBlank()) return index;
+            if (!(node.content() instanceof TitleNode title) || !title.cardHeading() || !node.repeat().isEmpty())
+                continue;
+            if (!LegacyText.plain(CardRenderer.text(List.of(node), template, context, List.of(), "")).isBlank())
+                return index;
         }
         return -1;
     }

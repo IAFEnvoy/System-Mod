@@ -2,12 +2,8 @@ package com.iafenvoy.system.screen.card.node;
 
 import com.iafenvoy.system.data.card.CardButton;
 import com.iafenvoy.system.data.card.CardContext;
-import com.iafenvoy.system.screen.AssistantPages;
-import com.iafenvoy.system.screen.card.CardGrid;
-import com.iafenvoy.system.screen.card.CardNode;
-import com.iafenvoy.system.screen.card.CardPageState;
-import com.iafenvoy.system.screen.card.CardRenderer;
-import com.iafenvoy.system.screen.card.CardTemplate;
+import com.iafenvoy.system.screen.AssistantGeometry;
+import com.iafenvoy.system.screen.card.*;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.Codec;
@@ -73,7 +69,7 @@ public record GroupedActionsNode(String actions, String group, String groupLabel
         sidebar.addInternalEventListener("wheel", event -> {
             // AUI permits elastic scrolling even at zero range; keep real ancestor scrolling available.
             if (event instanceof MouseEvent mouse && sidebar.getRoute().stream().noneMatch(element ->
-                    element.hasVerticalScrollRange() || mouse.shiftKey && element.hasHorizontalScrollRange()))
+                    AssistantGeometry.hasScrollRange(element, false) || mouse.shiftKey && AssistantGeometry.hasScrollRange(element, true)))
                 event.preventDefault();
         });
         Element list = AssistantView.element(view.document(), "div", "card_action_group_list", "");
@@ -93,7 +89,6 @@ public record GroupedActionsNode(String actions, String group, String groupLabel
                 if (!view.interactive() || !root.isConnected() || entry.id().equals(pages.selection(key))) return;
                 this.select(view, results, source, entry, tabs, pages, key);
                 root.getLayout().invalidateLayoutSubtree();
-                AssistantPages.commit(view.document());
             });
             list.appendChild(tab);
         }

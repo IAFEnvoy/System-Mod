@@ -4,7 +4,9 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.response.*;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
+import com.iafenvoy.system.network.payload.DisplayCardsS2CPayload;
 import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
 import com.iafenvoy.system.screen.AssistantMessages;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
@@ -59,6 +61,10 @@ public final class ClientNetworkHandler {
     });
 
     private ClientNetworkHandler() {
+    }
+
+    public static void handleDisplayCards(DisplayCardsS2CPayload payload, IPayloadContext context) {
+        ClientModuleCaches.DISPLAY_CARDS.receive(payload);
     }
 
     public static void handleAssistantResponse(AssistantResponseS2CPayload response, IPayloadContext context) {

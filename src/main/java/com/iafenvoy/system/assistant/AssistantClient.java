@@ -17,6 +17,7 @@ import com.iafenvoy.system.data.card.client.ClientCards;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
 import com.iafenvoy.system.registry.SystemResourceKeys;
+import com.iafenvoy.system.screen.AssistantCardDisplay;
 import com.iafenvoy.system.screen.AssistantMessages;
 import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
@@ -78,7 +79,8 @@ public final class AssistantClient {
     }
 
     public static void configureMode(boolean simple) {
-        ClientConfig.INSTANCE.set(new ClientConfig(simple, ClientConfig.INSTANCE.get().theme()));
+        ClientConfig settings = ClientConfig.INSTANCE.get();
+        ClientConfig.INSTANCE.set(new ClientConfig(simple, settings.theme(), settings.cardAnimations(), settings.cardsOnOtherScreens()));
     }
 
     public static void open(boolean simple, String draft) {
@@ -223,8 +225,9 @@ public final class AssistantClient {
         AssistantSpeech.stop();
         if (Minecraft.getInstance().screen instanceof AssistantInputScreen screen) screen.stopRecognition();
         AssistantMessages.clear();
+        AssistantCardDisplay.unmount();
         ClientCards.clear();
-        ClientModuleCaches.QUEST_PINS.clear();
+        ClientModuleCaches.DISPLAY_CARDS.clear();
         state = AssistantClientState.EMPTY;
         revision++;
     }

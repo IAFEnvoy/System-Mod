@@ -4,7 +4,7 @@ import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
-import com.iafenvoy.system.screen.AssistantPages;
+import com.iafenvoy.system.screen.AssistantGeometry;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
@@ -15,6 +15,7 @@ import com.sighs.apricityui.event.KeyEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import com.sighs.apricityui.layout.Position;
+import com.sighs.apricityui.render.GeometryQueryScope;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.IMEPreeditOverlay;
 import net.minecraft.client.input.PreeditEvent;
@@ -40,6 +41,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
     private @Nullable String dismissedDraft;
     private long compositionEnded;
     private boolean enterDown;
+    private boolean pendingCaret;
     private @Nullable Session speech;
     private AssistantRecognition.@Nullable Session recognition;
     private String recognitionStatus = "idle";
@@ -82,6 +84,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         this.suggestions = List.of();
         this.dismissedDraft = null;
         this.enterDown = false;
+        this.pendingCaret = false;
         for (Element input : document.querySelectorAll("input, textarea")) {
             input.addEventListener("focus", event -> this.syncTextInputFocus());
             input.addEventListener("keydown", event -> {
@@ -93,8 +96,9 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         });
         Element message = document.getElementById("message");
         if (message == null) return;
-        message.setValue(this.draft);
-        if (message instanceof AbstractText text) text.setSelectionRange(this.draft.length(), this.draft.length());
+        if (!message.getValue().equals(this.draft)) message.setValue(this.draft);
+        // setSelectionRange measures the control and its ancestors in AUI. An empty composer already has cursor 0.
+        this.pendingCaret = !this.draft.isEmpty();
         message.addEventListener("input", event -> this.updateSuggestions());
         message.focus();
         AssistantView.bind(document, "asr_toggle", this::toggleRecognition);
@@ -102,6 +106,19 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         this.renderRecognition();
         // Blur fires before AUI commits the next focus; polling observes the completed transition.
         this.syncTextInputFocus();
+    }
+
+    @Override
+    protected void layoutReady(Document document) {
+        if (!this.pendingCaret) return;
+        if (!(document.getElementById("message") instanceof AbstractText message)
+                || message.getLayout().getCommittedRectIfValid() == null) return;
+        this.pendingCaret = false;
+        if (message.getValue().equals(this.draft)
+                && message.getCursor() == 0 && !message.hasSelection())
+            try (GeometryQueryScope geometry = GeometryQueryScope.open()) {
+                message.setSelectionRange(this.draft.length(), this.draft.length());
+            }
     }
 
     @Override
@@ -349,7 +366,8 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         Element popup = document.getElementById("command_suggestions");
         Element message = document.getElementById("message");
         if (popup == null || message == null) return;
-        Element.DOMRect bounds = message.getBoundingClientRect();
+        Element.DOMRect bounds = AssistantGeometry.bounds(message);
+        if (bounds == null) return;
         int viewportWidth = document.getViewport().layoutWidth();
         int viewportHeight = document.getViewport().layoutHeight();
         int maxHeight = Math.max(0, (int) Math.floor(bounds.top - 12));
@@ -425,11 +443,10 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         // Geometry queries can populate layout caches; always resolve them in this document's viewport.
         try (Document.ContextScope ignored = Document.withContext(document)) {
             this.positionSuggestions(document);
-            AssistantPages.commit(document);
             AssistantItems.tooltip(document, graphics, mouseX, mouseY);
             if (this.textInput == null) return;
-            Element.DOMRect bounds = this.textInput.getBoundingClientRect();
-            if (bounds.width <= 0 || bounds.height <= 0) return;
+            Element.DOMRect bounds = AssistantGeometry.bounds(this.textInput);
+            if (bounds == null || bounds.width <= 0 || bounds.height <= 0) return;
             Position start = document.documentToGuiPosition(new Position(bounds.left, bounds.top));
             Position end = document.documentToGuiPosition(new Position(bounds.right, bounds.bottom));
             int left = Math.clamp((int) Math.floor(start.x), 0, Math.max(0, this.width - 1));

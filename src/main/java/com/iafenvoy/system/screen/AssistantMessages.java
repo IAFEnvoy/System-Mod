@@ -10,6 +10,7 @@ import com.iafenvoy.system.data.card.client.CardController;
 import com.iafenvoy.system.data.card.client.ClientCards;
 import com.iafenvoy.system.event.client.AssistantRecognitionKeys;
 import com.iafenvoy.system.module.client.ClientMessage;
+import com.iafenvoy.system.registry.SystemHudEntries;
 import com.iafenvoy.system.screen.card.CardPageState;
 import com.iafenvoy.system.screen.card.CardPresentation;
 import com.iafenvoy.system.screen.gui.AssistantItems;
@@ -229,8 +230,8 @@ public final class AssistantMessages {
             if (current == null) nextMessage();
             if (current == null) return;
             try {
-                AssistantPages.prepare("system/assistant-message.html");
-                document = Document.create("system/assistant-message.html");
+                AssistantPages.prepare(NotificationHudEntry.TEMPLATE);
+                document = Document.create(NotificationHudEntry.TEMPLATE);
                 if (document == null) throw new IllegalStateException("Missing assistant message template");
                 // AUI draws HUD documents only while no screen is open; this keeps the notice over the chat screen.
                 document.setReloadPersistent(true);
@@ -245,6 +246,7 @@ public final class AssistantMessages {
         }
         if (generation != document.getRefreshGeneration()) {
             generation = document.getRefreshGeneration();
+            SystemHudEntries.NOTIFICATIONS.detach();
             if (current == null || replacement != null) nextMessage();
             if (current == null) {
                 unmount();
@@ -257,10 +259,11 @@ public final class AssistantMessages {
             displayedBusy = null;
             displayedPending = -1;
             updateInteraction(chatting);
+            AssistantThemes.apply(document);
             // Establish hidden content and a collapsed panel before starting either transition.
             document.commitPendingStyleRecalcForRender();
             renderMessage();
-            AssistantPages.commit(document);
+            SystemHudEntries.NOTIFICATIONS.apply(document);
         }
         advanceAnimation(chatting);
         if (document == null) return;
@@ -271,6 +274,7 @@ public final class AssistantMessages {
             text(document.getElementById("notification_pending"), displayedPending == 0 ? ""
                     : Component.translatable("system.ui.message_pending", displayedPending).getString());
         }
+        SystemHudEntries.NOTIFICATIONS.apply(document);
     }
 
     private static void nextMessage() {
@@ -404,6 +408,7 @@ public final class AssistantMessages {
 
     private static boolean canShow(Minecraft minecraft) {
         return minecraft.player != null && minecraft.level != null && !minecraft.options.hideGui
+                && SystemHudEntries.NOTIFICATIONS.visible()
                 && (minecraft.screen == null || minecraft.screen instanceof ChatScreen);
     }
 
@@ -475,8 +480,7 @@ public final class AssistantMessages {
     public static boolean hasVoiceTarget() {
         Minecraft minecraft = Minecraft.getInstance();
         return phase == Phase.VISIBLE && current != null && displayedMessage == current
-                && document != null && !document.isDisposed() && !minecraft.options.hideGui
-                && (minecraft.screen == null || minecraft.screen instanceof ChatScreen);
+                && document != null && !document.isDisposed() && canShow(minecraft);
     }
 
     public static AssistantRecognition.Session startRecognition() {
@@ -529,7 +533,7 @@ public final class AssistantMessages {
         String partial = active ? recognition.intermediate() : "";
         String value = status.equals("idle") ? "" : tr("system.asr.status." + status)
                 + (partial.isBlank() ? "" : " · " + limit(partial, 160, 1));
-        label.setInlineStyleProperty("display", value.isBlank() ? "none" : "block");
+        display(label, value.isBlank() ? "none" : "block");
         if (!value.equals(label.getTextContent())) text(label, value);
     }
 
@@ -634,6 +638,7 @@ public final class AssistantMessages {
         // Finish an in-flight swap before hiding the document, so reopening cannot restore the old content.
         if (replacement != null) nextMessage();
         if (document != null) document.remove();
+        SystemHudEntries.NOTIFICATIONS.detach();
         document = null;
         displayedMessage = null;
         phase = Phase.HIDDEN;

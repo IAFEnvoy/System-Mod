@@ -23,11 +23,11 @@ public final class ItemQueryModule extends AbstractAgentModule<ItemQueryInput> {
                 .button(a -> new ItemQueryInput(a.text("query"), a.number(0, "offset")))
                 .command(AgentCommand.argument("<query>", text -> new ItemQueryInput(text, 0), "item", "物品"))
                 .semantic(RoutingProfile.read(text -> {
-                            String id = CommandArguments.singleItemId(text);
-                            return id == null ? null : new ItemQueryInput(id, 0);
-                        },
-                        List.of("查询物品 minecraft:diamond", "查看 minecraft:torch 的物品信息", "查一下钻石物品", "搜索物品注册名称"),
-                        List.of("Look up item minecraft:diamond", "Find item information for minecraft:torch", "Search for a diamond item", "Look up an item registry ID"))
+                                    String id = CommandArguments.singleItemId(text);
+                                    return id == null ? null : new ItemQueryInput(id, 0);
+                                },
+                                List.of("查询物品 minecraft:diamond", "查看 minecraft:torch 的物品信息", "查一下钻石物品", "搜索物品注册名称"),
+                                List.of("Look up item minecraft:diamond", "Find item information for minecraft:torch", "Search for a diamond item", "Look up an item registry ID"))
                         .choice("system.action.view_items"));
     }
 

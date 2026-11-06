@@ -1,0 +1,11 @@
+{
+  "style": ["result_card", "quest_tracking_card"],
+  "body": [
+    {"type": "system:title", "text": "{{title}}"},
+    {"type": "system:quest_pin", "quest": "{{id}}"},
+    {"type": "system:text", "style": "quest_tracking_chapter", "text": "{{chapter}}"},
+    {"type": "system:text", "text": "{{tasks.*.task_title}} · {{tasks.*.task_progress}}/{{tasks.*.task_required}}", "repeat": "tasks"},
+    {"type": "system:context", "text": "{{tr:system.ui.quest_tracking_more}} {{other_tasks}}", "when": "other_tasks"},
+    {"type": "system:progress", "value": "{{progress}}"}
+  ]
+}

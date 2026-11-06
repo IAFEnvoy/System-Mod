@@ -18,6 +18,7 @@ public final class AssistantText {
         if (element == null) return;
         if (value != null) value = LegacyText.normalize(value);
         if (value == null || value.indexOf('§') < 0) {
+            if (element.children.isEmpty() && (value == null ? "" : value).equals(element.getTextContent())) return;
             element.setTextContent(value);
             return;
         }

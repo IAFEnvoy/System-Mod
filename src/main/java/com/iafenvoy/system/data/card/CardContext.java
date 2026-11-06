@@ -23,7 +23,7 @@ public record CardContext(Object2DoubleMap<String> states, Map<String, Object> p
     public static final CardContext EMPTY = builder().build();
 
     public enum Mode {
-        FULL, SIMPLE, NOTIFICATION, TEXT
+        FULL, SIMPLE, NOTIFICATION, HUD, TEXT
     }
 
     public CardContext {

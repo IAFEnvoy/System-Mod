@@ -3,7 +3,6 @@ package com.iafenvoy.system.screen.card.node;
 import com.iafenvoy.system.data.output.ItemPreviewOutput;
 import com.iafenvoy.system.itemsource.ItemSource;
 import com.iafenvoy.system.itemsource.ItemSourceSlot;
-import com.iafenvoy.system.screen.AssistantPages;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.iafenvoy.system.screen.card.CardPageState;
 import com.iafenvoy.system.screen.card.CardPagination;
@@ -21,17 +20,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStackTemplate;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Local category tabs and paging share the card state; only the active page creates item previews and tooltips.
  */
-public record ItemSourcesNode(String sources, int recipePageSize, int lootPageSize, int tagPageSize) implements CardNode {
+public record ItemSourcesNode(String sources, int recipePageSize, int lootPageSize,
+                              int tagPageSize) implements CardNode {
     public static final MapCodec<ItemSourcesNode> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.lenientOptionalFieldOf("sources", "{{sources}}").forGetter(ItemSourcesNode::sources),
             Codec.INT.lenientOptionalFieldOf("recipe_page_size", 4).forGetter(ItemSourcesNode::recipePageSize),
@@ -70,7 +65,7 @@ public record ItemSourcesNode(String sources, int recipePageSize, int lootPageSi
         CardPageState pages = state == null ? new CardPageState() : state;
         String stateKey = "item_sources:" + key;
         Category selected = Arrays.stream(Category.values()).filter(category -> !groups.get(category).isEmpty()
-                && category.name().equals(pages.selection(stateKey))).findFirst()
+                        && category.name().equals(pages.selection(stateKey))).findFirst()
                 .orElseGet(() -> Arrays.stream(Category.values()).filter(category -> !groups.get(category).isEmpty()).findFirst().orElseThrow());
 
         // Captured elements must be initialized before AUI attaches and replaces raw tags.
@@ -93,7 +88,6 @@ public record ItemSourcesNode(String sources, int recipePageSize, int lootPageSi
                 Element scroll = view.document().getElementById("notification_scroll");
                 if (scroll != null) scroll.scrollTop = scroll.targetScrollTop = 0;
                 root.getLayout().invalidateLayoutSubtree();
-                AssistantPages.commit(view.document());
             });
             tabs.appendChild(button);
         }
@@ -123,14 +117,15 @@ public record ItemSourcesNode(String sources, int recipePageSize, int lootPageSi
         content.appendChild(CardPagination.render(view, key + ":" + selected.name(), groups.get(selected), pageSize, true, (parent, page) -> {
             parent.setClassName(selected.css);
             if (selected == Category.RECIPE)
-                parent.setInlineStyleProperty("grid-template-columns", full ? "1fr 1fr" : "1fr");
+                parent.setInlineStyleProperty("grid-template-columns", full ? "minmax(0, 1fr) minmax(0, 1fr)" : "minmax(0, 1fr)");
             for (ItemSource source : page) {
                 Element entry = AssistantView.element(view.document(), "div", "source_entry", "");
                 switch (selected) {
                     case RECIPE -> renderSource(view, entry, source);
                     case LOOT -> {
                         entry.appendChild(AssistantView.element(view.document(), "div", "card_context source_id", source.id()));
-                        if (!source.notes().isEmpty()) hint(view, entry, String.join(" · ", source.notes().stream().map(ItemSourcesNode::note).toList()));
+                        if (!source.notes().isEmpty())
+                            hint(view, entry, String.join(" · ", source.notes().stream().map(ItemSourcesNode::note).toList()));
                     }
                     case TAG -> AssistantView.text(entry, "#" + source.id());
                 }

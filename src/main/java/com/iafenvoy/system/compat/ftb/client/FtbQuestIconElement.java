@@ -1,13 +1,13 @@
 package com.iafenvoy.system.compat.ftb.client;
 
 import com.iafenvoy.system.data.output.QuestIconOutput;
+import com.iafenvoy.system.screen.AssistantGeometry;
 import com.iafenvoy.system.screen.gui.AssistantTooltip;
 import com.iafenvoy.system.util.LegacyText;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.sighs.apricityui.element.MinecraftElement;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
-import com.sighs.apricityui.layout.Box;
 import com.sighs.apricityui.layout.Position;
 import com.sighs.apricityui.layout.Size;
 import com.sighs.apricityui.render.Base;
@@ -79,8 +79,10 @@ public final class FtbQuestIconElement extends MinecraftElement implements Assis
     public void drawPhase(PoseStack poseStack, Base.RenderPhase phase) {
         super.drawPhase(poseStack, phase);
         if (phase != Base.RenderPhase.BODY) return;
-        Position position = Rect.of(this).getContentPosition();
-        Size size = Box.of(this).innerSize();
+        Rect rect = this.getLayout().getCommittedRectIfValid();
+        if (rect == null) return;
+        Position position = rect.getContentPosition();
+        Size size = AssistantGeometry.innerSize(rect);
         if (size.width() <= 0 || size.height() <= 0) return;
         Base.commitLocalDraws();
         FtbQuestIconRenderer.draw(this.icon, poseStack, (int) position.x, (int) position.y,

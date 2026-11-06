@@ -32,11 +32,13 @@ public record CardGrid(int columns, int maxRow, int cell) {
     public <T> Element render(CardRenderer.Render view, String key, List<T> entries, String css,
                               BiConsumer<Element, T> content) {
         boolean compact = CardRenderer.enabled("notification", view.context(), List.of())
+                || CardRenderer.enabled("hud", view.context(), List.of())
                 || CardRenderer.enabled("simple", view.context(), List.of());
         int columns = compact ? Math.min(3, this.columns) : this.columns;
         return CardPagination.render(view, key, entries, columns * this.maxRow, true, (grid, page) -> {
             grid.setClassName(css + " card_page_grid");
-            grid.setInlineStyleProperty("grid-template-columns", String.join(" ", Collections.nCopies(columns, "1fr")));
+            // Zero track minima avoid intrinsic-width probes through every quest title and reward subtree.
+            grid.setInlineStyleProperty("grid-template-columns", String.join(" ", Collections.nCopies(columns, "minmax(0, 1fr)")));
             grid.setInlineStyleProperty("grid-template-rows", String.join(" ", Collections.nCopies(this.maxRow, this.cell + "px")));
             // Reserve every row, including an empty/partial last page, without querying layout or scroll limits.
             String height = (this.maxRow * this.cell + (this.maxRow - 1) * GAP + INSET) + "px";

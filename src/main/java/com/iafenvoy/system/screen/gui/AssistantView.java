@@ -99,6 +99,23 @@ public final class AssistantView {
         AssistantText.set(element, value);
     }
 
+    public static void display(Element element, String value) {
+        // AUI invalidates styles even for identical inline declarations; idle polling must not dirty the tree.
+        if (element != null && !value.equals(element.getInlineStylePropertyValue("display")))
+            element.setInlineStyleProperty("display", value);
+    }
+
+    public static void reconcile(Element parent, List<Element> children) {
+        // Keep unchanged native nodes attached, including their local page state and event listeners.
+        Set<Element> retained = Collections.newSetFromMap(new IdentityHashMap<>());
+        retained.addAll(children);
+        for (Element child : new ArrayList<>(parent.children)) if (!retained.contains(child)) child.remove();
+        for (int index = 0; index < children.size(); index++) {
+            Element before = index < parent.children.size() ? parent.children.get(index) : null;
+            if (before != children.get(index)) parent.insertBefore(children.get(index), before);
+        }
+    }
+
     public static String tr(String key) {
         return Component.translatable(key).getString();
     }

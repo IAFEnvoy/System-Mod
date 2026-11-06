@@ -20,7 +20,7 @@
 
 2026-11-06 另补左栏零范围滚动防护：AUI 1.2.9 的 MouseEvent 在路径没有真实滚动范围时，仍会选中 overflow:auto 元素，ScrollModel 随后产生弹性位移。GroupedActionsNode 在初始化后的左栏注册内部 wheel 监听，仅当路径中没有实际滚动范围时 preventDefault；保留长章节列表和外层聊天滚动，Shift 滚轮也考虑横向范围。移植时核对目标 AUI 的事件与范围 API；不只复制 overflow:auto 样式，也不要在布局回调中查询 scrollLimit。
 
-同日补任务格子的图钉与底边进度条：新增客户端节点 QuestPinNode / ProgressNode 及 SystemCardNodeTypes 公开注册项；quest_list.json 把百分比文字改为进度条、编号保留，右上角增加本地图钉。QuestPinCache 由 ClientModuleCaches.QUEST_PINS 持有，去重记录 ID，AssistantClient.clear 在登出、撤销或失效时清空。固定只改变按钮状态，尚不显示列表或排序；点击 stopPropagation 避免触发父格子的详情动作，并刷新已存在文档中的同任务按钮。移植时核对 AUI Document.getAll、SVG 与事件 API，一并同步两个新节点、缓存、清理入口、注册、JSON、共享 CSS 与双语键。不改变 FTB 进度、DTO 或网络协议。
+同日补任务格子的图钉与底边进度条：新增客户端节点 QuestPinNode / ProgressNode 及 SystemCardNodeTypes 公开注册项；quest_list.json 把百分比文字改为进度条、编号保留，右上角增加图钉。此处旧版曾使用连接内 QuestPinCache；当前版本已改为服务端 DisplayCardsDataStorage，见本文末的常驻卡片记录。移植时仍需核对 AUI Document.getAll、SVG 与事件 API，并同步两个新节点、网络注册、JSON、共享 CSS 与双语键。不改变 FTB 进度、DTO 或提交协议。
 
 图钉后续修正需一并同步：共享 CSS 默认将 SVG 倾斜 35°，aria-pressed=true 后旋转归零；22px 按钮 / 16px 图标，透明且无外框，高于 AUI 主题的按钮状态选择器优先级，避免主题最小高度及选中背景撑出色块。QuestOutput.buildCard 增加已有 id 的上下文参数，quest.json 加 quest_detail_card 样式和 quest_pin 节点，详情与列表共用固定列表，不新增序列化字段。
 
@@ -133,3 +133,10 @@
 用户反馈点击抽奖后短暂卡住再恢复，日志无语音异常。阅读源码确认 TTS HTTP / SSE / 解码在后台，但 `AssistantSpeech.start` 构建记账器时会通过 `LocalSpeechUsage.current()` 同步读取本地文件，且用量快照与价格计算 / 写盘共用账本锁。master 将账本首次加载、计算、归并和写盘统一移到 `system-speech-usage` 单线程队列；首次加载排在更新之前，界面通过 volatile 读取不可变快照，回调去重和账号隔离保持不变。JVM 关闭时独立 hook 最多三秒排空队列，不在渲染线程等待。两版本原 LocalSpeechUsage 内容相同，后续 1.21.1 可同步此类及语音文档。
 
 此结论是源码审计发现的阻塞风险，不代表已确认本次卡顿唯一根因。对用户已有的 Prism 1.21.1 进程只读抓取线程堆栈时，渲染线程已经在正常帧限速等待，没有抓到卡顿现场。未启动或操作游戏，未执行运行时探针，未调用收费 API。
+
+
+## 常驻固定任务后续变更
+
+早期 QuestPinCache / QUEST_PINS 的连接内列表现已替换为核心模块 DisplayCardsDataStorage 和 ClientModuleCaches.DISPLAY_CARDS。固定操作走独立 C2S/S2C，服务端按玩家事务保存 source + id，markDirty 后沿用玩家文件持久化；登录重建当前队伍的可见任务快照，每秒刷新，只发送变化。完成后保留，失去权限时隐藏，登出仅清客户端缓存，revoke / reset 删除记录。
+
+后续移植请连同 AssistantCardDisplays、FtbQuestDisplay、QuestPinOutput、存储与网络注册、AssistantCardDisplay、AuiHudEntry / DisplayCardsHudEntry / SystemHudEntries、被动鼠标 mixin 排除、quest_pin.json、assistant-cards.html、共享 CSS 和双语键一起核对。当前只在 26.1.2 工作区修改，尚未移植到 1.21.1；不要再按上文早期记录恢复客户端临时列表。

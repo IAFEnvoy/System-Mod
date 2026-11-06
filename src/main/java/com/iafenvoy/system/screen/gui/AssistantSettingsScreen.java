@@ -72,6 +72,8 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
                 this.renderControls();
             }
         });
+        bindSwitch(document, "settings_card_animations", checked -> this.saveCardSettings(document));
+        bindSwitch(document, "settings_cards_other_screens", checked -> this.saveCardSettings(document));
         document.getElementById("speech_key").setAttribute("placeholder", tr("system.tts.ui.key_placeholder"));
         Element languageSelect = document.getElementById("speech_language");
         for (String language : SpeechConfig.LANGUAGES) {
@@ -217,12 +219,15 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         this.tab = next;
         for (Tab value : Tab.values()) {
             boolean selected = value == next;
-            document.getElementById("settings_page_" + value.key()).setInlineStyleProperty("display", selected ? "flex" : "none");
+            display(document.getElementById("settings_page_" + value.key()), selected ? "block" : "none");
             Element button = document.getElementById("settings_tab_" + value.key());
-            button.setClassName(selected ? "settings_tab primary" : "settings_tab");
-            button.setAttribute("aria-selected", Boolean.toString(selected));
+            if (button.getClassList().contains("primary") != selected)
+                button.getClassList().toggle("primary", selected);
+            String selection = Boolean.toString(selected);
+            if (!selection.equals(button.getAttribute("aria-selected")))
+                button.setAttribute("aria-selected", selection);
         }
-        document.getElementById("settings_speech_actions").setInlineStyleProperty("display", next == Tab.TTS ? "flex" : "none");
+        display(document.getElementById("settings_speech_actions"), next == Tab.TTS ? "flex" : "none");
         Element content = document.getElementById("settings_content");
         content.scrollTop = 0;
         content.targetScrollTop = 0;
@@ -239,6 +244,15 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
             this.savingPreferences = true;
             AssistantClient.send(new PreferencesRequest(this.saveHistory, this.externalModel));
         }
+        this.renderControls();
+    }
+
+    private void saveCardSettings(Document document) {
+        ClientConfig settings = ClientConfig.INSTANCE.get();
+        ClientConfig.INSTANCE.set(new ClientConfig(settings.simpleMode(), settings.theme(),
+                switchChecked(document.getElementById("settings_card_animations")),
+                switchChecked(document.getElementById("settings_cards_other_screens"))));
+        this.generalStatus = tr(ClientConfig.INSTANCE.save() ? "system.ui.settings_saved" : "system.ui.settings_config_error");
         this.renderControls();
     }
 
@@ -267,8 +281,14 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
     private void renderControls() {
         Document document = this.getLinkedDocument();
         if (document == null) return;
-        document.getElementById("settings_mode_full").setClassName(this.simpleMode ? "" : "primary");
-        document.getElementById("settings_mode_simple").setClassName(this.simpleMode ? "primary" : "");
+        for (String mode : List.of("full", "simple")) {
+            Element button = document.getElementById("settings_mode_" + mode);
+            boolean selected = mode.equals("simple") == this.simpleMode;
+            if (button.getClassList().contains("primary") != selected)
+                button.getClassList().toggle("primary", selected);
+        }
+        switchChecked(document.getElementById("settings_card_animations"), ClientConfig.INSTANCE.get().cardAnimations());
+        switchChecked(document.getElementById("settings_cards_other_screens"), ClientConfig.INSTANCE.get().cardsOnOtherScreens());
         switchChecked(document.getElementById("history_toggle"), this.saveHistory);
         switchChecked(document.getElementById("model_toggle"), this.externalModel);
         switchChecked(document.getElementById("speech_enabled"), this.speechForm.enabled());
@@ -278,8 +298,11 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         Element languageSelect = document.getElementById("speech_language");
         if (!languageSelect.getValue().equals(this.speechForm.language()))
             languageSelect.setValue(this.speechForm.language());
-        for (String id : List.of("speech_workspace", "speech_model", "speech_voice", "speech_language", "speech_volume", "speech_preview"))
-            document.getElementById(id).setDisabled(!this.speechForm.hasKey());
+        boolean speechDisabled = !this.speechForm.hasKey();
+        for (String id : List.of("speech_workspace", "speech_model", "speech_voice", "speech_language", "speech_volume", "speech_preview")) {
+            Element control = document.getElementById(id);
+            if (control.isDisabled() != speechDisabled) control.setDisabled(speechDisabled);
+        }
         switchChecked(document.getElementById("asr_enabled"), this.asrForm.enabled());
         text(document.getElementById("asr_region"), tr("system.asr.ui.region") + ": " + tr("system.asr.region." + this.asrForm.region()));
         switchChecked(document.getElementById("asr_auto_send"), this.asrForm.autoSend());

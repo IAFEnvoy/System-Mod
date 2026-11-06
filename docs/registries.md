@@ -48,7 +48,7 @@
 
 ### 卡片数据与动作载荷
 
-卡片类型共 29 个：`text`、`selection`、`binding`、`shop_offer`、`shop_catalog`、`shop_quote`、`player`、`items`、`item_sources`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
+卡片类型共 30 个：`text`、`selection`、`binding`、`shop_offer`、`shop_catalog`、`shop_quote`、`player`、`items`、`item_sources`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`、`quest_pin`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
 
 动作类型共 21 个：`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`。
 
@@ -101,7 +101,7 @@ Codec 在第一次编解码时才访问注册表，避免静态初始化时提�
 
 `quest_icon` 由 `SystemCardNodeTypes.QUEST_ICON` 暴露，quest / title 支持占位符；前者是已展示任务的 ID，后者是 tooltip 文本。可选适配器从 ClientQuestFile 取 Quest.getIcon，显示任务自身设置的图标并沿用原生回退。缺少 FTB、任务文件或有效任务时不绘制；不新增查询包，不将 FTB 类型混入公共数据。
 
-`quest_pin` / `progress` 分别由 `SystemCardNodeTypes.QUEST_PIN` / `PROGRESS` 暴露，各自实现 MapCodec。前者按 quest 参数切换 `ClientModuleCaches.QUEST_PINS` 的连接内列表，仅客户端有效；后者按 value 数字参数绘制百分比进度条。二者均由 quest_list.json children 配置，在任务格子右上角和底边渲染，不增加服务端动作、网络类型或数据包注册表。
+`quest_pin` / `progress` 分别由 `SystemCardNodeTypes.QUEST_PIN` / `PROGRESS` 暴露，各自实现 MapCodec。前者通过 `DisplayCardC2SPayload` 切换服务端核心 DataStorage 内的固定记录，`ClientModuleCaches.DISPLAY_CARDS` 保存确认后的镜像；任务列表、详情和左侧常驻卡片共享图钉状态。后者按 value 数字参数绘制百分比进度条。两者不增加 AgentAction 或数据包注册表，常驻任务数据通过 `SystemCardDataTypes.QUEST_PIN` / `QuestPinOutput` 编码，详见[常驻卡片](cards.md#常驻卡片-hud)。
 
 `details` 通过 summary、children 和默认 false 的 open 控制本地折叠；`link` 通过 text/url 调用原版打开链接流程。两者都是通用客户端节点，不增加业务 CardData 类型、服务端动作或协议载荷。
 
@@ -129,9 +129,10 @@ JSON 使用完整 ID，例如 `{"type":"system:items","items":"{{result_items}}"
 | 抽奖奖池注册表 `system:lottery_pools` | `SystemDataPackRegistries`、`SystemResourceKeys.LOTTERY_POOLS` | 服务端 LotteryPool；模块 pools 筛选 |
 | Saturn `SaturnResourceKeys.ENTITY_ACTION_TYPE` | `SystemEntityActions` | `system:add_module`、`system:remove_module` |
 | Saturn `SaturnResourceKeys.ENTITY_CONDITION_TYPE` | `SystemEntityConditions` | `system:has_module`、`system:has_system` |
-| Saturn `SaturnRegistries.DATA_STORAGE_TYPE` | `SystemDataStorages` | 模块权限、成就、Agent 日志、交易、收件箱、签到的 DataStorage Codec |
+| Saturn `SaturnRegistries.DATA_STORAGE_TYPE` | `SystemDataStorages` | 模块权限、成就、Agent 日志、交易、收件箱、签到及常驻卡片的 DataStorage Codec；`DISPLAY_CARDS` 对应 system:display_cards |
 | 原版 `Registries.SOUND_EVENT` | `SystemSoundEvents` | `system:notification` |
 | 客户端按键注册事件 | `SystemKeyMappings` | `CATEGORY`、`TOGGLE_INTERFACE`、`VOICE_INPUT`；使用 NeoForge 专用事件登记 |
+| Saturn HUD 登记表 | `SystemHudEntries` | `NOTIFICATIONS` / `DISPLAY_CARDS`；布局键 `system.notification` / `system.cards`，物理客户端登记一次，共用 AuiHudEntry 坐标桥接和 Saturn 编辑器 / 布局存储 |
 
 系统与模块定义通过 `RegistryAccess` 查询，在世界加载时读取、连接时同步；修改定义或参数需要重开世界或重启服务器，tag 仍遵循原版资源重载规则。不能用静态 `SystemRegistries` 查询世界数据包条目。系统文件路径为 `data/<条目命名空间>/system/system/<路径>.json`，格式见[数据包文档](datapacks.md)。
 
@@ -216,6 +217,8 @@ SystemRegistries.CARD_DATA_TYPE.forEach(entry -> { /* inspect registered types *
 `ClientModuleCaches.COMMAND` 保存助手执行树、补全树与游戏客户端 `/system` 节点，注册、编译、访问和清理逻辑均在 `ClientCommandCache` 内。绑定缓存负责调用 begin / finish / clear，避免两个独立 Saturn 回调重复装配或依赖事件先后；get 确保整轮绑定装配完成，revision 在清理和重建时递增，界面以版本号拒绝旧异步补全。RegisterClientCommandsEvent 从此缓存复制节点，不再重新遍历模块。缓存只存声明和回调，权限、按钮与任务候选实时求值。MC 26.1.2 客户端配置完成时先应用标签并发布 TagsUpdatedEvent.ClientPacketReceived，随后登录/命令包合并触发客户端指令注册；服务端命令构造则早于 ServerDataLoad 标签事件，不能假设两端顺序相同。
 
 `TypeDispatch` 是按 Java 类选择内部处理器的工具，资源模板 Map 是重载快照，玩家/session/缓存 Map 是业务状态。这些不属于 MC 的内置注册表，也不应随本次迁移冻结进全局注册表。
+
+常驻卡片的数据源 Map 位于每个服务端的 `AssistantCardDisplays`，模块通过 `ModuleContext.displays()` 登记 source ID、所属模块配置 ID 和只读 reader；不放入全局 MC 注册表。引用保存在核心 `DisplayCardsDataStorage`，刷新 / 登录 / 关闭由 ModuleManager 驱动；客户端 `DisplayCardCache` 直接持有镜像、版本及 pending 请求。该显示链路独立于 ClientCards/ServerCards 的通知授权与聊天历史。
 
 ## 搜索模块入口
 

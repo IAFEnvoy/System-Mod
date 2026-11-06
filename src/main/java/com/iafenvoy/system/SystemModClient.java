@@ -3,6 +3,7 @@ package com.iafenvoy.system;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.registry.SystemCardNodeTypes;
 import com.iafenvoy.system.registry.SystemClientModules;
+import com.iafenvoy.system.registry.SystemHudEntries;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -16,5 +17,6 @@ public final class SystemModClient {
         SystemCardNodeTypes.REGISTRY.register(bus);
         SystemClientModules.init();
         ClientModuleCaches.init();
+        SystemHudEntries.init();
     }
 }

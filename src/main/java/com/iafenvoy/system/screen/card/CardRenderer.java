@@ -30,7 +30,7 @@ public final class CardRenderer {
         }
 
         public boolean interactive() {
-            return !this.document.isDisposed() && (!enabled("notification", this.context, List.of())
+            return !this.document.isDisposed() && (!(enabled("notification", this.context, List.of()) || enabled("hud", this.context, List.of()))
                     || this.document.body.getClassNames().contains("interactive"));
         }
     }

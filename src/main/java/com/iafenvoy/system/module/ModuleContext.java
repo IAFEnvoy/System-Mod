@@ -2,6 +2,7 @@ package com.iafenvoy.system.module;
 
 import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.assistant.AssistantCardDisplays;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
@@ -28,17 +29,18 @@ public final class ModuleContext {
     private final AgentDatabases databases;
     private final SearchGateway search;
     private final QuestNarration narration;
+    private final AssistantCardDisplays displays;
     private final Registry<SystemModule> modules;
     private final Identifier id;
     private final Map<ToolRegistry.Type<?, ?>, ToolRegistry.Tool<?, ?>> tools = new HashMap<>();
 
     public ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce, CommerceCatalogs catalogs,
-                         AgentDatabases databases, SearchGateway search, QuestNarration narration, Registry<SystemModule> modules) {
-        this(engine, game, commerce, catalogs, databases, search, narration, modules, null);
+                         AgentDatabases databases, SearchGateway search, QuestNarration narration, AssistantCardDisplays displays, Registry<SystemModule> modules) {
+        this(engine, game, commerce, catalogs, databases, search, narration, displays, modules, null);
     }
 
     private ModuleContext(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce, CommerceCatalogs catalogs,
-                          AgentDatabases databases, SearchGateway search, QuestNarration narration, Registry<SystemModule> modules, Identifier id) {
+                          AgentDatabases databases, SearchGateway search, QuestNarration narration, AssistantCardDisplays displays, Registry<SystemModule> modules, Identifier id) {
         this.engine = engine;
         this.game = game;
         this.commerce = commerce;
@@ -46,6 +48,7 @@ public final class ModuleContext {
         this.databases = databases;
         this.search = search;
         this.narration = narration;
+        this.displays = displays;
         this.modules = modules;
         this.id = id;
     }
@@ -82,13 +85,17 @@ public final class ModuleContext {
         return this.modules;
     }
 
+    public AssistantCardDisplays displays() {
+        return this.displays;
+    }
+
     public Identifier id() {
         return Objects.requireNonNull(this.id, "Module context is not scoped to a definition");
     }
 
     ModuleContext forModule(Identifier id) {
         return new ModuleContext(this.engine, this.game, this.commerce, this.catalogs, this.databases,
-                this.search, this.narration, this.modules, id);
+                this.search, this.narration, this.displays, this.modules, id);
     }
 
     /**

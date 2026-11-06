@@ -1,6 +1,5 @@
 package com.iafenvoy.system.screen.card;
 
-import com.iafenvoy.system.screen.AssistantPages;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.network.chat.Component;
@@ -60,8 +59,8 @@ public final class CardPagination {
             renderPage(view, root, key, pages, entries, pageSize, keepControls, content);
             Element scroll = view.document().getElementById("notification_scroll");
             if (scroll != null) scroll.scrollTop = scroll.targetScrollTop = 0;
+            // Queue layout for AUI's frame boundary, never traverse the document inside click dispatch.
             root.getLayout().invalidateLayoutSubtree();
-            AssistantPages.commit(view.document());
         });
         controls.appendChild(button);
     }

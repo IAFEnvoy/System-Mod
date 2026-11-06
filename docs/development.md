@@ -15,7 +15,7 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 | Minecraft / NeoForge | 26.1.2 / 26.1.2.114 |
 | ApricityUI | 1.2.9；客户端最低版本 1.2.9 |
 | Jupiter | CurseMaven 8569832 |
-| Saturn | 1.2.3 / CurseMaven 9414074；客户端和服务端均必装，统一 Cost、模块 DataStorage、Codec 工具及玩家信息视图 |
+| Saturn | 1.2.5 / CurseMaven 9449659；客户端和服务端均必装，统一 Cost、模块 DataStorage、Codec 工具、玩家信息视图及 HUD 编辑器 |
 | Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
 | Gson | 2.13.2；主项目直接声明依赖，Minecraft 提供运行时类 |
 | FTB Quests / Library / Teams | 26.1.2.8 / 26.1.2.9 / 26.1.2.4，可选 compileOnly |
@@ -25,7 +25,7 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 
 AUI 1.2.9 将布局状态从 `RenderElement` 拆到 `LayoutState`。卡片折叠与分页刷新通过 `Element.getLayout().invalidateLayoutSubtree()` 使布局失效，再由 `AssistantPages.commit` 提交更新。
 
-玩家查询与卡片使用 Saturn 的 `data.information.PlayerViews`、`PlayerInformation` 与 `InformationText`，展示结果类型为 `data.information.model.InformationEntry`。查询仍选取 basic/status 分组和既有行白名单，并保留 32 行、每行 256 字的上限；分组按 ResourceKey 从当前世界解析为 Holder，结果通过 entry.value()/label()/tooltip() 直接使用；排序和 importance 从原始行定义读取。Saturn 为必装依赖，最低版本为 1.2.3。
+玩家查询与卡片使用 Saturn 的 `data.information.PlayerViews`、`PlayerInformation` 与 `InformationText`，展示结果类型为 `data.information.model.InformationEntry`。查询仍选取 basic/status 分组和既有行白名单，并保留 32 行、每行 256 字的上限；分组按 ResourceKey 从当前世界解析为 Holder，结果通过 entry.value()/label()/tooltip() 直接使用；排序和 importance 从原始行定义读取。Saturn 为必装依赖，最低版本为 1.2.5，通知位置编辑复用其 HUD 框架。
 
 Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器、上下文、Module/Tool/Store/Journal 契约、路由与模型调用。具体工作流和功能装配位于 `module/builtin`，MC 业务、绑定和交易位于 `assistant`，参数结果、持久化与资源加载位于 `data`，语音行为及任务口播位于 `speech`。业务 DataStorage 继续放在 `module/builtin/storage`，执行账本实现位于 `data/store`。通用工具、配置、游戏界面、网络与可选兼容层保留对应包；所有代码仍共用主源码集与 Java 25 工具链。详细边界见[包职责与数据流](architecture.md)及[功能模块化](feature-modules.md)。
 
@@ -50,7 +50,7 @@ Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器�
 | `assistant/usage、data/usage` | 用量服务、独立 SavedData、AI/联网计量和不可变快照，不随 revoke 删除 |
 | `module` | 功能契约、ModuleContext 安装依赖、ModuleManager、玩家权限、存储声明与生命周期 |
 | `module/builtin` | 内置功能装配、平台指令、两端入口；子包按功能组织 Agent 工作流，BuiltinTools 声明共享工具键 |
-| `module/builtin/storage` | 签到、收件箱、成就、交易与模块覆盖的业务 DataStorage |
+| `module/builtin/storage` | 签到、收件箱、成就、交易、模块覆盖与常驻卡片固定记录的业务 DataStorage |
 | `module/client` | 客户端模块契约、绑定/指令缓存、动态导航与工作台 |
 | `data` | 公共状态和业务数据；按定义、存储、网络或资源加载职责分包 |
 | `data/input、data/output、data/result、data/search` | 类型化工具/工作流参数、查询结果、卡片业务结果与搜索决策数据 |

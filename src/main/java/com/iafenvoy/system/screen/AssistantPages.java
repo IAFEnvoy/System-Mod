@@ -1,15 +1,13 @@
 package com.iafenvoy.system.screen;
 
-import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.layout.Size;
 import com.sighs.apricityui.parser.HTML;
-import com.sighs.apricityui.render.GeometryQueryScope;
 import com.sighs.apricityui.resource.async.style.StyleAsyncHandler;
 import com.sighs.apricityui.viewport.ApricityViewport;
 import net.minecraft.client.Minecraft;
 
 /**
- * Shared stylesheet preparation and layout commits for assistant pages and HUD documents.
+ * Prepares local stylesheet resources; document layout belongs to AUI's renderer.
  */
 public final class AssistantPages {
     private AssistantPages() {
@@ -29,15 +27,5 @@ public final class AssistantPages {
         for (HTML.TemplateResources template : HTML.preparedTemplateResources())
             if (template.path().equals(path)) return template;
         return null;
-    }
-
-    public static void commit(Document document) {
-        // Manual commits need the same style and measurement caches as AUI's normal frame pipeline.
-        try (Document.ContextScope ignored = Document.withContext(document);
-             GeometryQueryScope geometry = GeometryQueryScope.open()) {
-            AssistantThemes.apply(document);
-            document.commitStyleRecalc();
-            if (document.hasPendingRenderState()) document.commitRenderState();
-        }
     }
 }

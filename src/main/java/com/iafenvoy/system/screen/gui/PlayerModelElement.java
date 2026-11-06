@@ -1,11 +1,11 @@
 package com.iafenvoy.system.screen.gui;
 
+import com.iafenvoy.system.screen.AssistantGeometry;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.sighs.apricityui.element.MinecraftElement;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
-import com.sighs.apricityui.layout.Box;
 import com.sighs.apricityui.layout.Position;
 import com.sighs.apricityui.layout.Size;
 import com.sighs.apricityui.render.Base;
@@ -80,8 +80,10 @@ public final class PlayerModelElement extends MinecraftElement {
         if (phase != Base.RenderPhase.BODY) return;
         AbstractClientPlayer player = this.player();
         if (player == null) return;
-        Position position = Rect.of(this).getContentPosition();
-        Size size = Box.of(this).innerSize();
+        Rect rect = this.getLayout().getCommittedRectIfValid();
+        if (rect == null) return;
+        Position position = rect.getContentPosition();
+        Size size = AssistantGeometry.innerSize(rect);
         if (size.width() <= 16 || size.height() <= 16) return;
         Minecraft client = Minecraft.getInstance();
         float centerX = (float) (position.x + size.width() / 2) + this.offsetX;

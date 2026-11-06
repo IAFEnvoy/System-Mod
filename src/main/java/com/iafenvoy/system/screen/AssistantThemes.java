@@ -21,16 +21,26 @@ public final class AssistantThemes {
 
     public static boolean select(String theme) {
         ClientConfig settings = ClientConfig.INSTANCE.get();
-        ClientConfig.INSTANCE.set(new ClientConfig(settings.simpleMode(), theme));
+        ClientConfig.INSTANCE.set(new ClientConfig(settings.simpleMode(), theme, settings.cardAnimations(), settings.cardsOnOtherScreens()));
         boolean saved = ClientConfig.INSTANCE.save();
         for (Document document : List.copyOf(Document.getAll()))
             if (document.isActive() && document.getPath().startsWith("system/"))
-                AssistantPages.commit(document);
+                apply(document);
         return saved;
     }
 
     public static void apply(Document document) {
-        if (document.isDisposed() || !document.getPath().startsWith("system/") || document.body == null || document.head == null) return;
+        if (document.isDisposed() || !document.getPath().startsWith("system/") || document.body == null || document.head == null)
+            return;
+        try (Document.ContextScope ignored = Document.withContext(document)) {
+            // AUI 1.2.9 normalizes away authored <html> attributes; copy the HUD marker from the retained body.
+            if (document.body.getClassList().contains("system_hud") && !document.documentElement.getClassList().contains("system_hud"))
+                document.documentElement.getClassList().add("system_hud");
+            install(document);
+        }
+    }
+
+    private static void install(Document document) {
         String theme = ClientConfig.INSTANCE.get().theme();
         if (theme.equals(document.body.getAttribute(REQUESTED))) return;
         document.body.setAttribute(REQUESTED, theme);
@@ -54,7 +64,6 @@ public final class AssistantThemes {
             adopt(document, theme);
             for (Element previous : new ArrayList<>(document.head.querySelectorAll("link[data-theme-css]")))
                 if (previous != link) previous.remove();
-            AssistantPages.commit(document);
         });
         link.addEventListener("error", event -> {
             link.remove();

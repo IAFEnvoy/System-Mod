@@ -1,4 +1,4 @@
-/* Shared by every assistant page, HUD notification and client settings panel. */
+/* Shared by every assistant page, HUD notification, persistent card and client settings panel. */
 /* Adapted from ApricityUI t09-arwes-transparent and its t08-arwes foundation. */
 * {
     box-sizing: border-box;
@@ -51,9 +51,8 @@ body {
     --assistant-window-art: var(--canvas-art, none);
     --assistant-radius: var(--radius-md, 0);
     --assistant-control-radius: var(--radius-sm, 0);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    /* Surfaces already anchor themselves to the viewport. */
+    display: block;
     overflow: hidden;
     background: rgba(1, 7, 12, 0.42);
     color: var(--assistant-ink);
@@ -195,6 +194,10 @@ p {
 }
 
 /* Full assistant layout. */
+.full #workspace {
+    display: block;
+}
+
 #topbar {
     position: relative;
     height: 64px;
@@ -253,14 +256,23 @@ p {
 }
 
 #layout {
-    display: flex;
-    flex: 1;
+    /* Definite shell geometry breaks the workspace -> layout -> main flex measurement chain. */
+    position: absolute;
+    top: 64px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: block;
     min-height: 0;
 }
 
 #sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 196px;
     display: flex;
-    flex: 0 0 196px;
     flex-direction: column;
     padding: 22px 14px 14px;
     border-right: 1px solid var(--assistant-line-soft);
@@ -338,7 +350,11 @@ p {
 }
 
 #main {
-    flex: 1;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 196px;
     min-width: 0;
     min-height: 0;
     display: flex;
@@ -1864,29 +1880,32 @@ body.simple {
     padding: 12px 0 18px;
 }
 
-/* HUD shares the simple anchor; only vanilla chat enables pointer targets on its panel. */
-html.message_hud, html.message_hud body.notification {
-    /* Theme artwork belongs to the panel; a HUD document must never cover the game world. */
-    background: transparent !important;
+/* HUD roots stay transparent; theme artwork belongs to the actual panels. */
+html.system_hud, body.system_hud {
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
 }
 
-html.message_hud::before, html.message_hud::after,
-html.message_hud body.notification::before, html.message_hud body.notification::after {
+html.system_hud::before, html.system_hud::after,
+body.system_hud::before, body.system_hud::after {
     display: none !important;
     content: none !important;
 }
 
-body.notification {
+body.system_hud {
     display: block;
     padding: 0;
 }
 
-html.message_hud, .notification, .notification * {
+html.system_hud, body.system_hud, body.system_hud * {
     /* Theme styles must not turn a passive HUD into an input surface. */
     pointer-events: none !important;
     user-select: none;
 }
 
+/* Notifications share the simple anchor; only vanilla chat enables pointer targets on the panel. */
 .notification.interactive #workspace, .notification.interactive #workspace * {
     pointer-events: auto !important;
 }
@@ -2286,6 +2305,8 @@ html.message_hud, .notification, .notification * {
 
 /* One settings surface keeps local provider drafts alive while switching tabs. */
 .settings #workspace {
+    left: max(3vw, calc(50vw - 480px));
+    top: max(5vh, calc(50vh - 400px));
     width: min(960px, 94vw);
     height: min(800px, 90vh);
 }
@@ -2317,10 +2338,11 @@ html.message_hud, .notification, .notification * {
 }
 
 #settings_content {
-    display: flex;
-    flex: 1;
+    /* Keep the scrolling form out of nested intrinsic flex measurements. */
+    display: block;
+    flex: 1 1 0;
     min-height: 0;
-    flex-direction: column;
+    min-width: 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 18px 26px;
@@ -2328,10 +2350,11 @@ html.message_hud, .notification, .notification * {
 
 .settings_page {
     display: none;
-    flex: 0 0 auto;
     min-width: 0;
-    flex-direction: column;
-    gap: 12px;
+}
+
+.settings .settings_page > * + * {
+    margin-top: 12px;
 }
 
 .settings #privacy_heading {
@@ -2364,28 +2387,23 @@ html.message_hud, .notification, .notification * {
 }
 
 .speech_step.settings_theme {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 16px;
+    min-height: 74px;
+    padding-right: 80px;
 }
 
 .settings_theme_description {
-    flex: 1;
     min-width: 0;
 }
 
 /* Button activation keeps keyboard support without AUI's separately painted checkbox indicator. */
 #workspace button.assistant_switch {
     position: relative;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    display: block;
     min-width: 0;
     max-width: 100%;
     min-height: 34px;
     margin: 0;
-    padding: 0;
+    padding: 6px 0 6px 48px;
     border: 0;
     border-radius: var(--assistant-control-radius);
     background-color: transparent;
@@ -2402,9 +2420,10 @@ html.message_hud, .notification, .notification * {
 }
 
 .assistant_switch .switch_track {
-    position: relative;
+    position: absolute;
+    left: 0;
+    top: 6px;
     display: block;
-    flex: 0 0 38px;
     width: 38px;
     height: 22px;
     border: 1px solid var(--assistant-line-soft);
@@ -2424,11 +2443,12 @@ html.message_hud, .notification, .notification * {
     background-color: var(--assistant-muted);
     content: "";
     pointer-events: none;
-    transition: transform 120ms ease, background-color 120ms ease;
+    /* AUI resolves transform transitions through Size.of, even during initial style calculation. */
+    transition: left 120ms ease, background-color 120ms ease;
 }
 
 .assistant_switch .switch_label {
-    flex: 1 1 auto;
+    display: block;
     min-width: 0;
     line-height: 1.5;
     overflow-wrap: anywhere;
@@ -2442,7 +2462,7 @@ html.message_hud, .notification, .notification * {
 
 .assistant_switch[aria-checked="true"] .switch_track::after {
     background-color: var(--assistant-primary-ink);
-    transform: translateX(16px);
+    left: 19px;
 }
 
 .assistant_switch:hover:not(:disabled) .switch_track {
@@ -2473,11 +2493,12 @@ button.assistant_switch:disabled {
 }
 
 .speech_step {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column;
-    gap: 10px;
+    display: block;
     margin: 0;
+}
+
+.speech_step > * + * {
+    margin-top: 10px;
 }
 
 .settings .speech_step h2 {
@@ -2487,12 +2508,13 @@ button.assistant_switch:disabled {
 }
 
 .speech_step label {
+    display: block;
     color: var(--assistant-ink);
     font-size: 13px;
 }
 
 .speech_step input {
-    flex: 0 0 auto;
+    display: block;
     min-width: 0;
     width: 100%;
 }
@@ -2565,11 +2587,12 @@ button.assistant_switch:disabled {
     }
 
     #sidebar {
-        flex-basis: 145px;
+        width: 145px;
         padding: 14px 8px;
     }
 
     #main {
+        left: 145px;
         padding: 0 14px;
     }
 
@@ -2648,4 +2671,89 @@ button.assistant_switch:disabled {
     #settings_status {
         flex-basis: 100%;
     }
+}
+
+/* Persistent cards share themes and rendering with chat, but never capture gameplay or inventory input. */
+.card_hud.interactive #card_display, .card_hud.interactive #card_display * {
+    pointer-events: auto !important;
+}
+
+.card_hud.interactive #card_display .minecraft_text,
+.card_hud.interactive #card_display .minecraft_text span,
+.card_hud.interactive #card_display .quest_card_pin svg,
+.card_hud.interactive #card_display .quest_card_pin path {
+    pointer-events: none !important;
+}
+
+#card_display {
+    position: fixed;
+    left: 12px;
+    top: 22vh;
+    width: min(360px, 38vw);
+    height: auto;
+    max-height: 72vh;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.card_display_entry {
+    flex: 0 0 auto;
+    min-width: 0;
+    opacity: 0;
+    /* Pixel travel avoids percentage-based size queries while sampling the transition. */
+    transform: translateX(var(--card-slide-offset, -400px));
+    transition: none;
+}
+
+.card_display_entry.animated {
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
+}
+
+.card_display_entry.shown {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.card_hud.interactive #card_display .card_display_entry:not(.shown),
+.card_hud.interactive #card_display .card_display_entry:not(.shown) * {
+    pointer-events: none !important;
+}
+
+#card_display > .card_display_entry > .result_card {
+    flex: 0 0 auto;
+    min-width: 0;
+    margin: 0;
+    padding: 12px 14px 16px;
+    background-color: var(--assistant-window);
+}
+
+.quest_tracking_card > .card_title {
+    padding-right: 24px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+}
+
+.quest_tracking_card .message_text {
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.quest_tracking_chapter {
+    color: var(--assistant-muted);
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.quest_tracking_card > .card_progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
 }

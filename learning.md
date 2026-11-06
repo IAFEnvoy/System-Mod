@@ -14,7 +14,7 @@
 | Java | `25`，toolchain 与字节码均使用 Java 25 | [build.gradle](build.gradle)、[Mixin 配置](src/main/resources/system.mixins.json) |
 | Gradle / ModDev | `9.2.1` / `2.0.148` | [Wrapper 配置](gradle/wrapper/gradle-wrapper.properties)、[build.gradle](build.gradle) |
 | ApricityUI | 开发配置与客户端最低版本 `1.2.9`；需兼容 MC `26.1.2` | [gradle.properties](gradle.properties) 的 `apricityui_version` |
-| Saturn | `1.0-beta.3`，CurseMaven 文件 ID `9349648`；两端必装，提供 Cost、DataStorage 与 Codec 工具 | [build.gradle](build.gradle)、[开发与架构](docs/development.md) |
+| Saturn | `1.2.5`，CurseMaven 文件 ID `9449659`；两端必装，提供 Cost、DataStorage、Codec 工具与 HUD 编辑器 | [build.gradle](build.gradle)、[开发与架构](docs/development.md) |
 | Simple Voice Chat | 开发适配 `2.6.26+26.1.2`，CurseMaven 文件 ID `9307181`；可选客户端录音后端，不打入发布 JAR，服务端不要求安装 | [gradle.properties](gradle.properties)、[build.gradle](build.gradle) |
 | FTB Quests | `26.1.2.8`；可选集成 | [gradle.properties](gradle.properties) 的 `ftb_quests_version` |
 | FTB Library / FTB Teams | `26.1.2.9` / `26.1.2.4`；FTB 集成配套依赖 | [gradle.properties](gradle.properties) |
@@ -72,7 +72,9 @@
 | TTS 接口、流式播放、语种、音色、取消 session、Python 设计 / 复刻 / 临时上传 | [语音合成与音色设计](docs/tts.md) |
 | ASR、NLS AccessKey 自动签发与 Token 缓存刷新、停止 / 自然 EOF 与设备关闭解耦、session 超时、可选 SVC、按键录音与按次估价 | [语音识别](docs/asr.md) |
 | 服务端 AI/联网用量 SavedData、仅本地可见的个人 TTS / ASR 用量、字符与 Token、客户端计费配置、撤销后保留 | [用量统计](docs/token-usage.md) |
-| 共享 CSS、完整 / 简约界面、HUD、动画、物品 tooltip、输入法、双语键 | [界面与本地化](docs/ui-localization.md) |
+| 共享 CSS、完整 / 简约界面、通知与常驻卡片 HUD、Saturn 位置编辑与 config/saturn/hud.json、动画、物品 tooltip、输入法、双语键 | [界面与本地化](docs/ui-localization.md) |
+| 样式计算卡顿排查、AUI 1.2.9 实际源码、打开页面 8786ms 日志、原生渲染生命周期、草稿光标隐式测量、固定外壳、已提交几何与增量更新 | [页面布局审计](docs/ui-layout-audit.md) |
+| 任务 pin 持久化、核心 DisplayCardsDataStorage、服务端卡片来源、独立左侧 HUD 与逐秒进度刷新 | [常驻卡片](docs/cards.md#常驻卡片-hud)、[AssistantCardDisplays](src/main/java/com/iafenvoy/system/assistant/AssistantCardDisplays.java) |
 | 网文系统语气、提示词与模板边界、公开参考 | [文案与提示词](docs/system-voice.md) |
 | 绑定、新手礼包、任务通知的文案与占位符；该稿不直接作为运行时模板 | [通知文案稿](docs/notification-copy-draft.md) |
 | 编译检查、已执行验证、未验收范围、开发依赖 | [编译与验收](docs/testing.md) |

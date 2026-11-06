@@ -1,4 +1,6 @@
 {
   "simpleMode": false,
-  "theme": "t09-arwes-transparent"
+  "theme": "t09-arwes-transparent",
+  "cardAnimations": true,
+  "cardsOnOtherScreens": false
 }

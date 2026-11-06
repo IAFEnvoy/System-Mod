@@ -4,12 +4,15 @@ import com.iafenvoy.system.data.card.DisplayCard;
 import com.iafenvoy.system.data.card.DisplayCardKey;
 import com.iafenvoy.system.network.payload.DisplayCardC2SPayload;
 import com.iafenvoy.system.network.payload.DisplayCardsS2CPayload;
+import com.iafenvoy.system.screen.gui.AssistantView;
+import com.sighs.apricityui.init.Element;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * Client mirrors only acknowledged server references and snapshots; persistence belongs to the core DataStorage.
@@ -22,6 +25,24 @@ public final class DisplayCardCache {
     private long nextRequest;
     private long revision;
     private long pinRevision;
+    private long bindingRevision = -1;
+    private final Map<Element, DisplayCardKey> bindings = new WeakHashMap<>();
+
+    public void bind(Element button, DisplayCardKey key) {
+        this.bindings.put(button, key);
+        this.update(button, key);
+    }
+
+    private void update(Element button, DisplayCardKey key) {
+        boolean selected = this.contains(key);
+        boolean disabled = this.session == 0 || this.pending(key);
+        if (button.isDisabled() != disabled) button.setDisabled(disabled);
+        String pressed = Boolean.toString(selected);
+        if (!pressed.equals(button.getAttribute("aria-pressed"))) button.setAttribute("aria-pressed", pressed);
+        String label = AssistantView.tr(selected ? "system.ui.quest_unpin" : "system.ui.quest_pin");
+        if (!label.equals(button.getAttribute("aria-label"))) button.setAttribute("aria-label", label);
+        if (!label.equals(button.getAttribute("title"))) button.setAttribute("title", label);
+    }
 
     private record Pending(DisplayCardKey key, long deadline) {
     }
@@ -77,11 +98,19 @@ public final class DisplayCardCache {
     public void tick() {
         if (this.requests.values().removeIf(request -> request.deadline() <= System.currentTimeMillis()))
             this.pinRevision++;
+        if (this.bindingRevision != this.pinRevision) {
+            this.bindingRevision = this.pinRevision;
+            this.bindings.entrySet().removeIf(entry -> entry.getKey().document.isDisposed());
+            this.bindings.forEach((button, key) -> {
+                if (button.isConnected()) this.update(button, key);
+            });
+        }
     }
 
     public void clear() {
         this.cards = List.of();
         this.requests.clear();
+        this.bindings.clear();
         this.session = this.serverRevision = 0;
         this.revision++;
         this.pinRevision++;

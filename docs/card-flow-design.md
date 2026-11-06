@@ -62,18 +62,18 @@ sequenceDiagram
 
 ## 明确按钮，不按翻译键猜动作
 
-CardAction 只有 Local 和 Server，均描述 Identifier + Map<String,String>。CardButton 另含卡片内 id、labelKey、BODY/FOOTER、CLOSE/WAIT/REPLACE/PUSH。
+CardAction 分为 Local(Identifier + Map<String,String>)、Server(String value)、Url(String value)。CardButton 另含卡片内 id、labelKey、BODY/FOOTER、CLOSE/WAIT/REPLACE/PUSH。
 
 - Local 通过客户端处理器 Map 执行，模块可用 ClientModuleContext.localAction 扩展。打开页面后按正常页面入口加载数据。
-- Server 发 CardActionRequest，携带来源 CardRef 和动作描述；玩家从连接取得，不接受客户端指定身份。动作 ID 复用 SystemActionTypes。
+- Server 发 CardActionRequest，只携带来源 CardRef 和不透明 value 字符串；玩家从连接取得，不接受客户端指定身份。先在游戏主线程发布 CardButtonEvent，未处理时按 CardEventValue 解码再复用 SystemActionTypes。
 - ModuleRouting.button 声明字符串参数转换器；ModuleRegistry 解码并用原参数 Codec 校验，再进入相同的 AgentModule/Tool 工作流。按钮是明确操作，不走语义识别或模型选择。
 - source 只负责定位和版本，不能替代所有权、模块权限、Cost、订单、领取引用与幂等校验。
 
 CLOSE 停止旧语音/录音并关闭通知；WAIT 保留通知并在等待期间禁用服务端操作。REPLACE 是服务端按钮的默认行为：等待直接回复后，用回复的新 SHOW 卡片替换来源通知的展示位置。切换复用淡出/淡入、停止旧语音与录音，面板保持展开；其他通知继续按原顺序等待。这是客户端展示调度，不改变 CardUpdate.REPLACE 按同一 ID 静默更新的协议语义。通知不设可见时长，播报结束不推进队列；确认、关闭、明确按钮操作或服务端更新才结束或替换当前通知。收到失败、请求超时或无卡片回复也能解除等待。鼠标、数字和语音共用 CardController，旧通知版本的语音结果不能操作新消息。
 
-JSON 只安排已声明按钮，不得定义动作、指令或脚本。BODY 按钮进入正文滚动列表，FOOTER 由 HUD 代码生成，始终在业务按钮之后补本地确定。简约模式保留文字编号选择。
+JSON 的 button 可声明 link / return-val / local，后者只引用代码绑定的回调；客户端不执行服务端指令或脚本。BODY 按钮进入正文滚动列表，FOOTER 由 HUD 代码生成，始终在业务按钮之后补本地确定。简约模式保留文字编号选择。
 
-PUSH 与 REPLACE 共用来源请求关联，但收到可显示回复后将来源通知存入本地返回栈；任务列表查看详情使用该行为。通知正文的“返回列表”恢复来源卡片及其 `CardPageState`，不发包、不推进队列；底部确定结束整个窗口。actions 节点的 `page_size=10` 在完整模式和通知中本地截取任务行，独立绘制上 / 下页控件，分页不生成 CardAction 或 AgentResult。完整模式按卡片 UUID 保留独立页码，聊天重绘和窗口缩放不会复位；通知保留自身窗口的页码，两者互不影响。状态与 DOM 属于客户端，服务端仍提供完整简表并负责详情查询、权限和业务操作。独立完成通知继续逐条排队；新解锁一项直接发详情，多项发列表。
+PUSH 与 REPLACE 共用来源请求关联，但收到可显示回复后将来源通知存入本地返回栈；任务列表查看详情使用该行为。通知正文的“返回列表”恢复来源卡片及其 `CardUiState`，不发包、不推进队列；底部确定结束整个窗口。grid / flex 使用共用 CardPagination 在本地截取当前页，独立绘制上 / 下页控件，分页不生成 CardAction 或 AgentResult。完整模式按卡片 UUID 保留独立页码，聊天重绘和窗口缩放不会复位；通知保留自身窗口的页码，两者互不影响。状态与 DOM 属于客户端，服务端仍提供完整简表并负责详情查询、权限和业务操作。独立完成通知继续逐条排队；新解锁一项直接发详情，多项发列表。
 
 ## ID、版本与请求生命周期
 

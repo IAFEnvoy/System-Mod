@@ -30,6 +30,6 @@ public record QuestTaskOutput(Component title, long progress, long required, Lis
 
     public void fill(CardBuilder builder, String prefix) {
         builder.put(prefix + "task_title", this.title()).put(prefix + "task_progress", this.progress()).put(prefix + "task_required", this.required())
-                .put(prefix + "task_items", this.items()).put(prefix + "task_icons", this.icons());
+                .put(prefix + "task_items", this.items()).icons(prefix + "task_icons", this.icons());
     }
 }

@@ -87,27 +87,17 @@ Codec 在第一次编解码时才访问注册表，避免静态初始化时提�
 
 ### 卡片节点
 
-内置节点：`system:text`、`system:markdown`、`system:title`、`system:context`、`system:container`、`system:row`、`system:column`、`system:details`、`system:link`、`system:divider`、`system:items`、`system:item_sources`、`system:offer_grid`、`system:prize_grid`、`system:player`、`system:player_information`、`system:icons`、`system:quest_icon`、`system:quest_pin`、`system:progress`、`system:actions`、`system:grouped_actions`、`system:button`。
+SystemCardNodeTypes 声明 18 个 MapCodec：text、markdown、title；image、item、player、ftb_icon；flex、grid；container、groups、details；button、link；divider、progress；player_information、recipe。ID 均以 system: 为命名空间，按功能放入 screen.card.node 的对应子包。仅物理客户端绑定 DeferredRegister；专用服务端不加载 AUI 或节点实现。
 
-`item_sources` 的数据 Codec 由 `SystemCardDataTypes.ITEM_SOURCES`（ItemSourceOutput）注册，节点 Codec 由 `SystemCardNodeTypes.ITEM_SOURCES`（ItemSourcesNode）注册；两者 ID 均为 system:item_sources，分属两张注册表。数据保存服务端来源快照，节点读取 sources 参数并分为配方 / 掉落 / 标签三个分类，复用 CardPagination 分别分页；分类选择与各类页码属于当前卡片，不额外注册动作或网络载荷。
+CardNode 只提供 codec/css/render；文字投影、纯文本资格、标题、children 和集合索引分别由能力接口提供。递归 children Codec 使用 CardTemplate.NODES 延迟初始化。一个客户端内置注册表即可，无需按分类增加注册表。
 
-`markdown` 通过 `SystemCardNodeTypes.MARKDOWN` 暴露，MarkdownNode 自己提供 MapCodec 与 render / text。text 默认引用 summary，可绑定其他原始字符串；AssistantMarkdown 复用 AUI 1.2.9 内置 Txtmark，只生成已知展示元素和经原版确认的 HTTP / HTTPS 点击动作。text 节点及 FTBQ 格式化逻辑不变；knowledge_answer / web_search 模板的模型答案改用 markdown，来源仍用原有 text / context，不新增 CardData 类型或网络协议。
+CardData 与节点各自使用独立注册表。例如 SystemCardDataTypes.ITEM_SOURCES 仍是物品来源快照，客户端用 groups / grid / recipe 组合展示，不再注册业务列表节点。FtbIconNode 接受单个 FtbIconData，适配器仅在安装 FTB 的客户端反射加载。
 
-`player` 通过 `SystemCardNodeTypes.PLAYER` 暴露，绑定参数表中的 UUID，客户端解析原版玩家模型；尺寸使用共享 CSS，follow_mouse 控制光标跟随，yaw / pitch 控制固定朝向，scale 和 offset_x / offset_y 调整框内缩放和位置。服务端 player 卡片数据仅增加 playerId，不加载 PlayerModelElement，也不新增业务动作或网络包。其数据类型 ID 与节点类型 ID 同为 system:player，分属两张注册表。
+button 直接声明 click/value：link 在本地打开 URL，return-val 发送带 source 的字符串，local 只调用可信 callback。服务端 CardButtonEvent 支持扩展字符串协议，未处理事件按内置 CardEventValue 规则进入 ModuleRouting.button；不新增按钮类型注册表。正文按钮与通知代码管理的确定、返回、底部操作分开。
 
-`player_information` 通过 `SystemCardNodeTypes.PLAYER_INFORMATION` 暴露，从固定 `player_information` 参数读取 Saturn 生成的行快照；唯一业务配置 `importance` 默认 0，只显示重要度严格大于阈值的行。采集、可见性、顺序和文本投影均使用 Saturn API，不再维护字段或分组白名单；内置 player.json 的阈值为 40。
+任务 pin 通过 QuestCardBindings 的客户端构建事件扩展注入 callback 和状态绑定；DisplayCardCache 保存弱引用并在 pinRevision 变化时更新连接中的按钮。progress 保持独立通用节点。任务列表按现有查询结果分组，页码、分组与折叠统一保存在 CardUiState，不改变服务端数据包注册表。
 
-`icons` 绑定服务端准备的 `QuestIconOutput` 列表，按类型 ID 在客户端读取 FTB 原生图标并显示 tooltip；仅在实际渲染且安装 FTB 时加载隔离适配器，不新增服务端图标注册表。
-
-`quest_icon` 由 `SystemCardNodeTypes.QUEST_ICON` 暴露，quest / title 支持占位符；前者是已展示任务的 ID，后者是 tooltip 文本。可选适配器从 ClientQuestFile 取 Quest.getIcon，显示任务自身设置的图标并沿用原生回退。缺少 FTB、任务文件或有效任务时不绘制；不新增查询包，不将 FTB 类型混入公共数据。
-
-`quest_pin` / `progress` 分别由 `SystemCardNodeTypes.QUEST_PIN` / `PROGRESS` 暴露，各自实现 MapCodec。前者通过 `DisplayCardC2SPayload` 切换服务端核心 DataStorage 内的固定记录，`ClientModuleCaches.DISPLAY_CARDS` 保存确认后的镜像；任务列表、详情和左侧常驻卡片共享图钉状态。后者按 value 数字参数绘制百分比进度条。两者不增加 AgentAction 或数据包注册表，常驻任务数据通过 `SystemCardDataTypes.QUEST_PIN` / `QuestPinOutput` 编码，详见[常驻卡片](cards.md#常驻卡片-hud)。
-
-`details` 通过 summary、children 和默认 false 的 open 控制本地折叠；`link` 通过 text/url 调用原版打开链接流程。两者都是通用客户端节点，不增加业务 CardData 类型、服务端动作或协议载荷。
-
-`grouped_actions` 由 `SystemCardNodeTypes.GROUPED_ACTIONS` 注册，只从给定动作的 group / group_label 和可选 section / section_label 构建分组导航，复用 `ActionsNode` 的可信绑定与本地分页。格子复用商店货架样式，由 columns / cell 与 children 控制布局；不把动作标签直接用作多行 flex 按钮内容。任务列表使用 FTB 查询返回的章节 ID 和章节组信息；没有结果的分组不出现，也不向 FTB 再请求章节列表。选中组与各组页码保存在当前卡片的 `CardPageState`。
-
-JSON 使用完整 ID，例如 `{"type":"system:items","items":"{{result_items}}"}`。节点自身实现 `codec/css/render/text`，`CardNode.CODEC` 通过正式注册表分派。资源包能调整布局与参数，不能新增 Java 节点类型。格式见[客户端 JSON 卡片](cards.md)。
+JSON 示例：`{"type":"system:item","item":"{{result_items.0}}"}`。完整字段、能力接口、资源路径与示例见[客户端 JSON 卡片](cards.md)。
 
 ### 语音供应商 Map
 
@@ -212,7 +202,7 @@ SystemRegistries.CARD_DATA_TYPE.forEach(entry -> { /* inspect registered types *
 
 ## 仍保留的运行时登记表
 
-`ModuleRegistry`、`ToolRegistry`、`CommandRegistry` 是每个 Agent 服务实例的工作流、工具和指令索引。客户端命令由 `ClientCommandCache` 装配，页面和本地动作由 `ClientModuleBindingsCache` 装配。ModuleRouting.button 提供按钮字符串参数解码，CardController 从绑定缓存分派本地动作。这些只负责运行行为，不承担 Codec 类型注册。ClientCards/ServerCards 保存连接内消息及版本，ASR/TTS 使用供应商工厂 Map。卡片布局直接取 CardView.template，不维护额外渲染或卡片行为登记表。
+`ModuleRegistry`、`ToolRegistry`、`CommandRegistry` 是每个 Agent 服务实例的工作流、工具和指令索引。客户端命令由 `ClientCommandCache` 装配，页面和本地动作由 `ClientModuleBindingsCache` 装配。ModuleRouting.button 提供按钮字符串参数解码，CardController 从绑定缓存分派本地动作；CardButtonEvent 处理服务端字符串。这些只负责运行行为，不承担 Codec 类型注册。ClientCards/ServerCards 保存连接内消息及版本，ASR/TTS 使用供应商工厂 Map。卡片布局直接取 CardView.template，不维护额外渲染或卡片行为登记表。
 
 `ClientModuleCaches.COMMAND` 保存助手执行树、补全树与游戏客户端 `/system` 节点，注册、编译、访问和清理逻辑均在 `ClientCommandCache` 内。绑定缓存负责调用 begin / finish / clear，避免两个独立 Saturn 回调重复装配或依赖事件先后；get 确保整轮绑定装配完成，revision 在清理和重建时递增，界面以版本号拒绝旧异步补全。RegisterClientCommandsEvent 从此缓存复制节点，不再重新遍历模块。缓存只存声明和回调，权限、按钮与任务候选实时求值。MC 26.1.2 客户端配置完成时先应用标签并发布 TagsUpdatedEvent.ClientPacketReceived，随后登录/命令包合并触发客户端指令注册；服务端命令构造则早于 ServerDataLoad 标签事件，不能假设两端顺序相同。
 

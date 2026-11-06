@@ -72,8 +72,8 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
                 this.renderControls();
             }
         });
-        bindSwitch(document, "settings_card_animations", checked -> this.saveCardSettings(document));
-        bindSwitch(document, "settings_cards_other_screens", checked -> this.saveCardSettings(document));
+        bindSwitch(document, "settings_card_animations", _ -> this.saveCardSettings(document));
+        bindSwitch(document, "settings_cards_other_screens", _ -> this.saveCardSettings(document));
         document.getElementById("speech_key").setAttribute("placeholder", tr("system.tts.ui.key_placeholder"));
         Element languageSelect = document.getElementById("speech_language");
         for (String language : SpeechConfig.LANGUAGES) {
@@ -89,12 +89,12 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         text(document.getElementById("asr_backend"), tr(RecognitionCapture.voicechatInstalled()
                 ? "system.asr.ui.backend_voicechat" : "system.asr.ui.backend_java"));
         for (Element input : document.querySelectorAll("#settings_page_tts input:not([type=checkbox])"))
-            input.addEventListener("input", event -> {
+            input.addEventListener("input", _ -> {
                 this.readSpeechForm(document);
                 this.saveSpeech();
             });
         for (Element input : document.querySelectorAll("#settings_page_asr input:not([type=checkbox])"))
-            input.addEventListener("input", event -> {
+            input.addEventListener("input", _ -> {
                 this.readAsrForm(document);
                 this.saveAsr();
             });
@@ -120,13 +120,13 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         bindSwitch(document, "speech_enabled", checked ->
                 this.changeSpeech(checked, this.speechForm.region(), this.speechForm.language()));
         for (String id : List.of("speech_notification_sound", "speech_cache", "speech_quest_requirements", "speech_quest_rewards", "speech_quest_description"))
-            bindSwitch(document, id, checked -> {
+            bindSwitch(document, id, _ -> {
                 this.readSpeechForm(document);
                 this.saveSpeech();
             });
         bind(document, "speech_region", () -> this.changeSpeech(this.speechForm.enabled(),
                 this.speechForm.region().equals("beijing") ? "singapore" : "beijing", this.speechForm.language()));
-        languageSelect.addEventListener("change", event -> {
+        languageSelect.addEventListener("change", _ -> {
             this.readSpeechForm(document);
             this.saveSpeech();
         });

@@ -22,7 +22,7 @@ public final class HelpModule extends AbstractAgentModule<HelpInput> {
         return ModuleRouting.<HelpInput>defaults()
                 .button(_ -> HelpInput.INSTANCE)
                 .command(AgentCommand.literal(HelpInput.INSTANCE, "help", "帮助"))
-                .semantic(RoutingProfile.read(text -> HelpInput.INSTANCE,
+                .semantic(RoutingProfile.read(_ -> HelpInput.INSTANCE,
                                 List.of("我能用哪些功能", "告诉我怎么使用系统", "查看系统指令手册", "系统有什么功能"),
                                 List.of("What can this system do?", "Show the command manual", "How do I use the system?", "Show available capabilities"))
                         .choice("system.action.view_help"));

@@ -7,6 +7,7 @@ import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.card.CardButton;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.util.ActionArguments;
+import com.iafenvoy.system.util.CardEventValue;
 import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -35,12 +36,12 @@ public record SelectionCardData(Component summary, Component speech, List<Choice
 
     public static SelectionCardData shortcuts(String key, String speechKey, List<AgentResult.Action> actions) {
         return new SelectionCardData(Component.translatable(key), Component.translatable(speechKey), actions.stream().map(action -> new Choice(action.labelKey(),
-                new CardAction.Server(action.moduleId(), ActionArguments.encode(action.call())))).toList());
+                new CardAction.Server(CardEventValue.encode(action.moduleId(), ActionArguments.encode(action.call()))))).toList());
     }
 
     public static SelectionCardData fromActions(List<AgentResult.Action> actions) {
         return new SelectionCardData(Component.empty(), Component.empty(), actions.stream().map(action -> new Choice(action.labelKey(),
-                new CardAction.Server(action.moduleId(), ActionArguments.encode(action.call())))).toList());
+                new CardAction.Server(CardEventValue.encode(action.moduleId(), ActionArguments.encode(action.call()))))).toList());
     }
 
     public record Choice(String labelKey, CardAction.Server action) {
@@ -60,7 +61,7 @@ public record SelectionCardData(Component summary, Component speech, List<Choice
         CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "selection")).summary(this.summary).speech(this.speech);
         for (int i = 0; i < this.choices.size(); i++) {
             Choice choice = this.choices.get(i);
-            builder.serverButton("choice_" + i, choice.labelKey(), choice.action.id(), choice.action.arguments(),
+            builder.serverButton("choice_" + i, choice.labelKey(), choice.action.value(),
                     CardButton.Placement.BODY, CardButton.Behavior.REPLACE);
         }
         return builder;

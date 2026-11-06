@@ -3,6 +3,7 @@ package com.iafenvoy.system.data.output;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.CardText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -52,7 +53,9 @@ public record ShopCatalogOutput(String revision, String query, List<Offer> offer
         CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop_catalog"))
                 .title("system.result.shop").summary("system.result.shop")
                 .put("revision", this.revision).put("query", this.query)
-                .put("truncated", this.truncated).put("offers", this.offers);
+                .put("truncated", this.truncated);
+        builder.list("offers", this.offers, (prefix, entry) -> builder.put(prefix + "label", entry.label()).put(prefix + "items", entry.items().stream().limit(2).toList())
+                .put(prefix + "tooltip", new CardText.ShelfTooltip(entry, 0)));
         // Cell order matches the offer list; the grid binds each cell to the matching action callback.
         for (int index = 0; index < this.offers.size(); index++)
             builder.serverButton("offer." + index, "", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop_quote"),

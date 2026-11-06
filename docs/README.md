@@ -19,6 +19,7 @@
 | [JVector 索引评估](jvector-evaluation.md) | 发布体积实测、Java / SIMD、磁盘存储、稀疏 TF-IDF 适配与性能取舍；尚未接入 |
 | [注册表速查](registries.md) | 正式注册表 ID、条目类型、公开入口、查询方式及扩展注册示例 |
 | [客户端 JSON 卡片](cards.md) | CardData/CardBuilder、纯文本约定、通用模板解析、按钮动作、物品和资源包覆盖 |
+| [卡片节点分类与职责设计](card-nodes-design.md) | 已实施：18 种节点、能力接口、通用网格 / 分组与 KOOK 风格按钮；保留重构前后的设计对照 |
 | [Card JSON 离线编辑器](card-editor.md) | 单 HTML 工具、节点树与属性编辑、示例 Context、预览和资源包导出 |
 | [卡片与消息数据流](card-flow-design.md) | 已实现的两端边界、完整 DTO、按 ID/版本更新、结果状态枚举与 BuiltinTools 职责 |
 | [轻量本地意图路由](semantic-routing.md) | 纯 Java 领域词表/TF-IDF、玩家意图缓存、只读直达、低把握回退与扩展 API |

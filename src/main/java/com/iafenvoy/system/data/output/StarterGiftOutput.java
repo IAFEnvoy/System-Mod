@@ -43,7 +43,7 @@ public record StarterGiftOutput(List<Gift> gifts, List<ItemPreviewOutput> items,
 
     @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(TEMPLATE).put("result_items", this.items).put("reward_icons", this.icons)
+        CardBuilder builder = CardBuilder.template(TEMPLATE).put("result_items", this.items).icons("reward_icons", this.icons)
                 .enable("has_rewards", !this.items.isEmpty() || !this.icons.isEmpty());
         builder.list("gifts", this.gifts(), (prefix, gift) -> builder
                 .put(prefix + "error", gift.error().map(error -> Component.translatable("system.error." + error.toLowerCase(Locale.ROOT))).orElse(Component.empty())));

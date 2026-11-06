@@ -1,5 +1,12 @@
 # FTB Quests 跨版本同步记录
 
++
++## 2026-11-06 卡片节点和字符串按钮重构（master，待向其他分支移植）
++
++本节替代下文旧 CardGrid / 专用业务节点的结构。正式节点改为 18 种并按功能分包，任务、商店、抽奖使用通用 GridNode + GroupsNode / FlexNode；CardPagination 是唯一分页组件，CardUiState 替代 CardPageState。任务列表保留结果内章节分组、原始编号、三行固定区域和返回状态；pin 用普通 button + QuestCardBindings 构建事件，DisplayCardCache 维护实时状态。不要再移植已删除的 GroupedActionsNode / OfferGridNode / PrizeGridNode / QuestPinNode。
++
++按钮统一 click/value，return-val 只传 CardReference 和字符串；服务端先发布 CardButtonEvent，未处理时经 CardEventValue 解析进入既有 ModuleRouting.button。URL 由原版打开流程处理，local 仍用代码绑定 callback。移植时一并同步公共 CardAction / 请求 StreamCodec、服务端事件与解析器、客户端控制器、全部能力接口及节点、27 份 JSON、图钉 SVG、CSS、离线编辑器和文档；仅复制模板会导致解析失败。网络协议号维持 1，双端须使用一致构建。详见 [cards.md](cards.md)。
++
 ## 2026-11-06 master：共用三行分页网格（1.21.1 待同步）
 
 本节替代下文旧版“每页 10 项”的任务布局约定。新增客户端 `CardPagination` 与 `CardGrid`，原 ActionsNode 分页移入前者，后者同时控制列数、三行固定区域及 `列数 × max_row` 容量；GroupedActionsNode / OfferGridNode / PrizeGridNode 共用，默认完整模式 18 项、通知 9 项。少量、空列表和最后一页保留区域及分页按钮，单页双按钮置灰；只有当前页创建 DOM、图标与 tooltip。保留原始业务下标、CardPageState、通知详情返回与完成通知语义。

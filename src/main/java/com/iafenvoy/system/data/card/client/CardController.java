@@ -7,6 +7,7 @@ import com.iafenvoy.system.data.card.CardButton;
 import com.iafenvoy.system.data.card.CardReference;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.screen.AssistantMessages;
+import com.iafenvoy.system.screen.gui.AssistantPageScreen;
 import net.minecraft.resources.Identifier;
 
 import java.util.Map;
@@ -29,9 +30,10 @@ public final class CardController {
         if (notification && !AssistantMessages.actionStarted(source, button.behavior())) return;
         if (button.action() instanceof CardAction.Local(Identifier id, Map<String, String> arguments)) {
             ClientModuleCaches.BINDINGS.get().localAction(id, source, arguments);
-        } else if (button.action() instanceof CardAction.Server server)
-            AssistantClient.send(new CardActionRequest(source, server),
+        } else if (button.action() instanceof CardAction.Server(String value1))
+            AssistantClient.send(new CardActionRequest(source, value1),
                     notification && (button.behavior() == CardButton.Behavior.REPLACE || button.behavior() == CardButton.Behavior.PUSH)
                             ? Optional.of(source) : Optional.empty());
+        else if (button.action() instanceof CardAction.Url(String value)) AssistantPageScreen.openLink(value);
     }
 }

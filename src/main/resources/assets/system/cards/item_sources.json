@@ -5,12 +5,18 @@
       "translate": "system.ui.card_title_item_sources"
     },
     {
-      "type": "system:context",
-      "text": "{{summary}}"
+      "type": "system:text",
+      "text": "{{summary}}",
+      "style": [
+        "card_context"
+      ]
     },
     {
-      "type": "system:context",
-      "text": "{{item_id}}"
+      "type": "system:text",
+      "text": "{{item_id}}",
+      "style": [
+        "card_context"
+      ]
     },
     {
       "type": "system:text",
@@ -18,17 +24,92 @@
       "unless": "sources"
     },
     {
-      "type": "system:item_sources",
-      "sources": "{{sources}}",
-      "recipe_page_size": 4,
-      "loot_page_size": 12,
-      "tag_page_size": 24,
+      "type": "system:groups",
+      "source": "{{sources}}",
+      "group": "{{sources.*.category}}",
+      "orientation": "horizontal",
+      "options": [
+        {
+          "id": "recipe",
+          "label": "{{tr:system.ui.source_category_recipe}}"
+        },
+        {
+          "id": "loot",
+          "label": "{{tr:system.ui.source_category_loot}}"
+        },
+        {
+          "id": "tag",
+          "label": "{{tr:system.ui.source_category_tag}}"
+        }
+      ],
+      "children": [
+        {
+          "type": "system:grid",
+          "source": "{{sources}}",
+          "filter": "{{sources.*.recipe}}",
+          "columns": 2,
+          "compact_columns": 1,
+          "max_row": 2,
+          "cell": 220,
+          "children": [
+            {
+              "type": "system:recipe",
+              "recipe": "{{sources.*.source}}"
+            }
+          ],
+          "style": [
+            "offer_grid",
+            "source_recipe_pages"
+          ]
+        },
+        {
+          "type": "system:grid",
+          "source": "{{sources}}",
+          "filter": "{{sources.*.loot}}",
+          "columns": 3,
+          "compact_columns": 2,
+          "max_row": 4,
+          "cell": 64,
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{sources.*.id}}",
+              "style": "source_id"
+            },
+            {
+              "type": "system:text",
+              "text": "{{sources.*.notes}}",
+              "style": "card_context",
+              "when": "sources.*.notes"
+            }
+          ]
+        },
+        {
+          "type": "system:grid",
+          "source": "{{sources}}",
+          "filter": "{{sources.*.tag}}",
+          "columns": 4,
+          "compact_columns": 2,
+          "max_row": 6,
+          "cell": 32,
+          "children": [
+            {
+              "type": "system:text",
+              "text": "#{{sources.*.id}}",
+              "style": "source_id"
+            }
+          ]
+        }
+      ],
       "when": "sources"
     },
     {
-      "type": "system:context",
+      "type": "system:text",
       "translate": "system.ui.item_sources_truncated",
-      "when": "truncated"
+      "when": "truncated",
+      "style": [
+        "card_context"
+      ]
     }
   ]
 }

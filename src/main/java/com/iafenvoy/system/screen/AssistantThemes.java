@@ -54,7 +54,7 @@ public final class AssistantThemes {
         link.setAttribute("rel", "stylesheet");
         link.setAttribute(SHEET_MARK, "1");
         link.setAttribute("href", href);
-        link.addEventListener("load", event -> {
+        link.addEventListener("load", _ -> {
             if (document.isDisposed() || !link.isConnected()) return;
             // A newer choice wins even when an earlier asynchronous load finishes later.
             if (!theme.equals(ClientConfig.INSTANCE.get().theme())) {
@@ -65,7 +65,7 @@ public final class AssistantThemes {
             for (Element previous : new ArrayList<>(document.head.querySelectorAll("link[data-theme-css]")))
                 if (previous != link) previous.remove();
         });
-        link.addEventListener("error", event -> {
+        link.addEventListener("error", _ -> {
             link.remove();
             // Retain the previous skin; do not retry a missing resource on every layout commit.
             SystemMod.LOGGER.warn("Unable to load assistant theme {}", theme);

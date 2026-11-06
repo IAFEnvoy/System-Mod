@@ -8,51 +8,65 @@ import com.iafenvoy.system.data.card.client.CardFormatting;
 import com.iafenvoy.system.data.card.client.ClientCards;
 import com.iafenvoy.system.module.client.ClientMessage;
 import com.iafenvoy.system.screen.AssistantMessages;
-import com.iafenvoy.system.screen.card.node.ActionsNode;
-import com.iafenvoy.system.screen.card.node.TextNode;
-import com.iafenvoy.system.screen.card.node.TitleNode;
+import com.iafenvoy.system.screen.card.node.interaction.ButtonNode;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.util.LegacyText;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
+
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 /**
  * The single client construction path resolves local text, templates and trusted button callbacks.
  */
-public record CardPresentation(CardTemplate template, CardContext context, int hoistedTitle) {
-    private static final CardFormatting FORMAT = LegacyText::formatted;
-
+public record CardPresentation(CardTemplate template, CardContext context, int hoistedTitle, CardUiState ui,
+                               CardReference reference) {
     public static CardPresentation of(CardUpdate original, String messageKey, CardContext.Mode mode, int actionOffset) {
-        return of(original, messageKey, mode, actionOffset, new CardPageState());
+        return of(original, messageKey, mode, actionOffset, new CardUiState());
     }
 
-    public static CardPresentation of(CardUpdate original, String messageKey, CardContext.Mode mode, int actionOffset, CardPageState pages) {
+    public static CardPresentation of(CardUpdate original, String messageKey, CardContext.Mode mode, int actionOffset, CardUiState pages) {
         CardUpdate update = ClientCards.latest(original);
         CardView view = ClientCards.view(update);
         CardTemplate template = CardTemplates.get(view.template());
         if (template == null) template = CardTemplate.fallback();
         CardContext.Builder builder = CardContext.builder();
-        view.context().parameters().forEach((key, value) -> builder.put(key, value instanceof Component || value instanceof CardText ? FORMAT.value(value) : value));
+        view.context().callbacks().forEach(builder::callback);
+        view.context().parameters().forEach(builder::put);
+        view.context().parameters().forEach((key, value) -> {
+            if (value instanceof Component) builder.put(key, CardFormatting.FORMATTED.value(value));
+        });
         view.context().states().forEach((key, value) -> {
             Object parameter = view.context().parameters().get(key);
-            if (!(parameter instanceof Component) && !(parameter instanceof CardText)) builder.enable(key, value);
+            if (!(parameter instanceof Component)) builder.enable(key, value);
         });
-        builder.put("summary", FORMAT.text(view.summary())).put("card_title", view.titleKey().isBlank() ? "" : AssistantView.tr(view.titleKey()))
+        builder.put("summary", CardFormatting.FORMATTED.text(view.summary())).put("card_title", view.titleKey().isBlank() ? "" : AssistantView.tr(view.titleKey()))
                 .enable("show_card_title", !view.titleKey().isBlank() && !view.titleKey().equals(messageKey))
                 .enable("text_items", mode == CardContext.Mode.TEXT)
                 .enable("full", mode == CardContext.Mode.FULL).enable("simple", mode == CardContext.Mode.SIMPLE)
                 .enable("hud", mode == CardContext.Mode.HUD)
-                .enable("notification", mode == CardContext.Mode.NOTIFICATION).put(CardContext.RESULT_ACTIONS, view.buttons())
-                .put("local_pages", pages);
+                .enable("notification", mode == CardContext.Mode.NOTIFICATION).put(CardContext.RESULT_ACTIONS, view.buttons()).put("actions", view.buttons().size());
+        builder.enable("show_action_numbers", mode == CardContext.Mode.SIMPLE && template.actions().numbered());
         for (int i = 0; i < view.buttons().size(); i++) {
             CardButton button = view.buttons().get(i);
             String prefix = "actions." + i + ".";
-            builder.put(prefix + "label", AssistantView.tr(button.labelKey())).put(prefix + "number", actionOffset + i + 1);
+            if (view.context().get(prefix + "label", Object.class) == null)
+                builder.put(prefix + "label", AssistantView.tr(button.labelKey()));
+            builder.put(prefix + "number", actionOffset + i + 1)
+                    .enable(prefix + "visible", mode != CardContext.Mode.NOTIFICATION || button.placement() == CardButton.Placement.BODY)
+                    .put(prefix + "behavior", button.behavior().name().toLowerCase(Locale.ROOT));
+            if (button.action() instanceof CardAction.Server(String value1))
+                builder.put(prefix + "click_type", "return-val").put(prefix + "value", value1);
+            else if (button.action() instanceof CardAction.Url(String value))
+                builder.put(prefix + "click_type", "link").put(prefix + "value", value);
+            else builder.put(prefix + "click_type", "local").put(prefix + "value", prefix + "click");
+            builder.enable(prefix + "disabled", !ClientCards.active(update.ref()));
             if (ClientCards.active(update.ref())) builder.callback(prefix + "click", () -> {
                 if (mode != CardContext.Mode.NOTIFICATION || AssistantMessages.canActivate(update.ref()))
                     CardController.activate(update.ref(), button, mode == CardContext.Mode.NOTIFICATION);
@@ -65,7 +79,7 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
             String title = CardRenderer.text(List.of(template.body().get(hoisted)), template, context, List.of(), "");
             context = builder.put("card_title", title).enable("show_card_title", true).build();
         }
-        return new CardPresentation(template, context, hoisted);
+        return new CardPresentation(template, context, hoisted, pages, update.ref());
     }
 
     /**
@@ -75,15 +89,16 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
         List<CardTemplate.Node> body = template.body();
         for (int index = 0; index < body.size(); index++) {
             CardTemplate.Node node = body.get(index);
-            if (!(node.content() instanceof TitleNode title) || !title.cardHeading() || !node.repeat().isEmpty())
+            if (!(node.content() instanceof HeadingNode heading) || !node.repeat().isEmpty())
                 continue;
-            if (!LegacyText.plain(CardRenderer.text(List.of(node), template, context, List.of(), "")).isBlank())
+            if (CardRenderer.enabled(node.when(), context, List.of()) && (node.unless().isEmpty() || !CardRenderer.enabled(node.unless(), context, List.of()))
+                    && heading.cardHeading(new CardRenderer.Text(template, context, List.of(), "")).isPresent())
                 return index;
         }
         return -1;
     }
 
-    public static String format(CardUpdate update, boolean textItems) {
+    public static String format(CardUpdate update) {
         CardPresentation card = of(update, "", CardContext.Mode.TEXT, 0);
         return CardRenderer.text(card.template.body(), card.template, card.context, List.of(), "\n");
     }
@@ -134,7 +149,7 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
             result.appendChild(AssistantView.element(document, "div", "card_title", CardRenderer.value("{{card_title}}", this.context, List.of())));
         String main = this.context.get("summary", String.class);
         boolean summaryInBody = main != null && this.template.body().stream().anyMatch(node ->
-                node.content() instanceof TextNode
+                node.content() instanceof PlainMessageNode
                         && LegacyText.plain(main).equals(LegacyText.plain(
                         CardRenderer.text(List.of(node), this.template, this.context, List.of(), "\n"))));
         // A template-authored heading already names the card, so the summary would repeat it on screen. The summary
@@ -144,11 +159,10 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
             if (summary != null && !LegacyText.plain(summary).isBlank())
                 result.appendChild(AssistantView.element(document, "div", "message_text", summary));
         }
-        CardRenderer.render(document, result, this.body(), this.template, this.context, List.of());
+        CardRenderer.Render view = new CardRenderer.Render(document, "", this.template, this.context, List.of(), this.ui, this.reference, this.reference.id().toString(), Map.of());
+        CardRenderer.render(view, result, this.body());
         // A text template can still carry Java-defined buttons, as with the binding notice.
-        if (this.template.textOnly()) CardRenderer.render(document, result,
-                List.of(CardTemplate.Node.of(new ActionsNode("{{result_actions}}"))),
-                this.template, this.context, List.of());
+        if (this.template.textOnly()) CardRenderer.render(view, result, List.of(ButtonNode.actions()));
         return result;
     }
 

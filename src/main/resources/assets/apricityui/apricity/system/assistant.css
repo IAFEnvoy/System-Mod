@@ -661,8 +661,12 @@ p {
 }
 
 /* Registered card primitives can be nested without fixed business-specific placement. */
-.card_container, .card_column, .card_row {
+.card_container, .card_column, .card_row, .card_flex {
     min-width: 0;
+}
+
+.card_flex {
+    gap: 6px;
 }
 
 .card_column {
@@ -1001,8 +1005,8 @@ p {
     word-break: break-all;
 }
 
-/* All shelves render one page; CardGrid shares the row/column counts with pagination. */
-.offer_grid {
+/* All shelves render one page; GridNode shares the row/column counts with pagination. */
+.offer_grid, .card_grid {
     align-content: start;
     justify-content: start;
     gap: 6px;
@@ -1011,7 +1015,7 @@ p {
     background-color: var(--assistant-surface-deep);
 }
 
-.offer_cell {
+.offer_cell, .card_grid_cell {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1247,7 +1251,7 @@ p {
     overflow: visible;
 }
 
-.offer_cell:hover {
+.offer_cell:hover, .card_grid_cell:hover {
     border-color: var(--assistant-accent);
     background-color: var(--assistant-highlight);
 }
@@ -1282,17 +1286,17 @@ p {
 }
 
 /* Cells keep two compact previews side by side; columns use equal fractions, so the preview stays fixed. */
-.offer_cell .item_entry {
+.offer_cell .item_entry, .card_grid_cell .item_entry {
     padding: 2px;
 }
 
-.offer_cell .item_icon_frame {
+.offer_cell .item_icon_frame, .card_grid_cell .item_icon_frame {
     flex: 0 0 40px;
     width: 40px;
     height: 40px;
 }
 
-.offer_cell .item_icon {
+.offer_cell .item_icon, .card_grid_cell .item_icon {
     transform: scale(1.75);
 }
 
@@ -1516,11 +1520,11 @@ body button.quest_card_pin:hover, body button.quest_card_pin:focus {
     color: var(--assistant-accent-hover);
 }
 
-.quest_card_pin svg, .quest_card_pin path {
+.quest_card_pin svg, .quest_card_pin path, .quest_card_pin .card_button_icon {
     pointer-events: none;
 }
 
-.quest_card_pin svg {
+.quest_card_pin svg, .quest_card_pin .card_button_icon {
     width: 16px;
     height: 16px;
     transform: rotate(35deg);
@@ -1528,7 +1532,7 @@ body button.quest_card_pin:hover, body button.quest_card_pin:focus {
     transition: transform 160ms ease;
 }
 
-.quest_card_pin[aria-pressed="true"] svg {
+.quest_card_pin[aria-pressed="true"] svg, .quest_card_pin[aria-pressed="true"] .card_button_icon {
     transform: rotate(0deg);
 }
 
@@ -1549,13 +1553,14 @@ body button.quest_card_pin:hover, body button.quest_card_pin:focus {
 .card_progress {
     display: block;
     width: 100%;
-    height: 3px;
+    height: 6px;
     overflow: hidden;
     background-color: var(--assistant-line-soft);
     pointer-events: none;
 }
 
 .card_progress_fill {
+    width: 100%;
     height: 100%;
     background-color: var(--assistant-accent);
     pointer-events: none;
@@ -2756,4 +2761,77 @@ button.assistant_switch:disabled {
     right: 0;
     bottom: 0;
     width: auto;
+}
+
+/* Generic node layouts keep geometry independent of business card types. */
+.card_grid_cell {
+    position: relative;
+    min-width: 0;
+    box-sizing: border-box;
+    justify-content: center;
+    overflow: visible;
+    cursor: default;
+}
+body button.offer_cell_content,
+body button.offer_cell_content:hover,
+body button.offer_cell_content:focus,
+body button.offer_cell_content:active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    box-shadow: none;
+    transform: none;
+    overflow: visible;
+}
+.card_grid_cell > .card_progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+.card_groups_horizontal {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+.card_groups_horizontal > .card_action_group_results {
+    flex: 0 0 auto;
+    width: 100%;
+}
+.card_groups_horizontal .source_tabs {
+    width: 100%;
+}
+.source_recipe_pages .card_grid_cell {
+    align-items: stretch;
+    padding: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.card_button_icon {
+    display: block;
+    flex: 0 0 16px;
+    pointer-events: none;
+}
+
+.item_group_items, .quest_icon_items {
+    gap: 6px;
+    align-items: center;
+}
+
+.item_labeled > .item_entry {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
 }

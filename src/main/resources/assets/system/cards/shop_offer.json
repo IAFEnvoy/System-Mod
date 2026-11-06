@@ -15,19 +15,18 @@
       "when": "text_items"
     },
     {
-      "type": "system:items",
-      "items": "{{offer_items}}",
-      "show_labels": false,
-      "unless": "text_items",
-      "columns": 4,
-      "cell": 76,
-      "icon": 52,
-      "tooltip": [
+      "type": "system:flex",
+      "source": "{{offer_items}}",
+      "children": [
         {
-          "type": "system:text",
-          "text": "{{field:price}}: {{price_text}}"
+          "type": "system:item",
+          "item": "{{offer_items.*}}",
+          "size": 40,
+          "tooltip": []
         }
-      ]
+      ],
+      "style": "item_group_items",
+      "unless": "text_items"
     },
     {
       "type": "system:text",
@@ -46,15 +45,72 @@
       "unless": "text_items"
     },
     {
-      "type": "system:items",
-      "items": "{{price_items}}",
-      "label": "{{field:price}}",
+      "type": "system:container",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{field:price}}",
+          "style": "item_group_label"
+        },
+        {
+          "type": "system:flex",
+          "source": "{{price_items}}",
+          "children": [
+            {
+              "type": "system:flex",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{price_items.*}}",
+                  "size": 40,
+                  "tooltip": []
+                },
+                {
+                  "type": "system:text",
+                  "text": "{{price_items.*.label}}",
+                  "style": "item_name",
+                  "unless": "text_items"
+                }
+              ],
+              "wrap": false,
+              "style": [
+                "item_entry",
+                "item_labeled"
+              ]
+            }
+          ],
+          "style": "item_group_items"
+        }
+      ],
       "when": "confirm",
       "unless": "text_items"
     },
     {
-      "type": "system:actions",
-      "actions": "{{result_actions}}"
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

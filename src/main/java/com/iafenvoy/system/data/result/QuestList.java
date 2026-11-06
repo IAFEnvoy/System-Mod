@@ -4,6 +4,7 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.card.CardButton;
 import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.FtbIconData;
 import com.iafenvoy.system.data.output.QuestBriefOutput;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
@@ -29,6 +30,7 @@ public record QuestList(List<QuestBriefOutput> quests) implements CardData {
             builder.serverButton("quest_" + quest.id(), "system.action.quest_detail", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_detail"),
                             Map.of("quest", quest.id()), CardButton.Placement.BODY, CardButton.Behavior.PUSH)
                     .actionParameter("action_quest_id", quest.id())
+                    .actionParameter("action_icon", FtbIconData.quest(quest.id(), quest.title()))
                     .actionParameter("action_number", quest.number()).actionParameter("action_title", quest.title())
                     .actionParameter("action_chapter", quest.chapter()).actionParameter("action_chapter_id", quest.chapterId())
                     .actionParameter("action_group", quest.group()).actionParameter("action_group_id", quest.groupId())

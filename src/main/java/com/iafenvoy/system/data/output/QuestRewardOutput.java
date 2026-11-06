@@ -41,13 +41,13 @@ public record QuestRewardOutput(String id, Component title, boolean claimable, S
     public void fill(CardBuilder builder, String prefix) {
         List<QuestChoiceOutput> choices = this.choices().orElse(List.of());
         builder.put(prefix + "reward_title", this.title()).put(prefix + "reward_state", this.state()).put(prefix + "result_items", this.items())
-                .put(prefix + "reward_icons", this.icons());
+                .icons(prefix + "reward_icons", this.icons());
         builder.put(prefix + "choices", choices.size());
         for (int index = 0; index < choices.size(); index++) {
             QuestChoiceOutput choice = choices.get(index);
             String id = prefix + "choices." + index + ".";
             builder.put(id + "choice_number", this.choiceOffset() + index + 1)
-                    .put(id + "choice_title", choice.title()).put(id + "result_items", choice.items()).put(id + "choice_icons", choice.icons());
+                    .put(id + "choice_title", choice.title()).put(id + "result_items", choice.items()).icons(id + "choice_icons", choice.icons());
         }
     }
 }

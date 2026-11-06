@@ -5,8 +5,43 @@
       "translate": "system.ui.nav_shop"
     },
     {
-      "type": "system:offer_grid",
-      "entries": "{{offers}}",
+      "type": "system:grid",
+      "source": "{{offers}}",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:flex",
+              "source": "{{offers.*.items}}",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{offers.*.items.*}}",
+                  "size": 36,
+                  "tooltip": [
+                    {
+                      "type": "system:text",
+                      "text": "{{offers.*.tooltip}}"
+                    }
+                  ]
+                }
+              ],
+              "style": "offer_cell_items"
+            },
+            {
+              "type": "system:text",
+              "text": "{{offers.*.label}}",
+              "style": "offer_cell_label"
+            }
+          ],
+          "style": "offer_cell_content"
+        }
+      ],
       "columns": 6,
       "max_row": 3,
       "cell": 104

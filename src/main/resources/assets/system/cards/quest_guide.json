@@ -5,10 +5,13 @@
       "translate": "system.ui.card_title_quest_guide"
     },
     {
-      "type": "system:context",
+      "type": "system:text",
       "translate": "system.ui.quest_guide_query",
       "args": [
         "{{query}}"
+      ],
+      "style": [
+        "card_context"
       ]
     },
     {
@@ -27,8 +30,11 @@
           "text": "{{entries.*.title}}"
         },
         {
-          "type": "system:context",
-          "text": "{{entries.*.chapter}}"
+          "type": "system:text",
+          "text": "{{entries.*.chapter}}",
+          "style": [
+            "card_context"
+          ]
         },
         {
           "type": "system:text",

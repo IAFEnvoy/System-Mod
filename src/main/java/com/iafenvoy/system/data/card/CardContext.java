@@ -18,7 +18,6 @@ import java.util.function.BiConsumer;
  */
 public record CardContext(Object2DoubleMap<String> states, Map<String, Object> parameters,
                           Map<String, Runnable> callbacks) {
-    public static final String RESULT_ITEMS = "result_items";
     public static final String RESULT_ACTIONS = "result_actions";
     public static final CardContext EMPTY = builder().build();
 
@@ -27,7 +26,7 @@ public record CardContext(Object2DoubleMap<String> states, Map<String, Object> p
     }
 
     public CardContext {
-        states = Object2DoubleMaps.unmodifiable(states);
+        states = Object2DoubleMaps.unmodifiable(new Object2DoubleOpenHashMap<>(states));
         parameters = Map.copyOf(parameters);
         callbacks = Map.copyOf(callbacks);
     }
@@ -51,6 +50,8 @@ public record CardContext(Object2DoubleMap<String> states, Map<String, Object> p
             if (value instanceof Component component) value = LegacyText.snapshot(component);
             if (value instanceof List<?> list) value = List.copyOf(list);
             this.parameters.put(id, value);
+            if (value instanceof List<?> entries)
+                for (int index = 0; index < entries.size(); index++) this.put(id + "." + index, entries.get(index));
             double state = switch (value) {
                 case Boolean flag -> flag ? 1 : 0;
                 case Number number -> number.doubleValue();

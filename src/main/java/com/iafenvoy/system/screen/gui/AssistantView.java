@@ -4,8 +4,8 @@ import com.google.gson.JsonElement;
 import com.iafenvoy.system.data.card.CardButton;
 import com.iafenvoy.system.data.card.CardContext;
 import com.iafenvoy.system.data.card.CardUpdate;
-import com.iafenvoy.system.screen.card.CardPageState;
 import com.iafenvoy.system.screen.card.CardPresentation;
+import com.iafenvoy.system.screen.card.CardUiState;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.network.chat.Component;
@@ -25,14 +25,14 @@ public final class AssistantView {
     }
 
     public static String formatCard(CardUpdate card) {
-        return formatCard(card, true);
+        return formatCard(card);
     }
 
-    public static String formatCard(CardUpdate card, boolean textItems) {
-        return CardPresentation.format(card, textItems);
+    public static String formatCard(CardUpdate card) {
+        return CardPresentation.format(card);
     }
 
-    public static Element renderCard(Document document, CardUpdate card, String messageKey, CardPageState pages) {
+    public static Element renderCard(Document document, CardUpdate card, String messageKey, CardUiState pages) {
         return CardPresentation.of(card, messageKey, CardContext.Mode.FULL, 0, pages).render(document);
     }
 
@@ -71,7 +71,7 @@ public final class AssistantView {
     }
 
     public static void bind(Document document, String id, Runnable action) {
-        document.getElementById(id).addEventListener("click", event -> action.run());
+        document.getElementById(id).addEventListener("click", _ -> action.run());
     }
 
     /**
@@ -79,7 +79,7 @@ public final class AssistantView {
      */
     public static void bindSwitch(Document document, String id, Consumer<Boolean> changed) {
         Element control = document.getElementById(id);
-        control.addEventListener("click", event -> {
+        control.addEventListener("click", _ -> {
             if (control.isDisabled()) return;
             boolean checked = !switchChecked(control);
             switchChecked(control, checked);

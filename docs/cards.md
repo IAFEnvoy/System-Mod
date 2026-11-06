@@ -6,7 +6,7 @@
 
 ## 数据与渲染绑定
 
-公共契约位于 `com.iafenvoy.system.card`：`CardData` 提供 `codec()` 和 `buildCard()`，不加载客户端、AUI、服务端运行时或可选模组类。业务 DTO 仍在原来的输出包；具体客户端处理位于 `card.client` 和 `screen.card`。
+公共契约位于 `com.iafenvoy.system.data.card`：`CardData` 提供 `codec()` 和 `buildCard()`，不加载客户端、AUI、服务端运行时或可选模组类。业务 DTO 仍在原来的输出包；具体客户端处理位于 `data.card.client` 和 `screen.card`。
 
 `SystemCardDataTypes` 向两端共享的 `system:card_data_type` 注册每个实现自己的 MapCodec。根 `CardData.CODEC` 按 `type` 分派，数据直接平铺，没有 TypePayload 包装。数据 ID 与模板 ID 可以不同，不需要额外的渲染映射或客户端行为注册。
 
@@ -24,7 +24,7 @@ public CardBuilder buildCard() {
 
 `buildCard()` 只读本 DTO 的字段，不查权限、背包、任务状态或模块表，不发包、请求模型或播放声音。服务端提前准备业务引用、下一页游标、报价及可操作状态。`CardBuilder.build()` 得到不可变 `CardView`：模板、标题翻译键、summary、Context、按钮列表和 SpeechContent。Component 保留翻译键及样式；实际翻译、物品堆创建和名称解析只发生在客户端。
 
-`ClientCards` 保存连接内按 ID 的最新数据、版本和活动状态。`CardPresentation.of(update, messageKey, mode, actionOffset)` 取最新快照，解析 Component 和 CardText，补充显示模式、按钮标签及受控 callback，然后读取 `assets/<namespace>/cards/<path>.json`。缺少模板时回退到 summary 和已有按钮，不展示 DTO 的原始 JSON。
+`ClientCards` 保存连接内按 ID 的最新数据、版本和活动状态。`CardPresentation.of(update, messageKey, mode, actionOffset)` 取最新快照，解析 Component，保留按节点读取时才解析的 CardText，补充显示模式、按钮标签及受控 callback，然后读取 `assets/<namespace>/cards/<path>.json`。缺少模板时回退到 summary 和已有按钮，不展示 DTO 的原始 JSON。
 
 知识问答使用 `KnowledgeAnswerOutput` / `system:knowledge_answer`，正文显示回答、本地来源默认折叠，包含标题、分类和命中段落；只播报回答或原文提示，不提供网页链接或任务操作。联网回退继续使用独立的 WebSearchOutput / web_search 模板；两种卡片都只展示服务端准备的结果。
 
@@ -61,7 +61,7 @@ public final class ExampleCardEvents {
 }
 ```
 
-`example.card.host` 的语言键由扩展模组提供。也可以在这里读取该模组已同步到客户端的数据，写入自己前缀下的参数；Component / CardText 会继续经过原有客户端格式处理。资源包覆盖 `assets/system/cards/player.json`，在需要的位置加入节点：
+`example.card.host` 的语言键由扩展模组提供。也可以在这里读取该模组已同步到客户端的数据，写入自己前缀下的参数；Component / CardText 会继续经过客户端格式处理（CardText 按节点需要延迟解析）。资源包覆盖 `assets/system/cards/player.json`，在需要的位置加入节点：
 
 ```json
 {
@@ -124,13 +124,15 @@ summary 提供模板缺失时的回退和通知主句，模板正文已有相同
   "show_title": false,
   "body": [
     { "type": "system:title", "level": 2, "text": "{{title}}" },
-    { "type": "system:items", "items": "{{result_items}}", "label": "{{field:reward}}" },
-    { "type": "system:button", "text": "领取奖励", "callback": "claim", "when": "can_claim" }
+    { "type": "system:flex", "source": "{{result_items}}", "children": [
+      { "type": "system:item", "item": "{{result_items.*}}" }
+    ] },
+    { "type": "system:button", "text": "领取奖励", "click": "return-val", "value": "{{claim_value}}", "when": "can_claim" }
   ]
 }
 ```
 
-JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排按钮；单文本模板携带按钮时宿主补充动作区。
+JSON 控制顺序、嵌套、样式和可见性。通常用 flex / grid 组合 button；单文本模板携带按钮时宿主补充动作区。
 
 | 根字段 | 默认值 | 含义 |
 | --- | --- | --- |
@@ -138,47 +140,33 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 | `show_title` | true | `show_card_title` 状态开启时自动展示通用标题 |
 | `hide_summary` | false | 不在正文上方显示摘要行；标题已由模板给出、或摘要与正文重复时使用，聊天消息与语音仍保留摘要 |
 | `body` | 必填 | 节点列表 |
-| `actions` | 默认样式 | 可信动作列表的容器、按钮、编号及标签配置 |
+| `actions` | 默认编号和标签 | `numbered` 控制简约模式编号；`label` 控制语音 / 数字选择的动作标签。样式和按钮结构写在正文节点上 |
 
-所有节点都有完整命名空间的 `type`（例如 `system:text`），可选 `style/when/unless/repeat`。下表省略内置节点的 `system:` 前缀。`style` 同样支持字符串/数组；`when` 的状态非 0 时显示，`unless` 的状态非 0 时隐藏，未知状态为 0。节点条件可直接写状态 ID 或 `{{id}}`。条件只读状态表，不猜测参数值类型。
+所有节点都有完整命名空间的 `type`（例如 `system:text`），可选 `id/style/when/unless/repeat`。下表省略内置节点的 `system:` 前缀。`style` 同样支持字符串/数组；`when` 的状态非 0 时显示，`unless` 的状态非 0 时隐藏，未知状态为 0。节点条件可直接写状态 ID 或 `{{id}}`。条件只读状态表，不猜测参数值类型。
 
-| type | 默认 CSS | 功能 |
+| 分类 | type | 功能 |
 | --- | --- | --- |
-| `text` | `card_body` | 正文 |
-| `markdown` | `card_markdown` | AI 回复使用的 Markdown 正文，复用 AUI 解析器并只生成受控的展示节点 |
-| `title` | `card_title` / `card_title_2..4` | 标题，`level` 取 1～4；正文顶层第一个 1 级标题作为卡片标题，其余级别在原位显示 |
-| `context` | `card_context` | 次要文字 |
-| `container` | `card_container` | 普通流布局 |
-| `row` | `card_row` | 横向排列并允许换行 |
-| `column` | `card_column` | 纵向排列 |
-| `details` | `card_details` | 默认折叠的通用内容区，点击标题展开 / 收起 |
-| `link` | `card_link` | 调用 Minecraft 原版打开 URL 的流程 |
-| `divider` | `card_divider` | 分割线 |
-| `items` | `item_groups` | 原版物品图标、数量及 tooltip |
-| `item_sources` | `item_sources` | `sources` 默认 `{{sources}}`，配方 / 掉落 / 标签三个分类；recipe_page_size / loot_page_size / tag_page_size 默认 4 / 12 / 24，各类独立翻页；保留材料布局与物品 tooltip |
-| `offer_grid` | `offer_grid` | 分页货架网格，单元格绑定原始 `actions.<下标>.click`；`columns`、`max_row`、`cell` 可调 |
-| `prize_grid` | `offer_grid` | 分页抽奖奖品货架，悬停显示概率与物品清单 |
-| `player` | `player_preview` | 按快照 UUID 渲染客户端玩家模型、皮肤和装备 |
-| `player_information` | `card_column` | 显示 Saturn 生成的玩家信息，只保留重要度严格大于 `importance` 的行 |
-| `icons` | `quest_icon_group` | FTB 任务 / 奖励的原生类型图标、数量 / 进度及文字 tooltip |
-| `quest_icon` | `quest_card_icon` | 按任务 ID 读取 FTB Quest 自身配置的图标，悬停显示任务名 |
-| `quest_pin` | `quest_card_pin` | 按任务 ID 切换服务端保存的固定状态，右上角图钉按钮 |
-| `progress` | `card_progress` | 读取数字参数作为 0～100 的进度条，在任务格子中贴合下边线 |
-| `actions` | `card_actions` | 已有可信动作列表 |
-| `grouped_actions` | `card_grouped_actions` | 从已有动作生成左侧分组，溢出才滚动；右侧以货架格子和独立分页显示所选组 |
-| `button` | `card_action` | 通过 callback ID 绑定 Java 操作 |
+| 文本 | `text` / `markdown` / `title` | FTB 格式文字、受控 Markdown、可提升的标题 |
+| 媒体 | `image` / `item` / `player` / `ftb_icon` | 单张本地图片、单个物品、玩家模型、单个 FTB 图标 |
+| 布局 | `flex` / `grid` | 弹性布局、只创建当前页的固定网格 |
+| 容器 | `container` / `groups` / `details` | 普通流、分组选择、折叠 |
+| 交互 | `button` / `link` | URL、本地回调或服务端字符串；文字链接 |
+| 展示 | `divider` / `progress` | 分割线、进度条 |
+| 集成 | `player_information` / `recipe` | Saturn 信息行、单个有序配方 |
 
-`text/context/title` 共享 `text/translate/args/inline`：优先使用 translate，先替换 args 中占位符再翻译，inline 默认 false。容器的 children 必填，text_separator 可选，仅影响纯文本连接。
+共 18 种节点；原来的批量物品、图标、货架、任务网格、pin、actions 均由这些节点组合，不再保留重复实现或旧节点别名。次要文字使用 `text` 配合 `style: "card_context"`。
+
+`text/title` 通过独立的 TextContent 共享 `text/translate/args/inline`：优先使用 translate，先替换 args 中占位符再翻译，inline 默认 false。容器的 children 必填，text_separator 可选，仅影响纯文本连接。
 
 `title` 另有 `level`（1～4，默认 1），对应 h1～h4 的字号层级。正文**顶层**第一个可见、非空且没有 repeat 的 1 级标题会被提升为卡片标题：渲染器把它排在摘要之前，正文里不再重复绘制，即使标题键与结果消息键相同也会显示；放在容器或 repeat 里的 1 级标题、以及 2～4 级标题都在原位渲染。标题节点不参与纯文本折叠判定，带标题的模板始终保留卡片外观。
 
-标题与正文使用同一份已格式化的 Context：先解析 Component / CardText，并补充 summary、card_title、显示模式和按钮参数，再选择标题。因此 `{{label}}`、`{{title}}`、`{{reward_label}}` 中的组件颜色、翻译和模式条件都能生效，不会因原始对象类型而留下占位符。隐藏、空白及 repeat 标题不占用卡片标题位置。
+标题与正文使用同一份已格式化的 Context：先解析 Component、保留延迟 CardText，并补充 summary、card_title、显示模式和按钮参数，再选择标题。因此 `{{label}}`、`{{title}}`、`{{reward_label}}` 中的组件颜色、翻译和模式条件都能生效，不会因原始对象类型而留下占位符。隐藏、空白及 repeat 标题不占用卡片标题位置。
 
 被提升的标题同时抑制卡片正文里的自动摘要行，避免“标题 + 同一句话”重复；摘要仍保留在卡片数据里，聊天消息与语音播报照常使用。需要保留的业务提示应在模板中明确加入 `{"type":"system:text","text":"{{summary}}"}`，可附加 when 条件；内置兑换确认、奖励回执、任务事件／提交、候选操作及新手礼包都采用这一方式。物品来源保留摘要中的物品名与数量，避免只剩注册 ID。
 
 ### 内置模板的标题约定
 
-26 份内置模板中，25 份结构化卡片均使用 `system:title`；纯文本 `text.json` 保持无标题。23 份使用顶层一级标题，奖池和奖品两份保留现有标题与数量／概率同行的二级标题布局。
+27 份内置模板中，26 份结构化卡片均使用 `system:title`；纯文本 `text.json` 保持无标题。24 份使用顶层一级标题，奖池和奖品两份保留现有标题与数量／概率同行的二级标题布局。
 
 | 卡片 | 标题来源 |
 | --- | --- |
@@ -210,11 +198,11 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 actions 节点安排
 
 AUI 的 `renderSafe` 不是完整 HTML 过滤器，因此 `AssistantMarkdown` 使用 JDK 的被动 HTML 读取器，只重建预设 div / span / br 等展示元素及纯文本节点。模型给出的属性、脚本、样式、自定义 AUI 标签和事件不会进入文档，图片只显示 alt 文字、不下载外部资源。链接只保留合法的 HTTP / HTTPS 地址，点击经过 `AssistantPageScreen.openLink` 和原版确认流程；HUD 仍需要进入交互状态。解析失败记录日志并退回源文本。
 
-本地知识问答和联网回答已改用此节点，两个 CardData 把原始 `answer` 独立放入 Context，避免 summary 的 Minecraft 文字格式化改变代码 / URL。没有模型答案时的内置提示与折叠来源仍用 text / context。模板设置 hide_summary，避免重复绘制未经排版的答案；问答 / 搜索提示词允许 text 字段使用简短 Markdown，仍要求输出 JSON。没有改变网络 Codec、历史数据或 SpeechContent，TTS 继续使用业务显式提供的播报文本。Markdown 的纯文本投影按块换行、移除排版标记，不把 HTML 带入文字导出。
+本地知识问答和联网回答已改用此节点，两个 CardData 把原始 `answer` 独立放入 Context，避免 summary 的 Minecraft 文字格式化改变代码 / URL。没有模型答案时的内置提示与折叠来源仍用 text 与 card_context 样式。模板设置 hide_summary，避免重复绘制未经排版的答案；问答 / 搜索提示词允许 text 字段使用简短 Markdown，仍要求输出 JSON。没有改变网络 Codec、历史数据或 SpeechContent，TTS 继续使用业务显式提供的播报文本。Markdown 的纯文本投影按块换行、移除排版标记，不把 HTML 带入文字导出。
 
 ### 宿主信息与玩家模型
 
-内置 `player.json` 用 row / column 排出左侧模型、右侧信息：右侧由独立的 `system:player_information` 节点显示 Saturn 玩家信息，不再单独重复名称 / 生命 / 等级 / 维度，也不显示在线玩家列表。模型区域默认**无边框**：节点 `style` 写成 `["player_preview", "player_preview_bare"]`，把 `player_preview_bare` 从 `style` 去掉即可恢复边框。布局、预览宽高仍在共享 `assistant.css`，窄容器允许换行，不改变 HUD 的宿主宽度或限高。
+内置 `player.json` 用 flex 的 row / column 方向 排出左侧模型、右侧信息：右侧由独立的 `system:player_information` 节点显示 Saturn 玩家信息，不再单独重复名称 / 生命 / 等级 / 维度，也不显示在线玩家列表。模型区域默认**无边框**：节点 `style` 写成 `["player_preview", "player_preview_bare"]`，把 `player_preview_bare` 从 `style` 去掉即可恢复边框。布局、预览宽高仍在共享 `assistant.css`，窄容器允许换行，不改变 HUD 的宿主宽度或限高。
 
 ```json
 {
@@ -262,25 +250,15 @@ AUI 的 `renderSafe` 不是完整 HTML 过滤器，因此 `AssistantMarkdown` �
 
 ### 任务与奖励类型图标
 
+`ftb_icon.icon` 绑定单个 `FtbIconData`，不接受图标列表。`FtbIconData.quest(id, title)` 读取 Quest 自身配置的图标；`FtbIconData.type(preview)` 使用服务端提供的 QuestIconOutput 类型、数量和 tooltip。任务列表的单个图标参数为 `actions.<下标>.action_icon`，任务 / 奖励列表用 flex.source + 单 ftb_icon 组合。
+
+原生图标适配器仅在安装 FTB 的物理客户端反射加载；共享 DTO 不引用可选类。类型不符时隐藏，适配器不可用时使用标题回退。物品仍走 item 节点和原版 tooltip，图标与数量继续沿用 FTB 的原生展示。
+
 ```json
-{
-  "type": "system:icons",
-  "icons": "{{reward_icons}}",
-  "label": "{{field:reward}}"
-}
+{"type":"system:flex","source":"{{task_icons}}","children":[
+  {"type":"system:ftb_icon","icon":"{{task_icons.*}}"}
+]}
 ```
-
-`icons` 绑定 `List<QuestIconOutput>`，label 可选，均支持平铺占位符及循环。每项包含 task / reward 分类、FTB 原生类型 ID、本地化标题、数量或进度、tooltip 的 Component 列表；不序列化 FTB Icon，不发送客户端对象或脚本。原生物品目标 / 奖励继续使用 `items` 节点和原版物品 tooltip，非物品类型使用截图中 FTB 创建菜单的类型图标；不按目标实体或配置图标替换类型图标。
-
-`IconsNode` 在首次实际渲染时检查 FTB 安装情况，反射加载隔离的 `compat.ftb.client.FtbQuestIconElement`；通过 TaskTypes / RewardTypes 的类型表与 getIcon 取得 FTB 原始图标，使用其 renderer 提取贴图、atlas、组合、动画及第三方已注册类型的绘制状态，不复制资源或手写 ID 到贴图的映射。26.1.2 的 FtbQuestIconRenderer 在 AUI 的活动目标和投影中重放提取的几何、文字与物品，不调用完整 GuiRenderer 来改写渲染目标；版本适配记录见 [跨版本同步](ftb-quests-porting.md)。缺少依赖 / 未知类型时显示文字。专服不会执行图标解析或加载这个客户端适配器。
-
-图标元素在 AUI BODY 阶段绘制，沿用当前 pose、滚动裁剪、变换及 opacity 合成；与现有物品 tooltip 共用屏幕绘制后的检测入口，通过原版 GuiGraphicsExtractor.setTooltipForNextFrame 显示标题、类型、具体要求 / 奖励、进度 / 领取状态。HUD 需先按聊天键进入交互状态。完整模式、简约模式、任务通知、自选奖励和新手礼包共用这些数据和模板，TTS 继续使用独立 SpeechContent；纯文本导出保留具体内容。
-
-礼包、任务详情和任务通知使用 `reward_section` 外层统一显示一次“奖励”标题，内层 `reward_grid` / `reward_entry` 将物品与非物品图标横向排列，宽度不足时换行。子节点不再设置重复的奖励 label，物品使用 compact 并隐藏分组标签；自选项保留各自编号和名称。礼包整体的 `items` / `icons` 由服务端汇总，模板绑定顶层 `result_items` / `reward_icons`：经验值、经验等级各自相加，同物品且组件相同的数量 / 随机区间相加，原生 `only_one` 条件物品保留独立。`gifts` 仅保留任务 ID、领取引用和错误；失败文字在汇总预览下方逐项显示。礼包与 `QuestNotice` 的 `has_rewards` 均由物品及类型图标是否为空决定，无奖励时不显示空标题。
-
-普通任务每批仅解锁一项时直接发送 `QuestOutput` 完整详情，播报使用新任务主句及个人设置允许的要求、奖励和背景。多项时使用 `QuestUnlockedOutput`，复用 QuestList 的按 ID 查看按钮与 `system:quest_list` 模板；`unlock_notice` 隐藏主动查询的编号提示和行编号，摘要与播报仅提示本批数量。通知内按 3 列 × 3 行自动分页，点开详情后可返回原列表和原页码。完成任务仍每项各发一条独立通知。
-
-`QuestGuideOutput` 使用 `system:quest_guide` 类型及同名模板，包含查询词和已授权的来源条目。每条提供标题、章节、匹配段落及原文；`has_more` 控制本地 details 展开，不发送任务提交或领奖动作。播报只提示命中数量，正文不自动发给模型。来源收录和权限边界见 [本地说明书检索](quest-guides.md)。
 
 ### 折叠区与超链接
 
@@ -291,11 +269,12 @@ AUI 的 `renderSafe` 不是完整 HTML 过滤器，因此 `AssistantMarkdown` �
   "when": "sources",
   "children": [
     {
-      "type": "system:column",
+      "type": "system:flex",
+      "direction": "column",
       "repeat": "sources",
       "children": [
         { "type": "system:link", "text": "[{{sources.*.id}}] {{sources.*.title}}", "url": "{{sources.*.url}}" },
-        { "type": "system:context", "text": "{{sources.*.snippet}}", "when": "sources.*.snippet" }
+        { "type": "system:text", "style": "card_context", "text": "{{sources.*.snippet}}", "when": "sources.*.snippet" }
       ]
     }
   ]
@@ -332,12 +311,12 @@ builder.list("prizes", pool.prizes(), (prefix, prize) -> builder
 
 ```json
 {
-  "type": "system:items",
-  "repeat": "prizes",
-  "items": "{{prizes.*.result_items}}",
-  "description": [
-    { "type": "system:text", "text": "{{prizes.*.label}}" }
-  ]
+  "type": "system:flex", "source": "{{prizes}}", "direction": "column",
+  "children": [{
+    "type": "system:flex", "source": "{{prizes.*.result_items}}",
+    "children": [{"type":"system:item","item":"{{prizes.*.result_items.*}}",
+      "tooltip":[{"type":"system:text","text":"{{prizes.*.label}}"}]}]
+  }]
 }
 ```
 
@@ -345,107 +324,78 @@ builder.list("prizes", pool.prizes(), (prefix, prize) -> builder
 
 ## 物品
 
-items 字段引用参数表中的 `List<ItemPreviewOutput>`，缺失、类型不符和空列表不显示。条目保留 ItemStackTemplate 及数量字符串，数量可为范围。
+`item` 只接受一个 ItemPreviewOutput；`size` 默认 32 像素，`tooltip` 是文字投影节点列表，追加到原版物品 tooltip。物品堆只在客户端按需创建；物品名称、价格及奖池 tooltip 通过 CardText 延迟到实际显示节点或文本导出读取时解析，未翻到的页不提前创建 tooltip 物品堆；列表、说明、名称和标签由 text / flex / grid 组合。put 一个物品 List 会同时写入 `key.0` 等平铺键，物品的 `key.0.label` 是延迟解析的名称和数量。
 
-可选字段：label 默认空，使用占位符设置分组标题；description 默认 []，使用相同节点语法生成物品说明；compact 缺省时通知为紧凑模式；show_labels 默认 true。物品绘制复用 `AssistantItems` 和 AUI 原生 Item，悬停使用原版 tooltip。
+`image` 的 source 是本地 Identifier，例如 `system:icons/pin.svg` 对应 `assets/apricityui/apricity/system/icons/pin.svg`，由 AUI 异步读取；width / height 默认 32。该节点不下载网页图片，文字导出使用 alt。player 节点继续复用原版模型渲染。
 
-商城提供 offer_items、price_items；奖励提供 result_items。奖池奖品、签到候选和任务奖励各自用平铺的带下标键，分组与概率/状态说明均由 JSON 决定。物品节点不输出纯文本，文字导出使用 text_items 状态及对应文字参数。FTB 物品任务同时提供 `task_items`，详情卡片会把目标物品作为原版图标渲染并保留进度文字；无法确定具体物品的任务仍只显示标题。
-
-`quest_icon` 与任务目标 / 奖励类型的 `icons` 分开：`quest` 必填，引用服务端结果中的十六进制任务 ID；`title` 可选，使用当前卡片的任务名作为 tooltip。客户端只从 FTB 已同步的 ClientQuestFile 找到该任务，再调用 `Quest.getIcon()`，因此优先显示任务自定义图标，并沿用 FTB 的主题和目标图标回退；不会用目标类型图标替代任务配置。未安装 FTB、尚未收到任务文件、ID 无效、任务已删除或原生图标为空时不生成图标节点，文字与动作仍照常显示。可选 FTB 类保持反射隔离，公共 DTO 不增加原生 Icon 对象。
-
-```json
-{ "type": "system:quest_icon", "quest": "{{actions.*.action_quest_id}}", "title": "{{actions.*.action_title}}" }
-```
+`recipe` 绑定单个 ItemSource，只负责工作站、材料、结果和说明；保留有序槽位、重复材料、空格、3×3 补齐和候选材料 tooltip。物品来源卡使用 groups 的固定分类选项，以及带各自 filter 的 grid 组成配方 / 掉落 / 标签视图。
 
 ## 按钮与动作
 
+按钮约定参考 [KOOK 卡片消息的 click/value](https://developer.kookapp.cn/doc/cardmessage)，采用同样的链接 / 字符串回传概念；布局、DTO 和 MC 交互仍由本模组实现。
+
 ```json
-{ "type": "system:button", "text": "{{claim_label}}", "callback": "claim" }
+{"type":"system:button","text":"打开文档","click":"link","value":"https://example.com"}
 ```
 
-button 的 text、callback 必填。callback 只查询已注册的 Runnable；缺失时禁用按钮，不执行任何字符串指令。完整模式可点击，简约模式只显示标签，纯文本和通知模式不生成该按钮。
-
-原有 actions 节点默认读取 `{{result_actions}}`，其按钮也通过同一张 callbacks 表执行。客户端给每个按钮填 `actions.0.label/number` 等参数，并登记 `actions.0.click`；CardData 构建时用 CardBuilder.actionParameter 给刚添加的按钮补充任务标题等字段。根 actions 的 container_style、button_style、numbered、label 继续控制外观：
+```json
+{"type":"system:button","text":"查看任务","click":"return-val",
+ "value":"system:quest_detail?quest=0123456789abcdef","behavior":"push"}
+```
 
 ```json
-{
-  "body": [{ "type": "system:actions" }],
-  "actions": {
-    "container_style": "quest_list",
-    "button_style": ["card_action", "quest_row"],
-    "numbered": false,
-    "label": [
-      { "type": "system:text", "text": "{{actions.*.action_title}}", "when": "actions.*.action_title" },
-      { "type": "system:text", "text": "{{actions.*.label}}", "unless": "actions.*.action_title" }
-    ]
-  }
+{"type":"system:button","text":"本地操作","click":"local","value":"{{example_callback}}"}
+```
+
+| click | value | 执行位置 |
+| --- | --- | --- |
+| `link` | HTTP / HTTPS URL | 客户端复用 Minecraft 链接偏好与确认界面 |
+| `return-val` | 不透明字符串 | CardActionRequest 只发送 source(ref + revision) 和 value，服务端解析 |
+| `local` | CardContext.callbacks 的键名 | 执行代码提供的 Runnable；JSON 不提供脚本 |
+
+按钮可用 text 或 children 构建主体；icon 可引用本地图片；label 提供 tooltip / 无障碍文字。selected / disabled 读取状态绑定。客户端的可选 binding 只接受代码提供的 CardButtonBinding，供 pin 等交互维护实时选中、pending 和可用状态，通用 ButtonNode 不认识任务或缓存。
+
+内置字符串用 `CardEventValue.encode(Identifier, Map<String,String>)` 生成，例如 `system:quest_detail?quest=...`；键和值采用 UTF-8 URL 编码，参数按键排序。没有参数时只有动作 ID。`CardBuilder.serverButton` 的 Identifier + Map 重载只负责生成该字符串；也可直接传入字符串。客户端不解析服务端行为或请求大模型。
+
+服务端先检查玩家连接、绑定、限流及来源版本，再在游戏主线程发布 `CardButtonEvent`。其他模组读取 player/source/value，识别自己的格式后调用 `handle(AgentResult)` 或 `handle(CompletionStage<AgentResult>)`；已处理事件不再进入内置解析器。单个事件只能有一个处理结果。事件监听器负责自己的权限和业务校验，不在主线程等待网络或磁盘。
+
+```java
+@SubscribeEvent
+public static void button(CardButtonEvent event) {
+    if (event.result() != null || !event.value().equals("example:help")) return;
+    event.handle(AgentResult.ok("example.help"));
 }
 ```
 
-label 仅作纯文本投影。缺省使用动作原标签；简约模式按真实动作顺序显示编号，由输入执行选择。可信回调仍经过原有服务端权限、任务和交易校验。
+未处理字符串进入 CardEventValue → ModuleRouting.button → AgentEngine.submit，继续复用启用模块、所有权、费用、任务状态及幂等检查。客户端可修改字符串，服务端始终重新检查业务数据；卡片来源只是关联与版本，不授予执行权限。
 
-`actions` 节点可设置 `page_size`（默认 0，不分页），在完整模式和通知中生效；普通动作列表只有一页时不显示分页栏。任务格子、商店、奖池和奖品预览使用下面的共享分页网格，按列数与最大行数自动计算容量，不再为任务写死 `page_size: 10`。翻页只修改本地 `CardPageState` 并重建当前页，不发包、不替换通知、不推进队列或重启播报；简约模式的任务文字列表及文字导出仍保留所有条目。
+`CardButton` 保留 BODY / FOOTER 和 CLOSE / WAIT / REPLACE / PUSH。通知的确定、返回和底部按钮由宿主代码管理；正文 button 不替换这些控件。REPLACE 回复替换当前通知，PUSH 同时保留来源和 CardUiState 以便返回；翻页、分组和折叠只更新当前窗口，不发包或插入通知。纯文本卡有按钮时仍保留卡片。简约模式保留带编号的文字选择。
 
 ### 共用分页网格
 
-`CardPagination` 负责本地页码、上下页和当前页切片；`CardGrid` 负责格子布局、固定区域与容量计算。`GroupedActionsNode`、`OfferGridNode`、`PrizeGridNode` 共同接入，普通 `ActionsNode` 也复用分页逻辑。扩展节点只需提供条目列表、稳定页码 key 和构建一个单元格的回调，不需要重复写分页按钮。
-
-```java
-return this.grid.render(view, "example:" + binding, entries, "offer_grid", (parent, entry) -> {
-    parent.appendChild(renderCell(view, entry));
-});
-```
-
-`CardGrid.CODEC` 直接合并进节点的 MapCodec，JSON 参数仍平铺：`columns` 默认 6、`max_row` 默认 3、`cell` 默认 104px。完整模式按配置列数布局，通知和简约格子最多 3 列；同一个列数同时决定实际布局和每页容量。内置网格完整模式每页 18 项、通知每页 9 项，只为当前页创建 DOM、图标与 tooltip，其他条目保留在快照中。商店和奖池查询的现有服务端结果上限不变，此处是客户端展示分页。
-
-网格始终预留 `max_row` 行高度（含固定的 padding、gap、border），少量结果、空列表和最后一页也不收缩。分页栏始终保留，上页 / 页码 / 下页与通知宿主底部业务按钮独立；只有一页时上下页均置灰，首尾页禁用相应方向，不创建假的物品或占位交互。固定空行通过网格轨道实现，无需生成占位节点或测量滚动范围。通知外层仍可滚动，宽度不变。格子高度和列数由共享组件负责，CSS 不再独立覆盖通知列数或用 max-height 裁切网格。
-
-任务列表使用 `system:grouped_actions`，复用上述可信动作绑定与分页逻辑。左侧是本次查询实际返回任务的章节，按 FTB 的章节组显示上级标题；左栏按内容自然撑高，只有超出高度上限才滚动，不预留滚动条空隙。左栏的内部 wheel 监听还会检查事件路径是否有实际滚动范围：有范围时保留 AUI 原生滚动（包括外层聊天记录），没有范围时阻止零范围回弹；Shift 滚轮同时考虑横向范围。不按章节数量猜测高度，也不在布局或逐帧回调中测量滚动范围。右侧使用商店、抽奖相同的 `offer_grid > offer_cell > offer_cell_label` 结构与样式，完整模式为 6 列 × 3 行、104px 高的格子，通知为 3 列 × 3 行。格子中依次显示 32px 原生任务图标、居中的任务标题，以及底部编号；解锁通知不显示编号。进度用沿格子下边线的 3px 进度条表示，右上角有图钉按钮。带格式标题的内部 minecraft_text 行块也显式居中，不把多行文本直接塞进 flex 按钮。卡片顶部单独显示“任务列表”，不重复显示原有长摘要；摘要仍供播报使用。
-
-`system:quest_pin` 的 `quest` 接受任务 ID 占位符，例如 `{{actions.*.action_quest_id}}`。点击将 `DisplayCardKey(system:ftb_quests, 任务ID)` 和明确的固定 / 取消状态发给服务端；服务端重新检查任务可见性、详情解锁条件和模块权限，事务成功后回传实际固定状态。`ClientModuleCaches.DISPLAY_CARDS` / `DisplayCardCache` 只保存连接内的服务端镜像、版本和待确认请求，不负责持久化。等待确认时禁用同任务图钉，超时解除禁用；错误不会把未保存的状态显示为成功。点击阻止事件冒泡，避免打开任务详情，并同步已存在文档中同任务的图钉状态。图标使用 AUI 内置 SVG。
-
-图钉未固定时倾斜 35°，固定后平滑转为竖直并显示强调色；按钮固定 22px、图标 16px，所有主题按钮状态保持透明背景、无边框和外框，悬停 / 聚焦仅提亮图标。选择器覆盖主题的最小高度、按下填充与 hover transform，避免出现高色块。任务详情也使用同一个节点：QuestOutput 将已有任务 ID 放入 Context，quest.json 右上角绑定 `{{id}}`，与列表、其他详情及通知中同任务的固定状态同步。标题预留右侧空间；简约和通知布局单独调整图钉边距。
-
-`system:progress` 的 `value` 绑定数字参数（例如 `{{actions.*.action_progress}}`），按 0～100 限定绘制宽度；缺失、非数字或非有限值不显示。普通布局中是横条，在任务格子内通过共享 CSS 绝对定位贴下边线，不挤占标题和图标的高度，也不读取布局尺寸。纯文本、简约模式和动作匹配标签仍保留百分比文字。
-
-初始选中第一个非空章节，切换章节仅重绘右侧，页码按章节分别保留；通知查看详情后返回仍恢复所选章节及页码。右侧不重复显示章节名和条目数量，货架直接从内容区顶部开始；章节名称和数量仅留在左侧导航。右侧列表固定预留三行，不改变通知宿主宽度。简约模式保留完整文字列表，不增加侧栏。
+`flex` 支持 direction（row / column）、wrap、可选 source/filter/page_size；`container` 只包裹静态 children。`grid` 的 source 为空时按静态 children 排版，有 source 时按原始索引重复 children；不要同时用 repeat 和 source 遍历同一集合。
 
 ```json
 {
-  "type": "system:grouped_actions",
-  "actions": "{{result_actions}}",
-  "group": "{{actions.*.action_chapter_id}}",
-  "group_label": "{{actions.*.action_chapter}}",
-  "section": "{{actions.*.action_group_id}}",
-  "section_label": "{{actions.*.action_group}}",
-  "columns": 6,
-  "max_row": 3,
-  "cell": 104,
-  "children": [
-    { "type": "system:quest_pin", "quest": "{{actions.*.action_quest_id}}" },
-    { "type": "system:quest_icon", "quest": "{{actions.*.action_quest_id}}", "title": "{{actions.*.action_title}}" },
-    { "type": "system:text", "style": "offer_cell_label", "text": "{{actions.*.action_title}}" },
-    { "type": "system:text", "style": "card_action_cell_meta", "text": "#{{actions.*.action_number}}", "unless": "unlock_notice" },
-    { "type": "system:progress", "value": "{{actions.*.action_progress}}" }
-  ]
+  "type":"system:grid", "source":"{{offers}}", "columns":6,
+  "compact_columns":3, "max_row":3, "cell":104,
+  "children":[{
+    "type":"system:button", "style":"offer_cell_content",
+    "click":"{{actions.*.click_type}}", "value":"{{actions.*.value}}",
+    "children":[{"type":"system:text","text":"{{offers.*.label}}"}]
+  }]
 }
 ```
 
-`group` / `group_label` 必填，绑定每个动作的稳定分组 ID 与显示名；`section` / `section_label` 可选，用于分组上方的上级标题。节点只遍历本卡片提供的动作，保持第一次出现的顺序，不读 FTB 客户端任务文件，不补充空章节。同名章节按 ID 分开；按钮回调下标和任务编号始终对应原始查询，切换章节与分页不重排服务端编号。服务端 `QuestBriefOutput` 为匹配任务附带 chapterId、groupId、group 名称；`QuestList` 写入 `action_*` 展示参数，查询、同名候选和多任务解锁共用同一模板。默认章节组不额外显示其标题。完成通知仍一任务一通知，单个新任务仍直接打开详情。
+动态 grid 每页容量为当前列数 × max_row；full 取 columns，其他模式取 columns 与 compact_columns 的较小值。筛选后结果只有一页时，按实际需要的行数收缩高度；两页及以上始终保留 max_row 行，包括不足一页的末页，避免翻页跳动。上 / 下页按钮始终保留，单页时置灰；空结果不生成网格。只创建当前页 DOM 和物品预览，CardPagination 是唯一分页组件。
 
-`columns` 默认 6，`cell` 默认 104，分别控制列数与格子高度；`children` 使用通用节点语法，`*` 绑定该格子在原始动作表中的下标，整张卡片仍共用一份 Context。未提供 children 时在独立的 `offer_cell_label` 块中显示动作标签。根 actions.label 继续负责简约模式、文字导出和语音选项的文本投影，与格子内部布局分开。
+`groups` 只负责筛选索引，不认识货架或任务。source/filter/group/group_label 控制分组；section/section_label 控制左侧分节；orientation 可为 vertical 或 horizontal。默认只显示结果实际存在的分组；显式 options:[{id,label}] 可固定分类，空分类置灰。选中组只把原始下标集合传给相同 source 的后代布局，整张卡仍共用一份 Context，事件参数和循环下标不重新编号。
 
-完整模式按卡片 UUID 独立保存页码，聊天内容更新、忙碌状态变化及窗口缩放重建 DOM 后继续使用原页；卡片退出当前聊天记录时清理页码，关闭后新开界面从第一页开始。通知沿用自身窗口与返回栈的页码，两种界面互不影响。数据变少时页码收束到最后一页；状态不序列化至服务端或聊天历史。
+CardUiState 在每个展示实例保存页码、选中组和折叠状态，按卡片及节点路径定位；可设置节点 id 保持局部状态稳定。通知返回会保留来源状态，聊天与通知各自独立。状态不混进 CardContext 的业务参数，不上传服务端。分页和分组点击只替换局部子树并请求 AUI 在下一帧重新布局，不同步读取 scrollLimit 或强制计算整页样式。
 
-节点先调用 `Element.init`，再创建分页按钮回调。AUI 26.1 / 1.2.6 插入普通标签时会替换其 Element 实例，提前初始化可确保回调持有已挂载容器，避免连接检查始终失败而使翻页无反应。
+`progress` 读取 0～100 的数值，轨道默认高 6px，颜色仍由主题控制。首次绘制从零展开，更新时从当前显示值平滑过渡到新值（350ms），相同目标不重播。CardUiState 按数值绑定保存动画状态，常驻卡片替换正文时复用此状态；原生填充元素只缩放绘制矩阵，动画期间不修改 CSS 宽度或查询布局，结束后停止主动重绘。
 
-CardButton 显式描述 Local/Server 动作、BODY/FOOTER 位置以及 CLOSE/WAIT/REPLACE/PUSH 行为。actions 节点在通知正文只绘制 BODY 按钮，FOOTER 由通知宿主生成；宿主始终在业务按钮之后补充本地确定按钮，忙碌时仍可关闭通知。列表内容使用原有固定宽度和限高滚动视口，分页不扩大通知面板。
-
-点击、数字和语音选择都进入 CardController。Local 从 ClientModuleCaches.BINDINGS 的处理器 Map 分派；Map 和登记、分派、清理逻辑直接位于 ClientModuleBindingsCache，由模块通过 localAction 声明，随 Saturn RegistryCache 重建和退出清理。Controller 不单独保存永久动作表。Server 发 CardActionRequest(source, action)，仅含来源 CardRef、动作 Identifier 和字符串参数。工作流在 ModuleRouting.button 中解码，继续经过原有权限、预算、引用、Cost 与发奖流程，不经过模型路由。labelKey 只决定标签和语音候选，不决定动作。
-
-CLOSE 停止当前语音/录音并关闭通知；WAIT 保留通知并等待回复。REPLACE 同样等待，但把直接回复的新 SHOW 卡片放到当前通知的位置，旧内容淡出后新内容淡入，不收起面板或重复播放提示音；其余排队通知保持顺序。CardBuilder.serverButton 默认使用 REPLACE。任务列表查看按钮使用 PUSH：收到可显示的回复后保留来源视图，详情正文上方提供本地“返回列表”，返回时恢复原页码且不重复播报列表。失败的零卡片回复保留原列表；业务 REMOVE 会清除对应返回视图。底部确定结束整个当前窗口并清理返回栈，再取下一条通知。通知没有自动关闭计时，播报结束也不会切换到下一条。
-
-仅从 HUD 激活的 REPLACE / PUSH 按钮会在客户端 pending 中记录来源 CardRef，并按 requestId 关联回复；完整/简约页面中的同一按钮仍按页面流程处理。原通知已确认、关闭或返回上层时，迟到回复不重新弹出，也不替换其他通知。独立推送继续入队；业务 CardUpdate.REPLACE/REMOVE 仍沿用静默更新语义。等待期间禁用服务端按钮，失败、超时和零卡片回复也解除等待；本地翻页、返回和确定独立于服务端忙碌状态。语音优先匹配当前通知的业务按钮、返回及确定，失败或歧义才进入主聊天。
+任务 pin 使用 QuestCardBindings 在 CardBuildEvent 中注入本地 callback 和 CardButtonBinding，普通 button 显示图钉图片；服务端固定记录仍由原来的专用显示卡载荷与 DataStorage 管理。任务完成通知、单任务详情和多任务列表的排队策略保持原有行为。
 
 ## 常驻卡片 HUD
 
@@ -463,18 +413,18 @@ FTB 来源为隔离适配器 `FtbQuestDisplay`：每次核对当前队伍、任�
 
 ## 通用参数与模块字段
 
-通用参数为 summary/card_title/result_actions、`actions.<下标>.label/number`；状态为 show_card_title/full/simple/notification/text_items。回调为 `actions.<下标>.click`。纯文本模式的 full/simple/notification 均为 0。
+通用参数为 summary/card_title/result_actions、`actions.<下标>.label/number/click_type/value/behavior/visible/disabled`；状态为 show_card_title/full/simple/notification/text_items。回调为 `actions.<下标>.click`。纯文本模式的 full/simple/notification 均为 0。
 
 | 模板 | 参数 |
 | --- | --- |
-| player | player_id（UUID）、name/health/max_health/experience_level/dimension/language，information.<下标>.text |
+| player | player_id（UUID）、name/health/max_health/experience_level/dimension，player_information |
 | items | items.<下标>.item_name/item_id/max_stack，result_items |
 | sign_in_status | date/signed_in/history_saved/external_model，candidates.<下标>.reward_label/reward_items/result_items |
 | reward/entitlement/purchase | reward_label/reward_items/result_items；回执另有 entitlement_id/state，购买另有 order_id；状态 delivered 表示已交付，按钮区显示不可点的“已领取” |
 | shop_offer | label/id/items/price/price_text/payment_available，offer_items/price_items |
 | shop_order | order_id/label/state/error |
 | lottery_catalog | revision/query/truncated；pools.<下标>.label/prizeCount/prizes.<下标>.label/chance/items，单元格由 pool.<下标> 服务端按钮驱动 |
-| lottery_pool | label/id/prize_count/preview_count/price/price_text/free/payment_available/price_items/prize_list；状态 priced 表示有单次消耗；prizes.<下标>.reward_label/chance/result_items |
+| lottery_pool | label/id/prize_count/preview_count/price/price_text/free/payment_available/price_items/prizes；状态 priced 表示有单次消耗；prizes.<下标>.reward_label/chance/result_items |
 | lottery_prize | reward_label/reward_items/chance/result_items，概率数值不含百分号 |
 | delivery_state | state |
 | quest/quest_submit | title，tasks.<下标>.task_title/task_progress/task_required/task_items；详情另有 chapter/description/progress/completed；submission 枚举由 CardData 构建提交或勾选按钮 |
@@ -496,14 +446,16 @@ price 是非物品费用文字，price_text 包含物品文字。text 使用 sum
 - `codec()`：返回当前节点注册的稳定 MapCodec 实例。
 - `css()`：默认样式，仍可由 JSON 的 style 覆盖。
 - `render(view)`：生成 AUI 节点，返回 null 隐藏。
-- `text(view)`：纯文本投影，默认空字符串。
 
-`CardTemplate.Node` 只包装共用的 style/when/unless/repeat，不保存泛型类型包装或渲染函数。渲染器遍历后直接调用节点方法。TextNode 的 TitleNode/ContextNode 子类复用文字实现，ContainerNode 的 RowNode/ColumnNode 子类复用容器实现；每种节点仍有自己的 MapCodec 和默认样式。
+
+`CardTemplate.Node` 只包装共用的 id/style/when/unless/repeat。节点实现分别位于 node.text、media、layout、container、interaction、display、integration，不内联。能力接口按需要实现：TextProjectingNode 负责文字导出，PlainMessageNode 表示普通消息资格，HeadingNode 返回可提升标题，ChildrenNode 统一 children，CollectionNode 统一集合原始下标。TitleNode 与 TextNode 只共享 TextContent，不互相继承。
+
+CardRenderer 只负责条件、循环、路径、占位符和按接口分派；不再对具体 TextNode / TitleNode 或业务节点做判断。文本模式由可投影节点导出所有页，卡片级的无按钮、独立标题和摘要规则仍集中在 CardPresentation。
 
 新增节点使用独立 Java 文件，例如：
 
 ```java
-public record BadgeNode(String value) implements CardNode {
+public record BadgeNode(String value) implements TextProjectingNode {
     public static final MapCodec<BadgeNode> CODEC = Codec.STRING.fieldOf("text")
             .xmap(BadgeNode::new, BadgeNode::value);
 

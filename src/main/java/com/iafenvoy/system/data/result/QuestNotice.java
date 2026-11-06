@@ -58,7 +58,7 @@ public record QuestNotice(String id, Component title, Component chapter, List<It
         builder.put("id", this.id()).put("title", this.title()).put("chapter", this.chapter()).put("description", this.description())
                 .put("notice_title", Component.translatable("system.ui.card_title_quest_" + this.event.getSerializedName()))
                 .put("requirements", CardBuilder.join(this.requirements(), "，"))
-                .put("reward_icons", this.rewardIcons()).put("task_icons", this.taskIcons())
+                .icons("reward_icons", this.rewardIcons()).icons("task_icons", this.taskIcons())
                 .enable("has_rewards", !this.items().isEmpty() || !this.rewardIcons().isEmpty())
                 .put("manual_submission", this.manualSubmission()).put("result_items", this.items());
         Component main = Component.translatable("system.tts.message.quest_" + this.event.getSerializedName(), this.title);

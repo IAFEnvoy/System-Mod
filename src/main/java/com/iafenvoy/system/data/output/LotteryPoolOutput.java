@@ -45,9 +45,10 @@ public record LotteryPoolOutput(Identifier id, Component label, Optional<Commerc
                 .put("preview_count", this.prizes().size()).put("payment_available", this.paymentAvailable())
                 // The cost keeps its own body line, so prize tooltips stay limited to the item and its odds.
                 .enable("priced", this.price().isPresent())
-                .put("free", this.price().isEmpty()).list("prizes", this.prizes(), (prefix, prize) -> prize.fill(builder, prefix))
-                // The shelf preview needs the prize objects themselves, not only the per-index fields.
-                .put("prize_list", this.prizes());
+                .put("free", this.price().isEmpty()).list("prizes", this.prizes(), (prefix, prize) -> {
+                    prize.fill(builder, prefix);
+                    builder.put(prefix + "preview_items", prize.reward().value().items().stream().limit(2).map(ItemPreviewOutput::of).toList());
+                });
         this.price().ifPresent(builder::price);
         if (this.paymentAvailable) {
             if (this.quoteRef.isPresent())

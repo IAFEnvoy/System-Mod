@@ -3,6 +3,8 @@ package com.iafenvoy.system.data.card.client;
 import com.iafenvoy.system.data.card.CardText;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.output.ItemPreviewOutput;
+import com.iafenvoy.system.data.output.ShelfEntry;
+import com.iafenvoy.system.util.LegacyText;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -16,6 +18,8 @@ import java.util.List;
  */
 @FunctionalInterface
 public interface CardFormatting {
+    CardFormatting FORMATTED = LegacyText::formatted;
+
     String text(Component component);
 
     default String tr(String key) {
@@ -49,6 +53,8 @@ public interface CardFormatting {
         if (value instanceof CardText.Price(
                 CommerceCatalog.Price price1, boolean includeItems
         )) return this.price(price1, includeItems);
+        if (value instanceof CardText.ShelfTooltip(ShelfEntry entry, int index))
+            return String.join("\n", entry.tooltip(index).stream().map(this::text).toList());
         return value == null ? "" : value.toString();
     }
 }

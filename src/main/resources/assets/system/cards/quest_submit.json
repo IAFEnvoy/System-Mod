@@ -14,14 +14,28 @@
       "repeat": "tasks",
       "children": [
         {
-          "type": "system:icons",
-          "icons": "{{tasks.*.task_icons}}"
+          "type": "system:flex",
+          "source": "{{tasks.*.task_icons}}",
+          "children": [
+            {
+              "type": "system:ftb_icon",
+              "icon": "{{tasks.*.task_icons.*}}"
+            }
+          ],
+          "style": "quest_icon_items"
         },
         {
-          "type": "system:items",
-          "items": "{{tasks.*.task_items}}",
-          "compact": true,
-          "show_labels": false
+          "type": "system:flex",
+          "source": "{{tasks.*.task_items}}",
+          "children": [
+            {
+              "type": "system:item",
+              "item": "{{tasks.*.task_items.*}}",
+              "size": 32,
+              "tooltip": []
+            }
+          ],
+          "style": "item_group_items"
         },
         {
           "type": "system:text",
@@ -31,8 +45,31 @@
       ]
     },
     {
-      "type": "system:actions",
-      "actions": "{{result_actions}}"
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

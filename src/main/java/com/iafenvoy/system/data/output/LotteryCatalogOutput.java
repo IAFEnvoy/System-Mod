@@ -3,6 +3,7 @@ package com.iafenvoy.system.data.output;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.card.CardData;
+import com.iafenvoy.system.data.card.CardText;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -110,7 +111,9 @@ public record LotteryCatalogOutput(String revision, String query, List<Pool> poo
     public CardBuilder buildCard() {
         CardBuilder builder = CardBuilder.template(TEMPLATE).title("system.result.lottery").summary("system.result.lottery")
                 .put("revision", this.revision).put("query", this.query)
-                .put("truncated", this.truncated).put("pools", this.pools);
+                .put("truncated", this.truncated);
+        builder.list("pools", this.pools, (prefix, entry) -> builder.put(prefix + "label", entry.label()).put(prefix + "items", entry.items().stream().limit(2).toList())
+                .put(prefix + "tooltip", new CardText.ShelfTooltip(entry, 0)));
         // Cell order matches the pool list; the grid binds each cell to the matching action callback.
         for (int index = 0; index < this.pools.size(); index++)
             builder.serverButton("pool." + index, "", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_preview"),

@@ -21,7 +21,7 @@
       "when": "sources",
       "children": [
         {
-          "type": "system:column",
+          "type": "system:flex",
           "style": "guide_entry",
           "repeat": "sources",
           "children": [
@@ -31,15 +31,20 @@
               "text": "{{sources.*.title}}"
             },
             {
-              "type": "system:context",
+              "type": "system:text",
               "text": "{{sources.*.category}}",
-              "when": "sources.*.category"
+              "when": "sources.*.category",
+              "style": [
+                "card_context"
+              ]
             },
             {
               "type": "system:text",
               "text": "{{sources.*.passage}}"
             }
-          ]
+          ],
+          "direction": "column",
+          "wrap": false
         }
       ]
     }

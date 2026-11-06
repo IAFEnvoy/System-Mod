@@ -21,7 +21,7 @@
       "when": "sources",
       "children": [
         {
-          "type": "system:column",
+          "type": "system:flex",
           "style": "search_source",
           "repeat": "sources",
           "children": [
@@ -31,11 +31,16 @@
               "url": "{{sources.*.url}}"
             },
             {
-              "type": "system:context",
+              "type": "system:text",
               "text": "{{sources.*.snippet}}",
-              "when": "sources.*.snippet"
+              "when": "sources.*.snippet",
+              "style": [
+                "card_context"
+              ]
             }
-          ]
+          ],
+          "direction": "column",
+          "wrap": false
         }
       ]
     }

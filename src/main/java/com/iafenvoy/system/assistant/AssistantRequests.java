@@ -9,11 +9,14 @@ import com.iafenvoy.system.agent.response.StateResponse;
 import com.iafenvoy.system.data.ClientState;
 import com.iafenvoy.system.data.input.StarterGiftsInput;
 import com.iafenvoy.system.data.output.StarterGiftOutput;
+import com.iafenvoy.system.event.CardButtonEvent;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
+import com.iafenvoy.system.util.CardEventValue;
 import com.iafenvoy.system.util.TypeDispatch;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -45,7 +48,7 @@ public final class AssistantRequests {
 
     public void open(ServerPlayer player, OpenResponse.View view) {
         UUID connection = ServerNetworkHandler.connectionId(player);
-        this.players.requireBound(player.getUUID()).whenComplete((result, error) -> this.server.execute(() -> {
+        this.players.requireBound(player.getUUID()).whenComplete((_, error) -> this.server.execute(() -> {
             if (this.server.getPlayerList().getPlayer(player.getUUID()) != player || !connection.equals(ServerNetworkHandler.connectionId(player)))
                 return;
             if (error == null) ServerNetworkHandler.send(player, new OpenResponse(view));
@@ -96,16 +99,15 @@ public final class AssistantRequests {
         this.registerRequest(InvokeRequest.class, (context, invoke) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), invoke.call(), invoke.text())));
         this.registerRequest(CardActionRequest.class, (context, action) -> {
             ServerCards.Ticket ticket = ServerCards.begin(context.uuid(), action.source());
-            AgentAction call = this.engine.modules().button(action.action().id(), action.action().arguments());
-            return answer(context, this.engine.submit(context.uuid(), context.requestId(), call, "")
+            return this.players.requireBound(context.uuid()).thenCompose(ignored -> answer(context, this.dispatchCardEvent(context, action)
                     .thenApply(result -> {
-                        if (result.isSuccess() && action.action().id().equals(StarterGiftsInput.INSTANCE.id())) {
+                        if (result.isSuccess() && action.value().equals(StarterGiftsInput.INSTANCE.id().toString())) {
                             boolean empty = result.cards().stream().flatMap(card -> card.data().stream())
                                     .filter(StarterGiftOutput.class::isInstance).map(StarterGiftOutput.class::cast).allMatch(gifts -> gifts.gifts().isEmpty());
                             result = result.withPresentation(result.messageKey(), result.text(), empty ? List.of() : result.cards(), true);
                         }
                         return ServerCards.finish(ticket, result);
-                    }));
+                    })));
         });
         this.registerRequest(PreferencesRequest.class, (context, preferences) ->
                 this.engine.preferences(context.uuid(), preferences.history(), preferences.external()).thenCompose(result ->
@@ -118,6 +120,37 @@ public final class AssistantRequests {
         // Navigation must not consume the interval needed by the client's immediate state refresh.
         this.controlHandlers.put(ControlRequest.OPEN, context -> this.players.requireBound(context.uuid())
                 .thenApply(_ -> new OpenResponse(OpenResponse.View.CURRENT, Optional.of(context.requestId()))));
+    }
+
+    private CompletionStage<AgentResult> dispatchCardEvent(RequestContext context, CardActionRequest request) {
+        CompletableFuture<AgentResult> result = new CompletableFuture<>();
+        // Binding checks may finish on the storage executor; mod events always run on the game thread.
+        this.server.execute(() -> {
+            try {
+                if (this.server.getPlayerList().getPlayer(context.uuid()) != context.player())
+                    throw new AgentException("CANCELLED");
+                CardButtonEvent event = new CardButtonEvent(context.player(), request.source(), request.value());
+                NeoForge.EVENT_BUS.post(event);
+                CompletionStage<AgentResult> work = event.result();
+                if (work == null) {
+                    CardEventValue decoded;
+                    try {
+                        decoded = CardEventValue.parse(request.value());
+                    } catch (IllegalArgumentException error) {
+                        throw new AgentException("INVALID_INPUT", error);
+                    }
+                    AgentAction call = this.engine.modules().button(decoded.action(), decoded.arguments());
+                    work = this.engine.submit(context.uuid(), context.requestId(), call, "");
+                }
+                work.whenComplete((reply, error) -> {
+                    if (error == null) result.complete(reply);
+                    else result.completeExceptionally(error);
+                });
+            } catch (RuntimeException error) {
+                result.completeExceptionally(error);
+            }
+        });
+        return result;
     }
 
     private CompletionStage<ClientState> state(UUID player) {

@@ -2,6 +2,7 @@ package com.iafenvoy.system.screen.card;
 
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.sighs.apricityui.init.Element;
+
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
@@ -18,13 +19,12 @@ public final class CardPagination {
                                      boolean keepControls, BiConsumer<Element, List<T>> content) {
         // AUI replaces raw tags on insertion, so callbacks must capture the initialized live container.
         Element root = Element.init(AssistantView.element(view.document(), "div", "card_paged", ""));
-        CardPageState state = view.context().get("local_pages", CardPageState.class);
-        CardPageState pages = state == null ? new CardPageState() : state;
+        CardUiState pages = view.ui();
         renderPage(view, root, key, pages, entries, Math.max(1, pageSize), keepControls, content);
         return root;
     }
 
-    private static <T> void renderPage(CardRenderer.Render view, Element root, String key, CardPageState pages,
+    private static <T> void renderPage(CardRenderer.Render view, Element root, String key, CardUiState pages,
                                        List<T> entries, int pageSize, boolean keepControls,
                                        BiConsumer<Element, List<T>> content) {
         int total = entries.isEmpty() ? 1 : (entries.size() - 1) / pageSize + 1;
@@ -47,7 +47,7 @@ public final class CardPagination {
     }
 
     private static <T> void pageButton(CardRenderer.Render view, Element root, Element controls, String key,
-                                       CardPageState pages, List<T> entries, int pageSize, boolean keepControls,
+                                       CardUiState pages, List<T> entries, int pageSize, boolean keepControls,
                                        BiConsumer<Element, List<T>> content, int page, boolean enabled, String label) {
         Element button = AssistantView.element(view.document(), "button", "card_action", AssistantView.tr(label));
         button.setAttribute("type", "button");

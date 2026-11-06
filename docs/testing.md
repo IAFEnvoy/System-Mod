@@ -898,3 +898,31 @@ ClientConfig 新增 `cardAnimations=true`、`cardsOnOtherScreens=false`，使用
 用户确认刚打开设置页就卡死。读取最新 run-test-client 日志：21:03:05 页面创建 147ms，21:03:06 首次布局 35ms / 79 个元素，之后没有对应阻塞段。只读检查进程时游戏已退出，无法补取卡住时的渲染线程堆栈。核对 AUI 1.2.9 Transition.build，确认 transform 过渡会在样式计算时调用 Size.of；设置开关伪元素与多层自动高度 flex 组合存在提前测量路径。设置内容、标签页、分组和开关按钮改为块流，轨道与主题切换器固定局部定位，滑块改用 left 过渡；控件刷新跳过相同的 class / aria-selected / display / disabled，保留两个新配置和即时保存。详见[页面布局审计](ui-layout-audit.md#设置页打开卡顿的后续修正)。
 
 执行 `gradlew compileJava processResources --console=plain` 成功，`git diff --check` 通过；静态检查设置页 ID、翻译引用、块布局与滑块过渡规则，中英文各 585 键且集合相同，同步编辑器 CSS 快照。未启动 Minecraft、运行功能测试或添加探针，未创建存档或改玩家配置。实际卡死是否消除尚未验收，仍需核对首次打开、三种标签、长表单滚动、开关动画、主题切换与不同缩放。
+
+## 2026-11-06 卡片节点与字符串按钮重构
+
+参考 KOOK 官方卡片文档的 button.click / value，按钮支持 link、return-val 和本地 local。CardActionRequest 只传来源版本及字符串；服务端先核对绑定、来源和限流，在游戏线程发布 CardButtonEvent，未处理事件按 CardEventValue 解码进入既有模块权限与业务校验。保留通知的代码定义底部按钮、确定、返回、PUSH / REPLACE 和语音入口；正文按钮独立处理禁用、忙碌与 HUD 交互，修正忙碌更新覆盖原有禁用状态的问题。
+
+节点从 23 种整理为 18 种，按功能分包，以能力接口分离文本投影、纯消息资格、标题、children 与集合；grid / flex / groups 组合替代业务列表节点，共用 CardPagination。CardUiState 独立持有页码、分组、折叠，不再写入 Context。全部 27 份模板、图钉资源和 HTML 编辑器同步迁移；任务 pin 通过客户端构建事件注入，覆盖普通列表、多任务解锁列表、详情及常驻任务。延迟 CardText 只在实际节点读取时解析，避免生成未展示页的物品名称与奖池 tooltip。
+
+实际执行 Gradle compileJava / processResources，结果 BUILD SUCCESSFUL；IDE 增量构建报告成功。静态核对 27 份模板、342 个节点的注册 ID、必填字段和每个占位符的循环深度；游戏与编辑器的 18 种类型一致，内嵌模板 / CSS / 翻译快照与源文件一致，中英文各 585 键且集合相同。Node.js --check 检查编辑器脚本语法，git diff --check 通过。
+
+没有启动 Minecraft、运行测试、添加探针或创建存档。尚未游戏内验收：实际布局与页高、分组翻页后按钮索引、任务图标和 tooltip、图钉同步、通知进入详情再返回、历史按钮禁用、URL 确认、扩展事件字符串，以及缺少 FTB / 专用服务端的运行时类加载。旧节点别名与旧按钮协议不保留，客户端、服务端及自定义资源包需同步更新；网络版本号维持 1。
+
+## 2026-11-06 物品图标偏移与宿主信息留白
+
+核对实际 AUI 1.2.9 sources JAR：原生物品按元素中心绘制。单物品节点改用中心缩放，与居中的预留框保持一致；带名称的物品行保留图标单元尺寸，防止被文字挤窄。通用 card_flex 的基础 gap 提前到语义样式之前，并取消强制 align-items:center，避免覆盖行列布局；宿主模板直接使用 player_information 承载信息面板，移除多余的居中容器。同步 HTML 编辑器的模板与 CSS 快照。
+
+执行 `gradlew compileJava processResources --console=plain` 成功；27 份模板 JSON、编辑器快照、共享 flex 样式顺序、双语键集合（各 585 个）、编辑器脚本语法及 `git diff --check` 通过。未启动 Minecraft 或运行功能测试，实际物品对齐、窄屏换行和宿主信息布局尚需游戏内确认。
+
+## 2026-11-06 单页网格收缩
+
+GridNode 根据筛选后的完整索引数决定预留行数：结果不超过一页容量时取向上取整的条目数 / 列数，多页时所有页均使用 max_row，末页不缩短。仍固定每格高度、保留置灰的单页翻页按钮；商店、抽奖、任务等共用此行为，不测量 DOM 或滚动范围。HTML 编辑器采用相同规则，相关布局文档同步更新。
+
+执行 `gradlew compileJava processResources --console=plain` 成功；静态确认判断依据是分页前的完整筛选结果，编辑器资源快照一致，编辑器脚本语法和 `git diff --check` 通过。未启动 Minecraft 或运行功能测试；实际单页收缩、多页末页高度及分组切换仍需游戏内验收。
+
+## 任务进度条动画
+
+共享轨道从 3px 加粗为 6px。ProgressNode 使用原生 CardProgressElement 绘制填充，按 350ms 缓出插值缩放矩阵；CardUiState 只保存数字与单调时间，不持有 DOM。常驻卡片更新正文时保留 UI 状态，重复目标不重播，中途改目标从当前显示值继续。动画只请求重绘，读取已提交矩形，不逐帧写样式、修改布局宽度或调用 Size.of。核对实际 AUI 1.2.9 sources JAR 的原生元素绘制及矩阵 API；编辑器同步预览动画与 CSS 快照。
+
+执行 `gradlew compileJava processResources --console=plain` 成功。未启动 Minecraft 或运行功能测试；游戏内首次显示、连续进度更新、完成 / 回退、主题与 GUI 缩放、移除及重新显示常驻卡片仍待验收。

@@ -9,8 +9,13 @@
       "text": "{{title}}"
     },
     {
-      "type": "system:quest_pin",
-      "quest": "{{id}}",
+      "type": "system:button",
+      "click": "local",
+      "value": "{{pin}}",
+      "binding": "{{pin_binding}}",
+      "icon": "system:icons/pin.svg",
+      "style": "quest_card_pin",
+      "unless": "simple",
       "when": "id"
     },
     {
@@ -31,14 +36,28 @@
       "repeat": "tasks",
       "children": [
         {
-          "type": "system:icons",
-          "icons": "{{tasks.*.task_icons}}"
+          "type": "system:flex",
+          "source": "{{tasks.*.task_icons}}",
+          "children": [
+            {
+              "type": "system:ftb_icon",
+              "icon": "{{tasks.*.task_icons.*}}"
+            }
+          ],
+          "style": "quest_icon_items"
         },
         {
-          "type": "system:items",
-          "items": "{{tasks.*.task_items}}",
-          "compact": true,
-          "show_labels": false
+          "type": "system:flex",
+          "source": "{{tasks.*.task_items}}",
+          "children": [
+            {
+              "type": "system:item",
+              "item": "{{tasks.*.task_items.*}}",
+              "size": 32,
+              "tooltip": []
+            }
+          ],
+          "style": "item_group_items"
         },
         {
           "type": "system:text",
@@ -75,8 +94,15 @@
                       "unless": "rewards.*.reward_icons"
                     },
                     {
-                      "type": "system:icons",
-                      "icons": "{{rewards.*.reward_icons}}"
+                      "type": "system:flex",
+                      "source": "{{rewards.*.reward_icons}}",
+                      "children": [
+                        {
+                          "type": "system:ftb_icon",
+                          "icon": "{{rewards.*.reward_icons.*}}"
+                        }
+                      ],
+                      "style": "quest_icon_items"
                     },
                     {
                       "type": "system:text",
@@ -85,10 +111,26 @@
                       "unless": "rewards.*.choices.*.choice_icons"
                     },
                     {
-                      "type": "system:icons",
-                      "icons": "{{rewards.*.choices.*.choice_icons}}",
-                      "repeat": "rewards.*.choices",
-                      "label": "{{rewards.*.choices.*.choice_number}}"
+                      "type": "system:container",
+                      "children": [
+                        {
+                          "type": "system:text",
+                          "text": "{{rewards.*.choices.*.choice_number}}",
+                          "style": "item_group_label"
+                        },
+                        {
+                          "type": "system:flex",
+                          "source": "{{rewards.*.choices.*.choice_icons}}",
+                          "children": [
+                            {
+                              "type": "system:ftb_icon",
+                              "icon": "{{rewards.*.choices.*.choice_icons.*}}"
+                            }
+                          ],
+                          "style": "quest_icon_items"
+                        }
+                      ],
+                      "repeat": "rewards.*.choices"
                     }
                   ],
                   "style": "reward_grid"
@@ -98,8 +140,15 @@
                   "unless": "text_items",
                   "children": [
                     {
-                      "type": "system:icons",
-                      "icons": "{{rewards.*.reward_icons}}"
+                      "type": "system:flex",
+                      "source": "{{rewards.*.reward_icons}}",
+                      "children": [
+                        {
+                          "type": "system:ftb_icon",
+                          "icon": "{{rewards.*.reward_icons.*}}"
+                        }
+                      ],
+                      "style": "quest_icon_items"
                     },
                     {
                       "type": "system:container",
@@ -113,23 +162,62 @@
                       ]
                     },
                     {
-                      "type": "system:items",
-                      "items": "{{rewards.*.result_items}}",
-                      "description": [
+                      "type": "system:flex",
+                      "source": "{{rewards.*.result_items}}",
+                      "children": [
                         {
-                          "type": "system:text",
-                          "text": "{{state:rewards.*.reward_state}}"
+                          "type": "system:item",
+                          "item": "{{rewards.*.result_items.*}}",
+                          "size": 32,
+                          "tooltip": [
+                            {
+                              "type": "system:text",
+                              "text": "{{state:rewards.*.reward_state}}"
+                            }
+                          ]
                         }
                       ],
-                      "compact": true,
-                      "show_labels": false
+                      "style": "item_group_items"
                     },
                     {
-                      "type": "system:items",
-                      "items": "{{rewards.*.choices.*.result_items}}",
-                      "repeat": "rewards.*.choices",
-                      "label": "{{rewards.*.choices.*.choice_number}}. {{rewards.*.choices.*.choice_title}}",
-                      "compact": true
+                      "type": "system:container",
+                      "children": [
+                        {
+                          "type": "system:text",
+                          "text": "{{rewards.*.choices.*.choice_number}}. {{rewards.*.choices.*.choice_title}}",
+                          "style": "item_group_label"
+                        },
+                        {
+                          "type": "system:flex",
+                          "source": "{{rewards.*.choices.*.result_items}}",
+                          "children": [
+                            {
+                              "type": "system:flex",
+                              "children": [
+                                {
+                                  "type": "system:item",
+                                  "item": "{{rewards.*.choices.*.result_items.*}}",
+                                  "size": 32,
+                                  "tooltip": []
+                                },
+                                {
+                                  "type": "system:text",
+                                  "text": "{{rewards.*.choices.*.result_items.*.label}}",
+                                  "style": "item_name",
+                                  "unless": "text_items"
+                                }
+                              ],
+                              "wrap": false,
+                              "style": [
+                                "item_entry",
+                                "item_labeled"
+                              ]
+                            }
+                          ],
+                          "style": "item_group_items"
+                        }
+                      ],
+                      "repeat": "rewards.*.choices"
                     },
                     {
                       "type": "system:container",
@@ -144,10 +232,26 @@
                       ]
                     },
                     {
-                      "type": "system:icons",
-                      "icons": "{{rewards.*.choices.*.choice_icons}}",
-                      "repeat": "rewards.*.choices",
-                      "label": "{{rewards.*.choices.*.choice_number}}"
+                      "type": "system:container",
+                      "children": [
+                        {
+                          "type": "system:text",
+                          "text": "{{rewards.*.choices.*.choice_number}}",
+                          "style": "item_group_label"
+                        },
+                        {
+                          "type": "system:flex",
+                          "source": "{{rewards.*.choices.*.choice_icons}}",
+                          "children": [
+                            {
+                              "type": "system:ftb_icon",
+                              "icon": "{{rewards.*.choices.*.choice_icons.*}}"
+                            }
+                          ],
+                          "style": "quest_icon_items"
+                        }
+                      ],
+                      "repeat": "rewards.*.choices"
                     }
                   ],
                   "style": "reward_grid"
@@ -160,8 +264,36 @@
       ]
     },
     {
-      "type": "system:actions",
-      "actions": "{{result_actions}}"
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            },
+            {
+              "type": "system:text",
+              "text": " · {{actions.*.action_reward_title}}",
+              "when": "actions.*.action_reward_title"
+            }
+          ]
+        }
+      ]
     }
   ],
   "actions": {

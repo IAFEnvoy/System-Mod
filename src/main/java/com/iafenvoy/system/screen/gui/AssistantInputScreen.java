@@ -86,7 +86,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         this.enterDown = false;
         this.pendingCaret = false;
         for (Element input : document.querySelectorAll("input, textarea")) {
-            input.addEventListener("focus", event -> this.syncTextInputFocus());
+            input.addEventListener("focus", _ -> this.syncTextInputFocus());
             input.addEventListener("keydown", event -> {
                 if (event instanceof KeyEvent key) this.inputKeyPressed(input, key);
             }, true);
@@ -99,7 +99,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         if (!message.getValue().equals(this.draft)) message.setValue(this.draft);
         // setSelectionRange measures the control and its ancestors in AUI. An empty composer already has cursor 0.
         this.pendingCaret = !this.draft.isEmpty();
-        message.addEventListener("input", event -> this.updateSuggestions());
+        message.addEventListener("input", _ -> this.updateSuggestions());
         message.focus();
         AssistantView.bind(document, "asr_toggle", this::toggleRecognition);
         AssistantView.bind(document, "asr_cancel", this::stopRecognition);
@@ -116,7 +116,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         this.pendingCaret = false;
         if (message.getValue().equals(this.draft)
                 && message.getCursor() == 0 && !message.hasSelection())
-            try (GeometryQueryScope geometry = GeometryQueryScope.open()) {
+            try (GeometryQueryScope _ = GeometryQueryScope.open()) {
                 message.setSelectionRange(this.draft.length(), this.draft.length());
             }
     }
@@ -355,7 +355,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
                 // AUI focuses buttons before mousedown; restore the editor before the IME focus poll.
                 document.getElementById("message").focus();
             });
-            row.addEventListener("click", event -> this.completeSuggestion(index));
+            row.addEventListener("click", _ -> this.completeSuggestion(index));
             popup.appendChild(row);
         }
         popup.appendChild(AssistantView.element(document, "div", "command_hint", AssistantView.tr("system.ui.command_hint")));

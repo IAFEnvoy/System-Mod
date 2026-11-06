@@ -11,8 +11,8 @@ import com.iafenvoy.system.data.card.client.ClientCards;
 import com.iafenvoy.system.event.client.AssistantRecognitionKeys;
 import com.iafenvoy.system.module.client.ClientMessage;
 import com.iafenvoy.system.registry.SystemHudEntries;
-import com.iafenvoy.system.screen.card.CardPageState;
 import com.iafenvoy.system.screen.card.CardPresentation;
+import com.iafenvoy.system.screen.card.CardUiState;
 import com.iafenvoy.system.screen.gui.AssistantItems;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
 import com.iafenvoy.system.speech.SpeechException;
@@ -81,7 +81,7 @@ public final class AssistantMessages {
     }
 
     private record Message(String text, String speechText, List<Button> buttons, UUID cardId, AgentResult result,
-                           CardPageState pages) {
+                           CardUiState pages) {
         private Message {
             buttons = List.copyOf(buttons);
         }
@@ -135,10 +135,10 @@ public final class AssistantMessages {
     }
 
     private static Message message(AgentResult result) {
-        return message(result, new CardPageState());
+        return message(result, new CardUiState());
     }
 
-    private static Message message(AgentResult result, CardPageState pages) {
+    private static Message message(AgentResult result, CardUiState pages) {
         ClientMessage content = CardPresentation.message(result);
         List<Button> buttons = new ArrayList<>();
         CardUpdate card = result.cards().getFirst();
@@ -324,7 +324,7 @@ public final class AssistantMessages {
         Message shown = current;
         Button back = backButton(shown);
         Element button = element(document, "button", "card_action", back.label());
-        button.addEventListener("click", event -> {
+        button.addEventListener("click", _ -> {
             if (canInteract(shown)) activate(shown, back);
         });
         navigation.appendChild(button);
@@ -436,7 +436,7 @@ public final class AssistantMessages {
         actions.setInnerHTML("");
         for (Button option : buttons(shown)) {
             Element button = element(document, "button", option.id().equals("confirm") ? "primary" : "notification_action", option.label());
-            button.addEventListener("click", event -> {
+            button.addEventListener("click", _ -> {
                 if (canInteract(shown)) activate(shown, option);
             });
             actions.appendChild(button);
@@ -602,15 +602,17 @@ public final class AssistantMessages {
             classes.toggle("expanded", expanded);
             classes.toggle("content_visible", contentVisible);
             classes.toggle("interactive", enabled);
-            for (Element button : document.querySelectorAll("#notification_cards button[data-requires-idle]"))
-                button.setDisabled(!enabled || busy);
+            // Pointer gating and click guards own HUD input; only business state disables buttons visually.
+            for (Element button : document.querySelectorAll("#notification_cards button[data-requires-idle]")) {
+                boolean disabled = busy || "true".equals(button.getAttribute("data-card-disabled"));
+                if (button.isDisabled() != disabled) button.setDisabled(disabled);
+            }
             Element actions = document.getElementById("notification_actions");
             if (actions != null)
                 for (int index = 0; index < actions.children.size(); index++) {
                     Element button = actions.children.get(index);
-                    boolean disabled = !enabled || current != null && index < current.buttons().size() && current.buttons().get(index).requiresIdle() && busy;
-                    if (disabled) button.setAttribute("disabled", "");
-                    else button.removeAttribute("disabled");
+                    boolean disabled = current != null && index < current.buttons().size() && current.buttons().get(index).requiresIdle() && busy;
+                    if (button.isDisabled() != disabled) button.setDisabled(disabled);
                 }
         }
         String hint = chatting ? tr("system.ui.message_interacting")

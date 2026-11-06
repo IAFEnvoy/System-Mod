@@ -42,8 +42,23 @@ public record ItemSourceOutput(String item, String scope, List<ItemSource> sourc
         Identifier id = Identifier.tryParse(this.item);
         Component name = id == null ? Component.literal(this.item) : BuiltInRegistries.ITEM.getOptional(id)
                 .map(value -> Component.translatable(value.getDescriptionId())).orElseGet(() -> Component.literal(this.item));
-        return CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_sources"))
+        CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_sources"))
                 .title("system.result.item_sources").summary("system.ui.item_sources_summary", name, this.sources.size())
-                .put("item_id", this.item).put("sources", this.sources).put("truncated", this.truncated);
+                .put("item_id", this.item).put("truncated", this.truncated);
+        return builder.list("sources", this.sources, (prefix, source) -> {
+            String category = switch (source.kind()) {
+                case "tag", "loot" -> source.kind();
+                default -> "recipe";
+            };
+            builder.put(prefix + "category", category).put(prefix + "source", source).put(prefix + "id", source.id());
+            for (String type : List.of("recipe", "loot", "tag")) builder.enable(prefix + type, type.equals(category));
+            builder.put(prefix + "notes", CardBuilder.join(source.notes().stream().<Component>map(note -> {
+                if (note.equals("requires_fuel")) return Component.translatable("system.ui.source_fuel");
+                for (String key : List.of("weight", "quality", "tag"))
+                    if (note.startsWith(key + " "))
+                        return Component.translatable("system.ui.source_" + key + "_note", note.substring(key.length() + 1));
+                return Component.literal(note);
+            }).toList(), " · "));
+        });
     }
 }

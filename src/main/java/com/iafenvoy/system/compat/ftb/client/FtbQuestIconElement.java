@@ -1,5 +1,6 @@
 package com.iafenvoy.system.compat.ftb.client;
 
+import com.iafenvoy.system.data.card.FtbIconData;
 import com.iafenvoy.system.data.output.QuestIconOutput;
 import com.iafenvoy.system.screen.AssistantGeometry;
 import com.iafenvoy.system.screen.gui.AssistantTooltip;
@@ -42,7 +43,11 @@ public final class FtbQuestIconElement extends MinecraftElement implements Assis
         this.setClassName("quest_type_icon");
     }
 
-    public static Element create(Document document, QuestIconOutput preview) {
+    public static Element create(Document document, FtbIconData data) {
+        return data.preview() == null ? createQuest(document, data.quest(), LegacyText.formatted(data.title())) : create(document, data.preview());
+    }
+
+    private static Element create(Document document, QuestIconOutput preview) {
         if (preview.kind() == QuestIconOutput.Kind.TASK) {
             TaskType type = TaskTypes.TYPES.get(preview.type());
             return type == null ? null : createType(document, type.getIcon(), type.getDisplayName(), preview);

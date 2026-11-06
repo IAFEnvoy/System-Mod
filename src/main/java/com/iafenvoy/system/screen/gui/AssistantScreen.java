@@ -7,8 +7,8 @@ import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.module.client.ClientModuleBindingsCache;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.screen.AssistantGeometry;
-import com.iafenvoy.system.screen.card.CardPageState;
 import com.iafenvoy.system.screen.card.CardTemplates;
+import com.iafenvoy.system.screen.card.CardUiState;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import com.sighs.apricityui.render.Drawer;
@@ -23,7 +23,7 @@ import static com.iafenvoy.system.screen.gui.AssistantView.*;
  */
 public final class AssistantScreen extends AssistantInputScreen {
     // Keep independent card pages across transcript redraws and window resizing, only for this screen's lifetime.
-    private final Map<UUID, CardPageState> cardPages = new HashMap<>();
+    private final Map<UUID, CardUiState> cardPages = new HashMap<>();
     private List<AssistantClientState.ChatEntry> renderedEntries = List.of();
     private final List<Element> renderedRows = new ArrayList<>();
     private PendingScroll pendingScroll;
@@ -119,7 +119,7 @@ public final class AssistantScreen extends AssistantInputScreen {
                 for (int index = 0; index < this.renderedRows.size(); index++) {
                     Element row = this.renderedRows.get(index);
                     if (!reload && row.isConnected() && row.document == document)
-                        reusable.computeIfAbsent(this.renderedEntries.get(index), unused -> new ArrayDeque<>()).add(row);
+                        reusable.computeIfAbsent(this.renderedEntries.get(index), _ -> new ArrayDeque<>()).add(row);
                 }
                 List<Element> rows = new ArrayList<>();
                 Set<UUID> visibleCards = new HashSet<>();
@@ -137,9 +137,10 @@ public final class AssistantScreen extends AssistantInputScreen {
                 this.cardPages.keySet().retainAll(visibleCards);
                 this.renderedEntries = entries;
             }
-            for (Element button : list.querySelectorAll("button[data-requires-idle]"))
-                if (button.isDisabled() != AssistantClient.state().busy())
-                    button.setDisabled(AssistantClient.state().busy());
+            for (Element button : list.querySelectorAll("button[data-requires-idle]")) {
+                boolean disabled = AssistantClient.state().busy() || "true".equals(button.getAttribute("data-card-disabled"));
+                if (button.isDisabled() != disabled) button.setDisabled(disabled);
+            }
             display(document.getElementById("welcome"), entries.isEmpty() ? "flex" : "none");
             display(document.getElementById("conversation"), entries.isEmpty() ? "none" : "grid");
             text(document.getElementById("status"), tr(AssistantClient.state().busy() ? "system.ui.working" : "system.ui.ready"));
@@ -154,7 +155,7 @@ public final class AssistantScreen extends AssistantInputScreen {
         if (!entry.text().isBlank()) row.appendChild(element(document, "div", "message_text", entry.text()));
         AgentResult result = entry.result();
         if (result != null) for (CardUpdate card : result.cards())
-            row.appendChild(renderCard(document, card, result.messageKey(), this.cardPages.computeIfAbsent(card.ref().id(), unused -> new CardPageState())));
+            row.appendChild(renderCard(document, card, result.messageKey(), this.cardPages.computeIfAbsent(card.ref().id(), _ -> new CardUiState())));
         return row;
     }
 
@@ -194,12 +195,10 @@ public final class AssistantScreen extends AssistantInputScreen {
         if (this.pendingScroll != null && list.getLayout().getCommittedRectIfValid() != null) {
             PendingScroll pending = this.pendingScroll;
             this.pendingScroll = null;
-            try (Document.ContextScope ignored = Document.withContext(document);
-                 GeometryQueryScope geometry = GeometryQueryScope.open()) {
+            try (Document.ContextScope ignored = Document.withContext(document); GeometryQueryScope _ = GeometryQueryScope.open()) {
                 double limit = AssistantGeometry.scrollLimit(list, false);
                 list.setScrollTop(pending.follow ? limit : Math.clamp(pending.target, 0, limit));
-                double current = pending.follow && !pending.smooth && pending.target <= pending.current
-                        ? limit : Math.clamp(pending.current, 0, limit);
+                double current = pending.follow && !pending.smooth && pending.target <= pending.current ? limit : Math.clamp(pending.current, 0, limit);
                 if (Double.compare(list.scrollTop, current) != 0) {
                     list.scrollTop = current;
                     list.getLayout().invalidateScrollVersion();

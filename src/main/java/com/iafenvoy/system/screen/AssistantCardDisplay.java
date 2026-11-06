@@ -12,6 +12,7 @@ import com.iafenvoy.system.module.client.DisplayCardCache;
 import com.iafenvoy.system.registry.SystemHudEntries;
 import com.iafenvoy.system.screen.card.CardPresentation;
 import com.iafenvoy.system.screen.card.CardTemplates;
+import com.iafenvoy.system.screen.card.CardUiState;
 import com.iafenvoy.system.screen.gui.AssistantItems;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.sighs.apricityui.client.gui.ApricityGuiLayers;
@@ -53,11 +54,13 @@ public final class AssistantCardDisplay {
     private static final class RenderedCard {
         private DisplayCard snapshot;
         private final Element element;
+        private final CardUiState ui;
         private Phase phase = Phase.WAITING;
 
-        private RenderedCard(DisplayCard snapshot, Element element) {
+        private RenderedCard(DisplayCard snapshot, Element element, CardUiState ui) {
             this.snapshot = snapshot;
             this.element = element;
+            this.ui = ui;
         }
     }
 
@@ -119,11 +122,12 @@ public final class AssistantCardDisplay {
                         try {
                             RenderedCard previous = RENDERED.get(card.key());
                             if (reload || previous == null || !previous.snapshot.equals(card)) {
-                                Element content = Element.init(CardPresentation.of(CardUpdate.show(data), "", CardContext.Mode.HUD, 0).render(document));
+                                CardUiState ui = previous == null ? new CardUiState() : previous.ui;
+                                Element content = Element.init(CardPresentation.of(CardUpdate.show(data), "", CardContext.Mode.HUD, 0, ui).render(document));
                                 if (previous == null) {
                                     Element row = Element.init(AssistantView.element(document, "div", "card_display_entry", ""));
                                     row.appendChild(content);
-                                    RENDERED.put(card.key(), new RenderedCard(card, row));
+                                    RENDERED.put(card.key(), new RenderedCard(card, row, ui));
                                 } else {
                                     // The wrapper owns motion; progress/template changes only replace its content.
                                     AssistantView.reconcile(previous.element, List.of(content));
@@ -165,8 +169,7 @@ public final class AssistantCardDisplay {
     }
 
     private static void advanceAnimation() {
-        try (Document.ContextScope ignored = Document.withContext(document);
-             GeometryQueryScope geometry = GeometryQueryScope.open()) {
+        try (Document.ContextScope ignored = Document.withContext(document); GeometryQueryScope _ = GeometryQueryScope.open()) {
             Element root = document.getElementById("card_display");
             String offset = SystemHudEntries.DISPLAY_CARDS.slideOffset(document) + "px";
             boolean changed = !offset.equals(root.getInlineStylePropertyValue("--card-slide-offset"));

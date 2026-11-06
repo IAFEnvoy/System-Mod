@@ -5,52 +5,81 @@
       "translate": "system.ui.quest_list_title"
     },
     {
-      "type": "system:context",
+      "type": "system:text",
       "translate": "system.ui.quest_list_hint",
-      "unless": "unlock_notice"
+      "unless": "unlock_notice",
+      "style": [
+        "card_context"
+      ]
     },
     {
-      "type": "system:grouped_actions",
-      "actions": "{{result_actions}}",
+      "type": "system:groups",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
       "group": "{{actions.*.action_chapter_id}}",
       "group_label": "{{actions.*.action_chapter}}",
       "section": "{{actions.*.action_group_id}}",
       "section_label": "{{actions.*.action_group}}",
-      "columns": 6,
-      "max_row": 3,
-      "cell": 104,
       "children": [
         {
-          "type": "system:quest_pin",
-          "quest": "{{actions.*.action_quest_id}}"
-        },
-        {
-          "type": "system:quest_icon",
-          "quest": "{{actions.*.action_quest_id}}",
-          "title": "{{actions.*.action_title}}"
-        },
-        {
-          "type": "system:text",
-          "style": "offer_cell_label",
-          "text": "{{actions.*.action_title}}",
-          "when": "actions.*.action_title"
-        },
-        {
-          "type": "system:text",
-          "style": "offer_cell_label",
-          "text": "{{actions.*.label}}",
-          "unless": "actions.*.action_title"
-        },
-        {
-          "type": "system:text",
-          "style": "card_action_cell_meta",
-          "text": "#{{actions.*.action_number}}",
-          "when": "actions.*.action_title",
-          "unless": "unlock_notice"
-        },
-        {
-          "type": "system:progress",
-          "value": "{{actions.*.action_progress}}"
+          "type": "system:grid",
+          "source": "{{actions}}",
+          "filter": "{{actions.*.visible}}",
+          "columns": 6,
+          "max_row": 3,
+          "cell": 104,
+          "children": [
+            {
+              "type": "system:button",
+              "click": "{{actions.*.click_type}}",
+              "value": "{{actions.*.value}}",
+              "disabled": "{{actions.*.disabled}}",
+              "behavior": "{{actions.*.behavior}}",
+              "children": [
+                {
+                  "type": "system:ftb_icon",
+                  "icon": "{{actions.*.action_icon}}",
+                  "style": "quest_card_icon"
+                },
+                {
+                  "type": "system:text",
+                  "style": "offer_cell_label",
+                  "text": "{{actions.*.action_title}}",
+                  "when": "actions.*.action_title"
+                },
+                {
+                  "type": "system:text",
+                  "style": "offer_cell_label",
+                  "text": "{{actions.*.label}}",
+                  "unless": "actions.*.action_title"
+                },
+                {
+                  "type": "system:text",
+                  "style": "card_action_cell_meta",
+                  "text": "#{{actions.*.action_number}}",
+                  "when": "actions.*.action_title",
+                  "unless": "unlock_notice"
+                }
+              ],
+              "style": [
+                "offer_cell_content",
+                "card_action_cell"
+              ]
+            },
+            {
+              "type": "system:button",
+              "click": "local",
+              "value": "{{actions.*.pin}}",
+              "binding": "{{actions.*.pin_binding}}",
+              "icon": "system:icons/pin.svg",
+              "style": "quest_card_pin",
+              "unless": "simple"
+            },
+            {
+              "type": "system:progress",
+              "value": "{{actions.*.action_progress}}"
+            }
+          ]
         }
       ]
     }

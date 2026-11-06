@@ -3,7 +3,9 @@ package com.iafenvoy.system.data.card;
 import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.output.ItemPreviewOutput;
+import com.iafenvoy.system.data.output.QuestIconOutput;
 import com.iafenvoy.system.data.store.Reward;
+import com.iafenvoy.system.util.CardEventValue;
 import com.iafenvoy.system.util.LegacyText;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -58,6 +60,10 @@ public final class CardBuilder {
 
     public CardBuilder put(String key, Object value) {
         this.context.put(key, value);
+        if (value instanceof List<?> entries)
+            for (int index = 0; index < entries.size(); index++)
+                if (entries.get(index) instanceof ItemPreviewOutput item)
+                    this.context.put(key + "." + index + ".label", new CardText.Items(List.of(item)));
         return this;
     }
 
@@ -95,12 +101,29 @@ public final class CardBuilder {
 
     public CardBuilder serverButton(String id, String label, Identifier action, Map<String, String> arguments,
                                     CardButton.Placement placement, CardButton.Behavior behavior) {
-        return this.button(new CardButton(id, label, new CardAction.Server(action, arguments), placement, behavior));
+        return this.serverButton(id, label, CardEventValue.encode(action, arguments), placement, behavior);
+    }
+
+    public CardBuilder serverButton(String id, String label, String value, CardButton.Placement placement, CardButton.Behavior behavior) {
+        return this.button(new CardButton(id, label, new CardAction.Server(value), placement, behavior));
+    }
+
+    public CardBuilder urlButton(String id, String label, String url) {
+        return this.button(new CardButton(id, label, new CardAction.Url(url), CardButton.Placement.BODY, CardButton.Behavior.WAIT));
     }
 
     public CardBuilder localButton(String id, String label, Identifier action, Map<String, String> arguments) {
         return this.button(new CardButton(id, label, new CardAction.Local(action, arguments),
                 CardButton.Placement.FOOTER, CardButton.Behavior.CLOSE));
+    }
+
+    public CardBuilder callback(String key, Runnable callback) {
+        this.context.callback(key, callback);
+        return this;
+    }
+
+    public CardBuilder icons(String key, List<QuestIconOutput> icons) {
+        return this.put(key, icons.stream().map(FtbIconData::type).toList());
     }
 
     public CardBuilder actionParameter(String key, Object value) {

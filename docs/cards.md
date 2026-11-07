@@ -403,7 +403,7 @@ CardUiState 在每个展示实例保存页码、选中组和折叠状态，按�
 
 固定记录由核心模块的 `DisplayCardsDataStorage` 保存，存储声明为 `CoreSystemModule.DISPLAY_CARDS`，Saturn Codec 类型为 `system:display_cards`。去重且保持插入顺序的记录只含 `source` 和 `id`，不保存过期任务快照或客户端对象。更新通过 `AgentStore` 玩家事务执行，实际变化调用 `markDirty()`；沿用 `<存档>/system-agent/<玩家UUID>.json` 的 moduleData，因此按服务器 / 存档及玩家隔离，重新登录、重启仍保留。撤销 / reset 删除玩家业务数据时一起删除；普通登出只清空客户端镜像。
 
-服务端 `AssistantCardDisplays` 负责数据源与会话，由 `ModuleManager` 驱动登录、初始化、tick 和关闭。模块通过 `context.displays().register(context.id(), sourceId, reader)` 注册来源，reader 在服务端线程接收当前玩家及业务 ID，返回 `Optional<CardData>`。每秒重读当前数据，只在快照变化或确认固定操作时发送 `DisplayCardsS2CPayload`；C2S 只接受 key 和固定状态，不接受客户端提供的卡片正文。session / revision 防止过期快照覆盖，异步写回还会复核连接与玩家运行代次。
+服务端 `AssistantCardDisplays` 负责数据源与会话，由 `ModuleManager` 驱动登录、初始化、tick 和关闭。模块通过 `context.get(ContextTypes.DISPLAYS).register(context.id(), sourceId, reader)` 注册来源，reader 在服务端线程接收当前玩家及业务 ID，返回 `Optional<CardData>`。每秒重读当前数据，只在快照变化或确认固定操作时发送 `DisplayCardsS2CPayload`；C2S 只接受 key 和固定状态，不接受客户端提供的卡片正文。session / revision 防止过期快照覆盖，异步写回还会复核连接与玩家运行代次。
 
 FTB 来源为隔离适配器 `FtbQuestDisplay`：每次核对当前队伍、任务可见性及详情解锁条件，再生成 `QuestPinOutput`。`assets/system/cards/quest_pin.json` 显示标题、章节、前三项目标与底部进度，标题前用彩色勾 / 叉表示完成状态；额外目标只显示数量。完成后继续保留到手动取消 pin，不自动提交或领奖。任务不存在、变为隐藏或对应模块停用时，保留引用但不发送卡片正文；恢复可读后重新出现。
 

@@ -11,6 +11,7 @@ import com.iafenvoy.system.data.input.CommercePreviewInput;
 import com.iafenvoy.system.data.output.CommercePreviewOutput;
 import com.iafenvoy.system.data.store.PurchaseType;
 import com.iafenvoy.system.module.CatalogModule;
+import com.iafenvoy.system.module.ContextTypes;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;
@@ -64,13 +65,13 @@ public record ShopSystemModule(
 
     @Override
     public PlayerModule runtime(ModuleContext context) {
-        return context.commerce().runtime(PurchaseType.SHOP, STORAGE);
+        return context.get(ContextTypes.COMMERCE).runtime(PurchaseType.SHOP, STORAGE);
     }
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview = context.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(context.commerce()).tool());
-        return List.of(new ShopModule(context.catalogs()), new ShopQuoteModule(context.catalogs(), preview),
-                new ShopPurchaseModule(new ShopPurchaseTool(context.commerce()).tool()));
+        ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview = context.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(context.get(ContextTypes.COMMERCE)).tool());
+        return List.of(new ShopModule(context.get(ContextTypes.CATALOGS)), new ShopQuoteModule(context.get(ContextTypes.CATALOGS), preview),
+                new ShopPurchaseModule(new ShopPurchaseTool(context.get(ContextTypes.COMMERCE)).tool()));
     }
 }

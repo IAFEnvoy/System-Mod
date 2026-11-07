@@ -78,7 +78,7 @@ public final class QuestSystemModule implements SharedModule {
     @Override
     public PlayerModule runtime(ModuleContext context) {
         try {
-            return (PlayerModule) Class.forName("com.iafenvoy.system.compat.ftb.FtbQuestAdapter").getMethod("runtime", MinecraftServer.class).invoke(null, context.game().server());
+            return (PlayerModule) Class.forName("com.iafenvoy.system.compat.ftb.FtbQuestAdapter").getMethod("runtime", ModuleContext.class).invoke(null, context);
         } catch (ReflectiveOperationException | LinkageError error) {
             throw new IllegalStateException("FTB Quests module runtime is unavailable", error);
         }

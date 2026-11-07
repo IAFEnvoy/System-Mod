@@ -27,7 +27,7 @@ public interface ServerModule {
     }
 
     /**
-     * One runtime per server and configured definition; the manager owns its player sessions.
+     * A definition's runtime, optionally shared through ModuleContext; the manager owns its player sessions.
      */
     default PlayerModule runtime(ModuleContext context) {
         return new PlayerModule() {

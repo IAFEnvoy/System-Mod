@@ -28,7 +28,9 @@
 
 AssistantServer 创建数据库、AgentEngine、SearchGateway、QuestNarration 和 ModuleManager。引擎构造参数只有 AgentStore、ModelClient 和事务内解析 AgentJournal 的函数；宿主将该函数映射到核心模块的账本存储。引擎和执行上下文因此不再直接调用 ModuleData 或 CoreSystemModule。
 
-ModuleContext 在安装阶段提供引擎、游戏桥接、交易、目录、数据库、搜索、口播和模块注册表；每个配置实例得到自己的 owner ID 与工具实例缓存。需要什么服务就传入对应工作流或 Tool 的构造器，不在静态模块定义中存服务器实例，也不让执行引擎成为业务服务查询器。
+AssistantServer 使用单个 volatile INSTANCE：ServerStartedEvent 完成全部服务构建后发布，ServerStoppingEvent 先清空引用，再关闭玩家会话与资源；启动失败也清理已创建资源。`get(server)` 仍检查服务器对象是否匹配，避免上个存档的迟到回调访问新实例。不使用以 MinecraftServer 为键的全局 Map，不向 MinecraftServer 注入字段或添加对应 Mixin。
+
+ModuleContext 的 AgentEngine 与模块注册表是构造器必需的固定字段，直接通过 engine() / modules() 读取。其他服务由 AssistantServer 注入 `Map<ContextType<?>, Object>`，模块通过 get 直接取得对应类型；内置键位于 ContextTypes，扩展可声明自己的 ContextType，无需增加上下文字段或构造参数。ModuleManager 在装配任何工具、工作流之前发布 ModuleContextEvent，供其他模组同步添加服务。各配置共享同一服务 Map，每个配置实例仍有自己的 owner ID 与工具实例缓存；ContextType 按对象身份匹配，名称只用于诊断。需要什么服务就传入对应工作流或 Tool 的构造器，不在静态模块定义中存服务器实例，也不让执行引擎成为业务服务查询器。
 
 ```mermaid
 flowchart TD
@@ -48,7 +50,7 @@ flowchart TD
 
 交易回执在事务内一次构建并带齐展示所需的奖池来源，工作流直接用 AgentResult.data 返回，不再借用预览请求对象、二次读取玩家存档或重建同一回执。语义路由直接复用 LexicalIndex 的 Match / Ranking，仅筛选和排序可用候选，不复制成同字段的另一套 DTO。
 
-保留有独立职责的适配层：单行为 Tool 固定工具身份和执行标记，ModelGateway / SearchGateway 负责归属与计量，playerStore 视图在事务内校验玩家和运行代次，CommerceCatalogs 按模块权限生成可用目录。ModuleContext 只共享这些服务的引用，并为每个配置实例复用工具实例；它不另建一套业务服务或存储缓存。
+保留有独立职责的适配层：单行为 Tool 固定工具身份和执行标记，ModelGateway / SearchGateway 负责归属与计量，playerStore 视图在事务内校验玩家和运行代次，CommerceCatalogs 按模块权限生成可用目录。ModuleContext 共享服务引用，并为每个配置实例复用工具实例；需要跨配置共享生命周期时，可在安装期间调用 sharedRuntime(type, factory)，由 ModuleManager 按实例去重维护与关闭，不在静态模块定义里缓存运行时。
 
 问答继续先查当前玩家/共享知识及授权的 FTB 说明书；仅在查无结果、本次允许联网且搜索模块启用时授权外部工具。授权集合属于单次 ExecutionContext，选择工作流时重置，每次搜索/抓取再次检查。Agent 只提供通用外部工具授权接口，数据库优先和搜索规则由 QuestionModule / WebResearch 实现。
 

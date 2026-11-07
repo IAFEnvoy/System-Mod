@@ -2,6 +2,7 @@ package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.module.ContextTypes;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ToolModule;
 import com.iafenvoy.system.module.builtin.search.WebFetchTool;
@@ -25,6 +26,6 @@ public final class SearchSystemModule implements ToolModule {
 
     @Override
     public List<ToolRegistry.Tool<?, ?>> tools(ModuleContext context) {
-        return List.of(new WebSearchTool(context.search()).tool(), new WebFetchTool(context.search()).tool());
+        return List.of(new WebSearchTool(context.get(ContextTypes.SEARCH)).tool(), new WebFetchTool(context.get(ContextTypes.SEARCH)).tool());
     }
 }

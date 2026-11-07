@@ -6,6 +6,7 @@ import com.iafenvoy.system.agent.ToolRegistry;
 import com.iafenvoy.system.assistant.tool.player.PlayerQueryTool;
 import com.iafenvoy.system.data.input.EmptyInput;
 import com.iafenvoy.system.data.output.PlayerSnapshotOutput;
+import com.iafenvoy.system.module.ContextTypes;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.SharedModule;
 import com.iafenvoy.system.module.builtin.player.PlayerQueryModule;
@@ -25,7 +26,7 @@ public final class PlayerSystemModule implements SharedModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player = context.tool(BuiltinTools.PLAYER, () -> new PlayerQueryTool(context.game()).tool());
+        ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player = context.tool(BuiltinTools.PLAYER, () -> new PlayerQueryTool(context.get(ContextTypes.GAME)).tool());
         return List.of(new PlayerQueryModule(player));
     }
 }

@@ -61,7 +61,7 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
             });
             boolean changed = !before.equals(tasks.stream().map(team::getProgress).toList()) || team.getCompletionCount(target) != completions;
             boolean completed = team.isCompleted(quest) || team.getCompletionCount(target) != completions;
-            if (completed) FtbQuestNotifications.submitted(player, file, team, quest);
+            if (completed) this.access.notifications.submitted(player, file, team, quest);
             return new QuestSubmitOutput(FtbQuestAccess.hex(quest.getId()), FtbQuestText.title(player, quest), tasks.stream()
                     .map(task -> FtbQuestAccess.task(player, team, task)).toList(), changed, completed);
         });

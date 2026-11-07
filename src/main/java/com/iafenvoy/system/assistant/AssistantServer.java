@@ -13,6 +13,7 @@ import com.iafenvoy.system.data.database.AgentDatabases;
 import com.iafenvoy.system.data.prompt.PromptReloadListener;
 import com.iafenvoy.system.data.store.FileAgentStore;
 import com.iafenvoy.system.event.AssistantRegistrationEvent;
+import com.iafenvoy.system.module.ContextTypes;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.ModuleManager;
@@ -37,16 +38,14 @@ import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Per-server composition and event entry points; player sessions, requests and usage have separate owners.
+ * One active server runtime; player sessions, requests and usage have separate owners.
  */
 @EventBusSubscriber
 public final class AssistantServer {
-    private static final Map<MinecraftServer, AssistantServer> SERVERS = new ConcurrentHashMap<>();
+    private static volatile AssistantServer INSTANCE;
     private final MinecraftServer server;
     private final AgentEngine engine;
     private final AgentDatabases databases;
@@ -85,8 +84,14 @@ public final class AssistantServer {
             CommerceCatalogs catalogs = new CommerceCatalogs(CommerceCatalog.create(server.registryAccess()), this.engine::moduleEnabled);
             CommerceTransactions transactions = new CommerceTransactions(this.engine, game, catalogs);
             this.displays = this.own(new AssistantCardDisplays(server, this.engine));
-            ModuleContext modules = new ModuleContext(this.engine, game, transactions, catalogs, this.databases,
-                    this.search, this.narration, this.displays, server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE));
+            ModuleContext modules = new ModuleContext(this.engine, server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE))
+                    .put(ContextTypes.GAME, game)
+                    .put(ContextTypes.COMMERCE, transactions)
+                    .put(ContextTypes.CATALOGS, catalogs)
+                    .put(ContextTypes.DATABASES, this.databases)
+                    .put(ContextTypes.SEARCH, this.search)
+                    .put(ContextTypes.NARRATION, this.narration)
+                    .put(ContextTypes.DISPLAYS, this.displays);
             this.moduleManager = this.own(new ModuleManager(server, modules));
             this.engine.moduleAccess(this.moduleManager::hasModule);
             NeoForge.EVENT_BUS.post(new AssistantRegistrationEvent(this.engine));
@@ -130,7 +135,8 @@ public final class AssistantServer {
     }
 
     public static AssistantServer get(MinecraftServer server) {
-        return SERVERS.get(server);
+        AssistantServer runtime = INSTANCE;
+        return runtime != null && runtime.server == server ? runtime : null;
     }
 
     public ModuleManager moduleManager() {
@@ -167,21 +173,32 @@ public final class AssistantServer {
 
     @SubscribeEvent
     public static void started(ServerStartedEvent event) {
+        if (INSTANCE != null) return;
         try {
-            SERVERS.put(event.getServer(), new AssistantServer(event.getServer()));
+            // Publish only fully constructed services; stale callbacks still check their server identity.
+            INSTANCE = new AssistantServer(event.getServer());
             SystemCommand.install(event.getServer());
         } catch (Exception | LinkageError e) {
+            stopping(event.getServer());
             SystemMod.LOGGER.error("Assistant failed to initialize; reward writes are disabled", e);
         }
     }
 
     @SubscribeEvent
     public static void stopping(ServerStoppingEvent event) {
-        AssistantServer runtime = SERVERS.remove(event.getServer());
+        stopping(event.getServer());
+    }
+
+    private static void stopping(MinecraftServer server) {
+        AssistantServer runtime = get(server);
         if (runtime != null) {
-            runtime.players.close();
-            runtime.closeResources();
-            runtime.usage.drain();
+            INSTANCE = null;
+            try {
+                runtime.players.close();
+            } finally {
+                runtime.closeResources();
+                runtime.usage.drain();
+            }
         }
     }
 

@@ -5,6 +5,7 @@ import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.assistant.AdvancementTracker;
 import com.iafenvoy.system.assistant.tool.advancement.FeatureUnlockTool;
 import com.iafenvoy.system.assistant.tool.advancement.RewardCreditTool;
+import com.iafenvoy.system.module.ContextTypes;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;
@@ -33,11 +34,11 @@ public final class AdvancementSystemModule implements WorkflowModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new AdvancementFollowupModule(context.catalogs(), new FeatureUnlockTool().tool(), new RewardCreditTool().tool()));
+        return List.of(new AdvancementFollowupModule(context.get(ContextTypes.CATALOGS), new FeatureUnlockTool().tool(), new RewardCreditTool().tool()));
     }
 
     @Override
     public PlayerModule runtime(ModuleContext context) {
-        return new AdvancementTracker(context.game().server(), context.engine());
+        return new AdvancementTracker(context.get(ContextTypes.GAME).server(), context.engine());
     }
 }

@@ -56,7 +56,32 @@ public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<Ex
 
 扩展模组在公共入口绑定 TYPES。没有参数时使用 MapCodec.unit；需要参数时实现不可变 record，并用 RecordCodecBuilder.mapCodec 读取字段，codec() 返回同一个已注册实例。参数位于数据文件的 server 对象内，和 type 平铺；不增加第二套 JSON 手动解析。客户端也会解码同步的 server 数据，因此模块类及 Codec 必须不引用 net.minecraft.client 或可选模组实现类。
 
-ModuleManager 从当前服务器 RegistryAccess 读取动态配置，筛选 available() 后先安装纯工具，再安装工作流，最后创建各实例的 PlayerModule。每份配置有独立 ModuleContext，提供当前条目 `id()`、完整 `modules()` 注册表、引擎、游戏桥接、交易、目录权限、数据库、搜索与任务口播服务；服务由 AssistantServer 创建并显式注入，上下文工具缓存只在该配置内共享。不要把服务器、玩家或运行时对象保存在全局单例定义里。
+ModuleManager 从当前服务器 RegistryAccess 读取动态配置，筛选 available() 后先安装纯工具，再安装工作流，最后创建各实例的 PlayerModule。每份配置有独立 ModuleContext，提供当前条目 `id()`；通用基础依赖 AgentEngine 和模块注册表由构造器传入，以固定字段提供 `engine()` / `modules()`，不放入服务 Map。其他服务由 AssistantServer 创建，以 `put(ContextType<T>, T)` 注入，模块通过 `get(ContextType<T>)` 取得对应类型，无需强制转换。内置服务键位于 ContextTypes，包括 GAME、COMMERCE、CATALOGS、DATABASES、SEARCH、NARRATION 和 DISPLAYS。不要把服务器、玩家或运行时对象保存在全局单例定义里。
+
+新增服务只需声明类型键并注入对象，不修改 ModuleContext 的字段、构造器或 getter。例如：
+
+```java
+public static final ContextType<MyService> SERVICE = new ContextType<>("example:service");
+
+// Inject before installing modules; lookup returns MyService directly.
+context.put(SERVICE, service);
+MyService installed = context.get(SERVICE);
+```
+
+ContextType 按对象身份区分，名称仅用于诊断；注册和读取必须共用同一个键常量，同名的新键不会覆盖原键，也不会混淆泛型参数。put 不接受 null，get 遇到未注入服务会给出包含键名的错误。各配置上下文共用本次安装的服务 Map，id 和工具缓存仍各自独立；服务创建和关闭继续由 AssistantServer 或 ModuleManager 负责，Context 本身不接管生命周期。
+
+内置服务注入后，ModuleManager 在服务端线程通过 `NeoForge.EVENT_BUS` 发布一次 `ModuleContextEvent`，之后才分发配置上下文、安装工具和工作流。扩展模组可在此同步添加自己的服务，随后所有配置上下文都能取得同一实例：
+
+```java
+@SubscribeEvent
+public static void moduleContext(ModuleContextEvent event) {
+    event.context().put(SERVICE, new MyService());
+}
+```
+
+监听器注册到游戏事件总线，不是模组加载总线；固定字段通过 `event.context().engine()` / `modules()` 读取。该事件的上下文尚无配置 id，不能调用 id()，也不要异步延后注入或将服务保存到静态变量跨存档使用。需要生命周期管理的服务可实现 PlayerModule，并通过 sharedRuntime 创建；普通 put 不自动关闭对象。事件抛出异常会中止本次助手装配并沿用初始化清理路径。原 AssistantRegistrationEvent 保留在内置模块装配之后，用于直接向 AgentEngine 添加工作流和工具。
+
+安装期间可使用 `context.sharedRuntime(type, factory)` 让同类配置共用 PlayerModule。该表只属于本次 ModuleContext，按运行时 Class 索引，不以服务器为键、不跨存档保留。ModuleManager 按对象身份去重执行 validate/tick/close，初始化中断时也会反序关闭已创建实例；`runtime(type)` 供可信服务端入口查找已安装的实例。每份配置的玩家 Session 仍独立创建与关闭，共享运行时应自行合并玩家级资源的引用。
 
 不同配置可以提供相同动作 ID 的同类工作流。ModuleRegistry 按配置实例 ID 保存候选，命令/模型/语义目录只声明一次，执行时选择该玩家已启用的候选与对应工具。入口 Codec、工作流类型、版本、交互/事件属性、工具契约和只读权限必须一致；参数可影响执行和预算，不应让同一动作类型声明不同的路由契约。同一玩家同时启用多个候选时按模块实例 ID 排序选择第一个；数据包通常应让同类变体的条件互斥。流程选中后保留 owner，移除该配置会取消其在途和排队操作，不会中途换用另一份参数。
 
@@ -104,7 +129,7 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
 
 ## 玩家生命周期
 
-ServerModule.runtime(context) 返回每服务器、每模块配置的 PlayerModule：
+ServerModule.runtime(context) 返回该模块配置的 PlayerModule，也可显式共享同一实例：
 
 1. 全部工作流装配后执行 validate。
 2. binding(player) 在主线程捕获首次绑定数据，返回在 PlayerData 事务内执行的回调。
@@ -140,6 +165,8 @@ ClientModuleCaches.BINDINGS 按同步的动态条目对 client ID 分组，每�
 SystemDefinition.modules 的 Either 改为 `Holder<SystemModule> | TagKey<SystemModule>`，读取动态 system_module 注册表。引用格式、condition、tag 合并与手动增删规则不变；详见[数据包](datapacks.md#系统模块定义)。未知直接 ID 会报数据包错误，可选 tag 成员可用 required:false。
 
 可选 FTB 定义的 Codec 保持公共安全，依赖缺席时 available() 为 false，跳过工作流、运行时与存储钩子。FTB 通知检查已启用模块的实现 Codec，因此任务模块改名或自定义条目 ID 不会丢失通知。FTB 适配器仍只在依赖存在时反射加载。搜索仅在测试源集提供模块配置，不再向默认 tag 追加；管理员需明确配置或手动添加。
+
+FTB 适配器通过共享 FtbQuestRuntime 持有唯一的 FtbQuestAccess、知识索引和通知跟踪器。通知监听使用实例注册，随 validate 安装、close 注销，没有静态 SERVERS/ACCESS 表或进程级 installed 标记；客户端回声与其他服务器文件均被过滤。多个 FTB 定义共用一次通知维护，玩家 Session 引用全部释放后才清理查询及奖励引用；显式提交直接调用本实例的通知桥接，`/system ftb reload` 从 ModuleManager 查找同一知识索引。
 
 system 和 system_module 都是原生数据包注册表，在世界加载时读取、登录时同步，不是 retained reload listener；新增或修改参数需正常重启服务器/重新进入世界。tag 的资源重载仍使用原版规则。没有旧模块注册表/tag 路径兼容层。
 

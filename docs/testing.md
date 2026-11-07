@@ -926,3 +926,17 @@ GridNode 根据筛选后的完整索引数决定预留行数：结果不超过�
 共享轨道从 3px 加粗为 6px。ProgressNode 使用原生 CardProgressElement 绘制填充，按 350ms 缓出插值缩放矩阵；CardUiState 只保存数字与单调时间，不持有 DOM。常驻卡片更新正文时保留 UI 状态，重复目标不重播，中途改目标从当前显示值继续。动画只请求重绘，读取已提交矩形，不逐帧写样式、修改布局宽度或调用 Size.of。核对实际 AUI 1.2.9 sources JAR 的原生元素绘制及矩阵 API；编辑器同步预览动画与 CSS 快照。
 
 执行 `gradlew compileJava processResources --console=plain` 成功。未启动 Minecraft 或运行功能测试；游戏内首次显示、连续进度更新、完成 / 回退、主题与 GUI 缩放、移除及重新显示常驻卡片仍待验收。
+
+## 2026-11-07 服务端与 FTB 运行时生命周期
+
+AssistantServer 使用随 ServerStartedEvent / ServerStoppingEvent 创建和关闭的单个 INSTANCE，get(server) 读取一次 volatile 引用并核对服务器身份。FTB 查询、知识索引和通知跟踪由安装范围的共享 FtbQuestRuntime 持有，事件监听随实例注册和注销；ModuleManager 对共享运行时只 validate / tick / close 一次，安装失败也关闭已创建实例。多个 FTB 配置的玩家 Session 使用引用计数，最后一个关闭时才清理玩家查询和奖励引用。
+
+实际执行 `gradlew compileJava processResources --console=plain`，BUILD SUCCESSFUL；`git diff --check` 通过。静态搜索未发现 MinecraftServer 键 Map、旧通知静态调用或服务器持有器 / Mixin 引用，Mixin 配置无改动。未启动 Minecraft、运行测试或调用收费 API；连续切换存档、多个 FTB 定义启停、通知事件去重及缺少 FTB 时的运行时加载仍待游戏内验收。改动仅在 master，未同步 1.21.1。
+
+## 2026-11-07 ModuleContext 类型化服务 Map
+
+ModuleContext 保留 AgentEngine 和模块注册表为构造器固定字段，通过 engine() / modules() 读取；其余七项内置服务及扩展服务改为 ContextType<T> 键、Map<ContextType<?>, Object> 与泛型 put/get。模块管理、内置模块及可选 FTB 适配器统一迁移调用；同次安装的服务 Map 共享，配置 id、工具缓存及 sharedRuntime 原有生命周期保留。ContextType 按对象身份区分，同名键不混用；内部转换集中在 get，业务调用不需要强制转换。
+
+新增 ModuleContextEvent，由 ModuleManager 在服务端线程发布到游戏事件总线，时机为内置服务注入之后、配置分发及工具 / 工作流装配之前。监听器取得根上下文并同步 put 扩展服务，各配置继承同一 Map；固定字段不经过 put。事件位于管理器初始化 try 内，失败时仍清理已创建的共享运行时。原 AssistantRegistrationEvent 的装配后入口保留。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；静态搜索无 ContextTypes.ENGINE / MODULES 或无参构造残留，事件发布点位于所有安装循环之前，`git diff --check` 通过。testModClasses 只编译开发源集，未运行测试、启动 Minecraft 或新增探针，未修改配置或存档。游戏内扩展监听器、模块装配与可选依赖加载未作运行验证。

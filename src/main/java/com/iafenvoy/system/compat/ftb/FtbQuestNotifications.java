@@ -1,11 +1,8 @@
 package com.iafenvoy.system.compat.ftb;
 
-import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.data.card.CardUpdate;
-import com.iafenvoy.system.data.database.AgentDatabase;
 import com.iafenvoy.system.data.input.QuestDetailInput;
 import com.iafenvoy.system.data.output.QuestStartupOutput;
 import com.iafenvoy.system.data.output.QuestSubmission;
@@ -28,73 +25,74 @@ import dev.ftb.mods.ftbquests.quest.reward.Reward;
 import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 
 /**
  * Optional, server-thread FTB event bridge. Notices expose trusted actions without granting rewards on arrival.
  */
-final class FtbQuestNotifications {
-    private static final Map<MinecraftServer, FtbQuestNotifications> SERVERS = new IdentityHashMap<>();
-    private static final Map<MinecraftServer, FtbQuestAccess> ACCESS = new IdentityHashMap<>();
+public final class FtbQuestNotifications {
     private static final int MAX_COMPLETIONS_PER_TICK = 256;
-    private static boolean installed;
+    private final MinecraftServer server;
+    private boolean installed;
     private ServerQuestFile file;
     private final FtbQuestAccess access;
     private final Map<UUID, TeamState> teams = new HashMap<>();
     private int ticks;
 
-    private FtbQuestNotifications(ServerQuestFile file, FtbQuestAccess access) {
-        this.file = file;
+    FtbQuestNotifications(FtbQuestAccess access) {
+        this.server = access.game.server();
         this.access = access;
     }
 
-    static FtbQuestKnowledge knowledge(AgentEngine engine, AgentDatabase database, MinecraftServer server) {
-        FtbQuestAccess access = ACCESS.get(server);
-        return access == null ? new FtbQuestKnowledge(engine, database, server) : access.knowledge;
+    void install() {
+        if (this.installed) return;
+        this.installed = true;
+        NeoForge.EVENT_BUS.register(this);
     }
 
-    static void install(MinecraftServer server, FtbQuestAccess access) {
-        ACCESS.put(server, access);
-        if (installed) return;
-        installed = true;
-        NeoForge.EVENT_BUS.addListener(FTBQuestsEvent.QuestProgress.class, event -> {
-            QuestProgressEvent.Data data = event.getEventData();
-            FtbQuestNotifications tracker = changed(data.progressData());
-            if (tracker != null && data.type() == ProgressType.COMPLETED) tracker.completed(data.progressData());
-        });
-        NeoForge.EVENT_BUS.addListener(FTBQuestsEvent.TaskProgress.class, event -> changed(event.getEventData().progressData()));
-        NeoForge.EVENT_BUS.addListener(FTBQuestsEvent.ChapterProgress.class, event -> changed(event.getEventData().progressData()));
-        NeoForge.EVENT_BUS.addListener(FTBQuestsEvent.FileProgress.class, event -> changed(event.getEventData().progressData()));
-        NeoForge.EVENT_BUS.addListener(FTBQuestsEvent.ClearFileCache.class, event -> {
-            if (event.getEventData().file() instanceof ServerQuestFile file) {
-                FtbQuestNotifications tracker = SERVERS.get(file.server);
-                if (tracker != null) tracker.teams.clear();
-                FtbQuestAccess current = ACCESS.get(file.server);
-                if (current != null) current.knowledge.invalidate();
-            }
-        });
+    @SubscribeEvent
+    public void questProgress(FTBQuestsEvent.QuestProgress event) {
+        QuestProgressEvent.Data data = event.getEventData();
+        if (this.changed(data.progressData()) && data.type() == ProgressType.COMPLETED) this.completed(data.progressData());
     }
 
-    static void close(MinecraftServer server) {
-        SERVERS.remove(server);
-        ACCESS.remove(server);
+    @SubscribeEvent
+    public void taskProgress(FTBQuestsEvent.TaskProgress event) {
+        this.changed(event.getEventData().progressData());
     }
 
-    static CompletionStage<Integer> reloadKnowledge(MinecraftServer server) {
-        FtbQuestAccess access = ACCESS.get(server);
-        if (access == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
-        return access.knowledge.reload();
+    @SubscribeEvent
+    public void chapterProgress(FTBQuestsEvent.ChapterProgress event) {
+        this.changed(event.getEventData().progressData());
     }
 
-    static void remove(ServerPlayer player) {
-        FtbQuestAccess access = ACCESS.get(player.level().getServer());
-        if (access != null) access.clear(player.getUUID());
-        FtbQuestNotifications tracker = SERVERS.get(player.level().getServer());
-        if (tracker == null) return;
-        for (TeamState state : tracker.teams.values()) {
+    @SubscribeEvent
+    public void fileProgress(FTBQuestsEvent.FileProgress event) {
+        this.changed(event.getEventData().progressData());
+    }
+
+    @SubscribeEvent
+    public void clearFileCache(FTBQuestsEvent.ClearFileCache event) {
+        if (event.getEventData().file() instanceof ServerQuestFile file && file.server == this.server) {
+            this.file = null;
+            this.teams.clear();
+            this.access.knowledge.invalidate();
+        }
+    }
+
+    void close() {
+        if (this.installed) NeoForge.EVENT_BUS.unregister(this);
+        this.installed = false;
+        this.file = null;
+        this.teams.clear();
+    }
+
+    void remove(ServerPlayer player) {
+        this.access.clear(player.getUUID());
+        for (TeamState state : this.teams.values()) {
             Map<UUID, Recipient> recipients = new HashMap<>(state.recipients);
             recipients.remove(player.getUUID());
             state.recipients = Map.copyOf(recipients);
@@ -103,16 +101,15 @@ final class FtbQuestNotifications {
         }
     }
 
-    private static FtbQuestNotifications changed(ProgressEventData<?> data) {
+    private boolean changed(ProgressEventData<?> data) {
         // Client-side progress echoes use the same event types and must never enter this bridge.
-        if (!(data.object().getQuestFile() instanceof ServerQuestFile file)) return null;
-        FtbQuestNotifications tracker = SERVERS.get(file.server);
-        if (tracker == null || tracker.file != file) return null;
-        TeamState state = tracker.teams.get(data.teamData().getTeamId());
-        if (state == null || state.team != data.teamData()) return null;
+        if (!(data.object().getQuestFile() instanceof ServerQuestFile file) || file.server != this.server || this.file != file)
+            return false;
+        TeamState state = this.teams.get(data.teamData().getTeamId());
+        if (state == null || state.team != data.teamData()) return false;
         state.dirty = true;
         if (!QuestObjectBase.shouldSendNotifications()) state.silent = true;
-        return tracker;
+        return true;
     }
 
     private void completed(ProgressEventData<Quest> data) {
@@ -132,26 +129,21 @@ final class FtbQuestNotifications {
         state.completed.putIfAbsent(quest.getId(), new Completion(quest, List.copyOf(recipients)));
     }
 
-    static void tick(MinecraftServer server) {
-        AssistantServer runtime = AssistantServer.get(server);
+    void tick() {
+        AssistantServer runtime = AssistantServer.get(this.server);
         if (runtime == null) {
-            SERVERS.remove(server);
+            this.file = null;
+            this.teams.clear();
             return;
         }
         if (!ServerQuestFile.exists()) return;
         ServerQuestFile file = ServerQuestFile.getInstance();
-        if (file.server != server) return;
-        FtbQuestAccess access = ACCESS.get(server);
-        if (access == null) return;
-        FtbQuestNotifications tracker = SERVERS.get(server);
-        if (tracker == null || tracker.access != access) {
-            tracker = new FtbQuestNotifications(file, access);
-            SERVERS.put(server, tracker);
-        } else if (tracker.file != file) {
-            tracker.file = file;
-            tracker.teams.clear();
+        if (file.server != this.server) return;
+        if (this.file != file) {
+            this.file = file;
+            this.teams.clear();
         }
-        tracker.flush(runtime);
+        this.flush(runtime);
     }
 
     private void flush(AssistantServer runtime) {
@@ -270,14 +262,16 @@ final class FtbQuestNotifications {
     }
 
     // The native event and explicit submission converge on the same pending completion entry.
-    static void submitted(ServerPlayer player, ServerQuestFile file, TeamData team, Quest quest) {
+    void submitted(ServerPlayer player, ServerQuestFile file, TeamData team, Quest quest) {
         if (FtbQuestReader.kind(quest) != FtbQuestReader.Kind.NORMAL) return;
         AssistantServer runtime = AssistantServer.get(file.server);
-        FtbQuestAccess access = ACCESS.get(file.server);
-        if (runtime == null || access == null || !runtime.players().notificationsEnabled(player)
+        if (file.server != this.server || runtime == null || !runtime.players().notificationsEnabled(player)
                 || !runtime.moduleManager().hasType(player.getUUID(), QuestSystemModule.CODEC)) return;
-        FtbQuestNotifications tracker = SERVERS.computeIfAbsent(file.server, _ -> new FtbQuestNotifications(file, access));
-        TeamState state = tracker.teams.computeIfAbsent(team.getTeamId(), _ -> new TeamState(team, tracker.available(team), Map.of()));
+        if (this.file != file) {
+            this.file = file;
+            this.teams.clear();
+        }
+        TeamState state = this.teams.computeIfAbsent(team.getTeamId(), _ -> new TeamState(team, this.available(team), Map.of()));
         Completion previous = state.completed.get(quest.getId());
         List<Recipient> recipients = new ArrayList<>(previous == null ? List.of() : previous.recipients());
         if (recipients.stream().noneMatch(recipient -> recipient.player() == player))

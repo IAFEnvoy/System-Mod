@@ -10,6 +10,7 @@ import com.iafenvoy.system.data.catalog.SignInRewardEntry;
 import com.iafenvoy.system.data.input.EmptyInput;
 import com.iafenvoy.system.data.output.PlayerSnapshotOutput;
 import com.iafenvoy.system.module.CatalogModule;
+import com.iafenvoy.system.module.ContextTypes;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.builtin.signin.SignInModule;
@@ -60,7 +61,7 @@ public record SignInSystemModule(
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player = context.tool(BuiltinTools.PLAYER, () -> new PlayerQueryTool(context.game()).tool());
-        return List.of(new SignInModule(context.catalogs(), player, new SignInCreditTool(context.catalogs()).tool()));
+        ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player = context.tool(BuiltinTools.PLAYER, () -> new PlayerQueryTool(context.get(ContextTypes.GAME)).tool());
+        return List.of(new SignInModule(context.get(ContextTypes.CATALOGS), player, new SignInCreditTool(context.get(ContextTypes.CATALOGS)).tool()));
     }
 }

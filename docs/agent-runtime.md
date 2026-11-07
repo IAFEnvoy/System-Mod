@@ -31,7 +31,7 @@ Agent 根包保留引擎、执行器、上下文、Module/Tool 契约、注册�
 | `AgentStore` / `AgentJournal` | 玩家事务与执行回执接口，由宿主注入实现 |
 | `AgentLifecycle` | 撤销、断线和权限变化钩子，业务自行清理缓存 |
 | `AssistantBindings` / `CommerceTransactions` | 绑定与删除业务数据、交易及其报价；均位于 assistant |
-| `ModuleContext` | 安装时显式提供游戏、交易、目录、数据库、搜索和任务口播服务 |
+| `ModuleContext` | 固定提供 engine() / modules()，安装时通过 ContextType<T> 注入扩展服务，装配前发布 ModuleContextEvent |
 | `InteractiveExecutor` | 交互队列、玩家独占、取消、指纹去重与历史写回 |
 | `EventExecutor` | 持久事件、规则授权、状态变更、恢复和事件去重 |
 | `ConversationService` | 清空历史、偏好与有界历史读取 |

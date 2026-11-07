@@ -77,6 +77,8 @@ Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器�
 
 `AssistantServer` 负责组装引擎、安装模块、转发游戏事件及资源刷新；`AssistantPlayers` 管理连接与绑定流程，`AssistantBindings` 封装绑定事务和业务删除，ModuleManager 根据 ServerModule.runtime 创建 PlayerModule 并统一管理模块会话、事件、tick 和关闭；成就基线与派发由成就模块管理，`AssistantRequests` 管理类型化请求分派与回复，`AssistantUsage` 管理用量查询及计量队列。命令、网络和可选桥接通过 `players()`、`requests()`、`usage()` 调用对应服务；异步回复仍核对连接代次，模型计量仍由服务端主线程写入 SavedData。
 
+AssistantServer 的 INSTANCE 随服务端加载创建、卸载清空并关闭，get(server) 保留对象身份检查；不使用服务器键 Map，也不挂入 MinecraftServer。FTB 状态由共享 FtbQuestRuntime 持有，ModuleContext.sharedRuntime 在本次安装范围按类型复用，ModuleManager 对共享实例只执行一次 validate/tick/close；事件监听随实例注销，未安装 FTB 时不加载可选类。
+
 `AssistantClientState` 统一保存对话、待响应请求、服务端偏好与能力、当前交互结果，每次更新生成不可变快照。`AssistantClient` 只持有一个状态引用并处理导航、网络和语音等副作用；登出或成功撤销时替换为 `AssistantClientState.EMPTY`。界面刷新版本号独立递增，不随状态清空归零。
 
 客户端缓存统一由 `ClientModuleCaches` 暴露：`BINDINGS` 直接持有页面声明和本地卡片动作，`COMMAND` 直接持有命令声明与编译树，原来的 Bindings / Registry 中转对象已删除。绑定缓存接入 Saturn RegistryCache 并协调两份数据：客户端入口提前注册，首次使用惰性装配，静态标签更新重建，退出同时清空；每轮只遍历模块一次，完成后冻结页面/动作集合并释放命令 Builder，异步补全按命令缓存版本排除旧结果。模块 register 应可重复执行，只声明贡献。玩家权限仍实时读取，已打开页面的 Document 不进入缓存；CardTemplates 仅负责资源 JSON 重载，与绑定缓存解耦。无定时或逐 tick 扫描，详见[客户端贡献](feature-modules.md#客户端贡献)。
@@ -126,7 +128,7 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 
 每个 Tool 只负责一个行为，`ToolRegistry.Type<I, O>` 保存稳定 ID、参数 `MapCodec<I>` 和结果 `Codec<O>`，`Tool<I, O>` 保存写入、幂等、事件权限和单一 Handler。模块直接调用 `context.tool(type, stepId, typedInput)` 获得类型化结果；一个流程需要多个行为时使用模块的 `List.of(toolA, toolB)` 组合。同一模块配置内共享工具实例；不同配置可有同类型工具的不同处理器，调用时按配置 owner 选择。相同 ID 不同工具类型键仍被拒绝。
 
-功能类型通过 DeferredRegister<MapCodec<? extends ServerModule>> 注册到 SystemResourceKeys.SERVER_MODULE，codec() 返回登记的 MapCodec；数据包在 system_module 注册表创建可配置实例。ModuleContext 每配置独立，提供当前 id() 与 modules() 注册表；工具缓存仅在配置内共享。客户端在独立入口调用 SystemClientModules.register(id, instance)，数据包 client 引用该 ID。不同配置提供同一动作时，ModuleRegistry 和 ToolRegistry 按玩家启用的 owner 选择实现、保留当前流程的 owner 校验；命令、模型和语义契约仍按动作类型声明一次。SharedModule 提供服务端指令，CoreModule 表示必需基础设施。只有工作流的扩展仍可通过 AssistantRegistrationEvent 添加；详细契约见[功能模块化](feature-modules.md)。
+功能类型通过 DeferredRegister<MapCodec<? extends ServerModule>> 注册到 SystemResourceKeys.SERVER_MODULE，codec() 返回登记的 MapCodec；数据包在 system_module 注册表创建可配置实例。ModuleContext 每配置独立，保留当前 id() 与配置内工具缓存；AgentEngine 和模块注册表是构造器固定字段，通过 engine() / modules() 读取。其他服务共用按 ContextType<T> 索引的 Map，AssistantServer 逐项 put，模块 get 直接取得类型化对象。新增服务无需修改 ModuleContext；键按身份匹配，使用同一个公开常量。ModuleContextEvent 在游戏总线发布，位于内置服务注入之后、任何模块装配之前，供扩展同步添加服务。客户端在独立入口调用 SystemClientModules.register(id, instance)，数据包 client 引用该 ID。不同配置提供同一动作时，ModuleRegistry 和 ToolRegistry 按玩家启用的 owner 选择实现、保留当前流程的 owner 校验；命令、模型和语义契约仍按动作类型声明一次。SharedModule 提供服务端指令，CoreModule 表示必需基础设施。只有工作流的扩展仍可通过 AssistantRegistrationEvent 添加；详细契约见[功能模块化](feature-modules.md)。
 
 `AgentAction.CODEC` 通过正式 `SystemRegistries.ACTION_TYPE` 的 `byNameCodec().dispatch(...)` 按 `moduleId` 选择实例返回的 MapCodec；参数平铺为 `{"moduleId":"system:item_query","query":"stone"}`。`ModuleRegistry.call` 根据 Codec 注册 ID 定位当前服务器已安装模块并核对实例身份。指令、语义提取和按钮解码共用 `AgentAction.validate` 校验 Java 创建的动作；模型只接受当前可用目录中的动作。未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `AgentAction`，没有额外的 type/value 包装。
 

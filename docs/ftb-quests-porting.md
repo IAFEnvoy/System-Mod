@@ -147,3 +147,11 @@
 早期 QuestPinCache / QUEST_PINS 的连接内列表现已替换为核心模块 DisplayCardsDataStorage 和 ClientModuleCaches.DISPLAY_CARDS。固定操作走独立 C2S/S2C，服务端按玩家事务保存 source + id，markDirty 后沿用玩家文件持久化；登录重建当前队伍的可见任务快照，每秒刷新，只发送变化。完成后保留，失去权限时隐藏，登出仅清客户端缓存，revoke / reset 删除记录。
 
 后续移植请连同 AssistantCardDisplays、FtbQuestDisplay、QuestPinOutput、存储与网络注册、AssistantCardDisplay、AuiHudEntry / DisplayCardsHudEntry / SystemHudEntries、被动鼠标 mixin 排除、quest_pin.json、assistant-cards.html、共享 CSS 和双语键一起核对。当前只在 26.1.2 工作区修改，尚未移植到 1.21.1；不要再按上文早期记录恢复客户端临时列表。
+
+## 2026-11-07 运行时生命周期整理（1.21.1 待同步）
+
+AssistantServer 改为单个 volatile INSTANCE，服务端启动完成后发布，停止时先清空再关闭；保留 get(server) 的对象身份检查，不向 MinecraftServer 挂字段或添加 Mixin。FTB 不再使用 SERVERS / ACCESS 静态 Map，由 FtbQuestRuntime 持有统一的查询、知识索引和通知状态；ModuleContext.sharedRuntime 在一次安装内共享实例，ModuleManager 对 validate / tick / close 按对象身份去重，并处理安装失败时的资源关闭。玩家 Session 按配置计数，最后一个关闭时才清理玩家引用。
+
+后续同步需一起修改 FtbQuestAdapter.runtime 的 ModuleContext 参数、QuestSystemModule 反射签名、显式提交的实例通知调用，以及 /system ftb reload 的运行时查找。FTB 通知改为实例 @SubscribeEvent 监听，安装时注册、关闭时注销；旧版按实际事件 API 调整，保持可选依赖隔离，不移回服务器键 Map。当前仅修改 master，未同步到 1.21.1；编译结果不代表运行时事件与跨存档切换已验收。
+
+同轮 ModuleContext 保留 AgentEngine / 模块注册表为固定字段，以 engine() / modules() 读取，其他服务注入改为 ContextType<T> 键与 Map。AssistantServer 使用双参构造加链式 put，FTB 和其他模块按依赖使用固定 getter 或 `context.get(ContextTypes.XXX)`。ModuleManager 在实际装配前发布 ModuleContextEvent，供其他模组同步注入扩展服务。移植时一并同步 ContextType / ContextTypes、事件和调用点，保留原有 sharedRuntime 的安装范围与生命周期，不恢复按服务增加字段的旧构造器。

@@ -25,10 +25,6 @@ public final class AssistantView {
     }
 
     public static String formatCard(CardUpdate card) {
-        return formatCard(card);
-    }
-
-    public static String formatCard(CardUpdate card) {
         return CardPresentation.format(card);
     }
 

@@ -8,11 +8,13 @@ import com.iafenvoy.system.agent.AgentModule;
 import com.iafenvoy.system.agent.AgentStore;
 import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.data.store.PlayerData;
+import com.iafenvoy.system.event.ModuleContextEvent;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -28,6 +30,7 @@ public final class ModuleManager implements AutoCloseable {
     private final AgentEngine engine;
     private final ModuleAccess access;
     private final Map<Identifier, Installed> installed = new LinkedHashMap<>();
+    private final List<PlayerModule> runtimes = new ArrayList<>();
     private final Map<UUID, PlayerSession> players = new HashMap<>();
     private final Map<UUID, Set<Identifier>> active = new ConcurrentHashMap<>();
     private final Set<UUID> flushing = ConcurrentHashMap.newKeySet();
@@ -39,44 +42,62 @@ public final class ModuleManager implements AutoCloseable {
     public ModuleManager(MinecraftServer server, ModuleContext context) {
         this.server = server;
         this.engine = context.engine();
-        Map<Identifier, SystemModule> modules = new LinkedHashMap<>();
-        context.modules().keySet().stream().sorted().forEach(id -> {
-            SystemModule definition = context.modules().getValue(id);
-            if (definition != null && definition.available()) modules.put(id, definition);
-        });
-        Map<Identifier, ModuleContext> contexts = new LinkedHashMap<>();
-        modules.keySet().forEach(id -> contexts.put(id, context.forModule(id)));
-        // Tool modules export operations before workflows resolve their typed dependencies.
-        modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
-            if (!(module instanceof ToolModule tools)) return;
-            if (module instanceof WorkflowModule)
-                throw new IllegalArgumentException("Tool modules cannot expose workflows");
-            this.engine.tools().registerAll(id, tools.tools(contexts.get(id)));
-        }));
-        // Configured definitions create fresh workflows before any per-server runtime is constructed.
-        modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
-            if (module instanceof CatalogModule<?> catalog) context.catalogs().register(id, catalog);
-            if (module instanceof WorkflowModule workflows)
-                for (AgentModule<?> workflow : workflows.workflows(contexts.get(id)))
-                    this.engine.registerModule(id, workflow);
-        }));
-        Set<ServerModule> initialized = Collections.newSetFromMap(new IdentityHashMap<>());
-        modules.forEach((id, definition) -> {
-            definition.server().filter(initialized::add).ifPresent(module -> module.installed(contexts.get(id)));
-            PlayerModule runtime = definition.server().map(module -> module.runtime(contexts.get(id))).orElseGet(() -> new PlayerModule() {
+        try {
+            NeoForge.EVENT_BUS.post(new ModuleContextEvent(context));
+            Map<Identifier, SystemModule> modules = new LinkedHashMap<>();
+            context.modules().keySet().stream().sorted().forEach(id -> {
+                SystemModule definition = context.modules().getValue(id);
+                if (definition != null && definition.available()) modules.put(id, definition);
             });
-            List<ModuleStorage<?>> storages = definition.server().map(ServerModule::storages).orElse(List.of());
-            this.installed.put(id, new Installed(id, definition, runtime, storages));
-        });
-        this.access = new ModuleAccess(server, this.engine, List.copyOf(this.installed.keySet()));
-        this.access.onChange(player -> {
-            PlayerSession session = this.players.get(player.getUUID());
-            if (session != null && session.loaded) this.reconcile(session);
-        });
+            Map<Identifier, ModuleContext> contexts = new LinkedHashMap<>();
+            modules.keySet().forEach(id -> contexts.put(id, context.forModule(id)));
+            // Tool modules export operations before workflows resolve their typed dependencies.
+            modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
+                if (!(module instanceof ToolModule tools)) return;
+                if (module instanceof WorkflowModule)
+                    throw new IllegalArgumentException("Tool modules cannot expose workflows");
+                this.engine.tools().registerAll(id, tools.tools(contexts.get(id)));
+            }));
+            // Workflows may resolve shared services before their lifecycle hooks are installed.
+            modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
+                if (module instanceof CatalogModule<?> catalog) context.get(ContextTypes.CATALOGS).register(id, catalog);
+                if (module instanceof WorkflowModule workflows)
+                    for (AgentModule<?> workflow : workflows.workflows(contexts.get(id)))
+                        this.engine.registerModule(id, workflow);
+            }));
+            Set<ServerModule> initialized = Collections.newSetFromMap(new IdentityHashMap<>());
+            modules.forEach((id, definition) -> {
+                definition.server().filter(initialized::add).ifPresent(module -> module.installed(contexts.get(id)));
+                PlayerModule runtime = definition.server().map(module -> module.runtime(contexts.get(id))).orElseGet(() -> new PlayerModule() {
+                });
+                this.remember(runtime);
+                List<ModuleStorage<?>> storages = definition.server().map(ServerModule::storages).orElse(List.of());
+                this.installed.put(id, new Installed(id, definition, runtime, storages));
+            });
+            context.sharedRuntimes().forEach(this::remember);
+            this.access = new ModuleAccess(server, this.engine, List.copyOf(this.installed.keySet()));
+            this.access.onChange(player -> {
+                PlayerSession session = this.players.get(player.getUUID());
+                if (session != null && session.loaded) this.reconcile(session);
+            });
+        } catch (RuntimeException | LinkageError error) {
+            // Include shared services created by a workflow even if installation failed before runtime().
+            context.sharedRuntimes().forEach(this::remember);
+            this.closeRuntimes();
+            throw error;
+        }
+    }
+
+    private void remember(PlayerModule runtime) {
+        if (this.runtimes.stream().noneMatch(existing -> existing == runtime)) this.runtimes.add(runtime);
+    }
+
+    public <T extends PlayerModule> Optional<T> runtime(Class<T> type) {
+        return this.closed ? Optional.empty() : this.runtimes.stream().filter(type::isInstance).map(type::cast).findFirst();
     }
 
     public void validate() {
-        this.installed.values().forEach(module -> module.runtime.validate());
+        this.runtimes.forEach(PlayerModule::validate);
     }
 
     public void onChange(Consumer<ServerPlayer> changed) {
@@ -284,11 +305,11 @@ public final class ModuleManager implements AutoCloseable {
         this.checkThread();
         if (this.closed) return;
         this.access.tick();
-        for (Installed module : this.installed.values()) {
+        for (PlayerModule runtime : this.runtimes) {
             try {
-                module.runtime.tick();
+                runtime.tick();
             } catch (RuntimeException error) {
-                SystemMod.LOGGER.warn("Module maintenance failed for {}", module.id(), error);
+                SystemMod.LOGGER.warn("Module maintenance failed for {}", runtime.getClass().getSimpleName(), error);
             }
         }
         for (PlayerSession player : List.copyOf(this.players.values())) {
@@ -405,16 +426,24 @@ public final class ModuleManager implements AutoCloseable {
         this.checkThread();
         if (this.closed) return;
         this.closed = true;
-        List.copyOf(this.players.keySet()).forEach(this::logout);
-        List<Installed> reverse = new ArrayList<>(this.installed.values());
+        try {
+            List.copyOf(this.players.keySet()).forEach(this::logout);
+        } finally {
+            this.closeRuntimes();
+        }
+    }
+
+    private void closeRuntimes() {
+        List<PlayerModule> reverse = new ArrayList<>(this.runtimes);
         Collections.reverse(reverse);
-        for (Installed module : reverse) {
+        for (PlayerModule runtime : reverse) {
             try {
-                module.runtime.close();
-            } catch (RuntimeException error) {
-                SystemMod.LOGGER.warn("Unable to close module runtime {}", module.id(), error);
+                runtime.close();
+            } catch (RuntimeException | LinkageError error) {
+                SystemMod.LOGGER.warn("Unable to close module runtime {}", runtime.getClass().getSimpleName(), error);
             }
         }
+        this.runtimes.clear();
     }
 
     private record Installed(Identifier id, SystemModule definition, PlayerModule runtime,

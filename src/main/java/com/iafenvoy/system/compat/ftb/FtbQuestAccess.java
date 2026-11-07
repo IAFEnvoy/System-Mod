@@ -32,10 +32,12 @@ final class FtbQuestAccess {
     final Map<UUID, QuestList> lists = new ConcurrentHashMap<>();
     final FtbStarterGifts gifts = new FtbStarterGifts();
     final FtbQuestKnowledge knowledge;
+    final FtbQuestNotifications notifications;
 
     FtbQuestAccess(AgentEngine engine, MinecraftTools game, AgentDatabase database) {
         this.game = game;
-        this.knowledge = FtbQuestNotifications.knowledge(engine, database, game.server());
+        this.knowledge = new FtbQuestKnowledge(engine, database, game.server());
+        this.notifications = new FtbQuestNotifications(this);
         engine.lifecycle(new AgentLifecycle() {
             @Override
             public void revoked(UUID player) {

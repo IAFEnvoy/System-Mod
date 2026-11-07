@@ -30,7 +30,8 @@ public final class InboxSystemModule implements SharedModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new InboxModule(context.catalogs(), context.modules()), new DeliverModule(new DeliverTool(context.engine(), context.game()).tool()));
+        return List.of(new InboxModule(context.get(ContextTypes.CATALOGS), context.modules()),
+                new DeliverModule(new DeliverTool(context.engine(), context.get(ContextTypes.GAME)).tool()));
     }
 
     @Override

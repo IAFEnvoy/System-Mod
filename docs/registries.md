@@ -208,7 +208,9 @@ SystemRegistries.CARD_DATA_TYPE.forEach(entry -> { /* inspect registered types *
 
 `TypeDispatch` 是按 Java 类选择内部处理器的工具，资源模板 Map 是重载快照，玩家/session/缓存 Map 是业务状态。这些不属于 MC 的内置注册表，也不应随本次迁移冻结进全局注册表。
 
-常驻卡片的数据源 Map 位于每个服务端的 `AssistantCardDisplays`，模块通过 `ModuleContext.displays()` 登记 source ID、所属模块配置 ID 和只读 reader；不放入全局 MC 注册表。引用保存在核心 `DisplayCardsDataStorage`，刷新 / 登录 / 关闭由 ModuleManager 驱动；客户端 `DisplayCardCache` 直接持有镜像、版本及 pending 请求。该显示链路独立于 ClientCards/ServerCards 的通知授权与聊天历史。
+常驻卡片的数据源 Map 位于每个服务端的 `AssistantCardDisplays`，模块通过 `context.get(ContextTypes.DISPLAYS)` 登记 source ID、所属模块配置 ID 和只读 reader；不放入全局 MC 注册表。引用保存在核心 `DisplayCardsDataStorage`，刷新 / 登录 / 关闭由 ModuleManager 驱动；客户端 `DisplayCardCache` 直接持有镜像、版本及 pending 请求。该显示链路独立于 ClientCards/ServerCards 的通知授权与聊天历史。
+
+ModuleContext 的 AgentEngine 与模块注册表为固定字段，以 engine() / modules() 读取；其他服务 Map 由 `ContextType<T>` 键关联类型化对象，内置键集中在 `module.ContextTypes`。该 Map 不是 MC 注册表、不序列化或跨存档共享；扩展可在游戏总线的 ModuleContextEvent 中自行声明键，通过 put 注入、get 读取，无需增加统一字段或类型注册。
 
 ## 搜索模块入口
 

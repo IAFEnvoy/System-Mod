@@ -33,6 +33,7 @@
 | MC 服务组装、绑定/撤销、玩家和主线程业务、交易与游戏工具 | [assistant](src/main/java/com/iafenvoy/system/assistant)；AssistantServer 创建服务，ModuleContext 显式注入 |
 | 参数/结果 DTO、玩家文件事务、执行账本实现、数据库与提示词加载 | [data](src/main/java/com/iafenvoy/system/data)；data/input、output、store、database、prompt |
 | 功能定义、工作流和单行为工具组合 | [module/builtin](src/main/java/com/iafenvoy/system/module/builtin)；共用工具键 BuiltinTools；业务存储位于 storage |
+| ModuleContext 服务注入与泛型读取 | [ModuleContext](src/main/java/com/iafenvoy/system/module/ModuleContext.java) 固定 engine() / modules()；[ContextType](src/main/java/com/iafenvoy/system/module/ContextType.java)、[内置键](src/main/java/com/iafenvoy/system/module/ContextTypes.java) 按类型键共享其他服务；[ModuleContextEvent](src/main/java/com/iafenvoy/system/event/ModuleContextEvent.java) 在装配前提供扩展注入，配置 ID / 工具缓存独立 |
 | TTS/ASR、播报会话和任务文案整理/背景缓存 | [speech](src/main/java/com/iafenvoy/system/speech)；任务相关服务位于 quest 子包 |
 | 依赖方向、线程、失效与资源关闭；本次只做编译和静态检查 | [包职责与数据流](docs/architecture.md)、[验证记录](docs/testing.md) |
 

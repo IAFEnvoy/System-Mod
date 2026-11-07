@@ -44,12 +44,12 @@ public final class CoreSystemModule implements CoreModule {
 
     @Override
     public PlayerModule runtime(ModuleContext context) {
-        return context.displays();
+        return context.get(ContextTypes.DISPLAYS);
     }
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.databases()).tool()));
+        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.get(ContextTypes.DATABASES)).tool()));
     }
 
     @Override

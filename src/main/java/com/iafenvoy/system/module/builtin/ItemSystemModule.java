@@ -10,6 +10,7 @@ import com.iafenvoy.system.data.input.ItemQueryInput;
 import com.iafenvoy.system.data.input.ItemSourceQueryInput;
 import com.iafenvoy.system.data.output.ItemPageOutput;
 import com.iafenvoy.system.data.output.ItemSourceOutput;
+import com.iafenvoy.system.module.ContextTypes;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.SharedModule;
 import com.iafenvoy.system.module.builtin.item.ItemQueryModule;
@@ -30,8 +31,8 @@ public final class ItemSystemModule implements SharedModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> items = context.tool(BuiltinTools.ITEMS, () -> new ItemQueryTool(context.game()).tool());
-        ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput> sources = context.tool(BuiltinTools.ITEM_SOURCES, () -> new ItemSourceQueryTool(context.game()).tool());
+        ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> items = context.tool(BuiltinTools.ITEMS, () -> new ItemQueryTool(context.get(ContextTypes.GAME)).tool());
+        ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput> sources = context.tool(BuiltinTools.ITEM_SOURCES, () -> new ItemSourceQueryTool(context.get(ContextTypes.GAME)).tool());
         // Built once on the server thread: local intent parsing needs display names without touching the game thread.
         ItemNameIndex names = ItemNameIndex.build();
         return List.of(new ItemQueryModule(items), new ItemSourceQueryModule(sources, names));

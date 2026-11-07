@@ -13,6 +13,7 @@ import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import com.sighs.apricityui.render.Drawer;
 import com.sighs.apricityui.render.GeometryQueryScope;
+import com.sighs.apricityui.style.Transition;
 
 import java.util.*;
 
@@ -206,9 +207,15 @@ public final class AssistantScreen extends AssistantInputScreen {
                 }
             }
         }
-        // The frame boundary established the starting styles, so this only starts paint-only motion.
-        for (Element row : this.renderedRows)
-            if (row.getClassList().contains("message_new")) row.getClassList().remove("message_new");
+        // Measure new cards once before arming motion; settled history has no transform transitions to rebuild.
+        for (Element row : this.renderedRows) {
+            Element.DOMTokenList classes = row.getClassList();
+            if (classes.contains("message_new")) {
+                classes.remove("message_new");
+                classes.add("message_entering");
+            } else if (classes.contains("message_entering") && !Transition.isActive(row))
+                classes.remove("message_entering");
+        }
     }
 
     @Override

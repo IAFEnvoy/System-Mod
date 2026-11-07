@@ -20,13 +20,13 @@
 | [注册表速查](registries.md) | 正式注册表 ID、条目类型、公开入口、查询方式及扩展注册示例 |
 | [客户端 JSON 卡片](cards.md) | CardData/CardBuilder、纯文本约定、通用模板解析、按钮动作、物品和资源包覆盖 |
 | [卡片节点分类与职责设计](card-nodes-design.md) | 已实施：18 种节点、能力接口、通用网格 / 分组与 KOOK 风格按钮；保留重构前后的设计对照 |
-| [Card JSON 离线编辑器](card-editor.md) | 单 HTML 工具、节点树与属性编辑、示例 Context、预览和资源包导出 |
+| [Card JSON 编辑器](card-editor.md) | Vite 多文件工具、独立模板 JSON、节点树与属性编辑、示例 Context、预览和资源包导出 |
 | [卡片与消息数据流](card-flow-design.md) | 已实现的两端边界、完整 DTO、按 ID/版本更新、结果状态枚举与 BuiltinTools 职责 |
 | [轻量本地意图路由](semantic-routing.md) | 纯 Java 领域词表/TF-IDF、玩家意图缓存、只读直达、低把握回退与扩展 API |
 | [路由选型与后续计划](semantic-routing-plan.md) | 10MB 分发约束、fastText/LIBLINEAR 等方案核实、校准与后续方向 |
 | [扩展配置](datapacks.md) | 服务端配置、成就规则及签到/商城数据包；不使用旧注册表 |
 | [界面与本地化](ui-localization.md) | 新工作台、AUI 文本安全、语言键约定 |
-| [页面布局审计](ui-layout-audit.md) | AUI 1.2.9 重复布局、只读几何、卡片增量更新与静态检查边界 |
+| [页面布局审计](ui-layout-audit.md) | spark 尖峰采样、GPU 同步回读、transform 提前测量、边框颜色动画误触发全量布局与针对性修正 |
 | [AI / 联网 / TTS / ASR 用量统计](token-usage.md) | 服务端 AI/联网账本、本地语音用量、按次估价与撤销后保留 |
 | [语音合成与音色设计](tts.md) | 阿里云 TTS、客户端密钥与语种、音色配置、Python 设计/临时上传工具 |
 | [语音识别](asr.md) | NLS 一句话流式识别、AccessKey 自动鉴权、Token 缓存刷新、麦克风 session 与按次估价 |

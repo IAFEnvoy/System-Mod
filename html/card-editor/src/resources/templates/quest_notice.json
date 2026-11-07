@@ -1,0 +1,121 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "text": "{{notice_title}}"
+    },
+    {
+      "type": "system:text",
+      "text": "{{summary}}",
+      "when": "summary"
+    },
+    {
+      "type": "system:text",
+      "text": "{{description}}",
+      "when": "description"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.tts.quest.requirements",
+      "args": [
+        "{{requirements}}"
+      ],
+      "when": "requirements"
+    },
+    {
+      "type": "system:container",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{field:tasks}}",
+          "style": "item_group_label"
+        },
+        {
+          "type": "system:flex",
+          "source": "{{task_icons}}",
+          "children": [
+            {
+              "type": "system:ftb_icon",
+              "icon": "{{task_icons.*}}"
+            }
+          ],
+          "style": "quest_icon_items"
+        }
+      ]
+    },
+    {
+      "type": "system:text",
+      "translate": "system.ui.quest_manual_submission",
+      "when": "manual_submission"
+    },
+    {
+      "type": "system:container",
+      "style": "reward_section",
+      "when": "has_rewards",
+      "children": [
+        {
+          "type": "system:text",
+          "style": "item_group_label",
+          "text": "{{field:reward}}:"
+        },
+        {
+          "type": "system:container",
+          "style": "reward_grid",
+          "children": [
+            {
+              "type": "system:flex",
+              "source": "{{result_items}}",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{result_items.*}}",
+                  "size": 32,
+                  "tooltip": []
+                }
+              ],
+              "style": "item_group_items"
+            },
+            {
+              "type": "system:flex",
+              "source": "{{reward_icons}}",
+              "children": [
+                {
+                  "type": "system:ftb_icon",
+                  "icon": "{{reward_icons.*}}"
+                }
+              ],
+              "style": "quest_icon_items"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

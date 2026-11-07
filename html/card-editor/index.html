@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:* ws://127.0.0.1:*; frame-src 'self' about:; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'"
+    />
+    <title>System · Card JSON 编辑器</title>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <strong>System <span class="muted">/</span> Card Editor</strong
+        ><small>JSON 布局 · 节点树 · 平铺 Context · 本地预览</small
+        ><span class="spacer"></span><button id="help">使用说明</button>
+      </div>
+      <div class="toolbar">
+        <select id="preset" aria-label="内置卡片模板"></select
+        ><button id="load-preset">载入模板</button
+        ><button id="new-card">新建</button>
+        <button id="import">打开 JSON…</button
+        ><input id="file" type="file" accept=".json,application/json" hidden />
+        <span class="spacer"></span
+        ><button id="undo" title="撤销有效 JSON 修改">撤销</button
+        ><button id="redo">重做</button><button id="format">格式化</button>
+        <input id="filename" value="card.json" aria-label="导出文件名" /><button
+          id="download"
+          class="primary"
+        >
+          导出卡片</button
+        ><button id="save-project" title="另存模板、示例上下文、翻译及预览样式">
+          导出工作文件
+        </button>
+      </div>
+    </header>
+    <main class="workspace">
+      <section class="panel">
+        <div class="bar">
+          <strong>节点树</strong><button id="add">＋ 节点</button>
+        </div>
+        <div id="tree" class="tree scroll"></div>
+        <div class="node-actions">
+          <button id="up" title="在当前列表内上移">↑</button
+          ><button id="down" title="在当前列表内下移">↓</button
+          ><button id="duplicate">复制</button><button id="remove">删除</button>
+        </div>
+        <p class="hint">选择节点编辑属性；预览中按住 Alt 点击也可定位。</p>
+      </section>
+      <section class="panel">
+        <nav class="bar tabs" aria-label="编辑区">
+          <button class="active" data-tab="json">JSON</button
+          ><button data-tab="props">属性</button
+          ><button data-tab="context">上下文</button
+          ><button data-tab="translations">文案</button
+          ><button data-tab="css">预览 CSS</button>
+        </nav>
+        <div class="editor-panel active" data-panel="json">
+          <p class="hint">
+            原始卡片 JSON。未知字段会完整保留；语法错误时暂停树编辑和导出。
+          </p>
+          <textarea
+            id="source"
+            class="code"
+            spellcheck="false"
+            aria-label="卡片 JSON"
+          ></textarea>
+        </div>
+        <div class="editor-panel" data-panel="props">
+          <div id="properties" class="property"></div>
+        </div>
+        <div class="editor-panel" data-panel="context">
+          <p class="hint">
+            parameters / states 均为平铺表。callbacks 仅填写可用
+            ID；按钮只记录模拟动作。
+          </p>
+          <textarea
+            id="context"
+            class="code"
+            spellcheck="false"
+            aria-label="示例上下文 JSON"
+          ></textarea>
+        </div>
+        <div class="editor-panel" data-panel="translations">
+          <p class="hint">
+            填写额外的「翻译键: 文本」覆盖。内置中英文语言表可在预览栏切换。
+          </p>
+          <textarea
+            id="translations"
+            class="code"
+            spellcheck="false"
+            aria-label="翻译覆盖 JSON"
+          >
+{}</textarea
+          >
+        </div>
+        <div class="editor-panel" data-panel="css">
+          <p class="hint">
+            仅作用于浏览器预览，不写入卡片 JSON。样式类通过节点 style 引用。
+          </p>
+          <textarea
+            id="custom-css"
+            class="code"
+            spellcheck="false"
+            aria-label="预览 CSS"
+          ></textarea>
+        </div>
+        <ul id="issues" aria-live="polite"></ul>
+      </section>
+      <section class="panel preview-panel">
+        <div class="bar">
+          <strong>布局预览</strong><button id="refresh">重置交互</button>
+        </div>
+        <div class="preview-controls">
+          <label
+            >模式
+            <select id="mode">
+              <option value="full">完整</option>
+              <option value="simple">简约</option>
+              <option value="notification">通知</option>
+            </select></label
+          ><label
+            >语言
+            <select id="language">
+              <option value="zh_cn">中文</option>
+              <option value="en_us">English</option>
+            </select></label
+          ><label
+            >宽度
+            <input
+              id="preview-width"
+              type="number"
+              value="840"
+              min="280"
+              max="2400"
+              step="20" /></label
+          ><label><input id="outlines" type="checkbox" /> 节点边界</label>
+        </div>
+        <div class="preview-stage">
+          <iframe
+            id="preview"
+            title="卡片布局预览"
+            sandbox="allow-same-origin"
+          ></iframe>
+        </div>
+        <div id="preview-log" aria-live="polite">
+          浏览器近似预览；物品 / 模型 / FTB 图标使用占位，实际效果以游戏内 AUI
+          为准。
+        </div>
+      </section>
+    </main>
+    <footer class="statusbar">
+      <span id="status" aria-live="polite">正在载入…</span
+      ><span id="draft-status" class="muted"></span
+      ><button id="clear-draft">清除本地草稿</button>
+    </footer>
+    <dialog id="add-dialog">
+      <h2>添加节点</h2>
+      <div class="dialog-fields">
+        <label class="field"
+          ><span>节点类型</span
+          ><select id="node-type"></select></label
+        ><label class="field"
+          ><span>插入位置</span
+          ><select id="insert-target"></select
+        ></label>
+      </div>
+      <p id="node-help"></p>
+      <footer>
+        <button data-close="add-dialog">取消</button
+        ><button id="insert-node" class="primary">添加</button>
+      </footer>
+    </dialog>
+    <dialog id="help-dialog">
+      <h2>编辑 Card JSON</h2>
+      <ol>
+        <li>
+          载入内置模板，或打开 / 拖入项目内的
+          <code>assets/&lt;namespace&gt;/cards/*.json</code>。
+        </li>
+        <li>
+          用节点树选择、添加、复制、排序及删除节点；属性页与原始 JSON 双向同步。
+        </li>
+        <li>
+          在「上下文」里提供
+          <code>parameters</code
+          >、<code>states</code>、<code>callbacks</code>。参数键保持平铺，例如
+          <code>tasks.0.task_title</code>；不是嵌套对象路径。
+        </li>
+        <li>
+          <code>{{id}}</code
+          >、<code>{{tr:key}}</code>、<code>{{field:id}}</code>、<code>{{bool:id}}</code>、<code>{{state:id}}</code>、循环中的
+          <code>*</code>、when / unless / repeat 均可预览。put
+          的默认状态会自动推导，states 中的值优先。
+        </li>
+        <li>
+          导出卡片只包含布局 JSON；导出工作文件同时保存示例数据、翻译和预览
+          CSS。工作文件可重新打开。
+        </li>
+        <li>
+          把导出的卡片放回资源包路径，再在游戏中重载资源。物品 / 玩家 / FTB
+          渲染、Saturn 数据、AUI CSS 和实际按钮逻辑需在游戏内检查。
+        </li>
+      </ol>
+      <p>
+        通过 Vite 启动，不调用模型或其他外部
+        API。有效编辑会尽力保存为当前站点的浏览器本地草稿，请及时导出工作文件。内置模板和语言表位于独立资源文件中，可运行
+        npm run sync:resources 从仓库刷新，或通过「打开 JSON」载入。
+      </p>
+      <p>
+        快捷键：<code>Ctrl / ⌘ + S</code> 导出卡片，<code
+          >Ctrl / ⌘ + Shift + F</code
+        >
+        格式化。文本框使用原生撤销；顶部撤销 / 重做回退有效的卡片版本。
+      </p>
+      <footer>
+        <button data-close="help-dialog" class="primary">知道了</button>
+      </footer>
+    </dialog>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

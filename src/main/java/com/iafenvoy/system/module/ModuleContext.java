@@ -41,9 +41,8 @@ public final class ModuleContext {
         return this.modules;
     }
 
-    public <T> ModuleContext put(@NotNull ContextType<T> type, @NotNull T value) {
+    public <T> void put(@NotNull ContextType<T> type, @NotNull T value) {
         this.services.put(type, value);
-        return this;
     }
 
     @SuppressWarnings("unchecked")

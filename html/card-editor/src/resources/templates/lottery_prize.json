@@ -1,0 +1,105 @@
+{
+  "body": [
+    {
+      "type": "system:flex",
+      "style": "lottery_heading",
+      "text_separator": " · ",
+      "children": [
+        {
+          "type": "system:title",
+          "level": 2,
+          "text": "{{reward_label}}",
+          "style": "lottery_name"
+        },
+        {
+          "type": "system:text",
+          "translate": "system.ui.lottery_chance",
+          "args": [
+            "{{chance}}%"
+          ],
+          "inline": true,
+          "style": "lottery_chance"
+        }
+      ],
+      "direction": "row",
+      "wrap": true
+    },
+    {
+      "type": "system:text",
+      "text": "{{reward_items}}",
+      "when": "text_items"
+    },
+    {
+      "type": "system:container",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{field:reward}}",
+          "style": "item_group_label"
+        },
+        {
+          "type": "system:flex",
+          "source": "{{result_items}}",
+          "children": [
+            {
+              "type": "system:flex",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{result_items.*}}",
+                  "size": 40,
+                  "tooltip": []
+                },
+                {
+                  "type": "system:text",
+                  "text": "{{result_items.*.label}}",
+                  "style": "item_name",
+                  "unless": "text_items"
+                }
+              ],
+              "wrap": false,
+              "style": [
+                "item_entry",
+                "item_labeled"
+              ]
+            }
+          ],
+          "style": "item_group_items"
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "style": [
+    "result_card",
+    "lottery_card",
+    "lottery_prize"
+  ],
+  "show_title": false
+}

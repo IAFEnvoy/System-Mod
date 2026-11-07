@@ -42,6 +42,8 @@ JSON 模板在 assets/system/cards 中，通过 CardNode 的 dispatch Codec 解�
 
 完整模式的新消息以 240ms、18px 的上移配合淡入出现，只使用 transform / opacity，不逐帧改变卡片高度。底部跟随复用 AUI 的目标滚动缓动，连续到达的消息更新目标位置，向上翻阅时不强制拉回底部。首次打开、窗口重建与模板重载不重播历史入场动画；仅忙碌状态变化时保留已有消息节点，卡片更新按 UUID 识别，不视为新消息。
 
+新行先以无过渡的 `message_new` 完成首次布局，再切换为 `message_entering` 播放动画，结束后清除动画类。普通按钮仅过渡背景、文字和阴影，覆盖原生主题附带的 transform / border-color 过渡；边框颜色仍随状态即时变化，避免 AUI 将边框颜色插值误判为布局变化。图钉保留倾斜 / 竖直状态但不做旋转插值，避免新任务列表逐按钮触发尺寸测量。采样依据见[页面布局审计](ui-layout-audit.md#spark边框颜色动画误触发全量布局2026-11-07)。
+
 滚动范围通过 AssistantGeometry 读取已提交的 scrollHeight、Rect 和盒模型边距，不调用 Box.innerSize / Size.of 或滚动范围探测 API 重测子树。prepareRender 仅由原生 AUI 绘制调用；AssistantPageScreen 在提取阶段观察布局是否已完成，输入框、补全与 HUD 定位只读取有效几何，未就绪时等待后续帧。滚动恢复单独开启 GeometryQueryScope，保留 setScrollTop 注册缓动的行为。翻页、折叠、切换章节及图钉更新只排队失效，不在事件内同步重排。完整与简约页面保留未变的卡片，常驻 HUD 只替换内容变化的卡片；空闲轮询不重复写入相同的文字、display 或交互 class。依据和未验收范围见[页面布局审计](ui-layout-audit.md)。
 
 客户端“系统”按键映射默认未绑定；玩家可在控制设置中自行分配。游戏内按下打开当前选择的完整或简约界面，任一助手系统页面内再次按下即可返回游戏；其他游戏页面不受影响。

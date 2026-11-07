@@ -1,0 +1,117 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.ui.nav_signin"
+    },
+    {
+      "type": "system:text",
+      "text": "{{field:date}}: {{date}}"
+    },
+    {
+      "type": "system:text",
+      "text": "{{field:signed_in}}: {{bool:signed_in}}"
+    },
+    {
+      "type": "system:text",
+      "text": "{{field:history_saved}}: {{bool:history_saved}}"
+    },
+    {
+      "type": "system:text",
+      "text": "{{field:external_model}}: {{bool:external_model}}"
+    },
+    {
+      "type": "system:container",
+      "when": "text_items",
+      "repeat": "candidates",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{candidates.*.reward_label}}"
+        },
+        {
+          "type": "system:text",
+          "text": "{{candidates.*.reward_items}}",
+          "when": "text_items"
+        }
+      ]
+    },
+    {
+      "type": "system:container",
+      "when": "candidates",
+      "unless": "text_items",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{field:candidates}}:",
+          "style": [
+            "item_group_label",
+            "card_context"
+          ]
+        },
+        {
+          "type": "system:flex",
+          "source": "{{candidates.*.result_items}}",
+          "children": [
+            {
+              "type": "system:flex",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{candidates.*.result_items.*}}",
+                  "size": 40,
+                  "tooltip": [
+                    {
+                      "type": "system:text",
+                      "text": "{{candidates.*.reward_label}}"
+                    }
+                  ]
+                },
+                {
+                  "type": "system:text",
+                  "text": "{{candidates.*.result_items.*.label}}",
+                  "style": "item_name",
+                  "unless": "text_items"
+                }
+              ],
+              "wrap": false,
+              "style": [
+                "item_entry",
+                "item_labeled"
+              ]
+            }
+          ],
+          "style": "item_group_items",
+          "repeat": "candidates"
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

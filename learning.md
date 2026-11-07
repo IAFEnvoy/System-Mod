@@ -59,7 +59,7 @@
 | 注册表 ID 与公开字段速查、协议/载荷/卡片节点注册表、语音工厂 Map、注册时序及扩展示例 | [注册表速查](docs/registries.md) |
 | CardData.buildCard、公共 CardBuilder/CardView/CardUpdate、客户端 CardPresentation、26 份结构化模板的 title 约定与格式化后标题解析、纯文本无按钮约定、JSON 节点与平铺 Context、MarkdownNode / AUI 解析与受控展示、FTBQ text、宿主双栏卡片 / player 模型跟随、朝向、缩放和偏移、KOOK 风格 click/value、CardButtonEvent 服务端字符串解析、本地/URL 动作 | [客户端 JSON 卡片](docs/cards.md) |
 | 已实施：18 种节点分类与整理、PlainMessageNode / TextProjectingNode / HeadingNode 等能力接口、grid / groups、单物品 / FTB 图标、统一按钮及模板迁移 | [卡片节点设计稿](docs/card-nodes-design.md) |
-| 单 HTML Card JSON 编辑器、节点树／属性／源码、平铺示例 Context、模式与分页预览、卡片／工作文件导出及快照更新 | [离线编辑器](docs/card-editor.md)、[工具入口](tools/card_editor.html) |
+| Vite Card JSON 编辑器、多文件脚本与独立模板、节点树／属性／源码、平铺示例 Context、模式与分页预览、工作文件导出及资源同步 | [编辑器说明](docs/card-editor.md)、[工具目录](html/card-editor)、[Vite 入口](html/card-editor/index.html) |
 | GridNode / CardPagination：任务、商店、奖池与奖品共用分页；columns × max_row 自动容量、固定三行区域、单页置灰按钮、仅创建当前页 DOM | [共用分页网格](docs/cards.md#共用分页网格)、[GridNode](src/main/java/com/iafenvoy/system/screen/card/node/layout/GridNode.java) |
 | 客户端 CardBuildEvent：按 CardData 类型给既有 Builder 补参数，再配合资源包 JSON；构建时触发，缓存读取不触发 | [卡片构建事件](docs/cards.md#构建事件给现有卡片补充参数)、[事件类](src/main/java/com/iafenvoy/system/event/client/CardBuildEvent.java) |
 | 已实施卡片数据流：完整业务 DTO、消息 ID/版本、SHOW/REPLACE/REMOVE、状态与历史响应、Status 枚举和 BuiltinTools | [卡片与消息数据流](docs/card-flow-design.md) |
@@ -75,7 +75,7 @@
 | ASR、NLS AccessKey 自动签发与 Token 缓存刷新、停止 / 自然 EOF 与设备关闭解耦、session 超时、可选 SVC、按键录音与按次估价 | [语音识别](docs/asr.md) |
 | 服务端 AI/联网用量 SavedData、仅本地可见的个人 TTS / ASR 用量、字符与 Token、客户端计费配置、撤销后保留 | [用量统计](docs/token-usage.md) |
 | 共享 CSS、完整 / 简约界面、通知与常驻卡片 HUD、Saturn 位置编辑与 config/saturn/hud.json、动画、物品 tooltip、输入法、双语键 | [界面与本地化](docs/ui-localization.md) |
-| 样式计算卡顿排查、AUI 1.2.9 实际源码、打开页面 8786ms 日志、原生渲染生命周期、草稿光标隐式测量、固定外壳、已提交几何与增量更新 | [页面布局审计](docs/ui-layout-audit.md) |
+| UI 卡顿：静态 opacity 的 GPU 回读、Transition.build 提前测量已针对性处理；新慢帧定位全量布局，AUI 将 border-color 动画误判为布局变化，System 排除该过渡，保留消息位移 | [页面布局审计](docs/ui-layout-audit.md) |
 | 任务 pin 持久化、核心 DisplayCardsDataStorage、服务端卡片来源、独立左侧 HUD 与逐秒进度刷新 | [常驻卡片](docs/cards.md#常驻卡片-hud)、[AssistantCardDisplays](src/main/java/com/iafenvoy/system/assistant/AssistantCardDisplays.java) |
 | 网文系统语气、提示词与模板边界、公开参考 | [文案与提示词](docs/system-voice.md) |
 | 绑定、新手礼包、任务通知的文案与占位符；该稿不直接作为运行时模板 | [通知文案稿](docs/notification-copy-draft.md) |

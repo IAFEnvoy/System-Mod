@@ -1,0 +1,68 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.ui.player_info"
+    },
+    {
+      "type": "system:flex",
+      "style": [
+        "card_row",
+        "player_card_layout"
+      ],
+      "children": [
+        {
+          "type": "system:player",
+          "style": [
+            "player_preview",
+            "player_preview_bare"
+          ],
+          "player": "{{player_id}}",
+          "follow_mouse": true,
+          "yaw": 15,
+          "pitch": 0,
+          "scale": 1,
+          "offset_x": 0,
+          "offset_y": 0
+        },
+        {
+          "type": "system:player_information",
+          "style": [
+            "card_column",
+            "player_info"
+          ],
+          "importance": 40
+        }
+      ],
+      "direction": "row",
+      "wrap": true
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

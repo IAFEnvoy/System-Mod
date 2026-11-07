@@ -89,7 +89,7 @@ public final class ModuleManager implements AutoCloseable {
     }
 
     private void remember(PlayerModule runtime) {
-        if (this.runtimes.stream().noneMatch(existing -> existing == runtime)) this.runtimes.add(runtime);
+        if (this.runtimes.stream().noneMatch(runtime::equals)) this.runtimes.add(runtime);
     }
 
     public <T extends PlayerModule> Optional<T> runtime(Class<T> type) {

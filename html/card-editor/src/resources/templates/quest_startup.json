@@ -1,0 +1,55 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.ui.card_title_available_quests"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.ui.quest_startup_count",
+      "args": [
+        "{{total}}"
+      ]
+    },
+    {
+      "type": "system:text",
+      "text": "{{quests.*.title}} · {{quests.*.progress}}%",
+      "repeat": "quests"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.ui.quest_startup_more",
+      "args": [
+        "{{remaining}}"
+      ],
+      "when": "remaining"
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "hide_summary": true,
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.result.knowledge"
+    },
+    {
+      "type": "system:markdown",
+      "text": "{{answer}}",
+      "when": "answer"
+    },
+    {
+      "type": "system:text",
+      "text": "{{summary}}",
+      "unless": "answer"
+    },
+    {
+      "type": "system:details",
+      "summary": "{{tr:system.ui.knowledge_sources}} ({{sources}})",
+      "when": "sources",
+      "children": [
+        {
+          "type": "system:flex",
+          "style": "guide_entry",
+          "repeat": "sources",
+          "children": [
+            {
+              "type": "system:title",
+              "level": 2,
+              "text": "{{sources.*.title}}"
+            },
+            {
+              "type": "system:text",
+              "text": "{{sources.*.category}}",
+              "when": "sources.*.category",
+              "style": [
+                "card_context"
+              ]
+            },
+            {
+              "type": "system:text",
+              "text": "{{sources.*.passage}}"
+            }
+          ],
+          "direction": "column",
+          "wrap": false
+        }
+      ]
+    }
+  ]
+}

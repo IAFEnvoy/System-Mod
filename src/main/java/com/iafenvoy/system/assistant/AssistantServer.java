@@ -49,7 +49,6 @@ public final class AssistantServer {
     private final MinecraftServer server;
     private final AgentEngine engine;
     private final AgentDatabases databases;
-    private final SearchGateway search;
     private final QuestNarration narration;
     private final Deque<AutoCloseable> resources = new ArrayDeque<>();
     private final AssistantPlayers players;
@@ -76,23 +75,23 @@ public final class AssistantServer {
                     AssistantServer.this.databases.deletePlayer(player);
                 }
             });
-            this.search = this.own(new SearchGateway(new DeepSeekSearchClient()));
+            SearchGateway search = this.own(new SearchGateway(new DeepSeekSearchClient()));
             this.narration = this.own(new QuestNarration(this.engine, this.databases.shared()));
-            this.usage = new AssistantUsage(server, this.engine, this.search);
+            this.usage = new AssistantUsage(server, this.engine, search);
             this.refreshPrompts();
             MinecraftTools game = new MinecraftTools(server, this.gameQueue);
             CommerceCatalogs catalogs = new CommerceCatalogs(CommerceCatalog.create(server.registryAccess()), this.engine::moduleEnabled);
             CommerceTransactions transactions = new CommerceTransactions(this.engine, game, catalogs);
             this.displays = this.own(new AssistantCardDisplays(server, this.engine));
-            ModuleContext modules = new ModuleContext(this.engine, server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE))
-                    .put(ContextTypes.GAME, game)
-                    .put(ContextTypes.COMMERCE, transactions)
-                    .put(ContextTypes.CATALOGS, catalogs)
-                    .put(ContextTypes.DATABASES, this.databases)
-                    .put(ContextTypes.SEARCH, this.search)
-                    .put(ContextTypes.NARRATION, this.narration)
-                    .put(ContextTypes.DISPLAYS, this.displays);
-            this.moduleManager = this.own(new ModuleManager(server, modules));
+            ModuleContext context = new ModuleContext(this.engine, server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE));
+            context.put(ContextTypes.SEARCH, search);
+            context.put(ContextTypes.GAME, game);
+            context.put(ContextTypes.COMMERCE, transactions);
+            context.put(ContextTypes.CATALOGS, catalogs);
+            context.put(ContextTypes.DATABASES, this.databases);
+            context.put(ContextTypes.NARRATION, this.narration);
+            context.put(ContextTypes.DISPLAYS, this.displays);
+            this.moduleManager = this.own(new ModuleManager(server, context));
             this.engine.moduleAccess(this.moduleManager::hasModule);
             NeoForge.EVENT_BUS.post(new AssistantRegistrationEvent(this.engine));
             this.players = new AssistantPlayers(server, this.engine, this.moduleManager, this.usage);

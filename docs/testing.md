@@ -1,5 +1,11 @@
 # 编译与验收
 
+## 2026-11-07 Card JSON 编辑器迁移到 Vite
+
+将原 tools/card_editor.html 拆分到 html/card-editor：页面、编辑操作、节点字段与校验、浏览器预览、示例上下文和样式各自维护；27 份模板、双语语言表及共享 CSS 改为独立资源文件。资源通过 Vite glob 加载，新增 sync:resources 命令从游戏资源刷新快照；html/.gitignore 排除依赖、构建产物和缓存。下方提到旧单文件路径的内容保留为历史验收记录，当前入口与命令见 [Card JSON 编辑器](card-editor.md)。
+
+实际执行 npm install、npm run sync:resources 和 npm run build 成功（Vite 8.3.6，42 个模块）。静态核对 27 份模板、两份语言表及共享 CSS 与游戏资源一致；HTML ID 无重复、入口不再内嵌脚本和样式，全部 JS 的 node --check 与 git diff --check 通过。未运行测试、浏览器交互或 Minecraft；本次结论为生产构建与静态检查通过。
+
 ## 2026-11-06 Saturn 通知 HUD 编辑器
 
 读取 Saturn 1.2.5 HUD 框架源码，并通过实际依赖 JAR 确认 AbstractHudEntry、HudAnchor 与 HudManager 签名。通知以 public static 的 SystemHudEntries.NOTIFICATIONS 登记，直接使用 Saturn 自带的编辑入口，不另加设置按钮或按键，复用 Saturn 拖动、锚点、显隐与 config/saturn/hud.json；真实 AUI 通知通过 GUI ↔ 文档坐标转换应用位置。尺寸只读取已提交、未变换的根面板矩形，放置未变化时不重复写样式；预览使用被动示意框，无消息队列、业务或播报副作用。

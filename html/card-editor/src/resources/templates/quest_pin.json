@@ -1,0 +1,43 @@
+{
+  "style": [
+    "result_card",
+    "quest_tracking_card"
+  ],
+  "body": [
+    {
+      "type": "system:title",
+      "text": "{{title}}"
+    },
+    {
+      "type": "system:button",
+      "click": "local",
+      "value": "{{pin}}",
+      "binding": "{{pin_binding}}",
+      "icon": "system:icons/pin.svg",
+      "style": "quest_card_pin",
+      "unless": "simple"
+    },
+    {
+      "type": "system:text",
+      "style": "quest_tracking_chapter",
+      "text": "{{chapter}}"
+    },
+    {
+      "type": "system:text",
+      "text": "{{tasks.*.task_title}} · {{tasks.*.task_progress}}/{{tasks.*.task_required}}",
+      "repeat": "tasks"
+    },
+    {
+      "type": "system:text",
+      "text": "{{tr:system.ui.quest_tracking_more}} {{other_tasks}}",
+      "when": "other_tasks",
+      "style": [
+        "card_context"
+      ]
+    },
+    {
+      "type": "system:progress",
+      "value": "{{progress}}"
+    }
+  ]
+}

@@ -1,0 +1,2857 @@
+/* Shared by every assistant page, HUD notification, persistent card and client settings panel. */
+/* Adapted from ApricityUI t09-arwes-transparent and its t08-arwes foundation. */
+* {
+    box-sizing: border-box;
+}
+
+/* Vanilla formatting stays inline and keeps the owning button as the pointer target. */
+.minecraft_text, .minecraft_text span {
+    display: inline;
+    white-space: inherit;
+    pointer-events: none;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    user-select: none;
+}
+
+body, button, input, textarea, select {
+    font-family: var(--font-body, "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", sans-serif);
+}
+
+body {
+    /* AUI's public theme tokens drive every System surface, including the HUD and custom card nodes. */
+    --assistant-ink: var(--color-foreground, var(--ink, #dff8ff));
+    --assistant-muted: var(--color-muted, var(--ink-muted, #b6cfd5));
+    --assistant-heading: var(--ink, #f0bb7b);
+    --assistant-user: var(--color-secondary, var(--purple, #e0a66d));
+    --assistant-accent: var(--color-primary, var(--green, #61e6ff));
+    --assistant-accent-hover: var(--color-primary-hover, var(--green-hover, #9befff));
+    --assistant-accent-shadow: var(--color-primary-active, var(--green-shadow, #187d98));
+    --assistant-focus: var(--color-focus, var(--focus, #f0fdff));
+    --assistant-line: var(--line, var(--color-border, var(--edge, rgba(97, 230, 255, 0.42))));
+    --assistant-line-soft: var(--line-soft, var(--color-border-light, var(--edge-light, rgba(97, 230, 255, 0.18))));
+    --assistant-surface: var(--color-surface, var(--surface, rgba(10, 28, 40, 0.3)));
+    --assistant-surface-deep: var(--color-surface-deep, var(--surface-deep, rgba(6, 19, 29, 0.38)));
+    --assistant-panel-soft: var(--panel-soft-background, var(--surface, rgba(5, 31, 43, 0.18)));
+    --assistant-window: var(--panel-strong-background, var(--canvas, rgba(3, 14, 23, 0.72)));
+    --assistant-popup: var(--surface-deep, rgba(3, 14, 23, 0.98));
+    --assistant-card-hover: var(--card-hover-background, var(--surface-hover, var(--surface-deep, rgba(11, 54, 69, 0.3))));
+    --assistant-highlight: var(--accent-soft, var(--surface-soft, rgba(97, 230, 255, 0.12)));
+    --assistant-button: var(--button-background, var(--surface-deep, rgba(8, 31, 43, 0.22)));
+    --assistant-button-hover: var(--button-hover-background, var(--surface-hover, var(--surface, rgba(23, 89, 106, 0.4))));
+    --assistant-primary: var(--button-primary-background, var(--color-primary, var(--green, rgba(19, 101, 119, 0.44))));
+    --assistant-primary-hover: var(--button-primary-hover-background, var(--color-primary-hover, var(--green-hover, rgba(37, 139, 157, 0.58))));
+    --assistant-primary-ink: var(--ink-on-accent, var(--ink-on-dark, #efffff));
+    --assistant-shadow: var(--elev-ring, none);
+    --assistant-glow: var(--elev-whisper, none);
+    --assistant-window-art: var(--canvas-art, none);
+    --assistant-radius: var(--radius-md, 0);
+    --assistant-control-radius: var(--radius-sm, 0);
+    /* Surfaces already anchor themselves to the viewport. */
+    display: block;
+    overflow: hidden;
+    background: rgba(1, 7, 12, 0.42);
+    color: var(--assistant-ink);
+    font-size: 14px;
+    font-weight: 400;
+    selection-color: var(--assistant-highlight);
+    caret-color: var(--assistant-accent);
+}
+
+body.t09-arwes-transparent-theme {
+    --assistant-heading: #f0bb7b;
+    --assistant-window: rgba(3, 14, 23, 0.72);
+    --assistant-popup: rgba(3, 14, 23, 0.98);
+    --assistant-primary-ink: #efffff;
+    --assistant-window-art: linear-gradient(135deg, rgba(97, 230, 255, 0.04), transparent 35%, transparent 70%, rgba(97, 230, 255, 0.025));
+}
+
+body.t08-arwes-theme {
+    --assistant-primary-ink: var(--ink-on-dark, #efffff);
+}
+
+#workspace {
+    /* AUI can resolve body flex sizing before the viewport is committed; anchor the main panel directly. */
+    position: fixed;
+    left: max(3vw, calc(50vw - 530px));
+    top: max(3vh, calc(50vh - 370px));
+    width: min(1060px, 94vw);
+    height: min(740px, 90vh);
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--assistant-line);
+    border-radius: var(--assistant-radius);
+    background-color: var(--assistant-window);
+    background-image: var(--assistant-window-art);
+    box-shadow: var(--assistant-shadow), var(--assistant-glow);
+    overflow: hidden;
+}
+
+#workspace::before {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    bottom: 7px;
+    left: 7px;
+    border: 1px solid var(--assistant-line-soft);
+    content: "";
+    pointer-events: none;
+}
+
+button {
+    color: var(--assistant-ink);
+    background-color: var(--assistant-button);
+    border: 1px solid var(--assistant-line);
+    border-radius: var(--assistant-control-radius);
+    min-height: 34px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    transition: background-color 100ms ease, box-shadow 100ms ease, color 100ms ease;
+}
+
+/* AUI measures transform transitions and treats interpolated border colors as layout changes. */
+body[data-system-theme] button,
+body[data-system-theme] button:hover,
+body[data-system-theme] button:active,
+body[data-system-theme] button[aria-pressed] {
+    transform: none;
+    transition: background-color 100ms ease, box-shadow 100ms ease, color 100ms ease;
+}
+
+button:hover {
+    border-color: var(--assistant-accent-hover);
+    background-color: var(--assistant-button-hover);
+    color: var(--assistant-ink);
+}
+
+button:focus {
+    border-color: var(--assistant-focus);
+    box-shadow: 0 0 0 1px var(--assistant-accent-shadow);
+}
+
+button:active {
+    background-color: var(--assistant-accent-shadow);
+}
+
+/* Static disabled states use colors: AUI 1.2.9 composites opacity through synchronous GPU readback. */
+body :disabled {
+    opacity: 1;
+    color: var(--disabled-foreground, var(--assistant-muted));
+}
+
+#workspace .primary {
+    border-color: var(--assistant-accent);
+    background-color: var(--assistant-primary);
+    color: var(--assistant-primary-ink);
+    box-shadow: var(--assistant-glow);
+}
+
+#workspace .primary:hover {
+    background-color: var(--assistant-primary-hover);
+}
+
+#workspace .primary:active {
+    background-color: var(--assistant-accent-shadow);
+}
+
+input, textarea, select {
+    background-color: var(--assistant-surface-deep);
+    color: var(--assistant-ink);
+    border: 1px solid var(--assistant-line);
+    border-radius: var(--assistant-control-radius);
+    padding: 11px;
+    font-size: 15px;
+    font-weight: 400;
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: var(--assistant-accent);
+    box-shadow: 0 0 0 1px var(--assistant-accent-shadow);
+}
+
+h1 {
+    margin: 10px 0;
+    color: var(--assistant-heading);
+    font-size: 26px;
+    font-weight: 500;
+}
+
+h2 {
+    margin: 0;
+    color: var(--assistant-heading);
+    font-size: 18px;
+    font-weight: 600;
+}
+
+p {
+    color: var(--assistant-muted);
+    line-height: 1.6;
+    margin: 8px 0 0;
+    font-size: 14px;
+}
+
+.signal {
+    color: var(--assistant-accent);
+    font-size: 42px;
+}
+
+#conversation, #sidebar, #speech, #usage_scroll, #settings_content, .quest_list, .card_action_groups, .card_action_grid, #notification_scroll {
+    scrollbar-width: 6px;
+    scrollbar-color: var(--assistant-accent-shadow) var(--assistant-surface-deep);
+}
+
+/* Full assistant layout. */
+.full #workspace {
+    display: block;
+}
+
+#topbar {
+    position: relative;
+    height: 64px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--assistant-line);
+    background-color: var(--assistant-surface);
+}
+
+#topbar::after {
+    position: absolute;
+    bottom: -1px;
+    left: 24px;
+    width: 64px;
+    height: 2px;
+    background-color: var(--assistant-accent);
+    box-shadow: 0 0 10px var(--assistant-accent);
+    content: "";
+    pointer-events: none;
+}
+
+#identity {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#brand {
+    color: var(--assistant-heading);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 2px;
+}
+
+#status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 9px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-panel-soft);
+    color: var(--assistant-accent-hover);
+    font-size: 12px;
+}
+
+#status::before {
+    width: 5px;
+    height: 5px;
+    background-color: var(--assistant-accent);
+    box-shadow: 0 0 7px var(--assistant-accent);
+    content: "";
+}
+
+#layout {
+    /* Definite shell geometry breaks the workspace -> layout -> main flex measurement chain. */
+    position: absolute;
+    top: 64px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: block;
+    min-height: 0;
+}
+
+#sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 196px;
+    display: flex;
+    flex-direction: column;
+    padding: 22px 14px 14px;
+    border-right: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+    overflow-y: auto;
+}
+
+#sidebar_navigation {
+    display: flex;
+    flex-direction: column;
+}
+
+#topbar_navigation {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+}
+
+#topbar_navigation .nav {
+    margin: 0;
+    border-color: var(--assistant-line);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.nav {
+    margin-bottom: 6px;
+    border-color: transparent;
+    background-color: transparent;
+    min-height: 38px;
+}
+
+.nav:hover {
+    border-color: var(--assistant-line-soft);
+}
+
+.nav.active {
+    border-color: var(--assistant-line);
+    border-left: 2px solid var(--assistant-accent);
+    background-color: var(--assistant-button-hover);
+    color: var(--assistant-accent-hover);
+    box-shadow: var(--assistant-glow);
+}
+
+#privacy {
+    margin-top: auto;
+    padding: 22px 8px 12px;
+}
+
+#privacy_heading {
+    color: var(--assistant-accent-hover);
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 7px;
+}
+
+#privacy_text {
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.small {
+    font-size: 12px;
+    padding: 7px 8px;
+    margin-bottom: 5px;
+    color: var(--assistant-muted);
+}
+
+.sidebar_actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+#main {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 196px;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0 26px;
+}
+
+.toolbar {
+    display: none;
+    flex: 0 0 auto;
+    gap: 10px;
+    padding: 14px 0;
+    border-top: 1px solid var(--assistant-line-soft);
+}
+
+#item_query {
+    flex: 1;
+    min-width: 0;
+}
+
+.shop {
+    flex-direction: column;
+}
+
+.shop_controls {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    gap: 10px;
+}
+
+#shop_query, #lottery_query, #quest_guide_query {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 42px;
+}
+
+.shop_controls button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-height: 42px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+#shop_text, #lottery_text {
+    font-size: 12px;
+    margin-top: 0;
+}
+
+.signin {
+    align-items: center;
+    justify-content: space-between;
+}
+
+#welcome {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    justify-content: center;
+    padding: 25px 12px;
+}
+
+#conversation {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    align-content: safe end;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 18px 4px 14px;
+}
+
+/* Use the same content-sized grid row for placement and scroll extents; safe end keeps long transcripts reachable. */
+#conversation_entries {
+    display: block;
+    min-width: 0;
+}
+
+.message {
+    display: block;
+    min-width: 0;
+    margin-bottom: 18px;
+    transition: none;
+}
+
+.message:last-child {
+    margin-bottom: 0;
+}
+
+/* Lay out new rows without transitions; arm motion only after their first committed geometry. */
+.message_new {
+    transform: translateY(18px);
+    opacity: 0;
+}
+
+.message_entering {
+    transform: translateY(0);
+    opacity: 1;
+    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
+}
+
+.message > .message_text, .message > .result_card {
+    margin-top: 7px;
+}
+
+.message_label {
+    color: var(--assistant-accent-hover);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.user .message_label {
+    color: var(--assistant-user);
+}
+
+.message_text {
+    font-size: 14px;
+    line-height: 1.7;
+    word-break: break-all;
+    white-space: pre-wrap;
+    color: var(--assistant-ink);
+}
+
+/* Markdown owns its block spacing; ordinary text and FTB formatting keep their existing renderer. */
+.card_markdown {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    color: var(--assistant-ink);
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.markdown_p, .markdown_pre, .markdown_blockquote, .markdown_ul, .markdown_ol {
+    display: block;
+    margin: 6px 0;
+}
+
+.markdown_h1, .markdown_h2, .markdown_h3, .markdown_h4, .markdown_h5, .markdown_h6 {
+    display: block;
+    color: var(--assistant-heading);
+    font-weight: 700;
+    line-height: 1.4;
+    margin: 10px 0 6px;
+}
+
+.markdown_h1 { font-size: 22px; }
+.markdown_h2 { font-size: 19px; }
+.markdown_h3 { font-size: 17px; }
+.markdown_h4, .markdown_h5, .markdown_h6 { font-size: 15px; }
+
+.markdown_strong, .markdown_b { font-weight: 700; }
+.markdown_em, .markdown_i { font-style: italic; }
+.markdown_s, .markdown_strike, .markdown_del { text-decoration: line-through; }
+
+.markdown_pre, .markdown_code {
+    font-family: monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background-color: var(--assistant-surface-deep);
+}
+
+.markdown_code { padding: 1px 3px; }
+
+.markdown_pre {
+    padding: 8px 10px;
+    border: 1px solid var(--assistant-line-soft);
+}
+
+.markdown_pre .markdown_code {
+    padding: 0;
+    background-color: transparent;
+}
+
+.markdown_blockquote {
+    padding: 2px 10px;
+    border-left: 2px solid var(--assistant-accent-shadow);
+    color: var(--assistant-muted);
+}
+
+.markdown_li {
+    display: block;
+    position: relative;
+    padding-left: 20px;
+    margin: 2px 0;
+}
+
+.markdown_marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--assistant-muted);
+}
+
+.markdown_li > .markdown_p { margin: 0; }
+
+.markdown_link {
+    color: var(--assistant-accent);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.markdown_link:hover { color: var(--assistant-accent-hover); }
+
+.markdown_hr {
+    height: 1px;
+    margin: 8px 0;
+    background-color: var(--assistant-line-soft);
+}
+
+.user {
+    border-left: 2px solid var(--assistant-user);
+    padding-left: 12px;
+}
+
+.result_card {
+    position: relative;
+    padding: 14px 20px 14px 16px;
+    border: 1px solid var(--assistant-line-soft);
+    border-left: 2px solid var(--assistant-accent);
+    background-color: var(--assistant-panel-soft);
+    margin-top: 5px;
+    box-shadow: var(--assistant-shadow);
+    transition: background-color 100ms ease, box-shadow 100ms ease;
+}
+
+.result_card::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 3px;
+    /* A translucent color avoids a permanent offscreen compositing group for every card. */
+    background-color: var(--assistant-line);
+    content: "";
+    pointer-events: none;
+}
+
+.result_card:hover {
+    border-color: var(--assistant-accent);
+    background-color: var(--assistant-card-hover);
+    box-shadow: var(--assistant-glow);
+}
+
+.result_card:hover::after {
+    background-color: var(--assistant-accent);
+}
+
+/* h1 is the card heading; deeper levels are inline section headings. */
+.card_title {
+    color: var(--assistant-ink);
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.card_title_2 {
+    color: var(--assistant-ink);
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.card_title_3 {
+    color: var(--assistant-ink);
+    font-size: 13px;
+    font-weight: 600;
+    margin: 4px 0 2px;
+}
+
+.card_title_4 {
+    color: var(--assistant-muted);
+    font-size: 12px;
+    font-weight: 600;
+    margin: 4px 0 2px;
+}
+
+.card_body {
+    color: var(--assistant-ink);
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.card_action {
+    margin: 10px 7px 0 0;
+    font-size: 13px;
+}
+
+/* A delivered receipt keeps its claim slot as a marker: same position, no action. */
+.card_action:disabled, .card_action:disabled:hover {
+    color: var(--assistant-muted);
+    background-color: transparent;
+    border-color: var(--assistant-line-soft);
+    cursor: default;
+}
+
+/* Registered card primitives can be nested without fixed business-specific placement. */
+.card_container, .card_column, .card_row, .card_flex {
+    min-width: 0;
+}
+
+.card_flex {
+    gap: 6px;
+}
+
+.card_column {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.card_row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 12px;
+}
+
+.card_row > * {
+    flex: 1 1 140px;
+    min-width: 0;
+}
+
+.player_card_layout {
+    align-items: stretch;
+    gap: 12px 16px;
+    margin-top: 10px;
+}
+
+.player_preview {
+    width: 160px;
+    height: 240px;
+    padding: 8px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+    overflow: hidden;
+}
+
+/* Templates opt out of the preview frame with this class; adding it back through the node's style restores it. */
+.player_preview.player_preview_bare {
+    border: 0;
+}
+
+.player_card_layout > .player_preview {
+    flex: 1 1 140px;
+    max-width: 200px;
+}
+
+.player_card_layout > .player_info {
+    flex: 2 1 240px;
+    padding: 10px 14px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-panel-soft);
+}
+
+.player_info > .card_body {
+    margin: 0;
+}
+
+.player_preview_empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    white-space: normal;
+}
+
+.card_context {
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.guide_entry {
+    min-width: 0;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--assistant-line-soft);
+}
+
+.guide_entry .card_title,
+.guide_entry .card_title_2 {
+    margin-bottom: 3px;
+}
+
+.card_details {
+    display: block;
+    min-width: 0;
+    margin-top: 10px;
+    border-top: 1px solid var(--assistant-line-soft);
+}
+
+.card_details_toggle, .card_link {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 30px;
+    padding: 6px 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    color: var(--assistant-accent);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.6;
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.card_details_body {
+    display: block;
+    min-width: 0;
+    padding: 4px 0 0 10px;
+    border-left: 1px solid var(--assistant-line-soft);
+}
+
+.card_control_label {
+    display: block;
+    flex: 1 1 0;
+    min-width: 0;
+    pointer-events: none;
+}
+
+.card_details_arrow {
+    display: block;
+    flex: 0 0 14px;
+    pointer-events: none;
+}
+
+.search_source {
+    display: block;
+    min-width: 0;
+}
+
+.search_source + .search_source {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--assistant-line-soft);
+}
+
+.search_source .card_context {
+    line-clamp: 3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card_link {
+    text-decoration: underline;
+}
+
+.card_divider {
+    border-top: 1px solid var(--assistant-line-soft);
+    margin: 10px 0;
+}
+
+.simple .result_card, .notification .result_card {
+    padding: 0;
+    margin: 8px 0 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+}
+
+.simple .result_card::after, .notification .result_card::after {
+    display: none;
+}
+
+/* Native item nodes share AUI layout/opacity and use vanilla item tooltips. */
+.item_groups {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    margin-top: 10px;
+}
+
+.item_group {
+    min-width: 0;
+}
+
+.item_group_label {
+    color: var(--assistant-ink);
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 5px;
+    word-break: break-all;
+}
+
+.item_row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.quest_icon_group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.quest_icon_row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.quest_icon_entry {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 4px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+}
+
+.quest_type_icon {
+    display: block;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    flex-shrink: 0;
+}
+
+.quest_icon_amount {
+    color: var(--assistant-ink);
+    font-size: 11px;
+}
+
+/* Reward sections share one heading and wrap item/type previews in the same compact flow. */
+.reward_section {
+    min-width: 0;
+    margin-top: 8px;
+}
+
+.reward_grid, .reward_entry {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.reward_entry {
+    flex: 0 1 auto;
+}
+
+.reward_grid .item_groups, .reward_grid .quest_icon_group {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    margin-top: 0;
+    gap: 0;
+}
+
+.reward_grid .item_icon_frame {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+}
+
+.reward_grid .quest_type_icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+}
+
+.reward_error {
+    flex-basis: 100%;
+}
+
+.item_entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+    padding: 4px 9px 4px 4px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+}
+
+.item_entry.compact {
+    padding: 4px;
+}
+
+.item_icon_frame {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+}
+
+/*
+ * Fixed-slot item tables (shop offers, lottery prizes). The card node sets `columns`; every slot keeps the
+ * same width so rows line up like a shelf. Costs stay in the item tooltip.
+ */
+.item_row.table {
+    display: grid;
+    align-items: stretch;
+    justify-content: start;
+    gap: 6px;
+    padding: 10px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+}
+
+.item_row.table .item_entry {
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    width: 100%;
+    height: 100%;
+}
+
+.item_row.table .item_name {
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: center;
+    word-break: break-all;
+}
+
+/* All shelves render one page; GridNode shares the row/column counts with pagination. */
+.offer_grid, .card_grid {
+    align-content: start;
+    justify-content: start;
+    gap: 6px;
+    padding: 10px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+}
+
+.offer_cell, .card_grid_cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 6px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+    cursor: pointer;
+}
+
+.card_paged {
+    display: block;
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+}
+
+/* Category tabs keep recipes, loot tables and tags compact without building hidden pages. */
+.item_sources {
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+}
+
+.source_tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.source_tabs .source_tab {
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 6px 8px;
+}
+
+.source_tabs .source_tab.selected {
+    color: var(--assistant-accent);
+    border-color: var(--assistant-accent);
+    background-color: var(--assistant-highlight);
+}
+
+.source_tab_count {
+    color: var(--assistant-muted);
+    font-size: 11px;
+}
+
+.source_content {
+    min-width: 0;
+}
+
+.source_recipe_list, .source_loot_list {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    margin-top: 6px;
+}
+
+.source_entry {
+    min-width: 0;
+    padding: 6px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-panel-soft);
+}
+
+.source_entry_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+}
+
+.source_stations {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 2px;
+}
+
+.source_stations .item_entry {
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+}
+
+.source_stations .item_icon_frame {
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+}
+
+.source_stations .item_icon {
+    transform: scale(1.1);
+}
+
+.source_loot_list .source_entry {
+    padding: 5px 8px;
+}
+
+.source_loot_list {
+    grid-template-columns: 1fr;
+}
+
+.source_loot_list .source_id {
+    margin: 0;
+    color: var(--assistant-ink);
+    font-size: 12px;
+}
+
+.source_tag_list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+    margin-top: 8px;
+}
+
+.source_tag_list .source_entry {
+    max-width: 100%;
+    padding: 4px 8px;
+    color: var(--assistant-ink);
+    font-size: 12px;
+    line-height: 1.4;
+    word-break: break-all;
+}
+
+.source_heading {
+    min-width: 0;
+    color: var(--assistant-ink);
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1.5;
+}
+
+.source_id {
+    font-size: 10px;
+    line-height: 1.4;
+    margin-bottom: 4px;
+}
+
+.source_recipe {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px 0;
+}
+
+.source_section {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.source_label {
+    color: var(--assistant-muted);
+    font-size: 11px;
+    line-height: 1.5;
+    margin-bottom: 2px;
+}
+
+.source_slots {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+.source_slot {
+    position: relative;
+    flex: 0 0 36px;
+    box-sizing: border-box;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-panel-soft);
+    overflow: visible;
+}
+
+.source_slot .item_entry {
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+}
+
+.source_slot .item_icon_frame {
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+}
+
+.source_slot .item_icon {
+    transform: scale(1.5);
+}
+
+.source_alternatives {
+    position: absolute;
+    top: 0;
+    right: 1px;
+    color: var(--assistant-accent);
+    font-size: 10px;
+    pointer-events: none;
+}
+
+.source_arrow {
+    flex: 0 0 auto;
+    color: var(--assistant-accent);
+    font-size: 18px;
+}
+
+.source_hint {
+    margin-top: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.card_page_grid {
+    display: grid;
+    box-sizing: border-box;
+    align-content: start;
+    gap: 6px;
+    padding: 10px;
+    border: 1px solid var(--assistant-line-soft);
+    overflow: visible;
+}
+
+.offer_cell:hover, .card_grid_cell:hover {
+    border-color: var(--assistant-accent);
+    background-color: var(--assistant-highlight);
+}
+
+.offer_cell_items {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    min-height: 40px;
+}
+
+.offer_cell_label {
+    color: var(--assistant-ink);
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: center;
+    word-break: break-all;
+    max-height: 2.6em;
+    overflow: hidden;
+}
+
+/* Lottery shelf reuses the shop grid; its cells only preview odds, so they are not clickable. */
+.prize_cell {
+    cursor: default;
+}
+
+.lottery_hint {
+    color: var(--assistant-muted);
+    font-size: 11px;
+    line-height: 1.4;
+    margin-top: 4px;
+}
+
+/* Cells keep two compact previews side by side; columns use equal fractions, so the preview stays fixed. */
+.offer_cell .item_entry, .card_grid_cell .item_entry {
+    padding: 2px;
+}
+
+.offer_cell .item_icon_frame, .card_grid_cell .item_icon_frame {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+}
+
+.offer_cell .item_icon, .card_grid_cell .item_icon {
+    transform: scale(1.75);
+}
+
+/* AUI draws a fixed 16px model; scale the native item itself inside a reserved hit area. */
+.item_icon {
+    display: block;
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    transform: scale(1.75);
+    transform-origin: 50% 50%;
+    pointer-events: auto;
+}
+
+.item_icon:hover {
+    background-color: var(--assistant-highlight);
+}
+
+.item_name {
+    color: var(--assistant-ink);
+    font-size: 13px;
+    line-height: 1.5;
+    word-break: break-all;
+}
+
+.item_text {
+    min-width: 0;
+}
+
+.item_description {
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.quest_list {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 48vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.quest_list .card_action {
+    margin: 0;
+}
+
+.quest_row {
+    display: block;
+    flex: 0 0 auto;
+    width: 100%;
+    text-align: left;
+    white-space: normal;
+}
+
+.card_pagination, .card_navigation {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.card_pagination {
+    justify-content: center;
+}
+
+.card_page_label {
+    color: var(--assistant-muted);
+    font-size: 12px;
+    text-align: center;
+}
+
+.card_navigation {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.card_pagination .card_action, .card_navigation .card_action {
+    margin: 0;
+}
+
+.notification .quest_list {
+    max-height: none;
+    overflow-y: visible;
+}
+
+.notification .quest_row {
+    justify-content: flex-start;
+    text-align: left;
+}
+
+/* Query-local chapter navigation shares shelf cells and the existing action pager. */
+.card_grouped_actions {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.card_action_groups {
+    display: block;
+    flex: 0 0 136px;
+    width: 136px;
+    height: auto;
+    min-height: 0;
+    max-height: 360px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: auto;
+}
+
+.card_action_group_list {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 4px;
+}
+
+.card_action_group {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: left;
+    white-space: normal;
+    word-break: break-all;
+}
+
+.card_action_group.selected {
+    border-color: var(--assistant-accent);
+    background-color: var(--assistant-highlight);
+}
+
+.card_action_group_section {
+    flex: 0 0 auto;
+    color: var(--assistant-heading);
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 4px 6px;
+    word-break: break-all;
+}
+
+.card_action_group_count {
+    flex: 0 0 auto;
+    color: var(--assistant-muted);
+    font-size: 11px;
+    pointer-events: none;
+}
+
+.card_action_group_results {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+}
+
+.card_action_grid {
+    min-width: 0;
+}
+
+.card_action_cell {
+    position: relative;
+    min-width: 0;
+    justify-content: center;
+    text-align: center;
+    /* FTB icon renderers can extend a few pixels beyond their CSS box, especially for 3D items. */
+    overflow: visible;
+}
+
+/* Outrank theme button states so pins never acquire a tall hit box, solid fill or focus rectangle. */
+body button.quest_card_pin,
+body button.quest_card_pin:hover,
+body button.quest_card_pin:focus,
+body button.quest_card_pin:active,
+body button.quest_card_pin[aria-pressed] {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    max-width: 22px;
+    min-height: 22px;
+    max-height: 22px;
+    padding: 3px;
+    font-size: 0;
+    line-height: 1;
+    color: var(--assistant-muted);
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    transform: none;
+}
+
+body button.quest_card_pin[aria-pressed="true"] {
+    color: var(--assistant-accent);
+}
+
+body button.quest_card_pin:hover, body button.quest_card_pin:focus {
+    color: var(--assistant-accent-hover);
+}
+
+.quest_card_pin svg, .quest_card_pin path, .quest_card_pin .card_button_icon {
+    pointer-events: none;
+}
+
+.quest_card_pin svg, .quest_card_pin .card_button_icon {
+    width: 16px;
+    height: 16px;
+    transform: rotate(35deg);
+    transform-origin: 50% 50%;
+    /* Keep state rotation without measuring every grid cell to build a transform transition. */
+    transition: none;
+}
+
+.quest_card_pin[aria-pressed="true"] svg, .quest_card_pin[aria-pressed="true"] .card_button_icon {
+    transform: rotate(0deg);
+}
+
+.quest_detail_card > .quest_card_pin {
+    top: 10px;
+    right: 10px;
+}
+
+.simple .quest_detail_card > .quest_card_pin, .notification .quest_detail_card > .quest_card_pin {
+    top: 0;
+    right: 0;
+}
+
+.quest_detail_card > .card_title, .quest_detail_title {
+    padding-right: 28px;
+}
+
+.card_progress {
+    display: block;
+    width: 100%;
+    height: 6px;
+    overflow: hidden;
+    background-color: var(--assistant-line-soft);
+    pointer-events: none;
+}
+
+.card_progress_fill {
+    width: 100%;
+    height: 100%;
+    background-color: var(--assistant-accent);
+    pointer-events: none;
+}
+
+/* Absolute children follow the cell border without taking space from the title or native quest icon. */
+.card_action_cell .card_progress {
+    position: absolute;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    width: auto;
+}
+
+.quest_card_icon {
+    display: flex;
+    flex: 0 0 32px;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 32px;
+    overflow: visible;
+}
+
+.quest_card_icon .quest_type_icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    overflow: visible;
+}
+
+.card_action_cell .offer_cell_label {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    text-align: center;
+    white-space: normal;
+    pointer-events: none;
+}
+
+/* AUI aligns direct text, but not nested inline runs; center the runs and give each a block line box. */
+.card_action_cell .offer_cell_label .minecraft_text {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.card_action_cell .offer_cell_label .minecraft_text span {
+    display: block;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.card_action_cell .minecraft_text, .card_action_cell .minecraft_text span {
+    text-align: center;
+}
+
+.card_action_cell_meta {
+    flex: 0 0 auto;
+    width: 100%;
+    color: var(--assistant-muted);
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: center;
+    pointer-events: none;
+}
+
+.notification .card_action_groups {
+    flex-basis: 108px;
+    width: 108px;
+    max-height: 220px;
+}
+
+/* Lottery results keep cost and odds readable without exposing nested codec fields. */
+.lottery_card {
+    padding: 14px 16px;
+}
+
+.lottery_card::after {
+    display: none;
+}
+
+.lottery_heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+}
+
+.lottery_name {
+    flex: 1 1 180px;
+    min-width: 0;
+    color: var(--assistant-ink);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.5;
+    word-break: break-all;
+}
+
+.lottery_count, .lottery_chance {
+    flex: 0 1 auto;
+    max-width: 100%;
+    font-size: 13px;
+    line-height: 1.6;
+    word-break: break-all;
+}
+
+.lottery_count, .lottery_id, .lottery_cost_label {
+    color: var(--assistant-muted);
+}
+
+.lottery_chance {
+    color: var(--assistant-heading);
+    font-weight: 600;
+}
+
+.lottery_id {
+    margin-top: 3px;
+    font-size: 12px;
+    line-height: 1.5;
+    word-break: break-all;
+}
+
+.lottery_cost {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--assistant-line-soft);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.lottery_cost_label {
+    flex: 0 0 auto;
+    font-size: 12px;
+}
+
+.lottery_cost_value {
+    flex: 1;
+    min-width: 0;
+    color: var(--assistant-ink);
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.lottery_unavailable {
+    margin-top: 8px;
+    color: var(--assistant-heading);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.lottery_card .card_action {
+    max-width: 100%;
+    text-align: center;
+    white-space: normal;
+    word-break: break-all;
+}
+
+#composer {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 0 20px;
+    border-top: 1px solid var(--assistant-line-soft);
+}
+
+#message_box {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+#message {
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+}
+
+#send {
+    min-height: 40px;
+}
+
+#asr_status {
+    display: none;
+    flex: 0 0 auto;
+    max-height: 54px;
+    overflow: hidden;
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+#asr_cancel {
+    display: none;
+}
+
+#asr_toggle, #asr_cancel {
+    min-height: 40px;
+}
+
+/* A body-level overlay never contributes to panel or composer measurements. */
+#command_suggestions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 20;
+    display: none;
+    flex-direction: column;
+    padding: 6px;
+    gap: 3px;
+    border: 1px solid var(--assistant-line);
+    background-color: var(--assistant-popup);
+    box-shadow: var(--assistant-glow);
+}
+
+.command_option {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 28px;
+    padding: 5px 8px;
+    font-size: 13px;
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-color: transparent;
+}
+
+.command_option.selected {
+    border-color: var(--assistant-accent);
+    background-color: var(--assistant-button-hover);
+    color: var(--assistant-ink);
+}
+
+.command_hint {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    font-size: 12px;
+    color: var(--assistant-muted);
+}
+
+/* A single speech surface; commands and numbered options replace navigation. */
+body.simple {
+    display: block;
+    padding: 0;
+    background: rgba(1, 7, 12, 0.12);
+}
+
+.simple #workspace, .notification #workspace {
+    width: min(840px, 94vw);
+}
+
+.simple #workspace {
+    /* Keep the panel anchored even when completion nodes invalidate the document layout. */
+    position: fixed;
+    left: max(3vw, calc(50vw - 420px));
+    top: auto;
+    bottom: 6vh;
+    height: min(460px, 76vh);
+    padding: 20px 26px 0;
+}
+
+#speech_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 0 12px;
+    border-bottom: 1px solid var(--assistant-line-soft);
+}
+
+#speaker {
+    color: var(--assistant-heading);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 2px;
+}
+
+#speech {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px 2px;
+}
+
+#current_request {
+    color: var(--assistant-muted);
+    border-left: 2px solid var(--assistant-user);
+    padding-left: 10px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+#current_result {
+    color: var(--assistant-ink);
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.simple #composer {
+    padding: 12px 0 18px;
+}
+
+/* HUD roots stay transparent; theme artwork belongs to the actual panels. */
+html.system_hud, body.system_hud {
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
+
+html.system_hud::before, html.system_hud::after,
+body.system_hud::before, body.system_hud::after {
+    display: none !important;
+    content: none !important;
+}
+
+body.system_hud {
+    display: block;
+    padding: 0;
+}
+
+html.system_hud, body.system_hud, body.system_hud * {
+    /* Theme styles must not turn a passive HUD into an input surface. */
+    pointer-events: none !important;
+    user-select: none;
+}
+
+/* Notifications share the simple anchor; only vanilla chat enables pointer targets on the panel. */
+.notification.interactive #workspace, .notification.interactive #workspace * {
+    pointer-events: auto !important;
+}
+
+.notification.interactive #workspace .minecraft_text,
+.notification.interactive #workspace .minecraft_text span {
+    pointer-events: none !important;
+}
+
+.notification #workspace {
+    /* Anchor the border box directly; changing content height must not move its bottom edge. */
+    position: fixed;
+    left: max(3vw, calc(50vw - 420px));
+    top: auto;
+    bottom: 6vh;
+    height: auto;
+    max-height: 64vh;
+    padding: 20px 26px 18px;
+    gap: 12px;
+    transform: scaleX(0);
+    transform-origin: 50% 50%;
+    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.notification.expanded #workspace {
+    transform: scaleX(1);
+}
+
+#notification_content {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    width: 100%;
+    max-height: calc(64vh - 40px);
+    min-width: 0;
+    min-height: 0;
+    gap: 12px;
+    opacity: 0;
+    transition: opacity 160ms ease;
+}
+
+.notification.content_visible #notification_content {
+    opacity: 1;
+}
+
+#notification_header {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--assistant-line-soft);
+}
+
+#notification_title {
+    color: var(--assistant-heading);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+#notification_pending {
+    color: var(--assistant-accent-hover);
+    font-size: 12px;
+}
+
+#notification_scroll {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-height: min(270px, calc(64vh - 175px));
+    overflow-y: auto;
+    overflow-x: hidden;
+    gap: 12px;
+}
+
+#notification_body {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    color: var(--assistant-ink);
+    font-size: 15px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+#notification_text, #notification_cards {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+#notification_choices {
+    display: none;
+    flex: 0 0 auto;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    gap: 6px;
+}
+
+#notification_choices .quest_row {
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    min-width: 0;
+    width: 100%;
+    padding: 10px 12px;
+    line-height: 1.5;
+    text-align: left;
+}
+
+#notification_actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+#notification_items {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    margin-top: 0;
+    gap: 6px;
+}
+
+.notification .item_icon {
+    pointer-events: none;
+}
+
+.notification button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 72px;
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-all;
+    font-size: 13px;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.notification button:disabled {
+    cursor: default;
+}
+
+#notification_hint, #notification_voice {
+    flex: 0 0 auto;
+    min-width: 0;
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: normal;
+    word-break: break-all;
+}
+
+#notification_voice {
+    display: none;
+    max-height: 4em;
+    overflow: hidden;
+    color: var(--assistant-accent-hover);
+}
+
+/* World usage dashboard shares the same panel, typography, cards and controls. */
+.usage #workspace {
+    width: min(1060px, 94vw);
+    height: min(740px, 90vh);
+}
+
+#usage_content {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 26px 20px;
+}
+
+#usage_scroll {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    gap: 18px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 8px;
+}
+
+#usage_controls {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+#usage_scope {
+    flex: 1;
+    color: var(--assistant-muted);
+    font-size: 12px;
+}
+
+#usage_summary {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.usage_section {
+    display: flex;
+    flex: 0 0 auto;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-panel-soft);
+}
+
+.usage_section_title {
+    color: var(--assistant-accent-hover);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.usage_metrics {
+    display: flex;
+    flex: 0 0 auto;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 12px 0;
+}
+
+.usage_metric {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 14px;
+    border-left: 1px solid var(--assistant-line-soft);
+}
+
+.usage_metric:first-child {
+    padding-left: 0;
+    border-left: 0;
+}
+
+.usage_section_tts .usage_metric:first-child {
+    flex-grow: 1.4;
+}
+
+.usage_label {
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.usage_total {
+    color: var(--assistant-heading);
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.3;
+    word-break: break-all;
+}
+
+.usage_counts {
+    flex: 0 0 auto;
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.usage_section .usage_counts {
+    border-top: 1px solid var(--assistant-line-soft);
+    padding-top: 8px;
+}
+
+#usage_notes {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 7px;
+    border-top: 1px solid var(--assistant-line-soft);
+    padding-top: 14px;
+}
+
+#usage_note, #usage_speech_note, #usage_recognition_note {
+    flex: 0 0 auto;
+    margin: 0;
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+#usage_players {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.usage_row {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 0;
+}
+
+.usage_identity {
+    display: flex;
+    flex: 0 0 auto;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--assistant-line-soft);
+}
+
+.usage_identity .card_title {
+    margin: 0;
+}
+
+.usage_uuid {
+    color: var(--assistant-muted);
+    font-size: 12px;
+    word-break: break-all;
+}
+
+.usage_last_call {
+    color: var(--assistant-muted);
+    font-size: 12px;
+    margin-left: auto;
+}
+
+.usage_row .usage_section {
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+    gap: 8px;
+}
+
+.usage_row .usage_section_title {
+    font-size: 12px;
+}
+
+.usage_value {
+    color: var(--assistant-ink);
+    font-size: 16px;
+    font-weight: 600;
+    word-break: break-all;
+}
+
+.usage_row .usage_section .usage_counts {
+    padding-top: 0;
+    border-top: 0;
+}
+
+#usage_footer {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    border-top: 1px solid var(--assistant-line-soft);
+    padding-top: 12px;
+}
+
+#usage_footer #status {
+    margin-right: auto;
+}
+
+#usage_page {
+    color: var(--assistant-muted);
+    font-size: 12px;
+}
+
+.usage button:disabled {
+    cursor: default;
+}
+
+/* One settings surface keeps local provider drafts alive while switching tabs. */
+.settings #workspace {
+    left: max(3vw, calc(50vw - 480px));
+    top: max(5vh, calc(50vh - 400px));
+    width: min(960px, 94vw);
+    height: min(800px, 90vh);
+}
+
+#settings_title {
+    color: var(--assistant-heading);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 2px;
+}
+
+#settings_tabs {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px 26px;
+    border-bottom: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+}
+
+.settings_tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 0;
+    min-width: 100px;
+    text-align: center;
+}
+
+#settings_content {
+    /* Keep the scrolling form out of nested intrinsic flex measurements. */
+    display: block;
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 18px 26px;
+}
+
+.settings_page {
+    display: none;
+    min-width: 0;
+}
+
+.settings .settings_page > * + * {
+    margin-top: 12px;
+}
+
+.settings #privacy_heading {
+    color: var(--assistant-heading);
+    font-size: 16px;
+    margin: 0 0 4px;
+}
+
+.settings #privacy_text {
+    font-size: 13px;
+    padding: 0;
+}
+
+.settings_page > .speech_controls {
+    padding-bottom: 4px;
+}
+
+.settings_modes {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 0;
+}
+
+.settings_modes button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 0;
+    text-align: center;
+}
+
+.speech_step.settings_theme {
+    min-height: 74px;
+    padding-right: 80px;
+}
+
+.settings_theme_description {
+    min-width: 0;
+}
+
+/* Button activation keeps keyboard support without AUI's separately painted checkbox indicator. */
+#workspace button.assistant_switch {
+    position: relative;
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 34px;
+    margin: 0;
+    padding: 6px 0 6px 48px;
+    border: 0;
+    border-radius: var(--assistant-control-radius);
+    background-color: transparent;
+    color: var(--assistant-ink);
+    box-shadow: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 400;
+}
+
+#workspace button.assistant_switch:hover, #workspace button.assistant_switch:focus, #workspace button.assistant_switch:active {
+    background-color: transparent;
+    box-shadow: none;
+}
+
+.assistant_switch .switch_track {
+    position: absolute;
+    left: 0;
+    top: 6px;
+    display: block;
+    width: 38px;
+    height: 22px;
+    border: 1px solid var(--assistant-line-soft);
+    border-radius: 11px;
+    background-color: var(--assistant-surface-deep);
+    pointer-events: none;
+    transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.assistant_switch .switch_track::after {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    background-color: var(--assistant-muted);
+    content: "";
+    pointer-events: none;
+    /* AUI resolves transform transitions through Size.of, even during initial style calculation. */
+    transition: left 120ms ease, background-color 120ms ease;
+}
+
+.assistant_switch .switch_label {
+    display: block;
+    min-width: 0;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+}
+
+.assistant_switch[aria-checked="true"] .switch_track {
+    border-color: var(--assistant-accent);
+    background-color: var(--assistant-primary);
+}
+
+.assistant_switch[aria-checked="true"] .switch_track::after {
+    background-color: var(--assistant-primary-ink);
+    left: 19px;
+}
+
+.assistant_switch:hover:not(:disabled) .switch_track {
+    border-color: var(--assistant-accent-hover);
+    box-shadow: var(--assistant-glow);
+}
+
+.assistant_switch:focus .switch_track {
+    border-color: var(--assistant-focus);
+    box-shadow: 0 0 0 1px var(--assistant-accent-shadow);
+}
+
+button.assistant_switch:disabled {
+    cursor: default;
+}
+
+.assistant_switch:disabled .switch_label {
+    color: var(--disabled-foreground, var(--assistant-muted));
+}
+
+.assistant_switch:disabled .switch_track {
+    background-color: var(--disabled-background, var(--assistant-surface-deep));
+    border-color: var(--disabled-border, var(--assistant-line-soft));
+}
+
+.assistant_switch:disabled .switch_track::after {
+    background-color: var(--disabled-foreground, var(--assistant-muted));
+}
+
+#speech_note, #speech_hint, #asr_note, #asr_hint {
+    color: var(--assistant-muted);
+    font-size: 13px;
+    line-height: 1.7;
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+.speech_step {
+    display: block;
+    margin: 0;
+}
+
+.speech_step > * + * {
+    margin-top: 10px;
+}
+
+.settings .speech_step h2 {
+    color: var(--assistant-heading);
+    font-size: 16px;
+    margin: 0 0 4px;
+}
+
+.speech_step label {
+    display: block;
+    color: var(--assistant-ink);
+    font-size: 13px;
+}
+
+.speech_step input {
+    display: block;
+    min-width: 0;
+    width: 100%;
+}
+
+.speech_controls {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+#speech_language {
+    flex: 0 1 210px;
+    min-width: 160px;
+    height: 42px;
+    padding-right: 30px;
+}
+
+#speech_volume {
+    width: 72px;
+}
+
+#settings_footer {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 26px;
+    border-top: 1px solid var(--assistant-line-soft);
+}
+
+#settings_status {
+    flex: 1 1 180px;
+    min-width: 0;
+    color: var(--assistant-muted);
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+#settings_speech_actions {
+    display: none;
+}
+
+.settings :disabled {
+    cursor: default;
+}
+
+@media (max-width: 700px) {
+    .shop_controls {
+        flex-wrap: wrap;
+    }
+
+    #shop_query, #lottery_query, #quest_guide_query {
+        flex-basis: 100%;
+    }
+
+    .shop_controls button {
+        flex: 1 1 0;
+        min-width: 0;
+        white-space: normal;
+        word-break: break-all;
+    }
+
+    #sidebar {
+        width: 145px;
+        padding: 14px 8px;
+    }
+
+    #main {
+        left: 145px;
+        padding: 0 14px;
+    }
+
+    #topbar {
+        padding: 10px 16px;
+        gap: 8px;
+    }
+
+    #topbar_navigation {
+        gap: 6px;
+    }
+
+    #topbar_navigation .nav {
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    #privacy {
+        padding: 12px 4px 8px;
+    }
+
+    .simple #workspace {
+        padding: 16px 18px 0;
+    }
+
+    .notification #workspace {
+        padding: 16px 18px;
+    }
+
+    #usage_content {
+        padding: 14px 18px 16px;
+    }
+
+    .usage_section {
+        padding: 12px;
+    }
+
+    .usage_metric {
+        flex: 0 0 50%;
+        padding: 0 8px 0 0;
+        border-left: 0;
+    }
+
+    .usage_section_tts .usage_metric:first-child {
+        flex: 0 0 100%;
+    }
+
+    .usage_last_call {
+        flex-basis: 100%;
+        margin-left: 0;
+    }
+
+    .usage_total {
+        font-size: 20px;
+    }
+
+    #settings_tabs {
+        padding: 12px 18px;
+        gap: 6px;
+    }
+
+    .settings_tab {
+        min-width: 0;
+        padding: 8px 6px;
+        font-size: 13px;
+    }
+
+    #settings_content {
+        padding: 14px 18px;
+    }
+
+    #settings_footer {
+        padding: 12px 18px;
+    }
+
+    #settings_status {
+        flex-basis: 100%;
+    }
+}
+
+/* Persistent cards share themes and rendering with chat, but never capture gameplay or inventory input. */
+.card_hud.interactive #card_display, .card_hud.interactive #card_display * {
+    pointer-events: auto !important;
+}
+
+.card_hud.interactive #card_display .minecraft_text,
+.card_hud.interactive #card_display .minecraft_text span,
+.card_hud.interactive #card_display .quest_card_pin svg,
+.card_hud.interactive #card_display .quest_card_pin path {
+    pointer-events: none !important;
+}
+
+#card_display {
+    position: fixed;
+    left: 12px;
+    top: 22vh;
+    width: min(360px, 38vw);
+    height: auto;
+    max-height: 72vh;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.card_display_entry {
+    flex: 0 0 auto;
+    min-width: 0;
+    opacity: 0;
+    /* Pixel travel avoids percentage-based size queries while sampling the transition. */
+    transform: translateX(var(--card-slide-offset, -400px));
+    transition: none;
+}
+
+.card_display_entry.animated {
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
+}
+
+.card_display_entry.shown {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.card_hud.interactive #card_display .card_display_entry:not(.shown),
+.card_hud.interactive #card_display .card_display_entry:not(.shown) * {
+    pointer-events: none !important;
+}
+
+#card_display > .card_display_entry > .result_card {
+    flex: 0 0 auto;
+    min-width: 0;
+    margin: 0;
+    padding: 12px 14px 16px;
+    background-color: var(--assistant-window);
+}
+
+.quest_tracking_card > .card_title {
+    padding-right: 24px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+}
+
+.quest_tracking_card .message_text {
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.quest_tracking_chapter {
+    color: var(--assistant-muted);
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.quest_tracking_card > .card_progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+}
+
+/* Generic node layouts keep geometry independent of business card types. */
+.card_grid_cell {
+    position: relative;
+    min-width: 0;
+    box-sizing: border-box;
+    justify-content: center;
+    overflow: visible;
+    cursor: default;
+}
+body button.offer_cell_content,
+body button.offer_cell_content:hover,
+body button.offer_cell_content:focus,
+body button.offer_cell_content:active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    box-shadow: none;
+    transform: none;
+    overflow: visible;
+}
+.card_grid_cell > .card_progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+.card_groups_horizontal {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+.card_groups_horizontal > .card_action_group_results {
+    flex: 0 0 auto;
+    width: 100%;
+}
+.card_groups_horizontal .source_tabs {
+    width: 100%;
+}
+.source_recipe_pages .card_grid_cell {
+    align-items: stretch;
+    padding: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.card_button_icon {
+    display: block;
+    flex: 0 0 16px;
+    pointer-events: none;
+}
+
+.item_group_items, .quest_icon_items {
+    gap: 6px;
+    align-items: center;
+}
+
+.item_labeled > .item_entry {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+}

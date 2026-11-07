@@ -114,7 +114,16 @@ button {
     font-size: 14px;
     font-weight: 600;
     text-align: left;
-    transition: background-color 100ms ease, border-color 100ms ease, box-shadow 100ms ease, color 100ms ease;
+    transition: background-color 100ms ease, box-shadow 100ms ease, color 100ms ease;
+}
+
+/* AUI measures transform transitions and treats interpolated border colors as layout changes. */
+body[data-system-theme] button,
+body[data-system-theme] button:hover,
+body[data-system-theme] button:active,
+body[data-system-theme] button[aria-pressed] {
+    transform: none;
+    transition: background-color 100ms ease, box-shadow 100ms ease, color 100ms ease;
 }
 
 button:hover {
@@ -130,6 +139,12 @@ button:focus {
 
 button:active {
     background-color: var(--assistant-accent-shadow);
+}
+
+/* Static disabled states use colors: AUI 1.2.9 composites opacity through synchronous GPU readback. */
+body :disabled {
+    opacity: 1;
+    color: var(--disabled-foreground, var(--assistant-muted));
 }
 
 #workspace .primary {
@@ -426,7 +441,7 @@ p {
     grid-template-columns: minmax(0, 1fr);
     grid-auto-rows: max-content;
     align-content: safe end;
-    flex: 1;
+    flex: 1 1 0;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
@@ -443,19 +458,23 @@ p {
     display: block;
     min-width: 0;
     margin-bottom: 18px;
-    transform: translateY(0);
-    opacity: 1;
-    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
+    transition: none;
 }
 
 .message:last-child {
     margin-bottom: 0;
 }
 
-/* Only newly appended messages animate; transforms do not change card height or scroll metrics. */
+/* Lay out new rows without transitions; arm motion only after their first committed geometry. */
 .message_new {
     transform: translateY(18px);
     opacity: 0;
+}
+
+.message_entering {
+    transform: translateY(0);
+    opacity: 1;
+    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
 }
 
 .message > .message_text, .message > .result_card {
@@ -584,7 +603,7 @@ p {
     background-color: var(--assistant-panel-soft);
     margin-top: 5px;
     box-shadow: var(--assistant-shadow);
-    transition: border-color 100ms ease, background-color 100ms ease, box-shadow 100ms ease;
+    transition: background-color 100ms ease, box-shadow 100ms ease;
 }
 
 .result_card::after {
@@ -593,8 +612,8 @@ p {
     right: 0;
     bottom: 0;
     width: 3px;
-    background-color: var(--assistant-accent);
-    opacity: 0.6;
+    /* A translucent color avoids a permanent offscreen compositing group for every card. */
+    background-color: var(--assistant-line);
     content: "";
     pointer-events: none;
 }
@@ -606,7 +625,7 @@ p {
 }
 
 .result_card:hover::after {
-    opacity: 1;
+    background-color: var(--assistant-accent);
 }
 
 /* h1 is the card heading; deeper levels are inline section headings. */
@@ -657,7 +676,6 @@ p {
     background-color: transparent;
     border-color: var(--assistant-line-soft);
     cursor: default;
-    opacity: 0.7;
 }
 
 /* Registered card primitives can be nested without fixed business-specific placement. */
@@ -1529,7 +1547,8 @@ body button.quest_card_pin:hover, body button.quest_card_pin:focus {
     height: 16px;
     transform: rotate(35deg);
     transform-origin: 50% 50%;
-    transition: transform 160ms ease;
+    /* Keep state rotation without measuring every grid cell to build a transform transition. */
+    transition: none;
 }
 
 .quest_card_pin[aria-pressed="true"] svg, .quest_card_pin[aria-pressed="true"] .card_button_icon {
@@ -2063,7 +2082,6 @@ html.system_hud, body.system_hud, body.system_hud * {
 }
 
 .notification button:disabled {
-    opacity: 0.65;
     cursor: default;
 }
 
@@ -2304,7 +2322,6 @@ html.system_hud, body.system_hud, body.system_hud * {
 }
 
 .usage button:disabled {
-    opacity: 0.45;
     cursor: default;
 }
 
@@ -2435,7 +2452,7 @@ html.system_hud, body.system_hud, body.system_hud * {
     border-radius: 11px;
     background-color: var(--assistant-surface-deep);
     pointer-events: none;
-    transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+    transition: background-color 120ms ease, box-shadow 120ms ease;
 }
 
 .assistant_switch .switch_track::after {
@@ -2484,9 +2501,17 @@ button.assistant_switch:disabled {
     cursor: default;
 }
 
-.assistant_switch:disabled .switch_track,
 .assistant_switch:disabled .switch_label {
-    opacity: 0.45;
+    color: var(--disabled-foreground, var(--assistant-muted));
+}
+
+.assistant_switch:disabled .switch_track {
+    background-color: var(--disabled-background, var(--assistant-surface-deep));
+    border-color: var(--disabled-border, var(--assistant-line-soft));
+}
+
+.assistant_switch:disabled .switch_track::after {
+    background-color: var(--disabled-foreground, var(--assistant-muted));
 }
 
 #speech_note, #speech_hint, #asr_note, #asr_hint {
@@ -2539,10 +2564,6 @@ button.assistant_switch:disabled {
     padding-right: 30px;
 }
 
-#speech_language:disabled {
-    opacity: 0.55;
-}
-
 #speech_volume {
     width: 72px;
 }
@@ -2571,7 +2592,6 @@ button.assistant_switch:disabled {
 }
 
 .settings :disabled {
-    opacity: 0.5;
     cursor: default;
 }
 

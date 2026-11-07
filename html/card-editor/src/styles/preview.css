@@ -1,0 +1,215 @@
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  height: auto;
+  margin: 0;
+  background: #07151d;
+  color: #d7edf4;
+  font:
+    14px/1.5 "Segoe UI",
+    "Microsoft YaHei",
+    sans-serif;
+}
+body {
+  display: block;
+  padding: 16px;
+  overflow: auto;
+  --assistant-ink: #d7edf4;
+  --assistant-muted: #8daebb;
+  --assistant-accent: #6bd7ee;
+  --assistant-accent-hover: #c6f7ff;
+  --assistant-line-soft: #274d5c;
+  --assistant-surface-deep: #081c26;
+  --assistant-panel-soft: #0a202b;
+  --assistant-highlight: #163e50;
+}
+#workspace {
+  position: static !important;
+  transform: none !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  opacity: 1 !important;
+  display: block !important;
+  padding: 0 !important;
+}
+.result_card {
+  width: 100%;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--assistant-line-soft);
+  background: #0a202b;
+}
+.card_title {
+  font-size: 23px;
+  margin: 0 0 12px;
+}
+.card_title_2 {
+  font-size: 19px;
+}
+.card_title_3 {
+  font-size: 16px;
+}
+.card_title_4 {
+  font-size: 14px;
+}
+.card_body,
+.message_text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.card_row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.card_column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.card_actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.card_action,
+button {
+  color: var(--assistant-ink);
+  background: #102e3d;
+  border: 1px solid #376173;
+  border-radius: 2px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.editor-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 100%;
+  font-size: 10px;
+  border: 1px solid #326075;
+  padding: 3px;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+.editor-item-icon {
+  color: #85deee;
+  font-size: 21px;
+}
+.editor-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.editor-native,
+.editor-placeholder {
+  display: inline-block;
+  border: 1px dashed #4d6b7a;
+  padding: 6px;
+  margin: 3px;
+  color: #91b5c4;
+}
+.editor-player {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #4d6b7a;
+  flex: 1;
+  min-width: 100px;
+}
+.editor-icon {
+  font-size: 26px;
+  color: #8cdeee;
+}
+.editor-outline {
+  outline: 1px dashed #559ab799;
+  outline-offset: -1px;
+}
+.editor-selected {
+  outline: 2px solid #ffd470 !important;
+  outline-offset: 1px;
+}
+.editor-hud-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+.quest_card_pin {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  padding: 0;
+  background: none;
+  border: 0;
+  transform: rotate(35deg);
+  width: 20px;
+  height: 20px;
+}
+.quest_card_pin.pinned {
+  transform: none;
+  color: #83edfc;
+}
+.card_action_grid {
+  overflow: visible;
+  max-height: none;
+}
+.card_action_cell {
+  cursor: pointer;
+}
+.card_action_groups {
+  overflow: auto;
+}
+.source_slot .editor-item {
+  width: 34px;
+  height: 34px;
+  overflow: hidden;
+  font-size: 0;
+}
+.source_slot .editor-item small {
+  font-size: 10px;
+}
+.source_slot .editor-item-icon {
+  font-size: 22px;
+}
+.source_tag_list .source_entry {
+  height: auto;
+}
+.card_markdown pre {
+  white-space: pre-wrap;
+  background: #05121b;
+  padding: 10px;
+}
+.card_markdown code {
+  background: #05121b;
+  color: #9fdfd2;
+}
+.card_markdown blockquote {
+  border-left: 3px solid #5aa1b3;
+  padding-left: 10px;
+  color: #a9c4ce;
+}
+.card_markdown h1 {
+  font-size: 23px;
+}
+.card_markdown h2 {
+  font-size: 20px;
+}
+.card_markdown p {
+  margin: 6px 0;
+}
+summary {
+  cursor: pointer;
+}

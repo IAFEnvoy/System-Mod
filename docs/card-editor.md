@@ -1,6 +1,25 @@
-# Card JSON 离线编辑器
+# Card JSON 编辑器
 
-双击打开 [tools/card_editor.html](../tools/card_editor.html)，使用现代浏览器即可，不需要安装依赖或启动服务。页面不调用模型或其他外部 API，也不会修改游戏内数据。
+编辑器位于 [html/card-editor](../html/card-editor)，使用 Vite 运行，页面、脚本、样式和模板资源分文件维护。页面不调用模型或其他外部 API，也不会修改游戏内数据。
+
+## 启动与构建
+
+需要 Node.js `20.19+`（20 系列）或 `22.12+`，推荐当前 LTS。在仓库根目录运行：
+
+```powershell
+cd html/card-editor
+npm ci
+npm run dev
+```
+
+浏览器打开 `http://127.0.0.1:5173`。模板 JSON、脚本和样式修改由 Vite 更新。端口固定且占用时直接报错，避免自动换端口后看不到原站点的草稿。首次安装需要网络；编辑器运行时只访问本地 Vite 服务。
+
+```powershell
+npm run build
+npm run preview
+```
+
+构建输出为 `dist/`；预览地址为 `http://127.0.0.1:4173`，也可以把 `dist/` 部署到静态 HTTP 服务。开发与构建预览端口不同，浏览器草稿各自独立；需要转移时导出工作文件。不要直接双击 HTML。依赖、构建输出和 Vite 缓存由 [html/.gitignore](../html/.gitignore) 排除，`package-lock.json` 保留用于复现依赖。
 
 ## 编辑流程
 
@@ -58,45 +77,48 @@
 
 “导出工作文件”生成带 `format: "system-card-editor"` 的 `.card-project.json`，保存卡片、示例上下文、翻译覆盖及自定义预览 CSS。重新打开该文件可恢复编辑环境；它不能直接作为游戏卡片资源，需再导出卡片。
 
-有效编辑会尽力写入浏览器本地草稿，并在下次打开时恢复。`file://` 下的存储支持因浏览器和配置而异，移动文件也可能改变草稿归属；需要长期保留时导出工作文件。清除草稿不会清空当前工作区，继续编辑会重新保存。
+有效编辑会尽力写入当前站点的浏览器本地草稿，并在下次打开同一地址时恢复。协议、主机或端口改变后，草稿不会自动迁移；旧单文件页面的草稿可以先导出工作文件，再在新编辑器中打开。需要长期保留时导出工作文件。清除草稿不会清空当前工作区，继续编辑会重新保存。
 
 ## 预览范围与内置快照
 
-页面包含当前 27 份卡片模板、中英文语言表及共享 `assistant.css` 的快照。快照不会自动读取仓库的后续修改；最新卡片通过“打开 JSON”载入，翻译与额外样式可分别填写。完整字段和游戏侧布局规则见 [客户端 JSON 卡片](cards.md)。
+`src/resources/` 保存当前 27 份卡片模板、中英文语言表及共享 `assistant.css` 的快照。模板位于 `templates/*.json`，可以单独修改或新增；Vite 通过 `import.meta.glob` 收集，不需要维护 HTML 内嵌列表。快照不会自动读取游戏资源的后续修改；完整字段和游戏侧布局规则见 [客户端 JSON 卡片](cards.md)。
 
 浏览器预览用于检查结构与参数替换，和 AUI 的布局实现有差异：物品、FTB 图标、玩家模型用占位块和普通 tooltip 展示；Saturn 玩家信息使用示例参数；Markdown 仅近似支持标题、列表、引用、代码、强调及链接。资源包纹理、原生 tooltip、主题细节、按钮权限与业务行为需在游戏内确认。预览对循环和节点绘制设有上限，导出的 JSON 保持完整。
 
-维护工具时，节点字段和浏览器投影位于页面 `editor-script` 中的 `catalog` 与渲染函数；`bundled` 是被动 JSON 快照。新增游戏节点后同时更新这两处。只刷新资源快照可在仓库根目录运行下面的 Python 片段：
+## 源码结构与资源同步
 
-```python
-import json
-import re
-from datetime import date
-from pathlib import Path
-
-assets = Path("src/main/resources/assets/system")
-bundle = {
-    "snapshotDate": date.today().isoformat(),
-    "templates": {
-        p.stem: json.loads(p.read_text(encoding="utf-8"))
-        for p in sorted((assets / "cards").glob("*.json"))
-    },
-    "languages": {
-        lang: json.loads((assets / "lang" / f"{lang}.json").read_text(encoding="utf-8"))
-        for lang in ("zh_cn", "en_us")
-    },
-    "previewCSS": Path(
-        "src/main/resources/assets/apricityui/apricity/system/assistant.css"
-    ).read_text(encoding="utf-8")
-}
-encoded = json.dumps(bundle, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
-page = Path("tools/card_editor.html")
-source, count = re.subn(
-    r'(<script id="bundled" type="application/json">)[\s\S]*?(</script>)',
-    lambda m: m[1] + encoded + m[2],
-    page.read_text(encoding="utf-8"),
-    count=1
-)
-assert count == 1
-page.write_text(source, encoding="utf-8")
+```text
+html/
+├── .gitignore
+└── card-editor/
+    ├── index.html                  页面和控件
+    ├── package.json / package-lock.json
+    ├── vite.config.js
+    ├── scripts/sync-resources.mjs  从游戏资源更新快照
+    └── src/
+        ├── main.js                入口和页面 CSS
+        ├── editor.js              树、属性、JSON 编辑、导入导出和草稿
+        ├── schema.js              节点目录、字段描述和结构检查
+        ├── preview.js             iframe 内的浏览器投影与本地交互
+        ├── sample-context.js      平铺示例参数
+        ├── resources.js           Vite 资源收集
+        ├── utils.js               共用 JSON / 路径工具
+        ├── styles/
+        │   ├── editor.css         编辑器页面样式
+        │   └── preview.css        浏览器预览适配样式
+        └── resources/
+            ├── templates/*.json   每份模板独立维护
+            ├── lang/*.json        中英文语言快照
+            ├── assistant.css      游戏共享样式快照
+            └── snapshot.json      最近同步日期
 ```
+
+新增游戏节点时，更新 `schema.js` 的字段目录和 `preview.js` 的浏览器投影。预览保持在禁止脚本的 sandbox iframe 中，导入内容按文本和节点绘制，不直接执行 HTML 或卡片按钮业务。
+
+在编辑器目录执行以下命令，从仓库刷新资源快照：
+
+```powershell
+npm run sync:resources
+```
+
+命令读取 `src/main/resources/assets/system/cards/*.json`、`assets/system/lang/{zh_cn,en_us}.json` 和 `assets/apricityui/apricity/system/assistant.css`；先解析输入，再覆盖编辑器对应文件、删除游戏资源中已不存在的模板快照，并更新日期。该命令会覆盖对快照文件的手工修改，请先将要保留的布局保存到游戏资源或导出文件中。平时启动或构建不会自动覆盖快照；只想临时查看最新卡片时仍可使用“打开 JSON”。

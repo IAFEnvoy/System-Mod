@@ -17,6 +17,7 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 | Jupiter | CurseMaven 8569832 |
 | Saturn | 1.2.5 / CurseMaven 9449659；客户端和服务端均必装，统一 Cost、模块 DataStorage、Codec 工具、玩家信息视图及 HUD 编辑器 |
 | Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
+| Card JSON 编辑器（独立开发工具） | Vite 8.3.6；Node.js ^20.19.0 或 >=22.12.0，位于 html/card-editor；不进入模组 JAR |
 | Gson | 2.13.2；主项目直接声明依赖，Minecraft 提供运行时类 |
 | FTB Quests / Library / Teams | 26.1.2.8 / 26.1.2.9 / 26.1.2.4，可选 compileOnly |
 | LangChain4J | 已移除；使用 JDK HTTP 网关 |

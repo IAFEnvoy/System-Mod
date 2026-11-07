@@ -1,0 +1,55 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.ui.nav_lottery"
+    },
+    {
+      "type": "system:grid",
+      "source": "{{pools}}",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:flex",
+              "source": "{{pools.*.items}}",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{pools.*.items.*}}",
+                  "size": 36,
+                  "tooltip": [
+                    {
+                      "type": "system:text",
+                      "text": "{{pools.*.tooltip}}"
+                    }
+                  ]
+                }
+              ],
+              "style": "offer_cell_items"
+            },
+            {
+              "type": "system:text",
+              "text": "{{pools.*.label}}",
+              "style": "offer_cell_label"
+            }
+          ],
+          "style": "offer_cell_content"
+        }
+      ],
+      "columns": 6,
+      "max_row": 3,
+      "cell": 104
+    },
+    {
+      "type": "system:text",
+      "translate": "system.ui.lottery_truncated",
+      "when": "truncated"
+    }
+  ]
+}

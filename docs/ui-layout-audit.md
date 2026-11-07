@@ -1,6 +1,85 @@
 # 页面布局审计（2026-11-06）
 
-本次覆盖完整对话、简约模式、设置、用量统计、通知 HUD、常驻卡片 HUD，以及它们共用的卡片节点。目标版本为 Minecraft 26.1.2 / ApricityUI 1.2.9。最初的源码审计未解决用户实测的打开卡顿；后续读取的新日志确认首次几何提交明显耗时，但仍没有阻塞期间的线程堆栈，不能认定唯一根因。
+本次覆盖完整对话、简约模式、设置、用量统计、通知 HUD、常驻卡片 HUD，以及它们共用的卡片节点。目标版本为 Minecraft 26.1.2 / ApricityUI 1.2.9。最初的源码审计未解决用户实测的打开卡顿；2026-11-07 用户提供的 spark 采样进一步定位到滤镜合成的同步 GPU 回读，见下节。首次布局日志和此前的源码推断不能代替采样结论。
+
+## spark：持续掉帧的主要阻塞点（2026-11-07）
+
+用户采样：[7NHlatpgiI](https://spark.lucko.me/7NHlatpgiI)。采样持续 13.625 秒，间隔 4ms，Render thread 记录 13,324ms。该次配置**只收录超过 30ms 的帧 / tick**，共 227 个；以下百分比仅针对这些慢帧，不代表整个游戏的全部帧。
+
+| 调用 | 渲染线程采样时间 | 占比 |
+| --- | ---: | ---: |
+| AUI `Base.drawOverlayDocument` | 9,240ms | 69.35% |
+| 其中 `GL11C.nglReadPixels` | 6,596ms | 49.50% |
+| `LayoutLifecycle.prepareRender` | 964ms | 7.24% |
+| `AssistantScreen.tick` | 132ms | 0.99% |
+| `AssistantInputScreen.tick` | 24ms | 0.18% |
+
+表中存在包含关系，不能相加。两条独立 PIP 绘制分支分别有 5,424ms 和 1,172ms 落在像素回读中；采样没有记录 DOM 元素 ID，不能单凭两条分支判定具体是哪两个页面或元素。
+
+主要调用链为：
+
+```text
+ApricityUiPipRenderer.renderToTexture
+  → Base.drawOverlayDocument → Base.paintDocumentNodes
+  → RenderNode.FilterPopNode.render → FilterRenderer.popFilter
+  → RenderService.resolveTarget → resolveBlitDestination
+  → GL11.glReadPixels → GL11C.nglReadPixels
+```
+
+核对当前依赖的实际 sources JAR：
+
+- `Drawer.hasCompositedFilter` 和 `RenderNode.FilterPushNode / FilterPopNode` 将普通 `opacity < 1` 也纳入离屏滤镜合成；并不要求 CSS 显式写 `filter`。
+- `FilterRenderer.popFilter` 在采样刚绘制的图层之前无条件调用 `resolveTarget`。26.1 的 `RenderService.resolveTarget` 对同一个目标读取五个位置，每次同步读回一个 RGBA 像素。
+- 回读字节数虽小，CPU 仍可能等待 GPU 前序工作完成；采样确认主要时间停在这里，不能据此进一步断言 GPU 的具体硬件 / 驱动故障。
+- 依赖源码说明这是为了解决附件写入后采样到旧内容的问题。直接删除所有回读可能导致滤镜 / 半透明图层出现黑块，不在 System 内增加全局 Mixin 来绕过。
+
+System 的针对性修正：卡片 `::after` 的静态 `opacity: 0.6` 改为边线颜色，hover 恢复强调色；禁用按钮、下拉框和开关使用主题的 disabled 颜色，不再通过分组 opacity 变暗。原先这些样式只要可见就会持续产生合成层，常驻卡片也可能在空白欢迎页上方一起绘制。消息、通知和常驻卡片的短暂淡入淡出仍保留，因此动画期间仍会走依赖的合成路径；资源包新增的 filter / opacity 也可能触发。
+
+上述修正消除了已确认的静态样式触发点，**尚未取得修正后的运行采样，不能宣称所有打开卡顿都已解决**。依赖层的长期修复应处理离屏写入到纹理采样的可见性 / 同步，避免每帧 CPU 回读。本次只做资源打包、Java 编译和 diff 检查，不启动游戏、不插入探针。
+
+## spark：新卡片弹出时的尖峰（2026-11-07）
+
+用户确认上一节修改解决持续掉帧，随后提供新采样：[eNwmBEM9iw](https://spark.lucko.me/eNwmBEM9iw)。该次持续 17.379 秒，间隔 4ms，只收录超过 **50ms** 的帧 / tick，共 123 个；Render thread 记录 12,720ms。筛选条件与上一份不同，不能直接按两个百分比推算帧率改善倍数。
+
+- `glReadPixels` 仅占 52ms / 0.41%；新的主要热点转为样式更新与布局。
+- `Transition.build` 的最外层分支合计 3,060ms / 24.06%，其中客户端 tick 内的一条分支为 2,896ms，几乎全部进入 `Size.of → Flex / Grid` 尺寸测量。
+- `LayoutLifecycle.prepareRender` 为 2,952ms / 23.21%；`CardPresentation.render` 合计仅 40ms / 0.31%。这些是包含时间，不能与其子调用相加。
+
+源码依据：AUI 1.2.9 `Transition.build` 遇到 `transform` 先执行 `Size.of(element)`，然后 `Transform.createTransition` 才比较起止变换。默认主题 `.t08-arwes-theme button` 比 System 原先的 `button` 选择器优先级高，给新按钮重新加上了 transform 过渡；即使变换没有变化，样式更新仍会触发深层测量。原先所有历史消息行和图钉 SVG 也一直保留 transform 过渡声明。采样没有 DOM 元素 ID，不能量化某一个具体按钮的贡献，但调用路径和这些 CSS 触发点都已核对。
+
+本轮修正：
+
+- 普通按钮的选择器明确覆盖原生主题，仅过渡颜色、边框和阴影，不附带 hover 位移或 transform 过渡。图钉继续按状态倾斜 / 竖直显示，取消旋转插值。
+- `.message_new` 只保留起始位置与透明度，首次布局时不创建过渡。已提交几何后切到 `.message_entering`，保留 240ms 平滑上移与淡入；等待 `Transition.isActive` 结束再移除此类。静止历史行没有 transform 或过渡声明，后续消息到达时不会为旧行重建变换过渡。
+- 对话滚动区明确使用 `flex: 1 1 0`，由固定主区域分配空间，不用内容高度决定初始 flex basis；保留原来的底部对齐、滚动和分页。
+
+未添加定时延迟、布局强制提交、Mixin 或运行时探针。首次真实布局与动画绘制仍有成本，本次编译 / 资源打包及静态检查不能证明尖峰已完全消除；修正后的游戏内表现尚未采样。
+
+## spark：边框颜色动画误触发全量布局（2026-11-07）
+
+用户运行后仍看到尖峰，并提供只包含异常帧的采样：[cR5WPLTxKf](https://spark.lucko.me/cR5WPLTxKf)。元数据记录持续 11.108 秒、4ms 采样间隔、50ms 筛选阈值，共 87 个帧 / tick；Render thread 累计 7,576ms。下列占比**只描述入选的慢帧**，不能当作平时每帧的平均开销。
+
+| 调用 | 采样时间 | 占比 |
+| --- | ---: | ---: |
+| `LayoutCommit.commitFull` 两条独立分支合计 | 3,220ms | 42.50% |
+| 其中渲染阶段分支 | 1,836ms | 24.23% |
+| 其中客户端 tick 阶段分支 | 1,384ms | 18.27% |
+| `Document.commitStyleRecalc` | 128ms | 1.69% |
+| `CardPresentation.render` | 40ms | 0.53% |
+| `GL11C.nglReadPixels` | 68ms | 0.90% |
+
+该次没有采到 `Transition.build`；这不代表方法绝对不执行，但上一轮最大的过渡创建路径已不再是本报告的热点。真正阻塞仍在 `LayoutCommit → Rect → Position → Flex / Grid`，不能将其归因于卡片 JSON 解析或网络请求。
+
+继续核对当前依赖源码，确认此前遗漏的触发点：
+
+1. `Transition.merge` 将插值后的 `border-*-color` 写回 Style 的边框字段。
+2. `LayoutInvalidation.motionAffectsLayout` 对 `border / borderTop / borderRight / borderBottom / borderLeft` 直接比较完整字符串，没有像普通样式失效路径那样只比较宽度和线型；颜色不同也返回 true。
+3. `MotionTrack.invalidateMotionCaches` 因此进入 `invalidateLayoutMotion → LayoutInvalidation.motionChanged`，使尺寸和祖先布局缓存失效，登记 layout roots。
+4. `LayoutLifecycle.prepareRender` 看到非空 layout roots，调用全量 `LayoutCommit.commit`；一次本应只影响边框颜色的过渡，会在多个动画帧重复布局。
+
+这是源码确认的可触发路径，采样没有元素 ID，无法将全部 3,220ms 精确归到某一个按钮。System 上一轮仍保留普通按钮、卡片 hover 和设置开关轨道的 `border-color` 过渡，均会进入此路径。本轮移除这四处过渡声明，边框仍按 hover / focus / selected / disabled 即时变色，继续保留背景、文字、阴影、消息位移和通知淡入淡出。普通按钮的高优先级规则也排除主题重新引入此过渡。
+
+没有关闭动画总开关、缩减任务数量、额外强制提交布局或修改 AUI 依赖。新卡片加入 DOM 时的真实布局仍存在；本轮只完成源码核对、编译 / 资源打包和 diff 检查，尚无修正后的运行采样，不能宣称尖峰已经完全消失。
 
 ## 打开页面卡顿的后续修正
 

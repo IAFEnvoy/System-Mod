@@ -4,6 +4,7 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.chat.AiAccess;
 import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.module.AgentAction;
@@ -12,9 +13,9 @@ import com.iafenvoy.system.agent.routing.RouteSource;
 import com.iafenvoy.system.agent.storage.AgentJournal;
 import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.agent.tool.ToolContext;
+import com.iafenvoy.system.agent.tool.ToolPriority;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.config.file.AgentConfig;
-import com.iafenvoy.system.config.file.AiAccessConfig;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.store.EventTask;
 import com.iafenvoy.system.data.store.State;
@@ -64,6 +65,7 @@ public final class ExecutionContext {
     private int actions;
     private String stepPrefix = "";
     private final Set<String> authorizedExternalTools = new HashSet<>();
+    private final Set<ToolRegistry.Type<?, ?>> chatReadTools = Collections.newSetFromMap(new IdentityHashMap<>());
 
     ExecutionContext(AgentEngine engine, UUID player, String taskId, String eventKey,
                      long started, long epoch, ExecutionPolicy initial, AgentStore store, long incarnation) {
@@ -187,7 +189,11 @@ public final class ExecutionContext {
 
     public ConversationMode mode() {
         this.ensureMemoryCurrent();
-        return AiAccessConfig.INSTANCE.get().permissions(this.player).effective(this.store.read(this.player, data -> data.mode));
+        return this.permissions().effective(this.store.read(this.player, data -> data.mode));
+    }
+
+    public AiAccess.Permissions permissions() {
+        return this.engine.permissions(this.player);
     }
 
     public boolean freeChatAllowed() {
@@ -290,9 +296,12 @@ public final class ExecutionContext {
      */
     public void requireExternalServices() {
         this.ensureMemoryCurrent();
-        if (!AiAccessConfig.INSTANCE.get().permissions(this.player).allowAi()) throw new AgentException(AgentFailure.AI_FORBIDDEN);
+        AiAccess.Permissions permissions = this.permissions();
+        if (!permissions.allowAi() || permissions.maxMode() == ConversationMode.OFFLINE)
+            throw new AgentException(AgentFailure.AI_FORBIDDEN);
+        if (!permissions.modelConfigured()) throw new AgentException(AgentFailure.MODEL_NOT_CONFIGURED);
         if (!this.store.read(this.player, data -> data.mode.usesAi())) throw new AgentException(AgentFailure.MODEL_DISABLED);
-        if (AiAccessConfig.INSTANCE.get().permissions(this.player).modelCallsPerDay() == 0)
+        if (permissions.modelCallsPerDay() == 0)
             throw new AgentException(AgentFailure.RATE_LIMITED);
     }
 
@@ -322,6 +331,16 @@ public final class ExecutionContext {
                 "react/" + this.toolContexts++);
     }
 
+    /** Free chat owns an explicit read scope; a provider cannot export a write or a disabled feature. */
+    public ToolContext chatTools(Collection<ToolRegistry.Type<?, ?>> additions) {
+        this.requireFreeChat();
+        if (this.isEvent() || this.mode() != ConversationMode.FREE) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
+        Map<String, ToolRegistry.ScopedTool<?, ?>> allowed = this.engine.tools()
+                .chat(owner -> this.engine.moduleEnabled(this.player, owner), additions);
+        allowed.values().forEach(tool -> this.chatReadTools.add(tool.tool().type()));
+        return new ToolContext(this, allowed, "chat/" + this.toolContexts++);
+    }
+
     public ToolContext tools(ToolRegistry.Type<?, ?>... types) {
         Map<String, ToolRegistry.ScopedTool<?, ?>> allowed = new LinkedHashMap<>();
         for (ToolRegistry.Type<?, ?> type : types) this.addTool(allowed, type);
@@ -346,7 +365,8 @@ public final class ExecutionContext {
     public <I, O> O scopedTool(ToolRegistry.ScopedTool<I, O> scoped, String stepId, I input) throws Exception {
         this.checkToolOwner(scoped);
         // A scope is a subset of this workflow or an explicitly advertised read, never an alternate write route.
-        if (!this.toolAvailable(scoped.tool().type()) && (scoped.tool().write() || scoped.tool().reasoningDescription().isBlank()))
+        if (!this.toolAvailable(scoped.tool().type()) && (scoped.tool().write()
+                || scoped.tool().reasoningDescription().isBlank() && !this.chatReadTools.contains(scoped.tool().type())))
             throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         O result = this.executeTool(scoped.tool(), stepId, input);
         this.checkToolOwner(scoped);
@@ -395,8 +415,10 @@ public final class ExecutionContext {
         try {
             this.check();
             this.store().update(this.player, data -> {
-                AiAccessConfig.Permissions permissions = AiAccessConfig.INSTANCE.get().permissions(this.player);
-                if (!permissions.allowAi()) throw new AgentException(AgentFailure.AI_FORBIDDEN);
+                AiAccess.Permissions permissions = this.permissions();
+                if (!permissions.allowAi() || permissions.maxMode() == ConversationMode.OFFLINE)
+                    throw new AgentException(AgentFailure.AI_FORBIDDEN);
+                if (!permissions.modelConfigured()) throw new AgentException(AgentFailure.MODEL_NOT_CONFIGURED);
                 if (!data.mode.usesAi() || (!this.isEvent() && data.conversation.memoryEpoch != this.memoryEpoch))
                     throw new AgentException(AgentFailure.MODEL_DISABLED);
                 String day = LocalDate.now(ZoneId.of(AgentConfig.INSTANCE.get().timeZone())).toString();
@@ -460,6 +482,7 @@ public final class ExecutionContext {
         ToolRegistry.Type<I, O> type = tool.type();
         String id = type.id();
         this.ensureMemoryCurrent();
+        if (tool.priority() == ToolPriority.PAID) this.requireExternalServices();
         if (!this.engine.toolAvailable(this.player, id)) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         if ((this.routeSource == RouteSource.SEMANTIC || this.routeSource == RouteSource.ROUTE_CACHE) && tool.write())
             throw new AgentException(AgentFailure.NOT_AUTHORIZED);

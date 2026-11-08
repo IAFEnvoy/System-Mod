@@ -28,7 +28,8 @@ final class FtbQuestGuideTool implements ToolRegistry.Handler<QuestGuideInput, Q
     }
 
     ToolRegistry.Tool<QuestGuideInput, QuestGuideOutput> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.QUEST_GUIDE, false, true, false, this);
+        return new ToolRegistry.Tool<>(BuiltinTools.QUEST_GUIDE, false, true, false, this)
+                .forReasoning("Search authorized local quest manuals and return source passages. Never submits or claims a quest.");
     }
 
     private record Snapshot(FtbQuestKnowledge.Snapshot knowledge, UUID team, Set<String> allowed) {

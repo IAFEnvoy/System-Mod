@@ -10,7 +10,6 @@ import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.module.ModuleRegistry;
 import com.iafenvoy.system.agent.storage.ConversationMemory;
-import com.iafenvoy.system.config.file.AiAccessConfig;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.data.SelectionCardData;
 import com.iafenvoy.system.data.input.FreeChatInput;
@@ -121,7 +120,7 @@ public final class HybridRouter implements AutoCloseable {
 
     public AgentResult clarify(ExecutionContext context, RouteDecision decision) {
         String key = decision.source() == RouteSource.LOCAL_FALLBACK ? "system.result.clarify_local" : "system.result.clarify";
-        if (!AiAccessConfig.INSTANCE.get().permissions(context.player()).allowAi())
+        if (!context.permissions().allowAi())
             key = "system.result.clarify_admin_disabled";
         return new AgentResult(AgentResult.Status.SUCCEEDED, key, "", List.of(
                 CardUpdate.show(SelectionCardData.shortcuts(key, key, decision.choices().isEmpty() ? context.shortcuts() : decision.choices()))));

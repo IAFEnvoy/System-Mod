@@ -1,6 +1,6 @@
 # Agent 快速索引
 
-从 [README](README.md)、[中文 README](README-zh.md) 的版本信息与文档导航整理，供恢复上下文时快速定位。整理日期：2026-11-04。
+从 [README](README.md)、[中文 README](README-zh.md) 的版本信息与文档导航整理，供恢复上下文时快速定位。整理日期：2026-11-08。
 
 先阅读 [AGENTS.md](AGENTS.md) 的仓库约定，再按下表查阅相关文档；本文件仅作导航，不替代源码或详细设计。文档描述与实现不一致时，以当前源码和构建配置为准。
 
@@ -8,7 +8,7 @@
 
 | 项目 | 当前配置 / 要求 | 核对入口 |
 | --- | --- | --- |
-| System | `1.0-alpha.1`；客户端与服务端均安装 | [gradle.properties](gradle.properties) 的 `mod_version` |
+| System | `1.0-beta.3`；客户端与服务端均安装 | [gradle.properties](gradle.properties) 的 `mod_version` |
 | Minecraft | `26.1.2` | [gradle.properties](gradle.properties) 的 `minecraft_version` |
 | NeoForge | 开发配置 `26.1.2.114`；README 要求同一 MC 版本的此版本或更高版本 | [gradle.properties](gradle.properties) 的 `neo_version` |
 | Java | `25`，toolchain 与字节码均使用 Java 25 | [build.gradle](build.gradle)、[Mixin 配置](src/main/resources/system.mixins.json) |
@@ -64,7 +64,7 @@
 | 客户端 CardBuildEvent：按 CardData 类型给既有 Builder 补参数，再配合资源包 JSON；构建时触发，缓存读取不触发 | [卡片构建事件](docs/cards.md#构建事件给现有卡片补充参数)、[事件类](src/main/java/com/iafenvoy/system/event/client/CardBuildEvent.java) |
 | 已实施卡片数据流：完整业务 DTO、消息 ID/版本、SHOW/REPLACE/REMOVE、状态与历史响应、Status 枚举和 BuiltinTools | [卡片与消息数据流](docs/card-flow-design.md) |
 | OpenAI 兼容接口、DeepSeek 特殊参数、模型连接与 Token 响应 | [模型接口](docs/model-api.md) |
-| 四模式菜单（发送框左侧，默认标准）、ConversationStrategy 接口 / ConversationMode 枚举、本地与 AI 路由顺序、自由模式复用 ReAct 调用工作流、管理员 `/system ai <玩家>` 启停 AI / 自由聊天及每日调用额、UUID 覆盖自动保存与玩家聊天 / 界面提示、PromptProvider / ToolProvider 预留 | [自由聊天](docs/free-chat.md)、[管理员命令](src/main/java/com/iafenvoy/system/module/builtin/chat/AiManagementCommands.java)、[ChatSupport](src/main/java/com/iafenvoy/system/agent/chat/ChatSupport.java) |
+| 四模式菜单（发送框左侧，存档 SavedData defaultMode 初始值及普通玩家上限，单人 / LAN 房主默认全模式，缺少必需密钥时仅离线）、ConversationStrategy / ConversationMode、自由模式 ReAct 合并工作流与只读 Tool、ToolPriority 按 LOCAL / WORKFLOW / PAID 排序、ChatObservation 类型化分派、管理员 `/system ai default [模式]`、`/system ai <玩家>` 与存档 UUID 覆盖、PromptProvider / ToolProvider 请求级扩展 | [自由聊天](docs/free-chat.md)、[管理员命令](src/main/java/com/iafenvoy/system/module/builtin/chat/AiManagementCommands.java)、[ChatSupport](src/main/java/com/iafenvoy/system/agent/chat/ChatSupport.java) |
 | 通用 ReActLoop、每轮 / 请求总预算、独立工具与观察上下文、system:reasoning；数据库优先问答、联网授权和 DeepSeek 计费 | [通用 ReAct](docs/agent-react.md)、[知识问答与网页搜索](docs/search-api.md)、[知识表入口](docs/databases.md#问答知识表) |
 | 模组和音色工具会请求哪些 API、触发条件、发送数据、客户端 / 服务端归属 | [外部 API 请求清单](docs/external-apis.md) |
 | 领域词表、稀疏 TF-IDF、阈值、玩家意图缓存、只读直达与模型兜底 | [本地意图路由](docs/semantic-routing.md) |

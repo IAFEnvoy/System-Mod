@@ -56,9 +56,11 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
 
     public String aiAccessHint() {
         if (this.serverState.system().isEmpty()) return "";
+        if (!this.serverState.ai().modelConfigured()) return "system.ai.model_missing_hint";
         if (!this.serverState.ai().allowAi()) return "system.ai.admin_disabled_hint";
         if (this.serverState.ai().modelCallsPerDay() == 0) return "system.ai.no_calls_hint";
         if (!this.serverState.ai().allowFreeChat()) return "system.ai.free_chat_disabled_hint";
+        if (this.serverState.ai().maxMode() != ConversationMode.FREE) return "system.ai.mode_limited_hint";
         if (!this.mode().usesAi()) return "system.ai.personal_disabled_hint";
         return "";
     }

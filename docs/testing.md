@@ -1,5 +1,35 @@
 # 编译与验收
 
+## 2026-11-08 AI 等级按存档保存
+
+管理员权限从全局 AiAccessConfig 改为 `AiAccessData` SavedData，保存于 `<存档>/data/system/ai_access.dat`。默认模式与 UUID 玩家覆盖均由当前存档持有，命令更新后 `setDirty`，跟随世界自动保存或正常关闭持久化。`AiAccess` 只提供不可变规则与权限计算；工作线程读取存档快照，默认模式通过当前 FileAgentStore 的 supplier 传入 PlayerData 构造和 Codec，不访问全局配置，也不通过静态服务定位存档。
+
+新增 `/system ai default [offline|standard|extended|free]`：省略模式查询当前值，设置时立即刷新在线玩家权限并保留个人偏好；玩家级覆盖、房主权限和缺少必需模型密钥时的离线限制保持生效。默认等级与既有权限命令均支持控制台，沿用管理员权限和原版补全。删除全局默认配置资源，同步两份 README、详细文档、双语提示与编辑器镜像。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；中英文各 624 键、键集合与格式占位符一致，编辑器语言镜像一致，文档本地链接及代码块静态检查通过，`git diff --check` 通过。处理后的资源中已无旧全局配置默认文件。未运行测试、启动 Minecraft、创建存档或调用外部 API；跨存档隔离、重启恢复及在线菜单更新仍待游戏内验收。
+
+## 2026-11-08 自由模式底层 Tool 与成本优先级
+
+自由模式构建请求级 ToolContext，合并已公开的只读 Tool、ToolProvider 追加类型及原有可用工作流。源码中九项本地读取声明覆盖玩家、物品、来源、任务、说明书、数据库和礼包预览；可选模组未启用时按 owner 过滤，追加项仍检查已注册的 Type 原实例、只读与 SchemaMapCodec。数据库通过自由聊天工作流声明的可选说明书依赖继续读取授权 FTB 文本。ChatObservation 用 kind dispatch 保留工作流结果或带原 Codec 的 ToolObservation，CardData 结果在最终回复和部分失败时继续显示；使用过的直接工具在循环检查中复核所属模块。
+
+ToolPriority 的目录顺序为 LOCAL / WORKFLOW / PAID，同级按 ID 排序，描述 Codec 同步 priority；提示词优先相关本地读取，不要求耗尽无关工具。额外模型问答、组合分析、AI 签到及 Search / Fetch 标记为 PAID；原始联网工具不自动公开，数据库无结果与本次明确联网授权仍由原 QuestionModule / 处理器检查。付费工具执行仍过统一外部服务门禁；底层写工具与 structuredOnly 确认流程不因回调开放，模型 / 工具 / 步骤 / 超时预算沿用原配置。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain` 成功；静态检查中英文各 622 键且集合一致，编辑器双语镜像与源资源一致，`git diff --check` 通过。未运行测试、启动 Minecraft、插入探针、修改运行配置或调用付费 API。工具选择顺序取决于模型遵循目录和提示词，尚未验收真实模型调用、FTB 说明书与直接卡片展示、扩展回调、权限中途撤销和低预算收尾。当前仅修改 master / 26.1.2。
+
+## 2026-11-08 缺少模型密钥时的离线限制
+
+ModelClient / ModelGateway 提供不发网络请求的配置就绪检查，OpenAI 兼容客户端按 apiKeyRequired 与环境变量是否为空判定。AgentEngine 将就绪状态合并到统一权限，AiStatus 仅同步 modelConfigured 布尔值；缺少必需密钥时所有玩家只能选择离线，已有高模式偏好自动降级但不覆盖。菜单、输入提示、设置页及管理员状态命令显示缺失原因，服务端模式修改、外部工具门禁和模型额度预留再次校验。模型配置变化也会触发取消与状态同步，不依赖 AI 权限文件同时变化；恢复配置后重新按原偏好与权限执行。免密钥接口 apiKeyRequired=false 保留支持，客户端 TTS / ASR 设置独立。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain` 成功。静态核对中英文各 622 键、键集合与格式占位符数量一致，编辑器双语镜像与源资源一致，`git diff --check` 通过。没有运行测试、启动 Minecraft、修改运行配置或请求收费 API；登录同步、菜单置灰、模型配置单独 /reload 后刷新、房主权限及配置恢复仍待游戏内验收。就绪检查仅判断必需密钥是否存在，不验证密钥有效性或网络可达性。本次修改仅在当前 master / 26.1.2。
+
+## 2026-11-08 默认模式上限与房主权限
+
+AiAccessData SavedData 保存 defaultMode（内置 standard），同时作为新玩家初始模式和普通玩家的可选模式上限。已有模式偏好保留，执行时按有效权限降级；单人玩家和局域网房主默认开放全部模式，玩家 UUID 的显式 /system ai 许可、禁用及限额仍优先，每日调用额度和工作流预算不变。权限通过 AgentEngine 统一解析，AiStatus 同步上限，客户端置灰并说明原因，服务端再次校验；通过 `/system ai default <模式>` 保存并刷新在线玩家状态。
+
+源码依据为实际 Minecraft 26.1.2 sources JAR：IntegratedServer 设置 singleplayerProfile，专用服务端没有该档案；通过服务端档案 UUID 识别房主，不引用客户端类，局域网访客与专用服务端 OP 均走普通玩家规则。同步更新双语文案、编辑器镜像、README、使用说明和自由聊天文档。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain` 成功；静态检查中英文各 619 键、键集合及格式占位符数量一致，编辑器语言 / CSS 镜像与源资源一致，默认 JSON 的 defaultMode 为 standard，`git diff --check` 通过。testModClasses 仅编译开发源集，没有运行测试、启动 Minecraft 或调用外部 API；四档上限、房主与访客差异、显式授权覆盖及 /reload 后界面更新仍待游戏内验收。修改仅在当前 master / 26.1.2。
+
 ## 2026-11-08 四种对话模式与执行策略
 
 发送框左侧新增离线 / 标准（默认）/ 扩展 / 自由菜单，共用 ConversationModeSelector，名称、说明和管理员禁用原因分行显示；原个人 AI / 自由聊天开关及顶栏强制开关合并为 PlayerData.mode。ConversationStrategy 接口由 ConversationMode 枚举实现路由顺序；管理员许可与模式偏好经 AiStatus 同步，客户端置灰、服务端复核，限制时降级执行并保留偏好。
@@ -613,7 +643,7 @@ FTB 仅为 `compileOnly`，默认开发运行不安装。需要用户明确要�
 - OFF 不使用本地索引/意图缓存；SHADOW 不影响路由、候选提示和缓存；无外部模型文件即可使用新配置。
 - ENFORCE 的独立语料评估：领域别名、陌生词与低覆盖率、高分小分差、否定/指代/复合表达、写请求与不支持表达、缺失/多个物品 ID；相似度不充当正确率。
 - 精确意图缓存的成功写入条件、每玩家/全局上限、TTL/LRU、清空/撤销/掉线与迟到写入；更换配置后索引和缓存重建，结果始终查询当前状态。
-- `/ai off` 禁止远程回退但允许已启用的本地只读直达；`/memory off` 不缓存意图；诊断不泄露原文/UUID。
+- 离线模式禁止远程回退但允许已启用的本地只读直达；`/memory off` 不缓存意图；诊断不泄露原文/UUID。
 - 明确指令与高把握直达的真实调用次数、本地索引/缓存耗时及 MSPT；本地诊断不能代替完整性能基准。
 
 - 默认未绑定、管理员自身/指定在线玩家 grant、重复 grant、成功落盘后绑定提示、未授权命令与未绑定请求拒绝。

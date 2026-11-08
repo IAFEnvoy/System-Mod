@@ -4,6 +4,7 @@ import com.iafenvoy.saturn.util.FileAccess;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
+import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.config.file.StorageConfig;
 import com.mojang.serialization.Codec;
@@ -40,6 +41,8 @@ public final class FileAgentStore implements AgentStore {
     private static final Codec<Conversation> CHAT_CODEC = Conversation.CODEC.codec();
     private final Path root;
     private final Path chatRoot;
+    private final Supplier<ConversationMode> defaultMode;
+    private final Codec<PlayerData> businessCodec;
     private final ReentrantLock[] locks = new ReentrantLock[64];
     private final Map<UUID, CachedPlayer> loaded = new ConcurrentHashMap<>();
     private final FileChannel channel;
@@ -47,9 +50,11 @@ public final class FileAgentStore implements AgentStore {
     private final ReentrantReadWriteLock lifecycle = new ReentrantReadWriteLock();
     private boolean closed;
 
-    public FileAgentStore(Path root) throws IOException {
+    public FileAgentStore(Path root, Supplier<ConversationMode> defaultMode) throws IOException {
         this.root = root;
         this.chatRoot = root.resolve(CHAT_DIRECTORY);
+        this.defaultMode = Objects.requireNonNull(defaultMode);
+        this.businessCodec = PlayerData.codec(defaultMode);
         Arrays.setAll(this.locks, ignored -> new ReentrantLock());
         Files.createDirectories(root);
         Files.createDirectories(this.chatRoot);
@@ -87,11 +92,11 @@ public final class FileAgentStore implements AgentStore {
 
     private PlayerData loadBusiness(UUID player) throws IOException {
         Path path = this.root.resolve(player + ".json");
-        if (!Files.exists(path)) return new PlayerData();
+        if (!Files.exists(path)) return new PlayerData(this.defaultMode.get());
         if (Files.size(path) > config().businessBytes()) throw new AgentException(AgentFailure.STORAGE_FULL);
         byte[] bytes = Files.readAllBytes(path);
         // The replay cache used to share this file; read that layout once so an upgrade keeps its history.
-        PlayerData value = BUSINESS.decode(PlayerData.CODEC, bytes).orElseThrow(() -> new IOException("Unable to decode agent store: " + path.getFileName()));
+        PlayerData value = BUSINESS.decode(this.businessCodec, bytes).orElseThrow(() -> new IOException("Unable to decode agent store: " + path.getFileName()));
         if (value.version != 1) throw new IOException("Invalid agent store version");
         return value;
     }
@@ -195,7 +200,7 @@ public final class FileAgentStore implements AgentStore {
     }
 
     private void saveBusiness(UUID player, PlayerData data) throws IOException {
-        byte[] bytes = encode(BUSINESS, PlayerData.CODEC, data, player);
+        byte[] bytes = encode(BUSINESS, this.businessCodec, data, player);
         // The journal bounds itself by encoded size, so the business file no longer grows without a limit.
         if (bytes.length > config().businessBytes()) throw new AgentException(AgentFailure.STORAGE_FULL);
         this.replace(this.root.resolve(player + ".json"), this.root.resolve(player + ".tmp"), bytes);

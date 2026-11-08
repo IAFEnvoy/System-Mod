@@ -2,16 +2,17 @@ package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentLifecycle;
+import com.iafenvoy.system.agent.chat.AiAccess;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.model.OpenAiCompatibleClient;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import com.iafenvoy.system.command.SystemCommand;
-import com.iafenvoy.system.config.file.AiAccessConfig;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.database.AgentDatabases;
 import com.iafenvoy.system.data.prompt.PromptReloadListener;
+import com.iafenvoy.system.data.store.AiAccessData;
 import com.iafenvoy.system.data.store.FileAgentStore;
 import com.iafenvoy.system.event.AssistantRegistrationEvent;
 import com.iafenvoy.system.module.ContextTypes;
@@ -50,6 +51,7 @@ import java.util.UUID;
 public final class AssistantServer {
     private static volatile AssistantServer INSTANCE;
     private final MinecraftServer server;
+    private final UUID localOwner;
     private final AgentEngine engine;
     private final AgentDatabases databases;
     private final QuestNarration narration;
@@ -61,15 +63,25 @@ public final class AssistantServer {
     private final AssistantCardDisplays displays;
     private final GameTaskQueue gameQueue = new GameTaskQueue();
     private PromptReloadListener promptListener;
-    private AiAccessConfig aiAccess = AiAccessConfig.INSTANCE.get();
+    private final AiAccessData aiAccessData;
+    private AiAccess aiAccess;
+    // Model-only reloads must refresh players even when administrator rules stay unchanged.
+    private boolean modelConfigured;
 
     private AssistantServer(MinecraftServer server) throws Exception {
         this.server = server;
+        var profile = server.getSingleplayerProfile();
+        this.localOwner = profile == null ? null : profile.id();
+        this.aiAccessData = server.getDataStorage().computeIfAbsent(AiAccessData.TYPE);
+        this.aiAccess = this.aiAccessData.get();
         try {
             this.databases = this.own(new AgentDatabases(server.getWorldPath(LevelResource.ROOT).resolve("system-database")));
-            FileAgentStore store = this.own(new FileAgentStore(server.getWorldPath(LevelResource.ROOT).resolve("system-agent")));
+            FileAgentStore store = this.own(new FileAgentStore(server.getWorldPath(LevelResource.ROOT).resolve("system-agent"),
+                    () -> this.aiAccessData.get().defaultMode()));
             OpenAiCompatibleClient model = this.own(new OpenAiCompatibleClient());
             this.engine = this.own(new AgentEngine(store, model, data -> ModuleData.get(data, CoreSystemModule.JOURNAL)));
+            this.engine.permissions(player -> this.aiAccessData.get().permissions(player, player.equals(this.localOwner)));
+            this.modelConfigured = this.engine.model().configured();
             // Transfer ownership only after construction succeeds, so a failed initialization still releases the file lock.
             this.resources.remove(store);
             this.resources.remove(model);
@@ -150,6 +162,10 @@ public final class AssistantServer {
         return this.engine;
     }
 
+    public AiAccessData aiAccess() {
+        return this.aiAccessData;
+    }
+
     public AssistantCardDisplays displays() {
         return this.displays;
     }
@@ -175,19 +191,28 @@ public final class AssistantServer {
     }
 
     public void refreshAiAccess() {
-        AiAccessConfig next = AiAccessConfig.INSTANCE.get();
-        if (this.aiAccess == next) return;
-        AiAccessConfig previous = this.aiAccess;
+        AiAccess next = this.aiAccessData.get();
+        boolean configured = this.engine.model().configured();
+        if (this.aiAccess == next && this.modelConfigured == configured) return;
+        AiAccess previous = this.aiAccess;
+        boolean availabilityChanged = this.modelConfigured != configured;
         this.aiAccess = next;
+        this.modelConfigured = configured;
         for (ServerPlayer player : this.server.getPlayerList().getPlayers()) {
-            AiAccessConfig.Permissions permissions = next.permissions(player.getUUID());
-            if (!previous.permissions(player.getUUID()).equals(permissions)) {
+            boolean owner = player.getUUID().equals(this.localOwner);
+            AiAccess.Permissions permissions = next.permissions(player.getUUID(), owner);
+            boolean policyChanged = !previous.permissions(player.getUUID(), owner).equals(permissions);
+            if (policyChanged || availabilityChanged) {
                 this.engine.cancel(player.getUUID());
                 this.requests.syncState(player);
-                player.sendSystemMessage(Component.translatable("system.ai.access_changed",
+                if (policyChanged) player.sendSystemMessage(Component.translatable("system.ai.access_changed",
                         Component.translatable(permissions.allowAi() ? "system.ai.allowed" : "system.ai.denied"),
                         Component.translatable(permissions.allowFreeChat() ? "system.ai.allowed" : "system.ai.denied"),
-                        permissions.modelCallsPerDay()).withStyle(permissions.allowAi() ? ChatFormatting.YELLOW : ChatFormatting.RED));
+                        permissions.modelCallsPerDay(), Component.translatable(permissions.maxMode().labelKey()))
+                        .withStyle(permissions.allowAi() ? ChatFormatting.YELLOW : ChatFormatting.RED));
+                if (availabilityChanged) player.sendSystemMessage(Component.translatable(configured
+                                ? "system.ai.model_ready_hint" : "system.ai.model_missing_hint")
+                        .withStyle(configured ? ChatFormatting.YELLOW : ChatFormatting.RED));
             }
         }
     }

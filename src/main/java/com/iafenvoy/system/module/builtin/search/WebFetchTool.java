@@ -4,6 +4,7 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.tool.ToolPriority;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
 import com.iafenvoy.system.search.SearchException;
 import com.iafenvoy.system.search.SearchGateway;
@@ -19,7 +20,7 @@ import java.util.concurrent.CompletionStage;
 public record WebFetchTool(
         SearchGateway gateway) implements ToolRegistry.Handler<SearchProvider.FetchRequest, SearchProvider.Page> {
     public ToolRegistry.Tool<SearchProvider.FetchRequest, SearchProvider.Page> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.WEB_FETCH, false, false, false, this);
+        return new ToolRegistry.Tool<>(BuiltinTools.WEB_FETCH, false, false, false, this).withPriority(ToolPriority.PAID);
     }
 
     @Override

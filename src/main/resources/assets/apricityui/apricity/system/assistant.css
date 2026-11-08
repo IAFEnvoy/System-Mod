@@ -307,7 +307,8 @@ p {
     padding: 6px;
     border: 1px solid var(--assistant-line);
     border-radius: var(--assistant-control-radius);
-    background-color: var(--assistant-window);
+    /* The theme canvas stays opaque even when its window surfaces are translucent. */
+    background-color: var(--color-background, var(--canvas, #030e17));
     box-shadow: var(--assistant-shadow);
 }
 

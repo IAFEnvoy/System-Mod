@@ -40,7 +40,8 @@ public final class ReActContext<O> {
         this.maxIterations = execution.reactIterations();
         Map<String, ReActTool<?, O>> bindings = new LinkedHashMap<>();
         Map<String, ReActTool.Description> descriptions = new LinkedHashMap<>();
-        for (ReActTool<?, O> tool : tools) {
+        for (ReActTool<?, O> tool : tools.stream().sorted(Comparator
+                .comparing((ReActTool<?, O> value) -> value.priority()).thenComparing(ReActTool::id)).toList()) {
             if (bindings.putIfAbsent(tool.id(), tool) != null)
                 throw new IllegalArgumentException("Duplicate ReAct tool " + tool.id());
             descriptions.put(tool.id(), tool.describe());

@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Per-engine extension points. Tool declarations are reserved for the next tool-call integration.
+ * Per-engine prompt and registered read-tool extensions, evaluated separately for each free-chat request.
  */
 public final class ChatSupport {
     private volatile PromptProvider prompts = context -> context.prompt(SystemPrompts.FREE_CHAT);
@@ -26,8 +26,8 @@ public final class ChatSupport {
         this.tools = Objects.requireNonNull(tools);
     }
 
-    public ToolProvider tools() {
-        return this.tools;
+    public List<ToolRegistry.Type<?, ?>> tools(ExecutionContext context) {
+        return List.copyOf(this.tools.available(context));
     }
 
     @FunctionalInterface

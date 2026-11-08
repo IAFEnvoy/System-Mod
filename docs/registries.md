@@ -218,4 +218,4 @@ ModuleContext 的 AgentEngine 与模块注册表为固定字段，以 engine() /
 
 WebResearch 已迁入通用 ReActLoop，每次循环按工具上下文构建本地 MapCodec 表，以 `type=web.search|web.fetch|answer` dispatch，工具参数位于 input；不是 MC 注册表，也不另加全局 AgentAction。跨能力只读工作流另注册 `SystemActionTypes.REASONING_ACTION` / `system:reasoning`，工具清单从当前玩家启用模块中主动声明 forReasoning 的操作建立，观察结果同样按工具 Type 的 Codec dispatch。QuestionModule 的 ModuleRouting.explicit 解析当前明确联网句式；普通问题由模型路由选择 system:question，allowWeb 默认 false，只有非常确信当前授权外部查询时才为 true。问答语义样例仅作候选提示，不缓存授权；执行时固定先查库，本地为空且可选工具已启用时才开放联网门禁。`explicitOnly()` 与 `structuredOnly()` 仍保留为通用路由声明。详见 [ReAct 循环](agent-react.md)。
 
-自由聊天动作 `system:free_chat` 使用 FreeChatInput，回复卡片 `system:chat` 使用 ChatOutput 与 chat.json；核心模块安装工作流，structuredOnly 将其从模型意图目录排除。管理员 / 玩家双层权限与预留接口见 [自由聊天](free-chat.md)。
+自由聊天动作 `system:free_chat` 使用 FreeChatInput，回复卡片 `system:chat` 使用 ChatOutput 与 chat.json；核心模块安装工作流，structuredOnly 将其从模型意图目录排除。完整自由模式从原工作流表及 ToolRegistry 装配可用能力，ToolProvider 可追加已注册的只读类型，目录按 LOCAL / WORKFLOW / PAID 排序；不是新的 MC 注册表。管理员 / 玩家权限、类型化观察及扩展接口见 [自由聊天](free-chat.md)。

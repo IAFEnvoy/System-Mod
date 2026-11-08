@@ -11,6 +11,7 @@ import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.tool.ToolPriority;
 import com.iafenvoy.system.data.input.DatabaseQueryInput;
 import com.iafenvoy.system.data.input.QuestionInput;
 import com.iafenvoy.system.data.output.DatabaseQueryOutput;
@@ -47,6 +48,7 @@ public final class QuestionModule extends AbstractAgentModule<QuestionInput> {
     @Override
     public ModuleRouting<QuestionInput> routing() {
         return ModuleRouting.<QuestionInput>defaults()
+                .priority(ToolPriority.PAID)
                 .command(AgentCommand.argument("<question>", QuestionInput::local, "question", "提问"))
                 .command(AgentCommand.argument("<question>", QuestionInput::online, "search", "websearch", "联网搜索", "上网搜索", "网上搜索"))
                 .explicit(QuestionModule::explicit)

@@ -1,271 +1,213 @@
 # System
 
-Choose Offline, Standard (default), Extended or Free beside the message box: local routing, AI-assisted routing, chat
-fallback, or AI-directed feature calls. Modes restricted by the administrator are greyed out. Administrators manage
-AI/free-chat permissions and daily limits through `/system ai <player>`; changes apply immediately and save
-automatically. See [execution modes and access configuration](docs/free-chat.md).
-
 English | [简体中文](README-zh.md)
 
-A NeoForge mod that brings the "System" from web novels into Minecraft. The Agent runs on the server and handles data
-queries, quests, daily check-ins and shop interactions. The client provides a full workspace, a minimal dialogue view
-and HUD notifications that keep gameplay uninterrupted, with optional speech output.
+A NeoForge mod that brings the “System” from web novels into Minecraft. A server-side Agent handles queries, quests and
+actions, while the client provides a full workspace, a minimal dialogue view, HUD notifications and optional voice
+interaction. Local commands and intent matching work without AI; connect a model when needed.
 
 ## Features
 
-- **Player and item queries:** view your own status, or search for items by name or registry ID.
-- **FTB Quests integration:** browse visible, unlocked, actionable and unfinished quests in a compact list. Open details
-  by number or name, then explicitly select and claim rewards. Quest completion and newly unlocked quests appear as
-  queued System notifications.
-- **Explicit web research:** use `/system search <question>` or the Web search page to request a lookup. Ordinary
-  questions do not trigger automatic browsing. Search shares the DeepSeek key by default, has a separately configurable
-  loop budget, and meters Search and Fetch requests separately.
-- **AI daily check-in:** the model selects rewards from a server-approved pool. Rewards enter an inbox for manual
-  collection; the model cannot invent items or change quantities.
-- **System shop:** browse offers, review quotes and confirm payment through Saturn Costs, including item exchanges,
-  resources and registered extensions. There is no built-in currency economy.
-- **Data-driven lottery:** browse pools, review prize weights and single-draw costs, then confirm one draw. Rewards
-  enter the inbox. Data packs configure Saturn Costs or free draws.
-- **Configurable content and workflows:** data packs define system names, descriptions, enabled modules, check-in
-  rewards, shop offers and lottery pools. Modules use a synchronized `system_module` registry: server behavior is
-  selected by `server.type`, client UI by a separate `client` ID. Systems reference module instances or tags, with
-  conditions. Server rules can trigger bounded
-  workflows when players complete advancements.
-- **HUD notifications and speech:** notifications do not take control of the mouse or keyboard. Optional Aliyun
-  streaming TTS reads message bodies; closing a view, dismissing a notification or switching messages ends the
-  corresponding
-  speech session.
-- **Usage and privacy controls:** server AI and web usage by player, private local TTS / ASR usage, history management,
-  external-AI opt-out, UUID-isolated data and limits on model and tool execution.
+- **Queries and answers:** view player information, search items, and browse recipes and item sources. Questions use the
+  local database first; web access requires explicit permission.
+- **FTB Quests integration:** browse actionable quests by chapter, inspect requirements and rewards, submit or claim
+  manually, and pin quests to persistent cards. Includes completion/unlock notifications and local guide lookup.
+- **Check-ins, shop and lottery:** AI selects daily rewards from approved pools. Shops and lotteries use Saturn Costs,
+  with rewards delivered to the inbox. Content is configured through data packs.
+- **Conversation and tools:** choose Offline, Standard, Extended or Free mode. Free mode can call authorized tools;
+  administrators control available modes and daily usage.
+- **Cards and HUD:** messages, interactive cards and persistent cards share JSON templates. Notifications leave gameplay
+  controls available, and Saturn’s HUD editor adjusts their position.
+- **Optional speech:** push-to-talk recording, automatic sending after recognition, streaming speech output and voice
+  actions for notification buttons.
 
-## Quick Start
+## Installation and Quick Start
 
-1. Install this mod and its required dependencies. Add FTB Quests and its dependencies if you want quest integration.
-2. Start the server or open a single-player world once to generate the server configuration files under
-   `config/system/`.
-3. To use AI, set `SYSTEM_DEEPSEEK_API_KEY` in the server process's startup environment, then restart. In single-player,
-   the Minecraft process must inherit the variable. Configuration stores the environment-variable name, not the key.
-4. Install a server data pack defining a system, then an administrator binds it with
-   `/system grant <system ID> [player]`, for example `/system grant example:daily Steve`. Omit the player to bind
-   yourself. Players start unbound and can currently bind at most one system. Built-in `system:default` uses the
-   default module tag; the FTB Quests and web-search module definitions and tag additions are development-only.
-5. Run `/system`, `/system full` or `/system simple`, then use the controls or type a request.
+### Versions and Dependencies
 
-For example, set the variable in PowerShell, then launch the server from the same environment:
+These requirements apply to the current branch. Use the corresponding branch or build for other Minecraft versions.
+
+| Component            | Version / requirement                              | Install on        |
+|----------------------|----------------------------------------------------|-------------------|
+| System               | `1.0-beta.3`                                       | Client and server |
+| Minecraft / NeoForge | `26.1.2` / `26.1.2.114+`                           | Client and server |
+| Java                 | `25`                                               | Client and server |
+| Saturn               | `1.2.5+`, built for the matching Minecraft version | Client and server |
+| ApricityUI           | `1.2.9+`, built for the matching Minecraft version | Client            |
+
+FTB Quests and its dependencies are **optional**, needed only for quest integration. Simple Voice Chat is an **optional
+client microphone backend**; Java Sound is used when it is absent, and the server does not need SVC for this feature.
+See the [development guide](docs/development.md) for development dependency versions.
+
+### First Use
+
+1. Install the mod and required dependencies, then open a single-player world or start the server.
+2. As an administrator, run `/system grant system:default [player]` to bind the bundled system; omit the player to bind
+   yourself. Each player currently has at most one system. Data packs can provide other system IDs.
+3. Run `/system` to open the interface, type a request and press Enter. Start with player information or an item search.
+4. Open `/system settings` for unified settings; changes save immediately. Configure a model below when you want AI
+   features.
+
+### Enable AI (Optional)
+
+DeepSeek is the default provider. Set `SYSTEM_DEEPSEEK_API_KEY` in the **server process environment**. For example, set
+it in PowerShell and launch the server from that environment:
 
 ```powershell
 $env:SYSTEM_DEEPSEEK_API_KEY = "<your-api-key>"
 ```
 
-Explicit queries, shop browsing and item exchanges do not require a model key. AI check-in and model-based routing
-fallback do. `/system usage` does not require a binding.
+For single-player, the Minecraft process must inherit the variable. Restart the process after changing its environment.
+Server-side `config/system/system-model.json` stores the endpoint, model ID and the key’s **environment-variable name**.
+Other OpenAI Chat Completions-compatible services are also supported.
 
-### Model Configuration
+Set `baseUrl` to the API prefix without `/chat/completions`. See [model configuration](docs/model-api.md) for all
+options, DeepSeek-specific parameters and local models that do not require a key.
 
-Model settings live in `config/system/system-model.json`. The default fields are shown below; restart the server after
-changes.
+## Execution Modes
 
-```json
-{
-  "providerType": "auto",
-  "baseUrl": "https://api.deepseek.com",
-  "model": "deepseek-chat",
-  "apiKeyEnvironment": "SYSTEM_DEEPSEEK_API_KEY",
-  "apiKeyRequired": true,
-  "jsonMode": true,
-  "outputTokenParameter": "max_tokens",
-  "thinkingEnabled": false
-}
-```
+Select a mode beside the message box. Your choice saves automatically.
 
-Set `baseUrl` to the API prefix without `/chat/completions`; the adapter appends that path automatically. To use another
-compatible service, change the URL, model ID and key environment-variable name, and explicitly set
-`providerType: "openai"` if needed. `auto` enables DeepSeek-specific parameters only for the official DeepSeek domain;
-when using a proxy for DeepSeek, explicitly select `deepseek`.
+| Mode               | Behavior                                                                                              |
+|--------------------|-------------------------------------------------------------------------------------------------------|
+| Offline            | Local routing and intent matching only; uncertain requests offer clickable actions without calling AI |
+| Standard (default) | Local routing first; AI assists routing and required modules, without free conversation               |
+| Extended           | Routing first, with free AI answers when no action matches                                            |
+| Free               | AI directs the conversation, selects tools and calls features                                         |
 
-## Commands and Interaction
+Administrators set the current world’s initial mode and ordinary players’ mode ceiling with `/system ai default <mode>`;
+the default is stored in world data. Single-player users and LAN hosts can select all modes by default. Explicit
+per-player `/system ai` rules still take precedence; unavailable choices are greyed out with a reason.
 
-The following commands run in Minecraft chat:
+**If the model requires an API key and none is configured, only Offline mode is available.** Your preferred mode is
+retained. Models configured to work without a key are exempt. Local queries and browsing remain available; features that
+require a model, such as AI check-ins, need a working configuration.
 
-| Command                                                  | Action                                                                                               |
-|----------------------------------------------------------|------------------------------------------------------------------------------------------------------|
-| `/system`                                                | Open the last selected view                                                                          |
-| `/system full` / `/system simple`                        | Open the full / minimal view                                                                         |
-| `/system settings`                                       | Open unified client settings directly; no binding or administrator permission required               |
-| `/system ask <text>`                                     | Submit a natural-language request                                                                    |
-| `/system search <question>`                              | Explicitly start paid web research; no automatic browsing                                            |
-| `/system player`                                         | View your own status                                                                                 |
-| `/system submittable [query]`                            | List FTB quests with pending manual or checkmark targets                                             |
-| `/system usage` / `/system usage all`                    | View personal usage / server AI and web usage as an administrator; voice totals always stay personal |
-| `/system grant <system ID> [player]`                     | Bind one data-pack system as an administrator; omit the player to bind yourself                      |
-| `/system revoke [player]`                                | Revoke access and clear System records as an administrator; retain cumulative usage                  |
-| `/system reset [player]`                                 | Clear old-format System records and binding; cumulative usage is retained, then grant again          |
-| `/system module add <player> <module ID>`                | Enable an additional module for a player as an administrator                                         |
-| `/system module remove <player> <module ID>`             | Disable a module for a player as an administrator                                                    |
-| `/system module list [player]`                           | List registered modules or a player's enabled modules as an administrator                            |
-| `/system ai <player> enable` / `disable`                 | Allow / deny AI access; retain personal preferences and local actions                                |
-| `/system ai <player> freechat enable` / `disable`        | Allow / deny free chat as an administrator                                                           |
-| `/system ai <player> status` / `limit <calls>` / `reset` | View permissions / set daily model limits / inherit default permissions                              |
-| `/system routing`                                        | View routing diagnostics as an administrator                                                         |
-| `/system help`                                           | Show available actions                                                                               |
+Free mode prefers relevant local read tools, then ordinary workflows, then capabilities with additional API costs.
+Purchases, lottery draws and quest submissions retain their confirmation steps. Web access still requires the search
+module and **explicit permission for the current request**. Free conversation itself also consumes model usage.
+See [modes, permissions and tools](docs/free-chat.md).
 
-System IDs, players and module arguments support completion. Granting the same system again does not reset player
-data; revoke the current binding before switching to another system. Manual module overrides take precedence over
-data-pack conditions and persist until revoked or reset. Required modules, including core, binding and usage, cannot
-be removed manually.
+## Common Actions
 
-Notifications appear at the bottom of the HUD. Open vanilla chat with its configured key (**T by default**) to click
-"Confirm" or an action button. Consecutive notifications keep the panel expanded while the content fades out, changes
-and fades in. Confirming, timing out or switching notifications immediately cuts off the old speech, so the next message
-does not wait for it to finish. Closing an assistant view also ends its speech session.
+### Player Commands
+
+Run these in Minecraft chat. Available features depend on the enabled modules.
+
+| Command                           | Action                                                              |
+|-----------------------------------|---------------------------------------------------------------------|
+| `/system`                         | Open the last selected view                                         |
+| `/system full` / `/system simple` | Open the full workspace / minimal dialogue view                     |
+| `/system settings`                | Open unified settings without a binding or administrator permission |
+| `/system ask <text>`              | Send a natural-language request                                     |
+| `/system player`                  | View your own information                                           |
+| `/system submittable [query]`     | List FTB quests with pending manual or checkmark targets            |
+| `/system search <question>`       | Explicitly request paid web research; requires the search module    |
+| `/system usage`                   | View personal usage without a binding                               |
+| `/system help`                    | Show available features and help                                    |
+
+Inside the assistant, use `/settings` to open settings. The input supports command completion and Enter to send. You can
+assign **Toggle System interface** in Minecraft’s controls; it is unbound by default.
+
+While a notification is visible, open vanilla chat (**T by default**) to interact. Consecutive notifications keep the
+panel expanded; use their buttons to confirm or continue. Finishing speech does not automatically advance the queue.
+Closing, confirming or replacing a notification ends its speech session.
+
+### Administrator Commands
+
+| Command                                      | Action                                                                                            |
+|----------------------------------------------|---------------------------------------------------------------------------------------------------|
+| `/system grant <system ID> [player]`         | Bind a system defined by a data pack                                                              |
+| `/system revoke [player]`                    | Revoke the binding and clear business records, retaining cumulative usage                         |
+| `/system reset [player]`                     | Clear System records and the binding, including unusable old-format records; bind again afterward |
+| `/system module add <player> <module ID>`    | Enable an additional module                                                                       |
+| `/system module remove <player> <module ID>` | Disable a module                                                                                  |
+| `/system module list [player]`               | List registered modules or a player’s enabled modules                                             |
+| `/system ai default [mode]`                  | View or change the current world’s default AI mode                                                |
+| `/system ai <player> …`                      | Manage AI/free-chat permissions and daily limits, inspect access or reset overrides               |
+| `/system ftb reload`                         | Reindex currently loaded FTB guide data without changing quest progress                           |
+| `/system usage all`                          | View server-wide AI and web usage; voice usage remains personal                                   |
+| `/system routing`                            | Inspect local routing diagnostics                                                                 |
+
+System, player and module arguments support completion. Granting the same system again does not reset the player; revoke
+before switching systems. Manual module overrides persist. Required modules such as core, binding and usage cannot be
+removed. See the [usage guide](docs/usage.md) for commands and [access configuration](docs/free-chat.md) for AI
+subcommands.
 
 ## Optional Speech
 
-**All speech features run on the client and use paid APIs.**
+Voice input and automatic speech are disabled by default. Both run on the **client using the player’s own Aliyun
+credentials**, separately from the server model configuration.
 
-All speech features currently use Aliyun APIs. Support for more providers is planned.
+| Feature             | Configuration                                                                                                   | Usage                                                                                                           |
+|---------------------|-----------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| Voice input (ASR)   | NLS project AppKey, AccessKey ID / Secret and region; temporary tokens are acquired and refreshed automatically | Hold F8 to record and release to recognize; results fill the draft, with an option to send immediately          |
+| Speech output (TTS) | Model Studio API key and region, or the client’s `DASHSCOPE_API_KEY`                                            | Defaults to `qwen3-tts-flash` / `Cherry` and the game language; preview and enable automatic speech in settings |
 
-### Voice Input
+Configure the corresponding tab in `/system settings`; changes save automatically. Custom voices must match their
+creation model and region. Enter their parameters directly; JSON import is not supported. The notification sound has a
+separate switch, enabled by default, and does not call TTS.
 
-**Requires a separate Aliyun NLS project AppKey and AccessKey ID / Secret. Temporary Tokens are acquired, cached and
-refreshed automatically on demand.**
+Recognized speech first tries the current notification’s buttons, then falls back to the main chat.
+See [voice recognition](docs/asr.md) and [speech synthesis](docs/tts.md) for setup details.
 
-**Installing Simple Voice Chat is recommended for a better experience.**
-
-Voice input is disabled by default. Use `/system settings`, or enter `/settings` in the assistant's input box, then
-select **Voice input** and enable it. Changes are saved automatically. Hold **F8** to record and release to finish;
-the key opens the assistant during gameplay. `/listen` and the **Voice input** button are also available. Final
-recognition fills the draft, then Enter sends it; enable **Send after recognition** to send it immediately. Recording
-lasts at most 60 seconds and is cancelled when the view closes.
-
-While a notification is visible, recognized speech first attempts to match its confirmation or action buttons;
-unmatched text goes to the main chat. Simple Voice Chat is optional; Java Sound records audio when it is not installed.
-
-### Speech Output
-
-**Requires a separate Aliyun Model Studio API key and the matching region.**
-
-Open **Settings → Speech output** in the full workspace, or use `/system settings` or the assistant's `/settings`
-command and select the tab.
-
-1. Enter an Aliyun Model Studio API key and select its region, or set `DASHSCOPE_API_KEY` for the client process.
-2. Set the model, voice, language and volume. Defaults are `qwen3-tts-flash`, `Cherry` and the game language.
-3. Preview, then enable automatic speech. Changes are saved automatically. Custom voice IDs must match the model they
-   were created for.
-
-Enter exported voice parameters directly in the settings fields. TTS does not support JSON import or a settings reload
-button. Local settings are saved in `config/system/system-speech.json`. The notification sound has its own switch,
-enabled by default, and does not require a TTS request.
-
-The Python 3.10+ utility `tools/voice_design.py` supports voice design, cloning, test synthesis and temporary uploads.
-It uses the standard library.
+The repository includes a Python 3.10+ standard-library utility for voice design, cloning, previews and temporary
+uploads:
 
 ```powershell
 python tools/voice_design.py --lang en --help
 ```
 
-## Content and Extensions
+## Configuration and Extensions
 
-System definitions live at `data/<namespace>/system/system/<path>.json`. Names and descriptions use client translation
-keys. For example, create `data/example/system/system/daily.json`:
+Runtime configuration lives under each instance’s `config/system/`. Missing files are copied from bundled defaults. The
+server manages models, permissions, execution budgets and pricing; the client manages views, themes and personal speech
+settings. See the [configuration directory](docs/usage.md#配置目录) for the full file list.
 
-```json
-{
-  "name": "system.definition.default.name",
-  "description": "system.definition.default.description",
-  "modules": [
-    "#example:basic",
-    "example:daily"
-  ]
-}
-```
+- **Data packs:** define translation keys for system names and descriptions, module parameters and conditions, check-in
+  rewards, offers and lottery pools. System definitions live at `data/<namespace>/system/system/<path>.json`. Module
+  references support IDs, tags and conditions; catalogue selections accept IDs, tags or mixed arrays.
+  See [data-pack configuration and examples](docs/datapacks.md).
+- **Resource packs:** override client card JSON, translations and styles. Templates control layout and placeholders
+  supply dynamic data, with items, tooltips, Markdown and interactive buttons. See [cards](docs/cards.md) and
+  the [visual editor](docs/card-editor.md).
+- **Mod extensions:** register modules, tools and card nodes, or extend contexts and prompts.
+  See [feature modules](docs/feature-modules.md) and the [registry reference](docs/registries.md).
 
-Define `example:daily` at `data/example/system/system_module/daily.json`:
+FTB features require their dependencies; web research also requires a configured search module. The development source
+set contains a search-module example that is excluded from the release JAR. Questions use the local database first,
+searching the web only when it has no result and the current request permits it.
+See [database-first questions and web research](docs/search-api.md).
 
-```json
-{
-  "server": {
-    "type": "system:signin"
-  },
-  "client": "system:signin"
-}
-```
+## Data, Usage and Costs
 
-`server.type` selects a registered module codec; any parameters belong beside `type`. Built-in codecs currently use
-parameterless singletons. `client` names a local client implementation. Either side may be omitted.
+- **Business data** is managed by the server per world and player. Bindings, preferences, quest interactions and rewards
+  do not rely on client storage. Cumulative usage is independent and survives revoking, resetting or clearing memory.
+- **AI and web usage** is tracked on the server. Administrators can view server-wide totals; model API keys are never
+  synchronized to clients.
+- **TTS / ASR usage** stays on the local machine per client account. It is not uploaded to the server, and
+  administrators cannot aggregate other players’ voice records.
+- **Costs are estimates**; provider billing is authoritative, and rate changes do not recalculate history. Search and
+  Fetch are counted separately, TTS uses the model’s reported characters or tokens, and ASR estimates use successful
+  recognition counts.
 
-Place the corresponding module tag at `data/example/tags/system/system_module/basic.json`:
+See the [external API request list](docs/external-apis.md) and [usage accounting](docs/token-usage.md) for triggers,
+transmitted data and billing details.
 
-```json
-{
-  "replace": false,
-  "values": [
-    "system:player",
-    "system:items",
-    "system:inbox",
-    "system:shop",
-    "system:lottery"
-  ]
-}
-```
+## Documentation
 
-Module lists also accept objects with a `condition`; `id` can name a single module or a `#tag`. If several entries match
-the same module, any satisfied condition enables it. Module availability controls workspace entries, commands and
-execution permissions. FTB features also require their dependencies.
-See [system definitions and module tags](docs/datapacks.md#系统定义).
+Detailed documentation is currently in Chinese.
 
-Check-in rewards, shop offers and lottery pools are defined entirely by data packs, including the bundled defaults:
+| Topic                                              | Guide                                                                                                        |
+|----------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| Installation, controls, commands and configuration | [Usage and configuration](docs/usage.md)                                                                     |
+| Modes, administrator permissions and tool calls    | [Execution modes and free chat](docs/free-chat.md)                                                           |
+| Other model providers / web research               | [Model API](docs/model-api.md) · [Search API](docs/search-api.md)                                            |
+| Voice input, speech and voice design               | [ASR](docs/asr.md) · [TTS](docs/tts.md)                                                                      |
+| Custom systems, rewards, offers and lottery pools  | [Data packs](docs/datapacks.md)                                                                              |
+| Card layout and appearance                         | [Cards](docs/cards.md) · [Editor](docs/card-editor.md)                                                       |
+| Local guides and knowledge storage                 | [Quest guides](docs/quest-guides.md) · [Databases](docs/databases.md)                                        |
+| Development, architecture and extension points     | [Development](docs/development.md) · [Architecture](docs/architecture.md) · [Registries](docs/registries.md) |
 
-```text
-data/<namespace>/system/signin_rewards/<path>.json
-data/<namespace>/system/shop_offers/<path>.json
-data/<namespace>/system/lottery_pools/<path>.json
-```
-
-These are server-only Data Pack Registries. Each has tags under
-`data/<namespace>/tags/system/<registry-name>/<path>.json`. In a module's `server` definition,
-`rewards` (check-in), `offers` (shop), and `pools` (lottery) accept an ID, `#tag`, or a mixed array.
-Bundled modules use their respective `#system:default` tags. Entry or module changes require reopening the world
-or restarting the server; tag membership follows vanilla reload behavior.
-See [catalog options and examples](docs/datapacks.md#模块目录可选项) for details.
-
-## Data and Privacy
-
-### Configuration Files
-
-| Location                                          | Contents                                                                                  |
-|---------------------------------------------------|-------------------------------------------------------------------------------------------|
-| Server `config/system/system-agent.json`          | Execution budgets, concurrency, daily model limits and time zone                          |
-| Server `config/system/system-model.json`          | Model connection and provider options                                                     |
-| Server `config/system/system-search.json`         | DeepSeek search connection; shares the model key environment variable by default          |
-| Server `config/system/system-search-pricing.json` | Search / Fetch rates per 1,000 requests                                                   |
-| Server `config/system/system-semantic.json`       | Local intent routing, thresholds, examples and cache                                      |
-| Server `config/system/system-advancements.json`   | Trusted advancement rules                                                                 |
-| `<world>/system-agent/<UUID>.json`                | Binding, conversations, preferences, rewards, orders and workflow records                 |
-| `<world>/data/system/token_usage.dat`             | Server AI / web usage by player; retained after revoking access or clearing memory        |
-| Client `config/system/speech-usage/<UUID>.json`   | Personal TTS / ASR totals for this local account, retained across servers; never uploaded |
-| Client `config/system/system-speech-pricing.json` | Personal TTS / ASR rates; copied from bundled defaults if missing                         |
-| Client `config/system/system-client.json`         | View preference                                                                           |
-| Client `config/system/system-speech.json`         | Local speech settings and any key entered in the UI                                       |
-| Client `config/system/system-asr.json`            | Local recognition switch, NLS AppKey, AccessKey ID / Secret and region                    |
-
-Configuration files are not synchronized directly between the client and server. System definitions and available
-modules are synchronized through Minecraft networking. Player data files in the world folder are managed by the
-server; clients cannot modify them directly.
-
-### API Usage
-
-AI usage comes from server-side model responses. The server gateway tracks Search / Fetch request counts and estimated
-costs separately. The all-player view contains server AI and web records only. TTS and ASR totals stay on the client,
-per local account; they are never uploaded to the Minecraft server, and administrators cannot view other players'
-voice usage records.
-
-Search / Fetch rates are configured on the server and can be reloaded with `/reload` after initialization. Voice rates
-are configured on the client; reload resources with F3+T or restart after editing them. ASR defaults to an estimate of
-CNY 3.5 per 1,000 successful recognitions. TTS uses the character or token usage returned by the selected model; the two
-are not charged together.
-
-Empty search results receive no cost estimate. Unknown outcomes, such as timeouts or network interruptions, are recorded
-separately and do not prove that the provider charged nothing. Rate changes do not recalculate historical totals;
-provider billing is authoritative. See [usage and billing](docs/token-usage.md) and
-the [external API request list](docs/external-apis.md).
+See [docs/README.md](docs/README.md) for the full index and [learning.md](learning.md) for the AI coding-agent
+reference.

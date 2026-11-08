@@ -51,7 +51,8 @@ public final class ToolRegistry {
         for (Tool<?, ?> tool : values) {
             Tool<?, ?> previous = this.tools.get(tool.id());
             if (previous != null && (previous.type() != tool.type() || previous.write() != tool.write()
-                    || previous.idempotent() != tool.idempotent() || previous.allowEvent() != tool.allowEvent()))
+                    || previous.idempotent() != tool.idempotent() || previous.allowEvent() != tool.allowEvent()
+                    || previous.priority() != tool.priority()))
                 throw new IllegalArgumentException("Conflicting tool type " + tool.id());
             Tool<?, ?> existing = scoped.putIfAbsent(tool.id(), tool);
             if (existing != null && existing != tool)
@@ -83,14 +84,26 @@ public final class ToolRegistry {
      * Only explicitly advertised read operations enter general reasoning, using an enabled owner's handler.
      */
     public Map<String, ScopedTool<?, ?>> reasoning(Predicate<Identifier> available) {
+        return this.advertised(available, tool -> !tool.reasoningDescription().isBlank() && tool.priority() != ToolPriority.PAID);
+    }
+
+    /** Provider additions only widen the read catalogue; owners, exact type identity and schemas still apply. */
+    public Map<String, ScopedTool<?, ?>> chat(Predicate<Identifier> available, Collection<Type<?, ?>> additions) {
+        Set<Type<?, ?>> selected = Collections.newSetFromMap(new IdentityHashMap<>());
+        selected.addAll(additions);
+        return this.advertised(available, tool -> !tool.write() && tool.type().inputCodec() instanceof SchemaMapCodec<?>
+                && (!tool.reasoningDescription().isBlank() || selected.contains(tool.type())));
+    }
+
+    private Map<String, ScopedTool<?, ?>> advertised(Predicate<Identifier> available, Predicate<Tool<?, ?>> select) {
         Map<String, ScopedTool<?, ?>> result = new LinkedHashMap<>();
         this.variants.forEach((owner, values) -> {
             if (!available.test(owner)) return;
-            values.values().stream().sorted(Comparator.comparing(Tool::id)).filter(tool -> !tool.reasoningDescription().isBlank())
+            values.values().stream().sorted(Comparator.comparing(Tool::id)).filter(select)
                     .forEach(tool -> result.putIfAbsent(tool.id(), scoped(owner, tool)));
         });
         this.tools.values().stream().sorted(Comparator.comparing(Tool::id))
-                .filter(tool -> !tool.reasoningDescription().isBlank() && !this.owners.containsKey(tool.id())
+                .filter(tool -> select.test(tool) && !this.owners.containsKey(tool.id())
                         && this.variants.values().stream().noneMatch(values -> values.containsKey(tool.id())))
                 .forEach(tool -> result.putIfAbsent(tool.id(), scoped(null, tool)));
         return Collections.unmodifiableMap(result);
@@ -142,21 +155,26 @@ public final class ToolRegistry {
     }
 
     public record Tool<I, O>(Type<I, O> type, boolean write, boolean idempotent, boolean allowEvent,
-                             Handler<I, O> handler, String reasoningDescription) {
+                             Handler<I, O> handler, String reasoningDescription, ToolPriority priority) {
         public Tool {
             Objects.requireNonNull(type);
             Objects.requireNonNull(handler);
             Objects.requireNonNull(reasoningDescription);
+            Objects.requireNonNull(priority);
             if (!reasoningDescription.isBlank() && (write || !(type.inputCodec() instanceof SchemaMapCodec<?>)))
                 throw new IllegalArgumentException("Reasoning tools must be read-only and provide an input schema");
         }
 
         public Tool(Type<I, O> type, boolean write, boolean idempotent, boolean allowEvent, Handler<I, O> handler) {
-            this(type, write, idempotent, allowEvent, handler, "");
+            this(type, write, idempotent, allowEvent, handler, "", ToolPriority.LOCAL);
         }
 
         public Tool<I, O> forReasoning(String description) {
-            return new Tool<>(this.type, this.write, this.idempotent, this.allowEvent, this.handler, description);
+            return new Tool<>(this.type, this.write, this.idempotent, this.allowEvent, this.handler, description, this.priority);
+        }
+
+        public Tool<I, O> withPriority(ToolPriority priority) {
+            return new Tool<>(this.type, this.write, this.idempotent, this.allowEvent, this.handler, this.reasoningDescription, priority);
         }
 
         public String id() {

@@ -17,6 +17,7 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.tool.ToolContext;
 import com.iafenvoy.system.agent.tool.ToolObservation;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.tool.ToolPriority;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.data.TextCardData;
 import com.iafenvoy.system.data.input.ReasoningInput;
@@ -49,6 +50,7 @@ public final class ReasoningModule extends AbstractAgentModule<ReasoningInput> {
     @Override
     public ModuleRouting<ReasoningInput> routing() {
         return ModuleRouting.<ReasoningInput>defaults()
+                .priority(ToolPriority.PAID)
                 .command(AgentCommand.argument("<request>", ReasoningInput::new, "reason", "分析"));
     }
 

@@ -23,7 +23,8 @@ final class FtbStarterGiftQueryTool implements ToolRegistry.Handler<EmptyInput, 
     }
 
     ToolRegistry.Tool<EmptyInput, StarterGiftOutput> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.STARTER_GIFTS, false, true, false, this);
+        return new ToolRegistry.Tool<>(BuiltinTools.STARTER_GIFTS, false, true, false, this)
+                .forReasoning("Preview available starter gift rewards and references. Does not claim or complete anything.");
     }
 
     @Override

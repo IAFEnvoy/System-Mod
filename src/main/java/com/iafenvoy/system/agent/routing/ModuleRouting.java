@@ -4,6 +4,7 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.command.AgentCommand;
 import com.iafenvoy.system.agent.module.AgentAction;
+import com.iafenvoy.system.agent.tool.ToolPriority;
 import com.iafenvoy.system.util.ActionArguments;
 
 import java.util.ArrayList;
@@ -18,44 +19,45 @@ import java.util.function.Function;
 public record ModuleRouting<I extends AgentAction>(List<AgentCommand> commands, Optional<RoutingProfile<I>> semantic,
                                                    Optional<Shortcut<I>> shortcut, Selection selection,
                                                    Function<ActionArguments, I> buttonDecoder,
-                                                   Optional<Function<String, I>> explicit) {
+                                                   Optional<Function<String, I>> explicit, ToolPriority priority) {
     public ModuleRouting {
         commands = List.copyOf(commands);
         Objects.requireNonNull(semantic);
         Objects.requireNonNull(shortcut);
         Objects.requireNonNull(selection);
         Objects.requireNonNull(explicit);
+        Objects.requireNonNull(priority);
     }
 
     public static <I extends AgentAction> ModuleRouting<I> defaults() {
         return new ModuleRouting<>(List.of(), Optional.empty(), Optional.empty(), Selection.NORMAL, _ -> {
             throw new AgentException(AgentFailure.UNSUPPORTED);
-        }, Optional.empty());
+        }, Optional.empty(), ToolPriority.WORKFLOW);
     }
 
     public ModuleRouting<I> command(AgentCommand command) {
         List<AgentCommand> commands = new ArrayList<>(this.commands);
         commands.add(command);
-        return new ModuleRouting<>(commands, this.semantic, this.shortcut, this.selection, this.buttonDecoder, this.explicit);
+        return new ModuleRouting<>(commands, this.semantic, this.shortcut, this.selection, this.buttonDecoder, this.explicit, this.priority);
     }
 
     public ModuleRouting<I> semantic(RoutingProfile<I> semantic) {
-        return new ModuleRouting<>(this.commands, Optional.of(semantic), this.shortcut, this.selection, this.buttonDecoder, this.explicit);
+        return new ModuleRouting<>(this.commands, Optional.of(semantic), this.shortcut, this.selection, this.buttonDecoder, this.explicit, this.priority);
     }
 
     public ModuleRouting<I> shortcut(String labelKey, I input) {
-        return new ModuleRouting<>(this.commands, this.semantic, Optional.of(new Shortcut<>(labelKey, input)), this.selection, this.buttonDecoder, this.explicit);
+        return new ModuleRouting<>(this.commands, this.semantic, Optional.of(new Shortcut<>(labelKey, input)), this.selection, this.buttonDecoder, this.explicit, this.priority);
     }
 
     public ModuleRouting<I> structuredOnly() {
-        return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, Selection.STRUCTURED_ONLY, this.buttonDecoder, this.explicit);
+        return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, Selection.STRUCTURED_ONLY, this.buttonDecoder, this.explicit, this.priority);
     }
 
     /**
      * Keep the capability visible to the model, with a higher bar for interpreting the current request.
      */
     public ModuleRouting<I> explicitOnly() {
-        return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, Selection.EXPLICIT_ONLY, this.buttonDecoder, this.explicit);
+        return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, Selection.EXPLICIT_ONLY, this.buttonDecoder, this.explicit, this.priority);
     }
 
     public boolean modelSelectable() {
@@ -67,14 +69,18 @@ public record ModuleRouting<I extends AgentAction>(List<AgentCommand> commands, 
     }
 
     public ModuleRouting<I> button(Function<ActionArguments, I> decoder) {
-        return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, this.selection, decoder, this.explicit);
+        return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, this.selection, decoder, this.explicit, this.priority);
     }
 
     /**
      * A conservative current-message parser can authorize an explicit-only workflow without an LLM.
      */
     public ModuleRouting<I> explicit(Function<String, I> parser) {
-        return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, this.selection, this.buttonDecoder, Optional.of(parser));
+        return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, this.selection, this.buttonDecoder, Optional.of(parser), this.priority);
+    }
+
+    public ModuleRouting<I> priority(ToolPriority priority) {
+        return new ModuleRouting<>(this.commands, this.semantic, this.shortcut, this.selection, this.buttonDecoder, this.explicit, priority);
     }
 
     public enum Selection {

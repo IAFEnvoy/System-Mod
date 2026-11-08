@@ -2,7 +2,6 @@ package com.iafenvoy.system.data.speech;
 
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.ExtraCodecs;
 
@@ -71,8 +70,7 @@ public final class AliyunTtsMessage {
 
     public record Billing(Optional<Long> characters, Optional<Long> input, Optional<Long> output,
                           Optional<Long> total) {
-        private static final Codec<Long> COUNT = ExtraCodecs.NON_NEGATIVE_LONG.validate(v -> v <= 1_000_000
-                ? DataResult.success(v) : DataResult.error(() -> "Oversized billing count"));
+        private static final Codec<Long> COUNT = ExtraCodecs.longRange(0, 1_000_000);
         public static final Codec<Billing> CODEC = RecordCodecBuilder.create(i -> i.group(
                 COUNT.optionalFieldOf("characters").forGetter(Billing::characters),
                 COUNT.optionalFieldOf("input_tokens").forGetter(Billing::input),

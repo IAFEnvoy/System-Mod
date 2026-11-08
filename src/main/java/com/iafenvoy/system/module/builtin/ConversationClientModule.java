@@ -2,7 +2,6 @@ package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.request.PreferencesRequest;
 import com.iafenvoy.system.assistant.AssistantClient;
@@ -19,8 +18,6 @@ public final class ConversationClientModule implements ClientModule {
         module.command(() -> AssistantClient.send(ControlRequest.FORGET), "forget", "清空记忆");
         module.command(() -> preferences(true), "memory on");
         module.command(() -> preferences(false), "memory off");
-        module.command(() -> AssistantClient.selectMode(ConversationMode.STANDARD), "ai on");
-        module.command(() -> AssistantClient.selectMode(ConversationMode.OFFLINE), "ai off");
         module.workspace("", "", workspace -> {
             workspace.click("forget", () -> AssistantClient.send(ControlRequest.FORGET));
             workspace.click("history", () -> {

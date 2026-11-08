@@ -13,6 +13,7 @@ import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.tool.ToolPriority;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
@@ -49,6 +50,7 @@ public final class SignInModule extends AbstractAgentModule<SignInInput> {
     @Override
     public ModuleRouting<SignInInput> routing() {
         return ModuleRouting.<SignInInput>defaults()
+                .priority(ToolPriority.PAID)
                 .button(_ -> SignInInput.INSTANCE)
                 .command(AgentCommand.literal(SignInInput.INSTANCE, "signin", "签到"))
                 .semantic(RoutingProfile.hints(

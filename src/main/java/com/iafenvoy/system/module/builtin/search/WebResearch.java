@@ -12,6 +12,7 @@ import com.iafenvoy.system.agent.react.ReActContext;
 import com.iafenvoy.system.agent.react.ReActLoop;
 import com.iafenvoy.system.agent.react.ReActTool;
 import com.iafenvoy.system.agent.tool.ToolContext;
+import com.iafenvoy.system.agent.tool.ToolPriority;
 import com.iafenvoy.system.data.output.WebSearchOutput;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.search.SearchObservation;
@@ -44,7 +45,7 @@ public final class WebResearch {
                 page.add(source);
             }
             return new SearchObservation("search", input.query(), List.copyOf(page), "", true);
-        });
+        }).withPriority(ToolPriority.PAID);
         ReActTool<Fetch, SearchObservation> fetch = new ReActTool<>("web.fetch", "Fetch missing evidence from an exact URL already observed.", Fetch.CODEC,
                 Fetch::url, input -> {
             SearchObservation.Source source = sources.get(input.url());
@@ -52,7 +53,7 @@ public final class WebResearch {
             SearchProvider.Page page = tools.call(BuiltinTools.WEB_FETCH, new SearchProvider.FetchRequest(input.url()));
             String content = clip(page.content(), 5000);
             return new SearchObservation("fetch", input.url(), List.of(source), content, content.length() < page.content().length());
-        });
+        }).withPriority(ToolPriority.PAID);
         Set<Failure> recoverable = new HashSet<>(ReActLoop.MODEL_FAILURES);
         recoverable.addAll(Set.of(AgentFailure.SEARCH_INVALID_REQUEST, AgentFailure.SEARCH_TIMEOUT, AgentFailure.SEARCH_UNAVAILABLE,
                 AgentFailure.SEARCH_HTTP_ERROR, AgentFailure.SEARCH_INVALID_RESPONSE));

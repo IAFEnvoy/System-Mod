@@ -27,8 +27,7 @@ public final class ReActLoop {
         types.put("answer", answerCodec.xmap(Final<A, O>::new, Final::answer));
         for (ReActTool<?, O> tool : context.tools()) types.put(tool.id(), choice(tool));
         Codec<Step<A, O>> codec = Codec.STRING.partialDispatch("type", step -> DataResult.success(step.type()),
-                id -> types.containsKey(id) ? DataResult.success(types.get(id))
-                        : DataResult.error(() -> "Unavailable ReAct tool " + id));
+                id -> types.containsKey(id) ? DataResult.success(types.get(id)) : DataResult.error(() -> "Unavailable ReAct tool " + id));
         boolean finalOnly = false;
         Failure failure = AgentFailure.ITERATION_LIMIT;
         context.check();

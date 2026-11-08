@@ -8,7 +8,6 @@ import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.request.*;
 import com.iafenvoy.system.agent.response.*;
 import com.iafenvoy.system.agent.storage.AgentStore;
-import com.iafenvoy.system.config.file.AiAccessConfig;
 import com.iafenvoy.system.data.AiStatus;
 import com.iafenvoy.system.data.ClientState;
 import com.iafenvoy.system.data.input.StarterGiftsInput;
@@ -164,7 +163,7 @@ public final class AssistantRequests {
             return new ClientState(data.systems.current(), data.saveHistory,
                     this.modules.enabled(player),
                     this.engine.modules().commands().suggestions(id -> this.engine.available(player, id)),
-                    this.engine.requestTimeoutMillis(player), AiStatus.of(data.mode, AiAccessConfig.INSTANCE.get().permissions(player)));
+                    this.engine.requestTimeoutMillis(player), AiStatus.of(data.mode, this.engine.permissions(player)));
         }));
     }
 

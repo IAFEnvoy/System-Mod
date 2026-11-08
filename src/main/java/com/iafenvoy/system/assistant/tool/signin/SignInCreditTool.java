@@ -55,7 +55,7 @@ public final class SignInCreditTool implements ToolRegistry.Handler<SignInCredit
             context.check();
             if (!day.equals(LocalDate.now(ZoneId.of(AgentConfig.INSTANCE.get().timeZone())).toString()))
                 throw new AgentException(AgentFailure.EXPIRED);
-            if (!data.mode.usesAi()) throw new AgentException(AgentFailure.MODEL_DISABLED);
+            context.requireExternalServices();
             SignInDataStorage signIn = ModuleData.get(data, SignInSystemModule.STORAGE);
             if (signIn.hasReward(day)) return new RewardOutput(signIn.getReward(day));
             InboxDataStorage inbox = ModuleData.get(data, InboxSystemModule.STORAGE);

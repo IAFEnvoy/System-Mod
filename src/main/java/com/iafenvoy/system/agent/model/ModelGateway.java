@@ -25,6 +25,10 @@ public final class ModelGateway implements AutoCloseable {
         this.client.checkConfigured();
     }
 
+    public boolean configured() {
+        return this.client.configured();
+    }
+
     public ModelClient.Reply complete(UUID player, List<ModelClient.Message> messages, int maxOutputTokens, Duration timeout) throws Exception {
         Objects.requireNonNull(player);
         ModelClient.Usage[] usage = {ModelClient.Usage.UNKNOWN};

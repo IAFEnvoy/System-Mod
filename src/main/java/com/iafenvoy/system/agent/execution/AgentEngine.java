@@ -4,6 +4,7 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.chat.AiAccess;
 import com.iafenvoy.system.agent.chat.ChatSupport;
 import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.model.ModelClient;
@@ -54,6 +55,7 @@ public final class AgentEngine implements AutoCloseable {
     private final List<AgentLifecycle> lifecycle = new CopyOnWriteArrayList<>();
     private final ConversationService conversations = new ConversationService(this);
     private final ChatSupport chat = new ChatSupport();
+    private volatile Function<UUID, AiAccess.Permissions> permissions = player -> AiAccess.DEFAULT.permissions(player, false);
     private BiPredicate<UUID, Identifier> moduleAccess = (_, _) -> true;
 
     public AgentEngine(AgentStore store, ModelClient model, Function<PlayerData, AgentJournal> journal) {
@@ -70,6 +72,15 @@ public final class AgentEngine implements AutoCloseable {
 
     public ChatSupport chat() {
         return this.chat;
+    }
+
+    public AiAccess.Permissions permissions(UUID player) {
+        return this.permissions.apply(player).withModelConfigured(this.model.configured());
+    }
+
+    /** The game bridge supplies host identity; workers never inspect client classes or online player lists. */
+    public void permissions(Function<UUID, AiAccess.Permissions> permissions) {
+        this.permissions = Objects.requireNonNull(permissions);
     }
 
     public void prompts(SystemPrompts value) {

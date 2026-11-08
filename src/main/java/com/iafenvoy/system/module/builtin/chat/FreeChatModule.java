@@ -4,6 +4,7 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.chat.ChatActions;
+import com.iafenvoy.system.agent.chat.ChatObservation;
 import com.iafenvoy.system.agent.chat.ChatSupport;
 import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
@@ -12,10 +13,13 @@ import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.react.ReActContext;
 import com.iafenvoy.system.agent.react.ReActLoop;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
+import com.iafenvoy.system.agent.tool.ToolContext;
+import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.FreeChatInput;
 import com.iafenvoy.system.data.output.ChatOutput;
 import com.iafenvoy.system.data.store.Message;
+import com.iafenvoy.system.module.builtin.BuiltinTools;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -24,6 +28,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A low-confidence fallback shares normal admission, cancellation, history and usage accounting.
@@ -33,7 +38,8 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
 
     public FreeChatModule(ChatSupport chat) {
         super(FreeChatInput.CODEC, "Free conversation, optionally using enabled workflows in full agent mode.",
-                List.of(), true, false, new ExecutionPolicy(6, 16, 32, 6, 32768, 2048, 131072, 90000, 30000, 6));
+                List.of(), Set.of(BuiltinTools.QUEST_GUIDE.id()), true, false,
+                new ExecutionPolicy(6, 16, 32, 6, 32768, 2048, 131072, 90000, 30000, 6));
         this.chat = chat;
     }
 
@@ -69,12 +75,15 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
         });
         Input question = new Input(input.message(), history);
         if (context.mode() == ConversationMode.FREE) {
-            ReActContext<AgentResult> loop = new ReActContext<>(context, this.chat.prompt(context),
-                    CodecIO.write(Input.CODEC.codec(), question), AgentResult.CODEC, ChatActions.bind(context),
-                    context::requireFreeChat, ReActLoop.MODEL_FAILURES, 1000);
+            ToolContext tools = context.chatTools(this.chat.tools(context));
+            ReActContext<ChatObservation> loop = new ReActContext<>(context, this.chat.prompt(context),
+                    CodecIO.write(Input.CODEC.codec(), question), ChatObservation.codec(tools.tools()), ChatActions.bind(context, tools),
+                    () -> {
+                        context.requireFreeChat();
+                        tools.check();
+                    }, ReActLoop.MODEL_FAILURES, 1000);
             return ReActLoop.run(loop, Answer.CODEC, answer -> finish(answer, loop.observations()), failure -> {
-                List<CardUpdate> cards = new ArrayList<>();
-                loop.observations().forEach(result -> cards.addAll(result.cards()));
+                List<CardUpdate> cards = cards(loop.observations());
                 cards.addAll(AgentResult.error(failure).cards());
                 return new AgentResult(loop.observations().isEmpty() ? AgentResult.Status.FAILED : AgentResult.Status.PARTIALLY_SUCCEEDED,
                         failure.key(), "", cards);
@@ -85,13 +94,24 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
         return finish(answer, List.of());
     }
 
-    private static AgentResult finish(Answer answer, List<AgentResult> observations) {
+    private static AgentResult finish(Answer answer, List<ChatObservation> observations) {
         if (answer.text().isBlank()) throw new AgentException(AgentFailure.MODEL_INVALID);
-        List<CardUpdate> cards = new ArrayList<>();
-        observations.forEach(result -> cards.addAll(result.cards()));
+        List<CardUpdate> cards = cards(observations);
         cards.addAll(AgentResult.data("system.result.chat", new ChatOutput(answer.text())).cards());
         AgentResult result = new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.chat", "", cards);
-        return observations.stream().anyMatch(AgentResult::isFailure) ? result.partial() : result;
+        return observations.stream().anyMatch(value -> value instanceof ChatObservation.Workflow workflow && workflow.result().isFailure())
+                ? result.partial() : result;
+    }
+
+    private static List<CardUpdate> cards(List<ChatObservation> observations) {
+        List<CardUpdate> cards = new ArrayList<>();
+        for (ChatObservation observation : observations) switch (observation) {
+            case ChatObservation.Workflow workflow -> cards.addAll(workflow.result().cards());
+            case ChatObservation.Tool tool -> {
+                if (tool.result().result() instanceof CardData card) cards.add(CardUpdate.show(card));
+            }
+        }
+        return cards;
     }
 
     private record Turn(String role, String text) {

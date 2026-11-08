@@ -17,8 +17,7 @@ public record ToolObservation<I, O>(ToolRegistry.Type<I, O> tool, I input, O res
         Map<String, MapCodec<? extends ToolObservation<?, ?>>> types = new LinkedHashMap<>();
         for (ToolRegistry.Tool<?, ?> tool : tools) types.put(tool.id(), entry(tool.type()));
         return Codec.STRING.partialDispatch("tool", observation -> DataResult.success(observation.tool().id()),
-                id -> types.containsKey(id) ? DataResult.success(types.get(id))
-                        : DataResult.error(() -> "Unavailable observation tool " + id));
+                id -> types.containsKey(id) ? DataResult.success(types.get(id)) : DataResult.error(() -> "Unavailable observation tool " + id));
     }
 
     private static <I, O> MapCodec<ToolObservation<?, ?>> entry(ToolRegistry.Type<I, O> type) {

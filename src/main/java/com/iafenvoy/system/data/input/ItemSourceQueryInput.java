@@ -17,9 +17,7 @@ import java.util.Locale;
  */
 public record ItemSourceQueryInput(String itemId, String scope) implements AgentAction {
     public static final SchemaMapCodec<ItemSourceQueryInput> CODEC = SchemaCodecs.record((i, f) -> i.group(
-            f.required("item_id", SchemaCodecs.STRING.described("Item registry ID, e.g. minecraft:diamond_pickaxe.")
-                            .validate(value -> value.isBlank() ? DataResult.error(() -> "Blank item ID") : DataResult.success(value)))
-                    .forGetter(ItemSourceQueryInput::itemId),
+            f.required("item_id", SchemaCodecs.STRING.described("Item registry ID, e.g. minecraft:diamond_pickaxe.").validate(value -> value.isBlank() ? DataResult.error(() -> "Blank item ID") : DataResult.success(value))).forGetter(ItemSourceQueryInput::itemId),
             f.optional("scope", SchemaCodecs.STRING, ItemSourceProviders.ALL).forGetter(ItemSourceQueryInput::scope)
     ).apply(i, ItemSourceQueryInput::new));
 

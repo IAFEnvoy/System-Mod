@@ -38,7 +38,7 @@ Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器�
 
 模型请求统一使用 OpenAI Chat Completions 格式，默认保留 DeepSeek；专用思考参数按提供商隔离。配置与消息边界见 [模型接口与 DeepSeek 兼容](model-api.md)。
 
-管理员 AI 权限入口在 `module/builtin/chat/AiManagementCommands`，由核心模块注册 `/system ai <玩家>`。配置按 UUID 写入 `AiAccessConfig.INSTANCE`，沿用 markDirty 自动保存；`AssistantServer.refreshAiAccess` 负责取消在途交互、同步状态及聊天提示，执行上下文继续在请求边界核对管理员与个人开关。客户端只接收自己的生效权限，不能写管理员配置。命令与界面说明见[自由聊天](free-chat.md)。
+管理员 AI 权限入口在 `module/builtin/chat/AiManagementCommands`，由核心模块注册 `/system ai <玩家>`。配置按 UUID 写入当前存档的 `AiAccessData` SavedData，沿用 `setDirty` 自动保存；默认等级也由该数据保存，路径为 `<存档>/data/system/ai_access.dat`。`/system ai default [模式]` 查看或修改默认等级。`AssistantServer.refreshAiAccess` 负责取消在途交互、同步状态及聊天提示，执行上下文继续在请求边界核对管理员与个人开关。客户端只接收自己的生效权限，不能写管理员配置。命令与界面说明见[自由聊天](free-chat.md)。
 
 ## 目录与职责
 
@@ -47,7 +47,7 @@ Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器�
 | `agent` | AgentResult、AgentException、AgentFailure、AgentLifecycle 公共契约；详细分包见 [Agent 运行结构](agent-runtime.md) |
 | `agent/execution` | AgentEngine、交互/事件执行器、执行上下文、预算、取消与会话读写 |
 | `agent/module、agent/tool` | 工作流契约与动作分派、模块登记；工具类型、权限作用域和类型化观察 |
-| `agent/chat` | ChatSupport 提示词 / tool call 预留接口；自由聊天工作流在 module/builtin/chat |
+| `agent/chat` | ChatSupport 提示词 / ToolProvider 扩展、ChatActions 合并工作流与只读工具、ChatObservation 类型化观察；自由聊天工作流在 module/builtin/chat |
 | `agent/command、agent/react` | Brigadier 指令声明与解析；通用有界 ReAct 循环及独立上下文 |
 | `agent/storage` | AgentStore / AgentJournal 存储契约、ConversationMemory 历史投影；持久化实现仍在 data/store |
 | `agent/routing、agent/model` | 混合路由、语义匹配与缓存；模型接口、统一请求和计量入口、OpenAI 兼容协议 |
@@ -359,4 +359,4 @@ AgentEngine 统一拥有 AgentDatabases：`<存档>/system-database/shared.json`
 
 system:question 默认 6 次模型、9 次工具、20 步、90 秒，单次模型最多 20 秒，查库 / 内部 FTB 查询和网络步骤共用预算。Descriptor.optionalTools 声明可选只读依赖，未启用搜索模块不会禁用本地问答。数据库为空、当前 QuestionInput.allowWeb 明确允许且搜索工具已启用时才进入 WebResearch；有结果或查库失败均不搜索。问答语义样例仅作提示，不本地直达或缓存授权；网络已有证据时预留最终整理，不自动重试收费工具。详见[搜索配置与流程](search-api.md)。
 
-服务端管理员 AI 权限独立配置为 `config/system/system-ai-access.json`，按 UUID 覆盖全服默认，不改写玩家的外部 AI / 自由聊天 / 历史偏好。新流程及数据、接口见 [自由聊天](free-chat.md)。
+管理员 AI 权限由当前存档的 `AiAccessData` SavedData 保存，按 UUID 覆盖本存档默认等级，不改写玩家的外部 AI / 自由聊天 / 历史偏好。新流程及数据、接口见 [自由聊天](free-chat.md)。

@@ -1,224 +1,177 @@
 # System
 
-发送框左侧可选择离线、标准（默认）、扩展或自由模式。四种模式分别控制本地路由、AI 辅助路由、聊天兜底和 AI
-自主调用功能；管理员禁止的选项置灰。管理员通过 `/system ai <玩家>` 管理 AI /
-自由聊天许可和每日额度，修改立即生效并自动保存。详见 [执行模式与权限配置](docs/free-chat.md)。
-
 [English](README.md) | 简体中文
 
-一个把网文“系统”带进 Minecraft 的 NeoForge 模组。Agent 部署在服务端，负责数据查询、任务、签到与商城交互；客户端提供完整工作台、简约说话框和不抢占操作的
-HUD 通知，并可选用语音播报。
+一个把网文“系统”带进 Minecraft 的 NeoForge 模组。服务端 Agent 负责查询、任务和功能执行，客户端提供完整工作台、简约对话框、HUD
+通知与可选语音交互。本地指令和意图匹配无需 AI；需要时再接入模型。
 
-## 功能
+## 功能概览
 
-- **玩家与物品查询**：查看本人状态，按名称或注册 ID 搜索物品。
-- **FTB Quests 集成**：用简表展示可见、已解锁、可推进且未完成的任务，按编号或名称展开详情，再明确选择奖励与领取。完成与新解锁任务通过系统通知依次提示。
-- **明确触发的联网搜索**：使用 `/system search <问题>` 或联网搜索页主动检索，普通提问不会自动联网。默认共享 DeepSeek
-  密钥，循环预算独立配置，Search 和 Fetch 分别按次计费。
-- **AI 签到**：模型从服务端批准的奖励池中选择奖励，成功后进入收件箱，玩家手动领取；模型不能编造物品或修改数量。
-- **系统商城**：浏览商品、查看报价，通过 Saturn Cost 确认以物易物、资源或扩展支付。模组本身不提供系统币经济系统。
-- **数据驱动抽奖**：浏览奖池、查看奖品权重与单次消耗，确认后单抽一次，奖励存入收件箱。数据包通过 Saturn Cost 定义消耗，也可设置免费抽奖。
-- **内容配置与工作流**：数据包定义系统名称、介绍、启用模块、签到奖励、商城商品和抽奖奖池；模块支持 ID、tag
-  和条件；system_module 数据包条目通过 server.type 选择服务端行为、client 指定独立客户端实现，系统引用模块配置实例。服务端规则可在玩家完成成就后触发有界工作流。
-- **HUD 通知与语音**：提示不抢鼠标或键盘；可选阿里云流式 TTS 朗读正文，界面关闭、通知结束或切换时掐断对应语音 session。
-- **用量与隐私控制**：服务端按玩家统计 AI 与联网用量，TTS / ASR 用量仅存当前账号本机。支持管理历史、关闭外部 AI，按 UUID
-  隔离数据并限制模型与工具执行。
+- **查询与问答**：查看玩家状态、搜索物品、浏览配方与物品来源；问答优先查询本地数据库，联网需要明确授权。
+- **FTB Quests 集成**：按章节浏览可推进任务，查看要求与奖励，手动提交或领取；支持完成与解锁通知、说明书检索，以及 pin 到常驻卡片。
+- **签到、商城与抽奖**：AI 从批准的奖励池中选择签到奖励；商城和奖池使用 Saturn Cost 结算，奖励进入收件箱。内容由数据包配置。
+- **对话与工具**：提供离线、标准、扩展、自由四种执行模式；自由模式可调用已授权的工具，管理员可限制模式与每日用量。
+- **卡片与 HUD**：消息、交互卡片和常驻卡片共用 JSON 模板；通知不抢占玩家操作，位置可通过 Saturn HUD 编辑器调整。
+- **可选语音**：按键录音、识别后发送、流式播报，以及通知按钮的语音操作。
 
-## 快速开始
+## 安装与快速开始
 
-1. 安装本模组和前置。需要任务集成时安装 FTB Quests 及其依赖。
-2. 正常启动一次服务端，或进入单人世界，在 `config/system/` 下生成各服务端配置文件。
-3. 需要 AI 时，在服务端进程的启动环境中设置 `SYSTEM_DEEPSEEK_API_KEY`，然后重启。单人游戏需让 Minecraft
-   进程继承该变量。配置文件保存环境变量名，不保存密钥。
-4. 安装提供系统定义的服务端数据包，管理员执行 `/system grant <系统ID> [玩家]` 绑定，例如
-   `/system grant example:daily Steve`；省略玩家时绑定自己。玩家默认未绑定，目前每人最多绑定一个系统。
-   内置 system:default 通过默认模块 tag 启用功能；FTB 任务与联网搜索的默认模块配置和 tag 追加仅放在
-   src/test-mod/，不会打进发布包。
-5. 执行 `/system`、`/system full` 或 `/system simple`，使用界面操作或输入请求。
+### 版本与依赖
 
-例如，在 PowerShell 中设置后，从同一环境启动服务端：
+以下为当前分支的配置，其他 Minecraft 版本请使用对应分支或构建。
+
+| 项目                   | 版本 / 要求                     | 安装位置    |
+|----------------------|-----------------------------|---------|
+| System               | `1.0-beta.3`                | 客户端与服务端 |
+| Minecraft / NeoForge | `26.1.2` / `26.1.2.114+`    | 客户端与服务端 |
+| Java                 | `25`                        | 客户端与服务端 |
+| Saturn               | `1.2.5+`，使用匹配的 Minecraft 版本 | 客户端与服务端 |
+| ApricityUI           | `1.2.9+`，使用匹配的 Minecraft 版本 | 客户端     |
+
+FTB Quests 及其配套依赖为**可选安装**，仅任务集成需要。Simple Voice Chat 是**可选的客户端录音后端**；未安装时使用 Java
+Sound，服务端无需为此安装 SVC。开发依赖版本见[开发文档](docs/development.md)。
+
+### 首次使用
+
+1. 安装模组及必需前置，进入单人世界或启动服务端。
+2. 管理员执行 `/system grant system:default [玩家]`，绑定内置系统；省略玩家时绑定自己。当前每个玩家最多绑定一个系统，也可使用数据包提供的其他系统
+   ID。
+3. 执行 `/system` 打开界面，输入请求并按 Enter 发送。可先尝试“查看玩家信息”或搜索物品。
+4. 用 `/system settings` 打开统一设置，修改立即自动保存；使用 AI 时再配置下方的模型连接。
+
+### 启用 AI（可选）
+
+默认使用 DeepSeek。在**服务端进程**的启动环境中设置 `SYSTEM_DEEPSEEK_API_KEY`，例如在 PowerShell 中设置后，从同一环境启动服务端：
 
 ```powershell
 $env:SYSTEM_DEEPSEEK_API_KEY = "<你的 API Key>"
 ```
 
-明确查询、商城浏览和物品兑换不需要模型密钥；AI 签到和模型路由兜底需要。`/system usage` 不要求已绑定。
+单人游戏需让 Minecraft 进程继承该变量；修改进程环境变量后需重启。服务端 `config/system/system-model.json` 保存模型地址、模型
+ID 和密钥的**环境变量名**，也可接入其他 OpenAI Chat Completions 兼容服务。
 
-### 模型配置
+`baseUrl` 填 API 前缀，不含 `/chat/completions`。完整参数、DeepSeek
+专用选项与本地免密钥模型配置见[模型接口](docs/model-api.md)。
 
-配置文件位于 `config/system/system-model.json`，默认字段如下，修改后正常重启服务端。
+## 执行模式
 
-```json
-{
-  "providerType": "auto",
-  "baseUrl": "https://api.deepseek.com",
-  "model": "deepseek-chat",
-  "apiKeyEnvironment": "SYSTEM_DEEPSEEK_API_KEY",
-  "apiKeyRequired": true,
-  "jsonMode": true,
-  "outputTokenParameter": "max_tokens",
-  "thinkingEnabled": false
-}
-```
+在发送框左侧切换模式，选择会自动保存。
 
-`baseUrl` 填 API 前缀，不含 `/chat/completions`，适配器会自动追加。切换其他兼容服务时修改地址、模型 ID 和密钥环境变量名，必要时显式设置
-`providerType: "openai"`。`auto` 只为 DeepSeek 官方域名启用专用参数；通过代理调用 DeepSeek 时可显式设置为 `deepseek`。
+| 模式     | 行为                                |
+|--------|-----------------------------------|
+| 离线     | 完全本地路由与意图匹配；不确定时提供可点击的候选操作，不调用 AI |
+| 标准（默认） | 优先本地路由，AI 仅辅助路由及执行必要模块，不进行自由对话    |
+| 扩展     | 优先路由，无法匹配时交给 AI 自由回答              |
+| 自由     | 由 AI 进行对话、选择工具和调用功能               |
 
-## 指令与交互
+管理员通过 `/system ai default <模式>` 设置当前存档的初始模式和普通玩家可选上限；默认等级保存在存档中。单人玩家与局域网房主默认可选全部模式；显式的
+`/system ai` 玩家权限仍优先，客户端会将不可选项置灰并说明原因。
 
-以下指令在 Minecraft 聊天栏执行：
+**模型缺少必需的 API Key 时，只能使用离线模式**，原模式偏好会保留；配置为免密钥的模型接口除外。本地查询与浏览功能仍可使用，AI
+签到等必需调用模型的功能则需要完成配置。
 
-| 指令                                                | 用途                                    |
-|---------------------------------------------------|---------------------------------------|
-| `/system`                                         | 打开上次选择的界面                             |
-| `/system full` / `/system simple`                 | 打开完整 / 简约界面                           |
-| `/system settings`                                | 直接打开统一设置，无需绑定或管理员权限                   |
-| `/system ask <内容>`                                | 提交自然语言请求                              |
-| `/system search <问题>`                             | 明确发起付费联网检索                            |
-| `/system player`                                  | 查看本人状态                                |
-| `/system submittable [查询]`                        | 列出可提交或勾选的 FTB 任务                      |
-| `/system usage` / `/system usage all`             | 查看个人用量 / 管理员查看全服 AI 与联网用量；语音统计始终仅显示自己 |
-| `/system grant <系统ID> [玩家]`                       | 管理员绑定一个数据包系统，省略玩家时绑定自己                |
-| `/system revoke [玩家]`                             | 管理员撤销系统并清除业务记录，保留累计用量                 |
-| `/system reset [玩家]`                              | 清除旧格式系统记录和绑定；累计用量保留，完成后需再次 `grant`    |
-| `/system module add <玩家> <模块ID>`                  | 管理员为玩家额外启用模块                          |
-| `/system module remove <玩家> <模块ID>`               | 管理员为玩家禁用模块                            |
-| `/system module list [玩家]`                        | 管理员查看注册模块或指定玩家已启用的模块                  |
-| `/system ai <玩家> enable` / `disable`              | 管理员允许 / 禁用玩家的 AI；保留个人设置和本地功能          |
-| `/system ai <玩家> freechat enable` / `disable`     | 管理员允许 / 禁用自由聊天                        |
-| `/system ai <玩家> status` / `limit <次数>` / `reset` | 查看权限 / 设置每日模型上限 / 恢复继承默认权限            |
-| `/system routing`                                 | 管理员查看路由诊断                             |
-| `/system help`                                    | 查看功能帮助                                |
+自由模式优先考虑相关的本地只读工具，再考虑普通工作流和额外付费能力。购买、抽奖和任务提交等操作仍保留确认流程；联网仍要求启用搜索模块且
+**本次明确允许联网**。自由聊天本身也会产生模型用量。详见[模式、权限与工具](docs/free-chat.md)。
 
-系统 ID、玩家和模块参数支持补全。重新授予同一系统不会重置玩家；改绑另一个系统需先撤销。
-模块手动增删会覆盖数据包条件并持久保存，`revoke/reset` 时清除；核心、绑定和用量等必需模块不能手动移除。
+## 常用操作
 
-通知显示在 HUD 底部。按原版聊天键（**默认 T**）进入聊天栏，即可点击“确定”或操作按钮。连续通知保持面板展开，仅淡出、替换和淡入内容。
-确定、超时或切换通知时会立即掐断旧语音，不再等上一条读完才进入下一条；关闭助手界面同样结束其语音 session。
+### 玩家入口
 
-## 语音功能（可选）
+以下指令在 Minecraft 聊天栏执行；具体功能取决于当前启用的模块。
 
-**注意：所有语音功能均在客户端完成，并使用收费的 API**
+| 指令                                | 用途                 |
+|-----------------------------------|--------------------|
+| `/system`                         | 打开上次选择的界面          |
+| `/system full` / `/system simple` | 打开完整工作台 / 简约对话框    |
+| `/system settings`                | 打开统一设置，无需绑定或管理员权限  |
+| `/system ask <内容>`                | 发送自然语言请求           |
+| `/system player`                  | 查看本人状态             |
+| `/system submittable [查询]`        | 列出可手动提交或勾选的 FTB 任务 |
+| `/system search <问题>`             | 明确发起付费联网查询，需要搜索模块  |
+| `/system usage`                   | 查看个人用量，无需绑定        |
+| `/system help`                    | 查看可用功能与帮助          |
 
-目前所有语音功能均使用阿里云的API，后续将接入更多供应商。
+助手输入框内使用 `/settings` 打开设置，支持指令补全与 Enter 发送。可在游戏控制设置中给“打开/关闭系统界面”分配按键，默认未绑定。
 
-### 语音输入
+通知显示时，按原版聊天键（**默认 T**）即可交互。连续通知保持面板展开，通过按钮确认或继续；播报完成不会自动切到下一条。关闭、确认或替换通知时会结束对应的语音
+session。
 
-**此功能需要独立的阿里云 NLS 项目 AppKey 与 AccessKey ID / Secret；临时 Token 由程序自动获取、缓存并按需刷新。**
+### 管理员入口
 
-**建议安装 Simple Voice Chat 获得更好的效果。**
+| 指令                                  | 用途                               |
+|-------------------------------------|----------------------------------|
+| `/system grant <系统ID> [玩家]`         | 绑定数据包定义的系统                       |
+| `/system revoke [玩家]`               | 撤销绑定并清除业务记录，保留累计用量               |
+| `/system reset [玩家]`                | 清除系统记录与绑定，可用于旧格式记录失效后的重置；之后需重新绑定 |
+| `/system module add <玩家> <模块ID>`    | 额外启用模块                           |
+| `/system module remove <玩家> <模块ID>` | 禁用模块                             |
+| `/system module list [玩家]`          | 列出注册模块或指定玩家的已启用模块                |
+| `/system ai default [模式]`           | 查看或修改当前存档的默认 AI 等级               |
+| `/system ai <玩家> …`                 | 管理 AI / 自由聊天许可、每日额度，或查看、重置权限     |
+| `/system ftb reload`                | 重新收录当前已加载的 FTB 说明书数据，不修改任务进度     |
+| `/system usage all`                 | 查看全服 AI 与联网用量，语音统计仍只显示自己         |
+| `/system routing`                   | 查看本地路由诊断                         |
 
-语音输入默认关闭。通过 `/system settings`，或在助手输入框输入 `/settings`，进入“语音输入”标签开启，修改自动保存。
-默认按住 **F8** 录音、松开结束；游戏中按键会打开助手，也可以使用 `/listen` 和“语音输入”按钮。
-最终识别结果填入草稿，Enter 发送；也可开启“识别后立即发送”；最长 60 秒，关闭界面同步取消。
-通知显示时优先匹配确认或业务按钮，未匹配的文字再进入主聊天。Simple Voice Chat 为可选依赖，未安装时使用 Java Sound 录音。
+系统、玩家与模块参数支持补全。重复授予同一系统不会重置玩家，改绑需先撤销。模块手动覆盖会持久保存，核心、绑定和用量等必需模块不能移除。详细命令见[使用说明](docs/usage.md)
+，AI 权限子命令见[权限配置](docs/free-chat.md)。
 
-### 语音输出
+## 可选语音
 
-**此功能需要独立的阿里云百炼 API Key 并选择对应地域。**
+语音输入与自动播报默认关闭，均在**客户端使用玩家自己的阿里云凭据**，与服务端模型配置分开。
 
-从完整工作台进入“设置 → 语音播报”，或使用 `/system settings`、助手内 `/settings` 打开统一设置后切换标签。
+| 功能        | 所需配置                                                     | 使用方式                                                 |
+|-----------|----------------------------------------------------------|------------------------------------------------------|
+| 语音输入（ASR） | NLS 项目 AppKey、AccessKey ID / Secret 与地域；临时 Token 自动获取并刷新 | 默认按住 F8 录音，松开识别；结果填入草稿，可开启“识别后立即发送”                  |
+| 语音播报（TTS） | 百炼 API Key 与地域，也可使用客户端 `DASHSCOPE_API_KEY`               | 默认 `qwen3-tts-flash` / `Cherry`，语言跟随游戏；设置后可试听、开启自动朗读 |
 
-1. 填写阿里云百炼 API Key 并选择对应地域，或给客户端进程设置 `DASHSCOPE_API_KEY` 环境变量。
-2. 设置模型、音色、语言与音量。默认模型 `qwen3-tts-flash`、音色 `Cherry`、语言跟随游戏。
-3. 试听后开启自动朗读，修改自动保存。自定义音色 ID 必须与创建时绑定的模型一致。
+在 `/system settings` 的对应标签配置，修改自动保存。自定义音色需与创建时的模型及地域匹配，参数直接填写，不导入
+JSON。通知提示音有独立开关，默认开启，无需调用 TTS。
 
-工具导出的音色参数直接填写到设置字段中；TTS 不支持 JSON 导入或设置页“重新加载”按钮。
-本机设置保存在 `config/system/system-speech.json`。通知提示音有独立开关，默认开启，不需要请求 TTS。
+识别文字优先匹配当前通知按钮，未匹配时再进入主聊天。详细配置见[语音识别](docs/asr.md)与[语音合成](docs/tts.md)。
 
-仓库中的 Python 3.10+ 小工具 `tools/voice_design.py` 支持音色设计、复刻、测试合成和临时上传，使用标准库。
+仓库提供 Python 3.10+ 标准库工具，支持音色设计、复刻、试听和临时上传：
 
 ```powershell
 python tools/voice_design.py --lang zh --help
 ```
 
-## 内容配置与扩展
+## 配置与扩展
 
-系统定义的路径为 `data/<命名空间>/system/system/<路径>.json`，名称与介绍使用客户端翻译键。例如创建
-`data/example/system/system/daily.json`：
+运行配置统一放在各自实例的 `config/system/`
+，缺失时复制内置默认文件。服务端管理模型、权限、执行预算及计费；客户端管理界面、主题和个人语音设置。完整文件表见[配置目录](docs/usage.md#配置目录)。
 
-```json
-{
-  "name": "system.definition.default.name",
-  "description": "system.definition.default.description",
-  "modules": [
-    "#example:basic",
-    "example:daily"
-  ]
-}
-```
+- **数据包**：定义系统名称与介绍的翻译键、模块及其参数、条件、签到奖励、商品和奖池。系统定义位于
+  `data/<命名空间>/system/system/<路径>.json`；模块引用支持 ID、tag 和条件，目录可选项支持 ID、tag
+  或混合数组。见[数据包配置与示例](docs/datapacks.md)。
+- **资源包**：覆盖客户端卡片 JSON、翻译与样式。模板控制布局，动态数据通过占位符填入，支持物品、tooltip、Markdown
+  和交互按钮。见[卡片文档](docs/cards.md)与[可视化编辑器](docs/card-editor.md)。
+- **模组扩展**：注册模块、工具和卡片节点，扩展上下文与提示词。见[功能模块化](docs/feature-modules.md)
+  与[注册表速查](docs/registries.md)。
 
-在 `data/example/system/system_module/daily.json` 中定义 `example:daily`：
+FTB 功能需要对应依赖；联网搜索还需配置搜索模块。仓库开发源集提供搜索模块示例，不会打入发布
+JAR。问答优先查本地数据库，只有无结果且满足本次联网授权时才进一步检索，见[数据库优先问答与搜索](docs/search-api.md)。
 
-```json
-{
-  "server": {
-    "type": "system:signin"
-  },
-  "client": "system:signin"
-}
-```
+## 数据、用量与费用
 
-`server.type` 选择已注册的模块 Codec，模块参数与 `type` 平铺；当前内置类型使用无参数单例。
-`client` 指向客户端本地实现，两个字段均可按需省略。
+- **业务数据**由服务端按存档与玩家管理；绑定、偏好、任务交互和奖励不依赖客户端自行保存。累计用量独立于业务记录，撤销、重置或清空记忆不会抹除。
+- **AI 与联网用量**由服务端统计。管理员可查看全服记录；模型 API Key 不同步给客户端。
+- **TTS / ASR 用量**仅按当前客户端账号保存在本机，不上传服务端，管理员不能汇总其他玩家的语音账本。
+- **费用是估算值**，实际以供应商账单为准；改价不重算历史累计。联网 Search / Fetch 分别计次，TTS 按模型返回的字符或 Token
+  计量，ASR 按成功识别次数估算。
 
-对应的模块 tag 放在 `data/example/tags/system/system_module/basic.json`：
+外部请求的触发条件、发送数据和具体计费说明见[外部 API 请求清单](docs/external-apis.md)与[用量统计](docs/token-usage.md)。
 
-```json
-{
-  "replace": false,
-  "values": [
-    "system:player",
-    "system:items",
-    "system:inbox",
-    "system:shop",
-    "system:lottery"
-  ]
-}
-```
+## 文档导航
 
-模块列表也支持带 `condition` 的对象，`id` 可填单个模块或 `#tag`。同一模块被多个条目匹配时，任一条件成立即可启用。
-模块开关控制工作台入口、指令和实际执行权限，FTB
-功能还要求安装对应依赖。详见[系统定义与模块 tag](docs/datapacks.md#系统定义)。
+| 我想了解…           | 文档                                                                                   |
+|-----------------|--------------------------------------------------------------------------------------|
+| 安装、操作、指令和配置     | [使用与配置](docs/usage.md)                                                               |
+| 四种模式、管理员权限与工具调用 | [执行模式与自由聊天](docs/free-chat.md)                                                       |
+| 接入其他模型 / 联网搜索   | [模型接口](docs/model-api.md) · [搜索接口](docs/search-api.md)                               |
+| 语音输入、播报与音色设计    | [ASR](docs/asr.md) · [TTS](docs/tts.md)                                              |
+| 自定义系统、奖励、商品和奖池  | [数据包](docs/datapacks.md)                                                             |
+| 修改卡片布局与外观       | [卡片](docs/cards.md) · [编辑器](docs/card-editor.md)                                     |
+| 本地说明书与知识数据库     | [任务说明书](docs/quest-guides.md) · [数据库](docs/databases.md)                             |
+| 开发、架构与扩展入口      | [开发文档](docs/development.md) · [架构](docs/architecture.md) · [注册表](docs/registries.md) |
 
-签到奖励、商城商品和抽奖奖池完全由数据包定义，默认内容也包含在模组内置数据包中：
-
-```text
-data/<命名空间>/system/signin_rewards/<路径>.json
-data/<命名空间>/system/shop_offers/<路径>.json
-data/<命名空间>/system/lottery_pools/<路径>.json
-```
-
-详细说明可以看GitHub仓库中的示例。
-
-## 数据与隐私
-
-### 配置文件
-
-| 位置                                             | 内容                                          |
-|------------------------------------------------|---------------------------------------------|
-| 服务端 `config/system/system-agent.json`          | 执行预算、并发、每日模型上限与时区                           |
-| 服务端 `config/system/system-model.json`          | 模型连接与提供商选项                                  |
-| 服务端 `config/system/system-search.json`         | DeepSeek 搜索连接，默认与模型共享密钥环境变量                 |
-| 服务端 `config/system/system-search-pricing.json` | Search / Fetch 按千次计费的单价                     |
-| 服务端 `config/system/system-semantic.json`       | 本地意图路由、阈值、例句与缓存                             |
-| 服务端 `config/system/system-advancements.json`   | 受信成就规则                                      |
-| `<存档>/system-agent/<UUID>.json`                | 绑定、对话、偏好、奖励、订单与工作流记录                        |
-| `<存档>/data/system/token_usage.dat`             | 独立持久化的玩家 AI / 联网用量，不随撤销或清空记忆删除              |
-| 客户端 `config/system/speech-usage/<UUID>.json`   | 当前本地账号的 TTS / ASR 累计，跨服务器保留，不上传             |
-| 客户端 `config/system/system-speech-pricing.json` | 本机 TTS / ASR 单价，缺失时复制内置默认文件                 |
-| 客户端 `config/system/system-client.json`         | 界面模式偏好                                      |
-| 客户端 `config/system/system-speech.json`         | 本地语音设置及界面中填写的密钥                             |
-| 客户端 `config/system/system-asr.json`            | 本地识别开关、NLS AppKey、AccessKey ID / Secret 与地域 |
-
-配置文件不会在客户端和服务端之间直接同步。系统定义与实际可用模块通过 Minecraft 网络同步；存档内的玩家业务文件由服务端管理，客户端无法直接修改。
-
-### API 用量
-
-AI 用量取自服务端模型响应，联网调用通过服务端网关分别累计 Search / Fetch 次数与估算费用；全服列表仅提供服务端 AI 与联网记录。
-TTS / ASR 用量按当前客户端账号存本机，不上传 Minecraft 服务端，管理员也不能查看其他玩家的语音账本。
-
-Search / Fetch 单价由服务端配置，初始化后通过 `/reload` 重载；语音单价由客户端配置，通过 F3+T 或重启重载。
-ASR 默认按 3.5 元/千次成功识别估算。TTS 按对应模型返回的字符或 Token 计量，两者不重复收费。
-空搜索结果不估价，超时、网络中断等未知结果单列，不能据此断言供应商未收费。改价不重算历史累计，实际费用以提供商账单为准。
-详见[用量与计费](docs/token-usage.md)和[外部 API 请求清单](docs/external-apis.md)。
+完整目录见 [docs/README.md](docs/README.md)；AI 编码代理的快速索引见 [learning.md](learning.md)。

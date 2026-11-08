@@ -327,7 +327,9 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         AiStatus permissions = AssistantClient.state().serverState().ai();
         text(document.getElementById("ai_permissions"), Component.translatable("system.ui.ai_permissions",
                 tr(permissions.allowAi() ? "system.ui.yes" : "system.ui.no"),
-                tr(permissions.allowFreeChat() ? "system.ui.yes" : "system.ui.no"), permissions.modelCallsPerDay()).getString());
+                tr(permissions.allowFreeChat() ? "system.ui.yes" : "system.ui.no"), permissions.modelCallsPerDay(),
+                tr(permissions.maxMode().labelKey())).getString()
+                + (permissions.modelConfigured() ? "" : "\n" + tr("system.ai.model_missing_hint")));
         String status = switch (this.tab) {
             case GENERAL -> this.savingPreferences ? tr("system.ui.working")
                     : this.generalStatus.isBlank() ? tr("system.ui.settings_auto_save") : this.generalStatus;

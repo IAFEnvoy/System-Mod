@@ -7,6 +7,7 @@ import com.iafenvoy.system.data.AiStatus;
 import com.sighs.apricityui.event.KeyEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
+import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.EnumMap;
@@ -81,8 +82,12 @@ final class ConversationModeSelector {
             String checked = Boolean.toString(selected);
             if (!checked.equals(option.getAttribute("aria-checked"))) option.setAttribute("aria-checked", checked);
             if (option.isDisabled() == allowed) option.setDisabled(!allowed);
-            String reason = allowed ? "" : tr(!state.serverState().ai().allowAi() ? "system.chat_mode.ai_denied"
-                    : state.serverState().ai().modelCallsPerDay() == 0 ? "system.chat_mode.no_calls" : "system.chat_mode.chat_denied");
+            AiStatus permissions = state.serverState().ai();
+            String reason = allowed ? "" : !permissions.modelConfigured() ? tr("system.chat_mode.model_missing")
+                    : !permissions.allowAi() ? tr("system.chat_mode.ai_denied")
+                    : permissions.modelCallsPerDay() == 0 ? tr("system.chat_mode.no_calls")
+                    : mode.chats() && !permissions.allowFreeChat() ? tr("system.chat_mode.chat_denied")
+                    : Component.translatable("system.chat_mode.mode_limited", Component.translatable(permissions.maxMode().labelKey())).getString();
             text(this.reasons.get(mode), reason);
             display(this.reasons.get(mode), allowed ? "none" : "block");
         }

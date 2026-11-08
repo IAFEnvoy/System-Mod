@@ -11,8 +11,7 @@ import com.mojang.serialization.MapCodec;
  */
 public record ReasoningInput(String request) implements AgentAction {
     public static final SchemaMapCodec<ReasoningInput> CODEC = SchemaCodecs.record((i, f) -> i.group(
-            f.required("request", SchemaCodecs.STRING.validate(value -> value.isBlank()
-                    ? DataResult.error(() -> "A request is required") : DataResult.success(value))).forGetter(ReasoningInput::request)
+            f.required("request", SchemaCodecs.STRING.validate(value -> value.isBlank() ? DataResult.error(() -> "A request is required") : DataResult.success(value))).forGetter(ReasoningInput::request)
     ).apply(i, ReasoningInput::new));
 
     @Override

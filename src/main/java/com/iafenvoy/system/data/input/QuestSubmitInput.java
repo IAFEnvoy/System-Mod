@@ -20,8 +20,7 @@ public record QuestSubmitInput(String query, Optional<Integer> index, String que
             f.optional("checkmarkOnly", SchemaCodecs.BOOL, false).forGetter(QuestSubmitInput::checkmarkOnly)
     ).apply(i, QuestSubmitInput::new)).validate(value -> {
         int selectors = (value.query().isBlank() ? 0 : 1) + (value.index().isPresent() ? 1 : 0) + (value.questId().isBlank() ? 0 : 1);
-        return selectors == 1 && (value.questId().isBlank() || value.questId().matches("[0-9a-fA-F]{16}"))
-                ? DataResult.success(value) : DataResult.error(() -> "Exactly one valid quest selector is required");
+        return selectors == 1 && (value.questId().isBlank() || value.questId().matches("[0-9a-fA-F]{16}")) ? DataResult.success(value) : DataResult.error(() -> "Exactly one valid quest selector is required");
     });
 
     public QuestSubmitInput(String query, Optional<Integer> index, String questId) {

@@ -1,5 +1,7 @@
 package com.iafenvoy.system.agent.model;
 
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
@@ -9,10 +11,16 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public interface ModelClient extends AutoCloseable {
+    /** Report local readiness only; no network request or credential is exposed to callers. */
+    default boolean configured() {
+        return true;
+    }
+
     /**
      * Validate local connection settings without network I/O, before reserving inference quota.
      */
     default void checkConfigured() {
+        if (!this.configured()) throw new AgentException(AgentFailure.MODEL_NOT_CONFIGURED);
     }
 
     Reply complete(List<Message> messages, int maxOutputTokens, Duration timeout) throws Exception;

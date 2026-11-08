@@ -1,8 +1,10 @@
 package com.iafenvoy.system.module.builtin.knowledge;
 
+import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.command.AgentCommand;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
@@ -56,12 +58,12 @@ public final class ReasoningModule extends AbstractAgentModule<ReasoningInput> {
         List<CardData> results = new ArrayList<>();
         List<ReActTool<?, ToolObservation<?, ?>>> bindings = new ArrayList<>();
         for (ToolRegistry.Tool<?, ?> tool : tools.tools()) bindings.add(binding(tools, tool, results));
-        Set<String> recoverable = new HashSet<>(ReActLoop.MODEL_FAILURES);
-        recoverable.addAll(Set.of("TOOL_FAILED", "INVALID_INPUT", "QUEST_UNAVAILABLE", "ITEM_NOT_FOUND"));
+        Set<Failure> recoverable = new HashSet<>(ReActLoop.MODEL_FAILURES);
+        recoverable.addAll(Set.of(AgentFailure.TOOL_FAILED, AgentFailure.INVALID_INPUT, AgentFailure.QUEST_UNAVAILABLE, AgentFailure.UNKNOWN_ITEM));
         ReActContext<ToolObservation<?, ?>> loop = new ReActContext<>(context, context.prompt(SystemPrompts.REACT), input.request(),
                 ToolObservation.codec(tools.tools()), bindings, tools::check, recoverable, 1000);
         return ReActLoop.run(loop, Answer.CODEC, answer -> {
-            if (answer.text().isBlank()) throw new AgentException("MODEL_INVALID");
+            if (answer.text().isBlank()) throw new AgentException(AgentFailure.MODEL_INVALID);
             return AgentResult.data("system.result.reasoning", new KnowledgeAnswerOutput(answer.text(), List.of()));
         }, reason -> {
             SystemMod.LOGGER.warn("Reasoning incomplete: reason={}, iterations={}, modelCalls={}, remainingMillis={}",

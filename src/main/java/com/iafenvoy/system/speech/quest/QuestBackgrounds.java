@@ -2,6 +2,7 @@ package com.iafenvoy.system.speech.quest;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.config.file.ModelConfig;
 import com.iafenvoy.system.data.database.AgentDatabase;
@@ -93,7 +94,7 @@ final class QuestBackgrounds {
             }
             Background result = context.model(instruction, Input.CODEC, new Input(title, description), Background.CODEC);
             if (result.narrative() && result.text().isBlank() || !result.narrative() && !result.text().isBlank())
-                throw new AgentException("MODEL_INVALID");
+                throw new AgentException(AgentFailure.MODEL_INVALID);
             String text = result.narrative() ? result.text().strip() : "";
             context.ensureMemoryCurrent();
             this.put(new Entry(questId.toUpperCase(Locale.ROOT), context.language(), fingerprint, result.narrative(), text));

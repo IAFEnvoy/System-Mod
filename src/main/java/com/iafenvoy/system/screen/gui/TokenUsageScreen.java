@@ -1,5 +1,6 @@
 package com.iafenvoy.system.screen.gui;
 
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.data.usage.RecognitionUsage;
 import com.iafenvoy.system.data.usage.SearchUsage;
 import com.iafenvoy.system.data.usage.SpeechUsage;
@@ -165,7 +166,7 @@ public final class TokenUsageScreen extends AssistantPageScreen {
             if (document != null) this.renderVoiceUsage(document);
         }
         if (this.requestId != null && System.currentTimeMillis() - this.requestedAt > 10000) {
-            this.update(TokenUsageResponseS2CPayload.failure(this.requestId, "EXPIRED"));
+            this.update(TokenUsageResponseS2CPayload.failure(this.requestId, AgentFailure.EXPIRED));
         }
     }
 

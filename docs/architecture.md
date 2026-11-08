@@ -6,7 +6,7 @@
 
 | 包 | 内容 | 不承担的职责 |
 | --- | --- | --- |
-| `agent` | 根包只保留公共结果、异常和生命周期；execution 执行与预算，module 工作流契约，tool 工具能力，command 指令，react 循环，storage 存储契约与历史投影，routing 路由，model 模型，request/response 协议 | 绑定文案、商城目录、报价、扣款、具体任务和游戏 API |
+| `agent` | 根包只保留公共结果、异常、Failure 实现和生命周期；execution 执行与预算，module 工作流契约，tool 工具能力，command 指令，react 循环，storage 存储契约与历史投影，routing 路由，model 模型，request/response 协议 | 绑定文案、商城目录、报价、扣款、具体任务和游戏 API |
 | `assistant` | MC 服务组装、玩家连接与绑定、请求分派、主线程桥接；游戏 Tool、交易与目录权限 | 意图路由算法、数据文件格式、卡片渲染 |
 | `data` | 业务参数和结果、Codec、玩家文件事务与执行账本实现、共享/玩家数据库、注册表数据和提示词加载 | 工作流选择、游戏线程操作 |
 | `module` | 功能契约与 ModuleManager；builtin 下的配置类型、入口、工作流和工具组合 | 通用执行预算、网络协议处理 |

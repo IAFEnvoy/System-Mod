@@ -1,6 +1,7 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.module.AgentModule;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
@@ -55,8 +56,8 @@ public final class FtbQuestAdapter {
 
     public static CompletionStage<Integer> reloadKnowledge(MinecraftServer server) {
         AssistantServer runtime = AssistantServer.get(server);
-        if (runtime == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        if (runtime == null) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         return runtime.moduleManager().runtime(FtbQuestRuntime.class)
-                .orElseThrow(() -> new AgentException("CAPABILITY_UNAVAILABLE")).access.knowledge.reload();
+                .orElseThrow(() -> new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE)).access.knowledge.reload();
     }
 }

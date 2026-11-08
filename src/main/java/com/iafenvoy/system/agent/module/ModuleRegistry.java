@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.module;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.command.CommandRegistry;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
@@ -234,9 +235,9 @@ public final class ModuleRegistry {
 
     public <I extends AgentAction> Call<I> call(I input, Predicate<Identifier> available) {
         Map.Entry<Identifier, AgentModule<?>> variant = this.variant(input.id(), available);
-        if (variant == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        if (variant == null) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         AgentModule<?> module = variant.getValue();
-        if (module.inputCodec() != input.codec()) throw new AgentException("INVALID_INPUT");
+        if (module.inputCodec() != input.codec()) throw new AgentException(AgentFailure.INVALID_INPUT);
         // Registration ties this exact codec to I; keep the erased cast at this one boundary.
         @SuppressWarnings("unchecked") AgentModule<I> typed = (AgentModule<I>) module;
         return new Call<>(variant.getKey(), typed, input);
@@ -245,7 +246,7 @@ public final class ModuleRegistry {
     public AgentAction button(Identifier id, Map<String, String> arguments) {
         Entry<?> entry = this.modules.get(id);
         if (entry == null || !entry.module().descriptor().interactive())
-            throw new AgentException("CAPABILITY_UNAVAILABLE");
+            throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         return this.button(entry, new ActionArguments(arguments));
     }
 
@@ -254,7 +255,7 @@ public final class ModuleRegistry {
             I input = entry.routing().buttonDecoder().apply(arguments);
             return AgentAction.validate(entry.module().inputCodec(), input);
         } catch (IllegalArgumentException | IllegalStateException error) {
-            throw new AgentException("INVALID_INPUT", error);
+            throw new AgentException(AgentFailure.INVALID_INPUT, error);
         }
     }
 

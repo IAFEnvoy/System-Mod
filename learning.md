@@ -29,7 +29,7 @@
 
 | 需要修改的内容 | 入口 |
 | --- | --- |
-| Agent 循环、路由、预算、会话记忆和 Tool/Module/Store/Journal 契约 | [agent](src/main/java/com/iafenvoy/system/agent)：execution 引擎/执行，module 工作流契约，tool 工具，command 指令，react 通用循环，storage 存储契约；根包只保留结果/异常/生命周期。完整目录见 [Agent 运行结构](docs/agent-runtime.md) |
+| Agent 循环、路由、预算、会话记忆和 Tool/Module/Store/Journal 契约；AgentException 保存 Saturn Failure，AgentFailure 内置原因，异常链提取与消息展示 | [agent](src/main/java/com/iafenvoy/system/agent)：execution 引擎/执行，module 工作流契约，tool 工具，command 指令，react 通用循环，storage 存储契约；根包保留结果/异常/失败原因/生命周期。完整目录见 [Agent 运行结构](docs/agent-runtime.md) |
 | MC 服务组装、绑定/撤销、玩家和主线程业务、交易与游戏工具 | [assistant](src/main/java/com/iafenvoy/system/assistant)；AssistantServer 创建服务，ModuleContext 显式注入 |
 | 参数/结果 DTO、玩家文件事务、执行账本实现、数据库与提示词加载 | [data](src/main/java/com/iafenvoy/system/data)；data/input、output、store、database、prompt |
 | 功能定义、工作流和单行为工具组合 | [module/builtin](src/main/java/com/iafenvoy/system/module/builtin)；共用工具键 BuiltinTools；业务存储位于 storage |
@@ -64,6 +64,7 @@
 | 客户端 CardBuildEvent：按 CardData 类型给既有 Builder 补参数，再配合资源包 JSON；构建时触发，缓存读取不触发 | [卡片构建事件](docs/cards.md#构建事件给现有卡片补充参数)、[事件类](src/main/java/com/iafenvoy/system/event/client/CardBuildEvent.java) |
 | 已实施卡片数据流：完整业务 DTO、消息 ID/版本、SHOW/REPLACE/REMOVE、状态与历史响应、Status 枚举和 BuiltinTools | [卡片与消息数据流](docs/card-flow-design.md) |
 | OpenAI 兼容接口、DeepSeek 特殊参数、模型连接与 Token 响应 | [模型接口](docs/model-api.md) |
+| 自由聊天、本地匹配阈值切换、待命右侧强制开关、管理员 `/system ai <玩家>` 启停 AI / 自由聊天及每日调用额、UUID 覆盖自动保存与玩家聊天 / 界面提示、PromptProvider / ToolProvider 预留 | [自由聊天](docs/free-chat.md)、[管理员命令](src/main/java/com/iafenvoy/system/module/builtin/chat/AiManagementCommands.java)、[ChatSupport](src/main/java/com/iafenvoy/system/agent/chat/ChatSupport.java) |
 | 通用 ReActLoop、每轮 / 请求总预算、独立工具与观察上下文、system:reasoning；数据库优先问答、联网授权和 DeepSeek 计费 | [通用 ReAct](docs/agent-react.md)、[知识问答与网页搜索](docs/search-api.md)、[知识表入口](docs/databases.md#问答知识表) |
 | 模组和音色工具会请求哪些 API、触发条件、发送数据、客户端 / 服务端归属 | [外部 API 请求清单](docs/external-apis.md) |
 | 领域词表、稀疏 TF-IDF、阈值、玩家意图缓存、只读直达与模型兜底 | [本地意图路由](docs/semantic-routing.md) |

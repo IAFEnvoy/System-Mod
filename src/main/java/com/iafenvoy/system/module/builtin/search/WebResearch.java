@@ -1,9 +1,11 @@
 package com.iafenvoy.system.module.builtin.search;
 
+import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.react.ReActContext;
@@ -46,24 +48,25 @@ public final class WebResearch {
         ReActTool<Fetch, SearchObservation> fetch = new ReActTool<>("web.fetch", "Fetch missing evidence from an exact URL already observed.", Fetch.CODEC,
                 Fetch::url, input -> {
             SearchObservation.Source source = sources.get(input.url());
-            if (source == null) throw new AgentException("NOT_AUTHORIZED");
+            if (source == null) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
             SearchProvider.Page page = tools.call(BuiltinTools.WEB_FETCH, new SearchProvider.FetchRequest(input.url()));
             String content = clip(page.content(), 5000);
             return new SearchObservation("fetch", input.url(), List.of(source), content, content.length() < page.content().length());
         });
-        Set<String> recoverable = new HashSet<>(ReActLoop.MODEL_FAILURES);
-        recoverable.addAll(Set.of("SEARCH_INVALID_REQUEST", "SEARCH_TIMEOUT", "SEARCH_UNAVAILABLE", "SEARCH_HTTP_ERROR", "SEARCH_INVALID_RESPONSE"));
+        Set<Failure> recoverable = new HashSet<>(ReActLoop.MODEL_FAILURES);
+        recoverable.addAll(Set.of(AgentFailure.SEARCH_INVALID_REQUEST, AgentFailure.SEARCH_TIMEOUT, AgentFailure.SEARCH_UNAVAILABLE,
+                AgentFailure.SEARCH_HTTP_ERROR, AgentFailure.SEARCH_INVALID_RESPONSE));
         ReActContext<SearchObservation> loop = new ReActContext<>(context, context.prompt(SystemPrompts.WEB_SEARCH), question,
                 SearchObservation.CODEC, List.of(search, fetch), () -> {
             tools.check();
             context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
         }, recoverable, 15000);
         return ReActLoop.run(loop, Answer.CODEC, answer -> {
-            if (loop.observations().isEmpty() || answer.text().isBlank()) throw new AgentException("MODEL_INVALID");
+            if (loop.observations().isEmpty() || answer.text().isBlank()) throw new AgentException(AgentFailure.MODEL_INVALID);
             List<SearchObservation.Source> cited = new ArrayList<>();
             for (int id : new LinkedHashSet<>(answer.sources()))
                 cited.add(sources.values().stream().filter(value -> value.id() == id).findFirst()
-                        .orElseThrow(() -> new AgentException("MODEL_INVALID")));
+                        .orElseThrow(() -> new AgentException(AgentFailure.MODEL_INVALID)));
             return AgentResult.data("system.result.web_search", new WebSearchOutput(answer.text(), cited, false));
         }, reason -> {
             // Return evidence already paid for, without an extra call outside the configured round limit.

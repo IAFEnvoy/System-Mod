@@ -1,6 +1,7 @@
 package com.iafenvoy.system.module.builtin.search;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -27,7 +28,7 @@ public record WebSearchTool(
             context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
             return CompletableFuture.completedFuture(this.gateway.search(context.player(), input, Duration.ofMillis(Math.min(15000, context.remainingMillis()))));
         } catch (SearchException error) {
-            return CompletableFuture.failedFuture(new AgentException(error.code(), error));
+            return CompletableFuture.failedFuture(new AgentException(AgentFailure.fromCode(error.code()), error));
         } catch (Exception error) {
             return CompletableFuture.failedFuture(error);
         }

@@ -1,6 +1,7 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
@@ -57,10 +58,10 @@ final class FtbQuestAccess {
             QuestList previous = lists.get(context.player());
             if (previous == null || previous.expires() < System.currentTimeMillis()
                     || previous.incarnation() != context.incarnation() || previous.epoch() != context.memoryEpoch()
-                    || !previous.team().equals(team.getTeamId())) throw new AgentException("STALE_QUEST_LIST");
-            if (index > previous.quests().size()) throw new AgentException("INVALID_SELECTION");
+                    || !previous.team().equals(team.getTeamId())) throw new AgentException(AgentFailure.STALE_QUEST_LIST);
+            if (index > previous.quests().size()) throw new AgentException(AgentFailure.INVALID_SELECTION);
             Quest selected = previous.quests().get(index - 1);
-            if (file.getQuest(selected.getId()) != selected) throw new AgentException("STALE_QUEST_LIST");
+            if (file.getQuest(selected.getId()) != selected) throw new AgentException(AgentFailure.STALE_QUEST_LIST);
             return selected;
         }
         return questId.isBlank() ? null : file.getQuest(Long.parseUnsignedLong(questId, 16));
@@ -85,7 +86,7 @@ final class FtbQuestAccess {
             quests.add(brief(player, team, quest, quests.size() + 1));
         long now = System.currentTimeMillis();
         lists.values().removeIf(value -> value.expires < now);
-        if (!lists.containsKey(context.player()) && lists.size() >= 4096) throw new AgentException("BUSY");
+        if (!lists.containsKey(context.player()) && lists.size() >= 4096) throw new AgentException(AgentFailure.BUSY);
         // Indices refer to the complete displayed list, never to a newly filtered or reordered quest file.
         lists.put(context.player(), new QuestList(team.getTeamId(), context.incarnation(), context.memoryEpoch(), selected, now + 600000));
         return List.copyOf(quests);

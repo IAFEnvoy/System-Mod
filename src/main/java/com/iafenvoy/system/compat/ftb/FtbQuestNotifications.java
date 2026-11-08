@@ -77,7 +77,7 @@ public final class FtbQuestNotifications {
 
     @SubscribeEvent
     public void clearFileCache(FTBQuestsEvent.ClearFileCache event) {
-        if (event.getEventData().file() instanceof ServerQuestFile file && file.server == this.server) {
+        if (event.getEventData().file() instanceof ServerQuestFile questFile && questFile.server == this.server) {
             this.file = null;
             this.teams.clear();
             this.access.knowledge.invalidate();
@@ -104,7 +104,7 @@ public final class FtbQuestNotifications {
 
     private boolean changed(ProgressEventData<?> data) {
         // Client-side progress echoes use the same event types and must never enter this bridge.
-        if (!(data.object().getQuestFile() instanceof ServerQuestFile file) || file.server != this.server || this.file != file)
+        if (!(data.object().getQuestFile() instanceof ServerQuestFile questFile) || questFile.server != this.server || this.file != questFile)
             return false;
         TeamState state = this.teams.get(data.teamData().getTeamId());
         if (state == null || state.team != data.teamData()) return false;

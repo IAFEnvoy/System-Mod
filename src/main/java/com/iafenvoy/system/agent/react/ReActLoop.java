@@ -1,6 +1,8 @@
 package com.iafenvoy.system.agent.react;
 
+import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
@@ -13,8 +15,8 @@ import java.util.Set;
  * Shared decide -> act -> observe loop. A round is one decision attempt, including final synthesis and errors.
  */
 public final class ReActLoop {
-    public static final Set<String> MODEL_FAILURES = Set.of("BUDGET_EXCEEDED", "MODEL_INVALID", "MODEL_TIMEOUT",
-            "MODEL_UNAVAILABLE", "RATE_LIMITED", "BUSY");
+    public static final Set<Failure> MODEL_FAILURES = Set.of(AgentFailure.BUDGET_EXCEEDED, AgentFailure.MODEL_INVALID, AgentFailure.MODEL_TIMEOUT, AgentFailure.MODEL_UNAVAILABLE, AgentFailure.RATE_LIMITED, AgentFailure.BUSY);
+    private static final Set<Failure> ALLOWED_FAILURES = Set.of(AgentFailure.BUDGET_EXCEEDED, AgentFailure.RATE_LIMITED, AgentFailure.BUSY);
 
     private ReActLoop() {
     }
@@ -28,7 +30,7 @@ public final class ReActLoop {
                 id -> types.containsKey(id) ? DataResult.success(types.get(id))
                         : DataResult.error(() -> "Unavailable ReAct tool " + id));
         boolean finalOnly = false;
-        String failure = "ITERATION_LIMIT";
+        Failure failure = AgentFailure.ITERATION_LIMIT;
         context.check();
         while (context.canContinue()) {
             context.check();
@@ -49,9 +51,10 @@ public final class ReActLoop {
             } catch (AgentException error) {
                 // Authority/cancellation wins over recovery, and no failed tool is automatically reissued.
                 context.check();
-                failure = error.code();
+                failure = error.failure();
                 if (context.observations().isEmpty() || !context.recoverable(failure)) throw error;
-                if (finalOnly || Set.of("BUDGET_EXCEEDED", "RATE_LIMITED", "BUSY").contains(failure)) break;
+                if (finalOnly || ALLOWED_FAILURES.contains(failure))
+                    break;
                 finalOnly = true;
             }
         }
@@ -72,7 +75,7 @@ public final class ReActLoop {
         String type();
 
         default boolean perform(ReActContext<O> context) throws Exception {
-            throw new AgentException("MODEL_INVALID");
+            throw new AgentException(AgentFailure.MODEL_INVALID);
         }
     }
 
@@ -102,6 +105,6 @@ public final class ReActLoop {
 
     @FunctionalInterface
     public interface Fallback<R> {
-        R finish(String reason);
+        R finish(Failure reason);
     }
 }

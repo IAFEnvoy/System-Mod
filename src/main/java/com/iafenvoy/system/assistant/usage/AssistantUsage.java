@@ -1,6 +1,7 @@
 package com.iafenvoy.system.assistant.usage;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
@@ -62,9 +63,9 @@ public final class AssistantUsage {
 
     private TokenUsageSnapshot usageSnapshot(ServerPlayer player, boolean all, int offset) {
         boolean canViewAll = player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
-        if (all && !canViewAll) throw new AgentException("NOT_AUTHORIZED");
+        if (all && !canViewAll) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         if (offset < 0 || offset > Integer.MAX_VALUE - TokenUsageData.PAGE_SIZE)
-            throw new AgentException("INVALID_INPUT");
+            throw new AgentException(AgentFailure.INVALID_INPUT);
         this.drain();
         return this.tokenUsage.snapshot(player.getUUID(), player.getGameProfile().name(), all, canViewAll, offset);
     }
@@ -80,7 +81,7 @@ public final class AssistantUsage {
     private void requestUsage(ServerPlayer player, TokenUsageRequestC2SPayload request, boolean open) {
         long now = System.currentTimeMillis();
         if (now - this.lastUsageRequest.getOrDefault(player.getUUID(), 0L) < 350) {
-            ServerNetworkHandler.replyUsageError(player, request.id(), "RATE_LIMITED", open);
+            ServerNetworkHandler.replyUsageError(player, request.id(), AgentFailure.RATE_LIMITED, open);
             return;
         }
         this.lastUsageRequest.put(player.getUUID(), now);

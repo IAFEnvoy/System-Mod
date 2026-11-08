@@ -1,6 +1,7 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.QuestQueryInput;
@@ -33,9 +34,9 @@ final class FtbQuestQueryTool implements ToolRegistry.Handler<QuestQueryInput, L
     @Override
     public CompletionStage<List<QuestBriefOutput>> execute(ExecutionContext context, QuestQueryInput input) {
         return this.access.game.onPlayer(context, player -> {
-            if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (!ServerQuestFile.exists()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             ServerQuestFile file = ServerQuestFile.getInstance();
-            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("CAPABILITY_UNAVAILABLE"));
+            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE));
             FtbQuestReader reader = new FtbQuestReader(file, team);
             List<Quest> quests = switch (input.view()) {
                 case ACTIVE -> reader.active(player);

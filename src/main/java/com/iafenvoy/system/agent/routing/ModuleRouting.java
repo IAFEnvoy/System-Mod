@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.routing;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.command.AgentCommand;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.util.ActionArguments;
@@ -28,7 +29,7 @@ public record ModuleRouting<I extends AgentAction>(List<AgentCommand> commands, 
 
     public static <I extends AgentAction> ModuleRouting<I> defaults() {
         return new ModuleRouting<>(List.of(), Optional.empty(), Optional.empty(), Selection.NORMAL, _ -> {
-            throw new AgentException("UNSUPPORTED");
+            throw new AgentException(AgentFailure.UNSUPPORTED);
         }, Optional.empty());
     }
 

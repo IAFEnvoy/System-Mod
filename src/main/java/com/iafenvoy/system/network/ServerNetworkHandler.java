@@ -1,8 +1,9 @@
 package com.iafenvoy.system.network;
 
+import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.response.AgentResponse;
 import com.iafenvoy.system.agent.response.BindingResponse;
 import com.iafenvoy.system.agent.response.NoticeResponse;
@@ -39,10 +40,10 @@ public final class ServerNetworkHandler {
         try {
             UUID.fromString(payload.id());
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
-            if (runtime == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (runtime == null) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             runtime.requests().request(player, payload.id(), payload.request());
         } catch (RuntimeException e) {
-            reply(player, payload.id(), AgentResult.error(AgentEngine.errorCode(e)));
+            reply(player, payload.id(), AgentResult.error(AgentException.failure(e)));
         }
     }
 
@@ -51,10 +52,10 @@ public final class ServerNetworkHandler {
         try {
             UUID.fromString(payload.id());
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
-            if (runtime == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (runtime == null) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             runtime.usage().requestUsage(player, payload);
         } catch (RuntimeException e) {
-            replyUsageError(player, payload.id(), AgentEngine.errorCode(e));
+            replyUsageError(player, payload.id(), AgentException.failure(e));
         }
     }
 
@@ -87,12 +88,12 @@ public final class ServerNetworkHandler {
         player.connection.send(TokenUsageResponseS2CPayload.success(requestId, snapshot, open));
     }
 
-    public static void replyUsageError(ServerPlayer player, String requestId, String code) {
-        replyUsageError(player, requestId, code, false);
+    public static void replyUsageError(ServerPlayer player, String requestId, Failure failure) {
+        replyUsageError(player, requestId, failure, false);
     }
 
-    public static void replyUsageError(ServerPlayer player, String requestId, String code, boolean open) {
-        player.connection.send(TokenUsageResponseS2CPayload.failure(requestId, code, open));
+    public static void replyUsageError(ServerPlayer player, String requestId, Failure failure, boolean open) {
+        player.connection.send(TokenUsageResponseS2CPayload.failure(requestId, failure, open));
     }
 
     public static void disconnected(ServerPlayer player) {

@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.execution;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.module.AgentModule;
@@ -35,10 +36,10 @@ final class EventExecutor implements AutoCloseable {
         long incarnation = this.engine.incarnation(player);
         AgentStore store = this.engine.playerStore(player, incarnation);
         if (this.engine.closed()) {
-            return CompletableFuture.completedFuture(AgentResult.error("CANCELLED"));
+            return CompletableFuture.completedFuture(AgentResult.error(AgentFailure.CANCELLED));
         }
         if (!this.engine.available(player, moduleId))
-            return CompletableFuture.completedFuture(AgentResult.error("CAPABILITY_UNAVAILABLE"));
+            return CompletableFuture.completedFuture(AgentResult.error(AgentFailure.CAPABILITY_UNAVAILABLE));
         String activeKey = player + ":" + incarnation + ":" + key;
         if (!this.activeEvents.add(activeKey)) {
             return CompletableFuture.completedFuture(AgentResult.ok("system.result.already"));
@@ -48,9 +49,9 @@ final class EventExecutor implements AutoCloseable {
                         ModuleRegistry.Call<?> selected = this.engine.modules().call(input, owner -> this.engine.moduleEnabled(player, owner));
                         AgentModule<?> module = selected.module();
                         if (!module.descriptor().event())
-                            throw new AgentException("CAPABILITY_UNAVAILABLE");
+                            throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
                         EventTask task = store.update(player, data -> {
-                            if (!data.bound()) throw new AgentException("NOT_BOUND");
+                            if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
                             AgentJournal storage = this.engine.journal(data);
                             EventTask t = storage.getTask(key);
                             if (t != null) return t;
@@ -73,9 +74,9 @@ final class EventExecutor implements AutoCloseable {
                         }
                         if (!task.call.id().equals(moduleId) || task.moduleVersion != module.descriptor().version()
                                 || !task.owner.equals(Optional.ofNullable(selected.owner())))
-                            throw new AgentException("CAPABILITY_UNAVAILABLE");
+                            throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
                         if (!this.enabledRules.getOrDefault(player, Set.of()).contains(task.ruleId))
-                            throw new AgentException("NOT_AUTHORIZED");
+                            throw new AgentException(AgentFailure.NOT_AUTHORIZED);
                         ExecutionContext context = new ExecutionContext(this.engine, player, task.id, key, task.created, 0, task.policy, store, incarnation);
                         store.update(player, data -> {
                             this.engine.journal(data).setTaskState(key, State.RUNNING);
@@ -88,12 +89,12 @@ final class EventExecutor implements AutoCloseable {
                         });
                         return completed;
                     } catch (Exception error) {
-                        AgentResult failure = AgentResult.error(AgentEngine.errorCode(error));
+                        AgentResult failure = AgentResult.error(AgentException.failure(error));
                         try {
                             failure = store.update(player, data -> {
                                 AgentJournal storage = this.engine.journal(data);
                                 EventTask task = storage.getTask(key);
-                                AgentResult result = AgentResult.error(AgentEngine.errorCode(error));
+                                AgentResult result = AgentResult.error(AgentException.failure(error));
                                 if (task != null && task.pending()) {
                                     boolean partial = storage.hasCompletedOperation(task.id);
                                     if (partial)
@@ -105,7 +106,7 @@ final class EventExecutor implements AutoCloseable {
                         } catch (Exception unavailable) { /* Preserve the original failure when storage cannot record it. */ }
                         return failure;
                     }
-                }).handle((result, error) -> error == null ? result : AgentResult.error(AgentEngine.errorCode(error)))
+                }).handle((result, error) -> error == null ? result : AgentResult.error(AgentException.failure(error)))
                 .whenComplete((_, _) -> this.activeEvents.remove(activeKey));
     }
 

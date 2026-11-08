@@ -7,8 +7,8 @@ import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.screen.AssistantGeometry;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
-import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.iafenvoy.system.speech.tts.AssistantSpeech.Session;
+import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.mojang.brigadier.CommandDispatcher;
 import com.sighs.apricityui.element.AbstractText;
 import com.sighs.apricityui.event.KeyEvent;
@@ -31,6 +31,7 @@ import java.util.List;
  */
 public abstract class AssistantInputScreen extends AssistantPageScreen {
     protected String draft;
+    private long chatModeRevision = -1;
     private @Nullable AbstractText textInput;
     private @Nullable IMEPreeditOverlay preeditOverlay;
     private @Nullable InputArea inputArea;
@@ -85,6 +86,8 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         this.dismissedDraft = null;
         this.enterDown = false;
         this.pendingCaret = false;
+        this.chatModeRevision = -1;
+        this.renderChatMode();
         for (Element input : document.querySelectorAll("input, textarea")) {
             input.addEventListener("focus", _ -> this.syncTextInputFocus());
             input.addEventListener("keydown", event -> {
@@ -104,6 +107,8 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         AssistantView.bind(document, "asr_toggle", this::toggleRecognition);
         AssistantView.bind(document, "asr_cancel", this::stopRecognition);
         this.renderRecognition();
+        if (document.getElementById("force_free_chat") != null)
+            AssistantView.bind(document, "force_free_chat", AssistantClient::toggleForceFreeChat);
         // Blur fires before AUI commits the next focus; polling observes the completed transition.
         this.syncTextInputFocus();
     }
@@ -129,6 +134,32 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         this.syncTextInputFocus();
         this.updateSuggestions();
         this.renderRecognition();
+        this.renderChatMode();
+    }
+
+    private void renderChatMode() {
+        Document document = this.getLinkedDocument();
+        if (document == null || this.chatModeRevision == AssistantClient.revision()) return;
+        this.chatModeRevision = AssistantClient.revision();
+        Element hint = document.getElementById("ai_access_hint");
+        if (hint != null) {
+            String key = AssistantClient.state().aiAccessHint();
+            AssistantView.text(hint, key.isEmpty() ? "" : AssistantView.tr(key));
+            AssistantView.display(hint, key.isEmpty() ? "none" : "block");
+        }
+        Element button = document.getElementById("force_free_chat");
+        if (button == null) return;
+        boolean force = AssistantClient.forceFreeChat();
+        String label = force ? "system.ui.force_free_chat_on" : "system.ui.force_free_chat_off";
+        if (AssistantClient.state().serverState().system().isPresent()) {
+            if (!AssistantClient.state().serverState().ai().allowAi()) label = "system.ui.force_free_chat_ai_denied";
+            else if (!AssistantClient.state().serverState().ai().allowFreeChat()) label = "system.ui.force_free_chat_denied";
+            else if (!AssistantClient.state().externalModel()) label = "system.ui.force_free_chat_ai_off";
+        }
+        AssistantView.text(button, AssistantView.tr(label));
+        AssistantView.switchChecked(button, force);
+        boolean disabled = AssistantClient.state().busy() || !AssistantClient.state().canFreeChat();
+        if (button.isDisabled() != disabled) button.setDisabled(disabled);
     }
 
     protected void sendMessage() {
@@ -308,7 +339,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         Document document = this.getLinkedDocument();
         if (document == null || !(document.getElementById("message") instanceof AbstractText message)) return;
         this.draft = message.getValue();
-        boolean eligible = document.getFocusedElement() == message && !this.imeOwnsKeys();
+        boolean eligible = !AssistantClient.forceFreeChat() && document.getFocusedElement() == message && !this.imeOwnsKeys();
         ClientPacketListener connection = this.minecraft.getConnection();
         SuggestionState state = new SuggestionState(this.draft, message.getCursor(), message.getSelectionStart(), message.getSelectionEnd(),
                 AssistantClient.revision(), eligible, ClientModuleCaches.COMMAND.get().revision(), connection == null ? null : connection.getCommands());

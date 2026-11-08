@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent;
 
+import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardUpdate;
@@ -68,8 +69,8 @@ public record AgentResult(Status status, String messageKey, String text, List<Ca
         return new AgentResult(Status.SUCCEEDED, key, "", List.of());
     }
 
-    public static AgentResult error(String code) {
-        return new AgentResult(Status.FAILED, "system.error." + code.toLowerCase(Locale.ROOT), "", List.of());
+    public static AgentResult error(Failure failure) {
+        return new AgentResult(Status.FAILED, failure.key(), "", List.of(CardUpdate.show(new TextCardData(failure.message()))));
     }
 
     public static AgentResult data(String key, CardData data) {

@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.tool;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 
 import java.util.*;
@@ -34,7 +35,7 @@ public final class ToolContext {
     @SuppressWarnings("unchecked")
     private <I, O> ToolRegistry.ScopedTool<I, O> require(ToolRegistry.Type<I, O> type) {
         ToolRegistry.ScopedTool<?, ?> tool = this.tools.get(type.id());
-        if (tool == null || tool.tool().type() != type) throw new AgentException("NOT_AUTHORIZED");
+        if (tool == null || tool.tool().type() != type) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         this.execution.checkToolOwner(tool);
         return (ToolRegistry.ScopedTool<I, O>) tool;
     }

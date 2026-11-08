@@ -8,6 +8,7 @@ import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import com.iafenvoy.system.command.SystemCommand;
+import com.iafenvoy.system.config.file.AiAccessConfig;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.database.AgentDatabases;
 import com.iafenvoy.system.data.prompt.PromptReloadListener;
@@ -23,6 +24,8 @@ import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.iafenvoy.system.search.DeepSeekSearchClient;
 import com.iafenvoy.system.search.SearchGateway;
 import com.iafenvoy.system.speech.quest.QuestNarration;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
@@ -58,6 +61,7 @@ public final class AssistantServer {
     private final AssistantCardDisplays displays;
     private final GameTaskQueue gameQueue = new GameTaskQueue();
     private PromptReloadListener promptListener;
+    private AiAccessConfig aiAccess = AiAccessConfig.INSTANCE.get();
 
     private AssistantServer(MinecraftServer server) throws Exception {
         this.server = server;
@@ -170,6 +174,24 @@ public final class AssistantServer {
         this.promptListener = listener;
     }
 
+    public void refreshAiAccess() {
+        AiAccessConfig next = AiAccessConfig.INSTANCE.get();
+        if (this.aiAccess == next) return;
+        AiAccessConfig previous = this.aiAccess;
+        this.aiAccess = next;
+        for (ServerPlayer player : this.server.getPlayerList().getPlayers()) {
+            AiAccessConfig.Permissions permissions = next.permissions(player.getUUID());
+            if (!previous.permissions(player.getUUID()).equals(permissions)) {
+                this.engine.cancel(player.getUUID());
+                this.requests.syncState(player);
+                player.sendSystemMessage(Component.translatable("system.ai.access_changed",
+                        Component.translatable(permissions.allowAi() ? "system.ai.allowed" : "system.ai.denied"),
+                        Component.translatable(permissions.allowFreeChat() ? "system.ai.allowed" : "system.ai.denied"),
+                        permissions.modelCallsPerDay()).withStyle(permissions.allowAi() ? ChatFormatting.YELLOW : ChatFormatting.RED));
+            }
+        }
+    }
+
     @SubscribeEvent
     public static void started(ServerStartedEvent event) {
         if (INSTANCE != null) return;
@@ -233,6 +255,7 @@ public final class AssistantServer {
         if (runtime != null) {
             runtime.usage.drain();
             runtime.refreshPrompts();
+            runtime.refreshAiAccess();
             runtime.moduleManager.tick();
             runtime.gameQueue.tick();
         }

@@ -1,8 +1,10 @@
 package com.iafenvoy.system.assistant.commerce;
 
+import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
@@ -99,11 +101,11 @@ public final class CommerceTransactions {
     public CompletionStage<List<CommercePreviewOutput>> preview(ExecutionContext context, CommercePreviewInput input) {
         return this.game.onPlayer(context, player -> {
             CommerceCatalog catalog = this.catalogs.available(context.player());
-            if (!catalog.revision().equals(input.revision())) throw new AgentException("STALE_QUOTE");
+            if (!catalog.revision().equals(input.revision())) throw new AgentException(AgentFailure.STALE_QUOTE);
             List<CommercePreviewOutput> previews = new ArrayList<>();
             for (Identifier id : input.offers()) {
                 Holder<ShopOfferEntry> offer = catalog.offers().stream().filter(value -> HolderHelper.id(value).equals(id)).findFirst()
-                        .orElseThrow(() -> new AgentException("STALE_QUOTE"));
+                        .orElseThrow(() -> new AgentException(AgentFailure.STALE_QUOTE));
                 CommerceCosts.Prepared payment = CommerceCosts.prepare(offer.value().costs(), player, PurchaseType.SHOP, id);
                 Optional<String> reference = input.quote() && payment.isSuccess()
                         ? Optional.of(this.quotes.create(context.player(), catalog, offer, payment).id()) : Optional.empty();
@@ -111,7 +113,7 @@ public final class CommerceTransactions {
             }
             for (Identifier id : input.lotteries()) {
                 Holder<LotteryPool> pool = catalog.lotteries().stream().filter(value -> HolderHelper.id(value).equals(id)).findFirst()
-                        .orElseThrow(() -> new AgentException("STALE_QUOTE"));
+                        .orElseThrow(() -> new AgentException(AgentFailure.STALE_QUOTE));
                 CommerceCosts.Prepared payment = CommerceCosts.prepare(pool.value().costs(), player, PurchaseType.LOTTERY, id);
                 Optional<String> reference = input.quote() && payment.isSuccess()
                         ? Optional.of(this.quotes.createPool(context.player(), catalog, pool, payment).id()) : Optional.empty();
@@ -125,23 +127,23 @@ public final class CommerceTransactions {
         try {
             UUID.fromString(id);
         } catch (IllegalArgumentException e) {
-            throw new AgentException("INVALID_INPUT");
+            throw new AgentException(AgentFailure.INVALID_INPUT);
         }
         ModuleStorage<CommerceDataStorage> storage = this.storage(type);
         Purchase previous = context.store().read(context.player(), data -> ModuleData.get(data, storage).getPurchase(id));
         if (previous != null) {
-            if (previous.order.type() != type) throw new AgentException("NOT_AUTHORIZED");
+            if (previous.order.type() != type) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
             if (previous.state.equals("COMPLETED")) return CompletableFuture.completedFuture(receipt(previous));
-            throw new AgentException(previous.state.equals("FAILED") ? previous.error : "EFFECT_UNKNOWN");
+            throw new AgentException(previous.state.equals("FAILED") ? AgentFailure.fromCode(previous.error) : AgentFailure.EFFECT_UNKNOWN);
         }
         CommerceQuotes.Quote quote = this.quotes.require(context.player(), id, this.catalogs.available(context.player()), type);
         String key = context.player() + ":" + id;
-        if (!this.active.add(key)) throw new AgentException("BUSY");
+        if (!this.active.add(key)) throw new AgentException(AgentFailure.BUSY);
         try {
             context.ensureMemoryCurrent();
             context.store().update(context.player(), data -> {
                 CommerceDataStorage commerce = ModuleData.get(data, storage);
-                if (commerce.getPurchase(id) != null) throw new AgentException("EFFECT_UNKNOWN");
+                if (commerce.getPurchase(id) != null) throw new AgentException(AgentFailure.EFFECT_UNKNOWN);
                 commerce.assertPurchaseCount();
                 InboxDataStorage inbox = ModuleData.get(data, InboxSystemModule.STORAGE);
                 inbox.assertDeliveryCount();
@@ -168,7 +170,7 @@ public final class CommerceTransactions {
             // Reject the whole pool before payment if any prize cannot be created; failed draws cannot bias its odds.
             for (LotteryPool.Entry entry : quote.entries())
                 for (ItemStackTemplate item : entry.reward().value().items())
-                    if (item.create().isEmpty()) throw new AgentException("INVALID_REWARD");
+                    if (item.create().isEmpty()) throw new AgentException(AgentFailure.INVALID_REWARD);
             context.check();
             quote.payment().pay(player, touched);
             return true;
@@ -176,7 +178,7 @@ public final class CommerceTransactions {
 
         CompletableFuture<PurchaseReceiptOutput> result = new CompletableFuture<>();
         payment.whenComplete((paid, error) -> this.engine.maintenance(() -> {
-            String code = error == null ? "" : touched.get() ? "EFFECT_UNKNOWN" : AgentEngine.errorCode(error);
+            Failure failure = error == null ? null : touched.get() ? AgentFailure.EFFECT_UNKNOWN : AgentException.failure(error);
             PurchaseReceiptOutput committed = context.store().update(context.player(), data -> {
                 CommerceDataStorage commerce = ModuleData.get(data, storage);
                 Purchase order = commerce.getPurchase(id);
@@ -186,7 +188,7 @@ public final class CommerceTransactions {
                     inbox.setDeliveryState(entitlement, "PENDING");
                     commerce.setPurchaseState(id, "COMPLETED", order.error);
                 } else {
-                    commerce.setPurchaseState(id, touched.get() ? "PAYMENT_UNKNOWN" : "FAILED", code);
+                    commerce.setPurchaseState(id, touched.get() ? "PAYMENT_UNKNOWN" : "FAILED", failure.name());
                     if (touched.get())
                         inbox.setDeliveryState(type.entitlement(id), "PAYMENT_UNKNOWN");
                     else inbox.removeDelivery(type.entitlement(id));
@@ -194,15 +196,15 @@ public final class CommerceTransactions {
                 return receipt(order);
             });
             if (error == null) result.complete(committed);
-            else result.completeExceptionally(new AgentException(code));
+            else result.completeExceptionally(new AgentException(failure, error));
             return null;
         }).exceptionally(failure -> {
-            if (AgentEngine.errorCode(failure).equals("CANCELLED")) {
-                result.completeExceptionally(new AgentException("CANCELLED"));
+            if (AgentException.failure(failure).equals(AgentFailure.CANCELLED)) {
+                result.completeExceptionally(new AgentException(AgentFailure.CANCELLED, failure));
                 return null;
             }
             SystemMod.LOGGER.error("Commerce order finalization failed for player {} order {}", context.player(), id, failure);
-            result.completeExceptionally(new AgentException(touched.get() ? "EFFECT_UNKNOWN" : "STORAGE_UNAVAILABLE"));
+            result.completeExceptionally(new AgentException(touched.get() ? AgentFailure.EFFECT_UNKNOWN : AgentFailure.STORAGE_UNAVAILABLE, failure));
             return null;
         }));
         return result.whenComplete((ignored, error) -> this.active.remove(key));

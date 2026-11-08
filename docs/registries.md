@@ -48,9 +48,9 @@
 
 ### 卡片数据与动作载荷
 
-卡片类型共 30 个：`text`、`selection`、`binding`、`shop_offer`、`shop_catalog`、`shop_quote`、`player`、`items`、`item_sources`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`、`quest_pin`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
+卡片类型共 31 个：`chat`、`text`、`selection`、`binding`、`shop_offer`、`shop_catalog`、`shop_quote`、`player`、`items`、`item_sources`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`、`quest_pin`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
 
-动作类型共 23 个：`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`item_sources`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`、`reasoning`。
+动作类型共 24 个：`free_chat`、`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`item_sources`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`、`reasoning`。
 
 内置条目均以 `public static DeferredHolder` 暴露。卡片实现 `CardData`，动作实现 `AgentAction`，都直接创建和传递数据对象；各实现的 `codec()` 返回自己的已注册 MapCodec：
 
@@ -217,3 +217,5 @@ ModuleContext 的 AgentEngine 与模块注册表为固定字段，以 engine() /
 服务端类型 Codec 为 SystemServerModules.SEARCH，客户端 Map 实现为 SystemClientModules.SEARCH；开发动态条目同时指定 server.type 和 client 为 system:web_search，但不再追加到默认模块 tag。搜索类型仅导出工具，不注册独立 AgentAction。核心动作 `SystemActionTypes.QUESTION_ACTION` 的 ID 为 `system:question`，对应 QuestionInput；本地答复卡片为 `SystemCardDataTypes.KNOWLEDGE_ANSWER` / `system:knowledge_answer`，联网答复继续使用 `WEB_SEARCH` / `system:web_search`。模板分别为 `knowledge_answer.json` 与 `web_search.json`。工具键 DATABASE_QUERY / QUEST_GUIDE / WEB_SEARCH / WEB_FETCH 对应 `database.query` / `ftb.guide` / `web.search` / `web.fetch`。
 
 WebResearch 已迁入通用 ReActLoop，每次循环按工具上下文构建本地 MapCodec 表，以 `type=web.search|web.fetch|answer` dispatch，工具参数位于 input；不是 MC 注册表，也不另加全局 AgentAction。跨能力只读工作流另注册 `SystemActionTypes.REASONING_ACTION` / `system:reasoning`，工具清单从当前玩家启用模块中主动声明 forReasoning 的操作建立，观察结果同样按工具 Type 的 Codec dispatch。QuestionModule 的 ModuleRouting.explicit 解析当前明确联网句式；普通问题由模型路由选择 system:question，allowWeb 默认 false，只有非常确信当前授权外部查询时才为 true。问答语义样例仅作候选提示，不缓存授权；执行时固定先查库，本地为空且可选工具已启用时才开放联网门禁。`explicitOnly()` 与 `structuredOnly()` 仍保留为通用路由声明。详见 [ReAct 循环](agent-react.md)。
+
+自由聊天动作 `system:free_chat` 使用 FreeChatInput，回复卡片 `system:chat` 使用 ChatOutput 与 chat.json；核心模块安装工作流，structuredOnly 将其从模型意图目录排除。管理员 / 玩家双层权限与预留接口见 [自由聊天](free-chat.md)。

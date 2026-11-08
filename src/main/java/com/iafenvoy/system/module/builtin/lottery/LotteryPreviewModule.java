@@ -2,6 +2,7 @@ package com.iafenvoy.system.module.builtin.lottery;
 
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.command.AgentCommand;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
@@ -47,9 +48,9 @@ public final class LotteryPreviewModule extends AbstractAgentModule<LotteryPrevi
     public AgentResult execute(ExecutionContext context, LotteryPreviewInput input) throws Exception {
         CommerceCatalog catalog = this.catalogs.available(context.player());
         if (!input.catalogRevision().orElse(catalog.revision()).equals(catalog.revision()))
-            throw new AgentException("STALE_QUOTE");
+            throw new AgentException(AgentFailure.STALE_QUOTE);
         Holder<LotteryPool> pool = catalog.lotteries().stream().filter(value -> HolderHelper.id(value).equals(input.poolId())).findFirst()
-                .orElseThrow(() -> new AgentException("INVALID_INPUT"));
+                .orElseThrow(() -> new AgentException(AgentFailure.INVALID_INPUT));
         CommercePreviewOutput price = context.tool(BuiltinTools.COMMERCE_PREVIEW, "quote",
                 new CommercePreviewInput(List.of(), List.of(HolderHelper.id(pool)), true, catalog.revision())).getFirst();
         // One detail card carries the whole shelf; the previous per-prize cards would spam the transcript.

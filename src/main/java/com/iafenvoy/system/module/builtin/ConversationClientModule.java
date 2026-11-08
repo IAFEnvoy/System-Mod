@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.request.PreferencesRequest;
@@ -11,7 +12,7 @@ public final class ConversationClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
         module.command(() -> {
-            if (AssistantClient.simpleMode()) AssistantClient.local(AgentResult.error("HISTORY_HIDDEN"));
+            if (AssistantClient.simpleMode()) AssistantClient.local(AgentResult.error(AgentFailure.HISTORY_HIDDEN));
             else AssistantClient.send(ControlRequest.HISTORY);
         }, "history", "对话历史");
         module.command(() -> AssistantClient.send(ControlRequest.FORGET), "forget", "清空记忆");
@@ -29,6 +30,6 @@ public final class ConversationClientModule implements ClientModule {
     }
 
     private static void preferences(boolean history, boolean external) {
-        AssistantClient.send(new PreferencesRequest(history, external));
+        AssistantClient.send(new PreferencesRequest(history, external, AssistantClient.state().freeChat()));
     }
 }

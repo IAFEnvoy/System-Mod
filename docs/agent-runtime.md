@@ -1,10 +1,12 @@
 # Agent 运行结构与扩展
 
+自由聊天的路由阈值、强制入口、管理员与玩家权限、预留接口见 [自由聊天与管理员 AI 权限](free-chat.md)。
+
 `com.iafenvoy.system.agent` 只负责执行、路由、预算、会话记忆与 Agent 契约。具体工作流位于 `module.builtin.<功能>`，Minecraft 业务、主线程桥接和游戏 Tool 位于 `assistant`，数据与加载位于 `data`，任务文案和语音行为位于 `speech`。完整依赖方向及扩展入口见[包职责与数据流](architecture.md)。指令解析器和路由器不包含模块 ID 的业务 switch。
 
 外层内置模块定义位于 `module.builtin`；其业务 DataStorage 位于 `module.builtin.storage`。Agent 执行账本的接口 `AgentJournal` 位于 `agent.storage`，实现 `AgentJournalDataStorage` 与文件存储位于 `data.store`，在服务端装配时注入。`AgentStore` 同样只声明事务接口；引擎不直接依赖 CoreSystemModule、Saturn 存储实现或具体功能模块。
 
-Agent 根包只保留 `AgentResult`、`AgentException`、`AgentLifecycle` 三个公共契约，其他类型按职责分包：
+Agent 根包保留 `AgentResult`、`AgentException`、`AgentFailure`、`AgentLifecycle` 公共契约，其他类型按职责分包：
 
 | 子包 | 内容 |
 | --- | --- |
@@ -57,6 +59,8 @@ Agent 根包只保留 `AgentResult`、`AgentException`、`AgentLifecycle` 三个
 | `ToolRegistry.Tool<I, O>` | 一个工具类型、一个 Handler、一个行为 |
 
 执行结果 `AgentResult` **不再继承** Saturn 的结果类型：Saturn 1.2 的 `Result<T>` 是 `sealed interface`，只允许它自己的 `SuccessResult` / `FailureResult` 实现，因此携带额外字段的类型改为自己持有状态、由 `Status` 派生 `isSuccess()` / `isFailure()`（`PARTIALLY_SUCCEEDED` 算失败）。Agent 自己保留文案、静默输出和 Status 枚举；SUCCEEDED、FAILED、PARTIALLY_SUCCEEDED 按稳定小写字符串编码。`partial()` 标记部分成功，但仍属于失败；`withPresentation(...)` 只生成展示副本。跨网络与存档继续使用 `AgentResult.CODEC`，不传输 Failure 的实现类。商城的 `CommerceCosts.Prepared` 用 `Optional<Failure>` 表达拒绝：报价无论定价成功与否都要给出展示价格，所以价格单独持有，只有「拒绝原因」是可选的。搜索条目、模型回复及音频流解析状态属于数据载荷，不套用操作成功/失败契约。
+
+`AgentException` 只保存 Saturn `Failure`，通过 `failure()` 读取，不再接收字符串 code。内置原因由 `AgentFailure implements Failure` 枚举集中声明，保留 `system.error.*` 翻译键。扩展可直接传自己的 Failure，不必加入内置枚举。异步边界用 `AgentException.failure(Throwable)` 从异常链提取原值，未知异常映射为 `MODULE_FAILED`；包装时保留 cause。`AgentResult.error(Failure)` 使用原值的 key / message，携带资源名等参数的文本也能传入卡片。ReAct 恢复集合与降级回调使用 Failure；只有搜索供应商的错误码和已持久化的订单回执名称由 `AgentFailure.fromCode` 转换，未知名称统一降为 MODULE_FAILED。网络仍发送可翻译的消息键或 Component，不序列化 Failure 实现类。
 
 外层 ServerModule 注册工作流时记录 ownerId，ModuleManager 在模块成功激活后发布按玩家计算的权限快照；帮助、补全、语义候选、模型目录与执行器共用可用性过滤，ExecutionContext 在工具和模型入口再次检查权限。基础设施与无 owner 的独立扩展工作流不属于可选业务模块。结构化按钮、精确指令、本地语义与模型选择最终都生成相同的 `AgentAction`。交互与事件共享 `AgentEngine.execute`，权限、策略选择与部分成功报告集中处理；事件恢复继续使用持久化策略和已完成操作回执。
 

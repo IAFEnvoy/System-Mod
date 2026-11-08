@@ -2,6 +2,7 @@ package com.iafenvoy.system.data.store;
 
 import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.storage.AgentJournal;
 import com.iafenvoy.system.config.file.StorageConfig;
@@ -108,7 +109,7 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
     public void assertTaskCount() {
         // A full table still accepts new tasks once finished ones can be dropped; never fail for lack of space.
         if (this.tasks.size() >= config().taskEntries() && this.tasks.values().stream().allMatch(EventTask::pending))
-            throw new AgentException("STORAGE_FULL");
+            throw new AgentException(AgentFailure.STORAGE_FULL);
     }
 
     private void remeasureTask(String key, EventTask task) {
@@ -164,7 +165,7 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
         // Only a table with no completed receipt to reclaim is genuinely full.
         if (this.operations.size() >= config().journalEntries() && !this.operations.containsKey(key)
                 && this.operations.values().stream().noneMatch(step -> step.state == State.DONE))
-            throw new AgentException("STORAGE_FULL");
+            throw new AgentException(AgentFailure.STORAGE_FULL);
     }
 
     /**

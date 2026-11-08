@@ -1,6 +1,7 @@
 package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.data.card.CardReference;
 import com.iafenvoy.system.data.card.CardUpdate;
@@ -48,7 +49,7 @@ public final class ServerCards {
     public static synchronized Ticket begin(UUID player, CardReference source) {
         Map<UUID, Version> cards = PLAYERS.get(player);
         Version version = cards == null ? null : cards.get(source.id());
-        if (version == null || version.issued != source.revision()) throw new AgentException("STALE_REFERENCE");
+        if (version == null || version.issued != source.revision()) throw new AgentException(AgentFailure.STALE_REFERENCE);
         return new Ticket(player, source, ++version.reserved, version);
     }
 
@@ -56,7 +57,7 @@ public final class ServerCards {
         Map<UUID, Version> cards = PLAYERS.get(ticket.player());
         Version current = cards == null ? null : cards.get(ticket.source().id());
         if (current != ticket.generation() || current.reserved != ticket.revision())
-            throw new AgentException("CANCELLED");
+            throw new AgentException(AgentFailure.CANCELLED);
         if (!result.silent() || !result.isSuccess()) return result;
         CardReference ref = new CardReference(ticket.source().id(), ticket.revision());
         List<CardUpdate> updates = new ArrayList<>();

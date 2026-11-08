@@ -1,0 +1,15 @@
+{
+  "defaults": {
+    "allowAi": true,
+    "allowFreeChat": true
+  },
+  "players": {
+    "00000000-0000-0000-0000-000000000001": {
+      "allowAi": false
+    },
+    "00000000-0000-0000-0000-000000000002": {
+      "allowFreeChat": false,
+      "modelCallsPerDay": 20
+    }
+  }
+}

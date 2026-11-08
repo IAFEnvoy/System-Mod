@@ -38,13 +38,16 @@ Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器�
 
 模型请求统一使用 OpenAI Chat Completions 格式，默认保留 DeepSeek；专用思考参数按提供商隔离。配置与消息边界见 [模型接口与 DeepSeek 兼容](model-api.md)。
 
+管理员 AI 权限入口在 `module/builtin/chat/AiManagementCommands`，由核心模块注册 `/system ai <玩家>`。配置按 UUID 写入 `AiAccessConfig.INSTANCE`，沿用 markDirty 自动保存；`AssistantServer.refreshAiAccess` 负责取消在途交互、同步状态及聊天提示，执行上下文继续在请求边界核对管理员与个人开关。客户端只接收自己的生效权限，不能写管理员配置。命令与界面说明见[自由聊天](free-chat.md)。
+
 ## 目录与职责
 
 | 路径 | 职责 |
 | --- | --- |
-| `agent` | AgentResult、AgentException、AgentLifecycle 公共契约；详细分包见 [Agent 运行结构](agent-runtime.md) |
+| `agent` | AgentResult、AgentException、AgentFailure、AgentLifecycle 公共契约；详细分包见 [Agent 运行结构](agent-runtime.md) |
 | `agent/execution` | AgentEngine、交互/事件执行器、执行上下文、预算、取消与会话读写 |
 | `agent/module、agent/tool` | 工作流契约与动作分派、模块登记；工具类型、权限作用域和类型化观察 |
+| `agent/chat` | ChatSupport 提示词 / tool call 预留接口；自由聊天工作流在 module/builtin/chat |
 | `agent/command、agent/react` | Brigadier 指令声明与解析；通用有界 ReAct 循环及独立上下文 |
 | `agent/storage` | AgentStore / AgentJournal 存储契约、ConversationMemory 历史投影；持久化实现仍在 data/store |
 | `agent/routing、agent/model` | 混合路由、语义匹配与缓存；模型接口、统一请求和计量入口、OpenAI 兼容协议 |
@@ -220,7 +223,7 @@ CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式
 
 存储分为两类文件：`<存档>/system-agent/<UUID>.json` 保存业务状态（JSON），`<存档>/system-agent/chat/<UUID>.dat` 保存对话与请求回放缓存（NBT）。读写统一经 `FileAccess` 的 codec 模式：JSON 或 NBT 由文件决定，落盘位置、临时文件与原子替换仍由 `FileAgentStore` 负责。不同世界使用各自目录，原型只支持单进程本地文件系统：写临时文件、`force(true)` 后原子替换。文件系统不支持原子替换时拒绝写，不退化为不安全覆盖。业务文件与回放缓存的字节上限、日志两张表的条数与字节上限、对话保留条数与天数都来自 `config/system/system-storage.json`，默认业务 4MiB、缓存 32MiB、日志 768KiB（步骤回执）/256KiB（事件任务）；日志预算被夹在业务文件预算之内，避免日志自己顶穿业务文件。上限在每次读写与回收时实时读取，修改后资源重载（`/reload`）即生效。缓存超限时按最早轮次淘汰，仍放不下则跳过本次缓存写入并记日志，不影响业务事务。没有 SQLite 或多服务器共享写入。
 
-玩家文件按 UTF-8 读取，读取器在 `load` 返回前通过 try-with-resources 关闭，避免 Windows 下未释放的读取句柄阻止后续原子替换。读写、删除和目录枚举失败会在服务端记录操作、路径与异常原因，并通过带 cause 的 `AgentException` 保留错误链；客户端仍只接收稳定的 `STORAGE_UNAVAILABLE` 错误码，不发送内部路径或堆栈。
+玩家文件按 UTF-8 读取，读取器在 `load` 返回前通过 try-with-resources 关闭，避免 Windows 下未释放的读取句柄阻止后续原子替换。读写、删除和目录枚举失败会在服务端记录操作、路径与异常原因，并通过带 cause 的 `AgentException(AgentFailure.STORAGE_UNAVAILABLE, cause)` 保留错误链；异常保存 Saturn `Failure`，客户端只接收其翻译键与可展示文本，不发送内部路径或堆栈。完整失败传递约定见[Agent 运行结构](agent-runtime.md)。
 
 `CardUpdate` 按 `mode` 分派，SHOW / REPLACE 要求 `data`，REMOVE 只读取引用，避免缺少载荷时构造出无效的部分对象。读取玩家文件时自动丢弃无法解析的回放结果和助手历史卡片，保留有效结果及用户消息；清理后的内容随下一次正常保存落盘，无需手工删除玩家文件。恢复日志仅记录丢弃数量和必要的文件位置，不记录缓存正文。JSON 语法错误、业务 Codec 构造异常和编码异常统一归入存储错误；保留原文件，不自动创建空玩家覆盖，既有 `STORAGE_FULL` 等业务错误码继续保留。
 
@@ -355,3 +358,5 @@ AgentEngine 统一拥有 AgentDatabases：`<存档>/system-database/shared.json`
 - `data/usage/SearchUsage`：不可变计数，合入现有世界 SavedData 与 StreamCodec 快照；客户端语音账本不上传。
 
 system:question 默认 6 次模型、9 次工具、20 步、90 秒，单次模型最多 20 秒，查库 / 内部 FTB 查询和网络步骤共用预算。Descriptor.optionalTools 声明可选只读依赖，未启用搜索模块不会禁用本地问答。数据库为空、当前 QuestionInput.allowWeb 明确允许且搜索工具已启用时才进入 WebResearch；有结果或查库失败均不搜索。问答语义样例仅作提示，不本地直达或缓存授权；网络已有证据时预留最终整理，不自动重试收费工具。详见[搜索配置与流程](search-api.md)。
+
+服务端管理员 AI 权限独立配置为 `config/system/system-ai-access.json`，按 UUID 覆盖全服默认，不改写玩家的外部 AI / 自由聊天 / 历史偏好。新流程及数据、接口见 [自由聊天](free-chat.md)。

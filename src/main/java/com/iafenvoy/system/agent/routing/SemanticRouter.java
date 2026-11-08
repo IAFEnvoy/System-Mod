@@ -98,7 +98,7 @@ public final class SemanticRouter implements AutoCloseable {
         if (best == null) return Attempt.fallback("NO_CANDIDATE");
         List<ModelRoute.Candidate> hints = ranking.matches().stream().limit(3)
                 .map(match -> new ModelRoute.Candidate(match.value().moduleId().toString(), match.score())).toList();
-        SemanticConfig.Threshold threshold = SemanticConfig.INSTANCE.get().threshold(best.value().moduleId().toString(), language);
+        SemanticConfig.Threshold threshold = SemanticConfig.INSTANCE.get().threshold(best.value().moduleId().toString(), language, context.freeChatAllowed());
         String reason;
         AgentAction input = null;
         // Similarity is not a calibrated probability; direct routing requires every safety/coverage gate.
@@ -153,7 +153,9 @@ public final class SemanticRouter implements AutoCloseable {
             return data.saveHistory ? this.cache.scope(context.player(), context.incarnation(), context.memoryEpoch()) : null;
         });
         // A reloaded prompt must not reuse or be repopulated by decisions from the previous revision.
-        return scope == null ? null : this.cache.key(scope, language, context.promptRevision() + "\n" + text);
+        // Mode and routing configuration changes must not reuse a decision made with another threshold.
+        return scope == null ? null : this.cache.key(scope, language, context.promptRevision() + "\n"
+                + context.freeChatAllowed() + ":" + SemanticConfig.INSTANCE.get().hashCode() + "\n" + text);
     }
 
     private String guard(String text, String language) {

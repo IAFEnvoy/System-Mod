@@ -1,5 +1,6 @@
 package com.iafenvoy.system.assistant;
 
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.data.store.PlayerData;
@@ -26,7 +27,7 @@ public final class AssistantBindings {
         return this.engine.personalMaintenance(player, () -> this.engine.store().update(player, data -> {
             // Assignment and the one-system check share the player transaction.
             if (data.bound()) return data.systems.current().filter(system::equals).isPresent()
-                    ? AgentResult.ok("system.result.already_bound") : AgentResult.error("SYSTEM_ALREADY_BOUND");
+                    ? AgentResult.ok("system.result.already_bound") : AgentResult.error(AgentFailure.SYSTEM_ALREADY_BOUND);
             data.systems = SystemBindings.single(system);
             initialize.accept(data);
             return AgentResult.ok("system.result.bound");

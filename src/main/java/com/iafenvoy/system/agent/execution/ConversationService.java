@@ -2,6 +2,7 @@ package com.iafenvoy.system.agent.execution;
 
 import com.iafenvoy.saturn.util.MiscUtil;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.data.History;
@@ -38,20 +39,21 @@ final class ConversationService {
         this.engine.cancel(player);
         AgentStore store = this.engine.playerStore(player);
         return this.engine.personalMaintenance(player, () -> store.update(player, data -> {
-            if (!data.bound()) throw new AgentException("NOT_BOUND");
+            if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
             data.conversation.clear();
             this.engine.router().clear(player);
             return AgentResult.ok("system.result.forgotten");
         }));
     }
 
-    public CompletionStage<AgentResult> preferences(UUID player, boolean history, boolean external) {
+    public CompletionStage<AgentResult> preferences(UUID player, boolean history, boolean external, boolean freeChat) {
         this.engine.cancel(player);
         AgentStore store = this.engine.playerStore(player);
         return this.engine.personalMaintenance(player, () -> store.update(player, data -> {
-            if (!data.bound()) throw new AgentException("NOT_BOUND");
+            if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
             data.saveHistory = history;
             data.externalModel = external;
+            data.freeChat = freeChat;
             this.engine.router().clear(player);
             if (!history) data.conversation.clear();
             else data.conversation.memoryEpoch++;
@@ -62,7 +64,7 @@ final class ConversationService {
     public CompletionStage<History> history(UUID player) {
         AgentStore store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
-            if (!data.bound()) throw new AgentException("NOT_BOUND");
+            if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
             List<Message> selected = new ArrayList<>();
             int size = 0;
             for (int index = data.conversation.history.size() - 1; index >= 0 && selected.size() < MAX_ENTRIES; index--) {

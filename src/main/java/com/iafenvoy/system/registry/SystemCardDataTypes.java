@@ -23,6 +23,7 @@ public final class SystemCardDataTypes {
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<QuestPinOutput>> QUEST_PIN = REGISTRY.register("quest_pin", () -> QuestPinOutput.CODEC);
 
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<TextCardData>> TEXT = REGISTRY.register("text", () -> TextCardData.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ChatOutput>> CHAT = REGISTRY.register("chat", () -> ChatOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<WebSearchOutput>> WEB_SEARCH = REGISTRY.register("web_search", () -> WebSearchOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<KnowledgeAnswerOutput>> KNOWLEDGE_ANSWER = REGISTRY.register("knowledge_answer", () -> KnowledgeAnswerOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<SelectionCardData>> SELECTION = REGISTRY.register("selection", () -> SelectionCardData.CODEC);

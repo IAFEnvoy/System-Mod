@@ -4,6 +4,7 @@ import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.saturn.util.MiscUtil;
 import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.command.AgentCommand;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
@@ -64,7 +65,7 @@ public final class SignInModule extends AbstractAgentModule<SignInInput> {
         if (existing != null)
             return AgentResult.data("system.result.already", new RewardOutput(existing, Optional.of("daily:" + day), Component.translatable("system.result.already"), ""));
         CommerceCatalog catalog = this.catalogs.available(context.player());
-        if (catalog.rewards().isEmpty()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        if (catalog.rewards().isEmpty()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         SignInDecision.Player state = SignInDecision.Player.of(context.tool(BuiltinTools.PLAYER, "snapshot", EmptyInput.INSTANCE));
         List<PersistHolder<Reward>> candidates = catalog.rewards().stream().map(holder -> holder.value().reward(HolderHelper.id(holder))).toList();
         SignInDecision decision = context.model(context.prompt(SystemPrompts.SIGN_IN), SignInDecision.Input.CODEC, new SignInDecision.Input(state, candidates, day), SignInDecision.CODEC);
@@ -72,10 +73,10 @@ public final class SignInModule extends AbstractAgentModule<SignInInput> {
         String reason = MiscUtil.clip(decision.reason(), 240);
         PersistHolder<Reward> reward = catalog.rewards().stream().filter(value -> HolderHelper.id(value).equals(selectedId))
                 .map(value -> value.value().reward(selectedId)).findFirst()
-                .orElseThrow(() -> new AgentException("MODEL_INVALID"));
+                .orElseThrow(() -> new AgentException(AgentFailure.MODEL_INVALID));
         // Recheck date, player and catalog after inference; a successful reply alone does not grant a reward.
         context.ensureMemoryCurrent();
-        if (!day.equals(LocalDate.now(zone).toString())) throw new AgentException("EXPIRED");
+        if (!day.equals(LocalDate.now(zone).toString())) throw new AgentException(AgentFailure.EXPIRED);
         context.tool(BuiltinTools.PLAYER, "revalidate", EmptyInput.INSTANCE);
         RewardOutput committed = context.tool(BuiltinTools.SIGN_IN_CREDIT, "credit", new SignInCreditInput(day, reward.id(), catalog.revision()));
         PersistHolder<Reward> chosen = committed.reward();

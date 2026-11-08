@@ -1,6 +1,7 @@
 package com.iafenvoy.system.assistant.tool.item;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.MinecraftTools;
@@ -32,8 +33,8 @@ public record ItemSourceQueryTool(
     @Override
     public CompletionStage<ItemSourceOutput> execute(ExecutionContext context, ItemSourceQueryInput input) {
         Identifier id = Identifier.tryParse(input.itemId());
-        if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) throw new AgentException("UNKNOWN_ITEM");
-        if (!ItemSourceProviders.isKnownScope(input.scope())) throw new AgentException("INVALID_INPUT");
+        if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) throw new AgentException(AgentFailure.UNKNOWN_ITEM);
+        if (!ItemSourceProviders.isKnownScope(input.scope())) throw new AgentException(AgentFailure.INVALID_INPUT);
         return this.game.onPlayer(context, player -> {
             Item item = BuiltInRegistries.ITEM.getValue(id);
             // Keep recipes ahead of large loot/tag collections before applying the reply-size bound.

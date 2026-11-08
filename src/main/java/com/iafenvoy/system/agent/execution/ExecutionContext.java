@@ -2,6 +2,7 @@ package com.iafenvoy.system.agent.execution;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.module.AgentModule;
@@ -11,6 +12,7 @@ import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.agent.tool.ToolContext;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.config.file.AgentConfig;
+import com.iafenvoy.system.config.file.AiAccessConfig;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.store.EventTask;
 import com.iafenvoy.system.data.store.State;
@@ -89,7 +91,7 @@ public final class ExecutionContext {
 
     void select(Identifier owner, AgentModule.Descriptor descriptor, ExecutionPolicy value) {
         if (this.isEvent() && !this.eventOwner.equals(Optional.ofNullable(owner)))
-            throw new AgentException("CAPABILITY_UNAVAILABLE");
+            throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         this.owner = owner;
         this.module = descriptor;
         this.policy = value;
@@ -97,7 +99,7 @@ public final class ExecutionContext {
         // Routing time remains charged, but selecting a slow module may use its own deadline.
         this.expires = this.started + value.ttlMillis();
         if (this.models > value.modelCalls() || this.tokens > value.totalTokens())
-            throw new AgentException("BUDGET_EXCEEDED");
+            throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
     }
 
     public UUID player() {
@@ -177,26 +179,40 @@ public final class ExecutionContext {
 
     public boolean externalServicesAllowed() {
         this.ensureMemoryCurrent();
-        return this.store.read(this.player, data -> data.externalModel);
+        return AiAccessConfig.INSTANCE.get().permissions(this.player).allowAi()
+                && this.store.read(this.player, data -> data.externalModel);
+    }
+
+    public boolean freeChatAllowed() {
+        this.ensureMemoryCurrent();
+        return AiAccessConfig.INSTANCE.get().permissions(this.player).allowFreeChat()
+                && this.store.read(this.player, data -> data.externalModel && data.freeChat);
+    }
+
+    public void requireFreeChat() {
+        this.requireExternalServices();
+        // An explicit chat request may override automatic fallback, but never administrator admission or AI opt-out.
+        if (!AiAccessConfig.INSTANCE.get().permissions(this.player).allowFreeChat())
+            throw new AgentException(AgentFailure.FREE_CHAT_DISABLED);
     }
 
     /**
      * Trusted workflows authorize optional paid tools only after their own business preconditions succeed.
      */
     public void authorizeExternalTools(ToolRegistry.Type<?, ?>... types) {
-        if (this.isEvent()) throw new AgentException("NOT_AUTHORIZED");
+        if (this.isEvent()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         this.requireExternalServices();
         for (ToolRegistry.Type<?, ?> type : types)
-            if (!this.toolAvailable(type)) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (!this.toolAvailable(type)) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         for (ToolRegistry.Type<?, ?> type : types) this.authorizedExternalTools.add(type.id());
     }
 
     public void requireExternalTools(ToolRegistry.Type<?, ?>... types) {
         this.requireExternalServices();
-        if (this.isEvent()) throw new AgentException("NOT_AUTHORIZED");
+        if (this.isEvent()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         for (ToolRegistry.Type<?, ?> type : types) {
-            if (!this.authorizedExternalTools.contains(type.id())) throw new AgentException("NOT_AUTHORIZED");
-            if (!this.toolAvailable(type)) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (!this.authorizedExternalTools.contains(type.id())) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
+            if (!this.toolAvailable(type)) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         }
     }
 
@@ -213,7 +229,8 @@ public final class ExecutionContext {
      */
     public void requireExternalServices() {
         this.ensureMemoryCurrent();
-        if (!this.store.read(this.player, data -> data.externalModel)) throw new AgentException("MODEL_DISABLED");
+        if (!AiAccessConfig.INSTANCE.get().permissions(this.player).allowAi()) throw new AgentException(AgentFailure.AI_FORBIDDEN);
+        if (!this.store.read(this.player, data -> data.externalModel)) throw new AgentException(AgentFailure.MODEL_DISABLED);
     }
 
     public int remainingModelCalls() {
@@ -237,7 +254,7 @@ public final class ExecutionContext {
      */
     public ToolContext reasoningTools() {
         this.ensureMemoryCurrent();
-        if (this.isEvent()) throw new AgentException("NOT_AUTHORIZED");
+        if (this.isEvent()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         return new ToolContext(this, this.engine.tools().reasoning(owner -> this.engine.moduleEnabled(this.player, owner)),
                 "react/" + this.toolContexts++);
     }
@@ -250,24 +267,24 @@ public final class ExecutionContext {
 
     private <I, O> void addTool(Map<String, ToolRegistry.ScopedTool<?, ?>> allowed, ToolRegistry.Type<I, O> type) {
         this.ensureMemoryCurrent();
-        if (!this.toolAvailable(type)) throw new AgentException("NOT_AUTHORIZED");
+        if (!this.toolAvailable(type)) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         ToolRegistry.ScopedTool<I, O> scoped = this.engine.tools().scope(type, this.owner, owner -> this.engine.moduleEnabled(this.player, owner));
         if (scoped.tool().write() && this.module.optionalTools().contains(type.id()))
-            throw new AgentException("NOT_AUTHORIZED");
+            throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         allowed.put(type.id(), scoped);
     }
 
     public void checkToolOwner(ToolRegistry.ScopedTool<?, ?> scoped) {
         this.ensureMemoryCurrent();
         if (!this.engine.moduleEnabled(this.player, scoped.owner()) || !this.engine.toolAvailable(this.player, scoped.tool().id()))
-            throw new AgentException("CAPABILITY_UNAVAILABLE");
+            throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
     }
 
     public <I, O> O scopedTool(ToolRegistry.ScopedTool<I, O> scoped, String stepId, I input) throws Exception {
         this.checkToolOwner(scoped);
         // A scope is a subset of this workflow or an explicitly advertised read, never an alternate write route.
         if (!this.toolAvailable(scoped.tool().type()) && (scoped.tool().write() || scoped.tool().reasoningDescription().isBlank()))
-            throw new AgentException("NOT_AUTHORIZED");
+            throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         O result = this.executeTool(scoped.tool(), stepId, input);
         this.checkToolOwner(scoped);
         return result;
@@ -283,10 +300,10 @@ public final class ExecutionContext {
 
     public void check() {
         if (this.cancelled.get() || this.engine.closed() || !this.engine.current(this.player, this.incarnation))
-            throw new AgentException("CANCELLED");
-        if (this.remainingMillis() == 0) throw new AgentException("EXPIRED");
+            throw new AgentException(AgentFailure.CANCELLED);
+        if (this.remainingMillis() == 0) throw new AgentException(AgentFailure.EXPIRED);
         if (this.module != null && (!this.engine.moduleEnabled(this.player, this.owner) || !this.available(this.module.id())))
-            throw new AgentException("CAPABILITY_UNAVAILABLE");
+            throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
     }
 
     private void persist() {
@@ -303,27 +320,29 @@ public final class ExecutionContext {
         this.requireExternalServices();
         this.engine.model().checkConfigured();
         if (++this.steps > this.policy.steps() || this.models >= this.policy.modelCalls())
-            throw new AgentException("BUDGET_EXCEEDED");
+            throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
         String content = CodecIO.write(ModelInput.codec(inputCodec), new ModelInput<>(input, new RequestContext(this.language)));
         // Reserve input bytes conservatively as tokens; this execution budget is separate from billed usage.
         long inputBytes = (long) instruction.getBytes(StandardCharsets.UTF_8).length + content.getBytes(StandardCharsets.UTF_8).length;
         if (inputBytes > this.policy.inputBytes() || this.tokens + inputBytes + this.policy.outputTokens() > this.policy.totalTokens())
-            throw new AgentException("BUDGET_EXCEEDED");
+            throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
         int estimated = (int) inputBytes;
         long wait = this.modelTimeoutMillis();
-        if (!this.engine.modelSlots().tryAcquire(wait, TimeUnit.MILLISECONDS)) throw new AgentException("BUSY");
+        if (!this.engine.modelSlots().tryAcquire(wait, TimeUnit.MILLISECONDS)) throw new AgentException(AgentFailure.BUSY);
         try {
             this.check();
             this.store().update(this.player, data -> {
+                AiAccessConfig.Permissions permissions = AiAccessConfig.INSTANCE.get().permissions(this.player);
+                if (!permissions.allowAi()) throw new AgentException(AgentFailure.AI_FORBIDDEN);
                 if (!data.externalModel || (!this.isEvent() && data.conversation.memoryEpoch != this.memoryEpoch))
-                    throw new AgentException("MODEL_DISABLED");
+                    throw new AgentException(AgentFailure.MODEL_DISABLED);
                 String day = LocalDate.now(ZoneId.of(AgentConfig.INSTANCE.get().timeZone())).toString();
                 if (!day.equals(data.modelQuota.usageDate)) {
                     data.modelQuota.usageDate = day;
                     data.modelQuota.usedModelCalls = 0;
                 }
-                if (data.modelQuota.usedModelCalls >= AgentConfig.INSTANCE.get().modelCallsPerPlayerDay())
-                    throw new AgentException("RATE_LIMITED");
+                if (data.modelQuota.usedModelCalls >= permissions.modelCallsPerDay())
+                    throw new AgentException(AgentFailure.RATE_LIMITED);
                 data.modelQuota.usedModelCalls++;
                 return null;
             });
@@ -336,11 +355,12 @@ public final class ExecutionContext {
             this.tokens = (int) Math.min(Integer.MAX_VALUE, (long) this.tokens + Math.max(0L, (long) reply.totalTokens() - estimated - this.policy.outputTokens()));
             this.persist();
             this.check();
-            if (this.tokens > this.policy.totalTokens()) throw new AgentException("BUDGET_EXCEEDED");
+            this.requireExternalServices();
+            if (this.tokens > this.policy.totalTokens()) throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
             try {
                 return CodecIO.parse(outputCodec, reply.value());
             } catch (RuntimeException error) {
-                throw new AgentException("MODEL_INVALID");
+                throw new AgentException(AgentFailure.MODEL_INVALID);
             }
         } finally {
             this.engine.modelSlots().release();
@@ -364,12 +384,12 @@ public final class ExecutionContext {
     public <I, O> O tool(ToolRegistry.Type<I, O> type, String stepId, I input) throws Exception {
         this.check();
         this.ensureMemoryCurrent();
-        if (!stepId.matches("[a-zA-Z0-9_./-]+")) throw new AgentException("INVALID_INPUT");
+        if (!stepId.matches("[a-zA-Z0-9_./-]+")) throw new AgentException(AgentFailure.INVALID_INPUT);
         String id = type.id();
         if (this.module == null || !this.module.tools().contains(id) && !this.module.optionalTools().contains(id))
-            throw new AgentException("NOT_AUTHORIZED");
+            throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         ToolRegistry.Tool<I, O> tool = this.engine.tool(this.player, type, this.owner);
-        if (this.module.optionalTools().contains(id) && tool.write()) throw new AgentException("NOT_AUTHORIZED");
+        if (this.module.optionalTools().contains(id) && tool.write()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         return this.executeTool(tool, stepId, input);
     }
 
@@ -377,10 +397,10 @@ public final class ExecutionContext {
         ToolRegistry.Type<I, O> type = tool.type();
         String id = type.id();
         this.ensureMemoryCurrent();
-        if (!this.engine.toolAvailable(this.player, id)) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        if (!this.engine.toolAvailable(this.player, id)) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         if ((this.routeSource == RouteSource.SEMANTIC || this.routeSource == RouteSource.ROUTE_CACHE) && tool.write())
-            throw new AgentException("NOT_AUTHORIZED");
-        if (this.isEvent() && !tool.allowEvent()) throw new AgentException("NOT_AUTHORIZED");
+            throw new AgentException(AgentFailure.NOT_AUTHORIZED);
+        if (this.isEvent() && !tool.allowEvent()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         String operationKey = this.taskId + ":" + stepId;
         String encodedInput = tool.write() ? CodecIO.write(type.inputCodec().codec(), input) : null;
         String fingerprint = id + ":" + encodedInput;
@@ -389,18 +409,18 @@ public final class ExecutionContext {
             Dynamic<?> previous = this.store().read(this.player, data -> {
                 Step receipt = this.engine.journal(data).getOperation(operationKey);
                 if (receipt == null) return null;
-                if (!fingerprint.equals(receipt.fingerprint)) throw new AgentException("INVALID_INPUT");
+                if (!fingerprint.equals(receipt.fingerprint)) throw new AgentException(AgentFailure.INVALID_INPUT);
                 if (receipt.state == State.DONE) return receipt.result;
-                if (!tool.idempotent()) throw new AgentException("EFFECT_UNKNOWN");
+                if (!tool.idempotent()) throw new AgentException(AgentFailure.EFFECT_UNKNOWN);
                 return null;
             });
             if (previous != null) {
                 this.completedLocalSteps.add(stepId);
-                return type.resultCodec().parse(previous).getOrThrow(_ -> new AgentException("INVALID_INPUT"));
+                return type.resultCodec().parse(previous).getOrThrow(_ -> new AgentException(AgentFailure.INVALID_INPUT));
             }
         }
         if (++this.steps > this.policy.steps() || ++this.tools > this.policy.toolCalls() || (tool.write() && ++this.writes > this.policy.writeSteps()))
-            throw new AgentException("BUDGET_EXCEEDED");
+            throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
         this.persist();
         // Persist RUNNING before invoking a write so a crash cannot silently turn it into a fresh operation.
         if (tool.write()) this.store().update(this.player, data -> {
@@ -416,7 +436,7 @@ public final class ExecutionContext {
                     .get(this.remainingMillis(), TimeUnit.MILLISECONDS);
             if (!tool.write()) {
                 this.ensureMemoryCurrent();
-                if (!this.engine.toolAvailable(this.player, id)) throw new AgentException("CAPABILITY_UNAVAILABLE");
+                if (!this.engine.toolAvailable(this.player, id)) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             }
             if (tool.write()) this.store().update(this.player, data -> {
                 this.engine.journal(data).completeOperation(operationKey,
@@ -427,18 +447,18 @@ public final class ExecutionContext {
             return result;
         } catch (ExecutionException e) {
             if (e.getCause() instanceof AgentException error) throw error;
-            if (tool.write()) throw new AgentException("EFFECT_UNKNOWN");
-            throw new AgentException("TOOL_FAILED");
+            if (tool.write()) throw new AgentException(AgentFailure.EFFECT_UNKNOWN, e);
+            throw new AgentException(AgentFailure.TOOL_FAILED, e);
         } catch (TimeoutException e) {
             this.cancel();
-            throw new AgentException(tool.write() ? "EFFECT_UNKNOWN" : "EXPIRED");
+            throw new AgentException(tool.write() ? AgentFailure.EFFECT_UNKNOWN : AgentFailure.EXPIRED, e);
         }
     }
 
     public void ensureMemoryCurrent() {
         this.check();
         if (!this.isEvent() && this.store().read(this.player, data -> data.conversation.memoryEpoch) != this.memoryEpoch)
-            throw new AgentException("CANCELLED");
+            throw new AgentException(AgentFailure.CANCELLED);
     }
 
     public int modelCalls() {

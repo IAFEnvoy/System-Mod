@@ -14,5 +14,9 @@
   "examples": {},
   "cacheEntries": 1024,
   "cacheSeconds": 300,
-  "entriesPerPlayer": 32
+  "entriesPerPlayer": 32,
+  "modeScores": {
+    "functions": -0.1,
+    "freeChat": 0.03
+  }
 }

@@ -1,6 +1,8 @@
 package com.iafenvoy.system.agent.react;
 
+import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -19,7 +21,7 @@ public final class ReActContext<O> {
     private final Map<String, ReActTool.Description> descriptions;
     private final MapCodec<Input<O>> inputCodec;
     private final Runnable guard;
-    private final Set<String> recoverable;
+    private final Set<Failure> recoverable;
     private final long toolReserveMillis;
     private final int maxIterations;
     private final List<O> observations = new ArrayList<>();
@@ -27,7 +29,7 @@ public final class ReActContext<O> {
     private int iterations;
 
     public ReActContext(ExecutionContext execution, String instruction, String question, Codec<O> observationCodec,
-                        List<ReActTool<?, O>> tools, Runnable guard, Set<String> recoverable, long toolReserveMillis) {
+                        List<ReActTool<?, O>> tools, Runnable guard, Set<? extends Failure> recoverable, long toolReserveMillis) {
         this.execution = Objects.requireNonNull(execution);
         this.instruction = Objects.requireNonNull(instruction);
         this.question = Objects.requireNonNull(question);
@@ -78,8 +80,8 @@ public final class ReActContext<O> {
         return this.execution.remainingMillis() <= this.execution.modelTimeoutMillis() + this.toolReserveMillis;
     }
 
-    boolean recoverable(String code) {
-        return this.recoverable.contains(code);
+    boolean recoverable(Failure failure) {
+        return this.recoverable.contains(failure);
     }
 
     <S> S decide(Codec<S> codec, boolean finalOnly) throws Exception {
@@ -91,7 +93,7 @@ public final class ReActContext<O> {
     }
 
     <I> boolean perform(ReActTool<I, O> tool, I input) throws Exception {
-        if (this.tools.get(tool.id()) != tool) throw new AgentException("NOT_AUTHORIZED");
+        if (this.tools.get(tool.id()) != tool) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         // Failed attempts are remembered too; a loop never silently retries an already paid operation.
         if (!this.attempted.add(tool.id() + ":" + tool.repetitionKey().apply(input))) return false;
         O observation = tool.handler().execute(input);

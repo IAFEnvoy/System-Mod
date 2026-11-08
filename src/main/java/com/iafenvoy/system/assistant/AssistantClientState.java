@@ -3,6 +3,7 @@ package com.iafenvoy.system.assistant;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.request.AgentRequest;
 import com.iafenvoy.system.agent.request.ControlRequest;
+import com.iafenvoy.system.data.AiStatus;
 import com.iafenvoy.system.data.ClientState;
 import com.iafenvoy.system.data.History;
 import com.iafenvoy.system.data.card.CardReference;
@@ -19,7 +20,7 @@ import java.util.*;
 public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending> pending,
                                    ClientState serverState, ChatEntry current) {
     public static final AssistantClientState EMPTY = new AssistantClientState(List.of(), Map.of(),
-            new ClientState(Optional.empty(), true, true, List.of(), List.of(), 60000), null);
+            new ClientState(Optional.empty(), true, true, List.of(), List.of(), 60000, AiStatus.EMPTY), null);
 
     public record ChatEntry(boolean player, String text, AgentResult result) {
     }
@@ -42,6 +43,26 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
 
     public boolean externalModel() {
         return this.serverState.externalModel();
+    }
+
+    public boolean freeChat() {
+        return this.serverState.ai().freeChat();
+    }
+
+    public boolean freeChatAllowed() {
+        return this.serverState.ai().freeChatAllowed(this.externalModel());
+    }
+
+    public boolean canFreeChat() {
+        return this.serverState.ai().canFreeChat(this.externalModel());
+    }
+
+    public String aiAccessHint() {
+        if (this.serverState.system().isEmpty()) return "";
+        if (!this.serverState.ai().allowAi()) return "system.ai.admin_disabled_hint";
+        if (!this.serverState.ai().allowFreeChat()) return "system.ai.free_chat_disabled_hint";
+        if (!this.externalModel()) return "system.ai.personal_disabled_hint";
+        return "";
     }
 
     public boolean hasModule(Identifier id) {

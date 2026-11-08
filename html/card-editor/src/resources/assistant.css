@@ -270,6 +270,28 @@ p {
     content: "";
 }
 
+.chat_mode_toggle {
+    flex: 0 0 auto;
+    padding: 5px 9px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.chat_mode_toggle[aria-checked="true"] {
+    border-color: var(--assistant-accent);
+    color: var(--assistant-accent-hover);
+    background-color: var(--assistant-panel-soft);
+}
+
+#ai_access_hint {
+    display: none;
+    flex: 0 0 auto;
+    padding: 6px 0;
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
 #layout {
     /* Definite shell geometry breaks the workspace -> layout -> main flex measurement chain. */
     position: absolute;

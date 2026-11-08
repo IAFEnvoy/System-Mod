@@ -1,5 +1,7 @@
 # System
 
+Free chat is available as an optional fallback, with a forced mode beside the status indicator. Administrators manage per-player AI/free-chat permissions and daily call limits through `/system ai <player>`. Changes take effect immediately, save automatically and notify the player. See [free chat and access configuration](docs/free-chat.md).
+
 English | [简体中文](README-zh.md)
 
 A NeoForge mod that brings the "System" from web novels into Minecraft. The Agent runs on the server and handles data
@@ -98,6 +100,9 @@ The following commands run in Minecraft chat:
 | `/system module add <player> <module ID>`    | Enable an additional module for a player as an administrator                                         |
 | `/system module remove <player> <module ID>` | Disable a module for a player as an administrator                                                    |
 | `/system module list [player]`               | List registered modules or a player's enabled modules as an administrator                            |
+| `/system ai <player> enable` / `disable` | Allow / deny AI access; retain personal preferences and local actions |
+| `/system ai <player> freechat enable` / `disable` | Allow / deny free chat as an administrator |
+| `/system ai <player> status` / `limit <calls>` / `reset` | View permissions / set daily model limits / inherit default permissions |
 | `/system routing`                            | View routing diagnostics as an administrator                                                         |
 | `/system help`                               | Show available actions                                                                               |
 

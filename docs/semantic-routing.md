@@ -1,5 +1,7 @@
 # 轻量本地意图路由
 
+现有 score 阈值会按自由聊天状态应用 modeScores 偏移；关闭时优先匹配，开启时未命中直接聊天。完整流程与配置见 [自由聊天](free-chat.md)。
+
 当前使用纯 Java 的领域词表、稀疏 TF-IDF 匹配和玩家独立的精确意图缓存。默认分发包不包含 ONNX Runtime、DJL、Caffeine、native 库、外部词典或训练模型，不下载运行依赖。路由实现、声明、结果和诊断统一位于 `com.iafenvoy.system.agent.routing`。
 
 目标是兼顾可分发性与模型调用次数。模型服务默认 DeepSeek，也可配置其他 OpenAI 兼容服务，详见 [模型接口](model-api.md)。完整 System JAR 无需携带推理运行时，`jar` 打包任务强制检查整个产物不超过 **10,000,000 字节**。这是 System 自身及其内嵌资源/库的上限，Minecraft、NeoForge 和原有 UI 模组等安装依赖另计；没有将路由运行库移到外部下载以规避体积。

@@ -2,6 +2,7 @@ package com.iafenvoy.system.data.database;
 
 import com.iafenvoy.saturn.util.FileAccess;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.JsonOps;
@@ -112,13 +113,13 @@ public final class AgentDatabase implements AutoCloseable {
     }
 
     private void load() {
-        if (this.closed) throw new AgentException("STORAGE_UNAVAILABLE");
+        if (this.closed) throw new AgentException(AgentFailure.STORAGE_UNAVAILABLE);
         if (this.tables != null) return;
         try {
             this.tables = FileAccess.JSON.loadOrDefault(CODEC, this.file, Map.of());
         } catch (Exception error) {
             // Preserve unreadable files instead of replacing potentially unrelated player/module data.
-            throw new AgentException("STORAGE_UNAVAILABLE", new IOException("Unable to read agent database: " + this.file, error));
+            throw new AgentException(AgentFailure.STORAGE_UNAVAILABLE, new IOException("Unable to read agent database: " + this.file, error));
         }
     }
 
@@ -131,7 +132,7 @@ public final class AgentDatabase implements AutoCloseable {
             FileAccess.JSON.save(CODEC, this.file, next);
             this.tables = Map.copyOf(next);
         } catch (IOException | RuntimeException error) {
-            throw new AgentException("STORAGE_UNAVAILABLE", new IOException("Unable to save agent database: " + this.file, error));
+            throw new AgentException(AgentFailure.STORAGE_UNAVAILABLE, new IOException("Unable to save agent database: " + this.file, error));
         }
     }
 
@@ -148,7 +149,7 @@ public final class AgentDatabase implements AutoCloseable {
             Files.deleteIfExists(this.file);
             Files.deleteIfExists(this.file.resolveSibling(this.file.getFileName() + ".tmp"));
         } catch (IOException error) {
-            throw new AgentException("STORAGE_UNAVAILABLE", new IOException("Unable to delete agent database: " + this.file, error));
+            throw new AgentException(AgentFailure.STORAGE_UNAVAILABLE, new IOException("Unable to delete agent database: " + this.file, error));
         }
     }
 }

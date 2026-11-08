@@ -3,6 +3,7 @@ package com.iafenvoy.system.data.store;
 import com.iafenvoy.saturn.util.FileAccess;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.config.file.StorageConfig;
 import com.mojang.serialization.Codec;
@@ -87,7 +88,7 @@ public final class FileAgentStore implements AgentStore {
     private PlayerData loadBusiness(UUID player) throws IOException {
         Path path = this.root.resolve(player + ".json");
         if (!Files.exists(path)) return new PlayerData();
-        if (Files.size(path) > config().businessBytes()) throw new AgentException("STORAGE_FULL");
+        if (Files.size(path) > config().businessBytes()) throw new AgentException(AgentFailure.STORAGE_FULL);
         byte[] bytes = Files.readAllBytes(path);
         // The replay cache used to share this file; read that layout once so an upgrade keeps its history.
         PlayerData value = BUSINESS.decode(PlayerData.CODEC, bytes).orElseThrow(() -> new IOException("Unable to decode agent store: " + path.getFileName()));
@@ -196,7 +197,7 @@ public final class FileAgentStore implements AgentStore {
     private void saveBusiness(UUID player, PlayerData data) throws IOException {
         byte[] bytes = encode(BUSINESS, PlayerData.CODEC, data, player);
         // The journal bounds itself by encoded size, so the business file no longer grows without a limit.
-        if (bytes.length > config().businessBytes()) throw new AgentException("STORAGE_FULL");
+        if (bytes.length > config().businessBytes()) throw new AgentException(AgentFailure.STORAGE_FULL);
         this.replace(this.root.resolve(player + ".json"), this.root.resolve(player + ".tmp"), bytes);
     }
 
@@ -318,13 +319,13 @@ public final class FileAgentStore implements AgentStore {
 
     private static AgentException storageFailure(String operation, Path path, Exception error) {
         SystemMod.LOGGER.error("Unable to {} agent store {}", operation, path, error);
-        return new AgentException("STORAGE_UNAVAILABLE", error);
+        return new AgentException(AgentFailure.STORAGE_UNAVAILABLE, error);
     }
 
     private <T> T whileOpen(Supplier<T> work) {
         this.lifecycle.readLock().lock();
         try {
-            if (this.closed) throw new AgentException("STORAGE_UNAVAILABLE");
+            if (this.closed) throw new AgentException(AgentFailure.STORAGE_UNAVAILABLE);
             return work.get();
         } finally {
             this.lifecycle.readLock().unlock();

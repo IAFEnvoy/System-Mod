@@ -1,26 +1,32 @@
 package com.iafenvoy.system.agent.routing;
 
+import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.module.ModuleRegistry;
 import com.iafenvoy.system.agent.storage.ConversationMemory;
+import com.iafenvoy.system.config.file.AiAccessConfig;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.data.SelectionCardData;
+import com.iafenvoy.system.data.input.FreeChatInput;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.util.CodecIO;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * Selects an entry point only; registered modules own syntax, examples and workflow execution.
  */
 public final class HybridRouter implements AutoCloseable {
+    private static final Set<Failure> ALLOWED_FAILURES = Set.of(AgentFailure.MODEL_NOT_CONFIGURED, AgentFailure.MODEL_DISABLED, AgentFailure.AI_FORBIDDEN);
     private final ModuleRegistry modules;
     private final SemanticRouter semantic = new SemanticRouter();
 
@@ -36,7 +42,7 @@ public final class HybridRouter implements AutoCloseable {
     public RouteDecision route(ExecutionContext context, AgentAction input, String text) throws Exception {
         // Structured actions -> registered commands -> local read intent/cache -> one bounded LLM decision.
         if (input != null) return this.direct(context, input, RouteSource.STRUCTURED);
-        if (text.isBlank()) throw new AgentException("INVALID_INPUT");
+        if (text.isBlank()) throw new AgentException(AgentFailure.INVALID_INPUT);
         AgentAction command = this.modules.commands().parse(text, context::available);
         if (command != null) return this.direct(context, command, RouteSource.COMMAND);
         AgentAction explicit = this.modules.explicit(text, context::available);
@@ -51,6 +57,8 @@ public final class HybridRouter implements AutoCloseable {
         if (attempt.decision() != null && context.available(Identifier.tryParse(attempt.decision().moduleId()))
                 && this.modules.semanticSelectable(Identifier.tryParse(attempt.decision().moduleId())))
             return attempt.decision();
+        // Free conversation replaces the model intent pass; local commands and confident reads stay cheap.
+        if (context.freeChatAllowed()) return this.direct(context, new FreeChatInput(text), RouteSource.FREE_CHAT);
         List<ModelRoute.Candidate> hints = attempt.hints().stream()
                 .filter(candidate -> this.modules.modelSelectable(Identifier.tryParse(candidate.moduleId()))
                         && context.available(Identifier.tryParse(candidate.moduleId()))).toList();
@@ -63,14 +71,14 @@ public final class HybridRouter implements AutoCloseable {
                     route.call() == null ? this.modules.suggestions(text, hints, context::available) : List.of());
         } catch (AgentException error) {
             // Missing credentials or opt-out only disable model fallback, not registered local capabilities.
-            if (!error.code().equals("MODEL_NOT_CONFIGURED") && !error.code().equals("MODEL_DISABLED")) throw error;
+            if (!ALLOWED_FAILURES.contains(error.failure())) throw error;
             context.ensureMemoryCurrent();
             return new RouteDecision(null, RouteSource.LOCAL_FALLBACK, this.modules.suggestions(text, hints, context::available));
         }
     }
 
     private RouteDecision direct(ExecutionContext context, AgentAction input, RouteSource source) {
-        if (!context.available(input.id())) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        if (!context.available(input.id())) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         return new RouteDecision(input, source);
     }
 
@@ -83,6 +91,8 @@ public final class HybridRouter implements AutoCloseable {
 
     public AgentResult clarify(ExecutionContext context, RouteDecision decision) {
         String key = decision.source() == RouteSource.LOCAL_FALLBACK ? "system.result.clarify_local" : "system.result.clarify";
+        if (!AiAccessConfig.INSTANCE.get().permissions(context.player()).allowAi())
+            key = "system.result.clarify_admin_disabled";
         return new AgentResult(AgentResult.Status.SUCCEEDED, key, "", List.of(
                 CardUpdate.show(SelectionCardData.shortcuts(key, key, decision.choices().isEmpty() ? context.shortcuts() : decision.choices()))));
     }

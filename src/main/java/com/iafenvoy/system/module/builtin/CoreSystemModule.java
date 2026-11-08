@@ -9,6 +9,8 @@ import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.data.input.HelpInput;
 import com.iafenvoy.system.data.store.AgentJournalDataStorage;
 import com.iafenvoy.system.module.*;
+import com.iafenvoy.system.module.builtin.chat.AiManagementCommands;
+import com.iafenvoy.system.module.builtin.chat.FreeChatModule;
 import com.iafenvoy.system.module.builtin.knowledge.DatabaseQueryTool;
 import com.iafenvoy.system.module.builtin.knowledge.QuestionModule;
 import com.iafenvoy.system.module.builtin.knowledge.ReasoningModule;
@@ -50,7 +52,7 @@ public final class CoreSystemModule implements CoreModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.get(ContextTypes.DATABASES)).tool()), new ReasoningModule());
+        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.get(ContextTypes.DATABASES)).tool()), new ReasoningModule(), new FreeChatModule(context.engine().chat()));
     }
 
     @Override
@@ -64,6 +66,7 @@ public final class CoreSystemModule implements CoreModule {
     @Override
     public void serverCommands(LiteralArgumentBuilder<CommandSourceStack> root) {
         ModuleManagementCommands.register(root);
+        AiManagementCommands.register(root);
         root.executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.CURRENT))
                 .then(Commands.literal("simple").executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.SIMPLE)))
                 .then(Commands.literal("full").executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.FULL)))

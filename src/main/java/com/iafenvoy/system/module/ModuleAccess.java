@@ -4,6 +4,7 @@ import com.iafenvoy.saturn.data.context.condition.EntityConditionContext;
 import com.iafenvoy.saturn.util.formula.FormulaContext;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.data.module.ModuleDefinition;
@@ -137,7 +138,7 @@ final class ModuleAccess implements PlayerModule {
         return new Session() {
             @Override
             public void initialize(PlayerData data) {
-                system.set(data.systems.current().orElseThrow(() -> new AgentException("NOT_BOUND")));
+                system.set(data.systems.current().orElseThrow(() -> new AgentException(AgentFailure.NOT_BOUND)));
                 saved.set(ModuleData.get(data, CoreSystemModule.ACCESS).copy());
             }
 
@@ -145,7 +146,7 @@ final class ModuleAccess implements PlayerModule {
             public void ready() {
                 // A removed definition never falls back to a different system or grants its modules.
                 if (!ModuleAccess.this.server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM).containsKey(system.get()))
-                    throw new AgentException("SYSTEM_UNAVAILABLE");
+                    throw new AgentException(AgentFailure.SYSTEM_UNAVAILABLE);
                 ModuleAccess.this.players.put(player.getUUID(), player);
                 ModuleAccess.this.systems.put(player.getUUID(), system.get());
                 ModuleAccess.this.overrides.putIfAbsent(player.getUUID(), saved.get());
@@ -193,7 +194,7 @@ final class ModuleAccess implements PlayerModule {
             this.selection = ModuleAccess.this.overrides.getOrDefault(player.getUUID(), new ModuleAccessDataStorage()).selection();
             Identifier system = ModuleAccess.this.systems.get(player.getUUID());
             this.definitions = ModuleAccess.this.server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM).getOptional(system)
-                    .orElseThrow(() -> new AgentException("SYSTEM_UNAVAILABLE")).modules();
+                    .orElseThrow(() -> new AgentException(AgentFailure.SYSTEM_UNAVAILABLE)).modules();
         }
 
         private boolean test(Identifier module) {

@@ -2,6 +2,7 @@ package com.iafenvoy.system.util;
 
 import com.google.gson.JsonObject;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.Identifier;
@@ -25,7 +26,7 @@ public record ActionArguments(Map<String, String> values) {
 
     public String required(String... keys) {
         String value = this.text(keys);
-        if (value.isBlank()) throw new AgentException("INVALID_INPUT");
+        if (value.isBlank()) throw new AgentException(AgentFailure.INVALID_INPUT);
         return value;
     }
 
@@ -38,16 +39,16 @@ public record ActionArguments(Map<String, String> values) {
         try {
             String value = this.text(keys);
             int number = value.isBlank() ? fallback : Integer.parseInt(value);
-            if (number < 0) throw new AgentException("INVALID_INPUT");
+            if (number < 0) throw new AgentException(AgentFailure.INVALID_INPUT);
             return number;
         } catch (NumberFormatException error) {
-            throw new AgentException("INVALID_INPUT");
+            throw new AgentException(AgentFailure.INVALID_INPUT);
         }
     }
 
     public Identifier identifier(String... keys) {
         Identifier id = Identifier.tryParse(this.required(keys));
-        if (id == null) throw new AgentException("INVALID_INPUT");
+        if (id == null) throw new AgentException(AgentFailure.INVALID_INPUT);
         return id;
     }
 
@@ -55,7 +56,7 @@ public record ActionArguments(Map<String, String> values) {
         String value = this.text(keys);
         if (value.isEmpty() || value.equals("false")) return false;
         if (value.equals("true")) return true;
-        throw new AgentException("INVALID_INPUT");
+        throw new AgentException(AgentFailure.INVALID_INPUT);
     }
 
     /**

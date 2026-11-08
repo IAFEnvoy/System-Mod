@@ -2,6 +2,7 @@ package com.iafenvoy.system.agent.tool;
 
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -74,7 +75,7 @@ public final class ToolRegistry {
 
     public boolean writes(String id) {
         Tool<?, ?> tool = this.tools.get(id);
-        if (tool == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        if (tool == null) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         return tool.write();
     }
 
@@ -106,8 +107,8 @@ public final class ToolRegistry {
     @SuppressWarnings("unchecked")
     public <I, O> Tool<I, O> require(Type<I, O> type) {
         Tool<?, ?> tool = this.tools.get(type.id());
-        if (tool == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
-        if (tool.type() != type) throw new AgentException("NOT_AUTHORIZED");
+        if (tool == null) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+        if (tool.type() != type) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         return (Tool<I, O>) tool;
     }
 
@@ -125,8 +126,8 @@ public final class ToolRegistry {
             tool = this.tools.get(type.id());
             selectedOwner = null;
         }
-        if (tool == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
-        if (tool.type() != type) throw new AgentException("NOT_AUTHORIZED");
+        if (tool == null) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+        if (tool.type() != type) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         @SuppressWarnings("unchecked") Tool<I, O> typed = (Tool<I, O>) tool;
         return new ScopedTool<>(selectedOwner, typed);
     }

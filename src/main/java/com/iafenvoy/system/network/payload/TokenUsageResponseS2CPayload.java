@@ -1,5 +1,6 @@
 package com.iafenvoy.system.network.payload;
 
+import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -9,7 +10,6 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.NonNull;
 
-import java.util.Locale;
 import java.util.Optional;
 
 public record TokenUsageResponseS2CPayload(String id, boolean open, Optional<TokenUsageSnapshot> snapshot,
@@ -31,12 +31,12 @@ public record TokenUsageResponseS2CPayload(String id, boolean open, Optional<Tok
         return new TokenUsageResponseS2CPayload(id, open, Optional.of(snapshot), "");
     }
 
-    public static TokenUsageResponseS2CPayload failure(String id, String code) {
-        return failure(id, code, false);
+    public static TokenUsageResponseS2CPayload failure(String id, Failure failure) {
+        return failure(id, failure, false);
     }
 
-    public static TokenUsageResponseS2CPayload failure(String id, String code, boolean open) {
-        return new TokenUsageResponseS2CPayload(id, open, Optional.empty(), "system.error." + code.toLowerCase(Locale.ROOT));
+    public static TokenUsageResponseS2CPayload failure(String id, Failure failure, boolean open) {
+        return new TokenUsageResponseS2CPayload(id, open, Optional.empty(), failure.key());
     }
 
     @Override

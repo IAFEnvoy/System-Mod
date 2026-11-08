@@ -1,8 +1,10 @@
 package com.iafenvoy.system.agent.execution;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.chat.ChatSupport;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.model.ModelGateway;
 import com.iafenvoy.system.agent.module.AgentAction;
@@ -50,6 +52,7 @@ public final class AgentEngine implements AutoCloseable {
     private final Set<UUID> revoking = ConcurrentHashMap.newKeySet();
     private final List<AgentLifecycle> lifecycle = new CopyOnWriteArrayList<>();
     private final ConversationService conversations = new ConversationService(this);
+    private final ChatSupport chat = new ChatSupport();
     private BiPredicate<UUID, Identifier> moduleAccess = (_, _) -> true;
 
     public AgentEngine(AgentStore store, ModelClient model, Function<PlayerData, AgentJournal> journal) {
@@ -62,6 +65,10 @@ public final class AgentEngine implements AutoCloseable {
 
     public SystemPrompts prompts() {
         return this.prompts;
+    }
+
+    public ChatSupport chat() {
+        return this.chat;
     }
 
     public void prompts(SystemPrompts value) {
@@ -82,7 +89,7 @@ public final class AgentEngine implements AutoCloseable {
     public ExecutionContext background(UUID player, long incarnation, ExecutionPolicy policy) {
         AgentStore store = this.playerStore(player, incarnation);
         long epoch = store.read(player, data -> {
-            if (!data.bound()) throw new AgentException("NOT_BOUND");
+            if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
             return data.conversation.memoryEpoch;
         });
         return new ExecutionContext(this, player, UUID.randomUUID().toString(), null,
@@ -146,7 +153,7 @@ public final class AgentEngine implements AutoCloseable {
         return new AgentStore() {
             private void check(UUID requested) {
                 if (!player.equals(requested) || !AgentEngine.this.current(player, incarnation))
-                    throw new AgentException("CANCELLED");
+                    throw new AgentException(AgentFailure.CANCELLED);
             }
 
             @Override
@@ -196,7 +203,7 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     public <T> CompletionStage<T> invalidatePlayer(UUID player, Callable<T> cleanup) {
-        if (!this.maintenanceOwners.add(player)) return CompletableFuture.failedFuture(new AgentException("BUSY"));
+        if (!this.maintenanceOwners.add(player)) return CompletableFuture.failedFuture(new AgentException(AgentFailure.BUSY));
         // Invalidate old callbacks before deleting business data; token accounting has a separate owner.
         this.revoking.add(player);
         this.incarnations.merge(player, 1L, Long::sum);
@@ -295,8 +302,8 @@ public final class AgentEngine implements AutoCloseable {
         return this.conversations.forget(player);
     }
 
-    public CompletionStage<AgentResult> preferences(UUID player, boolean history, boolean external) {
-        return this.conversations.preferences(player, history, external);
+    public CompletionStage<AgentResult> preferences(UUID player, boolean history, boolean external, boolean freeChat) {
+        return this.conversations.preferences(player, history, external, freeChat);
     }
 
     public CompletionStage<History> history(UUID player) {
@@ -312,29 +319,29 @@ public final class AgentEngine implements AutoCloseable {
         try {
             ModuleRegistry.Call<?> call = this.modules.call(input, owner -> this.moduleAccess.test(context.player(), owner));
             AgentModule.Descriptor descriptor = call.module().descriptor();
-            if (!this.available(context.player(), descriptor.id())) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (!this.available(context.player(), descriptor.id())) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             if (context.isEvent() ? !descriptor.event() : !descriptor.interactive())
-                throw new AgentException("CAPABILITY_UNAVAILABLE");
+                throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             if (!context.isEvent() && context.routeSource().automatic() && !this.modules.modelSelectable(descriptor.id()))
-                throw new AgentException("CONFIRM_REQUIRED");
+                throw new AgentException(AgentFailure.CONFIRM_REQUIRED);
             if ((context.routeSource() == RouteSource.SEMANTIC || context.routeSource() == RouteSource.ROUTE_CACHE)
-                    && !this.modules.semanticSelectable(descriptor.id())) throw new AgentException("NOT_AUTHORIZED");
+                    && !this.modules.semanticSelectable(descriptor.id())) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
             context.select(call.owner(), descriptor, policy == null ? this.policy(call.module()) : policy);
             context.ensureMemoryCurrent();
             return call.execute(context);
         } catch (Exception error) {
-            AgentResult failure = AgentResult.error(errorCode(error));
+            AgentResult failure = AgentResult.error(AgentException.failure(error));
             return context.hasCompletedSteps() ? failure.partial() : failure;
         }
     }
 
     public <T> CompletionStage<T> maintenance(Callable<T> work) {
-        if (this.closed()) return CompletableFuture.failedFuture(new AgentException("CANCELLED"));
+        if (this.closed()) return CompletableFuture.failedFuture(new AgentException(AgentFailure.CANCELLED));
         return this.maintenance.submit(work);
     }
 
     public <T> CompletionStage<T> personalMaintenance(UUID player, Callable<T> work) {
-        if (!this.maintenanceOwners.add(player)) return CompletableFuture.failedFuture(new AgentException("BUSY"));
+        if (!this.maintenanceOwners.add(player)) return CompletableFuture.failedFuture(new AgentException(AgentFailure.BUSY));
         return this.maintenance(work).whenComplete((ignored, _) -> this.maintenanceOwners.remove(player));
     }
 
@@ -356,12 +363,6 @@ public final class AgentEngine implements AutoCloseable {
 
     public void disableRules(UUID player) {
         this.events.disableRules(player);
-    }
-
-    public static String errorCode(Throwable error) {
-        for (Throwable current = error; current != null; current = current.getCause())
-            if (current instanceof AgentException known) return known.code();
-        return "MODULE_FAILED";
     }
 
     @Override

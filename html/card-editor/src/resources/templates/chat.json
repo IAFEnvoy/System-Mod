@@ -1,0 +1,7 @@
+{
+  "show_title": false,
+  "hide_summary": true,
+  "body": [
+    { "type": "system:markdown", "text": "{{answer}}" }
+  ]
+}

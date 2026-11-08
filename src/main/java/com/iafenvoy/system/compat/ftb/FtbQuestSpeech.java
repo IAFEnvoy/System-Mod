@@ -2,6 +2,7 @@ package com.iafenvoy.system.compat.ftb;
 
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.data.card.SpeechContent;
@@ -53,13 +54,13 @@ final class FtbQuestSpeech implements QuestNarration.Source {
         return this.access.game.onPlayer(context, player -> {
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
             if (runtime == null || !runtime.moduleManager().hasType(player.getUUID(), QuestSystemModule.CODEC))
-                throw new AgentException("CAPABILITY_UNAVAILABLE");
-            if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+                throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+            if (!ServerQuestFile.exists()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             ServerQuestFile file = ServerQuestFile.getInstance();
-            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));
+            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException(AgentFailure.NOT_AUTHORIZED));
             Quest quest = file.getQuest(Long.parseUnsignedLong(questId, 16));
             if (quest == null || !FtbQuestReader.detailAvailable(team, quest))
-                throw new AgentException("QUEST_UNAVAILABLE");
+                throw new AgentException(AgentFailure.QUEST_UNAVAILABLE);
             return snapshot(player, team, quest);
 
         });

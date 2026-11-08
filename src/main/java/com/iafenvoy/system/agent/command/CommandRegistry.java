@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.command;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.command.AssistantCommandInput;
 import com.iafenvoy.system.command.AssistantCommandSource;
@@ -112,30 +113,30 @@ public final class CommandRegistry {
     public AgentAction parse(String text, Predicate<Identifier> available) {
         AssistantCommandInput command = AssistantCommandInput.of(text.stripTrailing());
         if (command.explicit() && command.start() == command.text().length()) {
-            if (!command.text().strip().equalsIgnoreCase("/system")) throw new AgentException("UNSUPPORTED");
-            if (this.root == null) throw new AgentException("UNSUPPORTED");
-            if (!available.test(this.root.id())) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (!command.text().strip().equalsIgnoreCase("/system")) throw new AgentException(AgentFailure.UNSUPPORTED);
+            if (this.root == null) throw new AgentException(AgentFailure.UNSUPPORTED);
+            if (!available.test(this.root.id())) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             return this.root;
         }
         Identifier owner = this.owners.get(command.name().toLowerCase(Locale.ROOT));
         if (owner == null) {
-            if (command.explicit()) throw new AgentException("UNSUPPORTED");
+            if (command.explicit()) throw new AgentException(AgentFailure.UNSUPPORTED);
             return null;
         }
-        if (!available.test(owner)) throw new AgentException("CAPABILITY_UNAVAILABLE");
+        if (!available.test(owner)) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         AssistantCommandSource source = new AssistantCommandSource(command.text(), available);
         try {
             this.dispatcher.execute(command.reader(this.dispatcher.getRoot()), source);
             AgentAction action = source.action();
-            if (action == null || !action.id().equals(owner)) throw new AgentException("INVALID_INPUT");
+            if (action == null || !action.id().equals(owner)) throw new AgentException(AgentFailure.INVALID_INPUT);
             // Native argument parsing still enters the same Codec and workflow checks as network actions.
             CodecIO.write(AgentAction.CODEC, action);
             return action;
         } catch (CommandSyntaxException error) {
             if (!command.explicit()) return null;
-            throw new AgentException("INVALID_INPUT");
+            throw new AgentException(AgentFailure.INVALID_INPUT);
         } catch (RuntimeException error) {
-            throw new AgentException("INVALID_INPUT");
+            throw new AgentException(AgentFailure.INVALID_INPUT);
         }
     }
 }

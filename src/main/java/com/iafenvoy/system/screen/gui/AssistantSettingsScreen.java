@@ -5,6 +5,7 @@ import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.config.file.ClientConfig;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.config.file.SpeechConfig;
+import com.iafenvoy.system.data.AiStatus;
 import com.iafenvoy.system.screen.AssistantThemes;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
@@ -15,6 +16,7 @@ import com.sighs.apricityui.element.ThemeSwitcher;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 
 import java.util.List;
 import java.util.Locale;
@@ -41,6 +43,7 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
     private boolean simpleMode = AssistantClient.simpleMode();
     private boolean saveHistory = AssistantClient.state().saveHistory();
     private boolean externalModel = AssistantClient.state().externalModel();
+    private boolean freeChat = AssistantClient.state().freeChat();
     private boolean savingPreferences;
     private boolean invalidVolume;
     private String generalStatus = "";
@@ -115,6 +118,10 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         });
         bindSwitch(document, "model_toggle", checked -> {
             this.externalModel = checked;
+            this.savePreferences();
+        });
+        bindSwitch(document, "free_chat_toggle", checked -> {
+            this.freeChat = checked;
             this.savePreferences();
         });
         bindSwitch(document, "speech_enabled", checked ->
@@ -240,9 +247,11 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         if (AssistantClient.state().busy() || this.minecraft.getConnection() == null) {
             this.saveHistory = AssistantClient.state().saveHistory();
             this.externalModel = AssistantClient.state().externalModel();
-        } else if (this.saveHistory != AssistantClient.state().saveHistory() || this.externalModel != AssistantClient.state().externalModel()) {
+            this.freeChat = AssistantClient.state().freeChat();
+        } else if (this.saveHistory != AssistantClient.state().saveHistory()
+                || this.externalModel != AssistantClient.state().externalModel() || this.freeChat != AssistantClient.state().freeChat()) {
             this.savingPreferences = true;
-            AssistantClient.send(new PreferencesRequest(this.saveHistory, this.externalModel));
+            AssistantClient.send(new PreferencesRequest(this.saveHistory, this.externalModel, this.freeChat));
         }
         this.renderControls();
     }
@@ -291,6 +300,7 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         switchChecked(document.getElementById("settings_cards_other_screens"), ClientConfig.INSTANCE.get().cardsOnOtherScreens());
         switchChecked(document.getElementById("history_toggle"), this.saveHistory);
         switchChecked(document.getElementById("model_toggle"), this.externalModel);
+        switchChecked(document.getElementById("free_chat_toggle"), this.freeChat);
         switchChecked(document.getElementById("speech_enabled"), this.speechForm.enabled());
         switchChecked(document.getElementById("speech_notification_sound"), this.speechForm.notificationSoundEnabled());
         switchChecked(document.getElementById("speech_cache"), this.speechForm.cacheEnabled());
@@ -317,24 +327,31 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         if (this.savingPreferences && !AssistantClient.state().busy()) {
             this.savingPreferences = false;
             boolean saved = this.saveHistory == AssistantClient.state().saveHistory()
-                    && this.externalModel == AssistantClient.state().externalModel();
+                    && this.externalModel == AssistantClient.state().externalModel() && this.freeChat == AssistantClient.state().freeChat();
             this.generalStatus = tr(saved ? "system.ui.settings_saved" : "system.ui.settings_config_error");
             this.saveHistory = AssistantClient.state().saveHistory();
             this.externalModel = AssistantClient.state().externalModel();
+            this.freeChat = AssistantClient.state().freeChat();
             this.renderControls();
         }
         // A late server state may arrive after settings opens; pending edits wait for acknowledgement.
         if (!this.savingPreferences
-                && (this.saveHistory != AssistantClient.state().saveHistory() || this.externalModel != AssistantClient.state().externalModel())) {
+                && (this.saveHistory != AssistantClient.state().saveHistory()
+                || this.externalModel != AssistantClient.state().externalModel() || this.freeChat != AssistantClient.state().freeChat())) {
             this.saveHistory = AssistantClient.state().saveHistory();
             this.externalModel = AssistantClient.state().externalModel();
+            this.freeChat = AssistantClient.state().freeChat();
             this.renderControls();
         }
         boolean busy = AssistantClient.state().busy() || this.minecraft.getConnection() == null;
-        for (String id : List.of("history_toggle", "model_toggle")) {
+        for (String id : List.of("history_toggle", "model_toggle", "free_chat_toggle")) {
             Element control = document.getElementById(id);
             if (control.isDisabled() != busy) control.setDisabled(busy);
         }
+        AiStatus permissions = AssistantClient.state().serverState().ai();
+        text(document.getElementById("ai_permissions"), Component.translatable("system.ui.ai_permissions",
+                tr(permissions.allowAi() ? "system.ui.yes" : "system.ui.no"),
+                tr(permissions.allowFreeChat() ? "system.ui.yes" : "system.ui.no"), permissions.modelCallsPerDay()).getString());
         String status = switch (this.tab) {
             case GENERAL -> this.savingPreferences ? tr("system.ui.working")
                     : this.generalStatus.isBlank() ? tr("system.ui.settings_auto_save") : this.generalStatus;

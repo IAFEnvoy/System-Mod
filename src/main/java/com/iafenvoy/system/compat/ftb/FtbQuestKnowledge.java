@@ -2,6 +2,7 @@ package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.data.database.AgentDatabase;
@@ -65,7 +66,7 @@ final class FtbQuestKnowledge {
         return this.engine.maintenance(() -> {
             context.check();
             synchronized (this.updates) {
-                if (!this.current(snapshot)) throw new AgentException("CANCELLED");
+                if (!this.current(snapshot)) throw new AgentException(AgentFailure.CANCELLED);
                 if (this.indexed.get(snapshot.language()) != snapshot) {
                     this.database.put(AgentDatabase.documents(SOURCE), snapshot.language(), snapshot.documents());
                     this.indexed.put(snapshot.language(), snapshot);
@@ -82,9 +83,9 @@ final class FtbQuestKnowledge {
     }
 
     CompletionStage<Integer> reload() {
-        if (!this.reloading.compareAndSet(false, true)) throw new AgentException("BUSY");
+        if (!this.reloading.compareAndSet(false, true)) throw new AgentException(AgentFailure.BUSY);
         try {
-            if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (!ServerQuestFile.exists()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             ServerQuestFile file = ServerQuestFile.getInstance();
             Set<String> languages = new TreeSet<>(this.snapshots.keySet());
             languages.add(file.getFallbackLocale());
@@ -94,7 +95,7 @@ final class FtbQuestKnowledge {
             return this.engine.maintenance(() -> {
                 synchronized (this.updates) {
                     if (snapshots.stream().anyMatch(snapshot -> !this.current(snapshot)))
-                        throw new AgentException("CANCELLED");
+                        throw new AgentException(AgentFailure.CANCELLED);
                     Map<String, List<KnowledgeIndex.Document>> documents = new LinkedHashMap<>();
                     snapshots.forEach(snapshot -> documents.put(snapshot.language(), snapshot.documents()));
                     this.database.replace(AgentDatabase.documents(SOURCE), documents);
@@ -102,7 +103,7 @@ final class FtbQuestKnowledge {
                     this.indexed.clear();
                     snapshots.forEach(snapshot -> this.indexed.put(snapshot.language(), snapshot));
                     if (snapshots.stream().anyMatch(snapshot -> !this.current(snapshot)))
-                        throw new AgentException("CANCELLED");
+                        throw new AgentException(AgentFailure.CANCELLED);
                     return (int) snapshots.stream().flatMap(snapshot -> snapshot.documents().stream()).map(KnowledgeIndex.Document::id).distinct().count();
                 }
             }).whenComplete((unused1, unused2) -> this.reloading.set(false));

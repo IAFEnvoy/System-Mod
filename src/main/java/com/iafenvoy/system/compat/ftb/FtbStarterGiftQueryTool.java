@@ -1,6 +1,7 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.EmptyInput;
@@ -28,9 +29,9 @@ final class FtbStarterGiftQueryTool implements ToolRegistry.Handler<EmptyInput, 
     @Override
     public CompletionStage<StarterGiftOutput> execute(ExecutionContext context, EmptyInput input) {
         return this.access.game.onPlayer(context, player -> {
-            if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (!ServerQuestFile.exists()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             ServerQuestFile file = ServerQuestFile.getInstance();
-            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));
+            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException(AgentFailure.NOT_AUTHORIZED));
             return this.access.gifts.preview(player, file, team);
         });
     }

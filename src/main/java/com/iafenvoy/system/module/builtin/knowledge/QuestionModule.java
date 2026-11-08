@@ -1,6 +1,8 @@
 package com.iafenvoy.system.module.builtin.knowledge;
 
+import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.command.AgentCommand;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
@@ -30,7 +32,8 @@ import java.util.regex.Pattern;
  */
 public final class QuestionModule extends AbstractAgentModule<QuestionInput> {
     private static final Pattern EXPLICIT = Pattern.compile("^(?:(?:请|麻烦)?(?:帮我|替我)?(?:在)?(?:网上|联网|上网)(?:搜索|搜一下|查一下|查找|查询|搜|查)|(?:please\\s+)?(?:search\\s+(?:the\\s+)?(?:web|internet|online)|look\\s+up\\s+online))\\s*[：:]?\\s*(.+)$", Pattern.CASE_INSENSITIVE);
-    private static final Set<String> SUMMARIZE_FAILURES = Set.of("MODEL_NOT_CONFIGURED", "MODEL_INVALID", "MODEL_TIMEOUT", "MODEL_UNAVAILABLE", "RATE_LIMITED", "BUSY", "BUDGET_EXCEEDED");
+    private static final Set<Failure> SUMMARIZE_FAILURES = Set.of(AgentFailure.MODEL_NOT_CONFIGURED, AgentFailure.MODEL_INVALID,
+            AgentFailure.MODEL_TIMEOUT, AgentFailure.MODEL_UNAVAILABLE, AgentFailure.RATE_LIMITED, AgentFailure.BUSY, AgentFailure.BUDGET_EXCEEDED);
 
     public QuestionModule(ToolRegistry.Tool<DatabaseQueryInput, DatabaseQueryOutput> query) {
         super(QuestionInput.CODEC, "Answer knowledge, mechanics, recipe, how-to and modpack guidance questions. Always query authorized local databases first. "
@@ -76,14 +79,14 @@ public final class QuestionModule extends AbstractAgentModule<QuestionInput> {
         if (context.externalServicesAllowed() && context.remainingModelCalls() > 0) try {
             answer = context.model(context.prompt(SystemPrompts.KNOWLEDGE_ANSWER), Evidence.CODEC,
                     new Evidence(question, local.sources()), Answer.CODEC.codec()).text();
-            if (answer.isBlank()) throw new AgentException("MODEL_INVALID");
+            if (answer.isBlank()) throw new AgentException(AgentFailure.MODEL_INVALID);
         } catch (AgentException error) {
             // A local hit never turns into paid search just because summarization failed.
-            if (!SUMMARIZE_FAILURES.contains(error.code())) throw error;
+            if (!SUMMARIZE_FAILURES.contains(error.failure())) throw error;
         }
         DatabaseQueryOutput current = context.tool(BuiltinTools.DATABASE_QUERY, "knowledge/revalidate", query);
         context.ensureMemoryCurrent();
-        if (!current.equals(local)) throw new AgentException("CANCELLED");
+        if (!current.equals(local)) throw new AgentException(AgentFailure.CANCELLED);
         return AgentResult.data("system.result.knowledge", new KnowledgeAnswerOutput(answer, local.sources()));
     }
 

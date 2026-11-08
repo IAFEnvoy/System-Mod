@@ -3,6 +3,7 @@ package com.iafenvoy.system.module.builtin.advancement;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.execution.ExecutionPolicy;
@@ -39,7 +40,7 @@ public final class AdvancementFollowupModule extends AbstractAgentModule<Advance
             Identifier rewardId = input.rewardId().get();
             PersistHolder<Reward> reward = this.catalogs.all().rewards().stream().filter(value -> HolderHelper.id(value).equals(rewardId))
                     .map(value -> value.value().reward(rewardId)).findFirst()
-                    .orElseThrow(() -> new AgentException("INVALID_INPUT"));
+                    .orElseThrow(() -> new AgentException(AgentFailure.INVALID_INPUT));
             context.tool(BuiltinTools.REWARD_CREDIT, "milestone", new RewardCreditInput("event:" + context.taskId(), reward));
         }
         return AgentResult.ok("system.result.milestone");

@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.model;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.config.file.ModelConfig;
 import com.iafenvoy.system.util.CodecIO;
 import com.iafenvoy.system.util.HttpTransport;
@@ -32,7 +33,7 @@ public final class OpenAiCompatibleClient implements ModelClient {
     private static String apiKey(ModelConfig config) {
         String key = config.apiKeyEnvironment().isBlank() ? null : System.getenv(config.apiKeyEnvironment());
         if ((key == null || key.isBlank()) && config.apiKeyRequired())
-            throw new AgentException("MODEL_NOT_CONFIGURED");
+            throw new AgentException(AgentFailure.MODEL_NOT_CONFIGURED);
         return key;
     }
 
@@ -59,9 +60,9 @@ public final class OpenAiCompatibleClient implements ModelClient {
         try {
             response = this.http.postJson(endpoint, body, headers, timeout, 65536);
         } catch (TimeoutException | HttpTimeoutException e) {
-            throw new AgentException("MODEL_TIMEOUT");
+            throw new AgentException(AgentFailure.MODEL_TIMEOUT, e);
         } catch (IOException e) {
-            throw new AgentException("MODEL_UNAVAILABLE");
+            throw new AgentException(AgentFailure.MODEL_UNAVAILABLE, e);
         }
         String json = new String(response.body(), StandardCharsets.UTF_8);
         Usage usage;
@@ -72,15 +73,15 @@ public final class OpenAiCompatibleClient implements ModelClient {
         }
         // Billing survives invalid content, finish_reason and error responses.
         observer.accept(usage);
-        if (response.statusCode() != 200) throw new AgentException("MODEL_UNAVAILABLE");
+        if (response.statusCode() != 200) throw new AgentException(AgentFailure.MODEL_UNAVAILABLE);
         try {
             ChatCompletion.Response result = CodecIO.parse(ChatCompletion.Response.CODEC, json);
             ChatCompletion.Choice choice = result.choices().getFirst();
             if (!"stop".equals(choice.finishReason()) || choice.message().content().length() > 16384)
-                throw new AgentException("MODEL_INVALID");
+                throw new AgentException(AgentFailure.MODEL_INVALID);
             return new Reply(choice.message().content(), (int) usage.totalTokens());
         } catch (RuntimeException invalidContent) {
-            throw new AgentException("MODEL_INVALID");
+            throw new AgentException(AgentFailure.MODEL_INVALID, invalidContent);
         }
     }
 

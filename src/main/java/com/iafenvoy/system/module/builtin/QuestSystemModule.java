@@ -1,7 +1,8 @@
 package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.module.AgentModule;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.ModuleContext;
@@ -65,7 +66,7 @@ public final class QuestSystemModule implements SharedModule {
             return 1;
         } catch (ReflectiveOperationException | LinkageError error) {
             Throwable cause = error instanceof InvocationTargetException invocation ? invocation.getCause() : error;
-            if (AgentEngine.errorCode(cause).equals("BUSY"))
+            if (AgentException.failure(cause).equals(AgentFailure.BUSY))
                 source.sendFailure(Component.translatable("system.error.busy"));
             else {
                 SystemMod.LOGGER.warn("Unable to start FTB knowledge reload", cause);

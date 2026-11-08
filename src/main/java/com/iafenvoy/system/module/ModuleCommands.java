@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module;
 
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.request.ChatRequest;
 import com.iafenvoy.system.assistant.AssistantServer;
@@ -21,7 +22,7 @@ public final class ModuleCommands {
 
     public static AssistantServer runtime(ServerPlayer player) {
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
-        if (runtime == null) ServerNetworkHandler.notice(player, AgentResult.error("CAPABILITY_UNAVAILABLE"));
+        if (runtime == null) ServerNetworkHandler.notice(player, AgentResult.error(AgentFailure.CAPABILITY_UNAVAILABLE));
         return runtime;
     }
 
@@ -34,7 +35,7 @@ public final class ModuleCommands {
     public static int ask(ServerPlayer player, String text) {
         AssistantServer runtime = runtime(player);
         if (runtime == null) return 0;
-        runtime.requests().request(player, UUID.randomUUID().toString(), new ChatRequest(text));
+        runtime.requests().request(player, UUID.randomUUID().toString(), new ChatRequest(text, false));
         return 1;
     }
 

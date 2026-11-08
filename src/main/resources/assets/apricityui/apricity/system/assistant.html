@@ -2,7 +2,7 @@
 <html><head><link rel="stylesheet" href="assistant.css"></head>
 <body class="full">
 <div id="workspace">
-    <div id="topbar"><div id="identity"><span id="brand"></span></div><span id="status"></span><div id="topbar_navigation"></div><button id="close"><translation>system.ui.close</translation></button></div>
+    <div id="topbar"><div id="identity"><span id="brand"></span></div><span id="status"></span><button id="force_free_chat" class="chat_mode_toggle" type="button" role="switch" aria-checked="false"></button><div id="topbar_navigation"></div><button id="close"><translation>system.ui.close</translation></button></div>
     <div id="layout">
         <div id="sidebar">
             <div id="sidebar_navigation"></div>
@@ -23,6 +23,7 @@
             <div id="page_shop" class="toolbar shop"><div class="shop_controls"><input id="shop_query" type="text" maxlength="128"><button id="shop_search"><translation>system.ui.shop_search</translation></button><button id="shop_refresh"><translation>system.ui.shop_refresh</translation></button></div><p id="shop_text"><translation>system.ui.shop_text</translation></p></div>
             <div id="page_lottery" class="toolbar shop"><div class="shop_controls"><input id="lottery_query" type="text" maxlength="128"><button id="lottery_search"><translation>system.ui.lottery_search</translation></button><button id="lottery_refresh"><translation>system.ui.lottery_refresh</translation></button></div><p id="lottery_text"><translation>system.ui.lottery_text</translation></p></div>
             <div id="asr_status"></div>
+            <div id="ai_access_hint" class="card_context"></div>
             <div id="composer"><div id="message_box"><input id="message" type="text" maxlength="2000"></div><button id="asr_toggle"></button><button id="asr_cancel"><translation>system.asr.ui.cancel</translation></button><button id="send" class="primary"></button></div>
         </div>
     </div>

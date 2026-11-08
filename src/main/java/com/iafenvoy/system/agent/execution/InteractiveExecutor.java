@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.execution;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.module.AgentModule;
@@ -35,26 +36,26 @@ final class InteractiveExecutor implements AutoCloseable {
     }
 
     public CompletionStage<AgentResult> submit(UUID player, String requestId, AgentAction input, String text) {
-        if (this.engine.closed()) return CompletableFuture.completedFuture(AgentResult.error("CANCELLED"));
+        if (this.engine.closed()) return CompletableFuture.completedFuture(AgentResult.error(AgentFailure.CANCELLED));
         try {
             UUID.fromString(requestId);
             if (text == null || text.codePointCount(0, text.length()) > 2000 || text.getBytes(StandardCharsets.UTF_8).length > 8192
                     || input != null && CodecIO.write(AgentAction.CODEC, input).length() > 4096)
-                throw new AgentException("INVALID_INPUT");
+                throw new AgentException(AgentFailure.INVALID_INPUT);
         } catch (RuntimeException error) {
-            return CompletableFuture.completedFuture(AgentResult.error("INVALID_INPUT"));
+            return CompletableFuture.completedFuture(AgentResult.error(AgentFailure.INVALID_INPUT));
         }
         if (this.owners.putIfAbsent(player, requestId) != null)
-            return CompletableFuture.completedFuture(AgentResult.error("BUSY"));
+            return CompletableFuture.completedFuture(AgentResult.error(AgentFailure.BUSY));
         long received = System.currentTimeMillis();
         long generation = this.generations.getOrDefault(player, 0L);
         long incarnation = this.engine.incarnation(player);
         AgentStore playerStore = this.engine.playerStore(player, incarnation);
         return this.interactive.submit(() -> {
-                    if (System.currentTimeMillis() - received > 500) throw new AgentException("BUSY");
+                    if (System.currentTimeMillis() - received > 500) throw new AgentException(AgentFailure.BUSY);
                     this.checkGeneration(player, generation);
                     return this.runInteractive(player, requestId, input, text, received, playerStore, incarnation, generation);
-                }).handle((result, error) -> error == null ? result : AgentResult.error(AgentEngine.errorCode(error)))
+                }).handle((result, error) -> error == null ? result : AgentResult.error(AgentException.failure(error)))
                 .whenComplete((result, error) -> {
                     this.active.remove(player);
                     this.owners.remove(player, requestId);
@@ -62,7 +63,7 @@ final class InteractiveExecutor implements AutoCloseable {
     }
 
     private void checkGeneration(UUID player, long generation) {
-        if (generation != this.generations.getOrDefault(player, 0L)) throw new AgentException("CANCELLED");
+        if (generation != this.generations.getOrDefault(player, 0L)) throw new AgentException(AgentFailure.CANCELLED);
     }
 
     private AgentResult runInteractive(UUID player, String id, AgentAction input, String text, long received, AgentStore store, long incarnation, long generation) throws Exception {
@@ -72,9 +73,9 @@ final class InteractiveExecutor implements AutoCloseable {
                 .digest((moduleId + "\n" + (input == null ? "{}" : CodecIO.write(AgentAction.CODEC, input)) + "\n" + text).getBytes(StandardCharsets.UTF_8)));
         AgentResult previous = store.read(player, data -> {
             this.checkGeneration(player, generation);
-            if (!data.bound()) throw new AgentException("NOT_BOUND");
+            if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
             if (data.conversation.requestInputs.containsKey(id) && !fingerprint.equals(data.conversation.requestInputs.get(id)))
-                throw new AgentException("INVALID_INPUT");
+                throw new AgentException(AgentFailure.INVALID_INPUT);
             return data.conversation.requests.get(id);
         });
         if (previous != null) return previous;
@@ -104,7 +105,7 @@ final class InteractiveExecutor implements AutoCloseable {
                 if (result.isSuccess()) this.engine.router().remember(context, decision, text);
             }
         } catch (Exception error) {
-            result = AgentResult.error(AgentEngine.errorCode(error));
+            result = AgentResult.error(AgentException.failure(error));
         }
         AgentResult completed = result;
         store.update(player, data -> {

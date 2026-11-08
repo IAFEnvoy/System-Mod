@@ -14,6 +14,7 @@ import com.iafenvoy.saturn.util.matcher.ItemMatcher;
 import com.iafenvoy.saturn.util.matcher.builtin.ItemEntry;
 import com.iafenvoy.saturn.util.matcher.builtin.TagEntry;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.output.ItemPreviewOutput;
 import com.iafenvoy.system.data.store.PurchaseType;
@@ -148,9 +149,9 @@ public final class CommerceCosts {
         }
 
         public void pay(ServerPlayer player, AtomicBoolean touched) {
-            if (player != this.payer) throw new AgentException("STALE_QUOTE");
-            if (this.isFailure()) throw new AgentException("INVALID_COST");
-            if (this.bill.test().isPresent()) throw new AgentException("INSUFFICIENT_COST");
+            if (player != this.payer) throw new AgentException(AgentFailure.STALE_QUOTE);
+            if (this.isFailure()) throw new AgentException(AgentFailure.INVALID_COST);
+            if (this.bill.test().isPresent()) throw new AgentException(AgentFailure.INSUFFICIENT_COST);
             Result<List<Debit>> result;
             try {
                 result = this.bill.pay();
@@ -158,9 +159,9 @@ public final class CommerceCosts {
                 touched.set(this.started.get());
             }
             // Saturn continues real fees after an error; never unlock goods for a partial or uncertain collection.
-            if (this.uncertain.get()) throw new AgentException("EFFECT_UNKNOWN");
+            if (this.uncertain.get()) throw new AgentException(AgentFailure.EFFECT_UNKNOWN);
             if (result instanceof Result.FailureResult<?>) {
-                throw new AgentException("INSUFFICIENT_COST");
+                throw new AgentException(AgentFailure.INSUFFICIENT_COST);
             }
         }
     }

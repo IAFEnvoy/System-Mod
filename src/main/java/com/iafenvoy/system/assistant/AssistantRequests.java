@@ -1,13 +1,17 @@
 package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.request.*;
 import com.iafenvoy.system.agent.response.*;
 import com.iafenvoy.system.agent.storage.AgentStore;
+import com.iafenvoy.system.config.file.AiAccessConfig;
+import com.iafenvoy.system.data.AiStatus;
 import com.iafenvoy.system.data.ClientState;
+import com.iafenvoy.system.data.input.FreeChatInput;
 import com.iafenvoy.system.data.input.StarterGiftsInput;
 import com.iafenvoy.system.data.output.StarterGiftOutput;
 import com.iafenvoy.system.event.CardButtonEvent;
@@ -35,7 +39,7 @@ public final class AssistantRequests {
     private final AssistantPlayers players;
     private final ModuleManager modules;
     private final TypeDispatch<RequestContext, CompletionStage<AgentResponse>> requestHandlers = new TypeDispatch<>((_, _) -> {
-        throw new AgentException("UNSUPPORTED");
+        throw new AgentException(AgentFailure.UNSUPPORTED);
     });
     private final Map<ControlRequest, Function<RequestContext, CompletionStage<AgentResponse>>> controlHandlers = new EnumMap<>(ControlRequest.class);
 
@@ -53,7 +57,7 @@ public final class AssistantRequests {
             if (this.server.getPlayerList().getPlayer(player.getUUID()) != player || !connection.equals(ServerNetworkHandler.connectionId(player)))
                 return;
             if (error == null) ServerNetworkHandler.send(player, new OpenResponse(view));
-            else ServerNetworkHandler.notice(player, AgentResult.error(AgentEngine.errorCode(error)));
+            else ServerNetworkHandler.notice(player, AgentResult.error(AgentException.failure(error)));
         }));
     }
 
@@ -66,7 +70,7 @@ public final class AssistantRequests {
             ServerPlayer online = this.server.getPlayerList().getPlayer(uuid);
             if (online != null && connection.equals(ServerNetworkHandler.connectionId(online))) {
                 if (error == null) ServerNetworkHandler.send(online, result);
-                else ServerNetworkHandler.reply(online, requestId, AgentResult.error(AgentEngine.errorCode(error)));
+                else ServerNetworkHandler.reply(online, requestId, AgentResult.error(AgentException.failure(error)));
             }
         }));
     }
@@ -83,7 +87,7 @@ public final class AssistantRequests {
 
     private CompletionStage<AgentResponse> limited(RequestContext context, Supplier<CompletionStage<AgentResponse>> work) {
         if (!this.players.admitRequest(context.uuid()))
-            return CompletableFuture.completedFuture(new ReplyResponse(context.requestId(), AgentResult.error("RATE_LIMITED")));
+            return CompletableFuture.completedFuture(new ReplyResponse(context.requestId(), AgentResult.error(AgentFailure.RATE_LIMITED)));
         return work.get();
     }
 
@@ -96,7 +100,7 @@ public final class AssistantRequests {
     }
 
     private void registerRequests() {
-        this.registerRequest(ChatRequest.class, (context, chat) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), null, chat.text())));
+        this.registerRequest(ChatRequest.class, (context, chat) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), chat.forceFreeChat() ? new FreeChatInput(chat.text()) : null, chat.text())));
         this.registerRequest(InvokeRequest.class, (context, invoke) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), invoke.call(), invoke.text())));
         this.registerRequest(CardActionRequest.class, (context, action) -> {
             ServerCards.Ticket ticket = ServerCards.begin(context.uuid(), action.source());
@@ -111,7 +115,7 @@ public final class AssistantRequests {
                     })));
         });
         this.registerRequest(PreferencesRequest.class, (context, preferences) ->
-                this.engine.preferences(context.uuid(), preferences.history(), preferences.external()).thenCompose(result ->
+                this.engine.preferences(context.uuid(), preferences.history(), preferences.external(), preferences.freeChat()).thenCompose(result ->
                         result.isSuccess() ? this.state(context.uuid()).thenApply(state -> new StateResponse(context.requestId(), state))
                                 : CompletableFuture.completedFuture(new ReplyResponse(context.requestId(), result))));
         this.requestHandlers.register(ControlRequest.class, (context, control) -> this.controlHandlers.get(control).apply(context));
@@ -129,7 +133,7 @@ public final class AssistantRequests {
         this.server.execute(() -> {
             try {
                 if (this.server.getPlayerList().getPlayer(context.uuid()) != context.player())
-                    throw new AgentException("CANCELLED");
+                    throw new AgentException(AgentFailure.CANCELLED);
                 CardButtonEvent event = new CardButtonEvent(context.player(), request.source(), request.value());
                 NeoForge.EVENT_BUS.post(event);
                 CompletionStage<AgentResult> work = event.result();
@@ -138,7 +142,7 @@ public final class AssistantRequests {
                     try {
                         decoded = CardEventValue.parse(request.value());
                     } catch (IllegalArgumentException error) {
-                        throw new AgentException("INVALID_INPUT", error);
+                        throw new AgentException(AgentFailure.INVALID_INPUT, error);
                     }
                     AgentAction call = this.engine.modules().button(decoded.action(), decoded.arguments());
                     work = this.engine.submit(context.uuid(), context.requestId(), call, "");
@@ -157,11 +161,11 @@ public final class AssistantRequests {
     private CompletionStage<ClientState> state(UUID player) {
         AgentStore store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
-            if (!data.bound()) throw new AgentException("NOT_BOUND");
+            if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
             return new ClientState(data.systems.current(), data.saveHistory, data.externalModel,
                     this.modules.enabled(player),
                     this.engine.modules().commands().suggestions(id -> this.engine.available(player, id)),
-                    this.engine.requestTimeoutMillis(player));
+                    this.engine.requestTimeoutMillis(player), AiStatus.of(data.freeChat, AiAccessConfig.INSTANCE.get().permissions(player)));
         }));
     }
 

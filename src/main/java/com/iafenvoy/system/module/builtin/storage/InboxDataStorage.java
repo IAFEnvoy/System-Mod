@@ -2,6 +2,7 @@ package com.iafenvoy.system.module.builtin.storage;
 
 import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.data.store.Delivery;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -72,7 +73,7 @@ public final class InboxDataStorage extends DataStorage {
     }
 
     public void assertDeliveryCount() {
-        if (this.deliveries.size() >= 4096) throw new AgentException("STORAGE_FULL");
+        if (this.deliveries.size() >= 4096) throw new AgentException(AgentFailure.STORAGE_FULL);
     }
 
     public void assertDeliveryCount(String id) {

@@ -1,6 +1,7 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.QuestDetailInput;
@@ -32,16 +33,16 @@ final class FtbQuestDetailTool implements ToolRegistry.Handler<QuestDetailInput,
 
     @Override
     public CompletionStage<QuestOutput> execute(ExecutionContext context, QuestDetailInput input) {
-        if (!input.query().isBlank()) throw new AgentException("INVALID_INPUT");
+        if (!input.query().isBlank()) throw new AgentException(AgentFailure.INVALID_INPUT);
         String questId = input.questId();
         int index = input.index().orElse(0);
         return this.access.game.onPlayer(context, player -> {
-            if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (!ServerQuestFile.exists()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             ServerQuestFile file = ServerQuestFile.getInstance();
-            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("CAPABILITY_UNAVAILABLE"));
+            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE));
             Quest selected = selected(context, file, team, questId, index, this.access.lists);
             if (selected == null || !FtbQuestReader.detailAvailable(team, selected))
-                throw new AgentException("QUEST_UNAVAILABLE");
+                throw new AgentException(AgentFailure.QUEST_UNAVAILABLE);
             return detail(player, team, selected, input, this.access.references);
         });
     }

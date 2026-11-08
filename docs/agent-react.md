@@ -49,6 +49,8 @@
 
 需要自定义循环时，用 `context.tools(TYPE_A, TYPE_B)` 获取该工作流已声明工具的子集，在 `ReActTool` handler 内通过 `tools.call(type, input)` 调用，再构造 `ReActContext` 并运行 `ReActLoop.run`。工作流自行提供最终答案 MapCodec、完成 / 降级函数与业务授权 guard；循环不包含数据库、搜索、商城或 FTB 的具体逻辑。
 
+可恢复原因集合使用 `Set<? extends Failure>`，降级回调接收 Saturn `Failure`；内置原因来自 `AgentFailure`。循环直接使用 `AgentException.failure()`，不再按字符串错误码判断，权限与取消失败仍优先终止。
+
 ## 搜索迁移与降级
 
 `WebResearch` 只保留 Search / Fetch 参数、摘要裁剪、已观察 URL 限制、引用复核和卡片构建。旧的 SearchStep 分派和私有 while 循环已删除，SearchObservation 保留为搜索证据。调用格式统一为：

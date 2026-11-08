@@ -8,10 +8,10 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -33,11 +33,11 @@ public record StarterGiftOutput(List<Gift> gifts, List<ItemPreviewOutput> items,
         icons = List.copyOf(icons);
     }
 
-    public record Gift(String questId, Optional<String> claimRef, Optional<String> error) {
+    public record Gift(String questId, Optional<String> claimRef, Optional<Component> error) {
         public static final Codec<Gift> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("questId").forGetter(Gift::questId),
                 Codec.STRING.optionalFieldOf("claimRef").forGetter(Gift::claimRef),
-                Codec.STRING.optionalFieldOf("error").forGetter(Gift::error)
+                ComponentSerialization.CODEC.optionalFieldOf("error").forGetter(Gift::error)
         ).apply(i, Gift::new));
     }
 
@@ -46,7 +46,7 @@ public record StarterGiftOutput(List<Gift> gifts, List<ItemPreviewOutput> items,
         CardBuilder builder = CardBuilder.template(TEMPLATE).put("result_items", this.items).icons("reward_icons", this.icons)
                 .enable("has_rewards", !this.items.isEmpty() || !this.icons.isEmpty());
         builder.list("gifts", this.gifts(), (prefix, gift) -> builder
-                .put(prefix + "error", gift.error().map(error -> Component.translatable("system.error." + error.toLowerCase(Locale.ROOT))).orElse(Component.empty())));
+                .put(prefix + "error", gift.error().orElse(Component.empty())));
         List<String> refs = this.gifts.stream().flatMap(gift -> gift.claimRef().stream()).toList();
         if (!refs.isEmpty())
             builder.serverButton("claim_gifts", "system.action.claim_starter_gift", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "starter_gift"), Map.of("references", String.join(",", refs)));

@@ -15,6 +15,7 @@ public final class SystemActionTypes {
     public static final DeferredRegister<MapCodec<? extends AgentAction>> REGISTRY = DeferredRegister.create(SystemResourceKeys.ACTION_TYPE, SystemMod.MOD_ID);
 
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<HelpInput>> HELP_ACTION = REGISTRY.register("help", () -> HelpInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<FreeChatInput>> FREE_CHAT_ACTION = REGISTRY.register("free_chat", () -> FreeChatInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<QuestionInput>> QUESTION_ACTION = REGISTRY.register("question", () -> QuestionInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ReasoningInput>> REASONING_ACTION = REGISTRY.register("reasoning", () -> ReasoningInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<PlayerQueryInput>> PLAYER_ACTION = REGISTRY.register("player_query", () -> PlayerQueryInput.CODEC);

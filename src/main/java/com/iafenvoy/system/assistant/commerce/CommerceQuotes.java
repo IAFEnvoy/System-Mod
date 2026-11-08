@@ -3,6 +3,7 @@ package com.iafenvoy.system.assistant.commerce;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.catalog.ShopOfferEntry;
@@ -40,7 +41,7 @@ public final class CommerceQuotes {
         long now = System.currentTimeMillis();
         this.quotes.values().removeIf(quote -> quote.expires() < now);
         if (this.quotes.size() >= 4096 || this.quotes.values().stream().filter(quote -> quote.player().equals(player)).count() >= 32)
-            throw new AgentException("BUSY");
+            throw new AgentException(AgentFailure.BUSY);
         Quote quote = new Quote(UUID.randomUUID().toString(), player, catalog.revision(), type, source, label, payment, entries, now + 120000);
         this.quotes.put(quote.id(), quote);
         return quote;
@@ -50,7 +51,7 @@ public final class CommerceQuotes {
         Quote quote = this.quotes.get(id);
         if (quote == null || quote.type() != type || !quote.player().equals(player) || quote.expires() < System.currentTimeMillis()
                 || !quote.revision().equals(catalog.revision()) || !catalog.contains(type, quote.source()))
-            throw new AgentException("STALE_QUOTE");
+            throw new AgentException(AgentFailure.STALE_QUOTE);
         return quote;
     }
 

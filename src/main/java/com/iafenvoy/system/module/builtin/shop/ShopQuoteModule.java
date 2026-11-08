@@ -2,6 +2,7 @@ package com.iafenvoy.system.module.builtin.shop;
 
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.command.AgentCommand;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
@@ -49,13 +50,13 @@ public final class ShopQuoteModule extends AbstractAgentModule<ShopQuoteInput> {
     public AgentResult execute(ExecutionContext context, ShopQuoteInput input) throws Exception {
         CommerceCatalog catalog = this.catalogs.available(context.player());
         if (!input.catalogRevision().orElse(catalog.revision()).equals(catalog.revision()))
-            throw new AgentException("STALE_QUOTE");
+            throw new AgentException(AgentFailure.STALE_QUOTE);
         Identifier id = input.offerId();
         Holder<ShopOfferEntry> offer = catalog.offers().stream().filter(value -> HolderHelper.id(value).equals(id)).findFirst()
-                .orElseThrow(() -> new AgentException("STALE_QUOTE"));
+                .orElseThrow(() -> new AgentException(AgentFailure.STALE_QUOTE));
         CommercePreviewOutput price = context.tool(BuiltinTools.COMMERCE_PREVIEW, "quote",
                 new CommercePreviewInput(List.of(id), List.of(), true, catalog.revision())).getFirst();
-        if (!price.available()) throw new AgentException("INVALID_COST");
+        if (!price.available()) throw new AgentException(AgentFailure.INVALID_COST);
         return AgentResult.data("system.result.shop_confirm", new ShopQuoteOutput(price.quoteRef().orElseThrow(), offer.value().label(), offer.value().items(), price.price()));
     }
 }

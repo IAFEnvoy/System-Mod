@@ -1,5 +1,7 @@
 # System
 
+新增可选的自由聊天兜底，顶栏待命右侧可切换强制自由模式。管理员通过 `/system ai <玩家>` 管理每个玩家的 AI / 自由聊天权限及每日调用上限，修改立即生效并自动保存，玩家会收到提示。详见 [自由聊天与权限配置](docs/free-chat.md)。
+
 [English](README.md) | 简体中文
 
 一个把网文“系统”带进 Minecraft 的 NeoForge 模组。Agent 部署在服务端，负责数据查询、任务、签到与商城交互；客户端提供完整工作台、简约说话框和不抢占操作的
@@ -80,6 +82,9 @@ $env:SYSTEM_DEEPSEEK_API_KEY = "<你的 API Key>"
 | `/system module add <玩家> <模块ID>`      | 管理员为玩家额外启用模块                          |
 | `/system module remove <玩家> <模块ID>`   | 管理员为玩家禁用模块                            |
 | `/system module list [玩家]`            | 管理员查看注册模块或指定玩家已启用的模块                  |
+| `/system ai <玩家> enable` / `disable` | 管理员允许 / 禁用玩家的 AI；保留个人设置和本地功能 |
+| `/system ai <玩家> freechat enable` / `disable` | 管理员允许 / 禁用自由聊天 |
+| `/system ai <玩家> status` / `limit <次数>` / `reset` | 查看权限 / 设置每日模型上限 / 恢复继承默认权限 |
 | `/system routing`                     | 管理员查看路由诊断                             |
 | `/system help`                        | 查看功能帮助                                |
 

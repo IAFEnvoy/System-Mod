@@ -1,6 +1,7 @@
 package com.iafenvoy.system.assistant.tool.advancement;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.FeatureInput;
@@ -23,7 +24,7 @@ public final class FeatureUnlockTool implements ToolRegistry.Handler<FeatureInpu
     @Override
     public CompletionStage<FeatureOutput> execute(ExecutionContext context, FeatureInput input) {
         String id = input.featureId();
-        if (!id.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) throw new AgentException("INVALID_INPUT");
+        if (!id.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")) throw new AgentException(AgentFailure.INVALID_INPUT);
         return CompletableFuture.completedFuture(context.store().update(context.player(), data -> {
             ModuleData.get(data, AdvancementSystemModule.STORAGE).unlock(id);
             return new FeatureOutput(id, true);

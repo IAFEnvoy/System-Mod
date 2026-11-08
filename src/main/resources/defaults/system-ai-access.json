@@ -1,0 +1,7 @@
+{
+  "defaults": {
+    "allowAi": true,
+    "allowFreeChat": true
+  },
+  "players": {}
+}

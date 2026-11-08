@@ -7,10 +7,11 @@ import net.minecraft.network.codec.StreamCodec;
 /**
  * Player preferences update server-side history and external-model permissions.
  */
-public record PreferencesRequest(boolean history, boolean external) implements AgentRequest {
+public record PreferencesRequest(boolean history, boolean external, boolean freeChat) implements AgentRequest {
     public static final StreamCodec<ByteBuf, PreferencesRequest> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.BOOL, PreferencesRequest::history,
-            ByteBufCodecs.BOOL, PreferencesRequest::external, PreferencesRequest::new);
+            ByteBufCodecs.BOOL, PreferencesRequest::external,
+            ByteBufCodecs.BOOL, PreferencesRequest::freeChat, PreferencesRequest::new);
 
     @Override
     public StreamCodec<ByteBuf, PreferencesRequest> streamCodec() {

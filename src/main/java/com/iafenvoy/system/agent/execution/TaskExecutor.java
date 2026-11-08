@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.execution;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 
 import java.util.Set;
 import java.util.concurrent.*;
@@ -24,7 +25,7 @@ public final class TaskExecutor implements AutoCloseable {
         this.pending.add(result);
         result.whenComplete((value, error) -> this.pending.remove(result));
         if (this.closed.get()) {
-            result.completeExceptionally(new AgentException("CANCELLED"));
+            result.completeExceptionally(new AgentException(AgentFailure.CANCELLED));
             return result;
         }
         try {
@@ -37,7 +38,7 @@ public final class TaskExecutor implements AutoCloseable {
                 }
             });
         } catch (RejectedExecutionException error) {
-            result.completeExceptionally(new AgentException(this.closed.get() ? "CANCELLED" : "BUSY"));
+            result.completeExceptionally(new AgentException(this.closed.get() ? AgentFailure.CANCELLED : AgentFailure.BUSY));
         }
         return result;
     }
@@ -47,7 +48,7 @@ public final class TaskExecutor implements AutoCloseable {
         if (!this.closed.compareAndSet(false, true)) return;
         this.workers.shutdownNow();
         // Discarded queued work must still release its caller's ownership and complete its future.
-        this.pending.forEach(result -> result.completeExceptionally(new AgentException("CANCELLED")));
+        this.pending.forEach(result -> result.completeExceptionally(new AgentException(AgentFailure.CANCELLED)));
         try {
             this.workers.awaitTermination(5, TimeUnit.SECONDS);
         } catch (InterruptedException error) {

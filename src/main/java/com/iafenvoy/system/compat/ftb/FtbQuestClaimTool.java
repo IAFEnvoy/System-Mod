@@ -1,6 +1,7 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.QuestClaimInput;
@@ -37,38 +38,38 @@ final class FtbQuestClaimTool implements ToolRegistry.Handler<QuestClaimInput, Q
     public CompletionStage<QuestClaimOutput> execute(ExecutionContext context, QuestClaimInput input) {
         RewardReference reference = this.access.references.get(input.claimRef());
         if (reference == null || !reference.player().equals(context.player()) || reference.expires() < System.currentTimeMillis())
-            throw new AgentException("STALE_REFERENCE");
+            throw new AgentException(AgentFailure.STALE_REFERENCE);
         long questId = reference.quest();
         long rewardId = reference.reward();
         int choice = input.choice().orElse(-1);
         return this.access.game.onPlayer(context, player -> {
-            if (!ServerQuestFile.exists()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (!ServerQuestFile.exists()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             ServerQuestFile file = ServerQuestFile.getInstance();
             Quest quest = file.getQuest(questId);
             Reward reward = file.getReward(rewardId);
-            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));
+            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException(AgentFailure.NOT_AUTHORIZED));
             if (quest == null || reward == null || !team.getTeamId().equals(reference.team())
                     || quest != reference.questVersion() || reward != reference.rewardVersion() || choiceVersion(reward) != reference.choiceVersion()
                     || team.getCompletedTime(questId).map(Date::getTime).orElse(0L) != reference.completedAt())
-                throw new AgentException("STALE_REFERENCE");
+                throw new AgentException(AgentFailure.STALE_REFERENCE);
             if (reward.getQuest() != quest || !FtbQuestReader.readable(team, quest) || team.isLocked()
                     || !team.isCompleted(quest) || team.isRewardBlocked(reward) || reward.getAutoClaimType() == RewardAutoClaim.INVISIBLE)
-                throw new AgentException("NOT_AUTHORIZED");
+                throw new AgentException(AgentFailure.NOT_AUTHORIZED);
             if (!"CAN_CLAIM".equals(team.getClaimType(player.getUUID(), reward).name()))
                 return new QuestClaimOutput("ALREADY_CLAIMED", Optional.of(hex(questId)), Optional.of(hex(rewardId)), Optional.empty());
             if (reward instanceof ChoiceReward selectable) {
                 if (selectable.getTable() == null || choice < 0 || choice >= selectable.getTable().getWeightedRewards().size())
-                    throw new AgentException("CHOICE_REQUIRED");
+                    throw new AgentException(AgentFailure.CHOICE_REQUIRED);
                 Reward selected = selectable.getTable().getWeightedRewards().get(choice).getReward();
-                if (selected instanceof ChoiceReward) throw new AgentException("UNSUPPORTED");
+                if (selected instanceof ChoiceReward) throw new AgentException(AgentFailure.UNSUPPORTED);
                 // Match the native 26.1 choice handler: reserve the outer reward before granting its selection.
                 if (team.markRewardAsClaimed(player.getUUID(), reward, System.currentTimeMillis()))
                     selected.claim(player, true);
             } else {
-                if (choice != -1) throw new AgentException("INVALID_INPUT");
+                if (choice != -1) throw new AgentException(AgentFailure.INVALID_INPUT);
                 team.claimReward(player, reward, true);
             }
-            if (!team.isRewardClaimed(player.getUUID(), reward)) throw new AgentException("CLAIM_REJECTED");
+            if (!team.isRewardClaimed(player.getUUID(), reward)) throw new AgentException(AgentFailure.CLAIM_REJECTED);
             return new QuestClaimOutput("CLAIM_EXECUTED", Optional.of(hex(questId)), Optional.of(hex(rewardId)), Optional.of(false));
         });
     }

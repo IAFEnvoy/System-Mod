@@ -1,6 +1,8 @@
 # System
 
-新增可选的自由聊天兜底，顶栏待命右侧可切换强制自由模式。管理员通过 `/system ai <玩家>` 管理每个玩家的 AI / 自由聊天权限及每日调用上限，修改立即生效并自动保存，玩家会收到提示。详见 [自由聊天与权限配置](docs/free-chat.md)。
+发送框左侧可选择离线、标准（默认）、扩展或自由模式。四种模式分别控制本地路由、AI 辅助路由、聊天兜底和 AI
+自主调用功能；管理员禁止的选项置灰。管理员通过 `/system ai <玩家>` 管理 AI /
+自由聊天许可和每日额度，修改立即生效并自动保存。详见 [执行模式与权限配置](docs/free-chat.md)。
 
 [English](README.md) | 简体中文
 
@@ -66,27 +68,27 @@ $env:SYSTEM_DEEPSEEK_API_KEY = "<你的 API Key>"
 
 以下指令在 Minecraft 聊天栏执行：
 
-| 指令                                    | 用途                                    |
-|---------------------------------------|---------------------------------------|
-| `/system`                             | 打开上次选择的界面                             |
-| `/system full` / `/system simple`     | 打开完整 / 简约界面                           |
-| `/system settings`                    | 直接打开统一设置，无需绑定或管理员权限                   |
-| `/system ask <内容>`                    | 提交自然语言请求                              |
-| `/system search <问题>`                 | 明确发起付费联网检索                            |
-| `/system player`                      | 查看本人状态                                |
-| `/system submittable [查询]`            | 列出可提交或勾选的 FTB 任务                      |
-| `/system usage` / `/system usage all` | 查看个人用量 / 管理员查看全服 AI 与联网用量；语音统计始终仅显示自己 |
-| `/system grant <系统ID> [玩家]`           | 管理员绑定一个数据包系统，省略玩家时绑定自己                |
-| `/system revoke [玩家]`                 | 管理员撤销系统并清除业务记录，保留累计用量                 |
-| `/system reset [玩家]`                  | 清除旧格式系统记录和绑定；累计用量保留，完成后需再次 `grant`    |
-| `/system module add <玩家> <模块ID>`      | 管理员为玩家额外启用模块                          |
-| `/system module remove <玩家> <模块ID>`   | 管理员为玩家禁用模块                            |
-| `/system module list [玩家]`            | 管理员查看注册模块或指定玩家已启用的模块                  |
-| `/system ai <玩家> enable` / `disable` | 管理员允许 / 禁用玩家的 AI；保留个人设置和本地功能 |
-| `/system ai <玩家> freechat enable` / `disable` | 管理员允许 / 禁用自由聊天 |
-| `/system ai <玩家> status` / `limit <次数>` / `reset` | 查看权限 / 设置每日模型上限 / 恢复继承默认权限 |
-| `/system routing`                     | 管理员查看路由诊断                             |
-| `/system help`                        | 查看功能帮助                                |
+| 指令                                                | 用途                                    |
+|---------------------------------------------------|---------------------------------------|
+| `/system`                                         | 打开上次选择的界面                             |
+| `/system full` / `/system simple`                 | 打开完整 / 简约界面                           |
+| `/system settings`                                | 直接打开统一设置，无需绑定或管理员权限                   |
+| `/system ask <内容>`                                | 提交自然语言请求                              |
+| `/system search <问题>`                             | 明确发起付费联网检索                            |
+| `/system player`                                  | 查看本人状态                                |
+| `/system submittable [查询]`                        | 列出可提交或勾选的 FTB 任务                      |
+| `/system usage` / `/system usage all`             | 查看个人用量 / 管理员查看全服 AI 与联网用量；语音统计始终仅显示自己 |
+| `/system grant <系统ID> [玩家]`                       | 管理员绑定一个数据包系统，省略玩家时绑定自己                |
+| `/system revoke [玩家]`                             | 管理员撤销系统并清除业务记录，保留累计用量                 |
+| `/system reset [玩家]`                              | 清除旧格式系统记录和绑定；累计用量保留，完成后需再次 `grant`    |
+| `/system module add <玩家> <模块ID>`                  | 管理员为玩家额外启用模块                          |
+| `/system module remove <玩家> <模块ID>`               | 管理员为玩家禁用模块                            |
+| `/system module list [玩家]`                        | 管理员查看注册模块或指定玩家已启用的模块                  |
+| `/system ai <玩家> enable` / `disable`              | 管理员允许 / 禁用玩家的 AI；保留个人设置和本地功能          |
+| `/system ai <玩家> freechat enable` / `disable`     | 管理员允许 / 禁用自由聊天                        |
+| `/system ai <玩家> status` / `limit <次数>` / `reset` | 查看权限 / 设置每日模型上限 / 恢复继承默认权限            |
+| `/system routing`                                 | 管理员查看路由诊断                             |
+| `/system help`                                    | 查看功能帮助                                |
 
 系统 ID、玩家和模块参数支持补全。重新授予同一系统不会重置玩家；改绑另一个系统需先撤销。
 模块手动增删会覆盖数据包条件并持久保存，`revoke/reset` 时清除；核心、绑定和用量等必需模块不能手动移除。

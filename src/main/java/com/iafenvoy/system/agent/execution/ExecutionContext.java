@@ -4,7 +4,9 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.model.ModelClient;
+import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.module.AgentModule;
 import com.iafenvoy.system.agent.routing.RouteSource;
 import com.iafenvoy.system.agent.storage.AgentJournal;
@@ -59,6 +61,8 @@ public final class ExecutionContext {
     private long expires;
     private int models, tools, steps, writes, tokens;
     private int toolContexts;
+    private int actions;
+    private String stepPrefix = "";
     private final Set<String> authorizedExternalTools = new HashSet<>();
 
     ExecutionContext(AgentEngine engine, UUID player, String taskId, String eventKey,
@@ -178,22 +182,79 @@ public final class ExecutionContext {
     }
 
     public boolean externalServicesAllowed() {
+        return this.mode().usesAi();
+    }
+
+    public ConversationMode mode() {
         this.ensureMemoryCurrent();
-        return AiAccessConfig.INSTANCE.get().permissions(this.player).allowAi()
-                && this.store.read(this.player, data -> data.externalModel);
+        return AiAccessConfig.INSTANCE.get().permissions(this.player).effective(this.store.read(this.player, data -> data.mode));
     }
 
     public boolean freeChatAllowed() {
-        this.ensureMemoryCurrent();
-        return AiAccessConfig.INSTANCE.get().permissions(this.player).allowFreeChat()
-                && this.store.read(this.player, data -> data.externalModel && data.freeChat);
+        return this.mode().chats();
     }
 
     public void requireFreeChat() {
         this.requireExternalServices();
-        // An explicit chat request may override automatic fallback, but never administrator admission or AI opt-out.
-        if (!AiAccessConfig.INSTANCE.get().permissions(this.player).allowFreeChat())
+        if (!this.mode().chats())
             throw new AgentException(AgentFailure.FREE_CHAT_DISABLED);
+    }
+
+    public List<AgentModule<?>> chatActions() {
+        this.requireFreeChat();
+        if (this.isEvent() || this.mode() != ConversationMode.FREE) return List.of();
+        return this.engine.modules().descriptors().stream()
+                .filter(descriptor -> this.engine.modules().modelSelectable(descriptor.id()) && this.available(descriptor.id()))
+                .<AgentModule<?>>map(descriptor -> this.engine.module(this.player, descriptor.id())).filter(Objects::nonNull).toList();
+    }
+
+    /**
+     * AI-selected workflows share the same task and counters, with a narrower policy and isolated step IDs.
+     * Execute inline on the agent worker: resubmitting would wait on this player's own interactive lock.
+     */
+    public AgentResult action(AgentAction input) {
+        this.requireFreeChat();
+        if (this.isEvent() || this.mode() != ConversationMode.FREE || !this.engine.modules().modelSelectable(input.id()))
+            throw new AgentException(AgentFailure.NOT_AUTHORIZED);
+        AgentModule<?> target = this.engine.module(this.player, input.id());
+        if (target == null || !this.available(input.id())) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+        if (++this.steps > this.policy.steps()) throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
+        AgentModule.Descriptor previousModule = this.module;
+        Identifier previousOwner = this.owner;
+        ExecutionPolicy previousPolicy = this.policy;
+        RouteSource previousSource = this.routeSource;
+        long previousExpires = this.expires;
+        String previousPrefix = this.stepPrefix;
+        Set<String> previousAuthorized = Set.copyOf(this.authorizedExternalTools);
+        ExecutionPolicy child = this.engine.policy(target);
+        ExecutionPolicy limited = new ExecutionPolicy(
+                Math.min(previousPolicy.modelCalls(), this.models + child.modelCalls()),
+                Math.min(previousPolicy.toolCalls(), this.tools + child.toolCalls()),
+                Math.min(previousPolicy.steps(), this.steps + child.steps()),
+                Math.min(previousPolicy.writeSteps(), this.writes + child.writeSteps()),
+                Math.min(previousPolicy.inputBytes(), child.inputBytes()),
+                Math.min(previousPolicy.outputTokens(), child.outputTokens()),
+                Math.min(previousPolicy.totalTokens(), this.tokens + child.totalTokens()),
+                Math.min(previousExpires, System.currentTimeMillis() + child.ttlMillis()) - this.started,
+                Math.min(previousPolicy.modelTimeoutMillis(), child.modelTimeoutMillis()),
+                Math.min(previousPolicy.reactIterations(), child.reactIterations()));
+        AgentResult result;
+        try {
+            this.routeSource = RouteSource.LLM;
+            this.stepPrefix = previousPrefix + "action/" + this.actions++ + "/";
+            result = this.engine.execute(this, input, limited);
+        } finally {
+            this.module = previousModule;
+            this.owner = previousOwner;
+            this.policy = previousPolicy;
+            this.routeSource = previousSource;
+            this.expires = previousExpires;
+            this.stepPrefix = previousPrefix;
+            this.authorizedExternalTools.clear();
+            this.authorizedExternalTools.addAll(previousAuthorized);
+        }
+        this.requireFreeChat();
+        return result;
     }
 
     /**
@@ -230,7 +291,9 @@ public final class ExecutionContext {
     public void requireExternalServices() {
         this.ensureMemoryCurrent();
         if (!AiAccessConfig.INSTANCE.get().permissions(this.player).allowAi()) throw new AgentException(AgentFailure.AI_FORBIDDEN);
-        if (!this.store.read(this.player, data -> data.externalModel)) throw new AgentException(AgentFailure.MODEL_DISABLED);
+        if (!this.store.read(this.player, data -> data.mode.usesAi())) throw new AgentException(AgentFailure.MODEL_DISABLED);
+        if (AiAccessConfig.INSTANCE.get().permissions(this.player).modelCallsPerDay() == 0)
+            throw new AgentException(AgentFailure.RATE_LIMITED);
     }
 
     public int remainingModelCalls() {
@@ -334,7 +397,7 @@ public final class ExecutionContext {
             this.store().update(this.player, data -> {
                 AiAccessConfig.Permissions permissions = AiAccessConfig.INSTANCE.get().permissions(this.player);
                 if (!permissions.allowAi()) throw new AgentException(AgentFailure.AI_FORBIDDEN);
-                if (!data.externalModel || (!this.isEvent() && data.conversation.memoryEpoch != this.memoryEpoch))
+                if (!data.mode.usesAi() || (!this.isEvent() && data.conversation.memoryEpoch != this.memoryEpoch))
                     throw new AgentException(AgentFailure.MODEL_DISABLED);
                 String day = LocalDate.now(ZoneId.of(AgentConfig.INSTANCE.get().timeZone())).toString();
                 if (!day.equals(data.modelQuota.usageDate)) {
@@ -401,7 +464,7 @@ public final class ExecutionContext {
         if ((this.routeSource == RouteSource.SEMANTIC || this.routeSource == RouteSource.ROUTE_CACHE) && tool.write())
             throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         if (this.isEvent() && !tool.allowEvent()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
-        String operationKey = this.taskId + ":" + stepId;
+        String operationKey = this.taskId + ":" + this.stepPrefix + stepId;
         String encodedInput = tool.write() ? CodecIO.write(type.inputCodec().codec(), input) : null;
         String fingerprint = id + ":" + encodedInput;
         // Replay completed writes by task/step; an unfinished non-idempotent write has an unknown effect.

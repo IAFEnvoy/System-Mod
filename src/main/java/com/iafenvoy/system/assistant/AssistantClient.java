@@ -2,11 +2,13 @@ package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.request.AgentRequest;
 import com.iafenvoy.system.agent.request.ChatRequest;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.request.InvokeRequest;
+import com.iafenvoy.system.agent.request.PreferencesRequest;
 import com.iafenvoy.system.command.client.AssistantClientCommands;
 import com.iafenvoy.system.config.file.ClientConfig;
 import com.iafenvoy.system.data.ClientState;
@@ -49,7 +51,6 @@ public final class AssistantClient {
     private static AssistantClientState state = AssistantClientState.EMPTY;
     // This view invalidation counter stays monotonic across EMPTY resets.
     private static long revision;
-    private static boolean forceFreeChat;
 
     private AssistantClient() {
     }
@@ -96,19 +97,13 @@ public final class AssistantClient {
             local(AgentResult.error(AgentFailure.INVALID_INPUT));
             return true;
         }
-        boolean force = forceFreeChat();
-        if (force || !AssistantClientCommands.execute(text)) send(new ChatRequest(text.strip(), force));
+        if (state.mode() == ConversationMode.FREE || !AssistantClientCommands.execute(text)) send(new ChatRequest(text.strip()));
         return true;
     }
 
-    public static boolean forceFreeChat() {
-        return forceFreeChat && state.canFreeChat();
-    }
-
-    public static void toggleForceFreeChat() {
-        if (state.busy() || !state.canFreeChat()) return;
-        forceFreeChat = !forceFreeChat;
-        revision++;
+    public static void selectMode(ConversationMode mode) {
+        if (state.busy() || !state.allowsMode(mode) || mode == state.preferredMode()) return;
+        send(new PreferencesRequest(state.saveHistory(), mode));
     }
 
     public static void local(AgentResult result) {
@@ -192,7 +187,6 @@ public final class AssistantClient {
     public static void synchronizedState(String requestId, ClientState value) {
         if (!requestId.isEmpty() && !state.pending().containsKey(requestId)) return;
         state = state.synchronizedState(requestId, value);
-        if (!state.canFreeChat()) forceFreeChat = false;
         revision++;
     }
 
@@ -236,7 +230,6 @@ public final class AssistantClient {
     }
 
     public static void clear() {
-        forceFreeChat = false;
         AssistantSpeech.stop();
         if (Minecraft.getInstance().screen instanceof AssistantInputScreen screen) screen.stopRecognition();
         AssistantMessages.clear();

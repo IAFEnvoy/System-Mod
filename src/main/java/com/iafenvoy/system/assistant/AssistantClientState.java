@@ -1,6 +1,7 @@
 package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.request.AgentRequest;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.data.AiStatus;
@@ -20,7 +21,7 @@ import java.util.*;
 public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending> pending,
                                    ClientState serverState, ChatEntry current) {
     public static final AssistantClientState EMPTY = new AssistantClientState(List.of(), Map.of(),
-            new ClientState(Optional.empty(), true, true, List.of(), List.of(), 60000, AiStatus.EMPTY), null);
+            new ClientState(Optional.empty(), true, List.of(), List.of(), 60000, AiStatus.EMPTY), null);
 
     public record ChatEntry(boolean player, String text, AgentResult result) {
     }
@@ -41,27 +42,24 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return this.serverState.historySaved();
     }
 
-    public boolean externalModel() {
-        return this.serverState.externalModel();
+    public ConversationMode mode() {
+        return this.serverState.ai().effectiveMode();
     }
 
-    public boolean freeChat() {
-        return this.serverState.ai().freeChat();
+    public ConversationMode preferredMode() {
+        return this.serverState.ai().mode();
     }
 
-    public boolean freeChatAllowed() {
-        return this.serverState.ai().freeChatAllowed(this.externalModel());
-    }
-
-    public boolean canFreeChat() {
-        return this.serverState.ai().canFreeChat(this.externalModel());
+    public boolean allowsMode(ConversationMode mode) {
+        return this.serverState.ai().permissions().allows(mode);
     }
 
     public String aiAccessHint() {
         if (this.serverState.system().isEmpty()) return "";
         if (!this.serverState.ai().allowAi()) return "system.ai.admin_disabled_hint";
+        if (this.serverState.ai().modelCallsPerDay() == 0) return "system.ai.no_calls_hint";
         if (!this.serverState.ai().allowFreeChat()) return "system.ai.free_chat_disabled_hint";
-        if (!this.externalModel()) return "system.ai.personal_disabled_hint";
+        if (!this.mode().usesAi()) return "system.ai.personal_disabled_hint";
         return "";
     }
 

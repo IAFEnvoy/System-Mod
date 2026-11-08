@@ -155,7 +155,7 @@ public final class SemanticRouter implements AutoCloseable {
         // A reloaded prompt must not reuse or be repopulated by decisions from the previous revision.
         // Mode and routing configuration changes must not reuse a decision made with another threshold.
         return scope == null ? null : this.cache.key(scope, language, context.promptRevision() + "\n"
-                + context.freeChatAllowed() + ":" + SemanticConfig.INSTANCE.get().hashCode() + "\n" + text);
+                + context.mode() + ":" + SemanticConfig.INSTANCE.get().hashCode() + "\n" + text);
     }
 
     private String guard(String text, String language) {

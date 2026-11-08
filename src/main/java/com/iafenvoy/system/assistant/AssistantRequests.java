@@ -11,7 +11,6 @@ import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.config.file.AiAccessConfig;
 import com.iafenvoy.system.data.AiStatus;
 import com.iafenvoy.system.data.ClientState;
-import com.iafenvoy.system.data.input.FreeChatInput;
 import com.iafenvoy.system.data.input.StarterGiftsInput;
 import com.iafenvoy.system.data.output.StarterGiftOutput;
 import com.iafenvoy.system.event.CardButtonEvent;
@@ -100,7 +99,7 @@ public final class AssistantRequests {
     }
 
     private void registerRequests() {
-        this.registerRequest(ChatRequest.class, (context, chat) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), chat.forceFreeChat() ? new FreeChatInput(chat.text()) : null, chat.text())));
+        this.registerRequest(ChatRequest.class, (context, chat) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), null, chat.text())));
         this.registerRequest(InvokeRequest.class, (context, invoke) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), invoke.call(), invoke.text())));
         this.registerRequest(CardActionRequest.class, (context, action) -> {
             ServerCards.Ticket ticket = ServerCards.begin(context.uuid(), action.source());
@@ -115,7 +114,7 @@ public final class AssistantRequests {
                     })));
         });
         this.registerRequest(PreferencesRequest.class, (context, preferences) ->
-                this.engine.preferences(context.uuid(), preferences.history(), preferences.external(), preferences.freeChat()).thenCompose(result ->
+                this.engine.preferences(context.uuid(), preferences.history(), preferences.mode()).thenCompose(result ->
                         result.isSuccess() ? this.state(context.uuid()).thenApply(state -> new StateResponse(context.requestId(), state))
                                 : CompletableFuture.completedFuture(new ReplyResponse(context.requestId(), result))));
         this.requestHandlers.register(ControlRequest.class, (context, control) -> this.controlHandlers.get(control).apply(context));
@@ -162,10 +161,10 @@ public final class AssistantRequests {
         AgentStore store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
             if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
-            return new ClientState(data.systems.current(), data.saveHistory, data.externalModel,
+            return new ClientState(data.systems.current(), data.saveHistory,
                     this.modules.enabled(player),
                     this.engine.modules().commands().suggestions(id -> this.engine.available(player, id)),
-                    this.engine.requestTimeoutMillis(player), AiStatus.of(data.freeChat, AiAccessConfig.INSTANCE.get().permissions(player)));
+                    this.engine.requestTimeoutMillis(player), AiStatus.of(data.mode, AiAccessConfig.INSTANCE.get().permissions(player)));
         }));
     }
 

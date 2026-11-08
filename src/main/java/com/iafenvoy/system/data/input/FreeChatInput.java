@@ -6,7 +6,7 @@ import com.iafenvoy.system.agent.module.AgentAction;
 import com.mojang.serialization.MapCodec;
 
 /**
- * Free conversation is an explicit workflow; model text never becomes an executable action.
+ * Free conversation is a structured-only workflow; its tools are resolved from the authorized module catalogue.
  */
 public record FreeChatInput(String message) implements AgentAction {
     public static final SchemaMapCodec<FreeChatInput> CODEC = SchemaCodecs.record((i, f) -> i.group(

@@ -1,6 +1,9 @@
 # System
 
-Free chat is available as an optional fallback, with a forced mode beside the status indicator. Administrators manage per-player AI/free-chat permissions and daily call limits through `/system ai <player>`. Changes take effect immediately, save automatically and notify the player. See [free chat and access configuration](docs/free-chat.md).
+Choose Offline, Standard (default), Extended or Free beside the message box: local routing, AI-assisted routing, chat
+fallback, or AI-directed feature calls. Modes restricted by the administrator are greyed out. Administrators manage
+AI/free-chat permissions and daily limits through `/system ai <player>`; changes apply immediately and save
+automatically. See [execution modes and access configuration](docs/free-chat.md).
 
 English | [简体中文](README-zh.md)
 
@@ -84,27 +87,27 @@ when using a proxy for DeepSeek, explicitly select `deepseek`.
 
 The following commands run in Minecraft chat:
 
-| Command                                      | Action                                                                                               |
-|----------------------------------------------|------------------------------------------------------------------------------------------------------|
-| `/system`                                    | Open the last selected view                                                                          |
-| `/system full` / `/system simple`            | Open the full / minimal view                                                                         |
-| `/system settings`                           | Open unified client settings directly; no binding or administrator permission required               |
-| `/system ask <text>`                         | Submit a natural-language request                                                                    |
-| `/system search <question>`                  | Explicitly start paid web research; no automatic browsing                                            |
-| `/system player`                             | View your own status                                                                                 |
-| `/system submittable [query]`                | List FTB quests with pending manual or checkmark targets                                             |
-| `/system usage` / `/system usage all`        | View personal usage / server AI and web usage as an administrator; voice totals always stay personal |
-| `/system grant <system ID> [player]`         | Bind one data-pack system as an administrator; omit the player to bind yourself                      |
-| `/system revoke [player]`                    | Revoke access and clear System records as an administrator; retain cumulative usage                  |
-| `/system reset [player]`                     | Clear old-format System records and binding; cumulative usage is retained, then grant again          |
-| `/system module add <player> <module ID>`    | Enable an additional module for a player as an administrator                                         |
-| `/system module remove <player> <module ID>` | Disable a module for a player as an administrator                                                    |
-| `/system module list [player]`               | List registered modules or a player's enabled modules as an administrator                            |
-| `/system ai <player> enable` / `disable` | Allow / deny AI access; retain personal preferences and local actions |
-| `/system ai <player> freechat enable` / `disable` | Allow / deny free chat as an administrator |
-| `/system ai <player> status` / `limit <calls>` / `reset` | View permissions / set daily model limits / inherit default permissions |
-| `/system routing`                            | View routing diagnostics as an administrator                                                         |
-| `/system help`                               | Show available actions                                                                               |
+| Command                                                  | Action                                                                                               |
+|----------------------------------------------------------|------------------------------------------------------------------------------------------------------|
+| `/system`                                                | Open the last selected view                                                                          |
+| `/system full` / `/system simple`                        | Open the full / minimal view                                                                         |
+| `/system settings`                                       | Open unified client settings directly; no binding or administrator permission required               |
+| `/system ask <text>`                                     | Submit a natural-language request                                                                    |
+| `/system search <question>`                              | Explicitly start paid web research; no automatic browsing                                            |
+| `/system player`                                         | View your own status                                                                                 |
+| `/system submittable [query]`                            | List FTB quests with pending manual or checkmark targets                                             |
+| `/system usage` / `/system usage all`                    | View personal usage / server AI and web usage as an administrator; voice totals always stay personal |
+| `/system grant <system ID> [player]`                     | Bind one data-pack system as an administrator; omit the player to bind yourself                      |
+| `/system revoke [player]`                                | Revoke access and clear System records as an administrator; retain cumulative usage                  |
+| `/system reset [player]`                                 | Clear old-format System records and binding; cumulative usage is retained, then grant again          |
+| `/system module add <player> <module ID>`                | Enable an additional module for a player as an administrator                                         |
+| `/system module remove <player> <module ID>`             | Disable a module for a player as an administrator                                                    |
+| `/system module list [player]`                           | List registered modules or a player's enabled modules as an administrator                            |
+| `/system ai <player> enable` / `disable`                 | Allow / deny AI access; retain personal preferences and local actions                                |
+| `/system ai <player> freechat enable` / `disable`        | Allow / deny free chat as an administrator                                                           |
+| `/system ai <player> status` / `limit <calls>` / `reset` | View permissions / set daily model limits / inherit default permissions                              |
+| `/system routing`                                        | View routing diagnostics as an administrator                                                         |
+| `/system help`                                           | Show available actions                                                                               |
 
 System IDs, players and module arguments support completion. Granting the same system again does not reset player
 data; revoke the current binding before switching to another system. Manual module overrides take precedence over

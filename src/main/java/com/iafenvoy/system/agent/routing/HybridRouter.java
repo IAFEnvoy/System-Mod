@@ -4,6 +4,7 @@ import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.chat.ConversationStrategy;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.module.AgentAction;
@@ -40,40 +41,69 @@ public final class HybridRouter implements AutoCloseable {
     }
 
     public RouteDecision route(ExecutionContext context, AgentAction input, String text) throws Exception {
-        // Structured actions -> registered commands -> local read intent/cache -> one bounded LLM decision.
+        // Card actions retain their own authority; only plain text follows the selected conversation strategy.
         if (input != null) return this.direct(context, input, RouteSource.STRUCTURED);
         if (text.isBlank()) throw new AgentException(AgentFailure.INVALID_INPUT);
-        AgentAction command = this.modules.commands().parse(text, context::available);
-        if (command != null) return this.direct(context, command, RouteSource.COMMAND);
-        AgentAction explicit = this.modules.explicit(text, context::available);
-        if (explicit != null) return this.direct(context, explicit, RouteSource.COMMAND);
-        SemanticRouter.Attempt attempt;
-        try {
-            attempt = this.semantic.match(context, text);
-        } catch (Exception | LinkageError | AssertionError error) {
-            context.ensureMemoryCurrent();
-            attempt = SemanticRouter.Attempt.fallback("SEMANTIC_ERROR");
+        return context.mode().route(new Routes(context, text));
+    }
+
+    private final class Routes implements ConversationStrategy.Routes {
+        private final ExecutionContext context;
+        private final String text;
+        private List<ModelRoute.Candidate> hints = List.of();
+
+        private Routes(ExecutionContext context, String text) {
+            this.context = context;
+            this.text = text;
         }
-        if (attempt.decision() != null && context.available(Identifier.tryParse(attempt.decision().moduleId()))
-                && this.modules.semanticSelectable(Identifier.tryParse(attempt.decision().moduleId())))
-            return attempt.decision();
-        // Free conversation replaces the model intent pass; local commands and confident reads stay cheap.
-        if (context.freeChatAllowed()) return this.direct(context, new FreeChatInput(text), RouteSource.FREE_CHAT);
-        List<ModelRoute.Candidate> hints = attempt.hints().stream()
-                .filter(candidate -> this.modules.modelSelectable(Identifier.tryParse(candidate.moduleId()))
-                        && context.available(Identifier.tryParse(candidate.moduleId()))).toList();
-        // The decoder accepts exactly the advertised catalogue, including confirmation-only exclusions.
-        List<ConversationMemory.Entry> history = context.store().read(context.player(), data -> ConversationMemory.recent(data, context.taskId(), 1600));
-        try {
-            ModelRoute route = context.model(context.prompt(SystemPrompts.ROUTING, Map.of("capabilities", CodecIO.write(ModelRoute.Capability.CATALOGUE, this.modules.capabilities(context::available)))),
-                    ModelRoute.Input.CODEC, new ModelRoute.Input(text, history, hints), this.modules.modelCodec(context::available));
-            return new RouteDecision(route.call(), RouteSource.LLM,
-                    route.call() == null ? this.modules.suggestions(text, hints, context::available) : List.of());
-        } catch (AgentException error) {
-            // Missing credentials or opt-out only disable model fallback, not registered local capabilities.
-            if (!ALLOWED_FAILURES.contains(error.failure())) throw error;
-            context.ensureMemoryCurrent();
-            return new RouteDecision(null, RouteSource.LOCAL_FALLBACK, this.modules.suggestions(text, hints, context::available));
+
+        @Override
+        public RouteDecision local() {
+            AgentAction command = HybridRouter.this.modules.commands().parse(this.text, this.context::available);
+            if (command != null) return HybridRouter.this.direct(this.context, command, RouteSource.COMMAND);
+            AgentAction explicit = HybridRouter.this.modules.explicit(this.text, this.context::available);
+            if (explicit != null) return HybridRouter.this.direct(this.context, explicit, RouteSource.COMMAND);
+            SemanticRouter.Attempt attempt;
+            try {
+                attempt = HybridRouter.this.semantic.match(this.context, this.text);
+            } catch (Exception | LinkageError | AssertionError error) {
+                this.context.ensureMemoryCurrent();
+                attempt = SemanticRouter.Attempt.fallback("SEMANTIC_ERROR");
+            }
+            if (attempt.decision() != null && this.context.available(Identifier.tryParse(attempt.decision().moduleId()))
+                    && HybridRouter.this.modules.semanticSelectable(Identifier.tryParse(attempt.decision().moduleId())))
+                return attempt.decision();
+            this.hints = attempt.hints().stream()
+                    .filter(candidate -> HybridRouter.this.modules.modelSelectable(Identifier.tryParse(candidate.moduleId()))
+                            && this.context.available(Identifier.tryParse(candidate.moduleId()))).toList();
+            return this.fallback();
+        }
+
+        @Override
+        public RouteDecision assisted() throws Exception {
+            if (!this.context.externalServicesAllowed()) return this.fallback();
+            // The decoder accepts exactly the advertised catalogue, including confirmation-only exclusions.
+            List<ConversationMemory.Entry> history = this.context.store().read(this.context.player(), data -> ConversationMemory.recent(data, this.context.taskId(), 1600));
+            try {
+                ModelRoute route = this.context.model(this.context.prompt(SystemPrompts.ROUTING, Map.of("capabilities", CodecIO.write(ModelRoute.Capability.CATALOGUE, HybridRouter.this.modules.capabilities(this.context::available)))),
+                        ModelRoute.Input.CODEC, new ModelRoute.Input(this.text, history, this.hints), HybridRouter.this.modules.modelCodec(this.context::available));
+                return new RouteDecision(route.call(), RouteSource.LLM,
+                        route.call() == null ? HybridRouter.this.modules.suggestions(this.text, this.hints, this.context::available) : List.of());
+            } catch (AgentException error) {
+                // Missing credentials or opt-out only disable model fallback, not registered local capabilities.
+                if (!ALLOWED_FAILURES.contains(error.failure())) throw error;
+                this.context.ensureMemoryCurrent();
+                return this.fallback();
+            }
+        }
+
+        private RouteDecision fallback() {
+            return new RouteDecision(null, RouteSource.LOCAL_FALLBACK, HybridRouter.this.modules.suggestions(this.text, this.hints, this.context::available));
+        }
+
+        @Override
+        public RouteDecision chat() {
+            return HybridRouter.this.direct(this.context, new FreeChatInput(this.text), RouteSource.FREE_CHAT);
         }
     }
 

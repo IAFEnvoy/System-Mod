@@ -1,6 +1,7 @@
 package com.iafenvoy.system.screen.gui;
 
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
@@ -32,6 +33,7 @@ import java.util.List;
 public abstract class AssistantInputScreen extends AssistantPageScreen {
     protected String draft;
     private long chatModeRevision = -1;
+    private ConversationModeSelector modeSelector;
     private @Nullable AbstractText textInput;
     private @Nullable IMEPreeditOverlay preeditOverlay;
     private @Nullable InputArea inputArea;
@@ -87,6 +89,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         this.enterDown = false;
         this.pendingCaret = false;
         this.chatModeRevision = -1;
+        this.modeSelector = document.getElementById("chat_mode_selector") == null ? null : new ConversationModeSelector(document);
         this.renderChatMode();
         for (Element input : document.querySelectorAll("input, textarea")) {
             input.addEventListener("focus", _ -> this.syncTextInputFocus());
@@ -107,8 +110,6 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         AssistantView.bind(document, "asr_toggle", this::toggleRecognition);
         AssistantView.bind(document, "asr_cancel", this::stopRecognition);
         this.renderRecognition();
-        if (document.getElementById("force_free_chat") != null)
-            AssistantView.bind(document, "force_free_chat", AssistantClient::toggleForceFreeChat);
         // Blur fires before AUI commits the next focus; polling observes the completed transition.
         this.syncTextInputFocus();
     }
@@ -147,19 +148,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
             AssistantView.text(hint, key.isEmpty() ? "" : AssistantView.tr(key));
             AssistantView.display(hint, key.isEmpty() ? "none" : "block");
         }
-        Element button = document.getElementById("force_free_chat");
-        if (button == null) return;
-        boolean force = AssistantClient.forceFreeChat();
-        String label = force ? "system.ui.force_free_chat_on" : "system.ui.force_free_chat_off";
-        if (AssistantClient.state().serverState().system().isPresent()) {
-            if (!AssistantClient.state().serverState().ai().allowAi()) label = "system.ui.force_free_chat_ai_denied";
-            else if (!AssistantClient.state().serverState().ai().allowFreeChat()) label = "system.ui.force_free_chat_denied";
-            else if (!AssistantClient.state().externalModel()) label = "system.ui.force_free_chat_ai_off";
-        }
-        AssistantView.text(button, AssistantView.tr(label));
-        AssistantView.switchChecked(button, force);
-        boolean disabled = AssistantClient.state().busy() || !AssistantClient.state().canFreeChat();
-        if (button.isDisabled() != disabled) button.setDisabled(disabled);
+        if (this.modeSelector != null) this.modeSelector.update();
     }
 
     protected void sendMessage() {
@@ -339,7 +328,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         Document document = this.getLinkedDocument();
         if (document == null || !(document.getElementById("message") instanceof AbstractText message)) return;
         this.draft = message.getValue();
-        boolean eligible = !AssistantClient.forceFreeChat() && document.getFocusedElement() == message && !this.imeOwnsKeys();
+        boolean eligible = AssistantClient.state().mode() != ConversationMode.FREE && document.getFocusedElement() == message && !this.imeOwnsKeys();
         ClientPacketListener connection = this.minecraft.getConnection();
         SuggestionState state = new SuggestionState(this.draft, message.getCursor(), message.getSelectionStart(), message.getSelectionEnd(),
                 AssistantClient.revision(), eligible, ClientModuleCaches.COMMAND.get().revision(), connection == null ? null : connection.getCommands());

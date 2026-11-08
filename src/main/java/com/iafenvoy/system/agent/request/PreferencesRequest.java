@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.request;
 
+import com.iafenvoy.system.agent.chat.ConversationMode;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -7,11 +8,10 @@ import net.minecraft.network.codec.StreamCodec;
 /**
  * Player preferences update server-side history and external-model permissions.
  */
-public record PreferencesRequest(boolean history, boolean external, boolean freeChat) implements AgentRequest {
+public record PreferencesRequest(boolean history, ConversationMode mode) implements AgentRequest {
     public static final StreamCodec<ByteBuf, PreferencesRequest> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.BOOL, PreferencesRequest::history,
-            ByteBufCodecs.BOOL, PreferencesRequest::external,
-            ByteBufCodecs.BOOL, PreferencesRequest::freeChat, PreferencesRequest::new);
+            ConversationMode.STREAM_CODEC, PreferencesRequest::mode, PreferencesRequest::new);
 
     @Override
     public StreamCodec<ByteBuf, PreferencesRequest> streamCodec() {

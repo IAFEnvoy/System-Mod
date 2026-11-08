@@ -2,11 +2,11 @@
 <html><head><link rel="stylesheet" href="assistant.css"></head>
 <body class="simple">
 <div id="workspace">
-    <div id="speech_header"><span id="speaker"><translation>system.ui.assistant</translation></span><span id="status"></span><button id="force_free_chat" class="chat_mode_toggle" type="button" role="switch" aria-checked="false"></button></div>
+    <div id="speech_header"><span id="speaker"><translation>system.ui.assistant</translation></span><span id="status"></span></div>
     <div id="speech"><div id="current_request"></div><div id="current_result"></div></div>
     <div id="asr_status"></div>
     <div id="ai_access_hint" class="card_context"></div>
-    <div id="composer"><div id="message_box"><input id="message" type="text" maxlength="2000"></div><button id="asr_toggle"></button><button id="asr_cancel"><translation>system.asr.ui.cancel</translation></button><button id="send" class="primary"></button></div>
+    <div id="composer"><div id="chat_mode_selector"><button id="chat_mode_trigger" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="chat_mode_menu"><span id="chat_mode_label"></span><span class="chat_mode_arrow" aria-hidden="true">▾</span></button><div id="chat_mode_menu" role="menu"></div></div><div id="message_box"><input id="message" type="text" maxlength="2000"></div><button id="asr_toggle"></button><button id="asr_cancel"><translation>system.asr.ui.cancel</translation></button><button id="send" class="primary"></button></div>
 </div>
 <div id="command_suggestions"></div>
 </body></html>

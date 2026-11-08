@@ -3,14 +3,20 @@ package com.iafenvoy.system.module.builtin.chat;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.chat.ChatActions;
 import com.iafenvoy.system.agent.chat.ChatSupport;
+import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
+import com.iafenvoy.system.agent.react.ReActContext;
+import com.iafenvoy.system.agent.react.ReActLoop;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.FreeChatInput;
 import com.iafenvoy.system.data.output.ChatOutput;
 import com.iafenvoy.system.data.store.Message;
+import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -26,8 +32,8 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
     private final ChatSupport chat;
 
     public FreeChatModule(ChatSupport chat) {
-        super(FreeChatInput.CODEC, "Free conversation when no local capability confidently matches. No tools are available yet.",
-                List.of(), true, false, new ExecutionPolicy(1, 0, 3, 0, 32768, 2048, 65536, 60000, 45000, 0));
+        super(FreeChatInput.CODEC, "Free conversation, optionally using enabled workflows in full agent mode.",
+                List.of(), true, false, new ExecutionPolicy(6, 16, 32, 6, 32768, 2048, 131072, 90000, 30000, 6));
         this.chat = chat;
     }
 
@@ -61,10 +67,31 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
             }
             return List.copyOf(selected.reversed());
         });
-        Answer answer = context.model(this.chat.prompt(context), Input.CODEC, new Input(input.message(), history), Answer.CODEC.codec());
+        Input question = new Input(input.message(), history);
+        if (context.mode() == ConversationMode.FREE) {
+            ReActContext<AgentResult> loop = new ReActContext<>(context, this.chat.prompt(context),
+                    CodecIO.write(Input.CODEC.codec(), question), AgentResult.CODEC, ChatActions.bind(context),
+                    context::requireFreeChat, ReActLoop.MODEL_FAILURES, 1000);
+            return ReActLoop.run(loop, Answer.CODEC, answer -> finish(answer, loop.observations()), failure -> {
+                List<CardUpdate> cards = new ArrayList<>();
+                loop.observations().forEach(result -> cards.addAll(result.cards()));
+                cards.addAll(AgentResult.error(failure).cards());
+                return new AgentResult(loop.observations().isEmpty() ? AgentResult.Status.FAILED : AgentResult.Status.PARTIALLY_SUCCEEDED,
+                        failure.key(), "", cards);
+            });
+        }
+        Answer answer = context.model(this.chat.prompt(context), Input.CODEC, question, Answer.CODEC.codec());
         context.requireFreeChat();
+        return finish(answer, List.of());
+    }
+
+    private static AgentResult finish(Answer answer, List<AgentResult> observations) {
         if (answer.text().isBlank()) throw new AgentException(AgentFailure.MODEL_INVALID);
-        return AgentResult.data("system.result.chat", new ChatOutput(answer.text()));
+        List<CardUpdate> cards = new ArrayList<>();
+        observations.forEach(result -> cards.addAll(result.cards()));
+        cards.addAll(AgentResult.data("system.result.chat", new ChatOutput(answer.text())).cards());
+        AgentResult result = new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.chat", "", cards);
+        return observations.stream().anyMatch(AgentResult::isFailure) ? result.partial() : result;
     }
 
     private record Turn(String role, String text) {

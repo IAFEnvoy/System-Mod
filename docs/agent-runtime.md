@@ -1,6 +1,6 @@
 # Agent 运行结构与扩展
 
-自由聊天的路由阈值、强制入口、管理员与玩家权限、预留接口见 [自由聊天与管理员 AI 权限](free-chat.md)。
+四种执行策略、发送框模式菜单、管理员与玩家权限，以及自由模式的功能调用见 [执行模式与管理员 AI 权限](free-chat.md)。
 
 `com.iafenvoy.system.agent` 只负责执行、路由、预算、会话记忆与 Agent 契约。具体工作流位于 `module.builtin.<功能>`，Minecraft 业务、主线程桥接和游戏 Tool 位于 `assistant`，数据与加载位于 `data`，任务文案和语音行为位于 `speech`。完整依赖方向及扩展入口见[包职责与数据流](architecture.md)。指令解析器和路由器不包含模块 ID 的业务 switch。
 

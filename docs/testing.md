@@ -1,5 +1,13 @@
 # 编译与验收
 
+## 2026-11-08 四种对话模式与执行策略
+
+发送框左侧新增离线 / 标准（默认）/ 扩展 / 自由菜单，共用 ConversationModeSelector，名称、说明和管理员禁用原因分行显示；原个人 AI / 自由聊天开关及顶栏强制开关合并为 PlayerData.mode。ConversationStrategy 接口由 ConversationMode 枚举实现路由顺序；管理员许可与模式偏好经 AiStatus 同步，客户端置灰、服务端复核，限制时降级执行并保留偏好。
+
+扩展模式先完成本地和 AI 路由再兜底回答；自由模式复用 ReActLoop，从已授权工作流绑定能力。嵌套执行保持单一任务和预算、隔离步骤引用及授权集合，保留确认按钮和已返回的卡片。阅读 AUI 实际 Element.init、按钮键盘默认行为与事件接口，菜单先初始化再保留动态元素引用，只在权限 / 模式 / 忙碌变化时更新，不主动测量布局或增加 opacity 合成。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain` 成功；未执行测试、启动 Minecraft 或调用外部 API。静态核对中英文各 616 键且集合一致，资源 JSON 可解析，页面 ID 无重复、translation 与四模式条目存在，编辑器语言 / CSS 镜像一致，`git diff --check` 通过。菜单位置与主题、鼠标 / 键盘交互、管理员动态变更及真实模型调用功能仍待游戏内验收。本次修改当前 master / 26.1.2，未同步其他分支。
+
 ## 2026-11-07 Card JSON 编辑器迁移到 Vite
 
 将原 tools/card_editor.html 拆分到 html/card-editor：页面、编辑操作、节点字段与校验、浏览器预览、示例上下文和样式各自维护；27 份模板、双语语言表及共享 CSS 改为独立资源文件。资源通过 Vite glob 加载，新增 sync:resources 命令从游戏资源刷新快照；html/.gitignore 排除依赖、构建产物和缓存。下方提到旧单文件路径的内容保留为历史验收记录，当前入口与命令见 [Card JSON 编辑器](card-editor.md)。

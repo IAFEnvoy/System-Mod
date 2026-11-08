@@ -4,6 +4,8 @@ import com.iafenvoy.saturn.util.MiscUtil;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.chat.ConversationMode;
+import com.iafenvoy.system.config.file.AiAccessConfig;
 import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.data.History;
 import com.iafenvoy.system.data.card.CardUpdate;
@@ -46,14 +48,16 @@ final class ConversationService {
         }));
     }
 
-    public CompletionStage<AgentResult> preferences(UUID player, boolean history, boolean external, boolean freeChat) {
+    public CompletionStage<AgentResult> preferences(UUID player, boolean history, ConversationMode mode) {
         this.engine.cancel(player);
         AgentStore store = this.engine.playerStore(player);
         return this.engine.personalMaintenance(player, () -> store.update(player, data -> {
             if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
+            // Revocation preserves a saved preference, but a client cannot select a newly forbidden mode.
+            if (mode != data.mode && !AiAccessConfig.INSTANCE.get().permissions(player).allows(mode))
+                throw new AgentException(mode.chats() ? AgentFailure.FREE_CHAT_DISABLED : AgentFailure.AI_FORBIDDEN);
             data.saveHistory = history;
-            data.externalModel = external;
-            data.freeChat = freeChat;
+            data.mode = mode;
             this.engine.router().clear(player);
             if (!history) data.conversation.clear();
             else data.conversation.memoryEpoch++;

@@ -79,7 +79,7 @@ final class QuestBackgrounds {
             this.put(new Entry(questId.toUpperCase(Locale.ROOT), context.language(), fingerprint, false, ""));
             return "";
         }
-        if (!context.store().read(context.player(), data -> data.externalModel)
+        if (!context.store().read(context.player(), data -> data.mode.usesAi())
                 || this.retryAfter.getOrDefault(flight, 0L) > System.currentTimeMillis()) return "";
         CompletableFuture<String> future = new CompletableFuture<>();
         CompletableFuture<String> previous = this.loading.putIfAbsent(flight, future);

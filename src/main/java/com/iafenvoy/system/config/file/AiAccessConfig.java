@@ -1,5 +1,6 @@
 package com.iafenvoy.system.config.file;
 
+import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.config.ConfigInstance;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
@@ -50,6 +51,14 @@ public record AiAccessConfig(Rule defaults, Map<UUID, Rule> players) {
     }
 
     public record Permissions(boolean allowAi, boolean allowFreeChat, int modelCallsPerDay) {
+        public boolean allows(ConversationMode mode) {
+            return !mode.usesAi() || this.allowAi && this.modelCallsPerDay > 0 && (!mode.chats() || this.allowFreeChat);
+        }
+
+        public ConversationMode effective(ConversationMode mode) {
+            if (this.allows(mode)) return mode;
+            return this.allows(ConversationMode.STANDARD) ? ConversationMode.STANDARD : ConversationMode.OFFLINE;
+        }
     }
 
     public record Rule(Optional<Boolean> allowAi, Optional<Boolean> allowFreeChat, Optional<Integer> modelCallsPerDay) {

@@ -67,7 +67,7 @@ public final class InboxModule extends AbstractAgentModule<InboxInput> {
             cards.add(CardUpdate.show(new SignInStatus(day, ModuleData.get(data, SignInSystemModule.STORAGE).hasReward(day),
                     this.catalogs.available(context.player()).rewards().stream()
                             .map(holder -> holder.value().reward(HolderHelper.id(holder))).toList(),
-                    data.saveHistory, data.externalModel)));
+                    data.saveHistory, data.mode.usesAi())));
             for (Purchase purchase : ModuleData.values(data, CommerceDataStorage.class, this.modules)
                     .flatMap(CommerceDataStorage::streamPurchases).filter(value -> !"COMPLETED".equals(value.state) && !"FAILED".equals(value.state)).limit(8).toList())
                 cards.add(CardUpdate.show(new ShopOrder(purchase.id, purchase.order.label(), purchase.state, purchase.error)));

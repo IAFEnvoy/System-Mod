@@ -11,12 +11,11 @@ import java.util.Optional;
 /**
  * Client-facing snapshot of the binding, display preferences and advertised modules.
  */
-public record ClientState(Optional<Identifier> system, boolean historySaved, boolean externalModel,
+public record ClientState(Optional<Identifier> system, boolean historySaved,
                           List<Identifier> modules, List<String> commands, long requestTimeoutMillis, AiStatus ai) {
     public static final StreamCodec<ByteBuf, ClientState> STREAM_CODEC = StreamCodec.composite(
             Identifier.STREAM_CODEC.apply(ByteBufCodecs::optional), ClientState::system,
             ByteBufCodecs.BOOL, ClientState::historySaved,
-            ByteBufCodecs.BOOL, ClientState::externalModel,
             Identifier.STREAM_CODEC.apply(ByteBufCodecs.list(256)), ClientState::modules,
             ByteBufCodecs.stringUtf8(256).apply(ByteBufCodecs.list(256)), ClientState::commands,
             ByteBufCodecs.VAR_LONG, ClientState::requestTimeoutMillis,

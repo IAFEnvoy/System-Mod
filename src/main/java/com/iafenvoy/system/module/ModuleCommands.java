@@ -35,7 +35,7 @@ public final class ModuleCommands {
     public static int ask(ServerPlayer player, String text) {
         AssistantServer runtime = runtime(player);
         if (runtime == null) return 0;
-        runtime.requests().request(player, UUID.randomUUID().toString(), new ChatRequest(text, false));
+        runtime.requests().request(player, UUID.randomUUID().toString(), new ChatRequest(text));
         return 1;
     }
 

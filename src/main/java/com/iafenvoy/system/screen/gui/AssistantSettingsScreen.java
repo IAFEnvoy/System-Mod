@@ -42,8 +42,6 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
     private RecognitionConfig asrForm = RecognitionConfig.INSTANCE.get();
     private boolean simpleMode = AssistantClient.simpleMode();
     private boolean saveHistory = AssistantClient.state().saveHistory();
-    private boolean externalModel = AssistantClient.state().externalModel();
-    private boolean freeChat = AssistantClient.state().freeChat();
     private boolean savingPreferences;
     private boolean invalidVolume;
     private String generalStatus = "";
@@ -114,14 +112,6 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
             });
         bindSwitch(document, "history_toggle", checked -> {
             this.saveHistory = checked;
-            this.savePreferences();
-        });
-        bindSwitch(document, "model_toggle", checked -> {
-            this.externalModel = checked;
-            this.savePreferences();
-        });
-        bindSwitch(document, "free_chat_toggle", checked -> {
-            this.freeChat = checked;
             this.savePreferences();
         });
         bindSwitch(document, "speech_enabled", checked ->
@@ -246,12 +236,9 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
     private void savePreferences() {
         if (AssistantClient.state().busy() || this.minecraft.getConnection() == null) {
             this.saveHistory = AssistantClient.state().saveHistory();
-            this.externalModel = AssistantClient.state().externalModel();
-            this.freeChat = AssistantClient.state().freeChat();
-        } else if (this.saveHistory != AssistantClient.state().saveHistory()
-                || this.externalModel != AssistantClient.state().externalModel() || this.freeChat != AssistantClient.state().freeChat()) {
+        } else if (this.saveHistory != AssistantClient.state().saveHistory()) {
             this.savingPreferences = true;
-            AssistantClient.send(new PreferencesRequest(this.saveHistory, this.externalModel, this.freeChat));
+            AssistantClient.send(new PreferencesRequest(this.saveHistory, AssistantClient.state().preferredMode()));
         }
         this.renderControls();
     }
@@ -299,8 +286,6 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         switchChecked(document.getElementById("settings_card_animations"), ClientConfig.INSTANCE.get().cardAnimations());
         switchChecked(document.getElementById("settings_cards_other_screens"), ClientConfig.INSTANCE.get().cardsOnOtherScreens());
         switchChecked(document.getElementById("history_toggle"), this.saveHistory);
-        switchChecked(document.getElementById("model_toggle"), this.externalModel);
-        switchChecked(document.getElementById("free_chat_toggle"), this.freeChat);
         switchChecked(document.getElementById("speech_enabled"), this.speechForm.enabled());
         switchChecked(document.getElementById("speech_notification_sound"), this.speechForm.notificationSoundEnabled());
         switchChecked(document.getElementById("speech_cache"), this.speechForm.cacheEnabled());
@@ -326,28 +311,19 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         if (document == null) return;
         if (this.savingPreferences && !AssistantClient.state().busy()) {
             this.savingPreferences = false;
-            boolean saved = this.saveHistory == AssistantClient.state().saveHistory()
-                    && this.externalModel == AssistantClient.state().externalModel() && this.freeChat == AssistantClient.state().freeChat();
+            boolean saved = this.saveHistory == AssistantClient.state().saveHistory();
             this.generalStatus = tr(saved ? "system.ui.settings_saved" : "system.ui.settings_config_error");
             this.saveHistory = AssistantClient.state().saveHistory();
-            this.externalModel = AssistantClient.state().externalModel();
-            this.freeChat = AssistantClient.state().freeChat();
             this.renderControls();
         }
         // A late server state may arrive after settings opens; pending edits wait for acknowledgement.
-        if (!this.savingPreferences
-                && (this.saveHistory != AssistantClient.state().saveHistory()
-                || this.externalModel != AssistantClient.state().externalModel() || this.freeChat != AssistantClient.state().freeChat())) {
+        if (!this.savingPreferences && this.saveHistory != AssistantClient.state().saveHistory()) {
             this.saveHistory = AssistantClient.state().saveHistory();
-            this.externalModel = AssistantClient.state().externalModel();
-            this.freeChat = AssistantClient.state().freeChat();
             this.renderControls();
         }
         boolean busy = AssistantClient.state().busy() || this.minecraft.getConnection() == null;
-        for (String id : List.of("history_toggle", "model_toggle", "free_chat_toggle")) {
-            Element control = document.getElementById(id);
-            if (control.isDisabled() != busy) control.setDisabled(busy);
-        }
+        Element history = document.getElementById("history_toggle");
+        if (history.isDisabled() != busy) history.setDisabled(busy);
         AiStatus permissions = AssistantClient.state().serverState().ai();
         text(document.getElementById("ai_permissions"), Component.translatable("system.ui.ai_permissions",
                 tr(permissions.allowAi() ? "system.ui.yes" : "system.ui.no"),

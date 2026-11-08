@@ -1,6 +1,6 @@
 # 轻量本地意图路由
 
-现有 score 阈值会按自由聊天状态应用 modeScores 偏移；关闭时优先匹配，开启时未命中直接聊天。完整流程与配置见 [自由聊天](free-chat.md)。
+离线和标准模式使用 modeScores.functions 阈值，扩展模式使用较高的 modeScores.freeChat 阈值；扩展先尝试本地与 AI 路由再聊天，自由模式跳过路由。策略由 ConversationStrategy / ConversationMode 决定，完整流程见 [执行模式](free-chat.md)。
 
 当前使用纯 Java 的领域词表、稀疏 TF-IDF 匹配和玩家独立的精确意图缓存。默认分发包不包含 ONNX Runtime、DJL、Caffeine、native 库、外部词典或训练模型，不下载运行依赖。路由实现、声明、结果和诊断统一位于 `com.iafenvoy.system.agent.routing`。
 

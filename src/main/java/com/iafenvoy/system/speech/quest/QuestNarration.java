@@ -175,7 +175,7 @@ public final class QuestNarration implements AutoCloseable {
                 if (cached.entries().containsKey("0")) prepared.put(source, cached.entries().get("0"));
             } else missing.put(Integer.toString(missing.size()), source);
         }
-        if (!missing.isEmpty() && context.store().read(context.player(), data -> data.externalModel)) {
+        if (!missing.isEmpty() && context.store().read(context.player(), data -> data.mode.usesAi())) {
             Input batch = new Input(missing);
             Map<String, String> summaries = this.summarizeBatch(context,
                     new Key(context.language(), instruction, model.baseUrl(), model.model(), batch));

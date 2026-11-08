@@ -5,6 +5,7 @@ import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.chat.ChatSupport;
+import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.model.ModelGateway;
 import com.iafenvoy.system.agent.module.AgentAction;
@@ -302,8 +303,8 @@ public final class AgentEngine implements AutoCloseable {
         return this.conversations.forget(player);
     }
 
-    public CompletionStage<AgentResult> preferences(UUID player, boolean history, boolean external, boolean freeChat) {
-        return this.conversations.preferences(player, history, external, freeChat);
+    public CompletionStage<AgentResult> preferences(UUID player, boolean history, ConversationMode mode) {
+        return this.conversations.preferences(player, history, mode);
     }
 
     public CompletionStage<History> history(UUID player) {

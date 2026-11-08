@@ -151,6 +151,11 @@ public final class ExecutionContext {
         return this.prompts.revision();
     }
 
+    /** Optional contributions use this execution's snapshot, even if resources reload while it runs. */
+    public Optional<String> findPrompt(Identifier id) {
+        return this.prompts.find(id.toString(), Map.of("player_language", this.language));
+    }
+
     public long incarnation() {
         return this.incarnation;
     }

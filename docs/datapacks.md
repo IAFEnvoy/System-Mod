@@ -18,6 +18,7 @@
 {
   "name": "example.system.sign_in.name",
   "description": "example.system.sign_in.description",
+  "personality_prompt": "example:personality/sign_in",
   "modules": [
     "system:signin",
     {
@@ -27,6 +28,16 @@
   ]
 }
 ```
+
+`personality_prompt` 是可选的提示词 Identifier，使用 lenientOptionalFieldOf 读取；省略或字段无效时不附加人格。上例对应 `data/example/system/prompts/personality/sign_in.txt`，例如：
+
+```text
+You are the Host's daily supply system: calm, practical and attentive.
+Address the player as 宿主 in Chinese or Host in English. Reply in {{player_language}}.
+Keep advice concise and grounded in the available game data.
+```
+
+人格只追加到扩展模式的自由聊天兜底与完整自由模式，不影响意图路由、签到奖励选择、任务整理和联网整理等专用模板。正文沿用 TXT 重载和占位符机制，可使用自动注入的 `{{player_language}}`；引用文件不存在时记录警告并继续使用基础聊天提示词，不额外请求模型。内置默认系统引用 `system:personality/default`。更换 JSON 中的引用需要重开世界 / 重启服务器；修改已引用的 TXT 正文后 `/reload` 即可让新请求使用新版本。
 
 `name` 和 `description` 必填，内容均为翻译键，客户端通过 `Component.translatable` 按玩家语言显示。自定义键需要配套客户端资源包，在 `assets/example/lang/zh_cn.json` 中提供：
 
@@ -155,7 +166,7 @@ tag 来自动态模块配置注册表 `system:system_module`，成员为模块�
 
 `has_system` 未提供 `system` 时匹配任意已绑定且就绪的系统，提供时与该玩家当前绑定的 ID 比较。实体不是服务端玩家、运行时未就绪或玩家未绑定时，action 不改数据，condition 返回 false。手动增删通过主线程 API `AssistantServer.get(server).moduleManager().add/remove(player, moduleId)`，移除立即停止模块；添加会异步初始化存储，成功后才发布可用状态，顺序动作中的后续 has_module 对刚添加模块可能暂为 false。权限解析内部的依赖条件使用目标模块集合，避免初始化顺序影响条件计算。可通过 `hasModule(uuid, id)`、`hasSystem(uuid)`、`system(uuid)`、`enabled(uuid)` 查询不可变状态。
 
-模块覆盖保存在玩家独立数据文件 `<存档>/system-agent/<玩家 UUID>.json` 的 `moduleData` 字段中，由 `system:module_access` DataStorage 持有。数据按玩家 UUID 隔离，登出与重登保留，成功 `revoke/reset` 删除整份玩家数据，`forget` 不清除；累计用量仍保存在单独的世界 SavedData 文件中。
+模块覆盖保存在玩家独立数据文件 `<存档>/system/players/<玩家 UUID>.dat` 的 `moduleData` 字段中，通过 `FileAccess.NBT_COMPRESSED` 写入GZIP 压缩 NBT，由 `system:module_access` DataStorage 持有。数据按玩家 UUID 隔离，登出与重登保留，成功 `revoke/reset` 删除整份玩家数据，`forget` 不清除；累计用量仍保存在单独的世界 SavedData 文件中。
 
 功能模块在 `ServerModule.storages()` 声明 ModuleStorage，Codec 通过 Saturn DATA_STORAGE_TYPE 独立注册，管理器统一创建数据和驱动生命周期；事务内使用 `ModuleData.get(data, SomeSystemModule.STORAGE)`。PlayerData.moduleData 使用 Saturn DataStorageHolder，以 ModuleStorage.owner 和 Java 类型寻址；内置同类配置共用对应功能账本，Codec 类型 ID 独立。商城和抽奖持有独立交易存储，Core 持有权限和幂等日志。普通业务修改在 AgentStore.update 原子落盘；DataStorage.tick 在主线程内存事务中执行，变化需 markDirty，由管理器合并异步保存。不使用玩家附件，停用保留账本，revoke/reset 才清空。
 
@@ -173,6 +184,9 @@ tag 来自动态模块配置注册表 `system:system_module`，成员为模块�
 | `data/system/system/prompts/sign_in.txt` | `system:sign_in` | `{{player_language}}` |
 | `data/system/system/prompts/quest_narration.txt` | `system:quest_narration` | `{{player_language}}` |
 | `data/system/system/prompts/quest_background.txt` | `system:quest_background` | `{{player_language}}` |
+| `data/system/system/prompts/react.txt` | `system:react` | `{{player_language}}` |
+| `data/system/system/prompts/free_chat.txt` | `system:free_chat` | `{{player_language}}` |
+| `data/system/system/prompts/personality/default.txt` | `system:personality/default` | `{{player_language}}` |
 
 `{{player_language}}` 由执行上下文自动提供，例如 `zh_cn`、`en_us`，来源为 MC 同步的玩家语言，模块不能通过同名参数覆盖它。`{{capabilities}}` 由路由器传入当前已注册的交互模块 JSON，包含说明和输入 schema；路由模板必须保留这个占位符。签到的玩家快照、候选奖励和日期仍通过用户消息的结构化 JSON 传入，不内联成系统指令。
 

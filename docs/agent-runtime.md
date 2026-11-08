@@ -66,7 +66,7 @@ Agent 根包保留 `AgentResult`、`AgentException`、`AgentFailure`、`AgentLif
 
 ## 玩家模块存储
 
-玩家私有记录位于 `<存档>/system-agent/<UUID>.json`，对话与请求回放缓存在同目录的 `chat/<UUID>.dat`（NBT）；两者独立设上限并各自原子替换，缓存写不动不会阻塞业务写。PlayerData.moduleData 使用 Saturn `DataStorageHolder<Identifier>`；Holder 键为 ServerModule ID，具体 Java 类型区分同一模块的多项存储，Codec 类型 ID 独立。
+玩家私有记录位于 `<存档>/system/players/<UUID>.dat`，对话与请求回放缓存在 `<存档>/system/chat/<UUID>.dat`；两者均通过 `FileAccess.NBT_COMPRESSED` 读写 GZIP 压缩 NBT，独立设上限并各自原子替换，缓存写不动不会阻塞业务写。PlayerData.moduleData 使用 Saturn `DataStorageHolder<Identifier>`；Holder 键为 ServerModule ID，具体 Java 类型区分同一模块的多项存储，Codec 类型 ID 独立。
 
 存储由 `ServerModule.storages()` 返回 ModuleStorage 声明，包含 owner、Codec ID、Java 类型、MapCodec 和工厂；声明从当前世界 system:system_module 的 server 配置读取；静态 SystemRegistries.SERVER_MODULE 只注册 MapCodec 类型。内置 Codec 由 SystemDataStorages 的 DeferredRegister 注册到 Saturn DATA_STORAGE_TYPE，扩展的 Codec 需另行注册。不同模块可以复用同一存储类型与 Codec；数据按 ModuleStorage.owner 区分，内置同类配置共用该功能账本。业务访问统一用 `ModuleData.get(data, SomeSystemModule.STORAGE)`，不要在 PlayerData 加功能访问器。完整声明与生命周期见[功能模块化](feature-modules.md#玩家生命周期)。
 

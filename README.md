@@ -32,7 +32,7 @@ These requirements apply to the current branch. Use the corresponding branch or 
 | System               | `1.0-beta.3`                                       | Client and server |
 | Minecraft / NeoForge | `26.1.2` / `26.1.2.114+`                           | Client and server |
 | Java                 | `25`                                               | Client and server |
-| Saturn               | `1.2.5+`, built for the matching Minecraft version | Client and server |
+| Saturn               | `1.2.6+`, built for the matching Minecraft version | Client and server |
 | ApricityUI           | `1.2.9+`, built for the matching Minecraft version | Client            |
 
 FTB Quests and its dependencies are **optional**, needed only for quest integration. Simple Voice Chat is an **optional

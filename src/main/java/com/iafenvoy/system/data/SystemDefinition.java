@@ -11,16 +11,21 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Names and descriptions are translation keys; module conditions are evaluated only by the server.
  */
-public record SystemDefinition(String name, String description, List<ModuleDefinition> modules) {
-    public static final SystemDefinition DEFAULT = new SystemDefinition("system.definition.default.name", "system.definition.default.description", List.of(new ModuleDefinition(Either.right(TagKey.create(SystemResourceKeys.SYSTEM_MODULE, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "default"))))));
+public record SystemDefinition(String name, String description, List<ModuleDefinition> modules,
+                               Optional<Identifier> personalityPrompt) {
+    public static final SystemDefinition DEFAULT = new SystemDefinition("system.definition.default.name", "system.definition.default.description",
+            List.of(new ModuleDefinition(Either.right(TagKey.create(SystemResourceKeys.SYSTEM_MODULE, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "default"))))),
+            Optional.of(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "personality/default")));
     public static final Codec<SystemDefinition> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("name").forGetter(SystemDefinition::name),
             Codec.STRING.fieldOf("description").forGetter(SystemDefinition::description),
-            CollectionCodecs.list(ModuleDefinition.CODEC).optionalFieldOf("modules", List.of()).forGetter(SystemDefinition::modules)
+            CollectionCodecs.list(ModuleDefinition.CODEC).optionalFieldOf("modules", List.of()).forGetter(SystemDefinition::modules),
+            Identifier.CODEC.lenientOptionalFieldOf("personality_prompt").forGetter(SystemDefinition::personalityPrompt)
     ).apply(i, SystemDefinition::new));
 
     public SystemDefinition {

@@ -1,65 +1,133 @@
 package com.iafenvoy.system.screen.gui;
 
+import com.github.rjeschke.txtmark.Configuration;
+import com.github.rjeschke.txtmark.DefaultDecorator;
+import com.github.rjeschke.txtmark.Processor;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.screen.card.CardRenderer;
 import com.sighs.apricityui.init.Element;
-import com.sighs.apricityui.util.Markdown;
+import org.apache.commons.lang3.StringEscapeUtils;
 
-import javax.swing.text.MutableAttributeSet;
-import javax.swing.text.html.HTML;
-import javax.swing.text.html.HTMLEditorKit;
-import javax.swing.text.html.parser.ParserDelegator;
-import java.io.IOException;
-import java.io.StringReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
-import java.util.Locale;
-import java.util.Set;
+import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * AUI parses Markdown, while this inert HTML reader rebuilds only known nodes and vanilla URL actions.
- * Model HTML, attributes and remote images never enter an AUI HTML parser or resource loader.
+ * Txtmark owns Markdown structure; AUI parses its generated HTML and vanilla handles explicit Markdown links.
  */
+@SuppressWarnings("deprecation")
 public final class AssistantMarkdown {
-    private static final Pattern LEGACY_CODES = Pattern.compile("(?i)§[0-9a-fk-orx]");
-    private static final Set<String> BLOCKS = Set.of("p", "h1", "h2", "h3", "h4", "h5", "h6", "pre", "blockquote", "ul", "ol", "li", "hr");
-    private static final Set<String> INLINE = Set.of("strong", "b", "em", "i", "code", "s", "strike", "del", "a");
-    private static final Set<String> HIDDEN = Set.of("head", "script", "style", "iframe", "object", "applet");
+    private static final Pattern FENCE = Pattern.compile("^ {0,3}(`{3,}|~{3,})(.*)$");
+    private static final Pattern SOURCE_TAG = Pattern.compile("<(?:/?[A-Za-z][\\w:-]*(?=[\\s/>])|[!?])(?:\"[^\"]*\"|'[^']*'|[^'\">])*>");
+    private static final Pattern NAMED_ENTITY = Pattern.compile("&[A-Za-z][A-Za-z0-9]*;");
+    private static final Pattern BLOCK_TAG = Pattern.compile("<(p|h[1-6]|pre|blockquote|ul|ol|li|strong|em|sup|code)\\b[^>]*>");
+    private static final Pattern IMAGE = Pattern.compile("<span class=\"markdown_image\" src=\"[^\"]*\" alt=\"([^\"]*)\"(?: title=\"[^\"]*\")?></span>");
+    private static final Pattern LINE_END = Pattern.compile("</(?:p|h[1-6]|pre|blockquote|li)>|<br\\s*/?>|<div class=\"markdown_hr\"></div>");
+    private static final Pattern TAG = Pattern.compile("<[^>]*>");
 
     private AssistantMarkdown() {
     }
 
     public static Element render(CardRenderer.Render view, String source) {
-        return parse(source, view).root;
+        Element root = Element.init(view.element("div", ""));
+        try {
+            root.setInnerHTML(html(source));
+            for (Element element : root.querySelectorAll(".markdown_a")) {
+                String url = url(element.getAttribute("href"));
+                if (url.isEmpty()) continue;
+                element.setClassName("markdown_a markdown_link");
+                element.setAttribute("role", "link");
+                element.setAttribute("title", url);
+                element.addEventListener("click", event -> {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (view.interactive()) AssistantPageScreen.openLink(url);
+                });
+            }
+        } catch (RuntimeException error) {
+            SystemMod.LOGGER.warn("Unable to render Markdown, displaying its source", error);
+            root.setTextContent(source);
+        }
+        return root;
     }
 
     public static String text(String source) {
-        return parse(source, null).text.toString().strip();
-    }
-
-    private static Reader parse(String source, CardRenderer.Render view) {
-        Reader reader = new Reader(view);
-        // Strip only section-sign formatting; ampersands in code, entities and URL queries remain literal.
-        String markdown = LEGACY_CODES.matcher(source).replaceAll("");
         try {
-            new ParserDelegator().parse(new StringReader(Markdown.renderSafe(markdown)), reader, true);
-        } catch (IOException | RuntimeException error) {
-            SystemMod.LOGGER.warn("Unable to render Markdown, displaying its source", error);
-            reader.text.setLength(0);
-            reader.text.append(markdown);
-            if (reader.root != null) reader.root.setTextContent(markdown);
+            String lines = LINE_END.matcher(html(source)).replaceAll("\n");
+            // Decode once, after removing only renderer-generated tags; literal HTML remains visible text.
+            return StringEscapeUtils.unescapeHtml4(TAG.matcher(lines).replaceAll("").replace("&apos;", "&#39;")).strip();
+        } catch (RuntimeException error) {
+            SystemMod.LOGGER.warn("Unable to export Markdown, using its source", error);
+            return source;
         }
-        return reader;
     }
 
-    private static String url(MutableAttributeSet attributes) {
-        Object href = attributes.getAttribute(HTML.Attribute.HREF);
+    private static String html(String source) {
+        String marker = "\uE000";
+        while (source.contains(marker)) marker += "\uE001";
+        String prefix = marker;
+        List<String> literals = new ArrayList<>();
+        // Keep source tags literal, including their quotes, before Txtmark's smart punctuation runs.
+        String markdown = SOURCE_TAG.matcher(normalizeAdjacentFences(source)).replaceAll(match -> {
+            String token = prefix + literals.size() + "\uE002";
+            literals.add(match.group().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"));
+            return Matcher.quoteReplacement(token);
+        });
+        // Defer '<' escaping so panic mode cannot double-escape code or literal '&lt;'.
+        String lessThan = prefix + "lt\uE002";
+        markdown = markdown.replace("<", lessThan);
+        Configuration configuration = Configuration.builder().forceExtentedProfile().enableSafeMode().enablePanicMode()
+                .setDecorator(new CardDecorator()).build();
+        String html = Processor.process(markdown, configuration);
+        // These patterns see only Txtmark-generated tags. Discard extended-profile heading/list IDs as well.
+        html = BLOCK_TAG.matcher(html).replaceAll("<$1 class=\"markdown_$1\">");
+        html = IMAGE.matcher(html).replaceAll(match -> Matcher.quoteReplacement("<span>" + match.group(1) + "</span>"));
+        // AUI accepts numeric references but only a small subset of HTML named entities; decode exactly once.
+        html = NAMED_ENTITY.matcher(html).replaceAll(match -> {
+            String decoded = StringEscapeUtils.unescapeHtml4(match.group().replace("&apos;", "&#39;"));
+            if (decoded.equals(match.group())) return match.group();
+            StringBuilder numeric = new StringBuilder();
+            decoded.codePoints().forEach(point -> numeric.append("&#").append(point).append(';'));
+            return numeric.toString();
+        });
+        html = Pattern.compile(Pattern.quote(prefix) + "(\\d+)\uE002").matcher(html)
+                .replaceAll(match -> Matcher.quoteReplacement(literals.get(Integer.parseInt(match.group(1)))));
+        return html.replace(lessThan, "&lt;");
+    }
+
+    private static String normalizeAdjacentFences(String source) {
+        List<String> lines = new ArrayList<>();
+        String fence = "";
+        boolean afterFence = false;
+        for (String line : source.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1)) {
+            Matcher match = FENCE.matcher(line);
+            if (match.matches()) {
+                if (fence.isEmpty()) {
+                    // Txtmark otherwise keeps the second opener as code when consecutive blocks have a blank gap.
+                    if (afterFence) while (!lines.isEmpty() && lines.getLast().isBlank()) lines.removeLast();
+                    fence = match.group(1);
+                    afterFence = false;
+                } else if (match.group(1).charAt(0) == fence.charAt(0) && match.group(1).length() >= fence.length() && match.group(2).isBlank()) {
+                    fence = "";
+                    afterFence = true;
+                    lines.add(line);
+                    continue;
+                }
+            } else if (!line.isBlank()) afterFence = false;
+            lines.add(line);
+        }
+        return String.join("\n", lines);
+    }
+
+    private static String url(String href) {
         if (href == null) return "";
         try {
-            URI uri = new URI(href.toString().strip());
+            URI uri = new URI(href.strip());
             String scheme = uri.getScheme();
             return scheme != null && (scheme.equalsIgnoreCase("https") || scheme.equalsIgnoreCase("http"))
                     && uri.getHost() != null ? uri.toASCIIString() : "";
@@ -68,107 +136,76 @@ public final class AssistantMarkdown {
         }
     }
 
-    private static final class Frame {
-        private final String tag;
-        private final Element element;
-        private final boolean hidden;
-        private int number = 1;
+    /** Per-conversion list counters; generated links and images stay inert while AUI initializes their nodes. */
+    private static final class CardDecorator extends DefaultDecorator {
+        private final Deque<Integer> lists = new ArrayDeque<>();
+        private final Deque<Item> items = new ArrayDeque<>();
 
-        private Frame(String tag, Element element, boolean hidden) {
-            this.tag = tag;
-            this.element = element;
-            this.hidden = hidden;
-        }
-    }
-
-    private static final class Reader extends HTMLEditorKit.ParserCallback {
-        private final CardRenderer.Render view;
-        private final Element root;
-        private final Deque<Frame> frames = new ArrayDeque<>();
-        private final StringBuilder text = new StringBuilder();
-
-        private Reader(CardRenderer.Render view) {
-            this.view = view;
-            this.root = view == null ? null : Element.init(view.element("div", ""));
-            this.frames.push(new Frame("root", this.root, false));
+        private record Item(int start, String marker) {
         }
 
         @Override
-        public void handleStartTag(HTML.Tag tag, MutableAttributeSet attributes, int position) {
-            String name = tag.toString().toLowerCase(Locale.ROOT);
-            Frame parent = this.frames.peek();
-            boolean hidden = parent.hidden || HIDDEN.contains(name);
-            Element element = parent.element;
-            if (!hidden && (BLOCKS.contains(name) || INLINE.contains(name))) {
-                if (BLOCKS.contains(name)) this.line();
-                element = this.element(parent.element, BLOCKS.contains(name) ? "div" : "span", "markdown_" + name);
-                if (name.equals("li")) {
-                    Frame list = this.frames.stream().filter(frame -> frame.tag.equals("ol") || frame.tag.equals("ul")).findFirst().orElse(null);
-                    String marker = list != null && list.tag.equals("ol") ? list.number++ + ". " : "• ";
-                    this.text.append(marker);
-                    Element bullet = this.element(element, "span", "markdown_marker");
-                    if (bullet != null) bullet.setTextContent(marker);
-                } else if (name.equals("a")) this.link(element, url(attributes));
-            }
-            this.frames.push(new Frame(name, element, hidden));
+        public void openOrderedList(StringBuilder out) {
+            this.lists.push(1);
+            super.openOrderedList(out);
         }
 
         @Override
-        public void handleEndTag(HTML.Tag tag, int position) {
-            String name = tag.toString().toLowerCase(Locale.ROOT);
-            if (this.frames.stream().noneMatch(frame -> frame.tag.equals(name))) return;
-            Frame frame;
-            do frame = this.frames.pop();
-            while (!frame.tag.equals(name) && this.frames.size() > 1);
-            if (!frame.hidden && BLOCKS.contains(name)) this.line();
+        public void closeOrderedList(StringBuilder out) {
+            this.lists.pop();
+            super.closeOrderedList(out);
         }
 
         @Override
-        public void handleSimpleTag(HTML.Tag tag, MutableAttributeSet attributes, int position) {
-            if (this.frames.peek().hidden) return;
-            if (tag == HTML.Tag.BR) {
-                this.text.append('\n');
-                this.element(this.frames.peek().element, "br", "");
-            } else if (tag == HTML.Tag.HR) {
-                this.line();
-                this.element(this.frames.peek().element, "div", "markdown_hr");
-            } else if (tag == HTML.Tag.IMG) {
-                Object alt = attributes.getAttribute(HTML.Attribute.ALT);
-                if (alt != null) this.handleText(alt.toString().toCharArray(), position);
-            }
+        public void openUnorderedList(StringBuilder out) {
+            this.lists.push(0);
+            super.openUnorderedList(out);
         }
 
         @Override
-        public void handleText(char[] data, int position) {
-            Frame frame = this.frames.peek();
-            if (frame.hidden) return;
-            String value = new String(data);
-            this.text.append(value);
-            if (frame.element != null) frame.element.appendChild(this.view.document().createTextNode(value));
+        public void closeUnorderedList(StringBuilder out) {
+            this.lists.pop();
+            super.closeUnorderedList(out);
         }
 
-        private Element element(Element parent, String tag, String css) {
-            if (parent == null) return null;
-            Element element = Element.init(this.view.document().createElement(tag));
-            element.setClassName(css);
-            parent.appendChild(element);
-            return element;
+        @Override
+        public void openListItem(StringBuilder out) {
+            int number = this.lists.pop();
+            this.lists.push(number == 0 ? 0 : number + 1);
+            this.items.push(new Item(out.length(), number == 0 ? "• " : number + ". "));
+            super.openListItem(out);
         }
 
-        private void link(Element element, String url) {
-            if (element == null || url.isEmpty()) return;
-            element.setAttribute("role", "link");
-            element.setAttribute("title", url);
-            element.setClassName("markdown_a markdown_link");
-            element.addEventListener("click", event -> {
-                event.preventDefault();
-                event.stopPropagation();
-                if (this.view.interactive()) AssistantPageScreen.openLink(url);
-            });
+        @Override
+        public void closeListItem(StringBuilder out) {
+            Item item = this.items.pop();
+            out.insert(out.indexOf(">", item.start()) + 1, "<span class=\"markdown_marker\">" + item.marker() + "</span>");
+            super.closeListItem(out);
         }
 
-        private void line() {
-            if (!this.text.isEmpty() && this.text.charAt(this.text.length() - 1) != '\n') this.text.append('\n');
+        @Override
+        public void horizontalRuler(StringBuilder out) {
+            out.append("<div class=\"markdown_hr\"></div>");
+        }
+
+        @Override
+        public void openLink(StringBuilder out) {
+            out.append("<span class=\"markdown_a\"");
+        }
+
+        @Override
+        public void closeLink(StringBuilder out) {
+            out.append("</span>");
+        }
+
+        @Override
+        public void openImage(StringBuilder out) {
+            out.append("<span class=\"markdown_image\"");
+        }
+
+        @Override
+        public void closeImage(StringBuilder out) {
+            out.append("></span>");
         }
     }
 }

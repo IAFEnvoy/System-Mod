@@ -99,7 +99,9 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
         List<CardUpdate> cards = cards(observations);
         cards.addAll(AgentResult.data("system.result.chat", new ChatOutput(answer.text())).cards());
         AgentResult result = new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.chat", "", cards);
-        return observations.stream().anyMatch(value -> value instanceof ChatObservation.Workflow workflow && workflow.result().isFailure())
+        return observations.stream().anyMatch(value -> value instanceof ChatObservation.Workflow(
+                AgentResult result1
+        ) && result1.isFailure())
                 ? result.partial() : result;
     }
 

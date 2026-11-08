@@ -1,6 +1,7 @@
 {
   "name": "system.definition.default.name",
   "description": "system.definition.default.description",
+  "personality_prompt": "system:personality/default",
   "modules": [
     "#system:default"
   ]

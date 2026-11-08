@@ -78,9 +78,17 @@
 
 历史开启时仅发送该玩家最近最多 20 条、合计 16 KiB 的适用文字；助手历史只取 ChatOutput 正文。历史、卡片和工具结果均作为不可信数据。回答使用 Markdown 卡片，复用历史、播报和统一 ModelGateway 用量计量。
 
+## 系统人格
+
+系统定义可通过 `"personality_prompt": "example:personality/sign_in"` 引用 `data/example/system/prompts/personality/sign_in.txt`。字段为可选 Identifier，省略时只使用基础提示词。默认系统附带 `system:personality/default`，采用克制的系统文口吻，中文称呼宿主、英文称呼 Host。
+
+AssistantServer 从本次玩家存档中的当前绑定 ID 查服务端系统定义，再用 ExecutionContext 的提示词快照渲染该 TXT；Agent 层只接收 PromptProvider 返回的文本，不查询 Minecraft 注册表。ChatSupport 先生成基础指令，再追加人格，两种聊天入口共用该流程；自由模式的 ReAct 在开始时捕获整份提示词，后续轮次不重复读取。人格与基础提示词属于同一条 system 消息，不增加模型调用次数，仍计入输入与 Token 预算。权限、工具白名单和结构化输出保持原来的代码约束。
+
+人格文件支持 `{{player_language}}`。未指定、没有当前绑定或引用文件不存在时继续使用基础指令，缺失文件记入服务端警告。修改 TXT 可 `/reload`；更换系统定义中的引用需要重开世界 / 重启服务器。每次执行保留原提示词快照，重载只影响新请求。人格正文不额外同步到客户端，由模型请求统一发往所配置的服务商。
+
 ## 扩展入口
 
-`engine.chat().prompts(PromptProvider)` 可替换默认提示词提供者；默认文件 `data/system/system/prompts/free_chat.txt` 由 txt reload listener 加载，包含直接回答、工具优先级和 ReAct 协议。
+`engine.chat().prompts(PromptProvider)` 可替换基础提示词提供者；默认文件 `data/system/system/prompts/free_chat.txt` 由 txt reload listener 加载，包含直接回答、工具优先级和 ReAct 协议。替换基础提供者后仍会附加系统人格；`engine.chat().personality(PromptProvider)` 可单独替换这项贡献，其默认游戏桥接由 AssistantServer 安装。
 
 底层 Tool 先按原有方式注册到 ToolRegistry，可用 `.forReasoning("说明")` 将带 SchemaMapCodec 的只读操作公开给分析和自由模式；PAID 操作不会进入只允许本地读取的分析目录。`.withPriority(ToolPriority.PAID)` 标记额外付费，执行时仍需通过外部服务门禁，处理器负责自身业务授权。没有公开说明的工具，可通过以下接口按请求追加；未注册、已禁用、写操作和不含 schema 的类型会被过滤，不会因回调返回而取得权限：
 

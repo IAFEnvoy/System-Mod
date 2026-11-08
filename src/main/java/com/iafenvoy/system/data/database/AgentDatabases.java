@@ -16,7 +16,7 @@ public final class AgentDatabases implements AutoCloseable {
 
     public AgentDatabases(Path root) {
         this.root = root;
-        this.shared = new AgentDatabase(root.resolve("shared.json"));
+        this.shared = new AgentDatabase(root.resolve("shared.dat"));
     }
 
     public synchronized AgentDatabase shared() {
@@ -26,7 +26,7 @@ public final class AgentDatabases implements AutoCloseable {
 
     public synchronized AgentDatabase player(UUID player) {
         this.checkOpen();
-        return this.players.computeIfAbsent(player, id -> new AgentDatabase(this.root.resolve("players").resolve(id + ".json")));
+        return this.players.computeIfAbsent(player, id -> new AgentDatabase(this.root.resolve("players").resolve(id + ".dat")));
     }
 
     public synchronized void deletePlayer(UUID player) {

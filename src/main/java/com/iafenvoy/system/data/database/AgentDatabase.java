@@ -3,9 +3,10 @@ package com.iafenvoy.system.data.database;
 import com.iafenvoy.saturn.util.FileAccess;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
+import com.iafenvoy.system.util.AtomicFiles;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
-import com.mojang.serialization.JsonOps;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.Identifier;
 
 import java.io.IOException;
@@ -104,7 +105,7 @@ public final class AgentDatabase implements AutoCloseable {
     }
 
     private static <T> Dynamic<?> encode(DatabaseTable<T> table, T value) {
-        return new Dynamic<>(JsonOps.INSTANCE, table.codec().encodeStart(JsonOps.INSTANCE, value).getOrThrow());
+        return new Dynamic<>(NbtOps.INSTANCE, table.codec().encodeStart(NbtOps.INSTANCE, value).getOrThrow());
     }
 
     private Map<String, Dynamic<?>> entries(Identifier table) {
@@ -116,7 +117,8 @@ public final class AgentDatabase implements AutoCloseable {
         if (this.closed) throw new AgentException(AgentFailure.STORAGE_UNAVAILABLE);
         if (this.tables != null) return;
         try {
-            this.tables = FileAccess.JSON.loadOrDefault(CODEC, this.file, Map.of());
+            this.tables = Files.notExists(this.file) ? Map.of() : FileAccess.NBT_COMPRESSED.load(CODEC, this.file)
+                    .orElseThrow(() -> new IOException("Unable to decode agent database: " + this.file));
         } catch (Exception error) {
             // Preserve unreadable files instead of replacing potentially unrelated player/module data.
             throw new AgentException(AgentFailure.STORAGE_UNAVAILABLE, new IOException("Unable to read agent database: " + this.file, error));
@@ -128,8 +130,9 @@ public final class AgentDatabase implements AutoCloseable {
         if (entries.isEmpty()) next.remove(table);
         else next.put(table, Map.copyOf(entries));
         try {
-            Files.createDirectories(this.file.getParent());
-            FileAccess.JSON.save(CODEC, this.file, next);
+            byte[] bytes = FileAccess.NBT_COMPRESSED.encode(CODEC, next)
+                    .orElseThrow(() -> new IOException("Unable to encode agent database: " + this.file));
+            AtomicFiles.replace(this.file, bytes);
             this.tables = Map.copyOf(next);
         } catch (IOException | RuntimeException error) {
             throw new AgentException(AgentFailure.STORAGE_UNAVAILABLE, new IOException("Unable to save agent database: " + this.file, error));

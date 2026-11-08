@@ -15,7 +15,7 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 | Minecraft / NeoForge | 26.1.2 / 26.1.2.114 |
 | ApricityUI | 1.2.9；客户端最低版本 1.2.9 |
 | Jupiter | CurseMaven 8569832 |
-| Saturn | 1.2.5 / CurseMaven 9449659；客户端和服务端均必装，统一 Cost、模块 DataStorage、Codec 工具、玩家信息视图及 HUD 编辑器 |
+| Saturn | 1.2.6 / CurseMaven 9509793；客户端和服务端均必装，统一 Cost、模块 DataStorage、Codec 工具、压缩 NBT 文件、玩家信息视图及 HUD 编辑器 |
 | Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
 | Card JSON 编辑器（独立开发工具） | Vite 8.3.6；Node.js ^20.19.0 或 >=22.12.0，位于 html/card-editor；不进入模组 JAR |
 | Gson | 2.13.2；主项目直接声明依赖，Minecraft 提供运行时类 |
@@ -26,7 +26,7 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 
 AUI 1.2.9 将布局状态从 `RenderElement` 拆到 `LayoutState`。卡片折叠与分页刷新通过 `Element.getLayout().invalidateLayoutSubtree()` 使布局失效，再由 `AssistantPages.commit` 提交更新。
 
-玩家查询与卡片使用 Saturn 的 `data.information.PlayerViews`、`PlayerInformation` 与 `InformationText`，展示结果类型为 `data.information.model.InformationEntry`。查询仍选取 basic/status 分组和既有行白名单，并保留 32 行、每行 256 字的上限；分组按 ResourceKey 从当前世界解析为 Holder，结果通过 entry.value()/label()/tooltip() 直接使用；排序和 importance 从原始行定义读取。Saturn 为必装依赖，最低版本为 1.2.5，通知位置编辑复用其 HUD 框架。
+玩家查询与卡片使用 Saturn 的 `data.information.PlayerViews`、`PlayerInformation` 与 `InformationText`，展示结果类型为 `data.information.model.InformationEntry`。查询仍选取 basic/status 分组和既有行白名单，并保留 32 行、每行 256 字的上限；分组按 ResourceKey 从当前世界解析为 Holder，结果通过 entry.value()/label()/tooltip() 直接使用；排序和 importance 从原始行定义读取。Saturn 为必装依赖，最低版本为 1.2.6，通知位置编辑复用其 HUD 框架，存档使用其 `NBT_COMPRESSED` 入口。版本和 CurseMaven 文件 ID 分别由 `gradle.properties` 的 `saturn_version`、`saturn_file_id` 管理，依赖元数据同步使用同一最低版本。
 
 Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器、上下文、Module/Tool/Store/Journal 契约、路由与模型调用。具体工作流和功能装配位于 `module/builtin`，MC 业务、绑定和交易位于 `assistant`，参数结果、持久化与资源加载位于 `data`，语音行为及任务口播位于 `speech`。业务 DataStorage 继续放在 `module/builtin/storage`，执行账本实现位于 `data/store`。通用工具、配置、游戏界面、网络与可选兼容层保留对应包；所有代码仍共用主源码集与 Java 25 工具链。详细边界见[包职责与数据流](architecture.md)及[功能模块化](feature-modules.md)。
 
@@ -221,11 +221,17 @@ CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式
 
 ## 持久化与恢复
 
-存储分为两类文件：`<存档>/system-agent/<UUID>.json` 保存业务状态（JSON），`<存档>/system-agent/chat/<UUID>.dat` 保存对话与请求回放缓存（NBT）。读写统一经 `FileAccess` 的 codec 模式：JSON 或 NBT 由文件决定，落盘位置、临时文件与原子替换仍由 `FileAgentStore` 负责。不同世界使用各自目录，原型只支持单进程本地文件系统：写临时文件、`force(true)` 后原子替换。文件系统不支持原子替换时拒绝写，不退化为不安全覆盖。业务文件与回放缓存的字节上限、日志两张表的条数与字节上限、对话保留条数与天数都来自 `config/system/system-storage.json`，默认业务 4MiB、缓存 32MiB、日志 768KiB（步骤回执）/256KiB（事件任务）；日志预算被夹在业务文件预算之内，避免日志自己顶穿业务文件。上限在每次读写与回收时实时读取，修改后资源重载（`/reload`）即生效。缓存超限时按最早轮次淘汰，仍放不下则跳过本次缓存写入并记日志，不影响业务事务。没有 SQLite 或多服务器共享写入。
+存档内的自管文件统一位于 `<存档>/system/`：`players/<UUID>.dat` 保存业务状态，`chat/<UUID>.dat` 保存对话与请求回放缓存，`database/shared.dat` 和 `database/players/<UUID>.dat` 保存共享及玩家独立数据库。所有数据文件均通过 `FileAccess.NBT_COMPRESSED` 与 Codec 读写为 GZIP 压缩 NBT；`store.lock` 是进程文件锁。原版 SavedData 继续由 Minecraft 管理，保留在 `data/system/`。
 
-玩家文件按 UTF-8 读取，读取器在 `load` 返回前通过 try-with-resources 关闭，避免 Windows 下未释放的读取句柄阻止后续原子替换。读写、删除和目录枚举失败会在服务端记录操作、路径与异常原因，并通过带 cause 的 `AgentException(AgentFailure.STORAGE_UNAVAILABLE, cause)` 保留错误链；异常保存 Saturn `Failure`，客户端只接收其翻译键与可展示文本，不发送内部路径或堆栈。完整失败传递约定见[Agent 运行结构](agent-runtime.md)。
+读取由 Saturn 自动识别 GZIP / 未压缩、标准 / 旧版省略根名称头部；新写入始终为 GZIP 加标准 NBT 头部。现有 `system/` 内的未压缩文件无需迁移，后续正常保存时改为压缩格式，不批量重写存档。
 
-`CardUpdate` 按 `mode` 分派，SHOW / REPLACE 要求 `data`，REMOVE 只读取引用，避免缺少载荷时构造出无效的部分对象。读取玩家文件时自动丢弃无法解析的回放结果和助手历史卡片，保留有效结果及用户消息；清理后的内容随下一次正常保存落盘，无需手工删除玩家文件。恢复日志仅记录丢弃数量和必要的文件位置，不记录缓存正文。JSON 语法错误、业务 Codec 构造异常和编码异常统一归入存储错误；保留原文件，不自动创建空玩家覆盖，既有 `STORAGE_FULL` 等业务错误码继续保留。
+不同世界使用各自目录，原型只支持单进程本地文件系统：`AtomicFiles` 统一写同目录的 `<文件名>.tmp`、`force(true)` 后原子替换。文件系统不支持原子替换时拒绝写，不退化为不安全覆盖。业务文件与回放缓存的字节上限、日志两张表的条数与字节上限、对话保留条数与天数都来自 `config/system/system-storage.json`，默认业务 4MiB、缓存 32MiB、日志 768KiB（步骤回执）/256KiB（事件任务）；文件上限按实际压缩字节数计算，日志预算按每条记录的 GZIP NBT 编码大小累计，并被夹在业务文件预算之内，避免日志自己顶穿业务文件。上限在每次读写与回收时实时读取，修改后资源重载（`/reload`）即生效。缓存超限时按最早轮次淘汰，仍放不下则跳过本次缓存写入并记日志，不影响业务事务。没有 SQLite 或多服务器共享写入。
+
+本次直接启用新目录和格式，不迁移、读取或删除旧的 `system-agent/`、`system-database/`。旧目录中的绑定、业务状态、聊天和知识库不会自动出现在新目录；`data/system/` 内的累计用量和管理员 AI 权限沿用现有记录。客户端 `config/system/` 的设置、私人语音用量和音频缓存不属于存档，本次不改变它们的位置或格式。
+
+玩家文件按 NBT 二进制读取，文件句柄在解码前关闭，避免 Windows 下未释放的读取句柄阻止后续原子替换。读写、删除和目录枚举失败会在服务端记录操作、路径与异常原因，并通过带 cause 的 `AgentException(AgentFailure.STORAGE_UNAVAILABLE, cause)` 保留错误链；异常保存 Saturn `Failure`，客户端只接收其翻译键与可展示文本，不发送内部路径或堆栈。完整失败传递约定见[Agent 运行结构](agent-runtime.md)。
+
+`CardUpdate` 按 `mode` 分派，SHOW / REPLACE 要求 `data`，REMOVE 只读取引用，避免缺少载荷时构造出无效的部分对象。读取玩家文件时自动丢弃无法解析的回放结果和助手历史卡片，保留有效结果及用户消息；清理后的内容随下一次正常保存落盘，无需手工删除玩家文件。恢复日志仅记录丢弃数量和必要的文件位置，不记录缓存正文。NBT 格式错误、业务 Codec 构造异常和编码异常统一归入存储错误；保留原文件，不自动创建空玩家覆盖，既有 `STORAGE_FULL` 等业务错误码继续保留。
 
 长期 AI 用量使用服务器全局 SavedData，保存在 `<存档>/data/system/token_usage.dat`，不进入上述业务文件或玩家附件，也不随 revoke 清理。所有 AI 请求统一经过 `ModelGateway`，按 API 实际 usage 累计。TTS / ASR 由客户端使用私人凭据请求，用量按客户端账号 UUID 只存本机 `config/system/speech-usage/<UUID>.json`，费用读取客户端 `SpeechPricingConfig`。服务端没有语音上报消息、存储字段或快照字段；管理员全服视图只有 AI，个人语音面板跨服务器累计，协议保持 1。详情见[用量统计](token-usage.md)。
 
@@ -330,7 +336,7 @@ FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubm
 
 `QuestGuideModule` 提供 `system:quest_guide` 动作、guide / 说明书 / 查说明 指令及一个只读 `ftb.guide` Tool。FtbQuestKnowledge 在服务端线程缓存勾选 / 无目标且不是礼包的各语言静态正文，FtbQuestGuideTool 每次只计算授权 ID 并在返回前复核原文。AgentDatabase 将原文保存在共享库的 `system:ftb_guides` 表，KnowledgeIndex 复用 LexicalIndex 构建内存稀疏 TF-IDF；权限不写入数据库。FTB 原生清缓存事件或 `/system ftb reload` 使快照失效，手动指令后台重建索引。
 
-AgentEngine 统一拥有 AgentDatabases：`<存档>/system-database/shared.json` 为共享库，`players/<UUID>.json` 为按需创建的独立库。两者使用相同的命名空间 DatabaseTable 和 Codec API，任务背景不再单独写文件。读写与索引构建在后台，查询排序使用不可变索引；revoke / reset 删除私有库，关闭服务端释放全部句柄。玩家事务与累计用量保持各自所有权，详细边界见 [分层本地数据库](databases.md)。
+AssistantServer 统一拥有 AgentDatabases：`<存档>/system/database/shared.dat` 为共享库，`players/<UUID>.dat` 为按需创建的独立库，均使用 GZIP 压缩 NBT。两者使用相同的命名空间 DatabaseTable 和 Codec API，任务背景不再单独写文件。读写与索引构建在后台，查询排序使用不可变索引；revoke / reset 删除私有库，关闭服务端释放全部句柄。玩家事务与累计用量保持各自所有权，详细边界见 [分层本地数据库](databases.md)。
 
 返回前重新核对连接 / 执行上下文、任务文件、队伍、语言、可见性和当前正文；intro 只在知识视图读取，不改变进行中 / 礼包 / 完成行为。QuestGuideOutput 直接展示片段和原文，任务页与 guide 指令不调用 embedding / LLM。FtbQuestAdapter 通过 ModuleContext 导出同一个 ftb.guide Tool，供核心 QuestionModule 在授权后复用；普通知识问答可用模型整理片段，再查询一次以复核。两个入口都不自动提交任务。方法、限制和文件说明见 [本地说明书检索](quest-guides.md)。
 

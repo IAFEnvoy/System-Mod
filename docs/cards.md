@@ -194,9 +194,15 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 flex / grid 组合 b
 
 `text` 默认为 `{{summary}}`，支持平铺占位符、循环下标和通用 style / when / unless / repeat。节点从原始字符串读取内容，不注入 Minecraft 格式重置符，也不把 `&a` 等字符转换为颜色代码。`system:text` 的行为不变，仍负责 FTBQ 标题、介绍、来源原文与 § / & 格式文本。单个 Markdown 节点保留自己的布局，不触发只适用于单个 `system:text` 的普通消息折叠规则。
 
-底层复用 AUI 1.2.9 的 Txtmark 扩展解析器，不增加第三方依赖；支持标题、段落、粗体 / 斜体、嵌套有序 / 无序列表、引用、行内代码、围栏代码块、分割线与链接。代码保留换行并允许长行换行；没有代码语法高亮，也不提供 GitHub 风格表格或任务复选框扩展。样式集中于共享 assistant.css 的 card_markdown / markdown_*，完整模式、简约模式和通知使用同一个渲染入口。
+底层直接配置 AUI 1.2.9 随包提供的 Txtmark 0.13 扩展解析器，不增加第三方依赖；支持标题、段落、粗体 / 斜体、嵌套有序 / 无序列表、引用、行内代码、围栏代码块、分割线与链接。代码保留换行并允许长行换行；没有代码语法高亮，也不提供 GitHub 风格表格或任务复选框扩展。样式集中于共享 assistant.css 的 card_markdown / markdown_*，完整模式、简约模式和通知使用同一个渲染入口。
 
-AUI 的 `renderSafe` 不是完整 HTML 过滤器，因此 `AssistantMarkdown` 使用 JDK 的被动 HTML 读取器，只重建预设 div / span / br 等展示元素及纯文本节点。模型给出的属性、脚本、样式、自定义 AUI 标签和事件不会进入文档，图片只显示 alt 文字、不下载外部资源。链接只保留合法的 HTTP / HTTPS 地址，点击经过 `AssistantPageScreen.openLink` 和原版确认流程；HUD 仍需要进入交互状态。解析失败记录日志并退回源文本。
+`AssistantMarkdown` 使用 Txtmark 的 `Configuration`（extended / safe / panic）和每次转换独立的 `DefaultDecorator` 子类输出 HTML，再通过 AUI `setInnerHTML` 生成元素，不再使用 Swing HTML 解析器或手动重建 DOM。源 HTML 标签整体用无冲突占位符暂存，避免属性引号被扩展模式改成排版引号；其余 `<` 同样暂存，输出完成后才还原为转义文字，避免 panic 模式重复转义。因此 `<`、字面的 `&lt;` 及 `&amp;lt;` 在行内、围栏和缩进代码中保持各自的内容，也不再删除代码原文中的 § 格式码。
+
+Txtmark 0.13 在连续围栏块之间留有空行时可能保留下一段的起始围栏，因此解析前仅去掉相邻围栏块之间的空白行，代码内部空行保留。库生成的 HTML4 命名实体先单次转换为数字引用，以适配 AUI 的实体解码范围；代码中已转义的实体名称仍显示原文，不重复解码。
+
+原始 HTML（包括 `<a>`、事件属性、脚本和样式）按文字显示；HTML 代码块中的链接也没有点击行为。只有 Markdown 链接生成的中性 span 会在解析完成后绑定动作，且仅接受合法的 HTTP / HTTPS 地址，通过 `AssistantPageScreen.openLink` 和原版确认流程打开；HUD 仍需要进入交互状态。尖括号形式的自动链接 `<https://...>` 按文字显示，可改用 `[标题](https://...)`。图片同样先输出中性元素，随后只保留转义后的 alt 文字，不创建 img 或下载资源。生成器的标题 / 列表标签统一分配既有 markdown_* 样式，扩展语法追加的 ID 不进入 AUI 属性。列表编号、标记和纯文本投影共用同一份生成结果；解析失败记录日志并退回源文本。
+
+开发环境可在系统界面的输入框发送 `/debug md`，把 `src/test-mod/resources/assets/system_test/debug/markdown.md` 作为 Markdown 卡片加入当前本地对话，不切换或重开界面。命令通过本地 ClientModule 注册到系统命令缓存，支持补全，不注册到原版聊天栏；命令和样例只在 test-mod 中，不进入发布 JAR。预览不依赖绑定、模型或服务端请求，也不自动播报。自由模式下以 `/` 开头的显式本地命令同样先交客户端执行与补全，普通输入仍直接交 AI。样例覆盖标题、嵌套列表、引用、代码转义、Markdown 链接、原始 HTML a 标签、非法协议、图片 alt 和不可信标题 ID。
 
 本地知识问答和联网回答已改用此节点，两个 CardData 把原始 `answer` 独立放入 Context，避免 summary 的 Minecraft 文字格式化改变代码 / URL。没有模型答案时的内置提示与折叠来源仍用 text 与 card_context 样式。模板设置 hide_summary，避免重复绘制未经排版的答案；问答 / 搜索提示词允许 text 字段使用简短 Markdown，仍要求输出 JSON。没有改变网络 Codec、历史数据或 SpeechContent，TTS 继续使用业务显式提供的播报文本。Markdown 的纯文本投影按块换行、移除排版标记，不把 HTML 带入文字导出。
 
@@ -403,7 +409,7 @@ CardUiState 在每个展示实例保存页码、选中组和折叠状态，按�
 
 常驻卡片使用独立的 `AssistantCardDisplay`、`assistant-cards.html` 和 Saturn HUD 项 `system.cards`，默认位于屏幕左侧；不进入聊天历史或通知队列，不播放提示音或 TTS，也没有自动关闭时间。正文仍由 `CardData.buildCard()`、`CardBuildEvent`、`CardPresentation` 和客户端 JSON 模板构建，共用 `assistant.css` 和主题。`CardContext.Mode.HUD` 对应 `hud` 状态；支持折叠、链接、图钉等客户端节点，当前任务跟踪模板不提供提交、领奖等业务动作。
 
-固定记录由核心模块的 `DisplayCardsDataStorage` 保存，存储声明为 `CoreSystemModule.DISPLAY_CARDS`，Saturn Codec 类型为 `system:display_cards`。去重且保持插入顺序的记录只含 `source` 和 `id`，不保存过期任务快照或客户端对象。更新通过 `AgentStore` 玩家事务执行，实际变化调用 `markDirty()`；沿用 `<存档>/system-agent/<玩家UUID>.json` 的 moduleData，因此按服务器 / 存档及玩家隔离，重新登录、重启仍保留。撤销 / reset 删除玩家业务数据时一起删除；普通登出只清空客户端镜像。
+固定记录由核心模块的 `DisplayCardsDataStorage` 保存，存储声明为 `CoreSystemModule.DISPLAY_CARDS`，Saturn Codec 类型为 `system:display_cards`。去重且保持插入顺序的记录只含 `source` 和 `id`，不保存过期任务快照或客户端对象。更新通过 `AgentStore` 玩家事务执行，实际变化调用 `markDirty()`；沿用 `<存档>/system/players/<玩家UUID>.dat` 的 moduleData（GZIP 压缩 NBT），因此按服务器 / 存档及玩家隔离，重新登录、重启仍保留。撤销 / reset 删除玩家业务数据时一起删除；普通登出只清空客户端镜像。
 
 服务端 `AssistantCardDisplays` 负责数据源与会话，由 `ModuleManager` 驱动登录、初始化、tick 和关闭。模块通过 `context.get(ContextTypes.DISPLAYS).register(context.id(), sourceId, reader)` 注册来源，reader 在服务端线程接收当前玩家及业务 ID，返回 `Optional<CardData>`。每秒重读当前数据，只在快照变化或确认固定操作时发送 `DisplayCardsS2CPayload`；C2S 只接受 key 和固定状态，不接受客户端提供的卡片正文。session / revision 防止过期快照覆盖，异步写回还会复核连接与玩家运行代次。
 

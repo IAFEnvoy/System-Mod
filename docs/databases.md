@@ -7,10 +7,10 @@
 每个存档由 AssistantServer 创建并关闭一个 AgentDatabases，通过 ModuleContext 注入查询工具和任务服务；AgentEngine 不持有业务数据库。不能跨存档共享静态单例。
 
 ```text
-<存档>/system-database/
-  shared.json
+<存档>/system/database/
+  shared.dat
   players/
-    <玩家UUID>.json
+    <玩家UUID>.dat
 ```
 
 - **共享数据库**：`databases.shared()`。同一存档所有玩家复用静态知识；FTB 说明书和任务背景分类均保存在这里。
@@ -63,7 +63,9 @@ engine.maintenance(() -> {
 
 有资料时可交给文本模型回答，关闭外部 AI 或可恢复的整理失败时只展示原文；无结果才考虑本次授权及搜索模块，数据库错误不会当作无结果。模型整理后会重新查询并核对本地来源。详细授权与调用预算见 [数据库优先的问答与联网回退](search-api.md)。
 
-每次成功写入都先替换磁盘文件再发布内存状态；写入同一数据库会串行化，不同玩家数据库独立。临时文件采用同目录 `.tmp`，文件系统支持时使用原子移动。读写失败会报告存储错误，不静默覆盖损坏文件；删除玩家库不需要先解码，故仍可 reset。它不提供跨库事务、SQL 或多进程写入能力。
+数据通过 `FileAccess.NBT_COMPRESSED` 保存为 GZIP 压缩 NBT，表内 Dynamic 同样使用 NbtOps。读取自动兼容已有未压缩文件和旧根头部，后续保存时使用标准头部和 GZIP。不存在的数据库在内存中视为空库，首次写入时才创建文件；已有文件解码失败时报告存储错误，保留原文件，不用空库覆盖。
+
+每次成功写入都先替换磁盘文件再发布内存状态；写入同一数据库会串行化，不同玩家数据库独立。临时文件采用同目录 `<文件名>.tmp`，经 `AtomicFiles` 刷盘后原子替换，不支持原子移动时拒绝写入。读写失败会报告存储错误；删除玩家库不需要先解码，故仍可 reset。它不提供跨库事务、SQL 或多进程写入能力。
 
 索引在数据更新时失效，构建和排序在后台执行；稳定索引的排序不持有数据库写锁。磁盘保存原始文档与普通表值，TF-IDF 向量仍为内存派生数据。当前是小规模文件型后端，单次写入会重写该作用域的完整文件；大体量或高频写入需要以后评估新的后端。
 
@@ -81,6 +83,6 @@ engine.maintenance(() -> {
 
 如果直接编辑了 FTB 的磁盘文件，应先通过 FTB 自身的重载入口使定义生效，再运行本指令。这里不调用 FTB 的 load / save / submit，不代替原生任务文件重载。FTBQuestsEvent.ClearFileCache 也会自动使静态文本快照失效，下次查询重新收录；查询结果返回前仍复核队伍、语言、任务可见性、正文隐藏条件及实际内容。
 
-旧的 `system-quest-knowledge.json`、`system-quest-backgrounds.json` 不再读写，也不自动迁移；说明书从原生 FTB 重新收录，背景判定按需重新生成。旧文件不会自动删除。
+旧的 `system-database/`、`system-quest-knowledge.json`、`system-quest-backgrounds.json` 不再读写，也不自动迁移；说明书从原生 FTB 重新收录，背景判定按需重新生成。旧文件不会自动删除。
 
 当前仅通过编译和静态检查，未启动 Minecraft，尚未实际验收文件持久化、玩家隔离、并发重载和原生编辑事件。26.1.2 同步入口见 [FTB 跨版本记录](ftb-quests-porting.md)。

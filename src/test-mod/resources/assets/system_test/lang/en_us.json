@@ -1,4 +1,5 @@
 {
   "system_test.ftb_quests.name": "FTB Quests Test System",
-  "system_test.ftb_quests.description": "Development-only system that exercises the optional FTB Quests integration."
+  "system_test.ftb_quests.description": "Development-only system that exercises the optional FTB Quests integration.",
+  "system_test.debug.md_failed": "Unable to read the Markdown sample. Check the log for details."
 }

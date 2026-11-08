@@ -97,7 +97,10 @@ public final class AssistantClient {
             local(AgentResult.error(AgentFailure.INVALID_INPUT));
             return true;
         }
-        if (state.mode() == ConversationMode.FREE || !AssistantClientCommands.execute(text)) send(new ChatRequest(text.strip()));
+        // Explicit UI commands remain local in free mode; ordinary text still goes directly to the agent.
+        if ((state.mode() != ConversationMode.FREE || text.stripLeading().startsWith("/")) && AssistantClientCommands.execute(text))
+            return true;
+        send(new ChatRequest(text.strip()));
         return true;
     }
 

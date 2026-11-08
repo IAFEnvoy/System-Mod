@@ -328,7 +328,8 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         Document document = this.getLinkedDocument();
         if (document == null || !(document.getElementById("message") instanceof AbstractText message)) return;
         this.draft = message.getValue();
-        boolean eligible = AssistantClient.state().mode() != ConversationMode.FREE && document.getFocusedElement() == message && !this.imeOwnsKeys();
+        boolean eligible = (AssistantClient.state().mode() != ConversationMode.FREE || this.draft.stripLeading().startsWith("/"))
+                && document.getFocusedElement() == message && !this.imeOwnsKeys();
         ClientPacketListener connection = this.minecraft.getConnection();
         SuggestionState state = new SuggestionState(this.draft, message.getCursor(), message.getSelectionStart(), message.getSelectionEnd(),
                 AssistantClient.revision(), eligible, ClientModuleCaches.COMMAND.get().revision(), connection == null ? null : connection.getCommands());

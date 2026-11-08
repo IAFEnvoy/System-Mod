@@ -2,6 +2,7 @@ package com.iafenvoy.system.data.prompt;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -57,9 +58,11 @@ public final class SystemPrompts {
     }
 
     public String render(String id, Map<String, String> values) {
-        PromptTemplate template = this.templates.get(id);
-        if (template == null) throw new IllegalArgumentException("Unknown prompt " + id);
-        return template.render(values);
+        return this.find(id, values).orElseThrow(() -> new IllegalArgumentException("Unknown prompt " + id));
+    }
+
+    public Optional<String> find(String id, Map<String, String> values) {
+        return Optional.ofNullable(this.templates.get(id)).map(template -> template.render(values));
     }
 
     public String revision() {

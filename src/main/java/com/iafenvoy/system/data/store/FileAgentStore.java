@@ -7,15 +7,14 @@ import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.config.file.StorageConfig;
+import com.iafenvoy.system.util.AtomicFiles;
 import com.mojang.serialization.Codec;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -34,12 +33,9 @@ import java.util.stream.Stream;
  * permanently block writes to the other. Codec work goes through {@link FileAccess}; this class owns placement.
  */
 public final class FileAgentStore implements AgentStore {
-    private static final FileAccess BUSINESS = FileAccess.JSON;
-    private static final FileAccess CHAT = FileAccess.NBT;
-    private static final String CHAT_DIRECTORY = "chat";
-    private static final String CHAT_SUFFIX = ".dat";
+    private static final String SUFFIX = ".dat";
     private static final Codec<Conversation> CHAT_CODEC = Conversation.CODEC.codec();
-    private final Path root;
+    private final Path playerRoot;
     private final Path chatRoot;
     private final Supplier<ConversationMode> defaultMode;
     private final Codec<PlayerData> businessCodec;
@@ -51,12 +47,12 @@ public final class FileAgentStore implements AgentStore {
     private boolean closed;
 
     public FileAgentStore(Path root, Supplier<ConversationMode> defaultMode) throws IOException {
-        this.root = root;
-        this.chatRoot = root.resolve(CHAT_DIRECTORY);
+        this.playerRoot = root.resolve("players");
+        this.chatRoot = root.resolve("chat");
         this.defaultMode = Objects.requireNonNull(defaultMode);
         this.businessCodec = PlayerData.codec(defaultMode);
         Arrays.setAll(this.locks, ignored -> new ReentrantLock());
-        Files.createDirectories(root);
+        Files.createDirectories(this.playerRoot);
         Files.createDirectories(this.chatRoot);
         this.channel = FileChannel.open(root.resolve("store.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
         FileLock acquired;
@@ -91,18 +87,17 @@ public final class FileAgentStore implements AgentStore {
     }
 
     private PlayerData loadBusiness(UUID player) throws IOException {
-        Path path = this.root.resolve(player + ".json");
+        Path path = this.playerRoot.resolve(player + SUFFIX);
         if (!Files.exists(path)) return new PlayerData(this.defaultMode.get());
         if (Files.size(path) > config().businessBytes()) throw new AgentException(AgentFailure.STORAGE_FULL);
         byte[] bytes = Files.readAllBytes(path);
-        // The replay cache used to share this file; read that layout once so an upgrade keeps its history.
-        PlayerData value = BUSINESS.decode(this.businessCodec, bytes).orElseThrow(() -> new IOException("Unable to decode agent store: " + path.getFileName()));
+        PlayerData value = FileAccess.NBT_COMPRESSED.decode(this.businessCodec, bytes).orElseThrow(() -> new IOException("Unable to decode agent store: " + path.getFileName()));
         if (value.version != 1) throw new IOException("Invalid agent store version");
         return value;
     }
 
     private byte[] readChat(UUID player) throws IOException {
-        Path path = this.chatRoot.resolve(player + CHAT_SUFFIX);
+        Path path = this.chatRoot.resolve(player + SUFFIX);
         if (!Files.exists(path)) return null;
         // The replay cache is disposable; an oversized file is replaced instead of blocking the player.
         if (Files.size(path) > config().chatBytes()) return null;
@@ -110,7 +105,7 @@ public final class FileAgentStore implements AgentStore {
     }
 
     private Conversation decodeChat(byte[] bytes) {
-        return CHAT.decode(CHAT_CODEC, bytes).orElseGet(Conversation::new);
+        return FileAccess.NBT_COMPRESSED.decode(CHAT_CODEC, bytes).orElseGet(Conversation::new);
     }
 
     @Override
@@ -129,7 +124,7 @@ public final class FileAgentStore implements AgentStore {
             // Returned business records cannot mutate the authoritative cache outside a transaction.
             return query.apply(this.load(player).data.copy());
         } catch (IOException e) {
-            throw storageFailure("read", this.root.resolve(player + ".json"), e);
+            throw storageFailure("read", this.playerRoot.resolve(player + SUFFIX), e);
         } finally {
             lock.unlock();
         }
@@ -150,7 +145,7 @@ public final class FileAgentStore implements AgentStore {
                 cached.dirty = false;
                 return result;
             } catch (IOException e) {
-                throw storageFailure("save", this.root.resolve(player + ".json"), e);
+                throw storageFailure("save", this.playerRoot.resolve(player + SUFFIX), e);
             } finally {
                 lock.unlock();
             }
@@ -191,7 +186,7 @@ public final class FileAgentStore implements AgentStore {
                     cached.dirty = false;
                 }
             } catch (IOException e) {
-                throw storageFailure("flush", this.root.resolve(player + ".json"), e);
+                throw storageFailure("flush", this.playerRoot.resolve(player + SUFFIX), e);
             } finally {
                 lock.unlock();
             }
@@ -200,30 +195,30 @@ public final class FileAgentStore implements AgentStore {
     }
 
     private void saveBusiness(UUID player, PlayerData data) throws IOException {
-        byte[] bytes = encode(BUSINESS, this.businessCodec, data, player);
+        byte[] bytes = encode(this.businessCodec, data, player);
         // The journal bounds itself by encoded size, so the business file no longer grows without a limit.
         if (bytes.length > config().businessBytes()) throw new AgentException(AgentFailure.STORAGE_FULL);
-        this.replace(this.root.resolve(player + ".json"), this.root.resolve(player + ".tmp"), bytes);
+        AtomicFiles.replace(this.playerRoot.resolve(player + SUFFIX), bytes);
     }
 
     private void saveChat(UUID player, Conversation conversation, CachedPlayer cached) {
-        Path path = this.chatRoot.resolve(player + CHAT_SUFFIX);
+        Path path = this.chatRoot.resolve(player + SUFFIX);
         try {
             this.prune(conversation);
-            byte[] bytes = encode(CHAT, CHAT_CODEC, conversation, player);
+            byte[] bytes = encode(CHAT_CODEC, conversation, player);
             // Full lists can outweigh count-based retention; evict exchanges, never business records.
             while (bytes.length > config().chatBytes() && !conversation.history.isEmpty()) {
                 String request = conversation.history.getFirst().requestId();
                 conversation.history.removeIf(message -> message.requestId().equals(request));
                 conversation.requests.remove(request);
                 conversation.requestInputs.remove(request);
-                bytes = encode(CHAT, CHAT_CODEC, conversation, player);
+                bytes = encode(CHAT_CODEC, conversation, player);
             }
             while (bytes.length > config().chatBytes() && !conversation.requests.isEmpty()) {
                 String request = conversation.requests.keySet().iterator().next();
                 conversation.requests.remove(request);
                 conversation.requestInputs.remove(request);
-                bytes = encode(CHAT, CHAT_CODEC, conversation, player);
+                bytes = encode(CHAT_CODEC, conversation, player);
             }
             // Nothing to store yet; an empty cache must not create a file for every player.
             if (cached.chatDigest == null && conversation.history.isEmpty()
@@ -234,7 +229,7 @@ public final class FileAgentStore implements AgentStore {
             }
             byte[] digest = digest(bytes);
             if (cached.chatDigest != null && Arrays.equals(digest, cached.chatDigest)) return;
-            this.replace(path, this.chatRoot.resolve(player + ".tmp"), bytes);
+            AtomicFiles.replace(path, bytes);
             cached.chatDigest = digest;
         } catch (IOException | RuntimeException error) {
             // The replay cache is disposable: a chat write never fails the transaction that changed business data.
@@ -242,24 +237,8 @@ public final class FileAgentStore implements AgentStore {
         }
     }
 
-    private void replace(Path target, Path temp, byte[] bytes) throws IOException {
-        try {
-            try (FileChannel file = FileChannel.open(temp, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
-                ByteBuffer buffer = ByteBuffer.wrap(bytes);
-                while (buffer.hasRemaining()) file.write(buffer);
-                file.force(true);
-            }
-            Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } finally {
-            try {
-                Files.deleteIfExists(temp);
-            } catch (IOException ignored) {
-            }
-        }
-    }
-
-    private static <T> byte[] encode(FileAccess access, Codec<T> codec, T value, UUID player) throws IOException {
-        return access.encode(codec, value).orElseThrow(() -> new IOException("Unable to encode agent store: " + player));
+    private static <T> byte[] encode(Codec<T> codec, T value, UUID player) throws IOException {
+        return FileAccess.NBT_COMPRESSED.encode(codec, value).orElseThrow(() -> new IOException("Unable to encode agent store: " + player));
     }
 
     private static byte[] digest(byte[] bytes) {
@@ -292,15 +271,13 @@ public final class FileAgentStore implements AgentStore {
             ReentrantLock lock = this.lock(player);
             lock.lock();
             try {
-                Files.deleteIfExists(this.root.resolve(player + ".tmp"));
-                Files.deleteIfExists(this.root.resolve(player + ".json"));
-                Files.deleteIfExists(this.chatRoot.resolve(player + ".tmp"));
-                Files.deleteIfExists(this.chatRoot.resolve(player + CHAT_SUFFIX));
-                // The replay cache used to be JSON before it switched to NBT.
-                Files.deleteIfExists(this.chatRoot.resolve(player + ".json"));
+                Files.deleteIfExists(this.playerRoot.resolve(player + SUFFIX + ".tmp"));
+                Files.deleteIfExists(this.playerRoot.resolve(player + SUFFIX));
+                Files.deleteIfExists(this.chatRoot.resolve(player + SUFFIX + ".tmp"));
+                Files.deleteIfExists(this.chatRoot.resolve(player + SUFFIX));
                 this.loaded.remove(player);
             } catch (IOException e) {
-                throw storageFailure("delete", this.root.resolve(player + ".json"), e);
+                throw storageFailure("delete", this.playerRoot.resolve(player + SUFFIX), e);
             } finally {
                 lock.unlock();
             }
@@ -314,11 +291,11 @@ public final class FileAgentStore implements AgentStore {
     }
 
     private List<UUID> listPlayers() {
-        try (Stream<Path> files = Files.list(this.root)) {
-            return files.map(path -> path.getFileName().toString()).filter(name -> name.endsWith(".json"))
-                    .map(name -> UUID.fromString(name.substring(0, name.length() - 5))).toList();
+        try (Stream<Path> files = Files.list(this.playerRoot)) {
+            return files.filter(Files::isRegularFile).map(path -> path.getFileName().toString()).filter(name -> name.endsWith(SUFFIX))
+                    .map(name -> UUID.fromString(name.substring(0, name.length() - SUFFIX.length()))).toList();
         } catch (IOException | IllegalArgumentException e) {
-            throw storageFailure("list", this.root, e);
+            throw storageFailure("list", this.playerRoot, e);
         }
     }
 

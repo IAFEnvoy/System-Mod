@@ -50,9 +50,12 @@ public final class SystemClientModules {
     }
 
     private static <T extends ClientModule> T local(String id, T module) {
-        Identifier key = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, id);
-        register(key, module);
-        LOCAL.put(key, module);
+        return local(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, id), module);
+    }
+
+    public static <T extends ClientModule> T local(Identifier id, T module) {
+        register(id, module);
+        LOCAL.put(id, module);
         return module;
     }
 

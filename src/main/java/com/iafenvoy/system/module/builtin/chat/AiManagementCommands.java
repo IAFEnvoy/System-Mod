@@ -12,6 +12,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.function.UnaryOperator;
@@ -36,7 +37,7 @@ public final class AiManagementCommands {
                                 .then(change("disable", rule -> rule.withFreeChat(false))))
                         .then(Commands.literal("limit").then(Commands.argument("calls", IntegerArgumentType.integer(0))
                                 .executes(context -> change(context, rule -> rule.withModelCallsPerDay(IntegerArgumentType.getInteger(context, "calls"))))))
-                        .then(change("reset", rule -> AiAccess.Rule.INHERIT))));
+                        .then(change("reset", _ -> AiAccess.Rule.INHERIT))));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> defaults() {
@@ -87,7 +88,7 @@ public final class AiManagementCommands {
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
         if (runtime == null) return Component.translatable("system.error.capability_unavailable");
         AiAccess.Permissions permissions = runtime.engine().permissions(player.getUUID());
-        var message = Component.translatable(key, player.getName(), permission(permissions.allowAi()),
+        MutableComponent message = Component.translatable(key, player.getName(), permission(permissions.allowAi()),
                 permission(permissions.allowFreeChat()), permissions.modelCallsPerDay(), Component.translatable(permissions.maxMode().labelKey()));
         if (!permissions.modelConfigured()) message.append("\n").append(Component.translatable("system.ai.model_missing_hint"));
         return message;

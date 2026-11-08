@@ -1,18 +1,17 @@
 package com.iafenvoy.system.data.store;
 
 import com.iafenvoy.saturn.data.storage.DataStorage;
+import com.iafenvoy.saturn.util.FileAccess;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.storage.AgentJournal;
 import com.iafenvoy.system.config.file.StorageConfig;
-import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -208,7 +207,7 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
     }
 
     private static <T> int size(Codec<T> codec, T value) {
-        return CodecIO.write(codec, value).getBytes(StandardCharsets.UTF_8).length;
+        return FileAccess.NBT_COMPRESSED.encode(codec, value).orElseThrow(() -> new AgentException(AgentFailure.STORAGE_UNAVAILABLE)).length;
     }
 
     @Override

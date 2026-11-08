@@ -4,11 +4,13 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.chat.AiAccess;
 import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.model.OpenAiCompatibleClient;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import com.iafenvoy.system.command.SystemCommand;
+import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.database.AgentDatabases;
 import com.iafenvoy.system.data.prompt.PromptReloadListener;
@@ -25,8 +27,10 @@ import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.iafenvoy.system.search.DeepSeekSearchClient;
 import com.iafenvoy.system.search.SearchGateway;
 import com.iafenvoy.system.speech.quest.QuestNarration;
+import com.mojang.authlib.GameProfile;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
@@ -40,8 +44,10 @@ import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -70,17 +76,19 @@ public final class AssistantServer {
 
     private AssistantServer(MinecraftServer server) throws Exception {
         this.server = server;
-        var profile = server.getSingleplayerProfile();
+        GameProfile profile = server.getSingleplayerProfile();
         this.localOwner = profile == null ? null : profile.id();
         this.aiAccessData = server.getDataStorage().computeIfAbsent(AiAccessData.TYPE);
         this.aiAccess = this.aiAccessData.get();
         try {
-            this.databases = this.own(new AgentDatabases(server.getWorldPath(LevelResource.ROOT).resolve("system-database")));
-            FileAgentStore store = this.own(new FileAgentStore(server.getWorldPath(LevelResource.ROOT).resolve("system-agent"),
+            Path storageRoot = server.getWorldPath(LevelResource.ROOT).resolve(SystemMod.MOD_ID);
+            this.databases = this.own(new AgentDatabases(storageRoot.resolve("database")));
+            FileAgentStore store = this.own(new FileAgentStore(storageRoot,
                     () -> this.aiAccessData.get().defaultMode()));
             OpenAiCompatibleClient model = this.own(new OpenAiCompatibleClient());
             this.engine = this.own(new AgentEngine(store, model, data -> ModuleData.get(data, CoreSystemModule.JOURNAL)));
             this.engine.permissions(player -> this.aiAccessData.get().permissions(player, player.equals(this.localOwner)));
+            this.engine.chat().personality(this::personalityPrompt);
             this.modelConfigured = this.engine.model().configured();
             // Transfer ownership only after construction succeeds, so a failed initialization still releases the file lock.
             this.resources.remove(store);
@@ -188,6 +196,17 @@ public final class AssistantServer {
         // Publish only the listener retained by successfully installed server resources.
         this.engine.prompts(listener.prompts());
         this.promptListener = listener;
+    }
+
+    private String personalityPrompt(ExecutionContext context) {
+        Optional<Identifier> prompt = context.store().read(context.player(), data -> data.systems.current())
+                .flatMap(id -> this.server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM).getOptional(id))
+                .flatMap(SystemDefinition::personalityPrompt);
+        if (prompt.isEmpty()) return "";
+        return context.findPrompt(prompt.get()).orElseGet(() -> {
+            SystemMod.LOGGER.warn("Missing personality prompt {} for player {}", prompt.get(), context.player());
+            return "";
+        });
     }
 
     public void refreshAiAccess() {

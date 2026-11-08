@@ -25,7 +25,7 @@
 | System               | `1.0-beta.3`                | 客户端与服务端 |
 | Minecraft / NeoForge | `26.1.2` / `26.1.2.114+`    | 客户端与服务端 |
 | Java                 | `25`                        | 客户端与服务端 |
-| Saturn               | `1.2.5+`，使用匹配的 Minecraft 版本 | 客户端与服务端 |
+| Saturn               | `1.2.6+`，使用匹配的 Minecraft 版本 | 客户端与服务端 |
 | ApricityUI           | `1.2.9+`，使用匹配的 Minecraft 版本 | 客户端     |
 
 FTB Quests 及其配套依赖为**可选安装**，仅任务集成需要。Simple Voice Chat 是**可选的客户端录音后端**；未安装时使用 Java

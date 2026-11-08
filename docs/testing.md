@@ -984,3 +984,47 @@ ModuleContext 保留 AgentEngine 和模块注册表为构造器固定字段，�
 新增 ModuleContextEvent，由 ModuleManager 在服务端线程发布到游戏事件总线，时机为内置服务注入之后、配置分发及工具 / 工作流装配之前。监听器取得根上下文并同步 put 扩展服务，各配置继承同一 Map；固定字段不经过 put。事件位于管理器初始化 try 内，失败时仍清理已创建的共享运行时。原 AssistantRegistrationEvent 的装配后入口保留。
 
 实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；静态搜索无 ContextTypes.ENGINE / MODULES 或无参构造残留，事件发布点位于所有安装循环之前，`git diff --check` 通过。testModClasses 只编译开发源集，未运行测试、启动 Minecraft 或新增探针，未修改配置或存档。游戏内扩展监听器、模块装配与可选依赖加载未作运行验证。
+
+## 2026-11-08 Markdown 配置与开发预览
+
+阅读 AUI 随包的 Txtmark 0.13 实现后，AssistantMarkdown 改用 Configuration 的 extended / safe / panic 和独立 Decorator，再交 AUI 解析生成的 HTML。源尖括号在解析期间暂存，避免代码重复转义；原始 HTML 与代码中的 a 标签保持文字。Markdown 链接生成中性 span，解析后仅给合法 HTTP / HTTPS 地址绑定原版 URL 确认动作；图片只显示 alt，不加载资源。开发源集新增 `/debug md` 和可编辑的 Markdown 样例，走系统界面的本地聊天卡片路径。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，全量编译未通过：工作区既有的 HttpTransport.StreamConsumer.accept 改动去掉 throws Exception，AliyunTtsProvider 的流回调仍会抛受检异常；本轮保留该已有修改。随后通过 build 目录内的临时 Gradle 初始化脚本仅编译 AssistantMarkdown，结果 BUILD SUCCESSFUL；执行 `gradlew compileTestModJava processTestModResources -x compileJava --console=plain` 也成功，仅证明开发命令与样例资源可编译 / 处理，不代表全量构建通过。
+
+静态检查主资源双语键集合一致（各 624 个），开发资源双语键集合一致（各 3 个），`git diff --check` 通过；Swing HTML 解析器已移除，调试命令与样例仅位于 test-mod。未启动 Minecraft、运行功能测试或请求 API；实际 Markdown 排版、链接确认、HUD 交互与 `/debug md` 展示尚待游戏内验收。
+
+按用户澄清，`/debug md` 改为开发客户端的本地 ClientModule 命令，通过系统命令缓存执行及补全，移除原版聊天命令注册，不切换当前界面。预览结果仅在本地追加，并用 silent 禁止自动播报；自由模式也先处理以 `/` 开头的显式本地命令，普通输入继续直接交给 AI。SystemClientModules 增加公开的 local(Identifier, ClientModule) 注册入口，沿用缓存的登录、重载及清理生命周期。
+
+实际执行 `gradlew -I build/compile-client-debug.gradle compileTestModJava processTestModResources -x compileJava --no-configuration-cache --console=plain` 成功；该 build 内临时脚本定向编译三个改动的主代码类，并把编译结果加入开发源集编译类路径，绕开上述已有全量编译错误。未启动游戏、运行测试或调用 API。
+
+收尾时发现工作区的 StreamConsumer.accept 已恢复 throws Exception，随后重新执行 `gradlew compileJava processResources testModClasses --console=plain`，全量编译与开发源集编译成功。仍未启动游戏或进行界面功能验收。
+
+## 2026-11-08 Markdown 围栏与字面内容修正
+
+根据用户的三张游戏截图，阅读 Txtmark 0.13 的 Processor.recurse、Emitter 及 AUI HTML.HtmlTokenizer 源码：连续代码块间空行会让第二个块的开头成为空行，而库只清空第一行，遗留真正的起始围栏；扩展模式生成的 ldquo / rdquo 等实体不在 AUI 的六个命名实体中；AssistantMarkdown 的全局 § 码清理还会删除代码原文。
+
+现仅在相邻围栏块之间去掉空白行，保留块内空行；源 HTML 标签整体暂存并在末尾按文字恢复，保留属性引号；生成的 HTML4 命名实体单次转换为数字引用，不递归处理已转义的实体。移除全局 § 码清理。开发 Markdown 样例追加连续三段围栏、块内空行、带比较符号的 HTML 属性、正文 / 代码中的命名实体和 §a 原文说明。
+
+执行 `gradlew compileJava processResources testModClasses --console=plain` 成功；这是编译与资源处理检查，未启动 Minecraft、运行测试或调用 API。修正依据为截图与依赖源码，尚未游戏内验收。
+
+## 2026-11-08 系统人格提示词
+
+SystemDefinition 增加可选的 Identifier 字段 personality_prompt，使用 lenientOptionalFieldOf；默认系统引用 system:personality/default，对应随包 TXT 使用现有提示词监听器加载。AssistantServer 按执行玩家的当前绑定查服务端系统定义，使用 ExecutionContext 的不可变提示词快照渲染人格；ChatSupport 将独立的 personality 提供者结果追加到基础提供者结果，替换基础提供者仍保留人格。扩展兜底与完整自由模式复用该入口，ReAct 开始后复用合成指令，不增加模型请求。专用路由 / 业务提示词不附加人格。省略字段或引用文件不存在时继续使用基础指令，缺失文件记入警告。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL。静态核对默认 JSON 引用能解析到新增 TXT、modules 仍为单个 #system:default；数据包路径与 ID 转换、玩家语言占位符、自由聊天的两个调用点及快照读取路径已按源码确认，`git diff --check` 通过。没有启动 Minecraft、运行测试或请求模型；多玩家人格隔离、实际模型口吻、缺失引用回退和重载效果尚待游戏内验收。
+
+## 2026-11-08 存档自管数据统一目录和 NBT
+
+AssistantServer 以存档根目录的 system/ 作为唯一自管数据根目录，玩家业务写入 players/<UUID>.dat、对话缓存写入 chat/<UUID>.dat、共享和独立数据库写入 database/shared.dat 与 database/players/<UUID>.dat。数据统一通过 FileAccess.NBT 编解码；已阅读实际 Saturn 依赖 JAR 的 NbtFile 字节码，确认使用 NbtOps、NbtIo.readAnyTag/writeAnyTag，没有压缩流。现有 data/system 下的 TokenUsageData 和 AiAccessData 继续使用原版 SavedData；客户端配置、语音统计和 PCM 缓存不在存档内，保持原位置及格式。
+
+业务和数据库复用 AtomicFiles 写临时文件、force(true)、原子替换，写失败不发布新内存状态；玩家枚举、revoke/reset 和临时文件清理同步采用新路径。日志字节预算改按 NBT 编码计量。数据库不存在时延迟创建，解码失败不回退并覆写空库。按用户明确选择，旧 system-agent/ 和 system-database/ 不读取、不迁移、不删除。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；静态检查存档路径、FileAccess 选择、临时文件命名和清理调用点，`git diff --check` 通过。未启动 Minecraft、运行测试、访问存档或调用 API；实际 NBT 重登恢复、并发写入和重置行为尚待游戏内验收。本轮只修改 master，其他分支尚未同步。
+
+## 2026-11-08 存档文件改用 GZIP NBT
+
+FileAgentStore 的玩家业务和对话读写、AgentDatabase 的共享及独立库读写统一改为 FileAccess.NBT_COMPRESSED；文件位置、原子替换和清理行为保持。日志预算也按同一入口的压缩编码字节数计量。读取兼容现有未压缩 NBT 及旧省略根名称格式，后续保存写标准头部加 GZIP，不批量处理已有文件。原版 SavedData、客户端配置、个人语音用量及 PCM 缓存保持各自原有存储方式。
+
+确认用户更新的 CurseMaven 9509793 实际为 Saturn 1.2.6，读取依赖 JAR 的 FileAccess / NbtFiles 签名和字节码确认 NBT_COMPRESSED、自动识别压缩及旧头部、标准头部写入和 GZIPOutputStream。版本与文件 ID 放入 gradle.properties，最低依赖元数据和双语 README / 开发版本表同步为 1.2.6。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；静态检查所有存档 NBT 调用和最低依赖元数据，`git diff --check` 通过。未运行测试、启动 Minecraft、修改现有存档或请求 API；压缩文件在游戏内的往返恢复尚待验收。

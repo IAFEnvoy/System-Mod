@@ -20,7 +20,7 @@ import java.util.*;
 import static com.iafenvoy.system.screen.gui.AssistantView.*;
 
 /**
- * AUI only receives plain text and code-created actions, never model HTML.
+ * AUI receives card elements and controlled Markdown output; source HTML remains literal text.
  */
 public final class AssistantScreen extends AssistantInputScreen {
     // Keep independent card pages across transcript redraws and window resizing, only for this screen's lifetime.

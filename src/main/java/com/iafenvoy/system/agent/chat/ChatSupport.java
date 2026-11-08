@@ -12,14 +12,22 @@ import java.util.Objects;
  */
 public final class ChatSupport {
     private volatile PromptProvider prompts = context -> context.prompt(SystemPrompts.FREE_CHAT);
+    private volatile PromptProvider personality = context -> "";
     private volatile ToolProvider tools = context -> List.of();
 
     public String prompt(ExecutionContext context) {
-        return Objects.requireNonNull(this.prompts.build(context));
+        String instruction = Objects.requireNonNull(this.prompts.build(context));
+        String personality = Objects.requireNonNull(this.personality.build(context));
+        return personality.isBlank() ? instruction : instruction + "\n\n" + personality;
     }
 
     public void prompts(PromptProvider prompts) {
         this.prompts = Objects.requireNonNull(prompts);
+    }
+
+    /** The game bridge resolves the player's bound system; custom base prompts retain this contribution. */
+    public void personality(PromptProvider personality) {
+        this.personality = Objects.requireNonNull(personality);
     }
 
     public void tools(ToolProvider tools) {

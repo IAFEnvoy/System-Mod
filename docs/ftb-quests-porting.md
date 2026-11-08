@@ -1,5 +1,9 @@
 # FTB Quests 跨版本同步记录
 
+## 2026-11-08 master：存档自管数据统一目录（1.21.1 待同步）
+
+存档外部文件统一位于 system/，玩家业务为 players/<UUID>.dat，对话为 chat/<UUID>.dat，共享和私有数据库为 database/shared.dat 与 database/players/<UUID>.dat；全部改用 FileAccess.NBT_COMPRESSED GZIP 压缩存取。移植时一起同步 AssistantServer 的根目录、FileAgentStore 的读写 / 枚举 / 删除、AgentDatabases 的文件名、AgentDatabase 的 NbtOps / 严格加载、AtomicFiles 及日志 NBT 计量。data/system 下的用量和 AI 权限 SavedData 不改，客户端配置和语音文件不改；按用户要求不迁移或删除旧目录。master 编译通过，未启动游戏验证。
+
 +
 +## 2026-11-06 卡片节点和字符串按钮重构（master，待向其他分支移植）
 +
@@ -53,7 +57,7 @@
 | 说明书检索 | 仅收录勾选 / 无目标、有正文、非礼包任务；`guideCandidates / guideReadable` 包含介绍任务，仍核对章节与任务可见性、详情解锁及正文隐藏条件。返回前回到服务端复核队伍、语言、任务对象和内容。 |
 | 聊天历史领取礼包 | 保留“领取礼包”与本地“确定”；礼包凭证在同一连接内不再按两分钟失效，仍校验玩家、队伍、任务 / 奖励对象、完成时间及原生状态。登出、撤销或停用模块清理，普通奖励短期凭证不变；磁盘历史不重新授权。 |
 | 奖励合计 | `FtbQuestPreviews` 合并同物品与组件、数量 / 随机区间，以及经验和等级；六份 100 经验显示 +600。物品模板 count 为 1，only_one 条件物品独立，不提前随机或发奖。 |
-| 分层本地数据库 | `agent.database` 为世界共享和 UUID 独立库提供同一套 Codec 数据表与稀疏 TF-IDF API；存于 `<world>/system-database/shared.json` 和 `players/<UUID>.json`。revoke / reset 删除私有库，累计用量不变；无新增模型、native、外部服务或依赖。 |
+| 分层本地数据库 | `agent.database` 为世界共享和 UUID 独立库提供同一套 Codec 数据表与稀疏 TF-IDF API；存于 `<world>/system/database/shared.dat` 和 `players/<UUID>.dat`，使用 GZIP 压缩 NBT。revoke / reset 删除私有库，累计用量不变；无新增模型、native、外部服务或依赖。 |
 | FTB 重新收录 | `/system ftb reload` 要求管理员权限，可由控制台执行；重新收录 FTB 已加载定义并重建索引，不读写原生任务文件或进度。缓存失效事件取消旧代次结果。 |
 | 数据库优先问答 | 核心 `system:question` 先用 `database.query` 查询当前玩家 / 共享知识与已启用 FTB 的授权说明。有资料时至多一次模型整理，失败可展示原文；存储错误不当作空结果。只有查库为空、搜索模块启用、当前明确允许联网且外部服务开启才运行 WebResearch。 |
 | 搜索工具与授权 | `SearchSystemModule` 为 ToolModule，导出 search / fetch；`Descriptor.optionalTools` 保留工具所属模块的权限，缺少搜索不影响本地问答。`/question` 只查本地，`/search` 允许空结果联网，测试默认 tag 不再自动赋予搜索。预算键为 `system:question`。 |

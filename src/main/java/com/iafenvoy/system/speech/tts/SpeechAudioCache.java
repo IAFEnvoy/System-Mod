@@ -2,7 +2,7 @@ package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.config.ConfigInstance;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -124,7 +124,7 @@ final class SpeechAudioCache {
     }
 
     private static Path directory() {
-        return ConfigInstance.getConfigFolder().resolve("tts-cache");
+        return ConfigInstance.CONFIG_FOLDER.resolve("tts-cache");
     }
 
     private static MessageDigest digest() {

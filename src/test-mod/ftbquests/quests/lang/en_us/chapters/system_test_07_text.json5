@@ -1,0 +1,20 @@
+{
+  "chapter.5A71070000000000.title": "07 · Text and Icons",
+  "quest.5A71070001000000.title": "§aGreen title§r and plain suffix",
+  "quest.5A71070001000000.quest_desc": [
+    "§aThis line is green.",
+    "This line has no formatting and should use the default color.",
+    "§6Gold§r, §lbold§r, §oitalic§r, then plain text."
+  ],
+  "quest.5A71070002000000.title": "A deliberately long quest title for checking centered wrapping, pin clearance and truncation",
+  "quest.5A71070002000000.quest_desc": [
+    "The long title should not widen other tiles or cover the top-right pin."
+  ],
+  "quest.5A71070003000000.title": "A Two-line Title\nStill Centered",
+  "quest.5A71070004000000.title": "Before the Journey",
+  "quest.5A71070004000000.quest_desc": [
+    "At dusk the old camp fades into the distance. An unsigned letter marks a route leading north.",
+    "",
+    "Prepare a compass before leaving. This narrative also exercises optional quest-description narration."
+  ]
+}

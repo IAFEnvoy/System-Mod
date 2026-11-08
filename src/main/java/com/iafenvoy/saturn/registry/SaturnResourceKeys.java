@@ -7,6 +7,10 @@ import com.iafenvoy.saturn.data.action.EntityAction;
 import com.iafenvoy.saturn.data.action.ItemAction;
 import com.iafenvoy.saturn.data.condition.*;
 import com.iafenvoy.saturn.data.cost.Cost;
+import com.iafenvoy.saturn.data.information.InformationGroup;
+import com.iafenvoy.saturn.data.information.InformationRow;
+import com.iafenvoy.saturn.data.information.expression.InformationExpression;
+import com.iafenvoy.saturn.data.information.getter.EntityValueGetter;
 import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.saturn.data.trigger.Trigger;
 import com.iafenvoy.saturn.data.trigger.TriggerRule;
@@ -28,6 +32,10 @@ import net.objecthunter.exp4j.function.Function;
 public final class SaturnResourceKeys {
     // Builtin registries
     public static final ResourceKey<Registry<MapCodec<? extends Cost>>> COST_TYPE = create("cost_type");
+    public static final ResourceKey<Registry<MapCodec<? extends EntityValueGetter<?>>>> ENTITY_VALUE_GETTER = create("entity_value_getter");
+    public static final ResourceKey<Registry<MapCodec<? extends InformationExpression>>> INFORMATION_EXPRESSION_TYPE = create("information_expression_type");
+    public static final ResourceKey<Registry<InformationGroup>> INFORMATION_GROUP = create("information_group");
+    public static final ResourceKey<Registry<InformationRow>> INFORMATION_ROW = create("information_row");
     public static final ResourceKey<Registry<MapCodec<? extends DataStorage>>> DATA_STORAGE_TYPE = create("data_storage_type");
     public static final ResourceKey<Registry<MapCodec<? extends Trigger>>> TRIGGER_TYPE = create("trigger_type");
     public static final ResourceKey<Registry<MapCodec<? extends NumberProvider>>> NUMBER_PROVIDER_TYPE = create("number_provider_type");

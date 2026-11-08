@@ -1,0 +1,12 @@
+{
+  "chapter.5A71060000000000.title": "06 · Reward Showcase",
+  "quest.5A71060001000000.title": "Experience Points",
+  "quest.5A71060002000000.title": "Experience Levels",
+  "quest.5A71060003000000.title": "Many Item Rewards",
+  "quest.5A71060004000000.title": "XP Aggregation A",
+  "quest.5A71060005000000.title": "XP Aggregation B",
+  "quest.5A71060006000000.title": "A Quest Without Rewards",
+  "quest.5A71060006000000.quest_desc": [
+    "An item quest remains a normal quest even when it has no rewards."
+  ]
+}

@@ -1,19 +1,17 @@
 package com.iafenvoy.system.network;
 
-import com.iafenvoy.system.agent.AgentEngine;
+import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentResponse;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.response.AgentResponse;
 import com.iafenvoy.system.agent.response.BindingResponse;
 import com.iafenvoy.system.agent.response.NoticeResponse;
 import com.iafenvoy.system.agent.response.ReplyResponse;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.assistant.ServerCards;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
-import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
-import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
-import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
-import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
+import com.iafenvoy.system.network.payload.*;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -31,15 +29,21 @@ public final class ServerNetworkHandler {
     private ServerNetworkHandler() {
     }
 
+    public static void handleDisplayCard(DisplayCardC2SPayload payload, IPayloadContext context) {
+        if (!(context.player() instanceof ServerPlayer player)) return;
+        AssistantServer runtime = AssistantServer.get(player.level().getServer());
+        if (runtime != null) runtime.displays().change(player, payload.request(), payload.key(), payload.pinned());
+    }
+
     public static void handleAssistantRequest(AssistantRequestC2SPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) return;
         try {
             UUID.fromString(payload.id());
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
-            if (runtime == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (runtime == null) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             runtime.requests().request(player, payload.id(), payload.request());
         } catch (RuntimeException e) {
-            reply(player, payload.id(), AgentResult.error(AgentEngine.errorCode(e)));
+            reply(player, payload.id(), AgentResult.error(AgentException.failure(e)));
         }
     }
 
@@ -48,10 +52,10 @@ public final class ServerNetworkHandler {
         try {
             UUID.fromString(payload.id());
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
-            if (runtime == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (runtime == null) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             runtime.usage().requestUsage(player, payload);
         } catch (RuntimeException e) {
-            replyUsageError(player, payload.id(), AgentEngine.errorCode(e));
+            replyUsageError(player, payload.id(), AgentException.failure(e));
         }
     }
 
@@ -84,12 +88,12 @@ public final class ServerNetworkHandler {
         player.connection.send(TokenUsageResponseS2CPayload.success(requestId, snapshot, open));
     }
 
-    public static void replyUsageError(ServerPlayer player, String requestId, String code) {
-        replyUsageError(player, requestId, code, false);
+    public static void replyUsageError(ServerPlayer player, String requestId, Failure failure) {
+        replyUsageError(player, requestId, failure, false);
     }
 
-    public static void replyUsageError(ServerPlayer player, String requestId, String code, boolean open) {
-        player.connection.send(TokenUsageResponseS2CPayload.failure(requestId, code, open));
+    public static void replyUsageError(ServerPlayer player, String requestId, Failure failure, boolean open) {
+        player.connection.send(TokenUsageResponseS2CPayload.failure(requestId, failure, open));
     }
 
     public static void disconnected(ServerPlayer player) {

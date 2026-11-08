@@ -1,0 +1,88 @@
+package com.iafenvoy.system.module.builtin.signin;
+
+import com.iafenvoy.saturn.util.HolderHelper;
+import com.iafenvoy.saturn.util.MiscUtil;
+import com.iafenvoy.saturn.util.PersistHolder;
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.execution.ExecutionPolicy;
+import com.iafenvoy.system.agent.module.AbstractAgentModule;
+import com.iafenvoy.system.agent.routing.ModuleRouting;
+import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.tool.ToolPriority;
+import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
+import com.iafenvoy.system.config.file.AgentConfig;
+import com.iafenvoy.system.data.catalog.CommerceCatalog;
+import com.iafenvoy.system.data.input.EmptyInput;
+import com.iafenvoy.system.data.input.SignInCreditInput;
+import com.iafenvoy.system.data.input.SignInInput;
+import com.iafenvoy.system.data.output.PlayerSnapshotOutput;
+import com.iafenvoy.system.data.output.RewardOutput;
+import com.iafenvoy.system.data.output.SignInDecision;
+import com.iafenvoy.system.data.prompt.SystemPrompts;
+import com.iafenvoy.system.data.store.Reward;
+import com.iafenvoy.system.module.ModuleData;
+import com.iafenvoy.system.module.builtin.BuiltinTools;
+import com.iafenvoy.system.module.builtin.SignInSystemModule;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Selects an existing daily reward and credits it through the validated write tool.
+ */
+public final class SignInModule extends AbstractAgentModule<SignInInput> {
+    private final CommerceCatalogs catalogs;
+
+    public SignInModule(CommerceCatalogs catalogs, ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player, ToolRegistry.Tool<SignInCreditInput, RewardOutput> credit) {
+        super(SignInInput.CODEC, "Perform today's AI sign-in ONLY when explicitly requested. For status/reward questions use system:inbox.", List.of(player, credit), true, false, ExecutionPolicy.quick(2, 1));
+        this.catalogs = catalogs;
+    }
+
+    @Override
+    public ModuleRouting<SignInInput> routing() {
+        return ModuleRouting.<SignInInput>defaults()
+                .priority(ToolPriority.PAID)
+                .button(unused1 -> SignInInput.INSTANCE)
+                .command(AgentCommand.literal(SignInInput.INSTANCE, "signin", "签到"))
+                .semantic(RoutingProfile.hints(
+                        List.of("帮我签个到", "领取今天的签到补给", "现在执行每日签到", "给我结算今日签到"),
+                        List.of("Sign me in for today", "Perform my daily sign-in", "Give me today's daily supplies", "Settle my daily sign-in")));
+    }
+
+    @Override
+    public AgentResult execute(ExecutionContext context, SignInInput input) throws Exception {
+        // AI selects an existing reward ID; the server owns quantities and commits the daily entitlement.
+        ZoneId zone = ZoneId.of(AgentConfig.INSTANCE.get().timeZone());
+        String day = LocalDate.now(zone).toString();
+        PersistHolder<Reward> existing = context.store().read(context.player(), data -> ModuleData.get(data, SignInSystemModule.STORAGE).getReward(day));
+        if (existing != null)
+            return AgentResult.data("system.result.already", new RewardOutput(existing, Optional.of("daily:" + day), Component.translatable("system.result.already"), ""));
+        CommerceCatalog catalog = this.catalogs.available(context.player());
+        if (catalog.rewards().isEmpty()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+        SignInDecision.Player state = SignInDecision.Player.of(context.tool(BuiltinTools.PLAYER, "snapshot", EmptyInput.INSTANCE));
+        List<PersistHolder<Reward>> candidates = catalog.rewards().stream().map(holder -> holder.value().reward(HolderHelper.id(holder))).toList();
+        SignInDecision decision = context.model(context.prompt(SystemPrompts.SIGN_IN), SignInDecision.Input.CODEC, new SignInDecision.Input(state, candidates, day), SignInDecision.CODEC);
+        ResourceLocation selectedId = decision.rewardId();
+        String reason = MiscUtil.clip(decision.reason(), 240);
+        PersistHolder<Reward> reward = catalog.rewards().stream().filter(value -> HolderHelper.id(value).equals(selectedId))
+                .map(value -> value.value().reward(selectedId)).findFirst()
+                .orElseThrow(() -> new AgentException(AgentFailure.MODEL_INVALID));
+        // Recheck date, player and catalog after inference; a successful reply alone does not grant a reward.
+        context.ensureMemoryCurrent();
+        if (!day.equals(LocalDate.now(zone).toString())) throw new AgentException(AgentFailure.EXPIRED);
+        context.tool(BuiltinTools.PLAYER, "revalidate", EmptyInput.INSTANCE);
+        RewardOutput committed = context.tool(BuiltinTools.SIGN_IN_CREDIT, "credit", new SignInCreditInput(day, reward.id(), catalog.revision()));
+        PersistHolder<Reward> chosen = committed.reward();
+        return AgentResult.data("system.result.sign_in", new RewardOutput(chosen, Optional.of("daily:" + day),
+                Component.translatable("system.result.sign_in"), reason));
+    }
+}

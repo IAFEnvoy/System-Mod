@@ -1,5 +1,7 @@
 package com.iafenvoy.saturn.registry;
 
+import com.iafenvoy.saturn.data.information.InformationGroup;
+import com.iafenvoy.saturn.data.information.InformationRow;
 import com.iafenvoy.saturn.data.trigger.TriggerRule;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.Holder;
@@ -28,6 +30,8 @@ public final class SaturnDatapackRegistries {
     @SubscribeEvent
     public static void newDatapackRegistries(NewRegistry event) {
         register(event, SaturnResourceKeys.TRIGGER, TriggerRule.DIRECT_CODEC);
+        register(event, SaturnResourceKeys.INFORMATION_ROW, InformationRow.DIRECT_CODEC);
+        register(event, SaturnResourceKeys.INFORMATION_GROUP, InformationGroup.DIRECT_CODEC);
     }
 
     private static <T> void register(NewRegistry event, ResourceKey<Registry<T>> key, Codec<T> codec) {

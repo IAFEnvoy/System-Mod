@@ -1,22 +1,22 @@
 package com.iafenvoy.system.compat.ftb;
 
-import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
-import com.iafenvoy.system.agent.builtin.output.QuestStartupOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestSubmission;
-import com.iafenvoy.system.agent.builtin.output.QuestUnlockedOutput;
-import com.iafenvoy.system.agent.builtin.quest.StarterGiftModule;
 import com.iafenvoy.system.assistant.AssistantServer;
-import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.data.card.CardUpdate;
+import com.iafenvoy.system.data.input.QuestDetailInput;
+import com.iafenvoy.system.data.output.QuestStartupOutput;
+import com.iafenvoy.system.data.output.QuestSubmission;
+import com.iafenvoy.system.data.output.QuestUnlockedOutput;
+import com.iafenvoy.system.data.result.QuestEvent;
+import com.iafenvoy.system.data.result.QuestNotice;
 import com.iafenvoy.system.module.builtin.QuestSystemModule;
+import com.iafenvoy.system.module.builtin.quest.StarterGiftModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import dev.architectury.event.EventResult;
 import dev.ftb.mods.ftbquests.events.ClearFileCacheEvent;
 import dev.ftb.mods.ftbquests.events.ObjectCompletedEvent;
 import dev.ftb.mods.ftbquests.events.ObjectStartedEvent;
+import dev.ftb.mods.ftbquests.quest.BaseQuestFile;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
@@ -28,84 +28,74 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.*;
-import java.util.concurrent.CompletionStage;
 
 /**
  * Optional, server-thread FTB event bridge. Notices expose trusted actions without granting rewards on arrival.
  */
-final class FtbQuestNotifications {
-    private static final Map<MinecraftServer, FtbQuestNotifications> SERVERS = new IdentityHashMap<>();
-    private static final Map<MinecraftServer, FtbQuestAccess> ACCESS = new IdentityHashMap<>();
+public final class FtbQuestNotifications {
     private static final int MAX_COMPLETIONS_PER_TICK = 256;
-    private static boolean installed;
+    private static final Map<MinecraftServer, FtbQuestNotifications> LIVE = new IdentityHashMap<>();
+    private static boolean REGISTERED;
+    private final MinecraftServer server;
+    private boolean installed;
     private ServerQuestFile file;
     private final FtbQuestAccess access;
     private final Map<UUID, TeamState> teams = new HashMap<>();
     private int ticks;
 
-    private FtbQuestNotifications(ServerQuestFile file, FtbQuestAccess access) {
-        this.file = file;
+    FtbQuestNotifications(FtbQuestAccess access) {
+        this.server = access.game.server();
         this.access = access;
     }
 
-    static FtbQuestKnowledge knowledge(AgentEngine engine, MinecraftServer server) {
-        FtbQuestAccess access = ACCESS.get(server);
-        return access == null ? new FtbQuestKnowledge(engine, server) : access.knowledge;
-    }
-
-    static void install(MinecraftServer server, FtbQuestAccess access) {
-        ACCESS.put(server, access);
-        if (installed) return;
-        installed = true;
+    void install() {
+        if (this.installed) return;
+        this.installed = true;
+        LIVE.put(this.server, this);
+        if (REGISTERED) return;
+        REGISTERED = true;
         // 1.21.1 exposes progress through Architectury events instead of the unified 26.x FTBQuestsEvent bus.
         ObjectCompletedEvent.QUEST.register(event -> {
-            FtbQuestNotifications tracker = changed(event);
+            FtbQuestNotifications tracker = live(event.getData(), event.getObject().getQuestFile());
             if (tracker != null) tracker.completed(event);
             return EventResult.pass();
         });
         ObjectStartedEvent.QUEST.register(event -> {
-            changed(event);
+            live(event.getData(), event.getObject().getQuestFile());
             return EventResult.pass();
         });
         ObjectCompletedEvent.TASK.register(event -> {
-            changed(event);
+            live(event.getData(), event.getObject().getQuestFile());
             return EventResult.pass();
         });
         ObjectCompletedEvent.CHAPTER.register(event -> {
-            changed(event);
+            live(event.getData(), event.getObject().getQuestFile());
             return EventResult.pass();
         });
         ObjectCompletedEvent.FILE.register(event -> {
-            changed(event);
+            live(event.getData(), event.getObject());
             return EventResult.pass();
         });
         ClearFileCacheEvent.EVENT.register(file -> {
-            if (file instanceof ServerQuestFile questFile) {
-                FtbQuestNotifications tracker = SERVERS.get(questFile.server);
-                if (tracker != null) tracker.teams.clear();
-                FtbQuestAccess current = ACCESS.get(questFile.server);
-                if (current != null) current.knowledge.invalidate();
-            }
+            if (!(file instanceof ServerQuestFile questFile)) return;
+            FtbQuestNotifications tracker = LIVE.get(questFile.server);
+            if (tracker == null) return;
+            tracker.file = null;
+            tracker.teams.clear();
+            tracker.access.knowledge.invalidate();
         });
     }
 
-    static void close(MinecraftServer server) {
-        SERVERS.remove(server);
-        ACCESS.remove(server);
+    void close() {
+        if (this.installed) LIVE.remove(this.server);
+        this.installed = false;
+        this.file = null;
+        this.teams.clear();
     }
 
-    static CompletionStage<Integer> reloadKnowledge(MinecraftServer server) {
-        FtbQuestAccess access = ACCESS.get(server);
-        if (access == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
-        return access.knowledge.reload();
-    }
-
-    static void remove(ServerPlayer player) {
-        FtbQuestAccess access = ACCESS.get(player.level().getServer());
-        if (access != null) access.clear(player.getUUID());
-        FtbQuestNotifications tracker = SERVERS.get(player.level().getServer());
-        if (tracker == null) return;
-        for (TeamState state : tracker.teams.values()) {
+    void remove(ServerPlayer player) {
+        this.access.clear(player.getUUID());
+        for (TeamState state : this.teams.values()) {
             Map<UUID, Recipient> recipients = new HashMap<>(state.recipients);
             recipients.remove(player.getUUID());
             state.recipients = Map.copyOf(recipients);
@@ -114,21 +104,13 @@ final class FtbQuestNotifications {
         }
     }
 
-    private static FtbQuestNotifications changed(ObjectCompletedEvent<?> event) {
-        return changed(event.getData(), event.getObject());
-    }
-
-    private static FtbQuestNotifications changed(ObjectStartedEvent<?> event) {
-        return changed(event.getData(), event.getObject());
-    }
-
-    private static FtbQuestNotifications changed(TeamData teamData, QuestObjectBase object) {
+    private static FtbQuestNotifications live(TeamData data, BaseQuestFile file) {
         // Client-side progress echoes use the same event types and must never enter this bridge.
-        if (!(object.getQuestFile() instanceof ServerQuestFile file)) return null;
-        FtbQuestNotifications tracker = SERVERS.get(file.server);
-        if (tracker == null || tracker.file != file) return null;
-        TeamState state = tracker.teams.get(teamData.getTeamId());
-        if (state == null || state.team != teamData) return null;
+        if (!(file instanceof ServerQuestFile questFile)) return null;
+        FtbQuestNotifications tracker = LIVE.get(questFile.server);
+        if (tracker == null || tracker.file != questFile) return null;
+        TeamState state = tracker.teams.get(data.getTeamId());
+        if (state == null || state.team != data) return null;
         state.dirty = true;
         if (!QuestObjectBase.shouldSendNotifications()) state.silent = true;
         return tracker;
@@ -151,26 +133,21 @@ final class FtbQuestNotifications {
         state.completed.putIfAbsent(quest.getId(), new Completion(quest, List.copyOf(recipients)));
     }
 
-    static void tick(MinecraftServer server) {
-        AssistantServer runtime = AssistantServer.get(server);
+    void tick() {
+        AssistantServer runtime = AssistantServer.get(this.server);
         if (runtime == null) {
-            SERVERS.remove(server);
+            this.file = null;
+            this.teams.clear();
             return;
         }
         if (ServerQuestFile.getInstance().isEmpty()) return;
         ServerQuestFile file = ServerQuestFile.getInstance().orElseThrow();
-        if (file.server != server) return;
-        FtbQuestAccess access = ACCESS.get(server);
-        if (access == null) return;
-        FtbQuestNotifications tracker = SERVERS.get(server);
-        if (tracker == null || tracker.access != access) {
-            tracker = new FtbQuestNotifications(file, access);
-            SERVERS.put(server, tracker);
-        } else if (tracker.file != file) {
-            tracker.file = file;
-            tracker.teams.clear();
+        if (file.server != this.server) return;
+        if (this.file != file) {
+            this.file = file;
+            this.teams.clear();
         }
-        tracker.flush(runtime);
+        this.flush(runtime);
     }
 
     private void flush(AssistantServer runtime) {
@@ -267,13 +244,13 @@ final class FtbQuestNotifications {
         List<Reward> claimable = quest.getRewards().stream().filter(reward -> FtbQuestReader.canClaim(player, team, reward)).toList();
         Optional<String> claimRef = claimable.size() == 1 && !(claimable.getFirst() instanceof ChoiceReward)
                 ? FtbQuestAccess.reference(player, team, quest, claimable.getFirst(), this.access.references) : Optional.empty();
-        return AgentResult.data(key, new ResultTypes.QuestNotice(id, FtbQuestText.title(player, quest), FtbQuestText.title(player, quest.getChapter()),
+        return AgentResult.data(key, new QuestNotice(id, FtbQuestText.title(player, quest), FtbQuestText.title(player, quest.getChapter()),
                 quest.getRewards().stream().filter(reward -> !team.isRewardBlocked(reward) && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE)
                         .flatMap(reward -> FtbQuestAccess.previewItems(reward).stream()).toList(),
                 "", List.of(),
                 quest.getRewards().stream().filter(reward -> !team.isRewardBlocked(reward) && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE
                         && FtbQuestAccess.previewItems(reward).isEmpty()).flatMap(reward -> FtbQuestPreviews.reward(player, team, reward).stream()).toList(),
-                List.of(), false, ResultTypes.QuestEvent.COMPLETED,
+                List.of(), false, QuestEvent.COMPLETED,
                 QuestSubmission.NONE, !claimable.isEmpty(), claimRef,
                 FtbQuestSpeech.content(player, team, quest, "completed")));
     }
@@ -289,14 +266,16 @@ final class FtbQuestNotifications {
     }
 
     // The native event and explicit submission converge on the same pending completion entry.
-    static void submitted(ServerPlayer player, ServerQuestFile file, TeamData team, Quest quest) {
+    void submitted(ServerPlayer player, ServerQuestFile file, TeamData team, Quest quest) {
         if (FtbQuestReader.kind(quest) != FtbQuestReader.Kind.NORMAL) return;
         AssistantServer runtime = AssistantServer.get(file.server);
-        FtbQuestAccess access = ACCESS.get(file.server);
-        if (runtime == null || access == null || !runtime.players().notificationsEnabled(player)
+        if (file.server != this.server || runtime == null || !runtime.players().notificationsEnabled(player)
                 || !runtime.moduleManager().hasType(player.getUUID(), QuestSystemModule.CODEC)) return;
-        FtbQuestNotifications tracker = SERVERS.computeIfAbsent(file.server, unused -> new FtbQuestNotifications(file, access));
-        TeamState state = tracker.teams.computeIfAbsent(team.getTeamId(), unused -> new TeamState(team, tracker.available(team), Map.of()));
+        if (this.file != file) {
+            this.file = file;
+            this.teams.clear();
+        }
+        TeamState state = this.teams.computeIfAbsent(team.getTeamId(), unused2 -> new TeamState(team, this.available(team), Map.of()));
         Completion previous = state.completed.get(quest.getId());
         List<Recipient> recipients = new ArrayList<>(previous == null ? List.of() : previous.recipients());
         if (recipients.stream().noneMatch(recipient -> recipient.player() == player))

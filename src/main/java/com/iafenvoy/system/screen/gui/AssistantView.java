@@ -1,11 +1,11 @@
 package com.iafenvoy.system.screen.gui;
 
 import com.google.gson.JsonElement;
-import com.iafenvoy.system.card.CardButton;
-import com.iafenvoy.system.card.CardContext;
-import com.iafenvoy.system.card.CardUpdate;
-import com.iafenvoy.system.screen.card.CardPageState;
+import com.iafenvoy.system.data.card.CardButton;
+import com.iafenvoy.system.data.card.CardContext;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.screen.card.CardPresentation;
+import com.iafenvoy.system.screen.card.CardUiState;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.network.chat.Component;
@@ -25,14 +25,10 @@ public final class AssistantView {
     }
 
     public static String formatCard(CardUpdate card) {
-        return formatCard(card, true);
+        return CardPresentation.format(card);
     }
 
-    public static String formatCard(CardUpdate card, boolean textItems) {
-        return CardPresentation.format(card, textItems);
-    }
-
-    public static Element renderCard(Document document, CardUpdate card, String messageKey, CardPageState pages) {
+    public static Element renderCard(Document document, CardUpdate card, String messageKey, CardUiState pages) {
         return CardPresentation.of(card, messageKey, CardContext.Mode.FULL, 0, pages).render(document);
     }
 
@@ -71,7 +67,7 @@ public final class AssistantView {
     }
 
     public static void bind(Document document, String id, Runnable action) {
-        document.getElementById(id).addEventListener("click", event -> action.run());
+        document.getElementById(id).addEventListener("click", unused1 -> action.run());
     }
 
     /**
@@ -79,7 +75,7 @@ public final class AssistantView {
      */
     public static void bindSwitch(Document document, String id, Consumer<Boolean> changed) {
         Element control = document.getElementById(id);
-        control.addEventListener("click", event -> {
+        control.addEventListener("click", unused2 -> {
             if (control.isDisabled()) return;
             boolean checked = !switchChecked(control);
             switchChecked(control, checked);
@@ -97,6 +93,23 @@ public final class AssistantView {
 
     public static void text(Element element, String value) {
         AssistantText.set(element, value);
+    }
+
+    public static void display(Element element, String value) {
+        // AUI invalidates styles even for identical inline declarations; idle polling must not dirty the tree.
+        if (element != null && !value.equals(element.getInlineStylePropertyValue("display")))
+            element.setInlineStyleProperty("display", value);
+    }
+
+    public static void reconcile(Element parent, List<Element> children) {
+        // Keep unchanged native nodes attached, including their local page state and event listeners.
+        Set<Element> retained = Collections.newSetFromMap(new IdentityHashMap<>());
+        retained.addAll(children);
+        for (Element child : new ArrayList<>(parent.children)) if (!retained.contains(child)) child.remove();
+        for (int index = 0; index < children.size(); index++) {
+            Element before = index < parent.children.size() ? parent.children.get(index) : null;
+            if (before != children.get(index)) parent.insertBefore(children.get(index), before);
+        }
     }
 
     public static String tr(String key) {

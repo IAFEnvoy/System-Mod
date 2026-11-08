@@ -120,6 +120,7 @@ dependencies {
     implementation jarJar("net.objecthunter:exp4j:0.4.8")
     // Nullability annotations for the inlined sources; NeoForge already resolves this version transitively.
     compileOnly "org.jetbrains:annotations:24.1.0"
+    compileOnly "org.jspecify:jspecify:1.0.0"
 
     // SVC for optional voice input support
     compileOnly "curse.maven:simple-voice-chat-416089:${voicechat_file_id}"

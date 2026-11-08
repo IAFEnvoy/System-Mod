@@ -1,15 +1,15 @@
 package com.iafenvoy.system.compat.ftb;
 
-import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.builtin.input.QuestDetailInput;
-import com.iafenvoy.system.agent.builtin.output.*;
+import com.iafenvoy.system.agent.AgentFailure;
+import com.iafenvoy.system.agent.AgentLifecycle;
+import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.MinecraftTools;
-import com.iafenvoy.system.util.ItemStackTemplate;
-import dev.ftb.mods.ftbquests.quest.Quest;
-import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
-import dev.ftb.mods.ftbquests.quest.TeamData;
+import com.iafenvoy.system.data.database.AgentDatabase;
+import com.iafenvoy.system.data.input.QuestDetailInput;
+import com.iafenvoy.system.data.output.*;
+import dev.ftb.mods.ftbquests.quest.*;
 import dev.ftb.mods.ftbquests.quest.loot.WeightedReward;
 import dev.ftb.mods.ftbquests.quest.reward.ChoiceReward;
 import dev.ftb.mods.ftbquests.quest.reward.ItemReward;
@@ -17,7 +17,9 @@ import dev.ftb.mods.ftbquests.quest.reward.Reward;
 import dev.ftb.mods.ftbquests.quest.reward.RewardAutoClaim;
 import dev.ftb.mods.ftbquests.quest.task.ItemTask;
 import dev.ftb.mods.ftbquests.quest.task.Task;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,11 +33,18 @@ final class FtbQuestAccess {
     final Map<UUID, QuestList> lists = new ConcurrentHashMap<>();
     final FtbStarterGifts gifts = new FtbStarterGifts();
     final FtbQuestKnowledge knowledge;
+    final FtbQuestNotifications notifications;
 
-    FtbQuestAccess(AgentEngine engine, MinecraftTools game) {
+    FtbQuestAccess(AgentEngine engine, MinecraftTools game, AgentDatabase database) {
         this.game = game;
-        this.knowledge = FtbQuestNotifications.knowledge(engine, game.server());
-        engine.onRevoke(this::clear);
+        this.knowledge = new FtbQuestKnowledge(engine, database, game.server());
+        this.notifications = new FtbQuestNotifications(this);
+        engine.lifecycle(new AgentLifecycle() {
+            @Override
+            public void revoked(UUID player) {
+                FtbQuestAccess.this.clear(player);
+            }
+        });
     }
 
     void clear(UUID player) {
@@ -49,10 +58,10 @@ final class FtbQuestAccess {
             QuestList previous = lists.get(context.player());
             if (previous == null || previous.expires() < System.currentTimeMillis()
                     || previous.incarnation() != context.incarnation() || previous.epoch() != context.memoryEpoch()
-                    || !previous.team().equals(team.getTeamId())) throw new AgentException("STALE_QUEST_LIST");
-            if (index > previous.quests().size()) throw new AgentException("INVALID_SELECTION");
+                    || !previous.team().equals(team.getTeamId())) throw new AgentException(AgentFailure.STALE_QUEST_LIST);
+            if (index > previous.quests().size()) throw new AgentException(AgentFailure.INVALID_SELECTION);
             Quest selected = previous.quests().get(index - 1);
-            if (file.getQuest(selected.getId()) != selected) throw new AgentException("STALE_QUEST_LIST");
+            if (file.getQuest(selected.getId()) != selected) throw new AgentException(AgentFailure.STALE_QUEST_LIST);
             return selected;
         }
         return questId.isBlank() ? null : file.getQuest(Long.parseUnsignedLong(questId, 16));
@@ -77,15 +86,19 @@ final class FtbQuestAccess {
             quests.add(brief(player, team, quest, quests.size() + 1));
         long now = System.currentTimeMillis();
         lists.values().removeIf(value -> value.expires < now);
-        if (!lists.containsKey(context.player()) && lists.size() >= 4096) throw new AgentException("BUSY");
+        if (!lists.containsKey(context.player()) && lists.size() >= 4096) throw new AgentException(AgentFailure.BUSY);
         // Indices refer to the complete displayed list, never to a newly filtered or reordered quest file.
         lists.put(context.player(), new QuestList(team.getTeamId(), context.incarnation(), context.memoryEpoch(), selected, now + 600000));
         return List.copyOf(quests);
     }
 
     static QuestBriefOutput brief(ServerPlayer player, TeamData team, Quest quest, int number) {
+        Chapter chapter = quest.getChapter();
+        ChapterGroup group = chapter.getGroup();
+        // Only metadata of matched quests is exported; no empty or hidden sibling chapters are added.
         return new QuestBriefOutput(number, hex(quest.getId()), FtbQuestText.title(player, quest),
-                FtbQuestText.title(player, quest.getChapter()), team.getRelativeProgress(quest));
+                FtbQuestText.title(player, chapter), team.getRelativeProgress(quest), hex(chapter.getId()), hex(group.getId()),
+                group.isDefaultGroup() ? Component.empty() : FtbQuestText.title(player, group));
     }
 
     static QuestOutput detail(ServerPlayer player, TeamData team, Quest quest, QuestDetailInput input, Map<String, RewardReference> references) {

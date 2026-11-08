@@ -1,0 +1,39 @@
+package com.iafenvoy.system.data.card.client;
+
+import com.iafenvoy.system.agent.request.CardActionRequest;
+import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.data.card.CardAction;
+import com.iafenvoy.system.data.card.CardButton;
+import com.iafenvoy.system.data.card.CardReference;
+import com.iafenvoy.system.module.client.ClientModuleCaches;
+import com.iafenvoy.system.screen.AssistantMessages;
+import com.iafenvoy.system.screen.gui.AssistantPageScreen;
+import net.minecraft.resources.ResourceLocation;
+
+import java.util.Map;
+import java.util.Optional;
+
+/**
+ * One checked entry point serves template buttons, notification buttons and voice/number choices.
+ */
+public final class CardController {
+    private CardController() {
+    }
+
+    public static void activate(CardReference source, CardButton button) {
+        activate(source, button, false);
+    }
+
+    public static void activate(CardReference source, CardButton button, boolean notification) {
+        if (!ClientCards.active(source) || button.action() instanceof CardAction.Server && AssistantClient.state().busy())
+            return;
+        if (notification && !AssistantMessages.actionStarted(source, button.behavior())) return;
+        if (button.action() instanceof CardAction.Local(ResourceLocation id, Map<String, String> arguments)) {
+            ClientModuleCaches.BINDINGS.get().localAction(id, source, arguments);
+        } else if (button.action() instanceof CardAction.Server(String value1))
+            AssistantClient.send(new CardActionRequest(source, value1),
+                    notification && (button.behavior() == CardButton.Behavior.REPLACE || button.behavior() == CardButton.Behavior.PUSH)
+                            ? Optional.of(source) : Optional.empty());
+        else if (button.action() instanceof CardAction.Url(String value)) AssistantPageScreen.openLink(value);
+    }
+}

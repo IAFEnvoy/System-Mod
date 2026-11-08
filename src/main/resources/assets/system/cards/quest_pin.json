@@ -1,0 +1,59 @@
+{
+  "style": [
+    "result_card",
+    "quest_tracking_card"
+  ],
+  "show_title": false,
+  "hide_summary": true,
+  "body": [
+    {
+      "type": "system:flex",
+      "wrap": false,
+      "text_separator": " ",
+      "style": "card_title",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{status}}",
+          "style": "quest_tracking_status"
+        },
+        {
+          "type": "system:text",
+          "text": "{{title}}",
+          "style": "quest_tracking_title"
+        }
+      ]
+    },
+    {
+      "type": "system:button",
+      "click": "local",
+      "value": "{{pin}}",
+      "binding": "{{pin_binding}}",
+      "icon": "system:icons/pin.svg",
+      "style": "quest_card_pin",
+      "unless": "simple"
+    },
+    {
+      "type": "system:text",
+      "style": "quest_tracking_chapter",
+      "text": "{{chapter}}"
+    },
+    {
+      "type": "system:text",
+      "text": "{{tasks.*.task_title}} · {{tasks.*.task_progress}}/{{tasks.*.task_required}}",
+      "repeat": "tasks"
+    },
+    {
+      "type": "system:text",
+      "text": "{{tr:system.ui.quest_tracking_more}} {{other_tasks}}",
+      "when": "other_tasks",
+      "style": [
+        "card_context"
+      ]
+    },
+    {
+      "type": "system:progress",
+      "value": "{{progress}}"
+    }
+  ]
+}

@@ -34,6 +34,10 @@
 
 远程地址使用 HTTPS；`localhost`、`127.0.0.1` 和 `[::1]` 允许 HTTP，便于本地模型服务。地址不允许内嵌用户名/密码、查询参数或 fragment，也不跟随重定向。出站目标始终来自服务端配置。
 
+消息提交与本地指令 / 向量匹配不要求配置模型。`ModelClient.checkConfigured()` 只验证本地配置，不发网络请求；`ExecutionContext.model` 在等待模型并发槽、扣每日调用额度和用量记账之前检查外部 AI 偏好及配置。OpenAI 适配器在 `apiKeyRequired=true` 且环境变量为空或未设置时报告 `MODEL_NOT_CONFIGURED`；`false` 继续支持无认证本地服务，空环境变量名也视为未提供密钥。真正构造请求时仍在配置锁内重新读取密钥和连接参数。
+
+路由阶段遇到未配置模型或 AI 关闭时，返回可点击的本地操作选项，不将整条消息转成密钥错误；正常的低置信度路由仍可交给已配置的模型。此降级仅发生在选择操作的阶段，不替代签到奖励决策等必需的 AI 行为。详见[本地意图路由](semantic-routing.md)。
+
 切换普通兼容服务时修改 `baseUrl`、`model` 和 `apiKeyEnvironment`，可显式设 `providerType=openai`。若服务使用新的输出限制字段，再设 `outputTokenParameter=max_completion_tokens`。某些模型不支持 JSON 模式，可关闭 `jsonMode`，但仍需遵守现有提示词并直接返回 JSON。
 
 以下片段用于合并到 `system-model.json`；完整默认示例见 [system-model.json](../examples/agent/system-model.json)：
@@ -46,13 +50,13 @@
 
 实现参考 `E:\Go\ModList-Dashboard\agent\llm.go`：以通用 OpenAI 请求为基础，只为 DeepSeek 注入思考相关字段。通过第三方代理调用 DeepSeek 时，显式配置 `providerType=deepseek`；通过官方域名调用但代理需要完全通用字段时，可强制设为 `openai`。模型名不会用于猜测提供商。
 
-本模组目前每次调用都是独立的 `system` 与 `user` JSON 决策，没有原生 `tool_calls` 对话循环。因此只使用 `message.content` 作为受限决策，不保存或跨玩家缓存 `reasoning_content`；Dashboard 工具循环中的推理内容回传机制在这里没有对应的延续轮次。将来若加入原生工具循环，推理状态应随该次玩家调用的消息链传递。
+本模组每次调用仍是独立的 `system` 与 `user` JSON 决策；通用 ReActLoop 通过输入中的类型化 observations 反馈工具结果，实现多轮选择与回答，不使用供应商原生 `tool_calls` 协议。因此只使用 `message.content` 作为受限决策，不保存或跨玩家缓存 `reasoning_content`；Dashboard 原生工具循环中的推理内容回传机制不适用于这里的独立请求。轮数、权限和预算见 [ReAct 循环](agent-react.md)。
 
 基础请求包含 `model`、`messages`、`stream=false` 和选定的输出 token 限制字段；`response_format` 按配置发送。普通分支不会附加 DeepSeek 的 `thinking` 或 `reasoning_effort`。返回内容仍要求 `finish_reason=stop` 和合法 JSON，不自动重试或修复响应。这里实现的是兼容 Chat Completions 的文本接口；不包含 Responses、原生工具循环、图像或流式输出。
 
 ## 用量
 
-网页搜索是独立协议，使用 `SearchProvider` 与 `DeepSeekSearchClient`，不经过 Chat Completions，也不改变模型路由和 Token 统计。搜索独立配置在 `config/system/system-search.json`，当前不开放给 Agent；见 [网页搜索与抓取](search-api.md)。
+网页搜索是独立协议，使用 `SearchProvider` 与 `DeepSeekSearchClient`，不经过 Chat Completions。它仅作为数据库优先问答授权后的工具，不自动加入普通多步分析；工具次数与模型 Token 分别计费。搜索独立配置在 `config/system/system-search.json`，见 [网页搜索与抓取](search-api.md)。
 
 通用用量读取 `prompt_tokens`、`completion_tokens` 与 `total_tokens`。缓存命中优先使用 OpenAI 的 `prompt_tokens_details.cached_tokens`，缺省时兼容 DeepSeek 的 `prompt_cache_hit_tokens`，只计一次。缺失或无效 usage 仍标记为用量未知；在校验模型正文前读取 usage，正文错误不会删除已知消费。
 

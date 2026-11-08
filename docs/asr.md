@@ -53,13 +53,15 @@ FTB 启动概览的“查看任务”以及新手礼包的“领取礼包”“�
 
 依据[一句话识别 API](https://help.aliyun.com/zh/isi/user-guide/api-reference-1)接入 NLS WebSocket，使用 JDK `HttpClient`，无新增 SDK、原生库或模型文件。`HttpTransport.webSocket` 复用网络工具的客户端生命周期、握手时限和取消；Token 沿用阿里云官方 Java SDK 的 X-NLS-Token 握手请求头，不记录凭据或上游异常正文。
 
-连接 `wss://nls-gateway-cn-<region>.aliyuncs.com/ws/v1`，发送 `SpeechRecognizer.StartRecognition`，麦克风在后台打开后立即采集，不等云端握手；等待 `RecognitionStarted` 后上传缓冲及后续音频，避免吞掉开头。松开按键立即停止本地采集，已缓冲的内容仍在本次请求内提交。发送 16 kHz / 16-bit / 单声道 / 小端 PCM 二进制帧，启用中间结果、标点和 ITN。停止后只发送一次 `StopRecognition`，以 `RecognitionCompleted.payload.result` 为最终文本，不将中间结果累计相加。手动结束在同一锁内停止接收后续音频帧；网络读取线程耗尽缓冲后直接返回 EOF，不等待设备线程退出。录音线程自然结束时也在关闭原生设备之前发布 EOF，避免清理设备阻塞结束命令；读取线程在看到 EOF 后再检查一次帧队列，保留同时到达的最后一帧。
+连接 `wss://nls-gateway-cn-<region>.aliyuncs.com/ws/v1`，发送 `SpeechRecognizer.StartRecognition`，麦克风在后台打开后立即采集，不等云端握手；等待 `RecognitionStarted` 后上传缓冲及后续音频，避免吞掉开头。松开按键立即停止本地采集，已缓冲的内容仍在本次请求内提交。发送 16 kHz / 16-bit / 单声道 / 小端 PCM 二进制帧，启用中间结果、标点和 ITN。停止后只发送一次 `StopRecognition`，以 `RecognitionCompleted.payload.result` 为最终文本，不将中间结果累计相加。
 
 语音输入默认关闭，**Simple Voice Chat（SVC）是可选客户端依赖**，服务端无需安装。设置页显示是否检测到 SVC：未安装时使用 JDK Java Sound 默认输入设备；安装时通过反射加载隔离适配器，沿用 SVC 选定的麦克风、OpenAL/Java Sound 后端选择及 OpenAL 失败后退回 Java Sound 的处理。直接以 16 kHz、每帧 320 个样本采集，既不经过 Opus，也不需从 48 kHz 重采样。原有按钮和按键共用同一采集路径。
 
-已核对 1.21.1 分支所用 SVC 依赖 JAR：公开 `VoicechatClientApi` 没有独立启停麦克风方法，`ClientSoundEvent` 又在 SVC 自身 PTT/语音激活筛选之后，不能作为独立按键录音源。因此 `compat/voicechat/VoicechatRecognitionCapture` 封装其内部 `ALMicrophone` / `JavaxMicrophone`，单独打开设备，不读取或修改 SVC 自身录音线程。公开插件事件只负责在助手采集期间取消语聊发送，结束后保留 250ms 尾部抑制；适配/插件安装失败时提示错误并不开始录音。没有安装 SVC 时不注册插件、不加载适配器或任何 SVC 类型。内部接口存在版本敏感性，升级 SVC 后应重新核对；若设备不允许同时打开，显示麦克风错误，不抢占语聊设备。
+已核对 SVC **2.6.26+26.1.2** 实际依赖 JAR：公开 `VoicechatClientApi` 没有独立启停麦克风方法，`ClientSoundEvent` 又在 SVC 自身 PTT/语音激活筛选之后，不能作为独立按键录音源。因此 `compat/voicechat/VoicechatRecognitionCapture` 封装其内部 `ALMicrophone` / `JavaxMicrophone`，单独打开设备，不读取或修改 SVC 自身录音线程。公开插件事件只负责在助手采集期间取消语聊发送，结束后保留 250ms 尾部抑制；适配/插件安装失败时提示错误并不开始录音。没有安装 SVC 时不注册插件、不加载适配器或任何 SVC 类型。内部接口存在版本敏感性，升级 SVC 后应重新核对；若设备不允许同时打开，显示麦克风错误，不抢占语聊设备。
 
-设备打开与音频读取在一个有界守护录音执行器中执行，网络在独立识别执行器中执行，主线程仅操作界面和取消。连接期间音频仅在有界内存队列保存，不落盘；录音上限 60 秒 / 1,920,000 PCM 字节。不支持 16 kHz 单声道或被系统禁止访问时给出本地提示。单条响应最多 64 KiB，结果最多 2000 UTF-16 单元；连接 10 秒超时、session 首次等待 90 秒上限，手动结束或读到 EOF 后改为最多再等待 15 秒。独立守护计时器负责结束客户端等待，不依赖网络或设备线程返回；超时取消后台任务并显示既有本地化超时状态，完成 / 取消会清除计时任务，迟到回调不再改写终态。执行器繁忙直接显示 busy，后台 Exception / LinkageError 显示本地化错误，日志保留错误代码与完整异常堆栈（含 Caused by），便于定位初始化或依赖问题；不主动记录凭据、音频或识别文字。失败不自动重试收费任务。
+设备打开与音频读取在一个有界守护录音执行器中执行，网络在独立识别执行器中执行，主线程仅操作界面和取消。连接期间音频仅在有界内存队列保存，不落盘；录音上限 60 秒 / 1,920,000 PCM 字节。不支持 16 kHz 单声道或被系统禁止访问时给出本地提示。单条响应最多 64 KiB，结果最多 2000 UTF-16 单元；连接 10 秒超时、整体 90 秒上限、停止后最多再等待 15 秒。失败不自动重试收费任务。
+
+手动停止与音频入队共用锁，停止后排空已缓冲的 PCM 即返回 EOF，不等待设备读取或关闭；自然录音结束也在设备关闭前发布 EOF，最后一帧在终止标志可见后复核。独立守护计时器对 session 执行 90 秒整体 / 15 秒收尾限制，终态和计时代次阻止迟到回调覆盖成功、错误或取消结果。执行器繁忙及后台失败会结束等待，日志保留本地错误码与完整异常堆栈（含 Caused by），不主动记录凭据、音频或识别文字。
 
 `AsrProvider` 位于 `speech.asr`，协议层不依赖 MC。供应商由 `speech.AsrProviders` 的普通工厂 Map 管理，内置键为 `aliyun-nls`。扩展在客户端初始化时调用 `AsrProviders.register(name, factory)`，不参与 MC 注册表生命周期，`AsrProviders.create(provider)` 按配置字符串精确查找并创建独占实例，不自动补命名空间。供应商实现纯本地的 `validate`、`recognize(Request, AudioSource, Consumer<String>, Runnable requestStarted)` 和 `close`；`requestStarted` 在鉴权、连接完成后、首次发送识别命令前调用，开始统计本次识别，详见[注册表速查](registries.md)。当前配置凭据结构面向 NLS，增加不同鉴权方式的供应商时需扩展相应配置表单。可选供应商自己的单位计费也需单独适配，不套用 NLS 次数单价。
 
@@ -87,6 +89,6 @@ FTB 启动概览的“查看任务”以及新手礼包的“领取礼包”“�
 
 ## 验证边界
 
-2026-10-31 根据 1.21.1 实际堆栈修正语音价格表初始化：`PRICE` 与日志器必须在 `Table.CODEC` 和立即加载配置的 `INSTANCE` 之前初始化。原问题发生在识别成功后的本地费用归并，导致最终文本未送入界面，并被误报为 network；同一进程后续使用已初始化失败的类会继续报 NoClassDefFoundError。更新后需重启客户端，资源重载不能恢复 JVM 中已经初始化失败的类。语音账本另对统计计算异常统一容错，不阻断识别文本或合成播放。
+2026-10-31 同步 1.21.1 实际堆栈对应的语音价格表修正：`PRICE` 与日志器先于 `Table.CODEC` 和立即加载配置的 `INSTANCE` 初始化，金额支持 JSON 数字及十进制字符串。原问题会在识别成功后的本地费用统计阶段阻止最终文本交付；账本现统一隔离统计计算的 RuntimeException / LinkageError，记录完整堆栈并保留上一次快照，不中断识别或播报。若当前进程已发生类初始化失败，更新后必须重启客户端，资源重载无法恢复 JVM 中已失效的类。
 
 本次只执行编译、打包和静态检查，未启动 Minecraft、打开麦克风或调用收费接口；真实设备兼容性、NLS 鉴权与转写效果尚未进行运行时验收。

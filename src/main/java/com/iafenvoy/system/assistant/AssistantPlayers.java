@@ -1,17 +1,18 @@
 package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.response.BindingResponse;
-import com.iafenvoy.system.agent.store.AgentStore;
+import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
-import com.iafenvoy.system.card.data.BindingCardData;
 import com.iafenvoy.system.data.SystemDefinition;
+import com.iafenvoy.system.data.card.data.BindingCardData;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
-import com.iafenvoy.system.registry.SystemDataPackRegistries;
+import com.iafenvoy.system.registry.SystemResourceKeys;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,6 +27,7 @@ import java.util.function.Consumer;
 public final class AssistantPlayers {
     private final MinecraftServer server;
     private final AgentEngine engine;
+    private final AssistantBindings bindings;
     private final ModuleManager modules;
     private final AssistantUsage usage;
     private final Map<UUID, Long> lastRequest = new HashMap<>();
@@ -37,6 +39,7 @@ public final class AssistantPlayers {
     AssistantPlayers(MinecraftServer server, AgentEngine engine, ModuleManager modules, AssistantUsage usage) {
         this.server = server;
         this.engine = engine;
+        this.bindings = new AssistantBindings(engine);
         this.modules = modules;
         this.usage = usage;
     }
@@ -80,24 +83,24 @@ public final class AssistantPlayers {
     CompletionStage<AgentResult> requireBound(UUID player) {
         AgentStore store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
-            if (!data.bound()) throw new AgentException("NOT_BOUND");
+            if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
             return AgentResult.ok("system.result.ready");
         }));
     }
 
     public void grant(ServerPlayer player, ResourceLocation system, Consumer<AgentResult> feedback) {
-        SystemDefinition definition = SystemDataPackRegistries.get(this.server.registryAccess(), system).orElse(null);
+        SystemDefinition definition = this.server.registryAccess().registryOrThrow(SystemResourceKeys.SYSTEM).get(system);
         if (definition == null) {
-            AgentResult answer = AgentResult.error("SYSTEM_UNAVAILABLE");
+            AgentResult answer = AgentResult.error(AgentFailure.SYSTEM_UNAVAILABLE);
             feedback.accept(answer);
             ServerNetworkHandler.notice(player, answer);
             return;
         }
         if (!this.beginBindingChange(player, feedback)) return;
         UUID uuid = player.getUUID(), connection = ServerNetworkHandler.connectionId(player);
-        this.engine.grant(uuid, system, this.modules.binding(player)).whenComplete((result, error) -> this.server.execute(() -> {
+        this.bindings.grant(uuid, system, this.modules.binding(player)).whenComplete((result, error) -> this.server.execute(() -> {
             this.bindingChanges.remove(uuid);
-            AgentResult answer = error == null ? result : AgentResult.error(AgentEngine.errorCode(error));
+            AgentResult answer = error == null ? result : AgentResult.error(AgentException.failure(error));
             feedback.accept(answer);
             if (this.server.getPlayerList().getPlayer(uuid) != player || !connection.equals(ServerNetworkHandler.connectionId(player)))
                 return;
@@ -123,12 +126,12 @@ public final class AssistantPlayers {
         if (!this.beginBindingChange(player, feedback)) return;
         UUID uuid = player.getUUID();
         long previous = this.engine.incarnation(uuid);
-        CompletionStage<AgentResult> work = reset ? this.engine.reset(uuid) : this.engine.revoke(uuid);
+        CompletionStage<AgentResult> work = this.bindings.clear(uuid, reset);
         if (this.engine.incarnation(uuid) != previous) ServerNetworkHandler.connected(player);
         UUID connection = ServerNetworkHandler.connectionId(player);
         work.whenComplete((result, error) -> this.server.execute(() -> {
             this.bindingChanges.remove(uuid);
-            AgentResult answer = error == null ? result : AgentResult.error(AgentEngine.errorCode(error));
+            AgentResult answer = error == null ? result : AgentResult.error(AgentException.failure(error));
             if (answer.isSuccess()) {
                 this.clearSession(uuid);
                 this.modules.clear(uuid);
@@ -149,7 +152,7 @@ public final class AssistantPlayers {
 
     private boolean beginBindingChange(ServerPlayer player, Consumer<AgentResult> feedback) {
         if (this.bindingChanges.add(player.getUUID())) return true;
-        AgentResult busy = AgentResult.error("BUSY");
+        AgentResult busy = AgentResult.error(AgentFailure.BUSY);
         feedback.accept(busy);
         ServerNetworkHandler.notice(player, busy);
         return false;

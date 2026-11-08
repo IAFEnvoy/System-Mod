@@ -1,0 +1,21 @@
+{
+  "label": "任意原木",
+  "items": [
+    {
+      "count": 8,
+      "id": "minecraft:oak_log"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 4,
+      "items": [
+        "minecraft:oak_log",
+        "minecraft:spruce_log",
+        "minecraft:birch_log",
+        "minecraft:jungle_log"
+      ]
+    }
+  ]
+}

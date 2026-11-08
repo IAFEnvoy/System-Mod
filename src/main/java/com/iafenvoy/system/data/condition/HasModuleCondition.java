@@ -6,18 +6,18 @@ import com.iafenvoy.system.assistant.AssistantServer;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 public record HasModuleCondition(ResourceLocation module) implements EntityCondition {
     public static final MapCodec<HasModuleCondition> CODEC = ResourceLocation.CODEC.fieldOf("module").xmap(HasModuleCondition::new, HasModuleCondition::module);
 
     @Override
-    public @NotNull MapCodec<HasModuleCondition> codec() {
+    public @NonNull MapCodec<HasModuleCondition> codec() {
         return CODEC;
     }
 
     @Override
-    public boolean test(@NotNull EntityConditionContext context) {
+    public boolean test(EntityConditionContext context) {
         if (!(context.entity() instanceof ServerPlayer player)) return false;
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
         return runtime != null && runtime.moduleManager().hasModule(player.getUUID(), this.module);

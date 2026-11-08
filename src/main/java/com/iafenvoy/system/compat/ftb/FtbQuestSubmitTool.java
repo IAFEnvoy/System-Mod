@@ -1,11 +1,12 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
-import com.iafenvoy.system.agent.builtin.input.QuestSubmitInput;
-import com.iafenvoy.system.agent.builtin.output.QuestSubmitOutput;
-import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
+import com.iafenvoy.system.agent.AgentFailure;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.input.QuestSubmitInput;
+import com.iafenvoy.system.data.output.QuestSubmitOutput;
+import com.iafenvoy.system.module.builtin.BuiltinTools;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
@@ -32,22 +33,22 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
     @Override
     public CompletionStage<QuestSubmitOutput> execute(ExecutionContext context, QuestSubmitInput input) {
         return this.access.game.onPlayer(context, player -> {
-            if (ServerQuestFile.getInstance().isEmpty()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (ServerQuestFile.getInstance().isEmpty()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             ServerQuestFile file = ServerQuestFile.getInstance().orElseThrow();
-            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));
+            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException(AgentFailure.NOT_AUTHORIZED));
             Quest quest = FtbQuestAccess.selected(context, file, team, input.questId(), input.index().orElse(0), this.access.lists);
             if (quest == null && !input.query().isBlank()) {
                 List<Quest> matches = new FtbQuestReader(file, team).find(player, input.query());
-                if (matches.size() > 1) throw new AgentException("QUEST_AMBIGUOUS");
+                if (matches.size() > 1) throw new AgentException(AgentFailure.QUEST_AMBIGUOUS);
                 quest = matches.isEmpty() ? null : matches.getFirst();
             }
-            if (quest == null || !FtbQuestReader.active(team, quest))
-                throw new AgentException("QUEST_UNAVAILABLE");
+            if (quest == null || !FtbQuestReader.active(team, quest) || FtbQuestReader.isProgressionPaused(team, player))
+                throw new AgentException(AgentFailure.QUEST_UNAVAILABLE);
             if (input.checkmarkOnly() && !FtbQuestReader.canComplete(player, team, quest))
-                throw new AgentException("QUEST_UNAVAILABLE");
+                throw new AgentException(AgentFailure.QUEST_UNAVAILABLE);
             List<Task> tasks = FtbQuestReader.submittableTasks(quest).stream()
                     .filter(task -> !input.checkmarkOnly() || task.getClass() == CheckmarkTask.class).toList();
-            if (tasks.isEmpty()) throw new AgentException("NO_SUBMITTABLE_TASK");
+            if (tasks.isEmpty()) throw new AgentException(AgentFailure.NO_SUBMITTABLE_TASK);
             List<Long> before = tasks.stream().map(team::getProgress).toList();
             Quest target = quest;
             int completions = team.getCompletionCount(target);
@@ -55,13 +56,13 @@ final class FtbQuestSubmitTool implements ToolRegistry.Handler<QuestSubmitInput,
                 for (Task task : tasks) {
                     // Auto-claimed repeatable quests may reset immediately; one command never enters the next cycle.
                     if (team.isCompleted(target) || team.getCompletionCount(target) != completions || team.isLocked()
-                            || !team.canStartTasks(target)) break;
+                            || !team.canStartTasks(target) || FtbQuestReader.isProgressionPaused(team, player)) break;
                     if (FtbQuestReader.pendingSubmission(team, task)) task.submitTask(team, player);
                 }
             });
             boolean changed = !before.equals(tasks.stream().map(team::getProgress).toList()) || team.getCompletionCount(target) != completions;
             boolean completed = team.isCompleted(quest) || team.getCompletionCount(target) != completions;
-            if (completed) FtbQuestNotifications.submitted(player, file, team, quest);
+            if (completed) this.access.notifications.submitted(player, file, team, quest);
             return new QuestSubmitOutput(FtbQuestAccess.hex(quest.getId()), FtbQuestText.title(player, quest), tasks.stream()
                     .map(task -> FtbQuestAccess.task(player, team, task)).toList(), changed, completed);
         });

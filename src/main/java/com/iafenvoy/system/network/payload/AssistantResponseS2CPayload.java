@@ -1,22 +1,21 @@
 package com.iafenvoy.system.network.payload;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentResponse;
+import com.iafenvoy.system.agent.response.AgentResponse;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 public record AssistantResponseS2CPayload(AgentResponse response) implements CustomPacketPayload {
     public static final Type<AssistantResponseS2CPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "assistant_response_s2c"));
-    // Only the server produces these replies; full lists can exceed the default NBT allocation quota.
-    public static final StreamCodec<RegistryFriendlyByteBuf, AssistantResponseS2CPayload> CODEC = ByteBufCodecs.fromCodecWithRegistriesTrusted(AgentResponse.CODEC)
-            .map(AssistantResponseS2CPayload::new, AssistantResponseS2CPayload::response);
+    public static final StreamCodec<RegistryFriendlyByteBuf, AssistantResponseS2CPayload> CODEC = StreamCodec.composite(
+            AgentResponse.STREAM_CODEC, AssistantResponseS2CPayload::response,
+            AssistantResponseS2CPayload::new);
 
     @Override
-    public @NotNull Type<? extends CustomPacketPayload> type() {
+    public @NonNull Type<? extends CustomPacketPayload> type() {
         return TYPE;
     }
 }

@@ -1,22 +1,21 @@
 package com.iafenvoy.system.agent.response;
 
-import com.iafenvoy.system.agent.AgentResponse;
 import com.iafenvoy.system.agent.AgentResult;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 
 /**
  * A reply completes the matching client request.
  */
 public record ReplyResponse(String requestId, AgentResult result) implements AgentResponse {
-    public static final MapCodec<ReplyResponse> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Codec.string(0, 36).fieldOf("requestId").forGetter(ReplyResponse::requestId),
-            AgentResult.CODEC.fieldOf("result").forGetter(ReplyResponse::result)
-    ).apply(i, ReplyResponse::new));
+    public static final StreamCodec<RegistryFriendlyByteBuf, ReplyResponse> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.stringUtf8(36), ReplyResponse::requestId,
+            ByteBufCodecs.fromCodecWithRegistriesTrusted(AgentResult.CODEC), ReplyResponse::result,
+            ReplyResponse::new);
 
     @Override
-    public MapCodec<ReplyResponse> codec() {
-        return CODEC;
+    public StreamCodec<RegistryFriendlyByteBuf, ReplyResponse> streamCodec() {
+        return STREAM_CODEC;
     }
 }

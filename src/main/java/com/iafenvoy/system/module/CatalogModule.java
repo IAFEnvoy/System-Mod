@@ -4,8 +4,8 @@ import com.iafenvoy.saturn.util.codec.RegistryCodecs;
 import com.mojang.datafixers.util.Either;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
 
 import java.util.List;
@@ -20,7 +20,6 @@ public interface CatalogModule<T> extends SharedModule {
     Optional<List<Either<ResourceKey<T>, TagKey<T>>>> options();
 
     default boolean allows(RegistryAccess registries, ResourceLocation id) {
-        return this.options().map(options -> registries.registry(this.catalog())
-                .map(registry -> RegistryCodecs.matchesKeys(options, registry, id)).orElse(false)).orElse(true);
+        return this.options().map(options -> RegistryCodecs.matchesKeys(options, registries.registryOrThrow(this.catalog()), id)).orElse(true);
     }
 }

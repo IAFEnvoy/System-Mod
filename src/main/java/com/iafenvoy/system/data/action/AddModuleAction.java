@@ -6,18 +6,18 @@ import com.iafenvoy.system.assistant.AssistantServer;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 public record AddModuleAction(ResourceLocation module) implements EntityAction {
     public static final MapCodec<AddModuleAction> CODEC = ResourceLocation.CODEC.fieldOf("module").xmap(AddModuleAction::new, AddModuleAction::module);
 
     @Override
-    public @NotNull MapCodec<AddModuleAction> codec() {
+    public @NonNull MapCodec<AddModuleAction> codec() {
         return CODEC;
     }
 
     @Override
-    public void execute(@NotNull EntityActionContext context) {
+    public void execute(EntityActionContext context) {
         if (context.entity() instanceof ServerPlayer player) {
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
             if (runtime != null) runtime.moduleManager().add(player, this.module);

@@ -11,7 +11,8 @@
     "outputTokens": 512,
     "totalTokens": 32768,
     "ttlMillis": 14500,
-    "modelTimeoutMillis": 4000
+    "modelTimeoutMillis": 4000,
+    "reactIterations": 0
   },
   "policies": {}
 }

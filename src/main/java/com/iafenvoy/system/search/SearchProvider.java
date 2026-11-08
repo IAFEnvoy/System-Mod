@@ -14,6 +14,12 @@ import java.util.Optional;
  * Read-only search and page retrieval; no Agent registration or Minecraft state is involved.
  */
 public interface SearchProvider extends AutoCloseable {
+    /**
+     * HTTP clients close without a checked failure; narrow the inherited signature so callers need no catch.
+     */
+    @Override
+    void close();
+
     Response search(Request request, Duration timeout) throws Exception;
 
     Page fetch(FetchRequest request, Duration timeout) throws Exception;
@@ -90,7 +96,4 @@ public interface SearchProvider extends AutoCloseable {
                 Codec.STRING.fieldOf("content").forGetter(Page::content)
         ).apply(i, Page::new));
     }
-
-    @Override
-    void close();
 }

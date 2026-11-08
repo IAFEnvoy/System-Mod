@@ -1,4 +1,5 @@
 {
+  "order": 40,
   "server": {
     "type": "system:items"
   },

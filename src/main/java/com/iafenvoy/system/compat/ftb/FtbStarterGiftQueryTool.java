@@ -1,11 +1,12 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
-import com.iafenvoy.system.agent.builtin.input.EmptyInput;
-import com.iafenvoy.system.agent.builtin.output.StarterGiftOutput;
-import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
+import com.iafenvoy.system.agent.AgentFailure;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.input.EmptyInput;
+import com.iafenvoy.system.data.output.StarterGiftOutput;
+import com.iafenvoy.system.module.builtin.BuiltinTools;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 
@@ -22,15 +23,16 @@ final class FtbStarterGiftQueryTool implements ToolRegistry.Handler<EmptyInput, 
     }
 
     ToolRegistry.Tool<EmptyInput, StarterGiftOutput> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.STARTER_GIFTS, false, true, false, this);
+        return new ToolRegistry.Tool<>(BuiltinTools.STARTER_GIFTS, false, true, false, this)
+                .forReasoning("Preview available starter gift rewards and references. Does not claim or complete anything.");
     }
 
     @Override
     public CompletionStage<StarterGiftOutput> execute(ExecutionContext context, EmptyInput input) {
         return this.access.game.onPlayer(context, player -> {
-            if (ServerQuestFile.getInstance().isEmpty()) throw new AgentException("CAPABILITY_UNAVAILABLE");
+            if (ServerQuestFile.getInstance().isEmpty()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             ServerQuestFile file = ServerQuestFile.getInstance().orElseThrow();
-            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("NOT_AUTHORIZED"));
+            TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException(AgentFailure.NOT_AUTHORIZED));
             return this.access.gifts.preview(player, file, team);
         });
     }

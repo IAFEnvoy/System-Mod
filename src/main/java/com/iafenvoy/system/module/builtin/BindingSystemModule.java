@@ -1,10 +1,11 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.CoreModule;
 import com.iafenvoy.system.module.ModuleCommands;
-import com.iafenvoy.system.registry.SystemDataPackRegistries;
+import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -22,7 +23,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public final class BindingSystemModule implements CoreModule {
-    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("system", "binding");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "binding");
     public static final MapCodec<BindingSystemModule> CODEC = MapCodec.unit(new BindingSystemModule());
 
     @Override
@@ -52,7 +53,7 @@ public final class BindingSystemModule implements CoreModule {
 
     private static RequiredArgumentBuilder<CommandSourceStack, ResourceLocation> systemArgument() {
         return Commands.argument("system", ResourceLocationArgument.id()).suggests((context, builder) ->
-                SharedSuggestionProvider.suggestResource(SystemDataPackRegistries.ids(context.getSource().getServer().registryAccess()), builder));
+                SharedSuggestionProvider.suggestResource(context.getSource().getServer().registryAccess().registryOrThrow(SystemResourceKeys.SYSTEM).keySet(), builder));
     }
 
     private static int grant(CommandContext<CommandSourceStack> context, ServerPlayer target) {

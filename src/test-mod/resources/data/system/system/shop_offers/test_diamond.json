@@ -1,0 +1,18 @@
+{
+  "label": "一颗钻石",
+  "items": [
+    {
+      "count": 1,
+      "id": "minecraft:diamond"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 64,
+      "items": [
+        "minecraft:emerald"
+      ]
+    }
+  ]
+}

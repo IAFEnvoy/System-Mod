@@ -1,0 +1,26 @@
+{
+  "label": "野外补给包",
+  "items": [
+    {
+      "count": 4,
+      "id": "minecraft:bread"
+    },
+    {
+      "count": 2,
+      "id": "minecraft:apple"
+    },
+    {
+      "count": 8,
+      "id": "minecraft:torch"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 8,
+      "items": [
+        "minecraft:wheat"
+      ]
+    }
+  ]
+}

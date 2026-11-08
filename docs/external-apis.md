@@ -1,5 +1,7 @@
 # 本模组会请求哪些 API
 
+自由聊天使用同一个服务端 Chat Completions API，发送当前文字与按玩家设置裁剪的本人历史；复用原有账号、计费和限额。该模式本轮不调用工具或联网搜索。见 [自由聊天](free-chat.md)。
+
 本文根据当前仓库代码整理，核对日期：2026-10-30。描述的是本模组内置实现发出的外部请求，不包含 Minecraft、加载器或其他模组自身的联网行为，也不包含第三方扩展自行注册的模型、TTS、ASR 或支付实现。
 
 ## 总览
@@ -36,6 +38,7 @@ DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的�
 | 调用场景 | 发给模型的主要内容 | 可以避免请求的情况 |
 | --- | --- | --- |
 | 意图路由兜底 | 当前输入、有限的近期对话原文及历史结果摘要、本地候选模块及相似度、可用模块说明与输入 schema、玩家语言、路由提示词 | 按钮等结构化动作、明确指令、本地高把握只读匹配或有效意图缓存命中 |
+| 自由聊天 / 扩展兜底 | 当前消息、有限的本人聊天历史、玩家语言、基础聊天提示词及当前绑定系统引用的人格 TXT 正文；完整自由模式另含可用工具说明和本次观察 | 离线 / 标准模式、管理员禁用自由聊天或模型、玩家关闭 AI；扩展模式成功路由时不进入聊天兜底 |
 | AI 签到奖励选择 | 当前玩家名称、生命值与上限、经验等级、所在维度、语言、日期，以及数据包中的候选奖励定义 | 当日已签到时直接返回已记录的结果，不重新选择 |
 | 特殊任务要求或奖励的播报整理 | 无法直接格式化的目标或奖励类型、原生标题、目标数量和已知限制，以及语言和整理提示词 | 常见目标直接格式化；整理片段缓存命中；未启用相应播报 |
 | 本地知识问答整理 | 当前问题、玩家语言、当前玩家独立 / 共享知识及授权 FTB 说明书的匹配片段、标题与分类 | 查库无结果、外部 AI 关闭或无剩余模型预算时不整理；可恢复失败时展示来源，不搜索 |
@@ -46,17 +49,17 @@ DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的�
 
 签到模型只接收当前玩家的专用投影，不发送在线玩家列表或完整背包。路由可能发送该玩家近期输入的原文，以及历史结果中的任务、奖励或领取引用等受限字段；玩家主动输入的内容也可能包含个人信息。不会自动将整个存档、全部聊天历史或所有玩家记录打包发送。
 
-特殊任务整理和背景筛选只使用任务定义，不发送玩家背包、当前任务进度或整段对话；任务文本本身仍可能包含数据包作者填写的内容。背景结果保存在当前存档 `system-database/shared.json` 的 `system:quest_backgrounds` 表，按任务 ID、语言和内容指纹复用；成功的“无背景”结论也缓存。
+特殊任务整理和背景筛选只使用任务定义，不发送玩家背包、当前任务进度或整段对话；任务文本本身仍可能包含数据包作者填写的内容。背景结果保存在当前存档 `system/database/shared.dat` 的 `system:quest_backgrounds` 表（GZIP 压缩 NBT），按任务 ID、语言和内容指纹复用；成功的“无背景”结论也缓存。
 
-关闭玩家的“外部 AI”后，这些模型调用和服务端联网搜索均被禁止；本地查询和已有缓存仍可使用。语音功能有独立开关和密钥，关闭外部 AI 不会一并关闭客户端 TTS 或 ASR。
+玩家选择“离线”模式后，这些模型调用和服务端联网搜索均被禁止；本地查询和已有缓存仍可使用。语音功能有独立开关和密钥，离线对话模式不会一并关闭客户端 TTS 或 ASR。
 
 实现入口：
 
 - [模型 HTTP 客户端](../src/main/java/com/iafenvoy/system/agent/model/OpenAiCompatibleClient.java)
 - [模型连接配置](../src/main/java/com/iafenvoy/system/config/file/ModelConfig.java)
 - [意图路由](../src/main/java/com/iafenvoy/system/agent/routing/HybridRouter.java)
-- [签到模型输入](../src/main/java/com/iafenvoy/system/agent/builtin/signin/SignInDecision.java)
-- [任务播报整理](../src/main/java/com/iafenvoy/system/agent/QuestNarration.java) / [背景筛选缓存](../src/main/java/com/iafenvoy/system/agent/QuestBackgrounds.java)
+- [签到模型输入](../src/main/java/com/iafenvoy/system/data/output/SignInDecision.java)
+- [任务播报整理](../src/main/java/com/iafenvoy/system/speech/quest/QuestNarration.java) / [背景筛选缓存](../src/main/java/com/iafenvoy/system/speech/quest/QuestBackgrounds.java)
 
 ## 2. 客户端 TTS API
 

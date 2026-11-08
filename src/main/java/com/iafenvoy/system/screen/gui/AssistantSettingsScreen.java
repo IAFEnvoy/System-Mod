@@ -5,14 +5,18 @@ import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.config.file.ClientConfig;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.config.file.SpeechConfig;
+import com.iafenvoy.system.data.AiStatus;
+import com.iafenvoy.system.screen.AssistantThemes;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.asr.RecognitionCapture;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.iafenvoy.system.speech.tts.SpeechState;
+import com.sighs.apricityui.element.ThemeSwitcher;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 
 import java.util.List;
 import java.util.Locale;
@@ -38,7 +42,6 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
     private RecognitionConfig asrForm = RecognitionConfig.INSTANCE.get();
     private boolean simpleMode = AssistantClient.simpleMode();
     private boolean saveHistory = AssistantClient.state().saveHistory();
-    private boolean externalModel = AssistantClient.state().externalModel();
     private boolean savingPreferences;
     private boolean invalidVolume;
     private String generalStatus = "";
@@ -62,33 +65,16 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
     @Override
     protected void initPage(Document document) {
         super.initPage(document);
-        for (String id : List.of("settings_title", "settings_back", "settings_view_heading", "settings_mode_full", "settings_mode_simple"))
-            text(document.getElementById(id), tr("system.ui." + id));
-        for (String id : List.of("privacy_heading", "privacy_text"))
-            text(document.getElementById(id), tr("system.ui." + id));
-        text(document.getElementById("settings_history_label"), tr("system.ui.history_toggle"));
-        text(document.getElementById("settings_model_label"), tr("system.ui.model_toggle"));
-        text(document.getElementById("settings_speech_enabled_label"), tr("system.tts.ui.enabled"));
-        text(document.getElementById("settings_speech_notification_sound_label"), tr("system.tts.ui.notification_sound"));
-        text(document.getElementById("speech_notification_sound_hint"), tr("system.tts.ui.notification_sound_hint"));
-        text(document.getElementById("settings_speech_cache_label"), tr("system.tts.ui.cache_enabled"));
-        text(document.getElementById("speech_cache_hint"), tr("system.tts.ui.cache_hint"));
-        for (String part : List.of("requirements", "rewards", "description"))
-            text(document.getElementById("speech_quest_" + part + "_label"), tr("system.tts.ui.quest_" + part));
-        text(document.getElementById("speech_quest_hint"), tr("system.tts.ui.quest_hint"));
-        text(document.getElementById("speech_language_label"), tr("system.tts.ui.language"));
-        text(document.getElementById("settings_asr_enabled_label"), tr("system.asr.ui.enabled"));
-        text(document.getElementById("settings_asr_auto_send_label"), tr("system.asr.ui.auto_send"));
-        for (Tab value : Tab.values()) {
-            String id = "settings_tab_" + value.key();
-            text(document.getElementById(id), tr("system.ui." + id));
-            bind(document, id, () -> this.selectTab(value));
-        }
-        for (String id : List.of("speech_note", "speech_key_step", "speech_voice_step", "speech_key_label", "speech_workspace_label",
-                "speech_model_label", "speech_voice_label", "speech_volume_label", "speech_hint", "speech_preview", "speech_stop"))
-            text(document.getElementById(id), tr("system.tts.ui." + id));
-        for (String id : List.of("asr_note", "asr_key_step", "asr_appkey_label", "asr_access_key_id_label", "asr_access_key_secret_label", "asr_hint"))
-            text(document.getElementById(id), tr("system.asr.ui." + id));
+        for (Tab value : Tab.values())
+            bind(document, "settings_tab_" + value.key(), () -> this.selectTab(value));
+        document.getElementById("settings_theme").addEventListener(ThemeSwitcher.THEME_CHANGE_EVENT, event -> {
+            if (event.detail instanceof String theme) {
+                this.generalStatus = tr(AssistantThemes.select(theme) ? "system.ui.settings_saved" : "system.ui.settings_config_error");
+                this.renderControls();
+            }
+        });
+        bindSwitch(document, "settings_card_animations", unused1 -> this.saveCardSettings(document));
+        bindSwitch(document, "settings_cards_other_screens", unused2 -> this.saveCardSettings(document));
         document.getElementById("speech_key").setAttribute("placeholder", tr("system.tts.ui.key_placeholder"));
         Element languageSelect = document.getElementById("speech_language");
         for (String language : SpeechConfig.LANGUAGES) {
@@ -104,12 +90,12 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         text(document.getElementById("asr_backend"), tr(RecognitionCapture.voicechatInstalled()
                 ? "system.asr.ui.backend_voicechat" : "system.asr.ui.backend_java"));
         for (Element input : document.querySelectorAll("#settings_page_tts input:not([type=checkbox])"))
-            input.addEventListener("input", event -> {
+            input.addEventListener("input", unused3 -> {
                 this.readSpeechForm(document);
                 this.saveSpeech();
             });
         for (Element input : document.querySelectorAll("#settings_page_asr input:not([type=checkbox])"))
-            input.addEventListener("input", event -> {
+            input.addEventListener("input", unused4 -> {
                 this.readAsrForm(document);
                 this.saveAsr();
             });
@@ -128,20 +114,16 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
             this.saveHistory = checked;
             this.savePreferences();
         });
-        bindSwitch(document, "model_toggle", checked -> {
-            this.externalModel = checked;
-            this.savePreferences();
-        });
         bindSwitch(document, "speech_enabled", checked ->
                 this.changeSpeech(checked, this.speechForm.region(), this.speechForm.language()));
         for (String id : List.of("speech_notification_sound", "speech_cache", "speech_quest_requirements", "speech_quest_rewards", "speech_quest_description"))
-            bindSwitch(document, id, checked -> {
+            bindSwitch(document, id, unused5 -> {
                 this.readSpeechForm(document);
                 this.saveSpeech();
             });
         bind(document, "speech_region", () -> this.changeSpeech(this.speechForm.enabled(),
                 this.speechForm.region().equals("beijing") ? "singapore" : "beijing", this.speechForm.language()));
-        languageSelect.addEventListener("change", event -> {
+        languageSelect.addEventListener("change", unused6 -> {
             this.readSpeechForm(document);
             this.saveSpeech();
         });
@@ -234,12 +216,15 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         this.tab = next;
         for (Tab value : Tab.values()) {
             boolean selected = value == next;
-            document.getElementById("settings_page_" + value.key()).setInlineStyleProperty("display", selected ? "flex" : "none");
+            display(document.getElementById("settings_page_" + value.key()), selected ? "block" : "none");
             Element button = document.getElementById("settings_tab_" + value.key());
-            button.setClassName(selected ? "settings_tab primary" : "settings_tab");
-            button.setAttribute("aria-selected", Boolean.toString(selected));
+            if (button.getClassList().contains("primary") != selected)
+                button.getClassList().toggle("primary", selected);
+            String selection = Boolean.toString(selected);
+            if (!selection.equals(button.getAttribute("aria-selected")))
+                button.setAttribute("aria-selected", selection);
         }
-        document.getElementById("settings_speech_actions").setInlineStyleProperty("display", next == Tab.TTS ? "flex" : "none");
+        display(document.getElementById("settings_speech_actions"), next == Tab.TTS ? "flex" : "none");
         Element content = document.getElementById("settings_content");
         content.scrollTop = 0;
         content.targetScrollTop = 0;
@@ -251,11 +236,19 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
     private void savePreferences() {
         if (AssistantClient.state().busy() || this.minecraft.getConnection() == null) {
             this.saveHistory = AssistantClient.state().saveHistory();
-            this.externalModel = AssistantClient.state().externalModel();
-        } else if (this.saveHistory != AssistantClient.state().saveHistory() || this.externalModel != AssistantClient.state().externalModel()) {
+        } else if (this.saveHistory != AssistantClient.state().saveHistory()) {
             this.savingPreferences = true;
-            AssistantClient.send(new PreferencesRequest(this.saveHistory, this.externalModel));
+            AssistantClient.send(new PreferencesRequest(this.saveHistory, AssistantClient.state().preferredMode()));
         }
+        this.renderControls();
+    }
+
+    private void saveCardSettings(Document document) {
+        ClientConfig settings = ClientConfig.INSTANCE.get();
+        ClientConfig.INSTANCE.set(new ClientConfig(settings.simpleMode(), settings.theme(),
+                switchChecked(document.getElementById("settings_card_animations")),
+                switchChecked(document.getElementById("settings_cards_other_screens"))));
+        this.generalStatus = tr(ClientConfig.INSTANCE.save() ? "system.ui.settings_saved" : "system.ui.settings_config_error");
         this.renderControls();
     }
 
@@ -284,10 +277,15 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
     private void renderControls() {
         Document document = this.getLinkedDocument();
         if (document == null) return;
-        document.getElementById("settings_mode_full").setClassName(this.simpleMode ? "" : "primary");
-        document.getElementById("settings_mode_simple").setClassName(this.simpleMode ? "primary" : "");
+        for (String mode : List.of("full", "simple")) {
+            Element button = document.getElementById("settings_mode_" + mode);
+            boolean selected = mode.equals("simple") == this.simpleMode;
+            if (button.getClassList().contains("primary") != selected)
+                button.getClassList().toggle("primary", selected);
+        }
+        switchChecked(document.getElementById("settings_card_animations"), ClientConfig.INSTANCE.get().cardAnimations());
+        switchChecked(document.getElementById("settings_cards_other_screens"), ClientConfig.INSTANCE.get().cardsOnOtherScreens());
         switchChecked(document.getElementById("history_toggle"), this.saveHistory);
-        switchChecked(document.getElementById("model_toggle"), this.externalModel);
         switchChecked(document.getElementById("speech_enabled"), this.speechForm.enabled());
         switchChecked(document.getElementById("speech_notification_sound"), this.speechForm.notificationSoundEnabled());
         switchChecked(document.getElementById("speech_cache"), this.speechForm.cacheEnabled());
@@ -295,9 +293,11 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         Element languageSelect = document.getElementById("speech_language");
         if (!languageSelect.getValue().equals(this.speechForm.language()))
             languageSelect.setValue(this.speechForm.language());
-        text(document.getElementById("speech_language_hint"), tr("system.tts.ui.language_hint"));
-        for (String id : List.of("speech_workspace", "speech_model", "speech_voice", "speech_language", "speech_volume", "speech_preview"))
-            document.getElementById(id).setDisabled(!this.speechForm.hasKey());
+        boolean speechDisabled = !this.speechForm.hasKey();
+        for (String id : List.of("speech_workspace", "speech_model", "speech_voice", "speech_language", "speech_volume", "speech_preview")) {
+            Element control = document.getElementById(id);
+            if (control.isDisabled() != speechDisabled) control.setDisabled(speechDisabled);
+        }
         switchChecked(document.getElementById("asr_enabled"), this.asrForm.enabled());
         text(document.getElementById("asr_region"), tr("system.asr.ui.region") + ": " + tr("system.asr.region." + this.asrForm.region()));
         switchChecked(document.getElementById("asr_auto_send"), this.asrForm.autoSend());
@@ -311,25 +311,25 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         if (document == null) return;
         if (this.savingPreferences && !AssistantClient.state().busy()) {
             this.savingPreferences = false;
-            boolean saved = this.saveHistory == AssistantClient.state().saveHistory()
-                    && this.externalModel == AssistantClient.state().externalModel();
+            boolean saved = this.saveHistory == AssistantClient.state().saveHistory();
             this.generalStatus = tr(saved ? "system.ui.settings_saved" : "system.ui.settings_config_error");
             this.saveHistory = AssistantClient.state().saveHistory();
-            this.externalModel = AssistantClient.state().externalModel();
             this.renderControls();
         }
         // A late server state may arrive after settings opens; pending edits wait for acknowledgement.
-        if (!this.savingPreferences
-                && (this.saveHistory != AssistantClient.state().saveHistory() || this.externalModel != AssistantClient.state().externalModel())) {
+        if (!this.savingPreferences && this.saveHistory != AssistantClient.state().saveHistory()) {
             this.saveHistory = AssistantClient.state().saveHistory();
-            this.externalModel = AssistantClient.state().externalModel();
             this.renderControls();
         }
         boolean busy = AssistantClient.state().busy() || this.minecraft.getConnection() == null;
-        for (String id : List.of("history_toggle", "model_toggle")) {
-            Element control = document.getElementById(id);
-            if (control.isDisabled() != busy) control.setDisabled(busy);
-        }
+        Element history = document.getElementById("history_toggle");
+        if (history.isDisabled() != busy) history.setDisabled(busy);
+        AiStatus permissions = AssistantClient.state().serverState().ai();
+        text(document.getElementById("ai_permissions"), Component.translatable("system.ui.ai_permissions",
+                tr(permissions.allowAi() ? "system.ui.yes" : "system.ui.no"),
+                tr(permissions.allowFreeChat() ? "system.ui.yes" : "system.ui.no"), permissions.modelCallsPerDay(),
+                tr(permissions.maxMode().labelKey())).getString()
+                + (permissions.modelConfigured() ? "" : "\n" + tr("system.ai.model_missing_hint")));
         String status = switch (this.tab) {
             case GENERAL -> this.savingPreferences ? tr("system.ui.working")
                     : this.generalStatus.isBlank() ? tr("system.ui.settings_auto_save") : this.generalStatus;

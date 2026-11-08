@@ -1,0 +1,45 @@
+{
+  "id": "5A71090000000000",
+  "group": "",
+  "order_index": 109,
+  "filename": "system_test_09_single",
+  "icon": {
+    "id": "minecraft:nether_star",
+    "count": 1
+  },
+  "default_quest_shape": "square",
+  "default_hide_dependency_lines": false,
+  "progression_mode": "linear",
+  "consume_items": false,
+  "default_repeatable_quest": false,
+  "quests": [
+    {
+      "id": "5A71090001000000",
+      "x": 0.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:nether_star",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71090001010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71090001020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    }
+  ],
+  "quest_links": [],
+  "images": []
+}

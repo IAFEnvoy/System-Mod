@@ -1,8 +1,7 @@
 {
-  "replace": false,
   "values": [
-    "system:mining",
+    "system:building",
     "system:food",
-    "system:building"
+    "system:mining"
   ]
 }

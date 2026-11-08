@@ -1,9 +1,10 @@
 package com.iafenvoy.system.agent.model;
 
-import com.iafenvoy.system.config.file.ModelConfig;
 import com.iafenvoy.system.util.ExtraCodecsCompat;
+import com.iafenvoy.system.config.file.ModelConfig;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.util.ExtraCodecs;
 
 import java.util.List;
 import java.util.Optional;

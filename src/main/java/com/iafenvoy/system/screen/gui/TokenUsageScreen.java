@@ -1,5 +1,6 @@
 package com.iafenvoy.system.screen.gui;
 
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.data.usage.RecognitionUsage;
 import com.iafenvoy.system.data.usage.SearchUsage;
 import com.iafenvoy.system.data.usage.SpeechUsage;
@@ -83,9 +84,6 @@ public final class TokenUsageScreen extends AssistantPageScreen {
 
     @Override
     protected void initPage(Document document) {
-        text(document.getElementById("brand"), tr("system.ui.usage_title"));
-        for (String id : List.of("usage_mine", "usage_all", "usage_refresh", "usage_back", "usage_prev", "usage_next", "usage_note", "usage_search_note", "usage_speech_note", "usage_recognition_note", "close"))
-            text(document.getElementById(id), tr("system.ui." + id));
         this.createSummary(document);
         bind(document, "close", this::onClose);
         bind(document, "usage_back", this::onClose);
@@ -168,7 +166,7 @@ public final class TokenUsageScreen extends AssistantPageScreen {
             if (document != null) this.renderVoiceUsage(document);
         }
         if (this.requestId != null && System.currentTimeMillis() - this.requestedAt > 10000) {
-            this.update(TokenUsageResponseS2CPayload.failure(this.requestId, "EXPIRED"));
+            this.update(TokenUsageResponseS2CPayload.failure(this.requestId, AgentFailure.EXPIRED));
         }
     }
 

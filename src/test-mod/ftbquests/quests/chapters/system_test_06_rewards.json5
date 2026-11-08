@@ -1,0 +1,250 @@
+{
+  "id": "5A71060000000000",
+  "group": "",
+  "order_index": 106,
+  "filename": "system_test_06_rewards",
+  "icon": {
+    "id": "minecraft:experience_bottle",
+    "count": 1
+  },
+  "default_quest_shape": "square",
+  "default_hide_dependency_lines": false,
+  "progression_mode": "linear",
+  "consume_items": false,
+  "default_repeatable_quest": false,
+  "quests": [
+    {
+      "id": "5A71060001000000",
+      "x": 0.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:experience_bottle",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71060001010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71060001020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    },
+    {
+      "id": "5A71060002000000",
+      "x": 2.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:enchanted_book",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71060002010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71060002020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp_levels",
+          "xp_levels": 2
+        }
+      ]
+    },
+    {
+      "id": "5A71060003000000",
+      "x": 4.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:diamond",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71060003010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:coal",
+            "count": 1
+          },
+          "count": 1
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71060003020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:diamond",
+            "count": 1
+          },
+          "count": 1
+        },
+        {
+          "id": "5A71060003020002",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:emerald",
+            "count": 1
+          },
+          "count": 2
+        },
+        {
+          "id": "5A71060003020003",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:iron_ingot",
+            "count": 1
+          },
+          "count": 3
+        },
+        {
+          "id": "5A71060003020004",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:gold_ingot",
+            "count": 1
+          },
+          "count": 4
+        },
+        {
+          "id": "5A71060003020005",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:bread",
+            "count": 1
+          },
+          "count": 5
+        },
+        {
+          "id": "5A71060003020006",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:torch",
+            "count": 1
+          },
+          "count": 6
+        },
+        {
+          "id": "5A71060003020007",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        },
+        {
+          "id": "5A71060003020008",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp_levels",
+          "xp_levels": 1
+        }
+      ]
+    },
+    {
+      "id": "5A71060004000000",
+      "x": 6.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:emerald",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71060004010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71060004020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    },
+    {
+      "id": "5A71060005000000",
+      "x": 8.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:gold_ingot",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71060005010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71060005020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    },
+    {
+      "id": "5A71060006000000",
+      "x": 0.0,
+      "y": 2.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:flint",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71060006010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:flint",
+            "count": 1
+          },
+          "count": 2
+        }
+      ],
+      "rewards": []
+    }
+  ],
+  "quest_links": [],
+  "images": []
+}

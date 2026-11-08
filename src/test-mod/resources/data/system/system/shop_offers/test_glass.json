@@ -1,0 +1,18 @@
+{
+  "label": "玻璃八块",
+  "items": [
+    {
+      "count": 8,
+      "id": "minecraft:glass"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 8,
+      "items": [
+        "minecraft:sand"
+      ]
+    }
+  ]
+}

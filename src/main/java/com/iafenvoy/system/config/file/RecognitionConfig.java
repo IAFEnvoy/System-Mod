@@ -4,7 +4,7 @@ import com.iafenvoy.system.config.ConfigInstance;
 import com.iafenvoy.system.speech.asr.AsrProvider;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.Set;
 
@@ -38,7 +38,7 @@ public record RecognitionConfig(boolean enabled, String provider, String appKey,
     }
 
     @Override
-    public @NotNull String toString() {
+    public @NonNull String toString() {
         return "RecognitionConfig[provider=" + this.provider + ", enabled=" + this.enabled + "]";
     }
 }

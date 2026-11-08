@@ -15,22 +15,21 @@ import java.util.UUID;
 public record TokenUsageSnapshot(boolean all, boolean canViewAll, int offset, boolean hasMore,
                                  int playerCount, Usage totals, List<Player> players) {
     public static final int PAGE_SIZE = 8;
-    // 1.21.1's StreamCodec.composite tops out at six components, so the five page scalars travel as one header.
-    public static final StreamCodec<ByteBuf, TokenUsageSnapshot> STREAM_CODEC = StreamCodec.composite(
-            Page.STREAM_CODEC, snapshot -> new Page(snapshot.all, snapshot.canViewAll, snapshot.offset, snapshot.hasMore, snapshot.playerCount),
-            Usage.STREAM_CODEC, TokenUsageSnapshot::totals,
-            Player.STREAM_CODEC.apply(ByteBufCodecs.list(PAGE_SIZE)), TokenUsageSnapshot::players,
-            (page, totals, players) -> new TokenUsageSnapshot(page.all, page.canViewAll, page.offset, page.hasMore, page.playerCount, totals, players));
-
-    private record Page(boolean all, boolean canViewAll, int offset, boolean hasMore, int playerCount) {
-        private static final StreamCodec<ByteBuf, Page> STREAM_CODEC = StreamCodec.composite(
-                ByteBufCodecs.BOOL, Page::all,
-                ByteBufCodecs.BOOL, Page::canViewAll,
-                ByteBufCodecs.VAR_INT, Page::offset,
-                ByteBufCodecs.BOOL, Page::hasMore,
-                ByteBufCodecs.VAR_INT, Page::playerCount,
-                Page::new);
-    }
+    private static final StreamCodec<ByteBuf, List<Player>> PLAYERS = Player.STREAM_CODEC.apply(ByteBufCodecs.list(PAGE_SIZE));
+    // Seven fields exceed the composite overloads available on 1.21.1, so the order is written out explicitly.
+    public static final StreamCodec<ByteBuf, TokenUsageSnapshot> STREAM_CODEC = StreamCodec.of(
+            (buf, value) -> {
+                buf.writeBoolean(value.all());
+                buf.writeBoolean(value.canViewAll());
+                ByteBufCodecs.VAR_INT.encode(buf, value.offset());
+                buf.writeBoolean(value.hasMore());
+                ByteBufCodecs.VAR_INT.encode(buf, value.playerCount());
+                Usage.STREAM_CODEC.encode(buf, value.totals());
+                PLAYERS.encode(buf, value.players());
+            },
+            buf -> new TokenUsageSnapshot(buf.readBoolean(), buf.readBoolean(), ByteBufCodecs.VAR_INT.decode(buf),
+                    buf.readBoolean(), ByteBufCodecs.VAR_INT.decode(buf), Usage.STREAM_CODEC.decode(buf),
+                    PLAYERS.decode(buf)));
 
     public TokenUsageSnapshot {
         Objects.requireNonNull(totals);

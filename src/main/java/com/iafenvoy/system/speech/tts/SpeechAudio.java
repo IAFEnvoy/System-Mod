@@ -1,7 +1,7 @@
 package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.speech.SpeechException;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;

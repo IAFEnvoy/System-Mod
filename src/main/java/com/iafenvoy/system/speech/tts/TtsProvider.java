@@ -1,7 +1,7 @@
 package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.speech.SpeechException;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.function.Consumer;
 
@@ -9,6 +9,12 @@ import java.util.function.Consumer;
  * Provider protocol only; credentials, requests and audio have no Minecraft dependency.
  */
 public interface TtsProvider extends AutoCloseable {
+    /**
+     * Sockets and transports close without a checked failure; narrow the inherited signature for try-with-resources.
+     */
+    @Override
+    void close();
+
     /**
      * Validate locally, without a network request or billable operation.
      */
@@ -63,11 +69,8 @@ public interface TtsProvider extends AutoCloseable {
     record Request(String text, String apiKey, String region, String workspace, String model, String voice,
                    String language) {
         @Override
-        public @NotNull String toString() {
+        public @NonNull String toString() {
             return "TtsRequest[model=" + this.model + ", voice=" + this.voice + "]";
         }
     }
-
-    @Override
-    void close();
 }

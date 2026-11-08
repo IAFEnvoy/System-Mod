@@ -54,8 +54,7 @@ public final class LegacyText {
         return result.toString();
     }
 
-    public static void runs(String value, Style base,
-                            BiConsumer<String, Style> sink) {
+    public static void runs(String value, Style base, BiConsumer<String, Style> sink) {
         String normalized = normalize(value);
         Style style = base;
         StringBuilder run = new StringBuilder();
@@ -117,7 +116,7 @@ public final class LegacyText {
                 Object[] arguments = translation.getArgs().clone();
                 for (int i = 0; i < arguments.length; i++) {
                     if (arguments[i] instanceof Component argument) arguments[i] = transform(argument, parseLegacy);
-                    else if (parseLegacy && arguments[i] instanceof String text && normalize(text).indexOf('§') >= 0)
+                    else if (parseLegacy && arguments[i] instanceof String text && normalize(text).indexOf(ChatFormatting.PREFIX_CODE) >= 0)
                         arguments[i] = transform(Component.literal(text), true);
                 }
                 contents = new TranslatableContents(translation.getKey(), translation.getFallback(), arguments);

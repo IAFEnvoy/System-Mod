@@ -1,0 +1,25 @@
+{
+  "label": "金苹果",
+  "items": [
+    {
+      "count": 1,
+      "id": "minecraft:golden_apple"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 8,
+      "items": [
+        "minecraft:gold_ingot"
+      ]
+    },
+    {
+      "type": "saturn:item",
+      "amount": 1,
+      "items": [
+        "minecraft:apple"
+      ]
+    }
+  ]
+}

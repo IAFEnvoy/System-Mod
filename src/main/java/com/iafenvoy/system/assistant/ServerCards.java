@@ -1,9 +1,10 @@
 package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.card.CardRef;
-import com.iafenvoy.system.card.CardUpdate;
+import com.iafenvoy.system.data.card.CardReference;
+import com.iafenvoy.system.data.card.CardUpdate;
 
 import java.util.*;
 
@@ -22,7 +23,7 @@ public final class ServerCards {
         }
     }
 
-    public record Ticket(UUID player, CardRef source, long revision, Object generation) {
+    public record Ticket(UUID player, CardReference source, long revision, Object generation) {
     }
 
     private ServerCards() {
@@ -33,10 +34,10 @@ public final class ServerCards {
     }
 
     public static synchronized void publish(UUID player, AgentResult result) {
-        Map<UUID, Version> cards = PLAYERS.computeIfAbsent(player, unused -> new HashMap<>());
+        Map<UUID, Version> cards = PLAYERS.computeIfAbsent(player, unused1 -> new HashMap<>());
         for (CardUpdate update : result.cards()) {
             if (update.mode() == CardUpdate.Mode.REMOVE) cards.remove(update.ref().id());
-            else cards.compute(update.ref().id(), (unused1, previous) -> {
+            else cards.compute(update.ref().id(), (unused2, previous) -> {
                 if (previous == null) return new Version(update.ref().revision());
                 previous.issued = Math.max(previous.issued, update.ref().revision());
                 previous.reserved = Math.max(previous.reserved, previous.issued);
@@ -45,10 +46,10 @@ public final class ServerCards {
         }
     }
 
-    public static synchronized Ticket begin(UUID player, CardRef source) {
+    public static synchronized Ticket begin(UUID player, CardReference source) {
         Map<UUID, Version> cards = PLAYERS.get(player);
         Version version = cards == null ? null : cards.get(source.id());
-        if (version == null || version.issued != source.revision()) throw new AgentException("STALE_REFERENCE");
+        if (version == null || version.issued != source.revision()) throw new AgentException(AgentFailure.STALE_REFERENCE);
         return new Ticket(player, source, ++version.reserved, version);
     }
 
@@ -56,9 +57,9 @@ public final class ServerCards {
         Map<UUID, Version> cards = PLAYERS.get(ticket.player());
         Version current = cards == null ? null : cards.get(ticket.source().id());
         if (current != ticket.generation() || current.reserved != ticket.revision())
-            throw new AgentException("CANCELLED");
+            throw new AgentException(AgentFailure.CANCELLED);
         if (!result.silent() || !result.isSuccess()) return result;
-        CardRef ref = new CardRef(ticket.source().id(), ticket.revision());
+        CardReference ref = new CardReference(ticket.source().id(), ticket.revision());
         List<CardUpdate> updates = new ArrayList<>();
         if (result.cards().isEmpty()) updates.add(new CardUpdate(ref, CardUpdate.Mode.REMOVE, Optional.empty()));
         else {

@@ -1,8 +1,8 @@
 package com.iafenvoy.system.registry;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentAction;
-import com.iafenvoy.system.agent.builtin.input.*;
+import com.iafenvoy.system.agent.module.AgentAction;
+import com.iafenvoy.system.data.input.*;
 import com.mojang.serialization.MapCodec;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -15,11 +15,14 @@ public final class SystemActionTypes {
     public static final DeferredRegister<MapCodec<? extends AgentAction>> REGISTRY = DeferredRegister.create(SystemResourceKeys.ACTION_TYPE, SystemMod.MOD_ID);
 
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<HelpInput>> HELP_ACTION = REGISTRY.register("help", () -> HelpInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<FreeChatInput>> FREE_CHAT_ACTION = REGISTRY.register("free_chat", () -> FreeChatInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<QuestionInput>> QUESTION_ACTION = REGISTRY.register("question", () -> QuestionInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ReasoningInput>> REASONING_ACTION = REGISTRY.register("reasoning", () -> ReasoningInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<PlayerQueryInput>> PLAYER_ACTION = REGISTRY.register("player_query", () -> PlayerQueryInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<InboxInput>> INBOX_ACTION = REGISTRY.register("inbox", () -> InboxInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<SignInInput>> SIGN_IN_ACTION = REGISTRY.register("sign_in", () -> SignInInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ItemQueryInput>> ITEMS_ACTION = REGISTRY.register("item_query", () -> ItemQueryInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ItemSourceQueryInput>> ITEM_SOURCES_ACTION = REGISTRY.register("item_sources", () -> ItemSourceQueryInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<EntitlementInput>> DELIVER_ACTION = REGISTRY.register("deliver", () -> EntitlementInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ShopQueryInput>> SHOP_ACTION = REGISTRY.register("shop", () -> ShopQueryInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ShopQuoteInput>> QUOTE_ACTION = REGISTRY.register("shop_quote", () -> ShopQuoteInput.CODEC);

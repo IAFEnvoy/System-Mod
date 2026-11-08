@@ -1,0 +1,18 @@
+{
+  "label": "绿宝石八颗",
+  "items": [
+    {
+      "count": 8,
+      "id": "minecraft:emerald"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 1,
+      "items": [
+        "minecraft:diamond"
+      ]
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 package com.iafenvoy.system.module;
 
 import com.iafenvoy.saturn.data.storage.DataStorage;
-import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.data.SystemModule;
+import com.iafenvoy.system.data.module.SystemModule;
+import com.iafenvoy.system.data.store.PlayerData;
 import net.minecraft.core.Registry;
 
 import java.util.Objects;

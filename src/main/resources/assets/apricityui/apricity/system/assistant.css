@@ -1,4 +1,4 @@
-/* Shared by every assistant page, HUD notification and client settings panel. */
+/* Shared by every assistant page, HUD notification, persistent card and client settings panel. */
 /* Adapted from ApricityUI t09-arwes-transparent and its t08-arwes foundation. */
 * {
     box-sizing: border-box;
@@ -19,33 +19,59 @@ html, body {
 }
 
 body, button, input, textarea, select {
-    font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", sans-serif;
+    font-family: var(--font-body, "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC", sans-serif);
 }
 
 body {
-    --assistant-ink: #dff8ff;
-    --assistant-accent: #61e6ff;
-    --assistant-accent-hover: #9befff;
-    --assistant-accent-shadow: #187d98;
-    --assistant-line: rgba(97, 230, 255, 0.42);
-    --assistant-line-soft: rgba(97, 230, 255, 0.18);
-    --assistant-surface: rgba(10, 28, 40, 0.3);
-    --assistant-surface-deep: rgba(6, 19, 29, 0.38);
-    --assistant-panel-soft: rgba(5, 31, 43, 0.18);
-    --assistant-button: rgba(8, 31, 43, 0.22);
-    --assistant-button-hover: rgba(23, 89, 106, 0.4);
-    --assistant-primary: rgba(19, 101, 119, 0.44);
-    --assistant-primary-hover: rgba(37, 139, 157, 0.58);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    /* AUI's public theme tokens drive every System surface, including the HUD and custom card nodes. */
+    --assistant-ink: var(--color-foreground, var(--ink, #dff8ff));
+    --assistant-muted: var(--color-muted, var(--ink-muted, #b6cfd5));
+    --assistant-heading: var(--ink, #f0bb7b);
+    --assistant-user: var(--color-secondary, var(--purple, #e0a66d));
+    --assistant-accent: var(--color-primary, var(--green, #61e6ff));
+    --assistant-accent-hover: var(--color-primary-hover, var(--green-hover, #9befff));
+    --assistant-accent-shadow: var(--color-primary-active, var(--green-shadow, #187d98));
+    --assistant-focus: var(--color-focus, var(--focus, #f0fdff));
+    --assistant-line: var(--line, var(--color-border, var(--edge, rgba(97, 230, 255, 0.42))));
+    --assistant-line-soft: var(--line-soft, var(--color-border-light, var(--edge-light, rgba(97, 230, 255, 0.18))));
+    --assistant-surface: var(--color-surface, var(--surface, rgba(10, 28, 40, 0.3)));
+    --assistant-surface-deep: var(--color-surface-deep, var(--surface-deep, rgba(6, 19, 29, 0.38)));
+    --assistant-panel-soft: var(--panel-soft-background, var(--surface, rgba(5, 31, 43, 0.18)));
+    --assistant-window: var(--panel-strong-background, var(--canvas, rgba(3, 14, 23, 0.72)));
+    --assistant-popup: var(--surface-deep, rgba(3, 14, 23, 0.98));
+    --assistant-card-hover: var(--card-hover-background, var(--surface-hover, var(--surface-deep, rgba(11, 54, 69, 0.3))));
+    --assistant-highlight: var(--accent-soft, var(--surface-soft, rgba(97, 230, 255, 0.12)));
+    --assistant-button: var(--button-background, var(--surface-deep, rgba(8, 31, 43, 0.22)));
+    --assistant-button-hover: var(--button-hover-background, var(--surface-hover, var(--surface, rgba(23, 89, 106, 0.4))));
+    --assistant-primary: var(--button-primary-background, var(--color-primary, var(--green, rgba(19, 101, 119, 0.44))));
+    --assistant-primary-hover: var(--button-primary-hover-background, var(--color-primary-hover, var(--green-hover, rgba(37, 139, 157, 0.58))));
+    --assistant-primary-ink: var(--ink-on-accent, var(--ink-on-dark, #efffff));
+    --assistant-shadow: var(--elev-ring, none);
+    --assistant-glow: var(--elev-whisper, none);
+    --assistant-window-art: var(--canvas-art, none);
+    --assistant-radius: var(--radius-md, 0);
+    --assistant-control-radius: var(--radius-sm, 0);
+    /* Surfaces already anchor themselves to the viewport. */
+    display: block;
     overflow: hidden;
     background: rgba(1, 7, 12, 0.42);
     color: var(--assistant-ink);
     font-size: 14px;
     font-weight: 400;
-    selection-color: rgba(97, 230, 255, 0.24);
+    selection-color: var(--assistant-highlight);
     caret-color: var(--assistant-accent);
+}
+
+body.t09-arwes-transparent-theme {
+    --assistant-heading: #f0bb7b;
+    --assistant-window: rgba(3, 14, 23, 0.72);
+    --assistant-popup: rgba(3, 14, 23, 0.98);
+    --assistant-primary-ink: #efffff;
+    --assistant-window-art: linear-gradient(135deg, rgba(97, 230, 255, 0.04), transparent 35%, transparent 70%, rgba(97, 230, 255, 0.025));
+}
+
+body.t08-arwes-theme {
+    --assistant-primary-ink: var(--ink-on-dark, #efffff);
 }
 
 #workspace {
@@ -59,10 +85,10 @@ body {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--assistant-line);
-    border-radius: 0;
-    background-color: rgba(3, 14, 23, 0.72);
-    background-image: linear-gradient(135deg, rgba(97, 230, 255, 0.04), transparent 35%, transparent 70%, rgba(97, 230, 255, 0.025));
-    box-shadow: 0 0 0 1px rgba(1, 7, 12, 0.96) inset, 0 0 28px rgba(24, 158, 194, 0.22);
+    border-radius: var(--assistant-radius);
+    background-color: var(--assistant-window);
+    background-image: var(--assistant-window-art);
+    box-shadow: var(--assistant-shadow), var(--assistant-glow);
     overflow: hidden;
 }
 
@@ -81,24 +107,33 @@ button {
     color: var(--assistant-ink);
     background-color: var(--assistant-button);
     border: 1px solid var(--assistant-line);
-    border-radius: 0;
+    border-radius: var(--assistant-control-radius);
     min-height: 34px;
     padding: 8px 12px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
     text-align: left;
-    transition: background-color 100ms ease, border-color 100ms ease, box-shadow 100ms ease, color 100ms ease;
+    transition: none;
+}
+
+/* Outrank theme states so hover feedback stays immediate and keeps a stable hit box. */
+body[data-system-theme] button,
+body[data-system-theme] button:hover,
+body[data-system-theme] button:active,
+body[data-system-theme] button[aria-pressed] {
+    transform: none;
+    transition: none;
 }
 
 button:hover {
     border-color: var(--assistant-accent-hover);
     background-color: var(--assistant-button-hover);
-    color: #efffff;
+    color: var(--assistant-ink);
 }
 
 button:focus {
-    border-color: #f0fdff;
+    border-color: var(--assistant-focus);
     box-shadow: 0 0 0 1px var(--assistant-accent-shadow);
 }
 
@@ -106,26 +141,32 @@ button:active {
     background-color: var(--assistant-accent-shadow);
 }
 
-.primary {
-    border-color: var(--assistant-accent);
-    background-color: var(--assistant-primary);
-    color: #efffff;
-    box-shadow: 0 0 14px rgba(97, 230, 255, 0.12);
+/* Static disabled states use colors: AUI 1.2.9 composites opacity through synchronous GPU readback. */
+body :disabled {
+    opacity: 1;
+    color: var(--disabled-foreground, var(--assistant-muted));
 }
 
-.primary:hover {
+#workspace .primary {
+    border-color: var(--assistant-accent);
+    background-color: var(--assistant-primary);
+    color: var(--assistant-primary-ink);
+    box-shadow: var(--assistant-glow);
+}
+
+#workspace .primary:hover {
     background-color: var(--assistant-primary-hover);
 }
 
-.primary:active {
+#workspace .primary:active {
     background-color: var(--assistant-accent-shadow);
 }
 
 input, textarea, select {
     background-color: var(--assistant-surface-deep);
-    color: #edf5f7;
+    color: var(--assistant-ink);
     border: 1px solid var(--assistant-line);
-    border-radius: 0;
+    border-radius: var(--assistant-control-radius);
     padding: 11px;
     font-size: 15px;
     font-weight: 400;
@@ -138,20 +179,20 @@ input:focus, textarea:focus, select:focus {
 
 h1 {
     margin: 10px 0;
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 26px;
     font-weight: 500;
 }
 
 h2 {
     margin: 0;
-    color: #f3ca95;
+    color: var(--assistant-heading);
     font-size: 18px;
     font-weight: 600;
 }
 
 p {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     line-height: 1.6;
     margin: 8px 0 0;
     font-size: 14px;
@@ -162,12 +203,16 @@ p {
     font-size: 42px;
 }
 
-#conversation, #sidebar, #speech, #usage_scroll, #settings_content, .quest_list, #notification_scroll {
+#conversation, #sidebar, #speech, #usage_scroll, #settings_content, .quest_list, .card_action_groups, .card_action_grid, #notification_scroll {
     scrollbar-width: 6px;
     scrollbar-color: var(--assistant-accent-shadow) var(--assistant-surface-deep);
 }
 
 /* Full assistant layout. */
+.full #workspace {
+    display: block;
+}
+
 #topbar {
     position: relative;
     height: 64px;
@@ -200,7 +245,7 @@ p {
 }
 
 #brand {
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 18px;
     font-weight: 600;
     letter-spacing: 2px;
@@ -225,15 +270,125 @@ p {
     content: "";
 }
 
-#layout {
+/* The menu opens above the composer without moving messages or measuring card layout. */
+#chat_mode_selector {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+#chat_mode_trigger {
     display: flex;
-    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 42px;
+    min-width: 86px;
+    background-color: transparent;
+    border: 1px solid var(--assistant-line);
+    padding: 0 12px;
+}
+
+.chat_mode_arrow {
+    color: var(--assistant-muted);
+    font-size: 12px;
+}
+
+#chat_mode_menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    z-index: 60;
+    display: none;
+    flex-direction: column;
+    gap: 4px;
+    width: min(320px, 70vw);
+    max-height: 58vh;
+    overflow-y: auto;
+    padding: 6px;
+    border: 1px solid var(--assistant-line);
+    border-radius: var(--assistant-control-radius);
+    /* The theme canvas stays opaque even when its window surfaces are translucent. */
+    background-color: var(--color-background, var(--canvas, #030e17));
+    box-shadow: var(--assistant-shadow);
+}
+
+#workspace .chat_mode_option {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    gap: 3px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    background-color: transparent;
+    text-align: left;
+    white-space: normal;
+}
+
+#workspace .chat_mode_option[aria-checked="true"] {
+    border-color: var(--assistant-accent);
+    box-shadow: inset 0 0 0 1px var(--assistant-accent);
+}
+
+#workspace .chat_mode_option:hover, #workspace .chat_mode_option:focus {
+    background-color: var(--assistant-button-hover);
+    border-color: var(--assistant-accent-hover);
+}
+
+.chat_mode_name {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--assistant-ink);
+}
+
+.chat_mode_description, .chat_mode_reason {
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--assistant-muted);
+}
+
+#workspace .chat_mode_option:disabled {
+    cursor: default;
+    border-color: transparent;
+    background-color: transparent;
+    box-shadow: none;
+}
+
+#workspace .chat_mode_option:disabled .chat_mode_name,
+#workspace .chat_mode_option:disabled .chat_mode_description,
+#workspace .chat_mode_option:disabled .chat_mode_reason {
+    color: var(--disabled-foreground, #747b86);
+}
+
+#ai_access_hint {
+    display: none;
+    flex: 0 0 auto;
+    padding: 6px 0;
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+#layout {
+    /* Definite shell geometry breaks the workspace -> layout -> main flex measurement chain. */
+    position: absolute;
+    top: 64px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: block;
     min-height: 0;
 }
 
 #sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 196px;
     display: flex;
-    flex: 0 0 196px;
     flex-direction: column;
     padding: 22px 14px 14px;
     border-right: 1px solid var(--assistant-line-soft);
@@ -276,7 +431,7 @@ p {
     border-left: 2px solid var(--assistant-accent);
     background-color: var(--assistant-button-hover);
     color: var(--assistant-accent-hover);
-    box-shadow: 0 0 14px rgba(97, 230, 255, 0.08);
+    box-shadow: var(--assistant-glow);
 }
 
 #privacy {
@@ -292,7 +447,7 @@ p {
 }
 
 #privacy_text {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.6;
 }
@@ -301,7 +456,7 @@ p {
     font-size: 12px;
     padding: 7px 8px;
     margin-bottom: 5px;
-    color: #c4dce2;
+    color: var(--assistant-muted);
 }
 
 .sidebar_actions {
@@ -311,7 +466,11 @@ p {
 }
 
 #main {
-    flex: 1;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 196px;
     min-width: 0;
     min-height: 0;
     display: flex;
@@ -365,9 +524,79 @@ p {
     margin-top: 0;
 }
 
-.signin {
+#page_signin {
     align-items: center;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    border: 1px solid var(--assistant-line-soft);
+    border-left: 2px solid var(--assistant-accent);
+    background-color: var(--assistant-panel-soft);
+}
+
+#page_signin .signin_icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    padding-top: 6px;
+    border: 1px solid var(--assistant-line);
+    border-top: 3px solid var(--assistant-accent);
+    border-radius: var(--assistant-control-radius);
+    background-color: var(--assistant-highlight);
+    color: var(--assistant-accent);
+    font-size: 20px;
+    line-height: 1;
+    pointer-events: none;
+}
+
+#page_signin .signin_icon::before {
+    position: absolute;
+    top: 6px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: var(--assistant-line);
+    content: "";
+}
+
+#page_signin .signin_copy {
+    display: block;
+    flex: 1 1 180px;
+    min-width: 0;
+}
+
+/* Keep compact toolbar typography above the active theme's heading defaults. */
+#signin_title {
+    margin: 0;
+    color: var(--assistant-ink);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0;
+}
+
+#signin_text {
+    margin: 4px 0 0;
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+#signin_action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 8px 16px;
+    font-size: 14px;
+    text-align: center;
+    white-space: nowrap;
 }
 
 #welcome {
@@ -379,31 +608,44 @@ p {
 }
 
 #conversation {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    align-content: safe end;
+    flex: 1 1 0;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 18px 4px 14px;
 }
 
-/* Auto margin anchors short transcripts; overflowing cards retain their full normal-flow height. */
+/* Use the same content-sized grid row for placement and scroll extents; safe end keeps long transcripts reachable. */
 #conversation_entries {
     display: block;
-    flex: 0 0 auto;
     min-width: 0;
-    margin-top: auto;
 }
 
 .message {
     display: block;
     min-width: 0;
     margin-bottom: 18px;
+    transition: none;
 }
 
 .message:last-child {
     margin-bottom: 0;
+}
+
+/* Lay out new rows without transitions; arm motion only after their first committed geometry. */
+.message_new {
+    transform: translateY(18px);
+    opacity: 0;
+}
+
+.message_entering {
+    transform: translateY(0);
+    opacity: 1;
+    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
 }
 
 .message > .message_text, .message > .result_card {
@@ -418,7 +660,7 @@ p {
 }
 
 .user .message_label {
-    color: #e0a66d;
+    color: var(--assistant-user);
 }
 
 .message_text {
@@ -426,11 +668,101 @@ p {
     line-height: 1.7;
     word-break: break-all;
     white-space: pre-wrap;
-    color: #e3f0f3;
+    color: var(--assistant-ink);
+}
+
+/* Markdown owns its block spacing; ordinary text and FTB formatting keep their existing renderer. */
+.card_markdown {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    color: var(--assistant-ink);
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.markdown_p, .markdown_pre, .markdown_blockquote, .markdown_ul, .markdown_ol {
+    display: block;
+    margin: 6px 0;
+}
+
+.markdown_h1, .markdown_h2, .markdown_h3, .markdown_h4, .markdown_h5, .markdown_h6 {
+    display: block;
+    color: var(--assistant-heading);
+    font-weight: 700;
+    line-height: 1.4;
+    margin: 10px 0 6px;
+}
+
+.markdown_h1 { font-size: 22px; }
+.markdown_h2 { font-size: 19px; }
+.markdown_h3 { font-size: 17px; }
+.markdown_h4, .markdown_h5, .markdown_h6 { font-size: 15px; }
+
+.markdown_strong, .markdown_b { font-weight: 700; }
+.markdown_em, .markdown_i { font-style: italic; }
+.markdown_s, .markdown_strike, .markdown_del { text-decoration: line-through; }
+
+.markdown_pre, .markdown_code {
+    font-family: monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background-color: var(--assistant-surface-deep);
+}
+
+.markdown_code { padding: 1px 3px; }
+
+.markdown_pre {
+    padding: 8px 10px;
+    border: 1px solid var(--assistant-line-soft);
+}
+
+.markdown_pre .markdown_code {
+    padding: 0;
+    background-color: transparent;
+}
+
+.markdown_blockquote {
+    padding: 2px 10px;
+    border-left: 2px solid var(--assistant-accent-shadow);
+    color: var(--assistant-muted);
+}
+
+.markdown_li {
+    display: block;
+    position: relative;
+    padding-left: 20px;
+    margin: 2px 0;
+}
+
+.markdown_marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--assistant-muted);
+}
+
+.markdown_li > .markdown_p { margin: 0; }
+
+.markdown_link {
+    color: var(--assistant-accent);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.markdown_link:hover { color: var(--assistant-accent-hover); }
+
+.markdown_hr {
+    height: 1px;
+    margin: 8px 0;
+    background-color: var(--assistant-line-soft);
 }
 
 .user {
-    border-left: 2px solid rgba(224, 166, 109, 0.5);
+    border-left: 2px solid var(--assistant-user);
     padding-left: 12px;
 }
 
@@ -441,8 +773,8 @@ p {
     border-left: 2px solid var(--assistant-accent);
     background-color: var(--assistant-panel-soft);
     margin-top: 5px;
-    box-shadow: 0 0 0 1px rgba(1, 7, 12, 0.82) inset;
-    transition: border-color 100ms ease, background-color 100ms ease, box-shadow 100ms ease;
+    box-shadow: var(--assistant-shadow);
+    transition: none;
 }
 
 .result_card::after {
@@ -451,31 +783,53 @@ p {
     right: 0;
     bottom: 0;
     width: 3px;
-    background-color: var(--assistant-accent);
-    opacity: 0.6;
+    /* A translucent color avoids a permanent offscreen compositing group for every card. */
+    background-color: var(--assistant-line);
     content: "";
     pointer-events: none;
 }
 
 .result_card:hover {
     border-color: var(--assistant-accent);
-    background-color: rgba(11, 54, 69, 0.3);
-    box-shadow: 0 0 18px rgba(97, 230, 255, 0.14);
+    background-color: var(--assistant-card-hover);
+    box-shadow: var(--assistant-glow);
 }
 
 .result_card:hover::after {
-    opacity: 1;
+    background-color: var(--assistant-accent);
 }
 
+/* h1 is the card heading; deeper levels are inline section headings. */
 .card_title {
-    color: #baf7ff;
-    font-size: 14px;
+    color: var(--assistant-ink);
+    font-size: 16px;
     font-weight: 600;
     margin-bottom: 8px;
 }
 
+.card_title_2 {
+    color: var(--assistant-ink);
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.card_title_3 {
+    color: var(--assistant-ink);
+    font-size: 13px;
+    font-weight: 600;
+    margin: 4px 0 2px;
+}
+
+.card_title_4 {
+    color: var(--assistant-muted);
+    font-size: 12px;
+    font-weight: 600;
+    margin: 4px 0 2px;
+}
+
 .card_body {
-    color: #dcecf0;
+    color: var(--assistant-ink);
     font-size: 14px;
     line-height: 1.7;
     white-space: pre-wrap;
@@ -487,9 +841,21 @@ p {
     font-size: 13px;
 }
 
+/* A delivered receipt keeps its claim slot as a marker: same position, no action. */
+.card_action:disabled, .card_action:disabled:hover {
+    color: var(--assistant-muted);
+    background-color: transparent;
+    border-color: var(--assistant-line-soft);
+    cursor: default;
+}
+
 /* Registered card primitives can be nested without fixed business-specific placement. */
-.card_container, .card_column, .card_row {
+.card_container, .card_column, .card_row, .card_flex {
     min-width: 0;
+}
+
+.card_flex {
+    gap: 6px;
 }
 
 .card_column {
@@ -525,6 +891,11 @@ p {
     overflow: hidden;
 }
 
+/* Templates opt out of the preview frame with this class; adding it back through the node's style restores it. */
+.player_preview.player_preview_bare {
+    border: 0;
+}
+
 .player_card_layout > .player_preview {
     flex: 1 1 140px;
     max-width: 200px;
@@ -534,7 +905,7 @@ p {
     flex: 2 1 240px;
     padding: 10px 14px;
     border: 1px solid var(--assistant-line-soft);
-    background-color: rgba(11, 54, 69, 0.16);
+    background-color: var(--assistant-panel-soft);
 }
 
 .player_info > .card_body {
@@ -551,7 +922,7 @@ p {
 }
 
 .card_context {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.6;
     white-space: pre-wrap;
@@ -565,7 +936,8 @@ p {
     border-top: 1px solid var(--assistant-line-soft);
 }
 
-.guide_entry .card_title {
+.guide_entry .card_title,
+.guide_entry .card_title_2 {
     margin-bottom: 3px;
 }
 
@@ -670,7 +1042,7 @@ p {
 }
 
 .item_group_label {
-    color: #dcecf0;
+    color: var(--assistant-ink);
     font-size: 14px;
     line-height: 1.5;
     margin-bottom: 5px;
@@ -706,8 +1078,8 @@ p {
     min-width: 0;
     max-width: 100%;
     padding: 4px;
-    border: 1px solid rgba(77, 201, 211, 0.28);
-    background-color: rgba(8, 23, 31, 0.55);
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
 }
 
 .quest_type_icon {
@@ -720,8 +1092,36 @@ p {
 }
 
 .quest_icon_amount {
-    color: #c7e6e8;
+    color: var(--assistant-ink);
     font-size: 11px;
+}
+
+/* Keep each objective's preview and progress together in one wrapping row. */
+.quest_requirements {
+    align-items: center;
+    gap: 8px 14px;
+    margin-top: 8px;
+}
+
+.quest_requirement {
+    display: flex;
+    align-items: center;
+    flex: 0 1 auto;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.quest_requirement > .item_group_items, .quest_requirement > .quest_icon_items {
+    flex: 0 0 auto;
+}
+
+.quest_requirement_text {
+    min-width: 0;
+    color: var(--assistant-ink);
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
 }
 
 /* Reward sections share one heading and wrap item/type previews in the same compact flow. */
@@ -776,7 +1176,7 @@ p {
     max-width: 100%;
     padding: 4px 9px 4px 4px;
     border: 1px solid var(--assistant-line-soft);
-    background-color: rgba(1, 12, 20, 0.5);
+    background-color: var(--assistant-surface-deep);
 }
 
 .item_entry.compact {
@@ -792,6 +1192,332 @@ p {
     height: 40px;
 }
 
+/*
+ * Fixed-slot item tables (shop offers, lottery prizes). The card node sets `columns`; every slot keeps the
+ * same width so rows line up like a shelf. Costs stay in the item tooltip.
+ */
+.item_row.table {
+    display: grid;
+    align-items: stretch;
+    justify-content: start;
+    gap: 6px;
+    padding: 10px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+}
+
+.item_row.table .item_entry {
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    width: 100%;
+    height: 100%;
+}
+
+.item_row.table .item_name {
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: center;
+    word-break: break-all;
+}
+
+/* All shelves render one page; GridNode shares the row/column counts with pagination. */
+.offer_grid, .card_grid {
+    align-content: start;
+    justify-content: start;
+    gap: 6px;
+    padding: 10px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+}
+
+.offer_cell, .card_grid_cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 6px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+    cursor: pointer;
+    transition: none;
+}
+
+.card_paged {
+    display: block;
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+}
+
+/* Category tabs keep recipes, loot tables and tags compact without building hidden pages. */
+.item_sources {
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-surface-deep);
+}
+
+.source_tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.source_tabs .source_tab {
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 6px 8px;
+}
+
+.source_tabs .source_tab.selected {
+    color: var(--assistant-accent);
+    border-color: var(--assistant-accent);
+    background-color: var(--assistant-highlight);
+}
+
+.source_tab_count {
+    color: var(--assistant-muted);
+    font-size: 11px;
+}
+
+.source_content {
+    min-width: 0;
+}
+
+.source_recipe_list, .source_loot_list {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    margin-top: 6px;
+}
+
+.source_entry {
+    min-width: 0;
+    padding: 6px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-panel-soft);
+}
+
+.source_entry_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+}
+
+.source_stations {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 2px;
+}
+
+.source_stations .item_entry {
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+}
+
+.source_stations .item_icon_frame {
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+}
+
+.source_stations .item_icon {
+    transform: scale(1.1);
+}
+
+.source_loot_list .source_entry {
+    padding: 5px 8px;
+}
+
+.source_loot_list {
+    grid-template-columns: 1fr;
+}
+
+.source_loot_list .source_id {
+    margin: 0;
+    color: var(--assistant-ink);
+    font-size: 12px;
+}
+
+.source_tag_list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+    margin-top: 8px;
+}
+
+.source_tag_list .source_entry {
+    max-width: 100%;
+    padding: 4px 8px;
+    color: var(--assistant-ink);
+    font-size: 12px;
+    line-height: 1.4;
+    word-break: break-all;
+}
+
+.source_heading {
+    min-width: 0;
+    color: var(--assistant-ink);
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1.5;
+}
+
+.source_id {
+    font-size: 10px;
+    line-height: 1.4;
+    margin-bottom: 4px;
+}
+
+.source_recipe {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px 0;
+}
+
+.source_section {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.source_label {
+    color: var(--assistant-muted);
+    font-size: 11px;
+    line-height: 1.5;
+    margin-bottom: 2px;
+}
+
+.source_slots {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+
+.source_slot {
+    position: relative;
+    flex: 0 0 36px;
+    box-sizing: border-box;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--assistant-line-soft);
+    background-color: var(--assistant-panel-soft);
+    overflow: visible;
+}
+
+.source_slot .item_entry {
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+}
+
+.source_slot .item_icon_frame {
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+}
+
+.source_slot .item_icon {
+    transform: scale(1.5);
+}
+
+.source_alternatives {
+    position: absolute;
+    top: 0;
+    right: 1px;
+    color: var(--assistant-accent);
+    font-size: 10px;
+    pointer-events: none;
+}
+
+.source_arrow {
+    flex: 0 0 auto;
+    color: var(--assistant-accent);
+    font-size: 18px;
+}
+
+.source_hint {
+    margin-top: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.card_page_grid {
+    display: grid;
+    box-sizing: border-box;
+    align-content: start;
+    gap: 6px;
+    padding: 10px;
+    border: 1px solid var(--assistant-line-soft);
+    overflow: visible;
+}
+
+.offer_cell:hover, .card_grid_cell:hover {
+    border-color: var(--assistant-accent);
+    background-color: var(--assistant-highlight);
+}
+
+.offer_cell_items {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    min-height: 40px;
+}
+
+.offer_cell_label {
+    color: var(--assistant-ink);
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: center;
+    word-break: break-all;
+    max-height: 2.6em;
+    overflow: hidden;
+}
+
+/* Lottery shelf reuses the shop grid; its cells only preview odds, so they are not clickable. */
+.prize_cell {
+    cursor: default;
+}
+
+.lottery_hint {
+    color: var(--assistant-muted);
+    font-size: 11px;
+    line-height: 1.4;
+    margin-top: 4px;
+}
+
+/* Cells keep two compact previews side by side; columns use equal fractions, so the preview stays fixed. */
+.offer_cell .item_entry, .card_grid_cell .item_entry {
+    padding: 2px;
+}
+
+.offer_cell .item_icon_frame, .card_grid_cell .item_icon_frame {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+}
+
+.offer_cell .item_icon, .card_grid_cell .item_icon {
+    transform: scale(1.75);
+}
+
 /* AUI draws a fixed 16px model; scale the native item itself inside a reserved hit area. */
 .item_icon {
     display: block;
@@ -804,11 +1530,11 @@ p {
 }
 
 .item_icon:hover {
-    background-color: rgba(97, 230, 255, 0.15);
+    background-color: var(--assistant-highlight);
 }
 
 .item_name {
-    color: #e3f4f8;
+    color: var(--assistant-ink);
     font-size: 13px;
     line-height: 1.5;
     word-break: break-all;
@@ -819,7 +1545,7 @@ p {
 }
 
 .item_description {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.5;
     white-space: pre-wrap;
@@ -862,7 +1588,7 @@ p {
 }
 
 .card_page_label {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     text-align: center;
 }
@@ -886,6 +1612,251 @@ p {
     text-align: left;
 }
 
+/* Query-local chapter navigation shares shelf cells and the existing action pager. */
+.card_grouped_actions {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.card_action_groups {
+    display: block;
+    flex: 0 0 136px;
+    width: 136px;
+    height: auto;
+    min-height: 0;
+    max-height: 360px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: auto;
+}
+
+.card_action_group_list {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 4px;
+}
+
+.card_action_group {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: left;
+    white-space: normal;
+    word-break: break-all;
+}
+
+.card_action_group.selected {
+    border-color: var(--assistant-accent);
+    background-color: var(--assistant-highlight);
+}
+
+.card_action_group_section {
+    flex: 0 0 auto;
+    color: var(--assistant-heading);
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 4px 6px;
+    word-break: break-all;
+}
+
+.card_action_group_count {
+    flex: 0 0 auto;
+    color: var(--assistant-muted);
+    font-size: 11px;
+    pointer-events: none;
+}
+
+.card_action_group_results {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+}
+
+.card_action_grid {
+    min-width: 0;
+}
+
+.card_action_cell {
+    position: relative;
+    min-width: 0;
+    justify-content: center;
+    text-align: center;
+    /* FTB icon renderers can extend a few pixels beyond their CSS box, especially for 3D items. */
+    overflow: visible;
+}
+
+/* Outrank theme button states so pins never acquire a tall hit box, solid fill or focus rectangle. */
+body button.quest_card_pin,
+body button.quest_card_pin:hover,
+body button.quest_card_pin:focus,
+body button.quest_card_pin:active,
+body button.quest_card_pin[aria-pressed] {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    max-width: 22px;
+    min-height: 22px;
+    max-height: 22px;
+    padding: 3px;
+    font-size: 0;
+    line-height: 1;
+    color: var(--assistant-muted);
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    transform: none;
+}
+
+body button.quest_card_pin[aria-pressed="true"] {
+    color: var(--assistant-accent);
+}
+
+body button.quest_card_pin:hover, body button.quest_card_pin:focus {
+    color: var(--assistant-accent-hover);
+}
+
+.quest_card_pin svg, .quest_card_pin path, .quest_card_pin .card_button_icon {
+    pointer-events: none;
+}
+
+.quest_card_pin svg, .quest_card_pin .card_button_icon {
+    width: 16px;
+    height: 16px;
+    transform: rotate(35deg);
+    transform-origin: 50% 50%;
+    transition: none;
+}
+
+.quest_card_pin[aria-pressed="true"] svg, .quest_card_pin[aria-pressed="true"] .card_button_icon {
+    transform: rotate(0deg);
+}
+
+.quest_detail_card > .quest_card_pin {
+    top: 10px;
+    right: 10px;
+}
+
+.simple .quest_detail_card > .quest_card_pin, .notification .quest_detail_card > .quest_card_pin {
+    top: 0;
+    right: 0;
+}
+
+.quest_detail_card > .card_title, .quest_detail_title {
+    padding-right: 28px;
+}
+
+.card_progress {
+    display: block;
+    width: 100%;
+    height: 6px;
+    overflow: hidden;
+    background-color: var(--assistant-line-soft);
+    pointer-events: none;
+}
+
+.card_progress_fill {
+    width: 100%;
+    height: 100%;
+    background-color: var(--assistant-accent);
+    pointer-events: none;
+}
+
+/* Absolute children follow the cell border without taking space from the title or native quest icon. */
+.card_action_cell .card_progress {
+    position: absolute;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    width: auto;
+}
+
+.quest_card_icon {
+    display: flex;
+    flex: 0 0 32px;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 32px;
+    overflow: visible;
+}
+
+.quest_card_icon .quest_type_icon {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    overflow: visible;
+}
+
+.card_action_cell .offer_cell_label {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    text-align: center;
+    white-space: normal;
+    pointer-events: none;
+}
+
+/* AUI aligns direct text, but not nested inline runs; center the runs and give each a block line box. */
+.card_action_cell .offer_cell_label .minecraft_text {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.card_action_cell .offer_cell_label .minecraft_text span {
+    display: block;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.card_action_cell .minecraft_text, .card_action_cell .minecraft_text span {
+    text-align: center;
+}
+
+.card_action_cell_meta {
+    flex: 0 0 auto;
+    width: 100%;
+    color: var(--assistant-muted);
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: center;
+    pointer-events: none;
+}
+
+.notification .card_action_groups {
+    flex-basis: 108px;
+    width: 108px;
+    max-height: 220px;
+}
+
 /* Lottery results keep cost and odds readable without exposing nested codec fields. */
 .lottery_card {
     padding: 14px 16px;
@@ -905,7 +1876,7 @@ p {
 .lottery_name {
     flex: 1 1 180px;
     min-width: 0;
-    color: #baf7ff;
+    color: var(--assistant-ink);
     font-size: 16px;
     font-weight: 600;
     line-height: 1.5;
@@ -921,11 +1892,11 @@ p {
 }
 
 .lottery_count, .lottery_id, .lottery_cost_label {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
 }
 
 .lottery_chance {
-    color: #f3ca95;
+    color: var(--assistant-heading);
     font-weight: 600;
 }
 
@@ -955,14 +1926,14 @@ p {
 .lottery_cost_value {
     flex: 1;
     min-width: 0;
-    color: #edf5f7;
+    color: var(--assistant-ink);
     white-space: pre-wrap;
     word-break: break-all;
 }
 
 .lottery_unavailable {
     margin-top: 8px;
-    color: #f3ca95;
+    color: var(--assistant-heading);
     font-size: 12px;
     line-height: 1.6;
 }
@@ -1004,7 +1975,7 @@ p {
     flex: 0 0 auto;
     max-height: 54px;
     overflow: hidden;
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.6;
     white-space: pre-wrap;
@@ -1033,8 +2004,8 @@ p {
     padding: 6px;
     gap: 3px;
     border: 1px solid var(--assistant-line);
-    background-color: rgba(3, 14, 23, 0.98);
-    box-shadow: 0 0 18px rgba(24, 158, 194, 0.18);
+    background-color: var(--assistant-popup);
+    box-shadow: var(--assistant-glow);
 }
 
 .command_option {
@@ -1053,14 +2024,14 @@ p {
 .command_option.selected {
     border-color: var(--assistant-accent);
     background-color: var(--assistant-button-hover);
-    color: #efffff;
+    color: var(--assistant-ink);
 }
 
 .command_hint {
     flex: 0 0 auto;
     padding: 4px 8px;
     font-size: 12px;
-    color: #b6cfd5;
+    color: var(--assistant-muted);
 }
 
 /* A single speech surface; commands and numbered options replace navigation. */
@@ -1094,7 +2065,7 @@ body.simple {
 }
 
 #speaker {
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 16px;
     font-weight: 600;
     letter-spacing: 2px;
@@ -1109,8 +2080,8 @@ body.simple {
 }
 
 #current_request {
-    color: #b6cfd5;
-    border-left: 2px solid #e0a66d;
+    color: var(--assistant-muted);
+    border-left: 2px solid var(--assistant-user);
     padding-left: 10px;
     margin-bottom: 14px;
     font-size: 13px;
@@ -1120,7 +2091,7 @@ body.simple {
 }
 
 #current_result {
-    color: #e3f4f8;
+    color: var(--assistant-ink);
     font-size: 15px;
     font-weight: 400;
     line-height: 1.8;
@@ -1132,28 +2103,39 @@ body.simple {
     padding: 12px 0 18px;
 }
 
-/* HUD shares the simple anchor; only vanilla chat enables pointer targets on its panel. */
-html.message_hud, body.notification {
-    background: transparent;
+/* HUD roots stay transparent; theme artwork belongs to the actual panels. */
+html.system_hud, body.system_hud {
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
 }
 
-body.notification {
+html.system_hud::before, html.system_hud::after,
+body.system_hud::before, body.system_hud::after {
+    display: none !important;
+    content: none !important;
+}
+
+body.system_hud {
     display: block;
     padding: 0;
 }
 
-html.message_hud, .notification, .notification * {
-    pointer-events: none;
+html.system_hud, body.system_hud, body.system_hud * {
+    /* Theme styles must not turn a passive HUD into an input surface. */
+    pointer-events: none !important;
     user-select: none;
 }
 
+/* Notifications share the simple anchor; only vanilla chat enables pointer targets on the panel. */
 .notification.interactive #workspace, .notification.interactive #workspace * {
-    pointer-events: auto;
+    pointer-events: auto !important;
 }
 
 .notification.interactive #workspace .minecraft_text,
 .notification.interactive #workspace .minecraft_text span {
-    pointer-events: none;
+    pointer-events: none !important;
 }
 
 .notification #workspace {
@@ -1203,7 +2185,7 @@ html.message_hud, .notification, .notification * {
 }
 
 #notification_title {
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 16px;
     font-weight: 600;
 }
@@ -1230,7 +2212,7 @@ html.message_hud, .notification, .notification * {
     flex: 0 0 auto;
     width: 100%;
     min-width: 0;
-    color: #e3f4f8;
+    color: var(--assistant-ink);
     font-size: 15px;
     line-height: 1.8;
     white-space: pre-wrap;
@@ -1299,14 +2281,13 @@ html.message_hud, .notification, .notification * {
 }
 
 .notification button:disabled {
-    opacity: 0.65;
     cursor: default;
 }
 
 #notification_hint, #notification_voice {
     flex: 0 0 auto;
     min-width: 0;
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.5;
     white-space: normal;
@@ -1356,7 +2337,7 @@ html.message_hud, .notification, .notification * {
 
 #usage_scope {
     flex: 1;
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
 }
 
@@ -1413,13 +2394,13 @@ html.message_hud, .notification, .notification * {
 }
 
 .usage_label {
-    color: #b6d9e1;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.5;
 }
 
 .usage_total {
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 22px;
     font-weight: 600;
     line-height: 1.3;
@@ -1428,7 +2409,7 @@ html.message_hud, .notification, .notification * {
 
 .usage_counts {
     flex: 0 0 auto;
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.6;
 }
@@ -1450,7 +2431,7 @@ html.message_hud, .notification, .notification * {
 #usage_note, #usage_speech_note, #usage_recognition_note {
     flex: 0 0 auto;
     margin: 0;
-    color: #aac5cc;
+    color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.6;
 }
@@ -1486,13 +2467,13 @@ html.message_hud, .notification, .notification * {
 }
 
 .usage_uuid {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     word-break: break-all;
 }
 
 .usage_last_call {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
     margin-left: auto;
 }
@@ -1535,23 +2516,24 @@ html.message_hud, .notification, .notification * {
 }
 
 #usage_page {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 12px;
 }
 
 .usage button:disabled {
-    opacity: 0.45;
     cursor: default;
 }
 
 /* One settings surface keeps local provider drafts alive while switching tabs. */
 .settings #workspace {
+    left: max(3vw, calc(50vw - 480px));
+    top: max(5vh, calc(50vh - 400px));
     width: min(960px, 94vw);
     height: min(800px, 90vh);
 }
 
 #settings_title {
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 18px;
     font-weight: 600;
     letter-spacing: 2px;
@@ -1568,16 +2550,20 @@ html.message_hud, .notification, .notification * {
 }
 
 .settings_tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex: 1 1 0;
     min-width: 100px;
     text-align: center;
 }
 
 #settings_content {
-    display: flex;
-    flex: 1;
+    /* Keep the scrolling form out of nested intrinsic flex measurements. */
+    display: block;
+    flex: 1 1 0;
     min-height: 0;
-    flex-direction: column;
+    min-width: 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 18px 26px;
@@ -1585,14 +2571,15 @@ html.message_hud, .notification, .notification * {
 
 .settings_page {
     display: none;
-    flex: 0 0 auto;
     min-width: 0;
-    flex-direction: column;
-    gap: 12px;
+}
+
+.settings .settings_page > * + * {
+    margin-top: 12px;
 }
 
 .settings #privacy_heading {
-    color: #f0bb7b;
+    color: var(--assistant-heading);
     font-size: 16px;
     margin: 0 0 4px;
 }
@@ -1613,23 +2600,33 @@ html.message_hud, .notification, .notification * {
 }
 
 .settings_modes button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex: 1 1 0;
     text-align: center;
 }
 
+.speech_step.settings_theme {
+    min-height: 74px;
+    padding-right: 80px;
+}
+
+.settings_theme_description {
+    min-width: 0;
+}
+
 /* Button activation keeps keyboard support without AUI's separately painted checkbox indicator. */
-button.assistant_switch {
+#workspace button.assistant_switch {
     position: relative;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    display: block;
     min-width: 0;
     max-width: 100%;
     min-height: 34px;
     margin: 0;
-    padding: 0;
+    padding: 6px 0 6px 48px;
     border: 0;
-    border-radius: 0;
+    border-radius: var(--assistant-control-radius);
     background-color: transparent;
     color: var(--assistant-ink);
     box-shadow: none;
@@ -1638,22 +2635,23 @@ button.assistant_switch {
     font-weight: 400;
 }
 
-button.assistant_switch:hover, button.assistant_switch:focus, button.assistant_switch:active {
+#workspace button.assistant_switch:hover, #workspace button.assistant_switch:focus, #workspace button.assistant_switch:active {
     background-color: transparent;
     box-shadow: none;
 }
 
 .assistant_switch .switch_track {
-    position: relative;
+    position: absolute;
+    left: 0;
+    top: 6px;
     display: block;
-    flex: 0 0 38px;
     width: 38px;
     height: 22px;
-    border: 1px solid rgba(182, 207, 213, 0.55);
+    border: 1px solid var(--assistant-line-soft);
     border-radius: 11px;
     background-color: var(--assistant-surface-deep);
     pointer-events: none;
-    transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+    transition: background-color 120ms ease, box-shadow 120ms ease;
 }
 
 .assistant_switch .switch_track::after {
@@ -1663,14 +2661,14 @@ button.assistant_switch:hover, button.assistant_switch:focus, button.assistant_s
     width: 14px;
     height: 14px;
     border-radius: 7px;
-    background-color: #b6cfd5;
+    background-color: var(--assistant-muted);
     content: "";
     pointer-events: none;
-    transition: transform 120ms ease, background-color 120ms ease;
+    transition: left 120ms ease, background-color 120ms ease;
 }
 
 .assistant_switch .switch_label {
-    flex: 1 1 auto;
+    display: block;
     min-width: 0;
     line-height: 1.5;
     overflow-wrap: anywhere;
@@ -1683,17 +2681,17 @@ button.assistant_switch:hover, button.assistant_switch:focus, button.assistant_s
 }
 
 .assistant_switch[aria-checked="true"] .switch_track::after {
-    background-color: var(--assistant-accent);
-    transform: translateX(16px);
+    background-color: var(--assistant-primary-ink);
+    left: 19px;
 }
 
 .assistant_switch:hover:not(:disabled) .switch_track {
     border-color: var(--assistant-accent-hover);
-    box-shadow: 0 0 8px rgba(97, 230, 255, 0.18);
+    box-shadow: var(--assistant-glow);
 }
 
 .assistant_switch:focus .switch_track {
-    border-color: #f0fdff;
+    border-color: var(--assistant-focus);
     box-shadow: 0 0 0 1px var(--assistant-accent-shadow);
 }
 
@@ -1701,13 +2699,21 @@ button.assistant_switch:disabled {
     cursor: default;
 }
 
-.assistant_switch:disabled .switch_track,
 .assistant_switch:disabled .switch_label {
-    opacity: 0.45;
+    color: var(--disabled-foreground, var(--assistant-muted));
+}
+
+.assistant_switch:disabled .switch_track {
+    background-color: var(--disabled-background, var(--assistant-surface-deep));
+    border-color: var(--disabled-border, var(--assistant-line-soft));
+}
+
+.assistant_switch:disabled .switch_track::after {
+    background-color: var(--disabled-foreground, var(--assistant-muted));
 }
 
 #speech_note, #speech_hint, #asr_note, #asr_hint {
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 13px;
     line-height: 1.7;
     margin: 0;
@@ -1715,26 +2721,28 @@ button.assistant_switch:disabled {
 }
 
 .speech_step {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: column;
-    gap: 10px;
+    display: block;
     margin: 0;
 }
 
-.speech_step h2 {
-    color: #f0bb7b;
+.speech_step > * + * {
+    margin-top: 10px;
+}
+
+.settings .speech_step h2 {
+    color: var(--assistant-heading);
     font-size: 16px;
     margin: 0 0 4px;
 }
 
 .speech_step label {
+    display: block;
     color: var(--assistant-ink);
     font-size: 13px;
 }
 
 .speech_step input {
-    flex: 0 0 auto;
+    display: block;
     min-width: 0;
     width: 100%;
 }
@@ -1754,10 +2762,6 @@ button.assistant_switch:disabled {
     padding-right: 30px;
 }
 
-#speech_language:disabled {
-    opacity: 0.55;
-}
-
 #speech_volume {
     width: 72px;
 }
@@ -1775,7 +2779,7 @@ button.assistant_switch:disabled {
 #settings_status {
     flex: 1 1 180px;
     min-width: 0;
-    color: #b6cfd5;
+    color: var(--assistant-muted);
     font-size: 13px;
     line-height: 1.6;
     white-space: pre-wrap;
@@ -1786,7 +2790,6 @@ button.assistant_switch:disabled {
 }
 
 .settings :disabled {
-    opacity: 0.5;
     cursor: default;
 }
 
@@ -1807,11 +2810,12 @@ button.assistant_switch:disabled {
     }
 
     #sidebar {
-        flex-basis: 145px;
+        width: 145px;
         padding: 14px 8px;
     }
 
     #main {
+        left: 145px;
         padding: 0 14px;
     }
 
@@ -1890,4 +2894,178 @@ button.assistant_switch:disabled {
     #settings_status {
         flex-basis: 100%;
     }
+}
+
+/* Persistent cards share themes and rendering with chat, but never capture gameplay or inventory input. */
+.card_hud.interactive #card_display, .card_hud.interactive #card_display * {
+    pointer-events: auto !important;
+}
+
+.card_hud.interactive #card_display .minecraft_text,
+.card_hud.interactive #card_display .minecraft_text span,
+.card_hud.interactive #card_display .quest_card_pin svg,
+.card_hud.interactive #card_display .quest_card_pin path {
+    pointer-events: none !important;
+}
+
+#card_display {
+    position: fixed;
+    left: 12px;
+    top: 22vh;
+    width: min(360px, 38vw);
+    height: auto;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: visible;
+}
+
+.card_display_entry {
+    flex: 0 0 auto;
+    min-width: 0;
+    opacity: 0;
+    /* Pixel travel avoids percentage-based size queries while sampling the transition. */
+    transform: translateX(var(--card-slide-offset, -400px));
+    transition: none;
+}
+
+.card_display_entry.animated {
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
+}
+
+.card_display_entry.shown {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.card_hud.interactive #card_display .card_display_entry:not(.shown),
+.card_hud.interactive #card_display .card_display_entry:not(.shown) * {
+    pointer-events: none !important;
+}
+
+#card_display > .card_display_entry > .result_card {
+    flex: 0 0 auto;
+    min-width: 0;
+    margin: 0;
+    padding: 12px 14px 16px;
+    background-color: var(--assistant-window);
+}
+
+.quest_tracking_card > .card_title {
+    align-items: flex-start;
+    padding-right: 24px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* The status stays beside the first title line even when the title needs several lines. */
+.quest_tracking_status {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.quest_tracking_title {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-all;
+}
+
+.quest_tracking_card .message_text {
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.quest_tracking_chapter {
+    color: var(--assistant-muted);
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.quest_tracking_card > .card_progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+}
+
+/* Generic node layouts keep geometry independent of business card types. */
+.card_grid_cell {
+    position: relative;
+    min-width: 0;
+    box-sizing: border-box;
+    justify-content: center;
+    overflow: visible;
+    cursor: default;
+}
+body button.offer_cell_content,
+body button.offer_cell_content:hover,
+body button.offer_cell_content:focus,
+body button.offer_cell_content:active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    color: var(--assistant-ink);
+    box-shadow: none;
+    transform: none;
+    overflow: visible;
+}
+.card_grid_cell > .card_progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+.card_groups_horizontal {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+.card_groups_horizontal > .card_action_group_results {
+    flex: 0 0 auto;
+    width: 100%;
+}
+.card_groups_horizontal .source_tabs {
+    width: 100%;
+}
+.source_recipe_pages .card_grid_cell {
+    align-items: stretch;
+    padding: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+.card_button_icon {
+    display: block;
+    flex: 0 0 16px;
+    pointer-events: none;
+}
+
+.item_group_items, .quest_icon_items {
+    gap: 6px;
+    align-items: center;
+}
+
+.item_labeled > .item_entry {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
 }

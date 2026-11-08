@@ -6,7 +6,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.StringRepresentable;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 
@@ -16,7 +16,7 @@ import java.util.*;
 public record SemanticConfig(Mode mode, int maxCharacters, double minCoverage, Threshold defaultThreshold,
                              Set<String> languages, Map<String, Threshold> lexicalThresholds,
                              Map<String, Map<String, List<String>>> examples, int cacheEntries, int cacheSeconds,
-                             int entriesPerPlayer) {
+                             int entriesPerPlayer, ModeScores modeScores) {
     public static final String FILE_NAME = "system-semantic.json";
     public static final String ALGORITHM = "lexical-tfidf-v1";
     private static final Codec<Double> UNIT_INTERVAL;
@@ -40,9 +40,10 @@ public record SemanticConfig(Mode mode, int maxCharacters, double minCoverage, T
             Codec.unboundedMap(MODULE_ID, Codec.unboundedMap(LANGUAGE, MiscCodecs.NOT_BLANK_STRING.listOf())).lenientOptionalFieldOf("examples", Map.of()).forGetter(SemanticConfig::examples),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("cacheEntries", 1024).forGetter(SemanticConfig::cacheEntries),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("cacheSeconds", 300).forGetter(SemanticConfig::cacheSeconds),
-            ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("entriesPerPlayer", 32).forGetter(SemanticConfig::entriesPerPlayer)
+            ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("entriesPerPlayer", 32).forGetter(SemanticConfig::entriesPerPlayer),
+            ModeScores.CODEC.lenientOptionalFieldOf("modeScores", ModeScores.DEFAULT).forGetter(SemanticConfig::modeScores)
     ).apply(i, SemanticConfig::new));
-    public static final ConfigInstance<SemanticConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, new SemanticConfig(Mode.ENFORCE, 240, 0.9, new Threshold(0.9, 0.15), Set.of("zh", "en"), Map.of(), Map.of(), 1024, 300, 32));
+    public static final ConfigInstance<SemanticConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, new SemanticConfig(Mode.ENFORCE, 240, 0.9, new Threshold(0.9, 0.15), Set.of("zh", "en"), Map.of(), Map.of(), 1024, 300, 32, ModeScores.DEFAULT));
 
     public SemanticConfig {
         languages = Set.copyOf(languages);
@@ -70,12 +71,26 @@ public record SemanticConfig(Mode mode, int maxCharacters, double minCoverage, T
         return this.lexicalThresholds.getOrDefault(moduleId + "@" + language, this.lexicalThresholds.getOrDefault(moduleId, this.defaultThreshold));
     }
 
+    public Threshold threshold(String moduleId, String language, boolean freeChat) {
+        Threshold base = this.threshold(moduleId, language);
+        double offset = freeChat ? this.modeScores.freeChat() : this.modeScores.functions();
+        return new Threshold(Math.clamp(base.score() + offset, 0, 1), base.margin());
+    }
+
+    public record ModeScores(double functions, double freeChat) {
+        public static final ModeScores DEFAULT = new ModeScores(-0.1, 0.03);
+        public static final Codec<ModeScores> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.doubleRange(-1, 1).lenientOptionalFieldOf("functions", -0.1).forGetter(ModeScores::functions),
+                Codec.doubleRange(-1, 1).lenientOptionalFieldOf("freeChat", 0.03).forGetter(ModeScores::freeChat)
+        ).apply(i, ModeScores::new));
+    }
+
     public enum Mode implements StringRepresentable {
         OFF, SHADOW, ENFORCE;
         public static final Codec<Mode> CODEC = StringRepresentable.fromValues(Mode::values);
 
         @Override
-        public @NotNull String getSerializedName() {
+        public @NonNull String getSerializedName() {
             return this.name().toLowerCase(Locale.ROOT);
         }
     }

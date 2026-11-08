@@ -1,51 +1,39 @@
 package com.iafenvoy.system.network;
 
-import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
-import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
-import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
-import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
-import net.neoforged.api.distmarker.Dist;
+import com.iafenvoy.system.network.payload.*;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.MainThreadPayloadHandler;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 /**
  * Wire registration only; processing and connection state belong to the side handlers.
- *
- * <p>1.21.1 has no client-only payload registration event, so the response handlers are installed from a subscriber
- * that exists only on the physical client. A dedicated server therefore never links the client screen classes that
- * {@link ClientNetworkHandler} pulls in.
  */
+@EventBusSubscriber
 public final class NetworkManager {
-    /**
-     * Shared payload declarations; both sides must agree on ids and codecs.
-     */
-    @EventBusSubscriber
-    public static final class Common {
-        @SubscribeEvent
-        public static void register(RegisterPayloadHandlersEvent event) {
-            event.registrar("1")
-                    .playToServer(AssistantRequestC2SPayload.TYPE, AssistantRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleAssistantRequest))
-                    .playToServer(TokenUsageRequestC2SPayload.TYPE, TokenUsageRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleTokenUsageRequest));
-        }
+    @SubscribeEvent
+    public static void register(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar("1");
+        registrar.playToServer(AssistantRequestC2SPayload.TYPE, AssistantRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleAssistantRequest))
+                .playToServer(TokenUsageRequestC2SPayload.TYPE, TokenUsageRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleTokenUsageRequest))
+                .playToServer(DisplayCardC2SPayload.TYPE, DisplayCardC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleDisplayCard));
+        // Client handlers live in their own class so dedicated servers never load UI classes.
+        if (FMLEnvironment.dist.isClient()) ClientRegistration.register(registrar);
     }
 
     /**
-     * Client responses, registered only where the client classes exist.
+     * Resolve client handlers only on the physical client, keeping dedicated servers free of UI classes.
      */
-    @EventBusSubscriber(Dist.CLIENT)
-    public static final class Client {
-        @SubscribeEvent
-        public static void register(RegisterPayloadHandlersEvent event) {
-            event.registrar("1")
-                    .playToClient(AssistantResponseS2CPayload.TYPE, AssistantResponseS2CPayload.CODEC,
-                            new MainThreadPayloadHandler<>(ClientNetworkHandler::handleAssistantResponse))
-                    .playToClient(TokenUsageResponseS2CPayload.TYPE, TokenUsageResponseS2CPayload.CODEC,
-                            new MainThreadPayloadHandler<>(ClientNetworkHandler::handleTokenUsageResponse));
+    public static final class ClientRegistration {
+        private ClientRegistration() {
         }
-    }
 
-    private NetworkManager() {
+        public static void register(PayloadRegistrar registrar) {
+            registrar.playToClient(AssistantResponseS2CPayload.TYPE, AssistantResponseS2CPayload.CODEC, new MainThreadPayloadHandler<>(ClientNetworkHandler::handleAssistantResponse))
+                    .playToClient(DisplayCardsS2CPayload.TYPE, DisplayCardsS2CPayload.CODEC, new MainThreadPayloadHandler<>(ClientNetworkHandler::handleDisplayCards))
+                    .playToClient(TokenUsageResponseS2CPayload.TYPE, TokenUsageResponseS2CPayload.CODEC, new MainThreadPayloadHandler<>(ClientNetworkHandler::handleTokenUsageResponse));
+        }
     }
 }

@@ -1,10 +1,12 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.command.AssistantCommandSource;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
+import com.iafenvoy.system.data.card.client.ClientCards;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
 import com.iafenvoy.system.screen.AssistantMessages;
@@ -27,9 +29,9 @@ import java.util.concurrent.CompletableFuture;
 public final class CoreSystemClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
-        module.localAction(ResourceLocation.parse("system:close"), (source, unused1) -> AssistantMessages.dismissCard(source.id()));
-        module.localAction(ResourceLocation.parse("system:open"), (unused1, unused2) -> AssistantClient.open(AssistantClient.simpleMode(), ""));
-        module.localAction(ResourceLocation.parse("system:workspace"), (unused1, arguments) -> {
+        module.localAction(ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "close"), (source, unused1) -> AssistantMessages.dismissCard(source.id()));
+        module.localAction(ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "open"), (unused2, unused3) -> AssistantClient.open(AssistantClient.simpleMode(), ""));
+        module.localAction(ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "workspace"), (unused4, arguments) -> {
             AssistantClient.open(false, "");
             if (Minecraft.getInstance().screen instanceof AssistantScreen screen)
                 screen.showPage(arguments.getOrDefault("page", "chat"));
@@ -69,7 +71,7 @@ public final class CoreSystemClientModule implements ClientModule {
 
     private static int select(int index) {
         List<ClientCards.Choice> actions = AssistantClient.state().currentActions();
-        if (index < 0 || index >= actions.size()) AssistantClient.local(AgentResult.error("INVALID_SELECTION"));
+        if (index < 0 || index >= actions.size()) AssistantClient.local(AgentResult.error(AgentFailure.INVALID_SELECTION));
         else actions.get(index).execute();
         return 1;
     }

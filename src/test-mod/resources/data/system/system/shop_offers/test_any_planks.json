@@ -1,0 +1,19 @@
+{
+  "label": "任意木板",
+  "items": [
+    {
+      "count": 12,
+      "id": "minecraft:oak_planks"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 6,
+      "items": [
+        "minecraft:oak_planks",
+        "minecraft:spruce_planks"
+      ]
+    }
+  ]
+}

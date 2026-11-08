@@ -3,15 +3,15 @@ package com.iafenvoy.system.module;
 import com.iafenvoy.saturn.data.context.condition.EntityConditionContext;
 import com.iafenvoy.saturn.util.formula.FormulaContext;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.store.AgentStore;
-import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.data.ModuleDefinition;
-import com.iafenvoy.system.data.SystemModule;
+import com.iafenvoy.system.agent.AgentFailure;
+import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.storage.AgentStore;
+import com.iafenvoy.system.data.module.ModuleDefinition;
+import com.iafenvoy.system.data.module.SystemModule;
+import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.module.builtin.CoreSystemModule;
 import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
-import com.iafenvoy.system.registry.SystemDataPackRegistries;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
@@ -39,7 +39,7 @@ final class ModuleAccess implements PlayerModule {
     private final Map<UUID, ServerPlayer> players = new HashMap<>();
     private final Set<String> reportedErrors = new HashSet<>();
     private Resolution resolving;
-    private Consumer<ServerPlayer> changed = unused -> {
+    private Consumer<ServerPlayer> changed = unused1 -> {
     };
     private int ticks;
 
@@ -47,10 +47,9 @@ final class ModuleAccess implements PlayerModule {
         this.server = server;
         this.engine = engine;
         this.installed = Set.copyOf(installed);
-        Registry<SystemModule> registry = SystemDataPackRegistries.modules(server.registryAccess()).orElseThrow();
-        this.required = registry.keySet().stream().filter(id -> registry.get(id).server()
-                        .filter(CoreModule.class::isInstance).isPresent()).filter(this.installed::contains)
-                .collect(Collectors.toUnmodifiableSet());
+        Registry<SystemModule> registry = server.registryAccess().registryOrThrow(SystemResourceKeys.SYSTEM_MODULE);
+        this.required = registry.keySet().stream().filter(id -> registry.getOptional(id).flatMap(SystemModule::server).filter(CoreModule.class::isInstance).isPresent())
+                .filter(this.installed::contains).collect(Collectors.toUnmodifiableSet());
     }
 
     public void onChange(Consumer<ServerPlayer> changed) {
@@ -139,15 +138,15 @@ final class ModuleAccess implements PlayerModule {
         return new Session() {
             @Override
             public void initialize(PlayerData data) {
-                system.set(data.systems.current().orElseThrow(() -> new AgentException("NOT_BOUND")));
+                system.set(data.systems.current().orElseThrow(() -> new AgentException(AgentFailure.NOT_BOUND)));
                 saved.set(ModuleData.get(data, CoreSystemModule.ACCESS).copy());
             }
 
             @Override
             public void ready() {
                 // A removed definition never falls back to a different system or grants its modules.
-                if (SystemDataPackRegistries.get(ModuleAccess.this.server.registryAccess(), system.get()).isEmpty())
-                    throw new AgentException("SYSTEM_UNAVAILABLE");
+                if (!ModuleAccess.this.server.registryAccess().registryOrThrow(SystemResourceKeys.SYSTEM).containsKey(system.get()))
+                    throw new AgentException(AgentFailure.SYSTEM_UNAVAILABLE);
                 ModuleAccess.this.players.put(player.getUUID(), player);
                 ModuleAccess.this.systems.put(player.getUUID(), system.get());
                 ModuleAccess.this.overrides.putIfAbsent(player.getUUID(), saved.get());
@@ -168,7 +167,7 @@ final class ModuleAccess implements PlayerModule {
     private void persist(UUID player, ModuleAccessDataStorage snapshot) {
         AgentStore store = this.engine.playerStore(player);
         CompletableFuture<Void> previous = this.pendingWrites.getOrDefault(player, CompletableFuture.completedFuture(null));
-        CompletableFuture<Void> next = previous.handle((unused1, error) -> null).thenCompose(unused ->
+        CompletableFuture<Void> next = previous.handle((unused2, error) -> null).thenCompose(unused3 ->
                 this.engine.<Void>maintenance(() -> {
                     store.update(player, data -> {
                         ModuleData.get(data, CoreSystemModule.ACCESS).replace(snapshot.selection());
@@ -177,7 +176,7 @@ final class ModuleAccess implements PlayerModule {
                     return null;
                 })).toCompletableFuture();
         this.pendingWrites.put(player, next);
-        next.whenComplete((unused1, error) -> {
+        next.whenComplete((unused4, error) -> {
             if (error != null) SystemMod.LOGGER.warn("Unable to save module access for {}", player, error);
             this.pendingWrites.remove(player, next);
         });
@@ -194,8 +193,8 @@ final class ModuleAccess implements PlayerModule {
             this.player = player;
             this.selection = ModuleAccess.this.overrides.getOrDefault(player.getUUID(), new ModuleAccessDataStorage()).selection();
             ResourceLocation system = ModuleAccess.this.systems.get(player.getUUID());
-            this.definitions = SystemDataPackRegistries.get(ModuleAccess.this.server.registryAccess(), system)
-                    .orElseThrow(() -> new AgentException("SYSTEM_UNAVAILABLE")).modules();
+            this.definitions = ModuleAccess.this.server.registryAccess().registryOrThrow(SystemResourceKeys.SYSTEM).getOptional(system)
+                    .orElseThrow(() -> new AgentException(AgentFailure.SYSTEM_UNAVAILABLE)).modules();
         }
 
         private boolean test(ResourceLocation module) {

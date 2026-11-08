@@ -1,5 +1,6 @@
 package com.iafenvoy.system.registry;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.module.builtin.*;
 import com.iafenvoy.system.module.client.ClientModule;
 import net.minecraft.resources.ResourceLocation;
@@ -39,7 +40,7 @@ public final class SystemClientModules {
     }
 
     private static <T extends ClientModule> T register(String id, T module) {
-        return register(ResourceLocation.fromNamespaceAndPath("system", id), module);
+        return register(ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, id), module);
     }
 
     public static <T extends ClientModule> T register(ResourceLocation id, T module) {
@@ -49,9 +50,12 @@ public final class SystemClientModules {
     }
 
     private static <T extends ClientModule> T local(String id, T module) {
-        ResourceLocation key = ResourceLocation.fromNamespaceAndPath("system", id);
-        register(key, module);
-        LOCAL.put(key, module);
+        return local(ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, id), module);
+    }
+
+    public static <T extends ClientModule> T local(ResourceLocation id, T module) {
+        register(id, module);
+        LOCAL.put(id, module);
         return module;
     }
 

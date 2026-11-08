@@ -1,0 +1,33 @@
+{
+  "chapter.5A71010000000000.title": "01 · A New Beginning",
+  "quest.5A71010001000000.title": "Food Parcel",
+  "quest.5A71010001000000.quest_desc": [
+    "A small supply parcel for a new host. Check off this quest to collect it."
+  ],
+  "quest.5A71010002000000.title": "Lighting Parcel",
+  "quest.5A71010002000000.quest_desc": [
+    "A small supply parcel for a new host. Check off this quest to collect it."
+  ],
+  "quest.5A71010003000000.title": "Timber Parcel",
+  "quest.5A71010003000000.quest_desc": [
+    "A small supply parcel for a new host. Check off this quest to collect it."
+  ],
+  "quest.5A71010004000000.title": "Stone Parcel",
+  "quest.5A71010004000000.quest_desc": [
+    "A small supply parcel for a new host. Check off this quest to collect it."
+  ],
+  "quest.5A71010005000000.title": "Seed Parcel",
+  "quest.5A71010005000000.quest_desc": [
+    "A small supply parcel for a new host. Check off this quest to collect it."
+  ],
+  "quest.5A71010006000000.title": "Tool Parcel",
+  "quest.5A71010006000000.quest_desc": [
+    "A small supply parcel for a new host. Check off this quest to collect it."
+  ],
+  "quest.5A71010007000000.title": "Getting Started",
+  "quest.5A71010007000000.quest_desc": [
+    "The quest page groups the current query by chapter.",
+    "Use the top-right pin to bookmark a quest without completing it."
+  ],
+  "quest.5A71010008000000.title": "Your First Crafting Table"
+}

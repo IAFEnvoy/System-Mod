@@ -8,12 +8,15 @@ import net.neoforged.fml.ModList;
  * Local PCM16/16 kHz capture boundary; optional microphone backends never leak into ASR providers.
  */
 public interface RecognitionCapture extends AsrProvider.AudioSource, AutoCloseable {
+    /**
+     * Local lines close without a checked failure; narrow the inherited signature so the caller needs no catch.
+     */
+    @Override
+    void close();
+
     void open() throws SpeechException;
 
     void finish();
-
-    @Override
-    void close();
 
     static boolean voicechatInstalled() {
         return ModList.get().isLoaded("voicechat");

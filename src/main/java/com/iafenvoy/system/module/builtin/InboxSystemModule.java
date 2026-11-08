@@ -1,10 +1,11 @@
 package com.iafenvoy.system.module.builtin;
 
-import com.iafenvoy.system.agent.AgentModule;
-import com.iafenvoy.system.agent.builtin.inbox.DeliverModule;
-import com.iafenvoy.system.agent.builtin.inbox.DeliverTool;
-import com.iafenvoy.system.agent.builtin.inbox.InboxModule;
+import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.assistant.tool.inbox.DeliverTool;
 import com.iafenvoy.system.module.*;
+import com.iafenvoy.system.module.builtin.inbox.DeliverModule;
+import com.iafenvoy.system.module.builtin.inbox.InboxModule;
 import com.iafenvoy.system.module.builtin.storage.InboxDataStorage;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.ResourceLocation;
@@ -13,10 +14,9 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.List;
 
 public final class InboxSystemModule implements SharedModule {
-    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("system", "inbox");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "inbox");
     public static final MapCodec<InboxSystemModule> CODEC = MapCodec.unit(new InboxSystemModule());
-    public static final ModuleStorage<InboxDataStorage> STORAGE = new ModuleStorage<>(ID,
-            ResourceLocation.fromNamespaceAndPath("system", "inbox"), InboxDataStorage.class, InboxDataStorage.CODEC, InboxDataStorage::new);
+    public static final ModuleStorage<InboxDataStorage> STORAGE = new ModuleStorage<>(ID, ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "inbox"), InboxDataStorage.class, InboxDataStorage.CODEC, InboxDataStorage::new);
 
     @Override
     public MapCodec<InboxSystemModule> codec() {
@@ -30,7 +30,8 @@ public final class InboxSystemModule implements SharedModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new InboxModule(context.modules()), new DeliverModule(new DeliverTool(context.engine(), context.game()).tool()));
+        return List.of(new InboxModule(context.get(ContextTypes.CATALOGS), context.modules()),
+                new DeliverModule(new DeliverTool(context.engine(), context.get(ContextTypes.GAME)).tool()));
     }
 
     @Override

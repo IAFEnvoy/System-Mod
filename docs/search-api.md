@@ -46,7 +46,7 @@
 
 ## 独立 ReAct 预算
 
-本地为空且获准后，`WebResearch` 执行模型选择 Search/Fetch/Answer → 一个工具 → 下一轮紧凑证据。只输出类型化动作与最终答案，不要求模型输出思维过程。第一步需 Search，最后一轮只解码 Answer，整理已有结果。整个 `system:question` 默认最多 **6 次模型调用、9 次工具调用、20 步、90 秒总期限**；每次模型最多 20 秒，HTTP 最多 15 秒并受剩余总时间约束。工具预算包含 `database.query`、其内部 FTB 查询和本地结果复核；联网循环使用剩余预算，Search 和 Fetch 共用额度。
+本地为空且获准后，`WebResearch` 向通用 `agent.react.ReActLoop` 提供 Search / Fetch 工具、独立 ToolContext 和搜索证据，执行模型选择 → 一个工具 → 下一轮紧凑证据。只输出类型化动作与最终答案，不要求模型输出思维过程。第一步需 Search，最后一轮只解码 Answer，整理已有结果。整个 `system:question` 默认最多 **6 轮循环、6 次模型调用、9 次工具调用、20 步、90 秒总期限**；每次模型最多 20 秒，HTTP 最多 15 秒并受剩余总时间约束。工具预算包含 `database.query`、其内部 FTB 查询和本地结果复核；联网循环使用剩余预算，Search 和 Fetch 共用额度。轮数含最终整理，路由只扣模型预算、不扣循环轮数。通用机制与上下文边界见 [ReAct 循环](agent-react.md)。
 
 在 `config/system/system-agent.json` 的 `policies` 中按工作流 ID 单独调节，不改变签到、任务等模块。例如：
 
@@ -62,7 +62,8 @@
       "outputTokens": 1536,
       "totalTokens": 524288,
       "ttlMillis": 90000,
-      "modelTimeoutMillis": 12000
+      "modelTimeoutMillis": 12000,
+      "reactIterations": 6
     }
   }
 }

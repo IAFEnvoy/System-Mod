@@ -1,0 +1,29 @@
+{
+  "label": "熟食套餐",
+  "items": [
+    {
+      "count": 4,
+      "id": "minecraft:cooked_beef"
+    },
+    {
+      "count": 4,
+      "id": "minecraft:cooked_chicken"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 2,
+      "items": [
+        "minecraft:beef"
+      ]
+    },
+    {
+      "type": "saturn:item",
+      "amount": 2,
+      "items": [
+        "minecraft:chicken"
+      ]
+    }
+  ]
+}

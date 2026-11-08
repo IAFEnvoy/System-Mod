@@ -6,6 +6,8 @@ import com.iafenvoy.saturn.data.action.EntityAction;
 import com.iafenvoy.saturn.data.action.ItemAction;
 import com.iafenvoy.saturn.data.condition.*;
 import com.iafenvoy.saturn.data.cost.Cost;
+import com.iafenvoy.saturn.data.information.expression.InformationExpression;
+import com.iafenvoy.saturn.data.information.getter.EntityValueGetter;
 import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.saturn.data.trigger.Trigger;
 import com.iafenvoy.saturn.util.formula.FormulaVariable;
@@ -14,6 +16,7 @@ import com.iafenvoy.saturn.util.matcher.ItemMatcher.Entry;
 import com.mojang.serialization.Lifecycle;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.DefaultedMappedRegistry;
+import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.DefaultedRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
@@ -31,7 +34,7 @@ import java.util.List;
  */
 @EventBusSubscriber
 public final class SaturnRegistries {
-    private static final List<DefaultedRegistry<?>> REGISTRIES = new LinkedList<>();
+    private static final List<Registry<?>> REGISTRIES = new LinkedList<>();
 
     public static final DefaultedRegistry<MapCodec<? extends Cost>> COST_TYPE = create("item", SaturnResourceKeys.COST_TYPE);
     public static final DefaultedRegistry<MapCodec<? extends DataStorage>> DATA_STORAGE_TYPE = create("empty", SaturnResourceKeys.DATA_STORAGE_TYPE);
@@ -49,9 +52,17 @@ public final class SaturnRegistries {
     public static final DefaultedRegistry<MapCodec<? extends ItemCondition>> ITEM_CONDITION_TYPE = create("always", SaturnResourceKeys.ITEM_CONDITION_TYPE);
     public static final DefaultedRegistry<MapCodec<? extends DamageCondition>> DAMAGE_CONDITION_TYPE = create("always", SaturnResourceKeys.DAMAGE_CONDITION_TYPE);
     public static final DefaultedRegistry<MapCodec<? extends Entry>> ITEM_MATCHER_ENTRY_TYPE = create("item", SaturnResourceKeys.ITEM_MATCHER_ENTRY_TYPE);
+    public static final Registry<MapCodec<? extends EntityValueGetter<?>>> ENTITY_VALUE_GETTER = createPlain(SaturnResourceKeys.ENTITY_VALUE_GETTER);
+    public static final DefaultedRegistry<MapCodec<? extends InformationExpression>> INFORMATION_EXPRESSION_TYPE = create("constant", SaturnResourceKeys.INFORMATION_EXPRESSION_TYPE);
 
-    public static List<DefaultedRegistry<?>> all() {
+    public static List<Registry<?>> all() {
         return List.copyOf(REGISTRIES);
+    }
+
+    private static <T> Registry<T> createPlain(ResourceKey<? extends Registry<T>> key) {
+        Registry<T> registry = new MappedRegistry<>(key, Lifecycle.stable(), false);
+        REGISTRIES.add(registry);
+        return registry;
     }
 
     private static <T> DefaultedRegistry<T> create(String defaultKey, ResourceKey<? extends Registry<T>> key) {

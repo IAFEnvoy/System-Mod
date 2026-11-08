@@ -13,8 +13,7 @@ import org.lwjgl.glfw.GLFW;
  */
 @EventBusSubscriber(Dist.CLIENT)
 public final class SystemKeyMappings {
-    // 1.21.1 still identifies a key category by its translation key string; it matches the existing lang entries.
-    public static final String CATEGORY = "key.category." + SystemMod.MOD_ID + ".assistant";
+    public static final String CATEGORY = "key.categories." + SystemMod.MOD_ID;
     public static final KeyMapping TOGGLE_INTERFACE = new KeyMapping("key.system.toggle_interface", GLFW.GLFW_KEY_UNKNOWN, CATEGORY);
     public static final KeyMapping VOICE_INPUT = new KeyMapping("key.system.voice_input", GLFW.GLFW_KEY_F8, CATEGORY);
 

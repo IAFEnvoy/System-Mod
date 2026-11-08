@@ -3,6 +3,7 @@ package com.iafenvoy.system.registry;
 import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.saturn.registry.SaturnRegistries;
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.data.store.AgentJournalDataStorage;
 import com.iafenvoy.system.module.builtin.storage.*;
 import com.mojang.serialization.MapCodec;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -22,4 +23,5 @@ public final class SystemDataStorages {
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<CommerceDataStorage>> COMMERCE = REGISTRY.register("commerce", () -> CommerceDataStorage.CODEC);
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<InboxDataStorage>> INBOX = REGISTRY.register("inbox", () -> InboxDataStorage.CODEC);
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<SignInDataStorage>> SIGN_IN = REGISTRY.register("sign_in", () -> SignInDataStorage.CODEC);
+    public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<DisplayCardsDataStorage>> DISPLAY_CARDS = REGISTRY.register("display_cards", () -> DisplayCardsDataStorage.CODEC);
 }

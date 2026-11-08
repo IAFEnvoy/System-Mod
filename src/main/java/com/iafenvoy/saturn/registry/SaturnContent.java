@@ -32,7 +32,9 @@ public final class SaturnContent {
             SaturnBiEntityConditions.REGISTRY,
             SaturnBlockConditions.REGISTRY,
             SaturnItemConditions.REGISTRY,
-            SaturnDamageConditions.REGISTRY);
+            SaturnDamageConditions.REGISTRY,
+            SaturnEntityValueGetters.REGISTRY,
+            SaturnInformationExpressions.REGISTRY);
 
     private SaturnContent() {
     }

@@ -3,15 +3,16 @@ package com.iafenvoy.system.screen;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.card.*;
-import com.iafenvoy.system.card.client.CardController;
-import com.iafenvoy.system.card.client.ClientCards;
 import com.iafenvoy.system.command.client.NotificationVoiceCommands;
 import com.iafenvoy.system.config.file.RecognitionConfig;
+import com.iafenvoy.system.data.card.*;
+import com.iafenvoy.system.data.card.client.CardController;
+import com.iafenvoy.system.data.card.client.ClientCards;
 import com.iafenvoy.system.event.client.AssistantRecognitionKeys;
 import com.iafenvoy.system.module.client.ClientMessage;
-import com.iafenvoy.system.screen.card.CardPageState;
+import com.iafenvoy.system.registry.SystemHudEntries;
 import com.iafenvoy.system.screen.card.CardPresentation;
+import com.iafenvoy.system.screen.card.CardUiState;
 import com.iafenvoy.system.screen.gui.AssistantItems;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
 import com.iafenvoy.system.speech.SpeechException;
@@ -30,6 +31,7 @@ import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 
 import java.util.*;
@@ -44,7 +46,7 @@ public final class AssistantMessages {
     private static final int MAX_PENDING = 32;
     private static final Deque<Pending> QUEUE = new ArrayDeque<>();
     private static final Deque<Message> BACK = new ArrayDeque<>();
-    private static CardRef navigationSource;
+    private static CardReference navigationSource;
     private static Message current;
     private static Pending replacement;
     private static AssistantSpeech.Session speech;
@@ -78,7 +80,7 @@ public final class AssistantMessages {
     }
 
     private record Message(String text, String speechText, List<Button> buttons, UUID cardId, AgentResult result,
-                           CardPageState pages) {
+                           CardUiState pages) {
         private Message {
             buttons = List.copyOf(buttons);
         }
@@ -105,7 +107,7 @@ public final class AssistantMessages {
     /**
      * Direct action replies replace the active slot; a dismissed source cannot reopen or displace another notice.
      */
-    public static void reply(AgentResult result, CardRef source) {
+    public static void reply(AgentResult result, CardReference source) {
         // A local back action may already be fading this source out in favor of its retained parent.
         boolean active = current != null && replacement == null && source.id().equals(current.cardId());
         Message parent = active && source.equals(navigationSource) ? current : null;
@@ -132,10 +134,10 @@ public final class AssistantMessages {
     }
 
     private static Message message(AgentResult result) {
-        return message(result, new CardPageState());
+        return message(result, new CardUiState());
     }
 
-    private static Message message(AgentResult result, CardPageState pages) {
+    private static Message message(AgentResult result, CardUiState pages) {
         ClientMessage content = CardPresentation.message(result);
         List<Button> buttons = new ArrayList<>();
         CardUpdate card = result.cards().getFirst();
@@ -194,7 +196,7 @@ public final class AssistantMessages {
         renderNavigation();
     }
 
-    public static boolean actionStarted(CardRef source, CardButton.Behavior behavior) {
+    public static boolean actionStarted(CardReference source, CardButton.Behavior behavior) {
         if (!hasVoiceTarget() || !source.id().equals(current.cardId())) return false;
         navigationSource = behavior == CardButton.Behavior.PUSH ? source : null;
         if (behavior == CardButton.Behavior.CLOSE) dismiss(current);
@@ -218,7 +220,7 @@ public final class AssistantMessages {
         }
         boolean chatting = minecraft.screen instanceof ChatScreen;
         // Chat releases the vanilla cursor; all other screens hide this HUD to avoid overlapping controls.
-        if (minecraft.screen != null && !chatting || minecraft.options.hideGui) {
+        if (!canShow(minecraft)) {
             unmount();
             return;
         }
@@ -227,8 +229,8 @@ public final class AssistantMessages {
             if (current == null) nextMessage();
             if (current == null) return;
             try {
-                AssistantPages.prepare("system/assistant-message.html");
-                document = Document.create("system/assistant-message.html");
+                AssistantPages.prepare(NotificationHudEntry.TEMPLATE);
+                document = Document.create(NotificationHudEntry.TEMPLATE);
                 if (document == null) throw new IllegalStateException("Missing assistant message template");
                 // AUI draws HUD documents only while no screen is open; this keeps the notice over the chat screen.
                 document.setReloadPersistent(true);
@@ -243,6 +245,7 @@ public final class AssistantMessages {
         }
         if (generation != document.getRefreshGeneration()) {
             generation = document.getRefreshGeneration();
+            SystemHudEntries.NOTIFICATIONS.detach();
             if (current == null || replacement != null) nextMessage();
             if (current == null) {
                 unmount();
@@ -255,10 +258,11 @@ public final class AssistantMessages {
             displayedBusy = null;
             displayedPending = -1;
             updateInteraction(chatting);
+            AssistantThemes.apply(document);
             // Establish hidden content and a collapsed panel before starting either transition.
             document.commitPendingStyleRecalcForRender();
             renderMessage();
-            AssistantPages.commit(document);
+            SystemHudEntries.NOTIFICATIONS.apply(document);
         }
         advanceAnimation(chatting);
         if (document == null) return;
@@ -269,6 +273,7 @@ public final class AssistantMessages {
             text(document.getElementById("notification_pending"), displayedPending == 0 ? ""
                     : Component.translatable("system.ui.message_pending", displayedPending).getString());
         }
+        SystemHudEntries.NOTIFICATIONS.apply(document);
     }
 
     private static void nextMessage() {
@@ -290,7 +295,6 @@ public final class AssistantMessages {
         Element scroll = document.getElementById("notification_scroll");
         scroll.scrollTop = 0;
         scroll.targetScrollTop = 0;
-        text(document.getElementById("notification_title"), tr("system.ui.assistant"));
         text(document.getElementById("notification_text"), "");
         Element cards = document.getElementById("notification_cards");
         cards.setInnerHTML("");
@@ -319,7 +323,7 @@ public final class AssistantMessages {
         Message shown = current;
         Button back = backButton(shown);
         Element button = element(document, "button", "card_action", back.label());
-        button.addEventListener("click", event -> {
+        button.addEventListener("click", unused1 -> {
             if (canInteract(shown)) activate(shown, back);
         });
         navigation.appendChild(button);
@@ -391,11 +395,35 @@ public final class AssistantMessages {
         if (event.getScreen() instanceof ChatScreen) updateInteraction(false);
     }
 
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void beforeMouse(InputEvent.MouseButton.Pre event) {
+        prepareMouseInput();
+    }
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void beforeScroll(ScreenEvent.MouseScrolled.Pre event) {
+        prepareMouseInput();
+    }
+
+    private static boolean canShow(Minecraft minecraft) {
+        return minecraft.player != null && minecraft.level != null && !minecraft.options.hideGui
+                && SystemHudEntries.NOTIFICATIONS.visible()
+                && (minecraft.screen == null || minecraft.screen instanceof ChatScreen);
+    }
+
+    private static void prepareMouseInput() {
+        if (document == null) return;
+        Minecraft minecraft = Minecraft.getInstance();
+        // AUI dispatches input globally, before vanilla widgets; never wait for the next HUD tick to detach.
+        if (!canShow(minecraft)) unmount();
+        else updateInteraction(minecraft.screen instanceof ChatScreen);
+    }
+
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void tooltip(ScreenEvent.Render.Post event) {
         if (document == null || !canInteract(current) || !(event.getScreen() instanceof ChatScreen))
             return;
-        // AUI 1.21.1 renders in a single pass inside ApricityScreen#render, so the tooltip is the whole job here.
+        // AUI 1.21.1 draws its documents inside the screen render pass, so the tooltip is the only work left here.
         AssistantItems.tooltip(document, event.getGuiGraphics(), event.getMouseX(), event.getMouseY());
     }
 
@@ -406,7 +434,7 @@ public final class AssistantMessages {
         actions.setInnerHTML("");
         for (Button option : buttons(shown)) {
             Element button = element(document, "button", option.id().equals("confirm") ? "primary" : "notification_action", option.label());
-            button.addEventListener("click", event -> {
+            button.addEventListener("click", unused2 -> {
                 if (canInteract(shown)) activate(shown, option);
             });
             actions.appendChild(button);
@@ -450,8 +478,7 @@ public final class AssistantMessages {
     public static boolean hasVoiceTarget() {
         Minecraft minecraft = Minecraft.getInstance();
         return phase == Phase.VISIBLE && current != null && displayedMessage == current
-                && document != null && !document.isDisposed() && !minecraft.options.hideGui
-                && (minecraft.screen == null || minecraft.screen instanceof ChatScreen);
+                && document != null && !document.isDisposed() && canShow(minecraft);
     }
 
     public static AssistantRecognition.Session startRecognition() {
@@ -504,7 +531,7 @@ public final class AssistantMessages {
         String partial = active ? recognition.intermediate() : "";
         String value = status.equals("idle") ? "" : tr("system.asr.status." + status)
                 + (partial.isBlank() ? "" : " · " + limit(partial, 160, 1));
-        label.setInlineStyleProperty("display", value.isBlank() ? "none" : "block");
+        display(label, value.isBlank() ? "none" : "block");
         if (!value.equals(label.getTextContent())) text(label, value);
     }
 
@@ -518,9 +545,10 @@ public final class AssistantMessages {
         Document mounted = document;
         Element panel = mounted.getElementById("workspace");
         if (panel == null) return;
-        // Only the visible panel owns mouse input; document events also include clicks outside the HUD.
+        // External listeners count as consumed in AUI even when their guard returns without doing anything.
+        // Internal listeners consume native input explicitly, only for the visible, interactive panel.
         for (String type : List.of("mousedown", "mouseup", "wheel"))
-            panel.addEventListener(type, event -> {
+            panel.addInternalEventListener(type, event -> {
                 if (document == mounted && canInteract(displayedMessage) && event instanceof MouseEvent mouse) {
                     mouse.consumeNative();
                     mounted.clearFocus();
@@ -535,7 +563,7 @@ public final class AssistantMessages {
                 && minecraft.screen instanceof ChatScreen && !minecraft.options.hideGui;
     }
 
-    public static boolean canActivate(CardRef source) {
+    public static boolean canActivate(CardReference source) {
         return canInteract(current) && current.result().cards().stream().anyMatch(card -> card.ref().equals(source));
     }
 
@@ -567,17 +595,22 @@ public final class AssistantMessages {
         if (interactive == null || interactive != enabled || displayedBusy == null || displayedBusy != busy) {
             interactive = enabled;
             displayedBusy = busy;
-            document.body.setClassName("notification" + (expanded ? " expanded" : "")
-                    + (contentVisible ? " content_visible" : "") + (enabled ? " interactive" : ""));
-            for (Element button : document.querySelectorAll("#notification_cards button[data-requires-idle]"))
-                button.setDisabled(!enabled || busy);
+            // Preserve the selected theme scopes while changing notification animation and input state.
+            Element.DOMTokenList classes = document.body.getClassList();
+            classes.toggle("expanded", expanded);
+            classes.toggle("content_visible", contentVisible);
+            classes.toggle("interactive", enabled);
+            // Pointer gating and click guards own HUD input; only business state disables buttons visually.
+            for (Element button : document.querySelectorAll("#notification_cards button[data-requires-idle]")) {
+                boolean disabled = busy || "true".equals(button.getAttribute("data-card-disabled"));
+                if (button.isDisabled() != disabled) button.setDisabled(disabled);
+            }
             Element actions = document.getElementById("notification_actions");
             if (actions != null)
                 for (int index = 0; index < actions.children.size(); index++) {
                     Element button = actions.children.get(index);
-                    boolean disabled = !enabled || current != null && index < current.buttons().size() && current.buttons().get(index).requiresIdle() && busy;
-                    if (disabled) button.setAttribute("disabled", "");
-                    else button.removeAttribute("disabled");
+                    boolean disabled = current != null && index < current.buttons().size() && current.buttons().get(index).requiresIdle() && busy;
+                    if (button.isDisabled() != disabled) button.setDisabled(disabled);
                 }
         }
         String hint = chatting ? tr("system.ui.message_interacting")
@@ -605,6 +638,7 @@ public final class AssistantMessages {
         // Finish an in-flight swap before hiding the document, so reopening cannot restore the old content.
         if (replacement != null) nextMessage();
         if (document != null) document.remove();
+        SystemHudEntries.NOTIFICATIONS.detach();
         document = null;
         displayedMessage = null;
         phase = Phase.HIDDEN;

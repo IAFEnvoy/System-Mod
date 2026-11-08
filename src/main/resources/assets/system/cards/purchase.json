@@ -1,8 +1,13 @@
 {
   "body": [
     {
-      "type": "system:text",
+      "type": "system:title",
       "text": "{{reward_label}}"
+    },
+    {
+      "type": "system:text",
+      "text": "{{summary}}",
+      "when": "summary"
     },
     {
       "type": "system:text",
@@ -22,13 +27,76 @@
       "text": "{{field:state}}: {{state:state}}"
     },
     {
-      "type": "system:items",
-      "items": "{{result_items}}",
-      "label": "{{field:reward}}"
+      "type": "system:container",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{field:reward}}",
+          "style": "item_group_label"
+        },
+        {
+          "type": "system:flex",
+          "source": "{{result_items}}",
+          "children": [
+            {
+              "type": "system:flex",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{result_items.*}}",
+                  "size": 40,
+                  "tooltip": []
+                },
+                {
+                  "type": "system:text",
+                  "text": "{{result_items.*.label}}",
+                  "style": "item_name",
+                  "unless": "text_items"
+                }
+              ],
+              "wrap": false,
+              "style": [
+                "item_entry",
+                "item_labeled"
+              ]
+            }
+          ],
+          "style": "item_group_items"
+        }
+      ]
     },
     {
-      "type": "system:actions",
-      "actions": "{{result_actions}}"
+      "type": "system:button",
+      "text": "{{tr:system.state.claimed}}",
+      "callback": "delivered",
+      "when": "delivered"
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

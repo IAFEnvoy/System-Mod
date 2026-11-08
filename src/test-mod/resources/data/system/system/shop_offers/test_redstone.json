@@ -1,0 +1,18 @@
+{
+  "label": "红石粉",
+  "items": [
+    {
+      "count": 16,
+      "id": "minecraft:redstone"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 8,
+      "items": [
+        "minecraft:cobblestone"
+      ]
+    }
+  ]
+}

@@ -2,7 +2,7 @@ package com.iafenvoy.system.data.speech;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.Optional;
 
@@ -20,7 +20,7 @@ public final class AliyunNlsTokenMessage {
         ).apply(i, Token::new));
 
         @Override
-        public @NotNull String toString() {
+        public @NonNull String toString() {
             return "NlsToken[expireTime=" + this.expireTime + "]";
         }
     }

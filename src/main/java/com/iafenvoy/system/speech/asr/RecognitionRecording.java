@@ -61,6 +61,8 @@ final class RecognitionRecording implements AsrProvider.AudioSource, AutoCloseab
                 }
                 remaining -= count;
             }
+            // Publish natural EOF before try-with-resources closes a potentially slow native device.
+            this.ended = true;
         } catch (Exception error) {
             this.failure = error;
             this.opened.completeExceptionally(error);
@@ -68,7 +70,6 @@ final class RecognitionRecording implements AsrProvider.AudioSource, AutoCloseab
             this.failure = new SpeechException("microphone");
             this.opened.completeExceptionally(this.failure);
         } finally {
-            // Publish EOF before native device cleanup, which may take longer than the ASR response.
             this.ended = true;
         }
     }

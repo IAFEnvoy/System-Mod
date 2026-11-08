@@ -12,6 +12,8 @@ public final class SystemMod {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public SystemMod(IEventBus bus) {
+        SaturnIntegration.register(bus);
+        SaturnIntegration.initialize();
         SystemActionTypes.REGISTRY.register(bus);
         SystemCardDataTypes.REGISTRY.register(bus);
         SystemRequestTypes.REGISTRY.register(bus);
@@ -21,8 +23,5 @@ public final class SystemMod {
         SystemEntityConditions.REGISTRY.register(bus);
         SystemServerModules.REGISTRY.register(bus);
         SystemSoundEvents.REGISTRY.register(bus);
-        // Saturn is compiled in, so its registries and caches are wired here instead of a separate mod entrypoint.
-        SaturnIntegration.register(bus);
-        SaturnIntegration.initialize();
     }
 }

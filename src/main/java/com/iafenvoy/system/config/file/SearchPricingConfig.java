@@ -22,11 +22,9 @@ public record SearchPricingConfig(BigDecimal searchPerThousand, BigDecimal fetch
             PRICE.lenientOptionalFieldOf("searchPerThousand", BigDecimal.valueOf(5)).forGetter(SearchPricingConfig::searchPerThousand),
             PRICE.lenientOptionalFieldOf("fetchPerThousand", BigDecimal.valueOf(5)).forGetter(SearchPricingConfig::fetchPerThousand)
     ).apply(i, SearchPricingConfig::new));
-    public static final ConfigInstance<SearchPricingConfig> INSTANCE = ConfigInstance.of("system-search-pricing.json", CODEC,
-            new SearchPricingConfig(BigDecimal.valueOf(5), BigDecimal.valueOf(5)));
+    public static final ConfigInstance<SearchPricingConfig> INSTANCE = ConfigInstance.of("system-search-pricing.json", CODEC, new SearchPricingConfig(BigDecimal.valueOf(5), BigDecimal.valueOf(5)));
 
     public long nanoYuan(boolean fetch) {
-        return (fetch ? this.fetchPerThousand : this.searchPerThousand).movePointRight(6)
-                .setScale(0, RoundingMode.HALF_UP).longValueExact();
+        return (fetch ? this.fetchPerThousand : this.searchPerThousand).movePointRight(6).setScale(0, RoundingMode.HALF_UP).longValueExact();
     }
 }

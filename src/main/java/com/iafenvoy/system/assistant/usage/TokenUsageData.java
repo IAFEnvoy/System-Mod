@@ -7,13 +7,12 @@ import com.iafenvoy.system.data.usage.TokenUsage;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.core.UUIDUtil;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.Tag;
-import net.minecraft.world.level.saveddata.SavedData;
-import org.jetbrains.annotations.NotNull;
+import net.minecraft.core.HolderLookup;
 
 import java.util.*;
 
@@ -25,24 +24,24 @@ public final class TokenUsageData extends SavedData {
     private static final Codec<TokenUsageData> CODEC = RecordCodecBuilder.create(i -> i.group(
             PlayerUsage.CODEC.listOf().optionalFieldOf("players", List.of()).forGetter(TokenUsageData::entries)
     ).apply(i, TokenUsageData::new));
-    // 1.21.1 uses this literal filename; a namespaced resource ID contains a colon invalid on Windows.
-    public static final String FILE_ID = SystemMod.MOD_ID + "_token_usage";
-    public static final Factory<TokenUsageData> FACTORY = new Factory<>(TokenUsageData::new,
-            (tag, registries) -> CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), tag).getOrThrow());
-    private final Map<UUID, PlayerUsage> players = new HashMap<>();
-
-    public TokenUsageData() {
-    }
 
     @Override
-    public @NotNull CompoundTag save(@NotNull CompoundTag tag, HolderLookup.Provider registries) {
-        // The codec produces an opaque Tag; SavedData hands back the CompoundTag it was given.
-        Tag encoded = CODEC.encodeStart(registries.createSerializationContext(NbtOps.INSTANCE), this)
-                .getOrThrow(error -> new IllegalStateException("Failed to save token usage: " + error));
-        if (!(encoded instanceof CompoundTag compound))
-            throw new IllegalStateException("Token usage did not encode to a compound tag");
-        tag.merge(compound);
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+        CODEC.encodeStart(NbtOps.INSTANCE, this).result()
+                .filter(CompoundTag.class::isInstance).map(CompoundTag.class::cast)
+                .ifPresent(tag::merge);
         return tag;
+    }
+
+    public static final String ID = SystemMod.MOD_ID + ":token_usage";
+    public static final SavedData.Factory<TokenUsageData> TYPE = new SavedData.Factory<>(TokenUsageData::new, TokenUsageData::load, null);
+    private final Map<UUID, PlayerUsage> players = new HashMap<>();
+
+    private static TokenUsageData load(CompoundTag tag, HolderLookup.Provider registries) {
+        return CODEC.parse(NbtOps.INSTANCE, tag).result().orElseGet(TokenUsageData::new);
+    }
+
+    public TokenUsageData() {
     }
 
     private TokenUsageData(List<PlayerUsage> entries) {

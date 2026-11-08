@@ -1,13 +1,16 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import com.iafenvoy.system.util.LegacyText;
+import com.mojang.serialization.JsonOps;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.QuestObjectBase;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.quest.translation.TranslationKey;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
@@ -53,9 +56,9 @@ final class FtbQuestText {
     private static Component parse(HolderLookup.Provider registries, String raw) {
         String text = raw.strip();
         if (text.startsWith("{") || text.startsWith("[") || text.startsWith("\"")) try {
-            // FTB's TextUtils parser calls client-only classes; vanilla's lenient parser is server-safe.
-            Component component = Component.Serializer.fromJsonLenient(text, registries);
-            if (component != null) return LegacyText.component(component);
+            // Decode with vanilla's server-safe codec instead of FTB's client text helper.
+            return ComponentSerialization.CODEC.parse(registries.createSerializationContext(JsonOps.INSTANCE),
+                    JsonParser.parseString(text)).result().map(LegacyText::component).orElseGet(() -> LegacyText.component(Component.literal(raw)));
         } catch (JsonParseException ignored) { /* Non-JSON quest text remains literal. */ }
         return LegacyText.component(Component.literal(raw));
     }

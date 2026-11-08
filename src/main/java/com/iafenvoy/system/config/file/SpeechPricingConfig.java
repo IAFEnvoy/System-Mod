@@ -12,7 +12,7 @@ import com.mojang.serialization.codecs.PrimitiveCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.StringRepresentable;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 
 import java.math.BigDecimal;
@@ -26,7 +26,7 @@ import java.util.*;
 public final class SpeechPricingConfig {
     public static final String FILE_NAME = "system-speech-pricing.json";
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final Codec<BigDecimal> PRICE = MiscCodecs.checked(Codec.withAlternative(new PrimitiveCodec<BigDecimal>() {
+    private static final Codec<BigDecimal> PRICE = MiscCodecs.checked(Codec.withAlternative(new PrimitiveCodec<>() {
         @Override
         public <T> DataResult<BigDecimal> read(DynamicOps<T> ops, T input) {
             return ops.getNumberValue(input).flatMap(value -> MiscCodecs.mapOrError(() -> new BigDecimal(value.toString())));
@@ -130,7 +130,7 @@ public final class SpeechPricingConfig {
                 () -> valueOf(value.toUpperCase(Locale.ROOT))), Unit::getSerializedName);
 
         @Override
-        public @NotNull String getSerializedName() {
+        public @NonNull String getSerializedName() {
             return this.name().toLowerCase(Locale.ROOT);
         }
     }

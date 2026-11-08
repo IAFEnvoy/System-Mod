@@ -1,17 +1,19 @@
 package com.iafenvoy.system.agent.response;
 
-import com.iafenvoy.system.agent.AgentResponse;
 import com.iafenvoy.system.agent.AgentResult;
-import com.mojang.serialization.MapCodec;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 
 /**
  * Notifications arrive independently of client requests.
  */
 public record NoticeResponse(AgentResult result) implements AgentResponse {
-    public static final MapCodec<NoticeResponse> CODEC = AgentResult.CODEC.fieldOf("result").xmap(NoticeResponse::new, NoticeResponse::result);
+    public static final StreamCodec<RegistryFriendlyByteBuf, NoticeResponse> STREAM_CODEC =
+            ByteBufCodecs.fromCodecWithRegistriesTrusted(AgentResult.CODEC).map(NoticeResponse::new, NoticeResponse::result);
 
     @Override
-    public MapCodec<NoticeResponse> codec() {
-        return CODEC;
+    public StreamCodec<RegistryFriendlyByteBuf, NoticeResponse> streamCodec() {
+        return STREAM_CODEC;
     }
 }

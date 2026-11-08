@@ -1,11 +1,13 @@
 package com.iafenvoy.system.assistant.usage;
 
-import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
+import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.data.usage.TokenUsageSnapshot;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
+import com.iafenvoy.system.search.SearchGateway;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -26,12 +28,11 @@ public final class AssistantUsage {
     private final Map<UUID, String> usageNames = new ConcurrentHashMap<>();
     private final Map<UUID, Long> lastUsageRequest = new HashMap<>();
 
-    public AssistantUsage(MinecraftServer server, AgentEngine engine) {
-        // 1.21.1 stores saved data on the overworld's storage, keyed by factory and file name.
-        this.tokenUsage = server.overworld().getDataStorage().computeIfAbsent(TokenUsageData.FACTORY, TokenUsageData.FILE_ID);
+    public AssistantUsage(MinecraftServer server, AgentEngine engine, SearchGateway search) {
+        this.tokenUsage = server.overworld().getDataStorage().computeIfAbsent(TokenUsageData.TYPE, TokenUsageData.ID);
         engine.onModelUsage((player, usage, successful, time) -> this.pendingUsage.add(new UsageRecord(
                 player, this.usageNames.getOrDefault(player, player.toString()), usage, successful, time)));
-        engine.search().onUsage((player, fetch, successful, billable, unknown, nanoYuan, time) -> this.pendingSearch.add(new SearchRecord(
+        search.onUsage((player, fetch, successful, billable, unknown, nanoYuan, time) -> this.pendingSearch.add(new SearchRecord(
                 player, this.usageNames.getOrDefault(player, player.toString()), fetch, successful, billable, unknown, nanoYuan, time)));
     }
 
@@ -61,9 +62,9 @@ public final class AssistantUsage {
 
     private TokenUsageSnapshot usageSnapshot(ServerPlayer player, boolean all, int offset) {
         boolean canViewAll = player.hasPermissions(2);
-        if (all && !canViewAll) throw new AgentException("NOT_AUTHORIZED");
+        if (all && !canViewAll) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         if (offset < 0 || offset > Integer.MAX_VALUE - TokenUsageData.PAGE_SIZE)
-            throw new AgentException("INVALID_INPUT");
+            throw new AgentException(AgentFailure.INVALID_INPUT);
         this.drain();
         return this.tokenUsage.snapshot(player.getUUID(), player.getGameProfile().getName(), all, canViewAll, offset);
     }
@@ -79,7 +80,7 @@ public final class AssistantUsage {
     private void requestUsage(ServerPlayer player, TokenUsageRequestC2SPayload request, boolean open) {
         long now = System.currentTimeMillis();
         if (now - this.lastUsageRequest.getOrDefault(player.getUUID(), 0L) < 350) {
-            ServerNetworkHandler.replyUsageError(player, request.id(), "RATE_LIMITED", open);
+            ServerNetworkHandler.replyUsageError(player, request.id(), AgentFailure.RATE_LIMITED, open);
             return;
         }
         this.lastUsageRequest.put(player.getUUID(), now);

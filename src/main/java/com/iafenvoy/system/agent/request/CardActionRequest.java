@@ -1,23 +1,21 @@
 package com.iafenvoy.system.agent.request;
 
-import com.iafenvoy.system.agent.AgentRequest;
-import com.iafenvoy.system.card.CardAction;
-import com.iafenvoy.system.card.CardRef;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.iafenvoy.system.data.card.CardReference;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 
 /**
  * The authenticated connection supplies identity; source is presentation context only.
  */
-public record CardActionRequest(CardRef source, CardAction.Server action) implements AgentRequest {
-    public static final MapCodec<CardActionRequest> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            CardRef.CODEC.fieldOf("source").forGetter(CardActionRequest::source),
-            CardAction.Server.CODEC.fieldOf("action").forGetter(CardActionRequest::action)
-    ).apply(i, CardActionRequest::new));
+public record CardActionRequest(CardReference source, String value) implements AgentRequest {
+    public static final StreamCodec<ByteBuf, CardActionRequest> STREAM_CODEC = StreamCodec.composite(
+            CardReference.STREAM_CODEC, CardActionRequest::source,
+            ByteBufCodecs.STRING_UTF8, CardActionRequest::value, CardActionRequest::new);
 
     @Override
-    public MapCodec<CardActionRequest> codec() {
-        return CODEC;
+    public StreamCodec<ByteBuf, CardActionRequest> streamCodec() {
+        return STREAM_CODEC;
     }
 
     @Override

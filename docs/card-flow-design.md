@@ -4,7 +4,7 @@
 
 ## 工作流程与边界
 
-**服务端处理数据 → CardData 快照发客户端 → buildCard().build() → CardView → JSON 渲染 → 点击按钮 → 本地执行或发包到服务端。**
+**服务端处理数据 → CardData 快照发客户端 → buildCard() → 客户端 CardBuildEvent 补参数 → build() → CardView → JSON 渲染 → 点击按钮 → 本地执行或发包到服务端。**
 
 | 层 | 职责 | 主要入口 |
 | --- | --- | --- |
@@ -21,8 +21,10 @@ sequenceDiagram
     participant D as CardData
     participant V as JSON 与通知宿主
     S-->>C: CardUpdate + 业务快照
-    C->>D: buildCard().build()
-    D-->>C: CardView
+    C->>D: buildCard()
+    D-->>C: CardBuilder
+    C->>C: 发布 CardBuildEvent 补充参数
+    C->>C: builder.build() 冻结为 CardView
     C->>V: 模板、参数、按钮、播报
     V-->>C: 鼠标/数字/语音选择
     alt Local
@@ -36,9 +38,9 @@ sequenceDiagram
 
 ## 一次描述，一次构建
 
-[CardData](../src/main/java/com/iafenvoy/system/card/CardData.java) 提供 codec() 与 buildCard()。各实现通过 [SystemCardDataTypes](../src/main/java/com/iafenvoy/system/registry/SystemCardDataTypes.java) 注册 MapCodec，根 Codec 按 type 分派；不再提供独立 template/buildContext，也不登记渲染工厂或 ClientCardBindings。
+[CardData](../src/main/java/com/iafenvoy/system/data/card/CardData.java) 提供 codec() 与 buildCard()。各实现通过 [SystemCardDataTypes](../src/main/java/com/iafenvoy/system/registry/SystemCardDataTypes.java) 注册 MapCodec，根 Codec 按 type 分派；不再提供独立 template/buildContext，也不登记渲染工厂或 ClientCardBindings。
 
-[CardBuilder](../src/main/java/com/iafenvoy/system/card/CardBuilder.java) 一处设置模板、summary、可选标题、平铺参数、按钮和 SpeechContent。build 复制为 [CardView](../src/main/java/com/iafenvoy/system/card/CardView.java)。CardContext 仍是 states、parameters、callbacks 三表，整张卡片一份；公共构建不接收 Runnable。客户端 CardPresentation 解析 Component/CardText，补模式、标签和版本受控 callback 后渲染。
+[CardBuilder](../src/main/java/com/iafenvoy/system/data/card/CardBuilder.java) 一处设置模板、summary、可选标题、平铺参数、按钮和 SpeechContent。客户端 ClientCards 在 build 前向 NeoForge.EVENT_BUS 发布 CardBuildEvent，让扩展按 CardData 类型向已有 Builder 补充参数；公共契约保持纯构建。build 复制为 [CardView](../src/main/java/com/iafenvoy/system/data/card/CardView.java)。CardContext 仍是 states、parameters、callbacks 三表，整张卡片一份；公共构建不接收 Runnable。客户端 CardPresentation 解析 Component/CardText，补模式、标签和版本受控 callback 后渲染。事件生命周期与监听实例见[构建事件](cards.md#构建事件给现有卡片补充参数)。
 
 普通消息沿用同一数据流：**仅一个纯文本节点、没有按钮、没有其他可见内容**时省去卡片外框；带按钮的文字仍是卡片。容器、物品、分割线、多节点等继续作为卡片。该约定由通用渲染入口判定。
 
@@ -60,18 +62,18 @@ sequenceDiagram
 
 ## 明确按钮，不按翻译键猜动作
 
-CardAction 只有 Local 和 Server，均描述 `ResourceLocation` + Map<String,String>。CardButton 另含卡片内 id、labelKey、BODY/FOOTER、CLOSE/WAIT/REPLACE/PUSH。
+CardAction 分为 Local(Identifier + Map<String,String>)、Server(String value)、Url(String value)。CardButton 另含卡片内 id、labelKey、BODY/FOOTER、CLOSE/WAIT/REPLACE/PUSH。
 
 - Local 通过客户端处理器 Map 执行，模块可用 ClientModuleContext.localAction 扩展。打开页面后按正常页面入口加载数据。
-- Server 发 CardActionRequest，携带来源 CardRef 和动作描述；玩家从连接取得，不接受客户端指定身份。动作 ID 复用 SystemActionTypes。
+- Server 发 CardActionRequest，只携带来源 CardRef 和不透明 value 字符串；玩家从连接取得，不接受客户端指定身份。先在游戏主线程发布 CardButtonEvent，未处理时按 CardEventValue 解码再复用 SystemActionTypes。
 - ModuleRouting.button 声明字符串参数转换器；ModuleRegistry 解码并用原参数 Codec 校验，再进入相同的 AgentModule/Tool 工作流。按钮是明确操作，不走语义识别或模型选择。
 - source 只负责定位和版本，不能替代所有权、模块权限、Cost、订单、领取引用与幂等校验。
 
 CLOSE 停止旧语音/录音并关闭通知；WAIT 保留通知并在等待期间禁用服务端操作。REPLACE 是服务端按钮的默认行为：等待直接回复后，用回复的新 SHOW 卡片替换来源通知的展示位置。切换复用淡出/淡入、停止旧语音与录音，面板保持展开；其他通知继续按原顺序等待。这是客户端展示调度，不改变 CardUpdate.REPLACE 按同一 ID 静默更新的协议语义。通知不设可见时长，播报结束不推进队列；确认、关闭、明确按钮操作或服务端更新才结束或替换当前通知。收到失败、请求超时或无卡片回复也能解除等待。鼠标、数字和语音共用 CardController，旧通知版本的语音结果不能操作新消息。
 
-JSON 只安排已声明按钮，不得定义动作、指令或脚本。BODY 按钮进入正文滚动列表，FOOTER 由 HUD 代码生成，始终在业务按钮之后补本地确定。简约模式保留文字编号选择。
+JSON 的 button 可声明 link / return-val / local，后者只引用代码绑定的回调；客户端不执行服务端指令或脚本。BODY 按钮进入正文滚动列表，FOOTER 由 HUD 代码生成，始终在业务按钮之后补本地确定。简约模式保留文字编号选择。
 
-PUSH 与 REPLACE 共用来源请求关联，但收到可显示回复后将来源通知存入本地返回栈；任务列表查看详情使用该行为。通知正文的“返回列表”恢复来源卡片及其 `CardPageState`，不发包、不推进队列；底部确定结束整个窗口。actions 节点的 `page_size=10` 在完整模式和通知中本地截取任务行，独立绘制上 / 下页控件，分页不生成 CardAction 或 AgentResult。完整模式按卡片 UUID 保留独立页码，聊天重绘和窗口缩放不会复位；通知保留自身窗口的页码，两者互不影响。状态与 DOM 属于客户端，服务端仍提供完整简表并负责详情查询、权限和业务操作。独立完成通知继续逐条排队；新解锁一项直接发详情，多项发列表。
+PUSH 与 REPLACE 共用来源请求关联，但收到可显示回复后将来源通知存入本地返回栈；任务列表查看详情使用该行为。通知正文的“返回列表”恢复来源卡片及其 `CardUiState`，不发包、不推进队列；底部确定结束整个窗口。grid / flex 使用共用 CardPagination 在本地截取当前页，独立绘制上 / 下页控件，分页不生成 CardAction 或 AgentResult。完整模式按卡片 UUID 保留独立页码，聊天重绘和窗口缩放不会复位；通知保留自身窗口的页码，两者互不影响。状态与 DOM 属于客户端，服务端仍提供完整简表并负责详情查询、权限和业务操作。独立完成通知继续逐条排队；新解锁一项直接发详情，多项发列表。
 
 ## ID、版本与请求生命周期
 
@@ -107,9 +109,9 @@ FTB 的 § 在适配入口解析为 Component，客户端安全转为格式片�
 
 ## AgentResult 与 BuiltinTools
 
-AgentResult 继承 Saturn ResultWithData<List<CardUpdate>>。Status 为 SUCCEEDED、FAILED、PARTIALLY_SUCCEEDED，Codec 使用稳定小写字符串；部分成功仍带 Failure，不能写成功缓存。投递模式与执行状态分开。便捷 ok/error 为普通文字创建 TextCardData，显式零更新回复不额外生成消息。
+AgentResult 不再继承 Saturn 的结果类型（`Result<T>` 在 1.2 是 sealed，只允许 Saturn 自己的成功/失败记录实现），改为自己持有状态并由 Status 派生 `isSuccess()` / `isFailure()`。Status 为 SUCCEEDED、FAILED、PARTIALLY_SUCCEEDED，Codec 使用稳定小写字符串；部分成功算失败，不能写成功缓存。投递模式与执行状态分开。便捷 ok/error 为普通文字创建 TextCardData，显式零更新回复不额外生成消息。
 
-[BuiltinTools](../src/main/java/com/iafenvoy/system/agent/builtin/tool/BuiltinTools.java) 仍是工具契约清单，每个常量为 ToolRegistry.Type<I,O>，声明工具 ID、输入 MapCodec 和输出 Codec。实际操作在 Handler，模块用 List 组合并复用同一 Tool 实例；ExecutionContext 统一检查权限、预算、写入与幂等回执。输入 Codec 用于参数指纹，输出 Codec 用于恢复结果。它不负责布局、消息按钮或客户端注册。
+[BuiltinTools](../src/main/java/com/iafenvoy/system/module/builtin/BuiltinTools.java) 仍是工具契约清单，每个常量为 ToolRegistry.Type<I,O>，声明工具 ID、输入 MapCodec 和输出 Codec。实际操作在 Handler，模块用 List 组合并复用同一 Tool 实例；ExecutionContext 统一检查权限、预算、写入与幂等回执。输入 Codec 用于参数指纹，输出 Codec 用于恢复结果。它不负责布局、消息按钮或客户端注册。
 
 ## 校验范围
 

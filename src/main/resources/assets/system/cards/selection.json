@@ -1,8 +1,40 @@
 {
   "body": [
     {
-      "type": "system:actions",
-      "actions": "{{result_actions}}"
+      "type": "system:title",
+      "translate": "system.ui.card_title_selection"
+    },
+    {
+      "type": "system:text",
+      "text": "{{summary}}",
+      "when": "summary"
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

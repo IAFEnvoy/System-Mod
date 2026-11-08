@@ -1,12 +1,13 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
-import com.iafenvoy.system.agent.builtin.input.QuestGuideInput;
-import com.iafenvoy.system.agent.builtin.output.QuestGuideOutput;
-import com.iafenvoy.system.agent.builtin.tool.BuiltinTools;
-import com.iafenvoy.system.agent.database.KnowledgeIndex;
+import com.iafenvoy.system.agent.AgentFailure;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.database.KnowledgeIndex;
+import com.iafenvoy.system.data.input.QuestGuideInput;
+import com.iafenvoy.system.data.output.QuestGuideOutput;
+import com.iafenvoy.system.module.builtin.BuiltinTools;
 import com.iafenvoy.system.util.LegacyText;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
@@ -27,7 +28,8 @@ final class FtbQuestGuideTool implements ToolRegistry.Handler<QuestGuideInput, Q
     }
 
     ToolRegistry.Tool<QuestGuideInput, QuestGuideOutput> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.QUEST_GUIDE, false, true, false, this);
+        return new ToolRegistry.Tool<>(BuiltinTools.QUEST_GUIDE, false, true, false, this)
+                .forReasoning("Search authorized local quest manuals and return source passages. Never submits or claims a quest.");
     }
 
     private record Snapshot(FtbQuestKnowledge.Snapshot knowledge, UUID team, Set<String> allowed) {
@@ -41,11 +43,12 @@ final class FtbQuestGuideTool implements ToolRegistry.Handler<QuestGuideInput, Q
     }
 
     private QuestGuideOutput result(ServerPlayer player, QuestGuideInput input, Snapshot snapshot, List<KnowledgeIndex.Hit> hits) {
-        ServerQuestFile file = ServerQuestFile.getInstance().orElseThrow(() -> new AgentException("CAPABILITY_UNAVAILABLE"));
-        TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("CAPABILITY_UNAVAILABLE"));
+        if (ServerQuestFile.getInstance().isEmpty()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+        ServerQuestFile file = ServerQuestFile.getInstance().orElseThrow();
+        TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE));
         if (file != snapshot.knowledge().file() || !this.access.knowledge.current(snapshot.knowledge()) || !team.getTeamId().equals(snapshot.team())
                 || !player.clientInformation().language().equals(snapshot.knowledge().language()))
-            throw new AgentException("CANCELLED");
+            throw new AgentException(AgentFailure.CANCELLED);
         List<QuestGuideOutput.Entry> entries = new ArrayList<>();
         for (KnowledgeIndex.Hit hit : hits) {
             KnowledgeIndex.Document document = hit.document();
@@ -61,8 +64,9 @@ final class FtbQuestGuideTool implements ToolRegistry.Handler<QuestGuideInput, Q
     }
 
     private Snapshot snapshot(ServerPlayer player) {
-        ServerQuestFile file = ServerQuestFile.getInstance().orElseThrow(() -> new AgentException("CAPABILITY_UNAVAILABLE"));
-        TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException("CAPABILITY_UNAVAILABLE"));
+        if (ServerQuestFile.getInstance().isEmpty()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+        ServerQuestFile file = ServerQuestFile.getInstance().orElseThrow();
+        TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE));
         FtbQuestKnowledge.Snapshot knowledge = this.access.knowledge.snapshot(file, player.clientInformation().language());
         Set<String> allowed = new HashSet<>();
         for (KnowledgeIndex.Document document : knowledge.documents()) {

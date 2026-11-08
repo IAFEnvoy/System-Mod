@@ -3,16 +3,18 @@ package com.iafenvoy.system.module;
 import com.iafenvoy.saturn.data.storage.DataStorageContext;
 import com.iafenvoy.saturn.util.formula.FormulaContext;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.AgentModule;
-import com.iafenvoy.system.agent.store.AgentStore;
-import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.data.SystemModule;
+import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.storage.AgentStore;
+import com.iafenvoy.system.data.module.SystemModule;
+import com.iafenvoy.system.data.store.PlayerData;
+import com.iafenvoy.system.event.ModuleContextEvent;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.common.NeoForge;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -28,54 +30,75 @@ public final class ModuleManager implements AutoCloseable {
     private final AgentEngine engine;
     private final ModuleAccess access;
     private final Map<ResourceLocation, Installed> installed = new LinkedHashMap<>();
+    private final List<PlayerModule> runtimes = new ArrayList<>();
     private final Map<UUID, PlayerSession> players = new HashMap<>();
     private final Map<UUID, Set<ResourceLocation>> active = new ConcurrentHashMap<>();
     private final Set<UUID> flushing = ConcurrentHashMap.newKeySet();
-    private Consumer<ServerPlayer> changed = unused -> {
+    private final Set<UUID> flushPending = ConcurrentHashMap.newKeySet();
+    private Consumer<ServerPlayer> changed = unused1 -> {
     };
     private boolean closed;
 
     public ModuleManager(MinecraftServer server, ModuleContext context) {
         this.server = server;
         this.engine = context.engine();
-        Map<ResourceLocation, SystemModule> modules = new LinkedHashMap<>();
-        context.modules().keySet().stream().sorted().forEach(id -> {
-            SystemModule definition = context.modules().get(id);
-            if (definition != null && definition.available()) modules.put(id, definition);
-        });
-        Map<ResourceLocation, ModuleContext> contexts = new LinkedHashMap<>();
-        modules.keySet().forEach(id -> contexts.put(id, context.forModule(id)));
-        // Tool modules export operations before workflows resolve their typed dependencies.
-        modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
-            if (!(module instanceof ToolModule tools)) return;
-            if (module instanceof WorkflowModule)
-                throw new IllegalArgumentException("Tool modules cannot expose workflows");
-            this.engine.tools().registerAll(id, tools.tools(contexts.get(id)));
-        }));
-        // Configured definitions create fresh workflows before any per-server runtime is constructed.
-        modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
-            if (module instanceof CatalogModule<?> catalog) this.engine.registerCatalog(id, catalog);
-            if (module instanceof WorkflowModule workflows)
-                for (AgentModule<?> workflow : workflows.workflows(contexts.get(id)))
-                    this.engine.registerModule(id, workflow);
-        }));
-        Set<ServerModule> initialized = Collections.newSetFromMap(new IdentityHashMap<>());
-        modules.forEach((id, definition) -> {
-            definition.server().filter(initialized::add).ifPresent(module -> module.installed(contexts.get(id)));
-            PlayerModule runtime = definition.server().map(module -> module.runtime(contexts.get(id))).orElseGet(() -> new PlayerModule() {
+        try {
+            NeoForge.EVENT_BUS.post(new ModuleContextEvent(context));
+            Map<ResourceLocation, SystemModule> modules = new LinkedHashMap<>();
+            context.modules().keySet().stream().sorted().forEach(id -> {
+                SystemModule definition = context.modules().get(id);
+                if (definition != null && definition.available()) modules.put(id, definition);
             });
-            List<ModuleStorage<?>> storages = definition.server().map(ServerModule::storages).orElse(List.of());
-            this.installed.put(id, new Installed(id, definition, runtime, storages));
-        });
-        this.access = new ModuleAccess(server, this.engine, List.copyOf(this.installed.keySet()));
-        this.access.onChange(player -> {
-            PlayerSession session = this.players.get(player.getUUID());
-            if (session != null && session.loaded) this.reconcile(session);
-        });
+            Map<ResourceLocation, ModuleContext> contexts = new LinkedHashMap<>();
+            modules.keySet().forEach(id -> contexts.put(id, context.forModule(id)));
+            // Tool modules export operations before workflows resolve their typed dependencies.
+            modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
+                if (!(module instanceof ToolModule tools)) return;
+                if (module instanceof WorkflowModule)
+                    throw new IllegalArgumentException("Tool modules cannot expose workflows");
+                this.engine.tools().registerAll(id, tools.tools(contexts.get(id)));
+            }));
+            // Workflows may resolve shared services before their lifecycle hooks are installed.
+            modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
+                if (module instanceof CatalogModule<?> catalog)
+                    context.get(ContextTypes.CATALOGS).register(id, catalog);
+                if (module instanceof WorkflowModule workflows)
+                    for (AgentModule<?> workflow : workflows.workflows(contexts.get(id)))
+                        this.engine.registerModule(id, workflow);
+            }));
+            Set<ServerModule> initialized = Collections.newSetFromMap(new IdentityHashMap<>());
+            modules.forEach((id, definition) -> {
+                definition.server().filter(initialized::add).ifPresent(module -> module.installed(contexts.get(id)));
+                PlayerModule runtime = definition.server().map(module -> module.runtime(contexts.get(id))).orElseGet(() -> new PlayerModule() {
+                });
+                this.remember(runtime);
+                List<ModuleStorage<?>> storages = definition.server().map(ServerModule::storages).orElse(List.of());
+                this.installed.put(id, new Installed(id, definition, runtime, storages));
+            });
+            context.sharedRuntimes().forEach(this::remember);
+            this.access = new ModuleAccess(server, this.engine, List.copyOf(this.installed.keySet()));
+            this.access.onChange(player -> {
+                PlayerSession session = this.players.get(player.getUUID());
+                if (session != null && session.loaded) this.reconcile(session);
+            });
+        } catch (RuntimeException | LinkageError error) {
+            // Include shared services created by a workflow even if installation failed before runtime().
+            context.sharedRuntimes().forEach(this::remember);
+            this.closeRuntimes();
+            throw error;
+        }
+    }
+
+    private void remember(PlayerModule runtime) {
+        if (this.runtimes.stream().noneMatch(runtime::equals)) this.runtimes.add(runtime);
+    }
+
+    public <T extends PlayerModule> Optional<T> runtime(Class<T> type) {
+        return this.closed ? Optional.empty() : this.runtimes.stream().filter(type::isInstance).map(type::cast).findFirst();
     }
 
     public void validate() {
-        this.installed.values().forEach(module -> module.runtime.validate());
+        this.runtimes.forEach(PlayerModule::validate);
     }
 
     public void onChange(Consumer<ServerPlayer> changed) {
@@ -210,7 +233,7 @@ public final class ModuleManager implements AutoCloseable {
                 activation.session.initialize(data);
             }
             return null;
-        })).whenComplete((unused1, error) -> this.server.execute(() -> {
+        })).whenComplete((unused2, error) -> this.server.execute(() -> {
             if (!this.current(player)) return;
             for (Activation activation : additions) {
                 ResourceLocation id = activation.module.id();
@@ -283,11 +306,11 @@ public final class ModuleManager implements AutoCloseable {
         this.checkThread();
         if (this.closed) return;
         this.access.tick();
-        for (Installed module : this.installed.values()) {
+        for (PlayerModule runtime : this.runtimes) {
             try {
-                module.runtime.tick();
+                runtime.tick();
             } catch (RuntimeException error) {
-                SystemMod.LOGGER.warn("Module maintenance failed for {}", module.id(), error);
+                SystemMod.LOGGER.warn("Module maintenance failed for {}", runtime.getClass().getSimpleName(), error);
             }
         }
         for (PlayerSession player : List.copyOf(this.players.values())) {
@@ -364,16 +387,22 @@ public final class ModuleManager implements AutoCloseable {
     }
 
     private void flush(UUID player) {
-        if (!this.flushing.add(player)) return;
+        if (!this.flushing.add(player)) {
+            // Never drop a later request: an in-flight flush may have read the cache before these changes.
+            this.flushPending.add(player);
+            return;
+        }
         long incarnation = this.engine.incarnation(player);
         AgentStore store = this.engine.playerStore(player);
         this.engine.maintenance(() -> {
             store.flush(player);
             return null;
-        }).whenComplete((unused1, error) -> {
+        }).whenComplete((unused3, error) -> {
             this.flushing.remove(player);
             if (error != null && this.engine.current(player, incarnation))
                 SystemMod.LOGGER.warn("Unable to flush player module data for {}", player, error);
+            // The closed manager has already handed pending data to the store; the store flushes on close.
+            if (!this.closed && this.flushPending.remove(player)) this.flush(player);
         });
     }
 
@@ -398,16 +427,24 @@ public final class ModuleManager implements AutoCloseable {
         this.checkThread();
         if (this.closed) return;
         this.closed = true;
-        List.copyOf(this.players.keySet()).forEach(this::logout);
-        List<Installed> reverse = new ArrayList<>(this.installed.values());
+        try {
+            List.copyOf(this.players.keySet()).forEach(this::logout);
+        } finally {
+            this.closeRuntimes();
+        }
+    }
+
+    private void closeRuntimes() {
+        List<PlayerModule> reverse = new ArrayList<>(this.runtimes);
         Collections.reverse(reverse);
-        for (Installed module : reverse) {
+        for (PlayerModule runtime : reverse) {
             try {
-                module.runtime.close();
-            } catch (RuntimeException error) {
-                SystemMod.LOGGER.warn("Unable to close module runtime {}", module.id(), error);
+                runtime.close();
+            } catch (RuntimeException | LinkageError error) {
+                SystemMod.LOGGER.warn("Unable to close module runtime {}", runtime.getClass().getSimpleName(), error);
             }
         }
+        this.runtimes.clear();
     }
 
     private record Installed(ResourceLocation id, SystemModule definition, PlayerModule runtime,

@@ -6,7 +6,7 @@ import com.iafenvoy.system.assistant.AssistantServer;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.Optional;
 
@@ -14,12 +14,12 @@ public record HasSystemCondition(Optional<ResourceLocation> system) implements E
     public static final MapCodec<HasSystemCondition> CODEC = ResourceLocation.CODEC.optionalFieldOf("system").xmap(HasSystemCondition::new, HasSystemCondition::system);
 
     @Override
-    public @NotNull MapCodec<HasSystemCondition> codec() {
+    public @NonNull MapCodec<HasSystemCondition> codec() {
         return CODEC;
     }
 
     @Override
-    public boolean test(@NotNull EntityConditionContext context) {
+    public boolean test(EntityConditionContext context) {
         if (!(context.entity() instanceof ServerPlayer player)) return false;
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
         return runtime != null && runtime.moduleManager().hasSystem(player.getUUID())

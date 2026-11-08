@@ -1,8 +1,8 @@
 package com.iafenvoy.system.module.client;
 
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.card.CardRef;
 import com.iafenvoy.system.command.AssistantCommandSource;
+import com.iafenvoy.system.data.card.CardReference;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import net.minecraft.resources.ResourceLocation;
 
@@ -45,7 +45,7 @@ public record ClientModuleContext(ClientModuleBindingsCache bindings, ResourceLo
         this.bindings.workspace(new ClientModuleBindingsCache.Workspace(this, page, navigation, label, group, bind));
     }
 
-    public void localAction(ResourceLocation action, BiConsumer<CardRef, Map<String, String>> handler) {
+    public void localAction(ResourceLocation action, BiConsumer<CardReference, Map<String, String>> handler) {
         this.bindings.localAction(action, (source, arguments) -> {
             if (this.available()) handler.accept(source, arguments);
         });

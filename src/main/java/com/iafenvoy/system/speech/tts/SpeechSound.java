@@ -12,8 +12,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.valueproviders.ConstantFloat;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import javax.sound.sampled.AudioFormat;
 import java.nio.ByteBuffer;
@@ -66,7 +66,7 @@ final class SpeechSound extends AbstractSoundInstance {
     }
 
     @Override
-    public @NotNull WeighedSoundEvents resolve(@NotNull SoundManager manager) {
+    public WeighedSoundEvents resolve(@NonNull SoundManager manager) {
         this.sound = new Sound(this.location, ConstantFloat.of(1), ConstantFloat.of(1), 1, Sound.Type.FILE, true, false, 16);
         WeighedSoundEvents event = new WeighedSoundEvents(this.location, null);
         event.addSound(this.sound);
@@ -74,12 +74,12 @@ final class SpeechSound extends AbstractSoundInstance {
     }
 
     @Override
-    public @NotNull CompletableFuture<AudioStream> getStream(@NotNull SoundBufferLibrary buffers, @NotNull Sound sound, boolean looping) {
+    public @NonNull CompletableFuture<AudioStream> getStream(@NonNull SoundBufferLibrary buffers, @NonNull Sound sound, boolean looping) {
         return CompletableFuture.completedFuture(new AudioStream() {
             private final SpeechAudio.Cursor cursor = SpeechSound.this.audio.cursor();
 
             @Override
-            public @NotNull AudioFormat getFormat() {
+            public @NonNull AudioFormat getFormat() {
                 return SpeechSound.this.format();
             }
 

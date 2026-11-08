@@ -1,0 +1,20 @@
+{
+  "chapter.5A71040000000000.title": "04 · Supply Turn-ins",
+  "quest.5A71040001000000.title": "Turn In 8 Cobblestone",
+  "quest.5A71040001000000.quest_desc": [
+    "Submit explicitly; the cobblestone is consumed."
+  ],
+  "quest.5A71040002000000.title": "Turn In 4 Apples",
+  "quest.5A71040003000000.title": "Mixed Checklist: Detect, Consume and Check",
+  "quest.5A71040003000000.quest_desc": [
+    "Torches are detected, logs are consumed on submission, and the checklist must also be checked off."
+  ],
+  "quest.5A71040004000000.title": "Prepare Supplies in Order",
+  "quest.5A71040004000000.quest_desc": [
+    "Turn in cobblestone first, then check off the final step."
+  ],
+  "quest.5A71040005000000.title": "Turn In Through FTB Only",
+  "quest.5A71040005000000.quest_desc": [
+    "This target is restricted to the native FTB task screen; the assistant cannot submit it."
+  ]
+}

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.routing;
 
-import com.iafenvoy.system.agent.AgentAction;
-import com.iafenvoy.system.agent.ExecutionContext;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.config.file.SemanticConfig;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
@@ -92,28 +92,28 @@ public final class SemanticRouter implements AutoCloseable {
             if (input != null)
                 return new Attempt(new RouteDecision(input, RouteSource.ROUTE_CACHE), List.of(), "CACHE_HIT");
         }
-        SemanticIndex.Ranking ranking = current.search(text, language, context::available);
+        LexicalIndex.Ranking<RoutingProfile.Bound> ranking = current.search(text, language, context::available);
         context.ensureMemoryCurrent();
-        SemanticIndex.Match best = ranking.first();
+        LexicalIndex.Match<RoutingProfile.Bound> best = ranking.first();
         if (best == null) return Attempt.fallback("NO_CANDIDATE");
         List<ModelRoute.Candidate> hints = ranking.matches().stream().limit(3)
-                .map(match -> new ModelRoute.Candidate(match.profile().moduleId().toString(), match.score())).toList();
-        SemanticConfig.Threshold threshold = SemanticConfig.INSTANCE.get().threshold(best.profile().moduleId().toString(), language);
+                .map(match -> new ModelRoute.Candidate(match.value().moduleId().toString(), match.score())).toList();
+        SemanticConfig.Threshold threshold = SemanticConfig.INSTANCE.get().threshold(best.value().moduleId().toString(), language, context.freeChatAllowed());
         String reason;
         AgentAction input = null;
         // Similarity is not a calibrated probability; direct routing requires every safety/coverage gate.
         if (ranking.writeRequest()) reason = "WRITE_REQUEST";
         else if (!ranking.hasTopic()) reason = "NO_TOPIC";
-        else if (!best.profile().direct()) reason = "NO_DIRECT_PERMISSION";
+        else if (!best.value().direct()) reason = "NO_DIRECT_PERMISSION";
         else if (!best.topicsCovered()) reason = "UNMATCHED_TOPIC";
         else if (best.coverage() + 1e-9 < SemanticConfig.INSTANCE.get().minCoverage()) reason = "LOW_COVERAGE";
         else if (best.score() + 1e-9 < threshold.score()) reason = "LOW_SCORE";
         else if (ranking.margin() + 1e-9 < threshold.margin()) reason = "SMALL_MARGIN";
         else {
-            input = best.profile().arguments().parse(text);
+            input = best.value().arguments().parse(text);
             reason = input == null ? "MISSING_ARGUMENTS" : "DIRECT";
         }
-        this.lastMatch = new RoutingDiagnostics.Match(best.profile().moduleId().toString(), language, best.score(), ranking.margin(), best.coverage(), reason);
+        this.lastMatch = new RoutingDiagnostics.Match(best.value().moduleId().toString(), language, best.score(), ranking.margin(), best.coverage(), reason);
         if (SemanticConfig.INSTANCE.get().mode() == SemanticConfig.Mode.SHADOW) {
             // Shadow mode records local decisions without changing routing or supplying candidate hints.
             this.counters.computeIfAbsent("SHADOW_" + reason, ignored -> new LongAdder()).increment();
@@ -135,8 +135,8 @@ public final class SemanticRouter implements AutoCloseable {
         AgentAction parsed = profile.arguments().parse(text);
         if (parsed == null || !parsed.equals(decision.input())) return;
         // Unknown or unmatched topic content must not be turned into an exact intent shortcut.
-        SemanticIndex.Ranking ranking = this.index.search(text, language, context::available);
-        if (ranking.writeRequest() || !ranking.hasTopic() || ranking.matches().stream().noneMatch(match -> match.profile().moduleId().toString().equals(decision.moduleId())
+        LexicalIndex.Ranking<RoutingProfile.Bound> ranking = this.index.search(text, language, context::available);
+        if (ranking.writeRequest() || !ranking.hasTopic() || ranking.matches().stream().noneMatch(match -> match.value().moduleId().toString().equals(decision.moduleId())
                 && match.topicsCovered() && match.coverage() + 1e-9 >= SemanticConfig.INSTANCE.get().minCoverage()))
             return;
         RouteCache.Key key = this.key(context, language, text);
@@ -153,7 +153,9 @@ public final class SemanticRouter implements AutoCloseable {
             return data.saveHistory ? this.cache.scope(context.player(), context.incarnation(), context.memoryEpoch()) : null;
         });
         // A reloaded prompt must not reuse or be repopulated by decisions from the previous revision.
-        return scope == null ? null : this.cache.key(scope, language, context.promptRevision() + "\n" + text);
+        // Mode and routing configuration changes must not reuse a decision made with another threshold.
+        return scope == null ? null : this.cache.key(scope, language, context.promptRevision() + "\n"
+                + context.mode() + ":" + SemanticConfig.INSTANCE.get().hashCode() + "\n" + text);
     }
 
     private String guard(String text, String language) {

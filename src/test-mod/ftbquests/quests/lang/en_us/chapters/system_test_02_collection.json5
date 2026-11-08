@@ -1,0 +1,103 @@
+{
+  "chapter.5A71020000000000.title": "02 · Resource Stockpile",
+  "quest.5A71020001000000.title": "Stock 01 · Oak Logs",
+  "quest.5A71020001000000.quest_desc": [
+    "Keep 64 oak logs in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020002000000.title": "Stock 02 · Birch Logs",
+  "quest.5A71020002000000.quest_desc": [
+    "Keep 64 birch logs in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020003000000.title": "Stock 03 · Spruce Logs",
+  "quest.5A71020003000000.quest_desc": [
+    "Keep 64 spruce logs in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020004000000.title": "Stock 04 · Jungle Logs",
+  "quest.5A71020004000000.quest_desc": [
+    "Keep 64 jungle logs in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020005000000.title": "Stock 05 · Acacia Logs",
+  "quest.5A71020005000000.quest_desc": [
+    "Keep 64 acacia logs in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020006000000.title": "Stock 06 · Dark Oak Logs",
+  "quest.5A71020006000000.quest_desc": [
+    "Keep 64 dark oak logs in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020007000000.title": "Stock 07 · Cobblestone",
+  "quest.5A71020007000000.quest_desc": [
+    "Keep 64 cobblestone in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020008000000.title": "Stock 08 · Stone",
+  "quest.5A71020008000000.quest_desc": [
+    "Keep 64 stone in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020009000000.title": "Stock 09 · Dirt",
+  "quest.5A71020009000000.quest_desc": [
+    "Keep 64 dirt in your inventory. Detection does not consume them."
+  ],
+  "quest.5A7102000A000000.title": "Stock 10 · Sand",
+  "quest.5A7102000A000000.quest_desc": [
+    "Keep 64 sand in your inventory. Detection does not consume them."
+  ],
+  "quest.5A7102000B000000.title": "Stock 11 · Gravel",
+  "quest.5A7102000B000000.quest_desc": [
+    "Keep 64 gravel in your inventory. Detection does not consume them."
+  ],
+  "quest.5A7102000C000000.title": "Stock 12 · Glass",
+  "quest.5A7102000C000000.quest_desc": [
+    "Keep 64 glass in your inventory. Detection does not consume them."
+  ],
+  "quest.5A7102000D000000.title": "Stock 13 · Coal",
+  "quest.5A7102000D000000.quest_desc": [
+    "Keep 64 coal in your inventory. Detection does not consume them."
+  ],
+  "quest.5A7102000E000000.title": "Stock 14 · Charcoal",
+  "quest.5A7102000E000000.quest_desc": [
+    "Keep 64 charcoal in your inventory. Detection does not consume them."
+  ],
+  "quest.5A7102000F000000.title": "Stock 15 · Iron Ingots",
+  "quest.5A7102000F000000.quest_desc": [
+    "Keep 64 iron ingots in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020010000000.title": "Stock 16 · Copper Ingots",
+  "quest.5A71020010000000.quest_desc": [
+    "Keep 64 copper ingots in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020011000000.title": "Stock 17 · Gold Ingots",
+  "quest.5A71020011000000.quest_desc": [
+    "Keep 64 gold ingots in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020012000000.title": "Stock 18 · Redstone Dust",
+  "quest.5A71020012000000.quest_desc": [
+    "Keep 64 redstone dust in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020013000000.title": "Stock 19 · Lapis Lazuli",
+  "quest.5A71020013000000.quest_desc": [
+    "Keep 64 lapis lazuli in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020014000000.title": "Stock 20 · Nether Quartz",
+  "quest.5A71020014000000.quest_desc": [
+    "Keep 64 nether quartz in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020015000000.title": "Stock 21 · Clay Balls",
+  "quest.5A71020015000000.quest_desc": [
+    "Keep 64 clay balls in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020016000000.title": "Stock 22 · Flint",
+  "quest.5A71020016000000.quest_desc": [
+    "Keep 64 flint in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020017000000.title": "Stock 23 · String",
+  "quest.5A71020017000000.quest_desc": [
+    "Keep 64 string in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020018000000.title": "Stock 24 · Leather",
+  "quest.5A71020018000000.quest_desc": [
+    "Keep 64 leather in your inventory. Detection does not consume them."
+  ],
+  "quest.5A71020019000000.title": "Stock 25 · Feathers",
+  "quest.5A71020019000000.quest_desc": [
+    "Keep 64 feathers in your inventory. Detection does not consume them."
+  ]
+}

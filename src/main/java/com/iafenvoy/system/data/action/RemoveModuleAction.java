@@ -6,18 +6,18 @@ import com.iafenvoy.system.assistant.AssistantServer;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 public record RemoveModuleAction(ResourceLocation module) implements EntityAction {
     public static final MapCodec<RemoveModuleAction> CODEC = ResourceLocation.CODEC.fieldOf("module").xmap(RemoveModuleAction::new, RemoveModuleAction::module);
 
     @Override
-    public @NotNull MapCodec<RemoveModuleAction> codec() {
+    public @NonNull MapCodec<RemoveModuleAction> codec() {
         return CODEC;
     }
 
     @Override
-    public void execute(@NotNull EntityActionContext context) {
+    public void execute(EntityActionContext context) {
         if (context.entity() instanceof ServerPlayer player) {
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
             if (runtime != null) runtime.moduleManager().remove(player, this.module);

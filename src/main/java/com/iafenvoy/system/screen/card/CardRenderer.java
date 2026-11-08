@@ -1,15 +1,16 @@
 package com.iafenvoy.system.screen.card;
 
-import com.iafenvoy.system.card.CardContext;
+import com.iafenvoy.system.data.card.CardContext;
+import com.iafenvoy.system.data.card.CardReference;
+import com.iafenvoy.system.data.card.CardText;
+import com.iafenvoy.system.data.card.client.CardFormatting;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.util.LegacyText;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.network.chat.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -24,40 +25,67 @@ public final class CardRenderer {
     }
 
     public record Render(Document document, String css, CardTemplate template, CardContext context,
-                         List<Integer> indices) {
+                         List<Integer> indices, CardUiState ui, CardReference reference, String path,
+                         Map<String, List<Integer>> selections) {
         public Element element(String tag, String value) {
             return AssistantView.element(this.document, tag, this.css, value);
         }
 
         public boolean interactive() {
-            return !this.document.isDisposed() && (!enabled("notification", this.context, List.of())
+            return !this.document.isDisposed() && (!(enabled("notification", this.context, List.of()) || enabled("hud", this.context, List.of()))
                     || this.document.body.getClassNames().contains("interactive"));
+        }
+
+        public Render at(String css, String path, List<Integer> indices) {
+            return new Render(this.document, css, this.template, this.context, indices, this.ui, this.reference, path, this.selections);
+        }
+
+        public Render loop(int index) {
+            return this.at(this.css, this.path + "[" + index + "]", CardRenderer.loop(this.indices, index));
+        }
+
+        public Render select(String source, List<Integer> indices, String group) {
+            Map<String, List<Integer>> selected = new HashMap<>(this.selections);
+            selected.put(source, List.copyOf(indices));
+            return new Render(this.document, this.css, this.template, this.context, this.indices, this.ui, this.reference,
+                    this.path + "/" + group, Map.copyOf(selected));
+        }
+
+        public String stateKey() {
+            return this.path;
         }
     }
 
     public record Text(CardTemplate template, CardContext context, List<Integer> indices, String separator) {
     }
 
-    public static void render(Document document, Element parent, List<CardTemplate.Node> nodes, CardTemplate template,
-                              CardContext context, List<Integer> indices) {
-        for (CardTemplate.Node node : nodes)
-            expand(node, context, indices, loop -> renderNode(document, parent, node, template, context, loop));
-    }
-
-    private static void renderNode(Document document, Element parent, CardTemplate.Node node, CardTemplate template,
-                                   CardContext context, List<Integer> indices) {
-        Element result = node.content().render(new Render(document, node.css().orElse(node.content().css()), template, context, indices));
-        if (result != null) parent.appendChild(result);
+    public static void render(Render view, Element parent, List<CardTemplate.Node> nodes) {
+        for (int i = 0; i < nodes.size(); i++) {
+            CardTemplate.Node node = nodes.get(i);
+            String path = view.path() + "/" + (node.id().isBlank() ? i : node.id());
+            expand(node, view.context(), view.indices(), loop -> {
+                Element result = node.content().render(view.at(node.css().orElse(node.content().css()), path + loop, loop));
+                if (result != null) parent.appendChild(result);
+            });
+        }
     }
 
     public static String text(List<CardTemplate.Node> nodes, CardTemplate template, CardContext context, List<Integer> indices, String separator) {
         List<String> lines = new ArrayList<>();
         for (CardTemplate.Node node : nodes)
             expand(node, context, indices, loop -> {
-                String value = node.content().text(new Text(template, context, loop, separator));
-                if (!value.isBlank()) lines.add(value);
+                if (node.content() instanceof TextProjectingNode textual) {
+                    String value = textual.text(new Text(template, context, loop, separator));
+                    if (!value.isBlank()) lines.add(value);
+                }
             });
         return String.join(separator, lines);
+    }
+
+    public static List<Integer> loop(List<Integer> outer, int index) {
+        List<Integer> result = new ArrayList<>(outer);
+        result.add(index);
+        return List.copyOf(result);
     }
 
     private static void expand(CardTemplate.Node node, CardContext context, List<Integer> indices, Consumer<List<Integer>> action) {
@@ -119,6 +147,8 @@ public final class CardRenderer {
             return state == null ? original : Component.translatable("system.state." + state.toLowerCase(Locale.ROOT)).getString();
         }
         Object value = context.get(binding(name, indices), Object.class);
+        // Deferred item names and shelf tooltips are resolved only for nodes on the visible page.
+        if (value instanceof CardText) value = CardFormatting.FORMATTED.value(value);
         return value instanceof String || value instanceof Number || value instanceof Boolean
                 ? formatted ? LegacyText.scoped(value.toString()) : value.toString() : original;
     }

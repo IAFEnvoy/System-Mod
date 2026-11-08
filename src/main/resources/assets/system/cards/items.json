@@ -1,18 +1,88 @@
 {
   "body": [
     {
+      "type": "system:title",
+      "translate": "system.ui.nav_items"
+    },
+    {
       "type": "system:text",
-      "text": "{{items.*.item_name}} · {{items.*.item_id}} · {{field:max_stack}}: {{items.*.max_stack}}",
-      "repeat": "items"
+      "translate": "system.ui.items_empty",
+      "unless": "items",
+      "style": "card_context"
     },
     {
-      "type": "system:items",
-      "items": "{{result_items}}",
-      "label": "{{field:items}}"
+      "type": "system:grid",
+      "source": "{{items}}",
+      "columns": 6,
+      "max_row": 3,
+      "cell": 104,
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "label": "{{items.*.item_name}}",
+          "style": "offer_cell_content",
+          "children": [
+            {
+              "type": "system:flex",
+              "style": "offer_cell_items",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{items.*.preview}}",
+                  "size": 36,
+                  "tooltip": [
+                    {
+                      "type": "system:text",
+                      "text": "{{items.*.item_id}}"
+                    },
+                    {
+                      "type": "system:text",
+                      "text": "{{field:max_stack}}: {{items.*.max_stack}}"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "system:text",
+              "text": "{{items.*.item_name}}",
+              "style": "offer_cell_label"
+            }
+          ]
+        }
+      ]
     },
     {
-      "type": "system:actions",
-      "actions": "{{result_actions}}"
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.more_items}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "when": "actions.*.visible",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

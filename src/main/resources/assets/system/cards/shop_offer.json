@@ -1,13 +1,13 @@
 {
   "body": [
     {
-      "type": "system:text",
+      "type": "system:title",
       "text": "{{label}}"
     },
     {
       "type": "system:text",
-      "text": "{{id}}",
-      "when": "id"
+      "text": "{{summary}}",
+      "when": "confirm"
     },
     {
       "type": "system:text",
@@ -15,15 +15,23 @@
       "when": "text_items"
     },
     {
-      "type": "system:items",
-      "items": "{{offer_items}}",
-      "label": "{{field:items}}"
+      "type": "system:flex",
+      "source": "{{offer_items}}",
+      "children": [
+        {
+          "type": "system:item",
+          "item": "{{offer_items.*}}",
+          "size": 40,
+          "tooltip": []
+        }
+      ],
+      "style": "item_group_items",
+      "unless": "text_items"
     },
     {
       "type": "system:text",
-      "text": "{{field:price}}: {{price}}",
-      "when": "price",
-      "unless": "text_items"
+      "translate": "system.ui.lottery_unavailable",
+      "unless": "payment_available"
     },
     {
       "type": "system:text",
@@ -32,17 +40,77 @@
     },
     {
       "type": "system:text",
-      "translate": "system.ui.lottery_unavailable",
-      "unless": "payment_available"
+      "text": "{{field:price}}: {{price_text}}",
+      "when": "confirm",
+      "unless": "text_items"
     },
     {
-      "type": "system:items",
-      "items": "{{price_items}}",
-      "label": "{{field:price}}"
+      "type": "system:container",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{field:price}}",
+          "style": "item_group_label"
+        },
+        {
+          "type": "system:flex",
+          "source": "{{price_items}}",
+          "children": [
+            {
+              "type": "system:flex",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{price_items.*}}",
+                  "size": 40,
+                  "tooltip": []
+                },
+                {
+                  "type": "system:text",
+                  "text": "{{price_items.*.label}}",
+                  "style": "item_name",
+                  "unless": "text_items"
+                }
+              ],
+              "wrap": false,
+              "style": [
+                "item_entry",
+                "item_labeled"
+              ]
+            }
+          ],
+          "style": "item_group_items"
+        }
+      ],
+      "when": "confirm",
+      "unless": "text_items"
     },
     {
-      "type": "system:actions",
-      "actions": "{{result_actions}}"
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

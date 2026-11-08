@@ -27,7 +27,7 @@ FTB 的勾选任务经常用于整合包教程。它们继续从“进行中任�
 
 当前返回条件为相似度至少 0.08、查询特征覆盖率至少 0.25。它们是过滤无关片段的启发式阈值，**不表示回答正确率或概率置信度**。这套词法方法能覆盖关键词与近似表达，不能保证任意同义改写或跨语言语义匹配。
 
-说明书通过统一 AgentDatabase 保存到 `<存档>/system-database/shared.json` 的 `system:ftb_guides` 表，按语言保存原文；任务背景判定也进入同一个共享库的独立表。玩家独立库使用 `players/<UUID>.json`，预留给其他模块。类型化接口、清理规则和指令语义见 [分层本地数据库](databases.md)。磁盘不序列化 TF-IDF 向量，首次查询在后台构建，显式重载会提前重建。
+说明书通过统一 AgentDatabase 保存到 `<存档>/system/database/shared.dat` 的 `system:ftb_guides` 表，按语言保存原文；任务背景判定也进入同一个共享库的独立表，文件为 GZIP 压缩 NBT。玩家独立库使用 `players/<UUID>.dat`，预留给其他模块。类型化接口、清理规则和指令语义见 [分层本地数据库](databases.md)。磁盘不序列化 TF-IDF 向量，首次查询在后台构建，显式重载会提前重建。
 
 FtbQuestKnowledge 缓存各语言的静态快照，避免每次查询重新解析整份正文；每次只重新计算玩家授权 ID，命中来源返回前再次核对正文。FTB 原生 ClearFileCacheEvent 或手动指令使快照失效，翻译和任务编辑随后重新收录；手工修改磁盘文件需先通过 FTB 自身入口加载。重载用代次使旧查询失效；数据库损坏时报告错误并保留文件，不以空库静默覆盖。旧的两个独立缓存文件不再读取或迁移。
 
@@ -39,12 +39,12 @@ FtbQuestKnowledge 缓存各语言的静态快照，避免每次查询重新解�
 
 `/guide` 和任务页说明书按钮直接执行本地检索，不请求 embedding 或聊天模型；自然语言不明确时，现有意图路由仍可能请求模型一次。普通问答的 `system:question` 则会在允许外部 AI 时将授权命中片段交给文本模型整理，发送前后均检查当前访问权限；本地有结果就不搜索。自动 TTS 朗读结果提示属于原有独立语音功能，不能据此把整次交互称为“无外部请求”。
 
-- `agent/database/AgentDatabases / AgentDatabase / DatabaseTable`：两级作用域、文档和其他 Codec 表的统一持久化。
-- `agent/database/KnowledgeIndex`：切段、稀疏向量与命中筛选。
+- `data/database/AgentDatabases / AgentDatabase / DatabaseTable`：两级作用域、文档和其他 Codec 表的统一持久化。
+- `data/database/KnowledgeIndex`：切段、稀疏向量与命中筛选。
 - `compat/ftb/FtbQuestKnowledge`：FTB 静态语料、失效代次与手动重新收录。
 - `compat/ftb/FtbQuestGuideTool`：游戏快照、授权 ID、异步检索与返回前复核。
 - `compat/ftb/FtbQuestReader`、`FtbQuestText`：结构筛选、可见性及按玩家语言读取。
-- `agent/builtin/quest/QuestGuideModule`：单检索工具、指令和路由描述。
+- `module/builtin/quest/QuestGuideModule`：单检索工具、指令和路由描述。
 - `QuestGuideInput / QuestGuideOutput`：按注册表 dispatch 的动作和卡片 Codec，公共 DTO 不引用 FTB 或客户端类。
 - `assets/system/cards/quest_guide.json`：匹配段落与可展开原文；任务页仍由 QuestSystemClientModule 装配。
 

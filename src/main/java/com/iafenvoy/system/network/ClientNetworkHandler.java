@@ -4,7 +4,9 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.response.*;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
+import com.iafenvoy.system.network.payload.DisplayCardsS2CPayload;
 import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
 import com.iafenvoy.system.screen.AssistantMessages;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
@@ -36,24 +38,24 @@ public final class ClientNetworkHandler {
             });
     private static final TypeDispatch<Minecraft, Void> RESPONSES = new TypeDispatch<Minecraft, Void>((unused1, unused2) -> {
         throw new IllegalArgumentException("Unregistered assistant response handler");
-    }).register(ReplyResponse.class, (unused1, reply) -> {
+    }).register(ReplyResponse.class, (unused3, reply) -> {
         AssistantClient.receive(reply.requestId(), reply.result());
         return null;
-    }).register(StateResponse.class, (unused1, response) -> {
+    }).register(StateResponse.class, (unused4, response) -> {
         AssistantClient.synchronizedState(response.requestId(), response.state());
         return null;
-    }).register(HistoryResponse.class, (unused1, response) -> {
+    }).register(HistoryResponse.class, (unused5, response) -> {
         AssistantClient.history(response.requestId(), response.history());
         return null;
-    }).register(NoticeResponse.class, (unused1, notice) -> {
+    }).register(NoticeResponse.class, (unused6, notice) -> {
         AssistantClient.notice(notice.result());
         return null;
-    }).register(OpenResponse.class, (unused1, open) -> {
+    }).register(OpenResponse.class, (unused7, open) -> {
         open.requestId().ifPresent(AssistantClient::complete);
         AssistantClient.open(VIEWS.get(open.view()).getAsBoolean(), "");
         AssistantClient.send(ControlRequest.STATE);
         return null;
-    }).register(BindingResponse.class, (unused1, binding) -> {
+    }).register(BindingResponse.class, (unused8, binding) -> {
         BINDING.get(binding.change()).accept(binding.result());
         return null;
     });
@@ -61,12 +63,15 @@ public final class ClientNetworkHandler {
     private ClientNetworkHandler() {
     }
 
+    public static void handleDisplayCards(DisplayCardsS2CPayload payload, IPayloadContext context) {
+        ClientModuleCaches.DISPLAY_CARDS.receive(payload);
+    }
+
     public static void handleAssistantResponse(AssistantResponseS2CPayload response, IPayloadContext context) {
         RESPONSES.apply(Minecraft.getInstance(), response.response());
     }
 
     private static void bound(AgentResult result) {
-        Minecraft minecraft = Minecraft.getInstance();
         AssistantClient.notice(result);
         AssistantClient.send(ControlRequest.STATE);
     }

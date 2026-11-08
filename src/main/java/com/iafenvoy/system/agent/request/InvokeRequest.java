@@ -1,22 +1,20 @@
 package com.iafenvoy.system.agent.request;
 
-import com.iafenvoy.system.agent.AgentAction;
-import com.iafenvoy.system.agent.AgentRequest;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.iafenvoy.system.agent.module.AgentAction;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 
 /**
  * Structured actions reuse the registered module input type and optional display text.
  */
 public record InvokeRequest(AgentAction call, String text) implements AgentRequest {
-    public static final MapCodec<InvokeRequest> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            AgentAction.CODEC.fieldOf("call").forGetter(InvokeRequest::call),
-            Codec.string(0, 2000).optionalFieldOf("text", "").forGetter(InvokeRequest::text)
-    ).apply(i, InvokeRequest::new));
+    public static final StreamCodec<ByteBuf, InvokeRequest> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.fromCodec(AgentAction.CODEC), InvokeRequest::call,
+            ByteBufCodecs.stringUtf8(2000), InvokeRequest::text, InvokeRequest::new);
 
     @Override
-    public MapCodec<InvokeRequest> codec() {
-        return CODEC;
+    public StreamCodec<ByteBuf, InvokeRequest> streamCodec() {
+        return STREAM_CODEC;
     }
 }

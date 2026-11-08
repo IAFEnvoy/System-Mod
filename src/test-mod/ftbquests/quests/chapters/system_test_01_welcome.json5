@@ -1,0 +1,356 @@
+{
+  "id": "5A71010000000000",
+  "group": "",
+  "order_index": 101,
+  "filename": "system_test_01_welcome",
+  "icon": {
+    "id": "minecraft:chest",
+    "count": 1
+  },
+  "default_quest_shape": "square",
+  "default_hide_dependency_lines": false,
+  "progression_mode": "linear",
+  "consume_items": false,
+  "default_repeatable_quest": false,
+  "quests": [
+    {
+      "id": "5A71010001000000",
+      "x": 0.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:bread",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71010001010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71010001020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:bread",
+            "count": 1
+          },
+          "count": 2
+        },
+        {
+          "id": "5A71010001020002",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:apple",
+            "count": 1
+          },
+          "count": 3
+        },
+        {
+          "id": "5A71010001020003",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    },
+    {
+      "id": "5A71010002000000",
+      "x": 2.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:torch",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71010002010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71010002020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:bread",
+            "count": 1
+          },
+          "count": 2
+        },
+        {
+          "id": "5A71010002020002",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:torch",
+            "count": 1
+          },
+          "count": 8
+        },
+        {
+          "id": "5A71010002020003",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    },
+    {
+      "id": "5A71010003000000",
+      "x": 4.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:oak_log",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71010003010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71010003020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:bread",
+            "count": 1
+          },
+          "count": 2
+        },
+        {
+          "id": "5A71010003020002",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:oak_log",
+            "count": 1
+          },
+          "count": 4
+        },
+        {
+          "id": "5A71010003020003",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    },
+    {
+      "id": "5A71010004000000",
+      "x": 6.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:cobblestone",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71010004010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71010004020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:bread",
+            "count": 1
+          },
+          "count": 2
+        },
+        {
+          "id": "5A71010004020002",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:cobblestone",
+            "count": 1
+          },
+          "count": 8
+        },
+        {
+          "id": "5A71010004020003",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    },
+    {
+      "id": "5A71010005000000",
+      "x": 8.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:wheat_seeds",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71010005010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71010005020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:bread",
+            "count": 1
+          },
+          "count": 2
+        },
+        {
+          "id": "5A71010005020002",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:wheat_seeds",
+            "count": 1
+          },
+          "count": 4
+        },
+        {
+          "id": "5A71010005020003",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    },
+    {
+      "id": "5A71010006000000",
+      "x": 0.0,
+      "y": 2.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:stone_pickaxe",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71010006010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71010006020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:bread",
+            "count": 1
+          },
+          "count": 2
+        },
+        {
+          "id": "5A71010006020002",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "item",
+          "item": {
+            "id": "minecraft:stone_pickaxe",
+            "count": 1
+          },
+          "count": 1
+        },
+        {
+          "id": "5A71010006020003",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 100
+        }
+      ]
+    },
+    {
+      "id": "5A71010007000000",
+      "x": 2.0,
+      "y": 2.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:book",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71010007010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": []
+    },
+    {
+      "id": "5A71010008000000",
+      "x": 4.0,
+      "y": 2.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:crafting_table",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71010008010001",
+          "type": "item",
+          "item": {
+            "id": "minecraft:crafting_table",
+            "count": 1
+          },
+          "count": 1
+        }
+      ],
+      "rewards": [
+        {
+          "id": "5A71010008020001",
+          "auto": "disabled",
+          "team_reward": false,
+          "type": "xp",
+          "xp": 20
+        }
+      ]
+    }
+  ],
+  "quest_links": [],
+  "images": []
+}

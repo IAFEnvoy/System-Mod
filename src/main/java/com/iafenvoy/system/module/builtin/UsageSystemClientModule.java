@@ -10,9 +10,6 @@ public final class UsageSystemClientModule implements ClientModule {
     public void register(ClientModuleContext module) {
         module.command(() -> AssistantClient.command("usage"), "usage", "token统计", "token 统计", "用量统计");
         module.command(() -> AssistantClient.command("usage all"), "usage all");
-        module.workspace("", "nav_usage", WorkspaceGroup.SETTINGS, workspace -> {
-            workspace.labels("nav_usage");
-            workspace.click("nav_usage", () -> AssistantClient.command("usage"));
-        });
+        module.workspace("", "nav_usage", WorkspaceGroup.SETTINGS, workspace -> workspace.click("nav_usage", () -> AssistantClient.command("usage")));
     }
 }

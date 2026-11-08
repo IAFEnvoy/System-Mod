@@ -1,19 +1,20 @@
 package com.iafenvoy.system.module.builtin;
 
-import com.iafenvoy.system.agent.AgentModule;
-import com.iafenvoy.system.agent.builtin.core.HelpModule;
-import com.iafenvoy.system.agent.builtin.input.HelpInput;
-import com.iafenvoy.system.agent.builtin.knowledge.DatabaseQueryTool;
-import com.iafenvoy.system.agent.builtin.knowledge.QuestionModule;
+import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.agent.module.AgentModule;
 import com.iafenvoy.system.agent.response.OpenResponse;
 import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.assistant.AssistantServer;
-import com.iafenvoy.system.module.CoreModule;
-import com.iafenvoy.system.module.ModuleCommands;
-import com.iafenvoy.system.module.ModuleContext;
-import com.iafenvoy.system.module.ModuleStorage;
-import com.iafenvoy.system.module.builtin.storage.AgentJournalDataStorage;
+import com.iafenvoy.system.data.input.HelpInput;
+import com.iafenvoy.system.data.store.AgentJournalDataStorage;
+import com.iafenvoy.system.module.*;
+import com.iafenvoy.system.module.builtin.chat.AiManagementCommands;
+import com.iafenvoy.system.module.builtin.chat.FreeChatModule;
+import com.iafenvoy.system.module.builtin.knowledge.DatabaseQueryTool;
+import com.iafenvoy.system.module.builtin.knowledge.QuestionModule;
+import com.iafenvoy.system.module.builtin.knowledge.ReasoningModule;
+import com.iafenvoy.system.module.builtin.storage.DisplayCardsDataStorage;
 import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -28,10 +29,11 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.List;
 
 public final class CoreSystemModule implements CoreModule {
-    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("system", "core");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "core");
     public static final MapCodec<CoreSystemModule> CODEC = MapCodec.unit(new CoreSystemModule());
-    public static final ModuleStorage<AgentJournalDataStorage> JOURNAL = new ModuleStorage<>(ID, ResourceLocation.fromNamespaceAndPath("system", "agent_journal"), AgentJournalDataStorage.class, AgentJournalDataStorage.CODEC, AgentJournalDataStorage::new);
-    public static final ModuleStorage<ModuleAccessDataStorage> ACCESS = new ModuleStorage<>(ID, ResourceLocation.fromNamespaceAndPath("system", "module_access"), ModuleAccessDataStorage.class, ModuleAccessDataStorage.CODEC, ModuleAccessDataStorage::new);
+    public static final ModuleStorage<AgentJournalDataStorage> JOURNAL = new ModuleStorage<>(ID, ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "agent_journal"), AgentJournalDataStorage.class, AgentJournalDataStorage.CODEC, AgentJournalDataStorage::new);
+    public static final ModuleStorage<ModuleAccessDataStorage> ACCESS = new ModuleStorage<>(ID, ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "module_access"), ModuleAccessDataStorage.class, ModuleAccessDataStorage.CODEC, ModuleAccessDataStorage::new);
+    public static final ModuleStorage<DisplayCardsDataStorage> DISPLAY_CARDS = new ModuleStorage<>(ID, ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "display_cards"), DisplayCardsDataStorage.class, DisplayCardsDataStorage.CODEC, DisplayCardsDataStorage::new);
 
     @Override
     public MapCodec<CoreSystemModule> codec() {
@@ -40,18 +42,23 @@ public final class CoreSystemModule implements CoreModule {
 
     @Override
     public List<ModuleStorage<?>> storages() {
-        return List.of(JOURNAL, ACCESS);
+        return List.of(JOURNAL, ACCESS, DISPLAY_CARDS);
+    }
+
+    @Override
+    public PlayerModule runtime(ModuleContext context) {
+        return context.get(ContextTypes.DISPLAYS);
     }
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.engine()).tool()));
+        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.get(ContextTypes.DATABASES)).tool()), new ReasoningModule(), new FreeChatModule(context.engine().chat()));
     }
 
     @Override
     public void installed(ModuleContext context) {
         context.engine().modules().root(HelpInput.INSTANCE);
-        context.engine().modules().reject(ResourceLocation.fromNamespaceAndPath("system", "semantic_reject"), RoutingProfile.hints(
+        context.engine().modules().reject(ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "semantic_reject"), RoutingProfile.hints(
                 List.of("不要替我签到", "签到奖励有哪些", "如果签到会怎么样", "帮我建造房子"),
                 List.of("Do not sign me in", "Explain daily sign-in rewards", "What happens if I sign in?", "Build me a house")));
     }
@@ -59,6 +66,7 @@ public final class CoreSystemModule implements CoreModule {
     @Override
     public void serverCommands(LiteralArgumentBuilder<CommandSourceStack> root) {
         ModuleManagementCommands.register(root);
+        AiManagementCommands.register(root);
         root.executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.CURRENT))
                 .then(Commands.literal("simple").executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.SIMPLE)))
                 .then(Commands.literal("full").executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.FULL)))

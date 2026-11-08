@@ -1,5 +1,6 @@
 package com.iafenvoy.system.command;
 
+import com.iafenvoy.system.SystemMod;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.tree.CommandNode;
 import com.mojang.brigadier.tree.LiteralCommandNode;
@@ -16,7 +17,7 @@ public record AssistantCommandInput(String text, int start, boolean explicit) {
             reader.skip();
             int start = reader.getCursor();
             while (reader.canRead() && !Character.isWhitespace(reader.peek())) reader.skip();
-            if (text.substring(start, reader.getCursor()).equalsIgnoreCase("system")) {
+            if (text.substring(start, reader.getCursor()).equalsIgnoreCase(SystemMod.MOD_ID)) {
                 reader.skipWhitespace();
                 if (reader.canRead() && reader.peek() == '/') reader.skip();
             } else reader.setCursor(start);

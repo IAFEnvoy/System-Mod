@@ -1,7 +1,7 @@
 package com.iafenvoy.system.speech.asr;
 
 import com.iafenvoy.system.speech.SpeechException;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.function.Consumer;
 
@@ -9,6 +9,12 @@ import java.util.function.Consumer;
  * Streaming recognition protocol; microphone ownership and Minecraft UI stay with the caller.
  */
 public interface AsrProvider extends AutoCloseable {
+    /**
+     * Sockets and transports close without a checked failure; narrow the inherited signature for try-with-resources.
+     */
+    @Override
+    void close();
+
     void validate(Request request) throws SpeechException;
 
     /**
@@ -27,11 +33,8 @@ public interface AsrProvider extends AutoCloseable {
 
     record Request(String appKey, String accessKeyId, String accessKeySecret, String region) {
         @Override
-        public @NotNull String toString() {
+        public @NonNull String toString() {
             return "AsrRequest[region=" + this.region + "]";
         }
     }
-
-    @Override
-    void close();
 }

@@ -1,140 +1,162 @@
-# FTB Quests 跨版本修复记录
+# FTB Quests 跨版本同步记录
 
-记录日期：2026-10-30。以下 1.21.1 修复已同步至 26.1.2 / master（`b97aa1c`）；同日将 master 的交互式任务通知窗口回同步至 1.21.1。下方旧节保留首次修复时的迁移分析，“也需同步”等措辞为历史清单；最新结果见本文末尾的同步记录。
+## 2026-11-08 master：存档自管数据统一目录（1.21.1 待同步）
 
-## 依据与复现数据
+存档外部文件统一位于 system/，玩家业务为 players/<UUID>.dat，对话为 chat/<UUID>.dat，共享和私有数据库为 database/shared.dat 与 database/players/<UUID>.dat；全部改用 FileAccess.NBT_COMPRESSED GZIP 压缩存取。移植时一起同步 AssistantServer 的根目录、FileAgentStore 的读写 / 枚举 / 删除、AgentDatabases 的文件名、AgentDatabase 的 NbtOps / 严格加载、AtomicFiles 及日志 NBT 计量。data/system 下的用量和 AI 权限 SavedData 不改，客户端配置和语音文件不改；按用户要求不迁移或删除旧目录。master 编译通过，未启动游戏验证。
 
-- 开发依赖：FTB Quests `2101.1.37`，FTB Library `2101.1.39`，FTB Teams `2101.1.11`。
-- 用户整合包：`D:\PrismLauncher\instances\『化龍』导入包-1.4\minecraft`；实际安装 Quests `2101.1.34`、Library `2101.1.35`、Teams `2101.1.10`。只读取了任务定义、依赖 JAR 和现有日志，没有修改整合包或存档。
-- 整合包日志已加载 24 个章节、837 个任务、两种语言。任务定义为 `.snbt`，翻译位于 `quests/lang/zh_cn.snbt` 与 `en_us.snbt`。因此本次整合包问题不是任务文件没有加载。
-- 任务 `359B897165997027` 的中文标题为“鸣谢名单”，仅有 `CheckmarkTask`，奖励为 100 经验和一件物品。这是旧礼包判定遗漏“物品 + 经验”组合的具体例子；分类依据是任务结构，不是名称。
-- 对照了上述两个 Quests 版本的反编译源码，以及当前 Minecraft / NeoForge sources JAR。没有启动游戏；以下结论来自静态阅读与编译，不代表游戏内验收通过。
++
++## 2026-11-06 卡片节点和字符串按钮重构（master，待向其他分支移植）
++
++本节替代下文旧 CardGrid / 专用业务节点的结构。正式节点改为 18 种并按功能分包，任务、商店、抽奖使用通用 GridNode + GroupsNode / FlexNode；CardPagination 是唯一分页组件，CardUiState 替代 CardPageState。任务列表保留结果内章节分组、原始编号、三行固定区域和返回状态；pin 用普通 button + QuestCardBindings 构建事件，DisplayCardCache 维护实时状态。不要再移植已删除的 GroupedActionsNode / OfferGridNode / PrizeGridNode / QuestPinNode。
++
++按钮统一 click/value，return-val 只传 CardReference 和字符串；服务端先发布 CardButtonEvent，未处理时经 CardEventValue 解析进入既有 ModuleRouting.button。URL 由原版打开流程处理，local 仍用代码绑定 callback。移植时一并同步公共 CardAction / 请求 StreamCodec、服务端事件与解析器、客户端控制器、全部能力接口及节点、27 份 JSON、图钉 SVG、CSS、离线编辑器和文档；仅复制模板会导致解析失败。网络协议号维持 1，双端须使用一致构建。详见 [cards.md](cards.md)。
++
+## 2026-11-06 master：共用三行分页网格（1.21.1 待同步）
 
-## 必须同步的修改
+本节替代下文旧版“每页 10 项”的任务布局约定。新增客户端 `CardPagination` 与 `CardGrid`，原 ActionsNode 分页移入前者，后者同时控制列数、三行固定区域及 `列数 × max_row` 容量；GroupedActionsNode / OfferGridNode / PrizeGridNode 共用，默认完整模式 18 项、通知 9 项。少量、空列表和最后一页保留区域及分页按钮，单页双按钮置灰；只有当前页创建 DOM、图标与 tooltip。保留原始业务下标、CardPageState、通知详情返回与完成通知语义。
 
-| 修改入口 | 根因与修改 | 同步到 26.1.2 时的核对点 |
+移植时同步两个共享类、四个节点、quest_list.json、共享 CSS（移除旧网格 max-height 裁切与通知列数覆盖）、文档及测试任务说明。三个网格节点将 `CardGrid.CODEC` 合并为扁平 fields，任务模板使用 `max_row: 3` 取代 `page_size: 10`；商店、抽奖的既有 max_row 从限高滚动改为分页。不得只复制 JSON/CSS，否则布局列数与分页容量会不一致。不新增注册表、依赖或网络数据格式；编译通过，尚未游戏内验收。
+
+## 2026-11-05 master：任务列表分组浏览（1.21.1 待同步）
+
+`QuestBriefOutput` 在原章节名称外补充 chapterId、groupId、group 名称；`FtbQuestAccess.brief` 仅从每个命中任务的 `getChapter().getGroup()` 读取这些元数据，不单独枚举全部章节或章节组。已核对 26.1.2.8 源码：Chapter.getGroup 返回 ChapterGroup，默认组使用 isDefaultGroup，不额外显示书名；正常查询的 getAllChapters 顺序是章节组顺序再章节顺序。
+
+`QuestList` 为按钮写入分组参数；客户端新增正式节点 `system:grouped_actions`，左侧列出结果中的非空章节及所属上级分组，右侧复用商店货架结构显示任务，复用 `ActionsNode` 每页 10 项的本地分页。CardPageState 增加选中章节，页码按章节键保存，PUSH / 返回保留原位置；全局任务编号和服务端列表快照不变。多项解锁共用该模板，完成通知和单项解锁逻辑不变。
+
+2026-11-06 布局修正也需一起移植：左栏用自然高度的内容容器，超出上限才滚动且不保留 gutter；右侧采用真正的 `offer_grid > offer_cell > offer_cell_label`，完整模式 6 列、104px 格子，HUD 3 列。移除右侧重复的章节名与条目数，货架直接顶到内容区顶部，章节信息只留在左栏。GroupedActionsNode 新增 columns / cell / children，通过通用节点把标题、编号和进度分块渲染；ActionsNode 将行渲染与分页分离并共用动作绑定。quest_list 顶层 title 把“任务列表”单独显示，提示改为短行，长摘要只留在数据与播报路径中。
+
+同日补充居中与任务图标：QuestList 为动作写入 action_quest_id；新增 `system:quest_icon` / QuestIconNode 与公开注册字段，通过反射调用 FtbQuestIconElement.createQuest，复用现有原生绘制和 tooltip。客户端先检查 ClientQuestFile.exists，再按 ID 取 Quest.getIcon；26.1.2.8 的该方法优先配置的 rawIcon，然后主题，最后目标默认图标。未安装 FTB 或任务不可用时省略图标。模板加入 32px 图标，把编号 / 进度合为一行；共享 CSS 对标题及格式化内部行块显式居中。移植时同步新节点、注册、适配器、动作参数、JSON 和 CSS，不需要扩展 QuestBriefOutput 或改网络协议。
+
+移植需同步公共 DTO / Codec、FTB brief 构建、QuestList、GroupedActionsNode 和注册、ActionsNode 的共享分页入口、CardPageState、quest_list.json、共享 CSS 与双语键；不能只复制资源文件。没有新增依赖、网络请求或任务进度操作。已执行 compileJava / processResources；未启动 Minecraft 或做功能验收。
+
+2026-11-06 另补左栏零范围滚动防护：AUI 1.2.9 的 MouseEvent 在路径没有真实滚动范围时，仍会选中 overflow:auto 元素，ScrollModel 随后产生弹性位移。GroupedActionsNode 在初始化后的左栏注册内部 wheel 监听，仅当路径中没有实际滚动范围时 preventDefault；保留长章节列表和外层聊天滚动，Shift 滚轮也考虑横向范围。移植时核对目标 AUI 的事件与范围 API；不只复制 overflow:auto 样式，也不要在布局回调中查询 scrollLimit。
+
+同日补任务格子的图钉与底边进度条：新增客户端节点 QuestPinNode / ProgressNode 及 SystemCardNodeTypes 公开注册项；quest_list.json 把百分比文字改为进度条、编号保留，右上角增加图钉。此处旧版曾使用连接内 QuestPinCache；当前版本已改为服务端 DisplayCardsDataStorage，见本文末的常驻卡片记录。移植时仍需核对 AUI Document.getAll、SVG 与事件 API，并同步两个新节点、网络注册、JSON、共享 CSS 与双语键。不改变 FTB 进度、DTO 或提交协议。
+
+图钉后续修正需一并同步：共享 CSS 默认将 SVG 倾斜 35°，aria-pressed=true 后旋转归零；22px 按钮 / 16px 图标，透明且无外框，高于 AUI 主题的按钮状态选择器优先级，避免主题最小高度及选中背景撑出色块。QuestOutput.buildCard 增加已有 id 的上下文参数，quest.json 加 quest_detail_card 样式和 quest_pin 节点，详情与列表共用固定列表，不新增序列化字段。
+
+记录日期：2026-10-30。`1.21.1` 的功能修改已同步至 Minecraft **26.1.2 / master**。来源为 `b601fd7..03ca46a`；先切换 master，再执行 `git pull --ff-only`，目标从 `2c459f9` 更新至 `b6afc9d` 后才合入修改。此次不提交、不推送。
+
+## 来源与范围
+
+1.21.1 开发依赖为 Quests `2101.1.37`、Library `2101.1.39`、Teams `2101.1.11`。最初问题来自用户整合包 `D:\PrismLauncher\instances\『化龍』导入包-1.4\minecraft`：其 Quests / Library / Teams 为 `2101.1.34 / 2101.1.35 / 2101.1.10`，现有日志加载 24 个章节、837 个任务和两种语言。只读取了定义、依赖与日志，没有修改整合包或存档。
+
+例如 `359B897165997027`（“鸣谢名单”）为勾选目标、物品与 100 经验组合，暴露了旧礼包分类只接受物品奖励的问题。标题问题则来自服务端共享回退语言，不能用直接 getTitle 替代玩家语言解析。
+
+只迁移功能，不带入 1.21.1 的版本降级、嵌入式 Saturn、兼容 ItemStackTemplate 或导入整理。目标保留 Java 25、NeoForge `26.1.2.114`、AUI `1.2.6`、外部 Saturn，以及 Quests / Library / Teams `26.1.2.8 / 26.1.2.9 / 26.1.2.4`。保留拉取后已有的通知立即替换、手动切换和任务完成勾叉展示。
+
+## 已同步功能
+
+| 功能 | 实现入口与行为 |
+| --- | --- |
+| 玩家语言与格式文本 | `FtbQuestText` 按玩家语言调用 TranslationManager，保留缺译回退；覆盖列表、搜索、章节、详情、提交、通知和播报。无标题任务递归取首个目标标题，Component / § / & 统一处理，不修改共享 locale 或 title cache。 |
+| 勾选任务与礼包分类 | `FtbQuestReader` 精确匹配原生类型：不可重复、全部为勾选且至少一个目标、至少一项非空物品，可附带经验 / 等级；隐藏、命令、自选、随机和第三方奖励保留普通处理。无目标或纯勾选且无奖励作为介绍任务，不进入进度列表。 |
+| 原生类型图标与 tooltip | `QuestIconOutput` 在服务端准备任务 / 奖励类型 ID、本地化文字和数量；客户端 `system:icons` 反射加载 FTB 图标元素。物品仍走原版 item tooltip，非物品复用 FTB 类型图标与文本 tooltip；缺少依赖或类型时回退文字。 |
+| 紧凑奖励布局 | 任务详情、完成通知和礼包只显示一次奖励标题，物品和类型图标横排、超宽换行，自选项保留编号和操作。 |
+| 解锁汇总 | 先发送当批逐项完成通知，再分别发送礼包汇总与普通解锁通知；单项普通解锁直接详情，多项合并列表，每个接收者每批至多一条。列表通知每页 10 项，本地翻页；按 ID 查看详情后可返回原页，不覆盖主动查询编号。重登、重置基线和静默操作不补发旧解锁。 |
+| 说明书检索 | 仅收录勾选 / 无目标、有正文、非礼包任务；`guideCandidates / guideReadable` 包含介绍任务，仍核对章节与任务可见性、详情解锁及正文隐藏条件。返回前回到服务端复核队伍、语言、任务对象和内容。 |
+| 聊天历史领取礼包 | 保留“领取礼包”与本地“确定”；礼包凭证在同一连接内不再按两分钟失效，仍校验玩家、队伍、任务 / 奖励对象、完成时间及原生状态。登出、撤销或停用模块清理，普通奖励短期凭证不变；磁盘历史不重新授权。 |
+| 奖励合计 | `FtbQuestPreviews` 合并同物品与组件、数量 / 随机区间，以及经验和等级；六份 100 经验显示 +600。物品模板 count 为 1，only_one 条件物品独立，不提前随机或发奖。 |
+| 分层本地数据库 | `agent.database` 为世界共享和 UUID 独立库提供同一套 Codec 数据表与稀疏 TF-IDF API；存于 `<world>/system/database/shared.dat` 和 `players/<UUID>.dat`，使用 GZIP 压缩 NBT。revoke / reset 删除私有库，累计用量不变；无新增模型、native、外部服务或依赖。 |
+| FTB 重新收录 | `/system ftb reload` 要求管理员权限，可由控制台执行；重新收录 FTB 已加载定义并重建索引，不读写原生任务文件或进度。缓存失效事件取消旧代次结果。 |
+| 数据库优先问答 | 核心 `system:question` 先用 `database.query` 查询当前玩家 / 共享知识与已启用 FTB 的授权说明。有资料时至多一次模型整理，失败可展示原文；存储错误不当作空结果。只有查库为空、搜索模块启用、当前明确允许联网且外部服务开启才运行 WebResearch。 |
+| 搜索工具与授权 | `SearchSystemModule` 为 ToolModule，导出 search / fetch；`Descriptor.optionalTools` 保留工具所属模块的权限，缺少搜索不影响本地问答。`/question` 只查本地，`/search` 允许空结果联网，测试默认 tag 不再自动赋予搜索。预算键为 `system:question`。 |
+
+## 26.1.2 API 适配
+
+此次直接核对目标依赖 source JAR，提取在 `build/ftbsrc/26.1.2.8`、`build/ftblibsrc/26.1.2.9` 与 `build/auisrc/26.1-1.2.6`；Minecraft 签名由实际 26.1.2 JAR 确认。
+
+- **服务端实例**：目标 `ServerQuestFile.getInstance()` 返回不可空的实例，并非 Optional；新增入口先检查 `exists()`，不保留来源代码中不适用的 Optional 调用。
+- **原生事件**：保留 master 的 NeoForge `FTBQuestsEvent` 与 `ProgressEventData / ProgressType`，没有带入 Architectury 事件。ClearFileCache 按 ServerQuestFile 定位桥接，并同时使说明书代次失效。
+- **领取顺序**：普通奖励继续交给 TeamData.claimReward。目标 Reward.claim 返回 void，无 tryClaim；自选严格跟随目标 ClaimChoiceRewardMessage，成功 markRewardAsClaimed 后调用所选奖励 claim，最后只检查原生已领取标记，不宣称第三方实际交付成功或提供回滚保证。
+- **奖励数据**：目标 writeData 接受 Json5Object，以 Json5Util 读取 xp / xp_levels / random_bonus / only_one，不使用 1.21 的 CompoundTag。物品预览采用原版 immutable ItemStackTemplate，按物品与组件相等合并。
+- **文字解码**：JSON Component 通过 ComponentSerialization.CODEC 与注册表 JsonOps 读取，无法解析则保留字面量，不加载 FTB 客户端文本辅助类。
+- **客户端绘制**：目标类型使用 getIcon，Icon 的 renderer 向 GuiGraphicsExtractor 记录渲染状态。新增 FtbQuestIconRenderer 在 AUI BODY 阶段，将几何、文字及物品重放到当前 AUI 输出目标、变换和投影，复用活动 scissor；不调用会重置目标的完整 GuiRenderer。tooltip 使用 setTooltipForNextFrame。不存在旧 GuiGraphics / flush 或全局 GL 深度恢复代码。
+- **方块图标深度**：重放物品模型时使用 `Base.getGuiItemModelZ()`，不能沿用二维图标的 Z=0；模型向后的部分会与卡片背景相交，看起来像面被剔除。保持原版模型剔除规则，并在恢复 GUI 光照前完成物品缓冲提交；数量等文字在模型之后绘制，使用 `Base.getGuiItemDecorationZ()` 保持前景层级。
+- **命令与命名**：原生 Commands.hasPermission；公共资源 ID 使用 Identifier。可选 FTB 类仍隔离于 compat.ftb，专服不引用客户端图标实现；未安装时不加载可选类。
+
+## 数据格式
+
+1.21.1 原生任务使用 `.snbt`，语言为 `quests/lang/<locale>.snbt`。26.1.2 继续使用目标原生 `.json5` 示例与布局；此次未把旧版示例、run 目录或整合包文件复制过来，也未增加旧存档迁移代码。说明书与背景从新库按需重建，旧的独立缓存文件不再读写。
+
+## 验证与待验收
+
+已执行 `gradlew compileJava testModClasses`，主代码与测试源集编译通过；最终执行 `gradlew compileJava testModClasses jar --console=plain` 成功，JAR 为 1,542,493 字节；双语各 513 键、23 份卡片与 13 个节点类型核对通过。完整静态检查与最终结果见 [编译与验收](testing.md)。没有启动 Minecraft、运行测试、创建存档或调用收费 API，因此不能据此认为游戏内验收已经通过。
+
+后续在目标版本人工验收：
+
+1. 中英文玩家的任务标题 / 描述 / 搜索 / 通知 / 播报，以及缺译、无标题、JSON、§ 和 & 文本。
+2. 勾选与物品加经验礼包、介绍任务排除、普通任务提交、原生依赖 / 暂停 / 顺序 / 自动领奖及队伍共享。
+3. 图标、数量、物品与文字 tooltip、第三方类型、滚动裁剪、淡入合成和按 T 交互；缺少 FTB 的历史文字回退。
+4. 单项解锁直接详情、多项合并列表且每页 10 项；本地上 / 下页不发包或切换通知，查看详情后返回原页。完成通知逐项发送且优先，底部确定关闭整个窗口，播报结束不自动翻页。
+5. 礼包稍后从聊天历史领取、重复点击与部分失败、经验 / 等级和组件物品合计。
+6. 共享 / 私有库隔离和持久化、重载权限与并发失效、数据库错误处理；本地有结果不搜索，查库为空且明确授权才联网，禁用搜索模块不影响本地问答。
+
+未经明确要求，不为上述验收启动游戏、插入探针或创建临时数据。
+
+## master 后续变更：交互式任务通知窗口
+
+2026-10-30 在 master 增加以上分页与返回行为。后续同步其他版本时，需一并同步 `ActionsNode` 的 `notification_page_size`、通知持有的 `CardPageState` / 返回栈、`CardButton.Behavior.PUSH` 与请求来源关联、`quest_list.json`、共享 CSS 和四个双语键；服务端 `unlockNotification` 的单项分支复用 `FtbQuestAccess.detail(..., "unlocked")`，完成事件循环不合并。该变更不新增依赖、网络包或数据库格式。
+
+
+## 2026-10-30 本轮补充移植
+
+以下先保留移植前的核对记录；实际实施结果见后续小节。
+
+### 2026-10-30 待移植清单复核（1.21.1 `7aca25a` → master `b97aa1c`）
+
+本次仅阅读并比较源码、依赖源码和资源，执行 `git fetch origin` 更新远端引用；未切换分支、修改 master、编译或启动游戏。远端 master 当前为 `b6afc9d`，本地 master 多出的 `b97aa1c` 尚未推送，下表以本地 master 为基线。
+
+| 状态 | 范围 | 核对结果与后续处理 |
 | --- | --- | --- |
-| `compat/ftb/FtbQuestText` | 在 1.21.1，服务端 `ServerQuestFile.getLocale()` 固定取任务文件的回退语言；直接 `getTitle()` / `getRawDescription()` 无法按接收玩家的语言读取。新增单一文本入口，使用玩家客户端语言与 FTB `TranslationManager` 的 TITLE / QUEST_DESC，并保留其原生缺译回退。 | 核对 TranslationManager API、语言键和玩家语言字段；不能临时修改共享 file locale 或 cachedTitle，否则不同语言的玩家会互相影响。 |
-| `FtbQuestText.title` | 未命名任务沿用原生“第一个目标标题”回退，但第一个目标也递归按玩家语言读取。JSON 文本通过原版 lenient Component 解析器处理，再交给 LegacyText 处理 § / & 格式；普通文字和无法解析的 JSON 保留字面量。 | Component 解析 API 在两个 MC 版本可能不同。不要调用 FTB `TextUtils.parseRawText`：当前实现会调用客户端类，不能在专服使用。 |
-| `FtbQuestAccess`、Query / Find / Submit 工具 | 列表、详情、章节、目标、奖励、自选项、名称搜索和提交回执统一调用 FtbQuestText。查询与显示使用同一种本地化标题。 | 完整迁移所有调用点，不能只修列表；保留 ID 查询、精确优先、玩家列表编号和授权校验。 |
-| `FtbQuestSpeech`、`FtbQuestNotifications` | 按接收玩家生成标题、描述与播报快照；TASKS / REWARDS 格式化器带入玩家，未知类型的模型输入也用相同标题。 | 同步快照签名和所有调用方；保留已有按任务 ID、语言和内容区分的播报 / 背景缓存。 |
-| `FtbQuestReader.kind` | 旧逻辑要求所有奖励均为物品。现在：至少一个原生勾选目标、全部目标均为原生勾选、不可重复、至少一项非空物品；允许附带原生 XPReward / XPLevelsReward。全部奖励必须非隐藏。 | 保留精确类匹配。仅经验、无目标有奖励、命令 / 自选 / 随机 / 第三方奖励、混合目标和可重复任务仍是普通任务。无目标或纯勾选且无奖励仍是介绍任务。 |
-| `FtbStarterGifts`、`StarterGiftOutput`、`cards/starter_gift.json` | 整体预览包含 `items` 与 `icons: List<QuestIconOutput>`，通过原生类型图标展示未领取的经验 / 等级合计；各 Gift 仅保留 ID、引用和错误。不显示来源任务名称。 | 同步公共载荷 Codec、构建参数与客户端模板；两端一起更新。保留原生任务提交、奖励领取、服务端凭证、静默刷新及不重复发完成通知。 |
-| `FtbQuestClaimTool` 与双语 `system.error.claim_rejected` | 1.21.1 的 `Reward.claim` 返回 boolean，`tryClaim` 还运行领取事件。普通奖励交给 `TeamData.claimReward`；自选奖励按原生 ClaimChoiceRewardMessage，先 `selected.tryClaim` 成功再标记外层奖励。未标记时返回明确失败，不能先标记再忽略处理器结果。 | **版本专属差异，不要机械复制**：先核对 26.1.2 的 Reward.claim / tryClaim 返回类型、TeamData.claimReward 以及自选奖励网络处理器，遵守目标版本原生顺序。 |
+| 待同步 | `screen/card/node/ActionsNode` | 回调捕获前调用 `Element.init`。已直接检查 26.1 / AUI 1.2.6 的 `Node.prepareForInsertion` 与 `Element.init`，目标版本同样会替换普通 Element，分页按钮也有同一问题。 |
+| 待同步 | `speech/asr/RecognitionRecording`、`AssistantRecognition` | 同步停止与入队互斥、缓冲耗尽后直接 EOF、终态回调保护、90 秒会话 / 15 秒收尾超时、取消清理和执行器拒绝处理；平台无关，不涉及 Windows 输入法。 |
+| 先修正再同步 | `RecognitionRecording.record` 的自然 EOF | 当前 `ended = true` 写在 try-with-resources 外层 finally，实际发生在设备 `close()` 之后，尚未实现“自然 EOF 在设备关闭前发布”。手动停止已可通过 `stopped` 返回 EOF；自然结束则应将发布动作调整至资源关闭前，再同步两版本。这里只记录问题，未改实现。 |
+| 按目标依赖确认 | `ImBlockerConfigMixin`、`system.mixins.json` | 当前白名单注入只核对过 IMBlocker 5.6.1 / 1.21.1，不代表适用于 26.1.2；有目标版本集成需求时先检查实际 JAR，缺少可用版本则不迁移。 |
+| 保留目标实现 | `AssistantInputScreen`、`TokenUsageData` | 26.1.2 已有原生文本输入 / preedit 生命周期，不能随 1.21.1 的简化一起删除；SavedDataType 使用合法 Identifier，也不应套用 1.21.1 的字符串文件名修正。Windows 专用输入法检测已删除，不加入目标版本。 |
+| 已同步 | 任务通知窗口与 FTB 业务 | PUSH / 返回栈、每页 10 项、单个新任务直接详情、完成任务分别通知均已在本地 master；本轮对比两分支的 `assets/system` 卡片 / 语言和共享 CSS 无差异。FTB 事件、奖励调用、ItemStackTemplate 和图标渲染仍保留各版本 API。 |
 
-所有新增 FTB 引用仍在 `compat.ftb` 隔离层；公共礼包 DTO 只持有原版 Component 和物品预览，不引用 FTB 或客户端类。
+同步时更新 ASR 和分页相关说明，保留 26.1.2 自己的版本信息、渲染与输入法文档；不能整份覆盖 1.21.1 的文档或直接 cherry-pick `7aca25a`。
 
-## 2026-10-30 原生类型图标与 tooltip（也需同步）
+### 实施结果
 
-新增 `QuestIconOutput`（类型分类、ResourceLocation 类型 ID、标题、数量 / 进度、tooltip），`FtbQuestPreviews` 在服务端统一准备非物品的图标描述。扩展 QuestTaskOutput / QuestRewardOutput / QuestChoiceOutput、QuestNotice 和 StarterGiftOutput，对应卡片 context 填入 task_icons / reward_icons / choice_icons。物品预览保持不变，自选奖励候选的状态取外层奖励。
+已切换 master 并执行 `git pull --ff-only origin master`，远端无新提交，基线仍为 `b97aa1c`。同步 `7aca25a` 的 ActionsNode 提前初始化、RecognitionRecording 停止 / 帧队列处理和 AssistantRecognition 的终态、超时、取消及错误处理；额外将自然结束时的 `ended = true` 移至 try-with-resources 关闭设备之前，外层 finally 仍保证异常路径最终发布终止。该额外顺序修正目前只在 master，1.21.1 后续需回同步。
 
-新增客户端 `system:icons` 节点及注册，`IconsNode` 仅在首次渲染且安装 FTB 时通过反射加载 `compat.ftb.client.FtbQuestIconElement`。后者直接使用 TaskTypes / RewardTypes 的 `getIconSupplier().draw`，所以图标与 FTB 创建菜单一致，支持第三方注册类型，无须复制纹理。缺少依赖 / 类型时退回文字。新增 `AssistantTooltip`，沿用 `AssistantItems.tooltip` 的屏幕 / HUD 绘制后时机，非物品显示文字 tooltip，物品仍调用原版 ItemStack tooltip。
+26.1.2 的 AssistantInputScreen 原生文本输入 / preedit、TokenUsageData 的 Identifier / SavedDataType，以及版本、依赖和 Mixin 配置保持原实现。2026-10-30 查询 [IMBlocker 的 Modrinth 26.1.2 版本列表](https://api.modrinth.com/v2/project/imblocker/version?game_versions=%5B%2226.1.2%22%5D) 为空，未将仅核对过 1.21.1 的白名单 Mixin 加入目标；没有增加平台专用输入法代码。
 
-同步范围包括新增 DTO / helper / 客户端图标元素 / 节点、SystemCardNodeTypes、四份任务 / 礼包模板和 assistant.css，以及 `system.ui.quest_icon_progress` 双语键。26.1.2 必须重新确认：FTB 类型表和图标供应器方法、Icon.draw 的参数、AUI 自定义元素绘制阶段 / clip / opacity 机制、GuiGraphics / pose API 和 tooltip API；不能直接复制 1.21.1 中构建 GuiGraphics、复制矩阵和恢复 GL 深度状态的代码。公共载荷不允许引用 FTB / AUI / 客户端类，专服不解析图标。TTS 的 SpeechContent 不改成图标数据。
+实际执行 `gradlew compileJava testModClasses jar --console=plain` 成功。静态 / 产物检查：中英文各 517 键且集合相同，23 份卡片 JSON 可解析，三个修改类均为 Java 25 字节码；`system-1.0-beta.1.jar` 为 1,548,823 字节，无内嵌 Saturn、旧 screen/input 类或 IMBlocker Mixin。没有运行测试、启动游戏、创建存档或调用收费 API；分页点击、设备结束与取消、识别自动发送仍待游戏内验收。改动未提交或推送。
 
-后续人工验收还需检查：各类内置图标、第三方能量目标、非物品自选奖励、礼包经验数量、中文 / 英文 tooltip、通知按 T 交互、滚动裁剪与展开淡入动画，以及未安装 FTB 时历史卡片的文字回退。此次只有编译与静态检查，没有启动游戏。
+## 2026-10-31 完整模式分页、定位与语音计费同步
 
-后续布局修正也需一起同步：`starter_gift.json`、`quest.json`、`quest_notice.json` 将“奖励”标题移至循环外层，使用共享的 `reward_section` / `reward_grid` / `reward_entry` 样式横排物品和类型图标，超宽换行，去掉子节点重复标签。`QuestNotice.buildCard()` 新增派生状态 `has_rewards`，防止无奖励时出现空标题；自选奖励编号、按钮、礼包错误提示和 tooltip 保留。
+1.21.1 的全部工作区内容已提交为 `c6fc689`；随后切换 master 并执行 `git pull --ff-only`，远端无更新，目标基线为 `1ef5d80`。本次逐项比较两版本，仅同步 master 尚缺少的公共修复：
 
-## 2026-10-30 解锁任务批量通知（也需同步）
+| 范围 | 同步内容 |
+| --- | --- |
+| 完整模式任务列表 | `ActionsNode.page_size=10` 同时用于完整模式与通知；`AssistantScreen` 按卡片 UUID 保存页码，经 `AssistantView` 传入，聊天刷新和窗口缩放保留状态。按钮仅重绘本地节点，不发包或推进通知。 |
+| 界面定位 | 共享 CSS 直接用视口固定完整模式位置，简约模式与通知显式覆盖 `top: auto`，保留底部锚点。 |
+| 页面缺失 | `AssistantScreen.updatePage` 检查目标页面节点，允许自定义模板省略模块页面，避免空指针。目标 CoreSystemClientModule 已无旧聊天入口，无需重复改动。 |
+| 语音价格表 | `SpeechPricingConfig` 先初始化 PRICE / LOGGER，再构建外层 Codec / INSTANCE；金额接受 JSON 数字或十进制字符串，并直接用 BigDecimal 保存数字。 |
+| 统计隔离与日志 | `LocalSpeechUsage.Ledger` 在同步 update 中集中隔离 RuntimeException / LinkageError，保留上一次快照，不阻断成功的识别或播报；`AssistantRecognition` 保留完整异常堆栈。 |
 
-`FtbQuestNotifications.flush` 仍按队伍在 tick 内汇总进度事件、对比可推进任务基线；同批新增且未完成的普通任务按原顺序合并成一个列表，每位有效在线接收者最多收到一条解锁通知。先发送所有完成项，再发送礼包汇总与普通任务解锁列表；静默操作、队伍锁定切换、新加入玩家和重登不补发已有解锁。礼包继续使用原本的汇总与领取流程。
+26.1.2 的玩家模型已经通过独立 LivingEntityRenderState 与 FeatureRenderDispatcher 在 AUI 内提交，无需移入 1.21.1 的旧实体渲染调用。保留 master 的自然 EOF 在设备关闭前发布、原生输入法、SavedDataType、外置 Saturn、版本和依赖；不复制 1.21.1 的注解、ResourceLocation 或渲染实现。未改两份 README，未推送远端。
 
-新增公共 DTO `QuestUnlockedOutput` 及 `SystemCardDataTypes.QUEST_UNLOCKED` 注册，复用 QuestList 的按任务 ID 查看动作和 quest_list 模板，设置 `unlock_notice` 隐藏编号及“查看 1”提示，不写入或覆盖主动查询列表缓存。增加 `system.tts.message.quests_unlocked` 双语键，摘要和播报仅提示数量。原 notification 方法改为 completionNotification，只构建完成通知；任务要求、奖励和提交按钮在点击后的详情中按原逻辑提供。
+### 2026-10-31 语音账本后台处理（1.21.1 待同步）
 
-同步文件包括 FtbQuestNotifications、QuestUnlockedOutput、SystemCardDataTypes、quest_list.json 和两份语言文件。26.1.2 需保留自身 FTB 事件接入方式，仅同步批量发送与公共卡片逻辑；人工验收应覆盖一次解锁多个任务、同 tick 多次完成、队伍多玩家、单任务解锁、礼包混合解锁、滚动与点击替换、重登及静默重置。此次未启动游戏。
+用户反馈点击抽奖后短暂卡住再恢复，日志无语音异常。阅读源码确认 TTS HTTP / SSE / 解码在后台，但 `AssistantSpeech.start` 构建记账器时会通过 `LocalSpeechUsage.current()` 同步读取本地文件，且用量快照与价格计算 / 写盘共用账本锁。master 将账本首次加载、计算、归并和写盘统一移到 `system-speech-usage` 单线程队列；首次加载排在更新之前，界面通过 volatile 读取不可变快照，回调去重和账号隔离保持不变。JVM 关闭时独立 hook 最多三秒排空队列，不在渲染线程等待。两版本原 LocalSpeechUsage 内容相同，后续 1.21.1 可同步此类及语音文档。
 
-## 2026-10-30 本地说明书索引（也需同步）
-
-新增 QuestKnowledgeCache、QuestGuideInput / Output / Module、FtbQuestGuideTool 和 `system:quest_guide` 动作 / 卡片注册，任务页及 guide / 说明书 / 查说明 指令可直接查本地说明。采用用户确认的收录规则：仅原生勾选或无目标、有说明正文、非礼包任务。独立 guideCandidates / guideReadable 允许读取被进行中视图过滤的 INTRODUCTION，保留原生任务与章节可见性、详情解锁和完成后显示正文的限制。
-
-静态文档按存档与玩家语言缓存，复用纯 Java LexicalIndex，后台切段和向量检索，不引入模型运行库、外部 embedding 或数据库服务；当前文档变化会重建，返回前回到服务端再次检查队伍、语言、任务对象及正文。原文使用 FtbQuestText 新增 rawDescription 读取，只有现有 description 才是权限感知的展示入口，不得直接把 rawDescription 返回给玩家。
-
-同步还包括 LexicalEncoder 非领域模式保留注册 ID 词、BuiltinTools、FtbQuestAdapter / Access、QuestSystemClientModule、assistant.html / css、quest_guide.json 和双语语言键。26.1.2 需核对其 FTB 原生任务类型、可见性与正文隐藏 API，沿用目标版本的玩家语言和 Java / MC 类型；不机械复制版本专属接口。说明与未验收范围见 [本地说明书检索](quest-guides.md)。
-
-## 2026-10-30 聊天历史领取礼包（也需同步）
-
-礼包通知保留独立的“领取礼包”和本地“确定”，不使用 PRIMARY。原礼包凭证两分钟后逐条报 STALE_REFERENCE，导致关闭通知后再从聊天历史领取失败。`FtbStarterGifts` 移除仅针对礼包的时间过期限制，仍检查玩家、队伍、任务 / 奖励对象、完成时间、原生前置和领奖状态；同一连接内可稍后领取，已领项不重复发放。普通任务的短期奖励引用保持原规则。
-
-`FtbQuestAccess.clear(UUID)` 统一清理礼包凭证、普通奖励引用与列表缓存，由撤销和 `FtbQuestNotifications.remove` 的模块会话结束入口调用，登出或停用任务模块后不保留凭证。同步这三个类及使用说明；26.1.2 沿用自身模块会话结束入口，不机械复制 1.21.1 的 API。历史从磁盘恢复仍只读，不重新授权旧卡片。
-
-## 2026-10-30 礼包奖励预览合计（也需同步）
-
-`FtbQuestPreviews` 在服务端分别合并经验值和经验等级，数量使用 long，tooltip 和图标旁数字都使用总量；六份 100 经验只显示一个 +600。相同物品及组件的数量 / 随机区间合计，展示模板的物品 count 保持 1，避免超过堆叠上限而无法渲染；`only_one` 条件物品保持独立。读取 FTB 原生 writeData 的 `xp` / `xp_levels` / `random_bonus` / `only_one` 字段，不解析客户端按钮文字，也不提前随机或执行领奖。
-
-`StarterGiftOutput` 改为整体 `gifts + items + icons`，Gift 仅保留 questId / claimRef / error。`FtbStarterGifts.snapshot` 统一对仍未领取、未屏蔽的原奖励准备汇总，首次查询与部分失败后的刷新共用；每个任务仍分别提交、领取和记录失败。`starter_gift.json` 只渲染一份汇总 items / icons，错误单独循环，has_rewards 避免空标题。同步上述四个文件与文档；26.1.2 需核对原生数值访问 API / 存储字段，并使用目标版本 ItemStackTemplate 的组件匹配方式。当前未修改 26.1.2。
-
-## 2026-10-30 分层数据库与 FTB 重新收录（也需同步）
-
-QuestKnowledgeCache 已拆成通用 agent.database 下的 AgentDatabases / AgentDatabase / DatabaseTable / KnowledgeIndex。共享库位于 `<存档>/system-database/shared.json`，原文与背景分别使用 `system:ftb_guides` 和 `system:quest_backgrounds` 表；玩家私有库为 `players/<UUID>.json`，预留同一套 Codec 读写及检索 API。AgentEngine 统一持有并关闭数据库，revoke / reset 删除私有库；不迁移玩家业务记录或累计用量，不读取旧的两个缓存文件。QuestBackgrounds 改为直接访问通用表，原来独立的文件 / Map 缓存逻辑删除。
-
-新增 FtbQuestKnowledge，按语言缓存服务端静态文档，查询只重算允许读取的 ID 并在返回前复核来源内容；后台使用有界维护队列完成数据库操作与检索。FTB 原生 ClearFileCacheEvent 使快照代次失效，旧查询不得返回；多个 FTB 配置复用同一份世界知识。QuestSystemModule 声明管理员 / 控制台指令 `/system ftb reload`，通过已隔离的适配器重新收录当前已加载的定义、移除过期来源、重建索引并反馈数量，不读写原生任务文件、进度或奖励。
-
-26.1.2 需同步上述通用类、FtbQuestAccess / GuideTool / Adapter / Notifications、QuestSystemModule 指令、FtbQuestText 的显式语言重载、QuestNarration / Backgrounds、AgentEngine / AssistantServer 装配、双语提示及文档；沿用目标版本的 FTB 获取实例、缓存失效事件与 HolderLookup API，避免直接复制当前 Optional 签名。编译与静态检查通过，未启动游戏，玩家隔离、持久化、命令权限、编辑 / 重载并发和专服缺少 FTB 的行为仍待实际验收。详细约定见 [分层本地数据库](databases.md)。
-
-## 2026-10-30 数据库优先问答（也需同步）
-
-核心 QuestionModule / `system:question` 新增通用 `database.query`，汇总当前 UUID 私有库与共享库的 `system:knowledge` 文档，并通过已启用 FTB 模块的 `ftb.guide` 读取授权说明；禁止直接扫描共享 `system:ftb_guides` 原始表。FtbQuestAdapter.modules 改收 ModuleContext，在当前模块 owner 下导出并复用同一个 GuideTool；QuestSystemModule 的反射签名同步变更，依赖缺席时依然不加载适配器。
-
-有本地资料时至多一次模型整理，发送前再次查库确认来源仍相同；外部 AI 关闭、密钥缺失、额度不足或可恢复失败时展示原文，不转为搜索。仅查库为空、搜索工具模块启用且当前 QuestionInput.allowWeb=true 时，ExecutionContext 才开放本次联网门禁。SearchSystemModule 改为 ToolModule，移除旧的 WebSearchInput / WebSearchModule，网页 ReAct 由 WebResearch 提供；开发默认 tag 不再授予搜索能力。
-
-26.1.2 需同步 AgentModule.Descriptor.optionalTools、BuiltinModule / ModuleRegistry / ExecutionContext、数据库查询与问答 DTO / 卡片、Core / Search 模块、工具与动作 / 卡片注册、routing / knowledge_answer 提示词、双语键及搜索页。FTB 只同步导出与调用链，保留目标版本的原生权限、队伍、语言与后台复核逻辑。预算键改为 `system:question`；不能复制旧的 `system:web_search` 独立工作流或默认 tag 追加。当前未修改 26.1.2，游戏内授权与供应商请求仍待人工验收。
-
-## 另一个开发数据问题
-
-仓库 `examples/ftbquests` 和已有 `run-test-client/config/ftbquests` 仍保留 26.x 的 `.json5` 示例；当前 1.21.1 FTB 读取 `.snbt`，语言表也应是 `lang/<locale>.snbt`，不是 `lang/<locale>/chapters/*.json5`。现有 test-client 日志加载 0 章节 / 0 任务源于此，不能拿该环境的空列表判断此次整合包修复是否成功。
-
-这次没有改写开发运行目录或示例，也没有自动转换用户整合包。后续维护两个版本的示例时，应分别保留目标 FTB 原生格式，不要把 1.21.1 的文件布局直接同步到 26.1.2。
-
-## 后续人工验收
-
-1. 中文与英文玩家分别查询、按名称查找及查看同一任务，确认标题、章节、描述、通知和播报跟随各自语言；再检查只在回退语言有翻译的任务，以及无标题、JSON / § / & 格式标题。
-2. 新绑定时，确认可开始的“勾选 + 物品 + 经验 / 等级”进入汇总礼包；奖励卡片显示物品和经验，不显示任务名。已绑定玩家重登不重复发绑定引导。
-3. 确认纯介绍任务仍被忽略，仅经验、重复任务和命令 / 自定义奖励不会被当作礼包；普通勾选任务继续显示“完成此任务”。
-4. 领取礼包后确认物品与经验原生发放、静默刷新、不可重复领取；前置、暂停、队伍共享、任务顺序和原生自动领取继续生效。
-5. 让原生奖励条件拒绝普通或自选奖励，确认不会提前标记已领取；解除限制后可重新请求领取。
-
-未经用户明确要求，不为上述验收启动游戏、插入探针或创建临时存档。当前仅执行编译和静态检查，执行记录见 [编译与验收](testing.md)。
+此结论是源码审计发现的阻塞风险，不代表已确认本次卡顿唯一根因。对用户已有的 Prism 1.21.1 进程只读抓取线程堆栈时，渲染线程已经在正常帧限速等待，没有抓到卡顿现场。未启动或操作游戏，未执行运行时探针，未调用收费 API。
 
 
-## 2026-10-30 master 通知窗口回同步 1.21.1
+## 常驻固定任务后续变更
 
-切换 `1.21.1` 后先执行 `git pull --ff-only`，远端无新提交（目标 `03ca46a`）；来源为 master `b97aa1c`。此次仅同步交互式任务通知，不合并版本、依赖、内联 Saturn 或 26.x 渲染代码。
+早期 QuestPinCache / QUEST_PINS 的连接内列表现已替换为核心模块 DisplayCardsDataStorage 和 ClientModuleCaches.DISPLAY_CARDS。固定操作走独立 C2S/S2C，服务端按玩家事务保存 source + id，markDirty 后沿用玩家文件持久化；登录重建当前队伍的可见任务快照，每秒刷新，只发送变化。完成后保留，失去权限时隐藏，登出仅清客户端缓存，revoke / reset 删除记录。
 
-- `ActionsNode.notification_page_size=10` 控制通知内任务列表分页，上 / 下页和页码独立位于卡片正文，底部确定结束整个窗口。翻页只改 `CardPageState` 和局部 DOM，不发包、不生成新通知或推进队列。
-- `CardButton.Behavior.PUSH` 与来源请求关联保留当前列表；详情正文提供返回，恢复原页且不重复播报列表。更新保留页码，移除清理对应返回项；返回淡出期间的迟到回复不能覆盖待返回视图。
-- 单个普通新解锁任务直接发送 `QuestOutput` 详情，使用 `unlocked` 主句；多个任务发送分页列表。完成事件仍每个任务单独通知，礼包流程不变。
-- 同步 `CardPresentation`、共享 CSS、`quest_list.json` 和四个双语键。1.21.1 保留 ResourceLocation、项目内 ItemStackTemplate、Architectury 进度事件，以及 ScreenEvent.Render.Post / GuiGraphics tooltip；没有引入 26.x 的 ApricityGuiLayers 提交逻辑。
+后续移植请连同 AssistantCardDisplays、FtbQuestDisplay、QuestPinOutput、存储与网络注册、AssistantCardDisplay、AuiHudEntry / DisplayCardsHudEntry / SystemHudEntries、被动鼠标 mixin 排除、quest_pin.json、assistant-cards.html、共享 CSS 和双语键一起核对。当前只在 26.1.2 工作区修改，尚未移植到 1.21.1；不要再按上文早期记录恢复客户端临时列表。
 
-实际执行 `gradlew compileJava testModClasses --console=plain` 成功，未运行测试或启动游戏。静态资源与语言检查结果见 [编译与验收](testing.md)；仍需游戏内验收 10 / 11 项边界页、大列表、返回原页、任务完成逐条通知和单 / 多任务解锁。改动留在 1.21.1 工作区，未提交或推送。
+## 2026-11-07 运行时生命周期整理（1.21.1 待同步）
 
-### 回同步后的分页点击修正（master 尚需同步）
+AssistantServer 改为单个 volatile INSTANCE，服务端启动完成后发布，停止时先清空再关闭；保留 get(server) 的对象身份检查，不向 MinecraftServer 挂字段或添加 Mixin。FTB 不再使用 SERVERS / ACCESS 静态 Map，由 FtbQuestRuntime 持有统一的查询、知识索引和通知状态；ModuleContext.sharedRuntime 在一次安装内共享实例，ModuleManager 对 validate / tick / close 按对象身份去重，并处理安装失败时的资源关闭。玩家 Session 按配置计数，最后一个关闭时才清理玩家引用。
 
-用户反馈点击“下页”无反应。阅读 AUI 1.21.1 / 1.2.6 的 sources JAR 确认：Node.prepareForInsertion 调用 Element.init，普通 Element 会被注册的 Div 实例替换；旧回调持有原始分页容器，其 isConnected 为 false。ActionsNode.render 改为先 Element.init(view.element(...))，再构建分页及回调，使后续挂载和重绘指向同一实际容器。保留连接与交互检查，不绕过通知生命周期。此修正当前仅写入 1.21.1，master 的同源 ActionsNode 也需同步这一行及注释；编译通过，未启动游戏复测。
+后续同步需一起修改 FtbQuestAdapter.runtime 的 ModuleContext 参数、QuestSystemModule 反射签名、显式提交的实例通知调用，以及 /system ftb reload 的运行时查找。FTB 通知改为实例 @SubscribeEvent 监听，安装时注册、关闭时注销；旧版按实际事件 API 调整，保持可选依赖隔离，不移回服务器键 Map。当前仅修改 master，未同步到 1.21.1；编译结果不代表运行时事件与跨存档切换已验收。
 
-### 完整模式任务列表分页（master 待同步）
-
-2026-10-31：`ActionsNode` 的配置字段由 `notification_page_size` 改为通用 `page_size`，`quest_list.json` 设为 10，同时用于完整模式与通知。完整模式在 `AssistantScreen` 按卡片 UUID 保存 `CardPageState`，经 `AssistantView.renderCard` 传给构建入口；聊天重绘、忙碌更新和窗口重建后保留页码，不同卡片互不影响。卡片退出当前聊天记录时清理，简约模式和文字导出仍保留完整列表。后续同步 master 时同时迁移节点 Codec、模板、页码状态注释、完整模式传参及文档。
-
-### 1.21.1 SavedData 文件名修正
-
-用户在 Windows 保存世界时报告 `data/system:token_usage.dat` 的 InvalidPathException。核对 1.21.1 DimensionDataStorage.getDataFile 后确认它直接将字符串键拼接为 `<键>.dat`，不会像 26.x SavedDataType 一样拆分命名空间。TokenUsageData.FILE_ID 改为 `system_token_usage`，实际路径为 `<存档>/data/system_token_usage.dat`；去掉无用的 ResourceLocation import，用量内容及撤销保留规则不变。本修正仅适用于 1.21.1 的文件名 API，不能机械改动 master 的合法 Identifier / SavedDataType。扫描主源码与内联 Saturn，仅此一处使用原版 SavedData；编译通过，未修改用户存档或启动游戏。
-
-
-### 1.21.1 ASR 收尾与输入法（后续同步注意）
-
-RecognitionRecording 手动停止与帧入队共用锁，耗尽缓冲后直接返回 EOF，不等待设备线程；自然结束的 EOF 也改为在设备 close 之前发布，结束后读取帧队列时复核最后一帧；AssistantRecognition 增加独立 session 计时、完成终态、后台错误和执行器繁忙处理。这两处是跨版本共有的语音链路修正，后续需同步到 master / 26.1.2。
-
-中文输入法修正则针对 1.21.1：`ImBlockerConfigMixin` 用 `@Pseudo` 和字符串目标注入 `IMBlockerConfig.isScreenInWhitelist`，将全部 `AssistantPageScreen` 子类视为白名单，不改用户配置，无 IMBlocker 编译或运行依赖。核对实际整合包 IMBlocker 5.6.1 JAR 及 v5.6.1 源码；不自行管理其控件焦点、候选定位或字符探测，也不再保留 Windows 专用组合串检测与按键保护。文字输入沿用 AUI 和平台原有流程。master 已有 26.1 原生文本输入 / preedit API，后续同步应保留其平台原生支持；白名单 Mixin 需先核对目标版本 IMBlocker 签名。此次只做编译和源码 / JAR 检查，没有游戏内验收。
-
-### 语音价格表初始化与统计隔离（master 待核对同步）
-
-2026-10-31：根据 1.21.1 整合包实际堆栈，将 `SpeechPricingConfig` 的 PRICE Codec 和 LOGGER 移到外层 CODEC / INSTANCE 之前，避免静态初始化期间读取 null。金额 Codec 同时接受 JSON 数字和十进制字符串，保存数字，不经 double 转换；原 Codec.STRING 无法读取默认价格文件的数字字段。`LocalSpeechUsage.Ledger` 集中在同步 update 中隔离 RuntimeException / LinkageError，计算失败保留旧快照并记录完整堆栈，不阻断 ASR 文本交付或 TTS 播放；`AssistantRecognition` 也保留完整错误堆栈。后续在 master / 26.1.2 核对同源问题再同步上述三类及语音文档，无需改玩家存档或清空统计。
-
-### 2026-10-31 语音记账后台修复回同步 1.21.1
-
-master 已在 `4eee04b` 同步价格表初始化及统计异常隔离，随后在 `c212876` 移除语音记账对渲染线程的阻塞。本轮先提交 master，再切换 1.21.1 执行 `git pull --ff-only`，远端无更新，目标基线为 `c6fc689`。
-
-同步 LocalSpeechUsage 及语音文档：账本构建只捕获路径，初始加载、费用计算、TTS / ASR 归并和写盘由独立 `system-speech-usage` 单线程队列串行完成；初始加载先于该账本的更新，界面读取 volatile 不可变快照，不等待后台锁。账号隔离、回调去重和文件格式不变；JVM 退出的独立 hook 最多三秒排空队列，不在渲染线程等待。本类只使用两个分支均已采用的 JDK API，无 Minecraft / NeoForge 签名迁移；保留 1.21.1 版本、内联 Saturn 与输入 / 渲染实现。
-
-这是已确认的同步读盘和锁等待风险修复，尚无卡顿现场堆栈证明它是用户短暂卡顿的唯一根因。未启动 Minecraft、插入探针或请求收费 API，游戏内改善与退出排空仍待验收。
+同轮 ModuleContext 保留 AgentEngine / 模块注册表为固定字段，以 engine() / modules() 读取，其他服务注入改为 ContextType<T> 键与 Map。AssistantServer 使用双参构造加链式 put，FTB 和其他模块按依赖使用固定 getter 或 `context.get(ContextTypes.XXX)`。ModuleManager 在实际装配前发布 ModuleContextEvent，供其他模组同步注入扩展服务。移植时一并同步 ContextType / ContextTypes、事件和调用点，保留原有 sharedRuntime 的安装范围与生命周期，不恢复按服务增加字段的旧构造器。

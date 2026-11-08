@@ -1,38 +1,45 @@
 package com.iafenvoy.system.screen.gui;
 
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
-import com.iafenvoy.system.screen.AssistantPages;
+import com.iafenvoy.system.screen.AssistantGeometry;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
-import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.iafenvoy.system.speech.tts.AssistantSpeech.Session;
+import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.mojang.brigadier.CommandDispatcher;
 import com.sighs.apricityui.element.AbstractText;
 import com.sighs.apricityui.event.KeyEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
+import com.sighs.apricityui.layout.Position;
+import com.sighs.apricityui.render.GeometryQueryScope;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
 /**
- * Shared single-line composer, local completions and speech sessions.
+ * Shared single-line composer, local completions and native input-method lifecycle.
  */
 public abstract class AssistantInputScreen extends AssistantPageScreen {
     protected String draft;
+    private long chatModeRevision = -1;
+    private ConversationModeSelector modeSelector;
+    private @Nullable AbstractText textInput;
     private @Nullable SuggestionState suggestionState;
     private @Nullable SuggestionArea suggestionArea;
     private List<AssistantCommandSuggestions.Suggestion> suggestions = List.of();
     private int selectedSuggestion;
     private @Nullable String dismissedDraft;
     private boolean enterDown;
+    private boolean pendingCaret;
     private @Nullable Session speech;
     private AssistantRecognition.@Nullable Session recognition;
     private String recognitionStatus = "idle";
@@ -66,12 +73,18 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
     protected void initPage(Document document) {
         this.stopRecognition();
         this.renderedRecognition = "";
+        this.clearTextInputFocus();
         this.suggestionState = null;
         this.suggestionArea = null;
         this.suggestions = List.of();
         this.dismissedDraft = null;
         this.enterDown = false;
+        this.pendingCaret = false;
+        this.chatModeRevision = -1;
+        this.modeSelector = document.getElementById("chat_mode_selector") == null ? null : new ConversationModeSelector(document);
+        this.renderChatMode();
         for (Element input : document.querySelectorAll("input, textarea")) {
+            input.addEventListener("focus", unused1 -> this.syncTextInputFocus());
             input.addEventListener("keydown", event -> {
                 if (event instanceof KeyEvent key) this.inputKeyPressed(input, key);
             }, true);
@@ -81,14 +94,29 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         });
         Element message = document.getElementById("message");
         if (message == null) return;
-        message.setValue(this.draft);
-        if (message instanceof AbstractText text) text.setSelectionRange(this.draft.length(), this.draft.length());
-        message.addEventListener("input", event -> this.updateSuggestions());
+        if (!message.getValue().equals(this.draft)) message.setValue(this.draft);
+        // setSelectionRange measures the control and its ancestors in AUI. An empty composer already has cursor 0.
+        this.pendingCaret = !this.draft.isEmpty();
+        message.addEventListener("input", unused2 -> this.updateSuggestions());
         message.focus();
         AssistantView.bind(document, "asr_toggle", this::toggleRecognition);
         AssistantView.bind(document, "asr_cancel", this::stopRecognition);
-        AssistantView.text(document.getElementById("asr_cancel"), AssistantView.tr("system.asr.ui.cancel"));
         this.renderRecognition();
+        // Blur fires before AUI commits the next focus; polling observes the completed transition.
+        this.syncTextInputFocus();
+    }
+
+    @Override
+    protected void layoutReady(Document document) {
+        if (!this.pendingCaret) return;
+        if (!(document.getElementById("message") instanceof AbstractText message)
+                || message.getLayout().getCommittedRectIfValid() == null) return;
+        this.pendingCaret = false;
+        if (message.getValue().equals(this.draft)
+                && message.getCursor() == 0 && !message.hasSelection())
+            try (GeometryQueryScope unused3 = GeometryQueryScope.open()) {
+                message.setSelectionRange(this.draft.length(), this.draft.length());
+            }
     }
 
     @Override
@@ -96,13 +124,28 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         super.tick();
         if (this.recognition != null && !this.recognition.finished() && !this.minecraft.isWindowActive())
             this.stopRecognition();
+        this.syncTextInputFocus();
         this.updateSuggestions();
         this.renderRecognition();
+        this.renderChatMode();
+    }
+
+    private void renderChatMode() {
+        Document document = this.getLinkedDocument();
+        if (document == null || this.chatModeRevision == AssistantClient.revision()) return;
+        this.chatModeRevision = AssistantClient.revision();
+        Element hint = document.getElementById("ai_access_hint");
+        if (hint != null) {
+            String key = AssistantClient.state().aiAccessHint();
+            AssistantView.text(hint, key.isEmpty() ? "" : AssistantView.tr(key));
+            AssistantView.display(hint, key.isEmpty() ? "none" : "block");
+        }
+        if (this.modeSelector != null) this.modeSelector.update();
     }
 
     protected void sendMessage() {
         Document document = this.getLinkedDocument();
-        if (document == null) return;
+        if (document == null || this.imeOwnsKeys()) return;
         Element message = document.getElementById("message");
         if (message == null) return;
         this.stopRecognition();
@@ -127,7 +170,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
 
     public final boolean startRecognition() {
         Document document = this.getLinkedDocument();
-        if (document == null || document.getElementById("message") == null
+        if (document == null || document.getElementById("message") == null || this.imeOwnsKeys()
                 || AssistantClient.state().busy() || this.recognition != null && !this.recognition.finished())
             return false;
         if (!RecognitionConfig.INSTANCE.get().enabled()) {
@@ -183,7 +226,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         this.draft = value;
         this.recognitionStatus = "done";
         this.updateSuggestions();
-        // Reuse normal submission so commands and pending requests keep their behavior.
+        // Reuse normal submission so commands, pending requests and IME guards keep their behavior.
         if (RecognitionConfig.INSTANCE.get().autoSend() && this.minecraft.isWindowActive()) this.sendMessage();
     }
 
@@ -222,9 +265,21 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         return key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER;
     }
 
+    private boolean imeOwnsKeys() {
+        // 1.21.1 has no IME preedit state to gate input on.
+        return false;
+    }
+
     private void inputKeyPressed(Element input, KeyEvent event) {
         if (this.minecraft.screen != this) return;
         boolean enter = isEnter(event.keyCode);
+        boolean completionKey = event.keyCode == GLFW.GLFW_KEY_TAB || event.keyCode == GLFW.GLFW_KEY_UP || event.keyCode == GLFW.GLFW_KEY_DOWN;
+        // Native IMEs process these keys first; never let AUI blur or submit while a candidate is confirmed.
+        if (this.imeOwnsKeys() && (enter || completionKey || event.keyCode == GLFW.GLFW_KEY_ESCAPE)) {
+            event.preventDefault();
+            if (enter) this.enterDown = true;
+            return;
+        }
         if (enter) {
             event.preventDefault();
             if (this.enterDown) return;
@@ -266,7 +321,8 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         Document document = this.getLinkedDocument();
         if (document == null || !(document.getElementById("message") instanceof AbstractText message)) return;
         this.draft = message.getValue();
-        boolean eligible = document.getFocusedElement() == message;
+        boolean eligible = (AssistantClient.state().mode() != ConversationMode.FREE || this.draft.stripLeading().startsWith("/"))
+                && document.getFocusedElement() == message && !this.imeOwnsKeys();
         ClientPacketListener connection = this.minecraft.getConnection();
         SuggestionState state = new SuggestionState(this.draft, message.getCursor(), message.getSelectionStart(), message.getSelectionEnd(),
                 AssistantClient.revision(), eligible, ClientModuleCaches.COMMAND.get().revision(), connection == null ? null : connection.getCommands());
@@ -279,12 +335,12 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         this.renderSuggestions();
         if (!complete) return;
         AssistantCommandSuggestions.find(this.draft, result -> this.minecraft.execute(() -> {
-            // Server completions may arrive after editing, reconnecting or rebuilding the page.
+            // Server completions may arrive after editing, IME composition, reconnecting or rebuilding the page.
             if (this.minecraft.screen != this || this.getLinkedDocument() != document || this.minecraft.getConnection() != connection
                     || this.suggestionState != state || !message.getValue().equals(state.value())
                     || ClientModuleCaches.COMMAND.get().revision() != state.commandRevision()
                     || connection != null && connection.getCommands() != state.serverCommands()
-                    || message.getCursor() != state.cursor() || message.hasSelection()
+                    || message.getCursor() != state.cursor() || message.hasSelection() || this.imeOwnsKeys()
                     || document.getFocusedElement() != message || AssistantClient.revision() != state.revision())
                 return;
             if (this.suggestions.equals(result)) return;
@@ -310,10 +366,10 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
             Element row = AssistantView.element(document, "button", i == this.selectedSuggestion ? "command_option selected" : "command_option", this.suggestions.get(i).label());
             row.addEventListener("mousedown", event -> {
                 event.preventDefault();
-                // AUI focuses buttons before mousedown; keep the editor focused when choosing a completion.
+                // AUI focuses buttons before mousedown; restore the editor before the IME focus poll.
                 document.getElementById("message").focus();
             });
-            row.addEventListener("click", event -> this.completeSuggestion(index));
+            row.addEventListener("click", unused4 -> this.completeSuggestion(index));
             popup.appendChild(row);
         }
         popup.appendChild(AssistantView.element(document, "div", "command_hint", AssistantView.tr("system.ui.command_hint")));
@@ -324,11 +380,12 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         Element popup = document.getElementById("command_suggestions");
         Element message = document.getElementById("message");
         if (popup == null || message == null) return;
-        Element.DOMRect bounds = message.getBoundingClientRect();
+        Element.DOMRect bounds = AssistantGeometry.bounds(message);
+        if (bounds == null) return;
         int viewportWidth = document.getViewport().layoutWidth();
         int viewportHeight = document.getViewport().layoutHeight();
         int maxHeight = Math.max(0, (int) Math.floor(bounds.top - 12));
-        if (document.getFocusedElement() != message || bounds.width <= 0 || bounds.height <= 0 || maxHeight == 0) {
+        if (document.getFocusedElement() != message || this.imeOwnsKeys() || bounds.width <= 0 || bounds.height <= 0 || maxHeight == 0) {
             popup.setInlineStyleProperty("display", "none");
             this.suggestionArea = null;
             return;
@@ -349,7 +406,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
 
     private void completeSuggestion(int index) {
         Document document = this.getLinkedDocument();
-        if (document == null || index < 0 || index >= this.suggestions.size()
+        if (document == null || this.imeOwnsKeys() || index < 0 || index >= this.suggestions.size()
                 || !(document.getElementById("message") instanceof AbstractText message)) return;
         String value = this.suggestions.get(index).value();
         message.setRangeText(value, 0, message.getValue().length(), "end");
@@ -360,16 +417,33 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         this.updateSuggestions();
     }
 
+    private void syncTextInputFocus() {
+        Document document = this.getLinkedDocument();
+        Element focused = document == null ? null : document.getFocusedElement();
+        AbstractText next = focused instanceof AbstractText text && text.canEditText() ? text : null;
+        if (next == this.textInput) return;
+        boolean wasTyping = this.textInput != null;
+        this.textInput = next;
+        // Moving between editable controls keeps the native IME session enabled.
+    }
+
+    private void clearTextInputFocus() {
+        this.textInput = null;
+    }
+
+
     @Override
-    public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    public void render(@NonNull GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
+        this.syncTextInputFocus();
         Document document = this.getLinkedDocument();
         if (document == null) return;
         // Geometry queries can populate layout caches; always resolve them in this document's viewport.
         try (Document.ContextScope ignored = Document.withContext(document)) {
             this.positionSuggestions(document);
-            AssistantPages.commit(document);
             AssistantItems.tooltip(document, graphics, mouseX, mouseY);
+            if (this.textInput == null) return;
+            // 1.21.1 has no IME preedit overlay or text-input area API; typing reaches AUI through its listeners.
         }
     }
 
@@ -377,6 +451,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
     public void onClose() {
         this.stopRecognition();
         this.stopSpeech();
+        this.clearTextInputFocus();
         super.onClose();
     }
 
@@ -384,6 +459,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
     public void removed() {
         this.stopRecognition();
         this.stopSpeech();
+        this.clearTextInputFocus();
         super.removed();
     }
 }

@@ -1,14 +1,16 @@
 package com.iafenvoy.system.assistant;
 
-import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.chat.ConversationMode;
+import com.iafenvoy.system.agent.request.AgentRequest;
 import com.iafenvoy.system.agent.request.ControlRequest;
-import com.iafenvoy.system.agent.store.PlayerData;
-import com.iafenvoy.system.card.CardRef;
-import com.iafenvoy.system.card.CardUpdate;
-import com.iafenvoy.system.card.client.ClientCards;
-import com.iafenvoy.system.util.CodecIO;
+import com.iafenvoy.system.data.AiStatus;
+import com.iafenvoy.system.data.ClientState;
+import com.iafenvoy.system.data.History;
+import com.iafenvoy.system.data.card.CardReference;
+import com.iafenvoy.system.data.card.CardUpdate;
+import com.iafenvoy.system.data.card.client.ClientCards;
+import com.iafenvoy.system.data.store.Message;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.*;
@@ -17,14 +19,14 @@ import java.util.*;
  * Immutable connection state; visual cards, history and nonvisual server state have separate paths.
  */
 public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending> pending,
-                                   ResultTypes.ClientState serverState, ChatEntry current) {
+                                   ClientState serverState, ChatEntry current) {
     public static final AssistantClientState EMPTY = new AssistantClientState(List.of(), Map.of(),
-            new ResultTypes.ClientState(Optional.empty(), true, true, List.of(), List.of(), 60000), null);
+            new ClientState(Optional.empty(), true, List.of(), List.of(), 60000, AiStatus.EMPTY), null);
 
     public record ChatEntry(boolean player, String text, AgentResult result) {
     }
 
-    public record Pending(long deadline, Object owner, Optional<CardRef> notification) {
+    public record Pending(long deadline, Object owner, Optional<CardReference> notification) {
     }
 
     public AssistantClientState {
@@ -40,8 +42,27 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return this.serverState.historySaved();
     }
 
-    public boolean externalModel() {
-        return this.serverState.externalModel();
+    public ConversationMode mode() {
+        return this.serverState.ai().effectiveMode();
+    }
+
+    public ConversationMode preferredMode() {
+        return this.serverState.ai().mode();
+    }
+
+    public boolean allowsMode(ConversationMode mode) {
+        return this.serverState.ai().permissions().allows(mode);
+    }
+
+    public String aiAccessHint() {
+        if (this.serverState.system().isEmpty()) return "";
+        if (!this.serverState.ai().modelConfigured()) return "system.ai.model_missing_hint";
+        if (!this.serverState.ai().allowAi()) return "system.ai.admin_disabled_hint";
+        if (this.serverState.ai().modelCallsPerDay() == 0) return "system.ai.no_calls_hint";
+        if (!this.serverState.ai().allowFreeChat()) return "system.ai.free_chat_disabled_hint";
+        if (this.serverState.ai().maxMode() != ConversationMode.FREE) return "system.ai.mode_limited_hint";
+        if (!this.mode().usesAi()) return "system.ai.personal_disabled_hint";
+        return "";
     }
 
     public boolean hasModule(ResourceLocation id) {
@@ -60,7 +81,7 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return this.append(result, false, true);
     }
 
-    AssistantClientState requested(String id, AgentRequest request, Object owner, Optional<CardRef> notification) {
+    AssistantClientState requested(String id, AgentRequest request, Object owner, Optional<CardReference> notification) {
         List<ChatEntry> entries = new ArrayList<>(this.entries);
         if (!request.text().isBlank()) entries.add(new ChatEntry(true, request.text(), null));
         Map<String, Pending> pending = new HashMap<>(this.pending);
@@ -81,7 +102,7 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return new AssistantClientState(this.entries, Map.of(), this.serverState, this.current);
     }
 
-    AssistantClientState synchronizedState(String id, ResultTypes.ClientState value) {
+    AssistantClientState synchronizedState(String id, ClientState value) {
         return new AssistantClientState(this.entries, this.complete(id).pending, value, this.current);
     }
 
@@ -118,16 +139,18 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return new AssistantClientState(entries, this.pending, this.serverState, current);
     }
 
-    AssistantClientState history(String id, ResultTypes.History history) {
+    AssistantClientState history(String id, History history) {
         List<ChatEntry> entries = new ArrayList<>();
-        for (PlayerData.Message message : history.messages()) {
-            if (message.role().equals("user")) entries.add(new ChatEntry(true, message.text(), null));
-            else try {
-                AgentResult result = CodecIO.parse(AgentResult.CODEC, message.text());
-                result.cards().forEach(card -> ClientCards.apply(card, true));
-                if (!result.silent()) entries.add(new ChatEntry(false, "", ClientCards.latest(result)));
-            } catch (RuntimeException error) {
-                entries.add(new ChatEntry(false, message.text(), null));
+        for (Message message : history.messages()) {
+            switch (message) {
+                case Message.User user -> entries.add(new ChatEntry(true, user.text(), null));
+                case Message.Assistant assistant -> {
+                    AgentResult result = assistant.result();
+                    result.cards().forEach(card -> ClientCards.apply(card, true));
+                    // A restored entry without cards has no text either, so it would render as an empty row.
+                    AgentResult latest = ClientCards.latest(result);
+                    if (!result.silent() && !latest.cards().isEmpty()) entries.add(new ChatEntry(false, "", latest));
+                }
             }
         }
         // Live notices received while history was in flight keep their active snapshots and order.

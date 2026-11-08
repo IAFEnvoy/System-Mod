@@ -1,13 +1,12 @@
 package com.iafenvoy.system.module.builtin;
 
-import com.iafenvoy.system.agent.AgentModule;
-import com.iafenvoy.system.agent.builtin.advancement.AdvancementFollowupModule;
-import com.iafenvoy.system.agent.builtin.advancement.FeatureUnlockTool;
-import com.iafenvoy.system.agent.builtin.advancement.RewardCreditTool;
-import com.iafenvoy.system.module.ModuleContext;
-import com.iafenvoy.system.module.ModuleStorage;
-import com.iafenvoy.system.module.PlayerModule;
-import com.iafenvoy.system.module.WorkflowModule;
+import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.assistant.AdvancementTracker;
+import com.iafenvoy.system.assistant.tool.advancement.FeatureUnlockTool;
+import com.iafenvoy.system.assistant.tool.advancement.RewardCreditTool;
+import com.iafenvoy.system.module.*;
+import com.iafenvoy.system.module.builtin.advancement.AdvancementFollowupModule;
 import com.iafenvoy.system.module.builtin.storage.AdvancementDataStorage;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.ResourceLocation;
@@ -15,10 +14,9 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.List;
 
 public final class AdvancementSystemModule implements WorkflowModule {
-    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath("system", "advancement");
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "advancement");
     public static final MapCodec<AdvancementSystemModule> CODEC = MapCodec.unit(new AdvancementSystemModule());
-    public static final ModuleStorage<AdvancementDataStorage> STORAGE = new ModuleStorage<>(ID,
-            ResourceLocation.fromNamespaceAndPath("system", "advancement"), AdvancementDataStorage.class, AdvancementDataStorage.CODEC, AdvancementDataStorage::new);
+    public static final ModuleStorage<AdvancementDataStorage> STORAGE = new ModuleStorage<>(ID, ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "advancement"), AdvancementDataStorage.class, AdvancementDataStorage.CODEC, AdvancementDataStorage::new);
 
     @Override
     public MapCodec<AdvancementSystemModule> codec() {
@@ -32,11 +30,11 @@ public final class AdvancementSystemModule implements WorkflowModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new AdvancementFollowupModule(new FeatureUnlockTool().tool(), new RewardCreditTool().tool()));
+        return List.of(new AdvancementFollowupModule(context.get(ContextTypes.CATALOGS), new FeatureUnlockTool().tool(), new RewardCreditTool().tool()));
     }
 
     @Override
     public PlayerModule runtime(ModuleContext context) {
-        return new AdvancementTracker(context.game().server(), context.engine());
+        return new AdvancementTracker(context.get(ContextTypes.GAME).server(), context.engine());
     }
 }

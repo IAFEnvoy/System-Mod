@@ -2,77 +2,92 @@
 <html><head><link rel="stylesheet" href="assistant.css"></head>
 <body class="settings">
 <div id="workspace">
-    <div id="topbar"><div id="identity"><span id="settings_title"></span></div><button id="settings_back"></button></div>
+    <div id="topbar"><div id="identity"><span id="settings_title"><translation>system.ui.settings_title</translation></span></div><button id="settings_back"><translation>system.ui.settings_back</translation></button></div>
     <div id="settings_tabs" role="tablist">
-        <button id="settings_tab_general" class="settings_tab" role="tab" aria-controls="settings_page_general"></button>
-        <button id="settings_tab_tts" class="settings_tab" role="tab" aria-controls="settings_page_tts"></button>
-        <button id="settings_tab_asr" class="settings_tab" role="tab" aria-controls="settings_page_asr"></button>
+        <button id="settings_tab_general" class="settings_tab" role="tab" aria-controls="settings_page_general"><translation>system.ui.settings_tab_general</translation></button>
+        <button id="settings_tab_tts" class="settings_tab" role="tab" aria-controls="settings_page_tts"><translation>system.ui.settings_tab_tts</translation></button>
+        <button id="settings_tab_asr" class="settings_tab" role="tab" aria-controls="settings_page_asr"><translation>system.ui.settings_tab_asr</translation></button>
     </div>
     <div id="settings_content">
         <div id="settings_page_general" class="settings_page" role="tabpanel">
             <div class="result_card speech_step">
-                <h2 id="settings_view_heading"></h2>
-                <div class="settings_modes"><button id="settings_mode_full"></button><button id="settings_mode_simple"></button></div>
+                <h2 id="settings_view_heading"><translation>system.ui.settings_view_heading</translation></h2>
+                <div class="settings_modes"><button id="settings_mode_full"><translation>system.ui.settings_mode_full</translation></button><button id="settings_mode_simple"><translation>system.ui.settings_mode_simple</translation></button></div>
+            </div>
+            <div class="result_card speech_step settings_theme">
+                <div class="settings_theme_description"><h2><translation>system.ui.settings_theme</translation></h2><p><translation>system.ui.settings_theme_hint</translation></p></div>
+                <theme-switcher id="settings_theme" style="position:absolute;top:14px;right:18px;bottom:auto;margin:0;"></theme-switcher>
             </div>
             <div class="result_card speech_step">
-                <h2 id="privacy_heading"></h2>
-                <p id="privacy_text"></p>
+                <h2><translation>system.hud.cards</translation></h2>
                 <div class="speech_controls">
-                    <button id="history_toggle" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_history_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_history_label" class="switch_label"></span></button>
-                    <button id="model_toggle" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_model_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_model_label" class="switch_label"></span></button>
+                    <button id="settings_card_animations" class="assistant_switch" type="button" role="switch" aria-checked="true" aria-labelledby="settings_card_animations_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_card_animations_label" class="switch_label"><translation>system.ui.settings_card_animations</translation></span></button>
+                    <button id="settings_cards_other_screens" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_cards_other_screens_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_cards_other_screens_label" class="switch_label"><translation>system.ui.settings_cards_other_screens</translation></span></button>
                 </div>
+                <p><translation>system.ui.settings_card_animations_hint</translation></p>
+                <p><translation>system.ui.settings_cards_other_screens_hint</translation></p>
+            </div>
+            <div class="result_card speech_step">
+                <h2 id="privacy_heading"><translation>system.ui.privacy_heading</translation></h2>
+                <p id="privacy_text"><translation>system.ui.privacy_text</translation></p>
+                <div class="speech_controls">
+                    <button id="history_toggle" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_history_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_history_label" class="switch_label"><translation>system.ui.history_toggle</translation></span></button>
+                </div>
+                <p class="card_context"><translation>system.chat_mode.settings_hint</translation></p>
+                <p id="ai_permissions" class="card_context"></p>
+                <p id="ai_access_hint" class="card_context"></p>
             </div>
         </div>
         <div id="settings_page_tts" class="settings_page" role="tabpanel">
-            <p id="speech_note"></p>
+            <p id="speech_note"><translation>system.tts.ui.speech_note</translation></p>
             <div class="speech_controls">
-                <button id="speech_enabled" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_speech_enabled_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_speech_enabled_label" class="switch_label"></span></button>
-                <button id="speech_notification_sound" class="assistant_switch" type="button" role="switch" aria-checked="true" aria-labelledby="settings_speech_notification_sound_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_speech_notification_sound_label" class="switch_label"></span></button>
+                <button id="speech_enabled" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_speech_enabled_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_speech_enabled_label" class="switch_label"><translation>system.tts.ui.enabled</translation></span></button>
+                <button id="speech_notification_sound" class="assistant_switch" type="button" role="switch" aria-checked="true" aria-labelledby="settings_speech_notification_sound_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_speech_notification_sound_label" class="switch_label"><translation>system.tts.ui.notification_sound</translation></span></button>
             </div>
-            <p id="speech_notification_sound_hint"></p>
+            <p id="speech_notification_sound_hint"><translation>system.tts.ui.notification_sound_hint</translation></p>
             <div class="result_card speech_step">
-                <h2 id="speech_key_step"></h2>
-                <label id="speech_key_label" for="speech_key"></label><input id="speech_key" type="password" maxlength="512" autocomplete="off">
+                <h2 id="speech_key_step"><translation>system.tts.ui.speech_key_step</translation></h2>
+                <label id="speech_key_label" for="speech_key"><translation>system.tts.ui.speech_key_label</translation></label><input id="speech_key" type="password" maxlength="512" autocomplete="off">
                 <div class="speech_controls"><button id="speech_region"></button></div>
             </div>
             <div class="result_card speech_step">
-                <h2 id="speech_voice_step"></h2>
-                <label id="speech_workspace_label" for="speech_workspace"></label><input id="speech_workspace" type="text" maxlength="80">
-                <label id="speech_model_label" for="speech_model"></label><input id="speech_model" type="text" maxlength="100">
-                <label id="speech_voice_label" for="speech_voice"></label><input id="speech_voice" type="text" maxlength="200">
-                <div class="speech_controls"><label id="speech_language_label" for="speech_language"></label><select id="speech_language"></select><label id="speech_volume_label" for="speech_volume"></label><input id="speech_volume" type="text" maxlength="3"></div>
-                <p id="speech_language_hint"></p>
-                <div class="speech_controls"><button id="speech_cache" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_speech_cache_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_speech_cache_label" class="switch_label"></span></button></div>
-                <p id="speech_cache_hint"></p>
+                <h2 id="speech_voice_step"><translation>system.tts.ui.speech_voice_step</translation></h2>
+                <label id="speech_workspace_label" for="speech_workspace"><translation>system.tts.ui.speech_workspace_label</translation></label><input id="speech_workspace" type="text" maxlength="80">
+                <label id="speech_model_label" for="speech_model"><translation>system.tts.ui.speech_model_label</translation></label><input id="speech_model" type="text" maxlength="100">
+                <label id="speech_voice_label" for="speech_voice"><translation>system.tts.ui.speech_voice_label</translation></label><input id="speech_voice" type="text" maxlength="200">
+                <div class="speech_controls"><label id="speech_language_label" for="speech_language"><translation>system.tts.ui.language</translation></label><select id="speech_language"></select><label id="speech_volume_label" for="speech_volume"><translation>system.tts.ui.speech_volume_label</translation></label><input id="speech_volume" type="text" maxlength="3"></div>
+                <p id="speech_language_hint"><translation>system.tts.ui.language_hint</translation></p>
+                <div class="speech_controls"><button id="speech_cache" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_speech_cache_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_speech_cache_label" class="switch_label"><translation>system.tts.ui.cache_enabled</translation></span></button></div>
+                <p id="speech_cache_hint"><translation>system.tts.ui.cache_hint</translation></p>
                 <div class="speech_controls">
-                    <button id="speech_quest_requirements" class="assistant_switch" type="button" role="switch" aria-checked="true" aria-labelledby="speech_quest_requirements_label"><span class="switch_track" aria-hidden="true"></span><span id="speech_quest_requirements_label" class="switch_label"></span></button>
-                    <button id="speech_quest_rewards" class="assistant_switch" type="button" role="switch" aria-checked="true" aria-labelledby="speech_quest_rewards_label"><span class="switch_track" aria-hidden="true"></span><span id="speech_quest_rewards_label" class="switch_label"></span></button>
-                    <button id="speech_quest_description" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="speech_quest_description_label"><span class="switch_track" aria-hidden="true"></span><span id="speech_quest_description_label" class="switch_label"></span></button>
+                    <button id="speech_quest_requirements" class="assistant_switch" type="button" role="switch" aria-checked="true" aria-labelledby="speech_quest_requirements_label"><span class="switch_track" aria-hidden="true"></span><span id="speech_quest_requirements_label" class="switch_label"><translation>system.tts.ui.quest_requirements</translation></span></button>
+                    <button id="speech_quest_rewards" class="assistant_switch" type="button" role="switch" aria-checked="true" aria-labelledby="speech_quest_rewards_label"><span class="switch_track" aria-hidden="true"></span><span id="speech_quest_rewards_label" class="switch_label"><translation>system.tts.ui.quest_rewards</translation></span></button>
+                    <button id="speech_quest_description" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="speech_quest_description_label"><span class="switch_track" aria-hidden="true"></span><span id="speech_quest_description_label" class="switch_label"><translation>system.tts.ui.quest_description</translation></span></button>
                 </div>
-                <p id="speech_quest_hint"></p>
-                <p id="speech_hint"></p>
+                <p id="speech_quest_hint"><translation>system.tts.ui.quest_hint</translation></p>
+                <p id="speech_hint"><translation>system.tts.ui.speech_hint</translation></p>
             </div>
         </div>
         <div id="settings_page_asr" class="settings_page" role="tabpanel">
-            <p id="asr_note"></p>
+            <p id="asr_note"><translation>system.asr.ui.asr_note</translation></p>
             <div class="speech_controls">
-                <button id="asr_enabled" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_asr_enabled_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_asr_enabled_label" class="switch_label"></span></button>
-                <button id="asr_auto_send" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_asr_auto_send_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_asr_auto_send_label" class="switch_label"></span></button>
+                <button id="asr_enabled" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_asr_enabled_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_asr_enabled_label" class="switch_label"><translation>system.asr.ui.enabled</translation></span></button>
+                <button id="asr_auto_send" class="assistant_switch" type="button" role="switch" aria-checked="false" aria-labelledby="settings_asr_auto_send_label"><span class="switch_track" aria-hidden="true"></span><span id="settings_asr_auto_send_label" class="switch_label"><translation>system.asr.ui.auto_send</translation></span></button>
             </div>
             <div class="result_card speech_step">
-                <h2 id="asr_key_step"></h2>
-                <label id="asr_appkey_label" for="asr_appkey"></label><input id="asr_appkey" type="text" maxlength="128" autocomplete="off">
-                <label id="asr_access_key_id_label" for="asr_access_key_id"></label><input id="asr_access_key_id" type="text" autocomplete="off">
-                <label id="asr_access_key_secret_label" for="asr_access_key_secret"></label><input id="asr_access_key_secret" type="password" autocomplete="off">
+                <h2 id="asr_key_step"><translation>system.asr.ui.asr_key_step</translation></h2>
+                <label id="asr_appkey_label" for="asr_appkey"><translation>system.asr.ui.asr_appkey_label</translation></label><input id="asr_appkey" type="text" maxlength="128" autocomplete="off">
+                <label id="asr_access_key_id_label" for="asr_access_key_id"><translation>system.asr.ui.asr_access_key_id_label</translation></label><input id="asr_access_key_id" type="text" autocomplete="off">
+                <label id="asr_access_key_secret_label" for="asr_access_key_secret"><translation>system.asr.ui.asr_access_key_secret_label</translation></label><input id="asr_access_key_secret" type="password" autocomplete="off">
                 <div class="speech_controls"><button id="asr_region"></button></div>
                 <p id="asr_backend"></p>
-                <p id="asr_hint"></p>
+                <p id="asr_hint"><translation>system.asr.ui.asr_hint</translation></p>
             </div>
         </div>
     </div>
     <div id="settings_footer">
         <span id="settings_status"></span>
-        <div id="settings_speech_actions" class="speech_controls"><button id="speech_stop"></button><button id="speech_preview"></button></div>
+        <div id="settings_speech_actions" class="speech_controls"><button id="speech_stop"><translation>system.tts.ui.speech_stop</translation></button><button id="speech_preview"><translation>system.tts.ui.speech_preview</translation></button></div>
     </div>
 </div>
 </body></html>

@@ -46,8 +46,7 @@ public final class AdvancementDataStorage extends DataStorage {
     }
 
     public void putBaseline(String key, Set<String> baseline) {
-        Set<String> copy = new HashSet<>(baseline);
-        if (!Objects.equals(this.baselines.put(key, copy), copy)) this.markDirty();
+        if (!Objects.equals(this.baselines.put(key, new HashSet<>(baseline)), baseline)) this.markDirty();
     }
 
     public void unlock(String id) {

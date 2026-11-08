@@ -1,15 +1,16 @@
 package com.iafenvoy.system.compat.ftb;
 
-import com.iafenvoy.system.agent.builtin.output.ItemPreviewOutput;
-import com.iafenvoy.system.agent.builtin.output.QuestIconOutput;
-import com.iafenvoy.system.util.ItemStackTemplate;
+
+import com.iafenvoy.system.data.output.ItemPreviewOutput;
+import com.iafenvoy.system.data.output.QuestIconOutput;
 import dev.ftb.mods.ftbquests.quest.TeamData;
 import dev.ftb.mods.ftbquests.quest.reward.*;
 import dev.ftb.mods.ftbquests.quest.task.Task;
-import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import com.iafenvoy.system.util.ItemStackTemplate;
 
 import java.util.*;
 
@@ -52,7 +53,8 @@ final class FtbQuestPreviews {
             CompoundTag data = data(player, reward);
             ItemAmount amount = new ItemAmount(item.getCount(), (long) item.getCount() + data.getInt("random_bonus"));
             // Inventory-conditional rewards stay separate; identical component patches are required for merging.
-            if (data.getBoolean("only_one")) separate.add(new ItemPreviewOutput(template, amount.text()));
+            if (data.getBoolean("only_one"))
+                separate.add(new ItemPreviewOutput(template, amount.text()));
             else totals.merge(template, amount, ItemAmount::add);
         }
         List<ItemPreviewOutput> result = new ArrayList<>();

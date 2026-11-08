@@ -26,9 +26,7 @@ final class SpeechPlayback implements AutoCloseable {
         if (this.state == SpeechState.FINISHED || this.state == SpeechState.FAILED || this.state == SpeechState.MUTED)
             return this.state;
         Minecraft minecraft = Minecraft.getInstance();
-        // 1.21.1 exposes only the per-category volume; 26.x multiplies the master channel in for us.
-        float gain = this.volume / 100.0F * minecraft.options.getSoundSourceVolume(SoundSource.VOICE)
-                * minecraft.options.getSoundSourceVolume(SoundSource.MASTER);
+        float gain = this.volume / 100.0F * minecraft.options.getSoundSourceVolume(SoundSource.VOICE);
         if (gain <= 0) {
             this.close();
             return this.state = SpeechState.MUTED;
@@ -42,7 +40,6 @@ final class SpeechPlayback implements AutoCloseable {
             this.startDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
             try {
                 minecraft.getSoundManager().play(this.sound);
-                if (!minecraft.getSoundManager().isActive(this.sound)) this.fallback(gain);
             } catch (RuntimeException error) {
                 this.fallback(gain);
             }

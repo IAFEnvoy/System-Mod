@@ -1,0 +1,18 @@
+{
+  "label": "圆石一堆",
+  "items": [
+    {
+      "count": 32,
+      "id": "minecraft:cobblestone"
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "amount": 4,
+      "items": [
+        "minecraft:sand"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "values": [
+    "system:test_bread",
+    "system:test_apple",
+    "system:test_torches",
+    "system:test_arrows",
+    "system:test_iron_pickaxe",
+    "system:test_iron_sword",
+    "system:test_iron_bundle",
+    "system:test_supply_pack",
+    "system:test_cobblestone",
+    "system:test_glass",
+    "system:test_any_wood",
+    "system:test_any_planks",
+    "system:test_stone_tools",
+    "system:test_food_pack",
+    "system:test_diamond",
+    "system:test_emerald",
+    "system:test_quartz",
+    "system:test_redstone",
+    "system:test_ender_pearl",
+    "system:test_golden_apple"
+  ]
+}

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.config.file;
 
 import com.iafenvoy.saturn.util.codec.MiscCodecs;
-import com.iafenvoy.system.agent.ExecutionPolicy;
+import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.config.ConfigInstance;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -17,7 +17,7 @@ import java.util.function.Function;
 public record AgentConfig(String timeZone, int modelCallsPerPlayerDay, int concurrentModels,
                           ExecutionPolicy routingPolicy, Map<String, ExecutionPolicy> policies) {
     public static final String FILE_NAME = "system-agent.json";
-    private static final ExecutionPolicy DEFAULT_ROUTING = new ExecutionPolicy(1, 0, 4, 0, 16384, 512, 32768, 14500, 4000);
+    private static final ExecutionPolicy DEFAULT_ROUTING = new ExecutionPolicy(1, 0, 4, 0, 16384, 512, 32768, 14500, 4000, 0);
     public static final Codec<AgentConfig> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.comapFlatMap(value -> MiscCodecs.mapOrError(() -> ZoneId.of(value).getId()), Function.identity()).lenientOptionalFieldOf("timeZone", "Asia/Shanghai").forGetter(AgentConfig::timeZone),
             ExtraCodecs.POSITIVE_INT.lenientOptionalFieldOf("modelCallsPerPlayerDay", 100).forGetter(AgentConfig::modelCallsPerPlayerDay),

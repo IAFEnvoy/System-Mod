@@ -1,5 +1,6 @@
 package com.iafenvoy.system.command.client;
 
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.AssistantCommandInput;
@@ -40,7 +41,7 @@ public final class AssistantClientCommands {
         try {
             dispatcher.execute(parsed);
         } catch (CommandSyntaxException error) {
-            AssistantClient.local(AgentResult.error("INVALID_INPUT"));
+            AssistantClient.local(AgentResult.error(AgentFailure.INVALID_INPUT));
         }
         return true;
     }

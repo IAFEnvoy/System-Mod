@@ -1,6 +1,6 @@
 package com.iafenvoy.system.module;
 
-import com.iafenvoy.system.agent.store.PlayerData;
+import com.iafenvoy.system.data.store.PlayerData;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -14,12 +14,12 @@ public interface PlayerModule extends AutoCloseable {
     }
 
     default Consumer<PlayerData> binding(ServerPlayer player) {
-        return unused -> {
+        return unused1 -> {
         };
     }
 
     default Session login(ServerPlayer player) {
-        return unused -> {
+        return unused2 -> {
         };
     }
 

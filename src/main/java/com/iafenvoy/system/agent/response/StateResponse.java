@@ -1,22 +1,20 @@
 package com.iafenvoy.system.agent.response;
 
-import com.iafenvoy.system.agent.AgentResponse;
-import com.iafenvoy.system.agent.ResultTypes;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.iafenvoy.system.data.ClientState;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
 
 /**
  * Nonvisual synchronization completes a request without creating a card or starting speech.
  */
-public record StateResponse(String requestId, ResultTypes.ClientState state) implements AgentResponse {
-    public static final MapCodec<StateResponse> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Codec.STRING.fieldOf("requestId").forGetter(StateResponse::requestId),
-            ResultTypes.ClientState.CODEC.codec().fieldOf("state").forGetter(StateResponse::state)
-    ).apply(i, StateResponse::new));
+public record StateResponse(String requestId, ClientState state) implements AgentResponse {
+    public static final StreamCodec<ByteBuf, StateResponse> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.stringUtf8(36), StateResponse::requestId,
+            ClientState.STREAM_CODEC, StateResponse::state, StateResponse::new);
 
     @Override
-    public MapCodec<StateResponse> codec() {
-        return CODEC;
+    public StreamCodec<ByteBuf, StateResponse> streamCodec() {
+        return STREAM_CODEC;
     }
 }

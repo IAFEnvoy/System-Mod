@@ -1,0 +1,91 @@
+{
+  "id": "5A71080000000000",
+  "group": "",
+  "order_index": 108,
+  "filename": "system_test_08_guides",
+  "icon": {
+    "id": "minecraft:book",
+    "count": 1
+  },
+  "default_quest_shape": "square",
+  "default_hide_dependency_lines": false,
+  "progression_mode": "linear",
+  "consume_items": false,
+  "default_repeatable_quest": false,
+  "quests": [
+    {
+      "id": "5A71080001000000",
+      "x": 0.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:paper",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71080001010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": []
+    },
+    {
+      "id": "5A71080002000000",
+      "x": 2.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:hopper",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71080002010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": []
+    },
+    {
+      "id": "5A71080003000000",
+      "x": 4.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:bookshelf",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [],
+      "rewards": []
+    },
+    {
+      "id": "5A71080004000000",
+      "x": 6.0,
+      "y": 0.0,
+      "size": 1.0,
+      "icon": {
+        "id": "minecraft:knowledge_book",
+        "count": 1
+      },
+      "can_repeat": false,
+      "tasks": [
+        {
+          "id": "5A71080004010001",
+          "type": "checkmark"
+        }
+      ],
+      "rewards": [],
+      "dependencies": [
+        "5A71050001000000"
+      ],
+      "hide_until_deps_complete": true,
+      "hide_details_until_startable": true
+    }
+  ],
+  "quest_links": [],
+  "images": []
+}

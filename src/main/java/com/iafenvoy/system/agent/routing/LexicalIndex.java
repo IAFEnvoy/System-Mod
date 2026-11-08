@@ -14,6 +14,13 @@ public final class LexicalIndex<T> {
     }
 
     public record Ranking<T>(List<Match<T>> matches, boolean hasTopic, boolean writeRequest) {
+        public Match<T> first() {
+            return this.matches.isEmpty() ? null : this.matches.getFirst();
+        }
+
+        public double margin() {
+            return this.matches.size() < 2 ? 0 : this.matches.getFirst().score() - this.matches.get(1).score();
+        }
     }
 
     private record Document<T>(T value, String language, LexicalEncoder.Features features) {
@@ -42,7 +49,7 @@ public final class LexicalIndex<T> {
         Map<String, Integer> counts = new HashMap<>();
         for (Document<T> document : documents) {
             counts.merge(document.language(), 1, Integer::sum);
-            Map<String, Integer> terms = frequencies.computeIfAbsent(document.language(), unused -> new HashMap<>());
+            Map<String, Integer> terms = frequencies.computeIfAbsent(document.language(), unused1 -> new HashMap<>());
             document.features().terms().keySet().forEach(term -> terms.merge(term, 1, Integer::sum));
         }
         Map<String, Map<String, Double>> weights = new HashMap<>();

@@ -1,0 +1,10 @@
+{
+  "businessBytes": 4194304,
+  "chatBytes": 33554432,
+  "journalBytes": 786432,
+  "journalEntries": 8192,
+  "taskBytes": 262144,
+  "taskEntries": 4096,
+  "conversationEntries": 256,
+  "conversationDays": 30
+}

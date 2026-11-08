@@ -1,8 +1,9 @@
 package com.iafenvoy.system.module.client;
 
-import com.iafenvoy.system.card.CardRef;
+import com.iafenvoy.saturn.util.HolderHelper;
+import com.iafenvoy.system.data.card.CardReference;
 import com.iafenvoy.system.registry.SystemClientModules;
-import com.iafenvoy.system.registry.SystemDataPackRegistries;
+import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.sighs.apricityui.init.Document;
@@ -17,10 +18,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.event.TagsUpdatedEvent;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -31,12 +29,13 @@ import java.util.function.Supplier;
 @EventBusSubscriber(Dist.CLIENT)
 public final class ClientModuleBindingsCache implements Supplier<ClientModuleBindingsCache> {
     private List<Workspace> workspace = List.of();
-    private Map<ResourceLocation, BiConsumer<CardRef, Map<String, String>>> localActions = Map.of();
+    private Map<ResourceLocation, BiConsumer<CardReference, Map<String, String>>> localActions = Map.of();
     private RegistryAccess registries;
     private boolean building;
 
     @SubscribeEvent
     public static void onTagsUpdated(TagsUpdatedEvent event) {
+        if (event.getUpdateCause() != TagsUpdatedEvent.UpdateCause.CLIENT_PACKET_RECEIVED) return;
         // Client bindings need every connection's snapshot, including integrated-server packets.
         ClientModuleCaches.BINDINGS.rebuild(event.getRegistryAccess());
     }
@@ -55,15 +54,22 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
         try {
             SystemClientModules.local().forEach((id, module) -> this.register(id, module, List.of()));
             Map<ResourceLocation, List<ResourceLocation>> definitions = new LinkedHashMap<>();
-            SystemDataPackRegistries.modules(access).ifPresent(registry ->
-                    SystemDataPackRegistries.moduleIds(access).forEach(id -> registry.get(id).client().ifPresent(type ->
-                            definitions.computeIfAbsent(type, unused -> new ArrayList<>()).add(id))));
+            Map<ResourceLocation, Integer> orders = new HashMap<>();
+            access.lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE).listElements().sorted(Comparator.comparing(HolderHelper::id))
+                    .forEach(holder -> {
+                        ResourceLocation id = HolderHelper.id(holder);
+                        orders.put(id, holder.value().order());
+                        holder.value().client().ifPresent(type -> definitions.computeIfAbsent(type, unused1 -> new ArrayList<>()).add(id));
+                    });
             definitions.forEach((type, ids) -> {
                 if (SystemClientModules.local().containsKey(type)) return;
                 ClientModule module = SystemClientModules.get(type);
                 if (module != null) this.register(type, module, ids);
             });
-            this.workspace = List.copyOf(this.workspace);
+            // Shared client implementations use their highest configured order; ties keep declaration order.
+            this.workspace = this.workspace.stream().sorted(Comparator.<Workspace>comparingInt(entry ->
+                    entry.context().definitions().stream().mapToInt(id -> orders.getOrDefault(id, 0)).max()
+                            .orElse(orders.getOrDefault(entry.context().id(), 0))).reversed()).toList();
             this.localActions = Map.copyOf(this.localActions);
             ClientModuleCaches.COMMAND.finish();
             this.registries = access;
@@ -99,14 +105,14 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
         return this;
     }
 
-    void localAction(ResourceLocation id, BiConsumer<CardRef, Map<String, String>> handler) {
+    void localAction(ResourceLocation id, BiConsumer<CardReference, Map<String, String>> handler) {
         if (!this.building) throw new IllegalStateException("Client module registration has finished");
         if (this.localActions.putIfAbsent(id, handler) != null)
             throw new IllegalArgumentException("Duplicate local card action " + id);
     }
 
-    public void localAction(ResourceLocation id, CardRef source, Map<String, String> arguments) {
-        BiConsumer<CardRef, Map<String, String>> handler = this.localActions.get(id);
+    public void localAction(ResourceLocation id, CardReference source, Map<String, String> arguments) {
+        BiConsumer<CardReference, Map<String, String>> handler = this.localActions.get(id);
         if (handler != null) handler.accept(source, arguments);
     }
 

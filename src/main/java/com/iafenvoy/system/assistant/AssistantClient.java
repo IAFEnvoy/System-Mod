@@ -1,20 +1,26 @@
 package com.iafenvoy.system.assistant;
 
-import com.iafenvoy.system.agent.AgentAction;
-import com.iafenvoy.system.agent.AgentRequest;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ResultTypes;
+import com.iafenvoy.system.agent.chat.ConversationMode;
+import com.iafenvoy.system.agent.module.AgentAction;
+import com.iafenvoy.system.agent.request.AgentRequest;
 import com.iafenvoy.system.agent.request.ChatRequest;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.agent.request.InvokeRequest;
-import com.iafenvoy.system.card.CardRef;
-import com.iafenvoy.system.card.CardUpdate;
-import com.iafenvoy.system.card.client.ClientCards;
+import com.iafenvoy.system.agent.request.PreferencesRequest;
 import com.iafenvoy.system.command.client.AssistantClientCommands;
 import com.iafenvoy.system.config.file.ClientConfig;
+import com.iafenvoy.system.data.ClientState;
+import com.iafenvoy.system.data.History;
 import com.iafenvoy.system.data.SystemDefinition;
+import com.iafenvoy.system.data.card.CardReference;
+import com.iafenvoy.system.data.card.CardUpdate;
+import com.iafenvoy.system.data.card.client.ClientCards;
+import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
-import com.iafenvoy.system.registry.SystemDataPackRegistries;
+import com.iafenvoy.system.registry.SystemResourceKeys;
+import com.iafenvoy.system.screen.AssistantCardDisplay;
 import com.iafenvoy.system.screen.AssistantMessages;
 import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
@@ -56,7 +62,7 @@ public final class AssistantClient {
     public static SystemDefinition system() {
         ClientPacketListener connection = Minecraft.getInstance().getConnection();
         return connection == null ? SystemDefinition.DEFAULT : state.serverState().system()
-                .flatMap(id -> SystemDataPackRegistries.get(connection.registryAccess(), id)).orElse(SystemDefinition.DEFAULT);
+                .flatMap(id -> connection.registryAccess().registryOrThrow(SystemResourceKeys.SYSTEM).getOptional(id)).orElse(SystemDefinition.DEFAULT);
     }
 
     public static long revision() {
@@ -76,7 +82,8 @@ public final class AssistantClient {
     }
 
     public static void configureMode(boolean simple) {
-        ClientConfig.INSTANCE.set(new ClientConfig(simple));
+        ClientConfig settings = ClientConfig.INSTANCE.get();
+        ClientConfig.INSTANCE.set(new ClientConfig(simple, settings.theme(), settings.cardAnimations(), settings.cardsOnOtherScreens()));
     }
 
     public static void open(boolean simple, String draft) {
@@ -87,11 +94,19 @@ public final class AssistantClient {
     public static boolean submitText(String text) {
         if (text == null || text.isBlank() || state.busy()) return false;
         if (text.codePointCount(0, text.length()) > 2000) {
-            local(AgentResult.error("INVALID_INPUT"));
+            local(AgentResult.error(AgentFailure.INVALID_INPUT));
             return true;
         }
-        if (!AssistantClientCommands.execute(text)) send(new ChatRequest(text.strip()));
+        // Explicit UI commands remain local in free mode; ordinary text still goes directly to the agent.
+        if ((state.mode() != ConversationMode.FREE || text.stripLeading().startsWith("/")) && AssistantClientCommands.execute(text))
+            return true;
+        send(new ChatRequest(text.strip()));
         return true;
+    }
+
+    public static void selectMode(ConversationMode mode) {
+        if (state.busy() || !state.allowsMode(mode) || mode == state.preferredMode()) return;
+        send(new PreferencesRequest(state.saveHistory(), mode));
     }
 
     public static void local(AgentResult result) {
@@ -172,13 +187,13 @@ public final class AssistantClient {
         return true;
     }
 
-    public static void synchronizedState(String requestId, ResultTypes.ClientState value) {
+    public static void synchronizedState(String requestId, ClientState value) {
         if (!requestId.isEmpty() && !state.pending().containsKey(requestId)) return;
         state = state.synchronizedState(requestId, value);
         revision++;
     }
 
-    public static void history(String requestId, ResultTypes.History value) {
+    public static void history(String requestId, History value) {
         if (!state.pending().containsKey(requestId)) return;
         state = state.history(requestId, value);
         revision++;
@@ -199,7 +214,7 @@ public final class AssistantClient {
         send(request, Optional.empty());
     }
 
-    public static void send(AgentRequest request, Optional<CardRef> notification) {
+    public static void send(AgentRequest request, Optional<CardReference> notification) {
         ClientPacketListener connection = Minecraft.getInstance().getConnection();
         if (connection == null || state.busy()) return;
         String id = UUID.randomUUID().toString();
@@ -221,7 +236,9 @@ public final class AssistantClient {
         AssistantSpeech.stop();
         if (Minecraft.getInstance().screen instanceof AssistantInputScreen screen) screen.stopRecognition();
         AssistantMessages.clear();
+        AssistantCardDisplay.unmount();
         ClientCards.clear();
+        ClientModuleCaches.DISPLAY_CARDS.clear();
         state = AssistantClientState.EMPTY;
         revision++;
     }

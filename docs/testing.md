@@ -1,118 +1,206 @@
 # 编译与验收
 
-## 2026-10-30 语音识别结束等待与中文输入法
+## 2026-11-08 AI 等级按存档保存
 
-用户反馈 ASR 有中间识别文字，但松开后一直等待，不回填 / 发送。阅读链路发现：录音的 EOF 在原生设备 close 之后发布，收尾会等待设备清理；改为停止后先耗尽缓冲并立即返回 EOF，自然结束也先发布 EOF 再关闭设备，并补一次终止后的帧队列读取。停止标记与入队共用锁，不会在 EOF 后继续追加帧。Session 独立计时，结束后最多等 15 秒；完成 / 失败为终态，取消清理计时任务，执行器拒绝与 LinkageError 也显示错误。没有把中间结果冒充最终识别或改变 autoSend 配置。
+管理员权限从全局 AiAccessConfig 改为 `AiAccessData` SavedData，保存于 `<存档>/data/system/ai_access.dat`。默认模式与 UUID 玩家覆盖均由当前存档持有，命令更新后 `setDirty`，跟随世界自动保存或正常关闭持久化。`AiAccess` 只提供不可变规则与权限计算；工作线程读取存档快照，默认模式通过当前 FileAgentStore 的 supplier 传入 PlayerData 构造和 Codec，不访问全局配置，也不通过静态服务定位存档。
 
-同时读取整合包中的 IMBlocker 5.6.1 JAR 及同版本源码，确认屏幕白名单可直接允许输入法，无须实现整套 AUI 焦点适配。`ImBlockerConfigMixin` 直接在 `isScreenInWhitelist` 开头对 `AssistantPageScreen` 返回 true，其余屏幕不变。`@Pseudo` 字符串目标仅在客户端应用，未安装 IMBlocker 时跳过，不需要编译或运行依赖，不修改用户配置或其原白名单。控件适配器、反射加载、NUL 探测处理及自定义候选定位已移除；候选框使用 IMBlocker 自身屏幕级定位。按用户要求，Windows 专用组合串检测类及全部调用也已移除，发送、语音输入和补全不再查询该状态；文字输入统一沿用 AUI 和平台流程。
+新增 `/system ai default [offline|standard|extended|free]`：省略模式查询当前值，设置时立即刷新在线玩家权限并保留个人偏好；玩家级覆盖、房主权限和缺少必需模型密钥时的离线限制保持生效。默认等级与既有权限命令均支持控制台，沿用管理员权限和原版补全。删除全局默认配置资源，同步两份 README、详细文档、双语提示与编辑器镜像。
 
-IMBlocker 目标 API 已对照实际 JAR（SHA-1 `ae2f4c8b929d923b6fd637b5158fd93082a0fdb2`）与同版本源码确认。移除该依赖后执行 `compileJava testModClasses jar --console=plain` 通过；检查产物确认新 Mixin 只登记在 client，旧适配器及 IMBlocker 自身类均不在包内。双语各 517 键且集合一致，`git diff --check` 通过。未运行测试、启动游戏、打开麦克风、修改整合包或调用收费 API；尚未实际验收 NLS 完成回调、真实设备关闭行为、自动发送、通知语音按钮及 Microsoft / 第三方输入法。现有日志没有 ASR 收尾异常记录，因此不能据此认定用户设备具体阻塞于哪一步；新增安全错误日志与 session 超时用于避免静默等待并提供后续定位依据。
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；中英文各 624 键、键集合与格式占位符一致，编辑器语言镜像一致，文档本地链接及代码块静态检查通过，`git diff --check` 通过。处理后的资源中已无旧全局配置默认文件。未运行测试、启动 Minecraft、创建存档或调用外部 API；跨存档隔离、重启恢复及在线菜单更新仍待游戏内验收。
 
-## 2026-10-30 分层本地数据库与 FTB 手动重新收录
+## 2026-11-08 自由模式底层 Tool 与成本优先级
 
-新增通用 AgentDatabases / AgentDatabase / DatabaseTable / KnowledgeIndex，统一存档共享库与玩家独立库的 Codec 读写，FTB 原文和背景分类进入同一 shared.json 的独立表。私有库按 UUID 懒加载，revoke / reset 删除，关闭服务端后旧句柄失效；写入同作用域串行并先保存后发布，损坏文件保留并报错，不静默覆盖。
+自由模式构建请求级 ToolContext，合并已公开的只读 Tool、ToolProvider 追加类型及原有可用工作流。源码中九项本地读取声明覆盖玩家、物品、来源、任务、说明书、数据库和礼包预览；可选模组未启用时按 owner 过滤，追加项仍检查已注册的 Type 原实例、只读与 SchemaMapCodec。数据库通过自由聊天工作流声明的可选说明书依赖继续读取授权 FTB 文本。ChatObservation 用 kind dispatch 保留工作流结果或带原 Codec 的 ToolObservation，CardData 结果在最终回复和部分失败时继续显示；使用过的直接工具在循环检查中复核所属模块。
 
-FtbQuestKnowledge 缓存各语言静态定义并维护失效代次，FTB 原生清缓存或管理员 `/system ftb reload` 更新收录，后者后台重建索引，不改原生进度 / 奖励。查询仍逐次检查权限、语言、队伍与来源内容；源码确认 FTB 2101.1.37 的 ServerQuestFile.getInstance 返回 Optional，ClearFileCacheEvent 在原生 clearCachedData 中触发。
+ToolPriority 的目录顺序为 LOCAL / WORKFLOW / PAID，同级按 ID 排序，描述 Codec 同步 priority；提示词优先相关本地读取，不要求耗尽无关工具。额外模型问答、组合分析、AI 签到及 Search / Fetch 标记为 PAID；原始联网工具不自动公开，数据库无结果与本次明确联网授权仍由原 QuestionModule / 处理器检查。付费工具执行仍过统一外部服务门禁；底层写工具与 structuredOnly 确认流程不因回调开放，模型 / 工具 / 步骤 / 超时预算沿用原配置。
 
-执行 `compileJava testModClasses --console=plain` 通过；双语各 507 个键且集合一致，22 份卡片 JSON 可解析，新增文档链接有效，Java 中已无旧缓存类 / 路径引用，`git diff --check` 通过。未运行测试或启动 Minecraft；两级文件生成 / 重启加载、不同玩家数据隔离、revoke 清理、控制台 / 未绑定管理员指令、空语料、编辑 / 重载并发与缺少 FTB 的运行行为尚未实际验收。设计和扩展入口见 [分层本地数据库](databases.md)，26.1.2 同步清单已记录。
+实际执行 `gradlew compileJava processResources testModClasses --console=plain` 成功；静态检查中英文各 622 键且集合一致，编辑器双语镜像与源资源一致，`git diff --check` 通过。未运行测试、启动 Minecraft、插入探针、修改运行配置或调用付费 API。工具选择顺序取决于模型遵循目录和提示词，尚未验收真实模型调用、FTB 说明书与直接卡片展示、扩展回调、权限中途撤销和低预算收尾。当前仅修改 master / 26.1.2。
 
-## 2026-10-30 新手礼包奖励合计
+## 2026-11-08 缺少模型密钥时的离线限制
 
-阅读当前 FTB 2101.1.37 的 ItemReward / XPReward / XPLevelsReward 源码，确认物品 count、随机奖励区间、only_one 条件与经验保存字段。FtbQuestPreviews 在服务端按相同物品及组件累加数量 / 区间，并分别累加经验值和经验等级；only_one 物品保留独立。展示数量使用 long 和字符串，物品模板 count 保持 1。经验 tooltip 使用同一总量，不通过客户端 getButtonText 读取数值。
+ModelClient / ModelGateway 提供不发网络请求的配置就绪检查，OpenAI 兼容客户端按 apiKeyRequired 与环境变量是否为空判定。AgentEngine 将就绪状态合并到统一权限，AiStatus 仅同步 modelConfigured 布尔值；缺少必需密钥时所有玩家只能选择离线，已有高模式偏好自动降级但不覆盖。菜单、输入提示、设置页及管理员状态命令显示缺失原因，服务端模式修改、外部工具门禁和模型额度预留再次校验。模型配置变化也会触发取消与状态同步，不依赖 AI 权限文件同时变化；恢复配置后重新按原偏好与权限执行。免密钥接口 apiKeyRequired=false 保留支持，客户端 TTS / ASR 设置独立。
 
-StarterGiftOutput 将汇总 items / icons 与各任务的领取引用、错误分开；首次查询和部分失败刷新复用同一快照准备逻辑。模板仅绘制一组奖励，不循环重复的经验图标；每个任务仍按原流程提交、发奖和去重，无奖励时不显示空标题。
+实际执行 `gradlew compileJava processResources testModClasses --console=plain` 成功。静态核对中英文各 622 键、键集合与格式占位符数量一致，编辑器双语镜像与源资源一致，`git diff --check` 通过。没有运行测试、启动 Minecraft、修改运行配置或请求收费 API；登录同步、菜单置灰、模型配置单独 /reload 后刷新、房主权限及配置恢复仍待游戏内验收。就绪检查仅判断必需密钥是否存在，不验证密钥有效性或网络可达性。本次修改仅在当前 master / 26.1.2。
 
-执行 `compileJava testModClasses --console=plain` 通过；22 份卡片 JSON 可解析，双语各 504 个键且集合一致，旧礼包物品 / 图标占位符与 Gift 访问已清除，`git diff --check` 通过。未运行测试或启动游戏；六份 100 经验的实际 +600 图标 / tooltip、重复物品、不同组件、随机区间、部分失败刷新及领取结果尚待游戏内验收。26.1.2 同步范围已记入 [FTB 跨版本记录](ftb-quests-porting.md)。
+## 2026-11-08 默认模式上限与房主权限
 
-## 2026-10-30 聊天历史领取新手礼包
+AiAccessData SavedData 保存 defaultMode（内置 standard），同时作为新玩家初始模式和普通玩家的可选模式上限。已有模式偏好保留，执行时按有效权限降级；单人玩家和局域网房主默认开放全部模式，玩家 UUID 的显式 /system ai 许可、禁用及限额仍优先，每日调用额度和工作流预算不变。权限通过 AgentEngine 统一解析，AiStatus 同步上限，客户端置灰并说明原因，服务端再次校验；通过 `/system ai default <模式>` 保存并刷新在线玩家状态。
 
-恢复礼包通知原来的“确定”与“领取礼包”，移除本轮添加的 PRIMARY 与关闭别名。代码阅读确认：关闭通知不撤销卡片，但礼包凭证在两分钟后失效，批量领取会对每个礼包返回失效错误。取消礼包凭证的时间过期，保留所有权、队伍、任务 / 奖励对象、完成时间和原生领奖校验；统一在撤销、登出或任务模块会话结束时清理凭证与查询缓存。普通任务奖励引用仍按原时限处理。
+源码依据为实际 Minecraft 26.1.2 sources JAR：IntegratedServer 设置 singleplayerProfile，专用服务端没有该档案；通过服务端档案 UUID 识别房主，不引用客户端类，局域网访客与专用服务端 OP 均走普通玩家规则。同步更新双语文案、编辑器镜像、README、使用说明和自由聊天文档。
 
-执行 `compileJava testModClasses --console=plain` 通过；双语各 504 个键且集合一致，通知按钮别名 JSON 可解析，`git diff --check` 通过。未运行测试或启动游戏，同一连接内关闭通知后延迟领取、重复领取、任务定义 / 队伍变化及会话清理仍待游戏内验收。26.1.2 同步范围已记入 [FTB 跨版本记录](ftb-quests-porting.md)。
+实际执行 `gradlew compileJava processResources testModClasses --console=plain` 成功；静态检查中英文各 619 键、键集合及格式占位符数量一致，编辑器语言 / CSS 镜像与源资源一致，默认 JSON 的 defaultMode 为 standard，`git diff --check` 通过。testModClasses 仅编译开发源集，没有运行测试、启动 Minecraft 或调用外部 API；四档上限、房主与访客差异、显式授权覆盖及 /reload 后界面更新仍待游戏内验收。修改仅在当前 master / 26.1.2。
 
-## 2026-10-30 FTB 本地说明书检索
+## 2026-11-08 四种对话模式与执行策略
 
-根据用户确认的规则，收录仅原生勾选 / 无目标、有正文且不是礼包的任务；知识视图与原本过滤介绍任务的进度视图分开。新增单检索 Tool 与工作流、guide / 说明书 / 查说明 指令、任务页查询框及 QuestGuideOutput 原文卡片。QuestKnowledgeCache 在后台持有段落 TF-IDF 索引并按存档 / 语言保存静态文档，原生权限与来源快照在服务端线程检查，后台返回后再次核对队伍、语言、可见性及正文。没有引入 embedding API、模型、数据库依赖或自动任务操作；明确查询不走模型，模糊输入仍按原路由处理。
+发送框左侧新增离线 / 标准（默认）/ 扩展 / 自由菜单，共用 ConversationModeSelector，名称、说明和管理员禁用原因分行显示；原个人 AI / 自由聊天开关及顶栏强制开关合并为 PlayerData.mode。ConversationStrategy 接口由 ConversationMode 枚举实现路由顺序；管理员许可与模式偏好经 AiStatus 同步，客户端置灰、服务端复核，限制时降级执行并保留偏好。
 
-阅读现有 FTB 2101.1.37 任务与 TranslationManager 源码，沿用已确认的原生可见性 / 文本隐藏 API。执行 `compileJava testModClasses jar --console=plain` 通过，发布产物 `system-1.0-alpha.3.jar` 为 2,226,807 字节。静态检查：22 份卡片 JSON 可解析；双语各 504 个键且集合相同；21 个动作和 25 个卡片类型；新增动作 / 卡片无可选依赖或客户端 imports；新文档导航链接有效；`git diff --check` 通过。
+扩展模式先完成本地和 AI 路由再兜底回答；自由模式复用 ReActLoop，从已授权工作流绑定能力。嵌套执行保持单一任务和预算、隔离步骤引用及授权集合，保留确认按钮和已返回的卡片。阅读 AUI 实际 Element.init、按钮键盘默认行为与事件接口，菜单先初始化再保留动态元素引用，只在权限 / 模式 / 忙碌变化时更新，不主动测量布局或增加 opacity 合成。
 
-未运行测试、启动游戏或在任何存档中生成索引文件。尚未实际验收首次查询持久化、跨语言 / 队伍权限、FTB 编辑与重载后的更新、损坏文件重建、命中质量、TTS 提示和任务页布局。相关方法与限制见 [本地说明书检索](quest-guides.md)，待同步到 26.1.2 的文件已追加到 [FTB 跨版本记录](ftb-quests-porting.md)。
+实际执行 `gradlew compileJava processResources testModClasses --console=plain` 成功；未执行测试、启动 Minecraft 或调用外部 API。静态核对中英文各 616 键且集合一致，资源 JSON 可解析，页面 ID 无重复、translation 与四模式条目存在，编辑器语言 / CSS 镜像一致，`git diff --check` 通过。菜单位置与主题、鼠标 / 键盘交互、管理员动态变更及真实模型调用功能仍待游戏内验收。本次修改当前 master / 26.1.2，未同步其他分支。
 
-## 2026-10-30 新解锁任务合并为列表通知
+## 2026-11-07 Card JSON 编辑器迁移到 Vite
 
-按现有队伍进度批次先发送完成通知，再将新增且未完成的普通任务合并成一个 QuestUnlockedOutput 列表，每位有效在线队员每批至多收到一条；礼包仍使用独立汇总。复用现有列表的 BODY 查看按钮、滚动及替换当前通知行为，隐藏解锁列表的编号提示和行编号，按稳定任务 ID 打开详情，不覆盖主动查询缓存。摘要和播报仅提示本批解锁数量；原逐任务解锁通知路径已移除。重登基线、静默批次、锁定切换与接收者校验保留。
+将原 tools/card_editor.html 拆分到 html/card-editor：页面、编辑操作、节点字段与校验、浏览器预览、示例上下文和样式各自维护；27 份模板、双语语言表及共享 CSS 改为独立资源文件。资源通过 Vite glob 加载，新增 sync:resources 命令从游戏资源刷新快照；html/.gitignore 排除依赖、构建产物和缓存。下方提到旧单文件路径的内容保留为历史验收记录，当前入口与命令见 [Card JSON 编辑器](card-editor.md)。
 
-执行 `compileJava testModClasses --console=plain` 通过。静态检查：21 份卡片 JSON 可解析；中英文各 496 个键且集合一致；24 个卡片类型含新增 quest_unlocked；新增 DTO 无客户端或 FTB imports；`git diff --check` 通过。未执行测试或启动 Minecraft，实际完成 → 礼包 → 解锁列表的显示、多人接收、滚动及点击详情尚未游戏内验收。同步到 26.1.2 的文件与检查项已追加到 [FTB 跨版本记录](ftb-quests-porting.md)。
+实际执行 npm install、npm run sync:resources 和 npm run build 成功（Vite 8.3.6，42 个模块）。静态核对 27 份模板、两份语言表及共享 CSS 与游戏资源一致；HTML ID 无重复、入口不再内嵌脚本和样式，全部 JS 的 node --check 与 git diff --check 通过。未运行测试、浏览器交互或 Minecraft；本次结论为生产构建与静态检查通过。
 
-## 2026-10-30 奖励区紧凑布局
+## 2026-11-06 Saturn 通知 HUD 编辑器
 
-新手礼包、任务详情和任务通知将“奖励”标题移到循环外层，物品与非物品类型图标使用共享横向换行布局，移除每条奖励重复的 label 和物品组上边距，统一奖励图标占位尺寸。自选项编号、名称、领取按钮、物品领取状态、礼包失败提示和 tooltip 入口保留。QuestNotice 的 has_rewards 状态根据两类奖励列表共同生成，无奖励时不显示标题；26.1.2 同步清单已追加对应模板、样式和派生状态。
+读取 Saturn 1.2.5 HUD 框架源码，并通过实际依赖 JAR 确认 AbstractHudEntry、HudAnchor 与 HudManager 签名。通知以 public static 的 SystemHudEntries.NOTIFICATIONS 登记，直接使用 Saturn 自带的编辑入口，不另加设置按钮或按键，复用 Saturn 拖动、锚点、显隐与 config/saturn/hud.json；真实 AUI 通知通过 GUI ↔ 文档坐标转换应用位置。尺寸只读取已提交、未变换的根面板矩形，放置未变化时不重复写样式；预览使用被动示意框，无消息队列、业务或播报副作用。
 
-执行 `compileJava --console=plain` 通过。静态检查：21 份卡片 JSON 可解析；starter_gift / quest / quest_notice 均只有一个奖励标题、没有单条奖励 label；双语语言键各 495 个且集合一致；`git diff --check` 通过。未运行测试或启动游戏，实际换行、滚动与悬停显示尚未游戏内验收。
+实际执行 `gradlew compileJava processResources --console=plain` 成功。静态核对中英文各 576 键且集合一致，设置页 translation 与控件 ID 有效，26 份卡片 JSON 可解析，编辑器快照与资源一致，git diff --check 通过。未运行测试、Minecraft 或外部 API；拖拽／方向键、锚点切换、保存重启、GUI／文档缩放、内容高度变化、隐藏后恢复、动画与聊天按钮位置仍需游戏内验收。
 
-## 2026-10-30 任务 / 奖励类型图标与 tooltip
+## 2026-11-06 内置卡片标题统一
 
-读取开发依赖 Quests 2101.1.37 的 TaskType / RewardType / TaskTypes / RewardTypes 源码，使用 javap 确认 Library 2101.1.39 的 Icon.draw、ImageIcon / ItemIcon 绘制 API；读取 AUI 1.2.6 sources JAR 的 MinecraftElement、RenderNode / Drawer、clip 和 opacity 合成流程，以及 MC GuiGraphics 构造与 tooltip 签名。
+逐项检查 26 份卡片模板及对应 CardData：25 份结构化卡片均使用 system:title，其中 23 份使用可提升的顶层一级标题；奖池／奖品保留原二级标题同行数量／概率布局，纯文本模板仍不加标题。商品、订单、奖励、任务名称提升为卡片标题；签到、宿主、查询、说明书、候选操作、礼包和任务通知补充短标题。兑换确认、回执、任务提交／完成／解锁及礼包主句显式保留在正文；物品来源保留物品名与数量。HUD 固定“系统”标题及独立 SpeechContent 不变。
 
-新增纯数据 QuestIconOutput 和服务端 FtbQuestPreviews，详情、提交结果、通知、礼包和自选奖励同步非物品类型图标引用及提示文字，物品预览保持原接口。system:icons 节点在首次渲染且安装 FTB 时反射加载客户端隔离适配器，直接调用类型图标供应器，未知类型 / 未安装时回退文字；原生图标在 AUI BODY 阶段绘制并恢复深度及 shader color，沿用 pose、clip 和 opacity 合成。AssistantTooltip 接入已有物品 tooltip pass，显示标题、类型、具体要求 / 奖励、进度或领取状态；HUD 仍需按 T 交互，不改变按钮或播报内容。
+源码检查同时发现标题在组件和模式参数解析前读取，会令 Component 名称留下原始占位符、带模式条件的标题不生效。CardPresentation 调整为使用完整格式化 Context 后选择首个可见、非空、无 repeat 的一级标题，跳过隐藏标题继续查找；QuestNotice 提供按事件翻译的 notice_title。同步更新卡片编辑器的模板与双语快照。
 
-执行 `compileJava testModClasses --console=plain` 通过；21 份卡片 JSON 可解析、节点 ID 全部属于 13 个注册类型，中英文各 495 个键且集合一致，图标 DTO 无客户端 / FTB 类引用，公共图标节点只有字符串形式的隔离适配器引用，`git diff --check` 通过。未运行测试或启动游戏，实际图标位置、动画、滚动裁剪、tooltip 和第三方类型尚未游戏内验收。26.1.2 同步范围与 API 差异已追加到 [跨版本修复记录](ftb-quests-porting.md)。
+实际执行 `gradlew compileJava processResources --console=plain` 成功。静态核对 26 份 JSON 无重复键、节点与翻译引用有效、25 份有标题且 23 份恰有一个顶层一级标题、确认／结果主句仍存在；中英文各 574 键且集合相同，编辑器内嵌模板／语言／CSS 与资源一致，JavaScript 语法与 `git diff --check` 通过。未运行测试、浏览器或 Minecraft；实际商品／任务名称的样式、HUD 高度、确认文案、条件标题及资源重载后的显示仍需游戏内验收。
 
-## 2026-10-30 FTBQ 1.21.1 标题、勾选礼包与领奖
+## 2026-11-06 Card JSON 离线编辑器
 
-只读检查用户整合包 `D:\PrismLauncher\instances\『化龍』导入包-1.4\minecraft` 的现有任务、翻译、日志与依赖 JAR；该包实际加载了 24 个章节、837 个任务，使用 Quests 2101.1.34。对照开发依赖 2101.1.37 的反编译源码，确认服务端标题 / 描述固定读取文件回退语言，以及礼包判定不接受“物品 + 经验”奖励；任务 359B897165997027 为具体样例。任务目标仍是原生 CheckmarkTask，不是任务类变更。
+新增 tools/card_editor.html 单文件工具：内嵌 26 份卡片模板、双语语言表与共享 CSS 快照，提供 23 种节点的属性／JSON 编辑、节点树、平铺示例 Context、模式切换、本地分页与折叠预览，以及卡片／工作文件导出、草稿恢复。字段依据 CardTemplate、CardContext、CardRenderer 与实际节点 Codec 核对；未知字段保留，未知节点只作提示。物品、玩家模型和 FTB 图标采用占位，通知按钮及业务调用仅模拟。
 
-新增 FtbQuestText，查询、搜索、详情、提交、通知与播报统一按玩家语言读取，不改全局语言或标题缓存；JSON 文本使用原版服务端安全解析器，§ / & 沿用 LegacyText，背景模型输入去除格式码。纯勾选、不可重复且含物品的任务允许附带原生经验 / 等级奖励；礼包 DTO 和模板展示这些额外奖励，保持无任务名、原生领取与静默刷新。普通及自选奖励按 1.21.1 的原生成功返回值和事件处理，成功后标记已领取，拒绝时返回 CLAIM_REJECTED。
+实际执行 JavaScript `node --check` 语法检查和 Python 静态核对：42 个 HTML ID 无重复、脚本引用的静态 ID 均存在、23 个节点 ID 与 SystemCardNodeTypes 一致、26 份内嵌模板及 CSS 与当前资源一致、中英文各 565 键且集合相同、文档本地链接存在，`git diff --check` 通过。HTML 约 219 KiB，没有外部脚本或资源标签；CSP 禁止连接和外部资源，预览文档不运行脚本。本次未运行测试、浏览器或 Minecraft，未调用 API；实际文件打开、表单与源码同步、导入导出、草稿恢复和交互布局仍未进行运行验收。
 
-执行 `compileJava testModClasses --console=plain` 通过；中英文各 494 个语言键且集合一致，21 份卡片 JSON 可解析，新增文档与索引链接有效，`git diff --check` 通过。未执行测试、启动 Minecraft 或改写整合包、存档及开发运行目录。编译针对开发 Quests 2101.1.37，用户的 2101.1.34 仅作源码对照，尚未游戏内验收。
+## 2026-11-06 物品来源分类与紧凑分页
 
-待同步到 26.1.2 的修改清单、版本专属 API 和人工验收步骤已记录在 [FTB Quests 跨版本修复记录](ftb-quests-porting.md)，并从 docs 索引和 learning.md 链接。测试目录旧 JSON5 在 1.21.1 加载为空是独立问题，不能据此判断实际整合包的任务功能。
+在下方原物品来源卡片的基础上，将内容分成配方／掉落／标签三类，按查询结果计数，空类禁用，初始选择首个非空类。ItemSourcesNode 保留分类选择与各类页码，完整模式默认配方每页 4 条／两列，简约和通知最多 2 条／单列；掉落每页 12 条，标签每页 24 条。材料格缩至 36px，加工站并入标题，掉落压成行，标签压成流式小块，减少重复物品和说明。卡片 JSON 可独立配置三类分页容量，切换不发包或重新播报。
 
-## 2026-10-30 HUD 通知在聊天界面消失
+此前实际执行 `gradlew compileJava processResources --console=plain` 成功；静态检查 26 份卡片 JSON 的节点与翻译引用有效、中英文各 565 键且集合相同，`git diff --check` 通过。未运行测试、启动游戏或调用 API；实际分类切换、各类翻页／恢复、不同模式的密度和 tooltip 仍需游戏内验收。当前仅修改 master / 26.1.2。
 
-现象：通知在 HUD 正常显示，按 T 打开聊天后立刻消失，迁移前是可点击的。
+## 2026-11-06 物品来源分页卡片
 
-根因在 AUI 1.2.6 的两条绘制路径：`Client.drawOverlay(RenderGuiEvent.Post)` 开头就是 `if (minecraft.screen != null) return`（字节码 `getfield Minecraft.screen; ifnonnull`），而屏幕打开时走 `Client.drawScreen(ScreenEvent.Render.Post)`，它只画满足 `!inWorld && !isManuallyRendered() && isReloadPersistent()` 的文档。通知文档由 `Document.create` 创建，`reloadPersistent` 默认 false，于是聊天一开就没有绘制者。
+源码确认原物品来源工作流把完整 ItemSourceOutput 经 CodecIO.write 拼进消息正文。改为注册的 CardData 与 assets/system/cards/item_sources.json，客户端 ItemSourcesNode 复用 CardPagination，每页一条来源，只创建当前页材料 / 产物 / 加工站的物品节点及 tooltip；首尾与单页方向按钮置灰。物品槽改为 ItemStackTemplate 候选与独立数量，保留物品组件；有序 RecipeDisplay 的空槽、重复材料和宽度随服务端快照传输，原版尺寸补齐 3×3。无序、炉类、锻造、切石读取各自展示输入；其他类型回退 placementInfo。候选示例在 tooltip 显示，掉落权重不冒充概率，营火不提示消耗燃料。配方在回复截断前优先排序，空结果与 64 条上限均有提示。
 
-修复：`AssistantMessages` 创建通知文档后调用 `document.setReloadPersistent(true)`（[AssistantMessages.java:207-210](src/main/java/com/iafenvoy/system/screen/AssistantMessages.java#L207-L210)）。这样 HUD 无屏幕时仍由 `drawOverlay` 画，聊天界面打开后由 `drawScreen` 的 persistent 分支画在聊天层之上；其他屏幕仍由 `tick` 里的 `unmount()` 收起，不会残留。
+核对实际 Minecraft 26.1.2 RecipeDisplay、PlacementInfo、ItemStackTemplate 及烹饪配方源码。实际执行 `gradlew compileJava processResources --console=plain` 成功；静态检查 26 份卡片 JSON 无重复键、节点与 translate 键均有效，中英文各 562 键且集合相同，git diff --check 无空白错误。没有运行测试、启动 Minecraft 或调用外部 API。完整 / 简约 / HUD 的实际布局、配方前后翻页与页码保持、物品组件和候选 tooltip、资源重载及大型整合包查询耗时仍待游戏内验收；目前仅修改 master / 26.1.2。
 
-验证：`compileJava` 通过。**未启动游戏**，聊天界面下的显示与点击尚未验收。
+## 2026-11-06 共享三行分页网格
 
-## 2026-10-30 裁剪内联的 Saturn
+将 ActionsNode 的本地分页抽为 CardPagination，新增 CardGrid 统一 columns / max_row / cell 的扁平 MapCodec、真实列数与每页容量。任务、商品、奖池与奖品预览共用；完整模式 6 × 3 = 18 项，通知 / 简约格子最多 3 × 3 = 9 项。分页先切片再创建 DOM、物品与 tooltip，不再将全部货架节点塞进限高滚动区。空列表、少量结果和最后一页都通过固定轨道 / 高度保留三行，分页栏常驻，单页 / 首尾方向禁用按钮。保持原始回调下标，商品格子也复用忙碌 / 通知交互检查；切页不触发业务、发包或重新播报。CSS 移除任务网格的限高裁切与独立通知列数覆盖。
 
-按「只留本模组真正用到的」把内联源码从 464 个文件裁到 318 个。删除范围：`compat/kubejs`（18）、`data/ability`（28）+ `runtime/ability`（7）、`data/resource`（8）+ `data/resourcebar`（21）+ `runtime/resource`（2）、`data/timeline`（8）、`data/item`（`IncompleteMarker`）、`loot` 与 `SaturnLootRegistries`、`attachment/AbilityAttachment` 与 `ResourceHolderAttachment`、`api/AbilityHooks`、`event` 里四个能力/资源事件、`registry/content` 里七张对应的注册器，以及裁剪后不再被引用的 `config/SaturnConfig`、`data/{AttributeEntry,IconReference,SpriteIcon}`、`data/cost/context/CostOrigins`、`data/storage/{DataStorageCollector,DataStorageDeclaration}`、`runtime/Sources`、`util/SourceLedger`、`util/formula/NumberRange`。
+阅读 AUI 1.2.9 的 Element.init、Grid 轨道与边盒计算、Event 传播 API；捕获分页根节点前先初始化，避免插入时替换实例。实际执行 `gradlew compileJava processResources --console=plain` 成功；25 份卡片 JSON 可解析，中英文各 538 键且集合一致，git diff --check 无空白错误。没有运行测试、启动 Minecraft 或调用 API；实际三行高度、少量 / 最后一页不缩小、单页双按钮置灰、后页商品与任务动作下标、章节页码恢复、HUD 详情返回及不同主题仍待游戏内验收。服务端结果上限和网络协议未变；修改仅在 master / 26.1.2，1.21.1 待同步。
 
-保留 trigger 整套（`data/trigger`、`runtime/trigger`、`TriggerRehydrateEvent`、`TriggerCooldownAttachment`、`RegistryCaches.TRIGGER_RULES_BY_SIGNAL`），即使当前没有调用方。保留 `util/math`：`Comparison` 被 `RelativeRotationCondition`、`AdjacentCondition` 等条件使用，`Space` 被两个 `AddVelocityAction` 使用，`CompareOperation` 由 `Comparison` 使用。
+## 2026-11-06 多章节 FTBQ 开发任务集
 
-随之改写的部分：`Cost` 去掉 `saturn:resource` 简写分支，`CostTarget` 删 `Account` 记录，`CostPayment` 删资源账单相关方法（`resources`、`resourceAmounts`、`replaceResourceAmounts`、`samePayer`、`resourceContext`、`ResourceChannel` 回填），`CostContext` 去掉账号字段，`FormulaContext` 去掉资源字段，`EntityVariable` 不再读资源，`Failure` 去掉带资源名的重载，`FailureSources` 去掉 `ABILITY`/`RESOURCE`，`SaturnRegistries`/`SaturnResourceKeys`/`SaturnDatapackRegistries`/`SaturnContent` 去掉对应注册，`COST_TYPE` 默认值从 `resource` 改为 `item`。`CommerceCosts` 删掉 `CostTarget.Account` 分支。
+对照 FTB Quests 26.1.2.8 的 BaseQuestFile、Chapter、ItemTask、ItemReward、TranslationManager / TranslationKey 和 ReloadCommand，新增 src/test-mod/ftbquests 下的 12 章 80 任务及双语 JSON5。覆盖 25 项三页列表、6 份礼包、手动消耗 / 混合 / 顺序 / 原生界面限定目标、一次解锁 12 条支线、单任务章节、不同奖励 / 图标、长标题 / 颜色代码与可见性受限说明书。固定 ID 使用 5A71 前缀；测试配置不进发布资源。显式 Python 安装器默认保留修改过的测试文件，两份全局文件始终只在缺失时创建。
 
-`assets/saturn/lang` 从 81 键裁到 23 键，只保留仍会动态生成的 `failure.saturn.common.*`（`Failures` 与 `CostFailure` 的常量），中英键集合仍一致。示例包 `coin_food` 的 `saturn:resource` 费用改为 `saturn:item`，并删除 `data/example/saturn/resource`。
+实际执行静态检查：38 份 JSON5 均可解析，272 个对象 ID 唯一且为合法正 long，依赖均存在且无环，章节/任务中英标题与正文键、值类型一致，安装器语法可解析。执行安装器将 36 份新章节/翻译复制到 run-test-client/config/ftbquests/quests，保留现有 data.json5、chapter_groups.json5 和其他任务；比对已安装文件与源文件一致。未改 Java，本次未重新编译、运行测试或启动 Minecraft，未改变存档进度；FTB 实际加载、分页与通知等交互仍需按 [开发任务集](test-quests.md) 手动验收。
 
-验证：`compileJava testModClasses build` 全部通过，产物 `system-1.0-alpha.3.jar` 从 2,527,874 字节降到 2,179,923 字节。未启动游戏，触发、费用与数据存储的运行时行为未验收。
+## 2026-11-06 图钉样式与任务详情固定入口
 
-## 2026-10-30 开发环境的 jarJar 库可见性
+阅读 AUI 1.2.9 source JAR 的 Transform 及 t08-arwes 主题 CSS，确认支持 rotate / transform 过渡，且主题的最小高度、按下背景、聚焦外框与 hover translateY 会覆盖原图钉选择器。共享样式提高按钮状态的选择器优先级，固定 22px 尺寸、透明背景和无外框；16px SVG 未固定倾斜 35°、固定后转为竖直并着强调色。任务详情 JSON 复用 quest_pin，QuestOutput 只将已有 id 放入 Context，标题预留按钮空间，固定缓存与跨文档更新逻辑共用原实现。
 
-`runTestClient` 启动即失败，`SystemMod` 构造抛 `NoClassDefFoundError: net/objecthunter/exp4j/function/Function`，调用点在 `SaturnFormulaFunctions.<clinit>`。排查确认这不是依赖没声明：Gradle 实际启动命令的 `-cp`（17 794 字符）里有 `exp4j-0.4.8.jar`，该 jar 里也有 `net/objecthunter/exp4j/function/Function.class`，`main.runtimeClasspath` 共 118 项同样包含它。真正的原因是开发态本模组以「文件夹 mod」形式加载：`-Dfml.modFolders` 只给出 `build/classes/java/main` 与 `build/resources/main` 两个根，FML 不会展开发布 jar 里的 `META-INF/jarjar` 嵌套副本，因此非 mod 的库必须落在模组自己的根目录下才可见。
+实际执行 `gradlew compileJava processResources --console=plain` 成功，25 份卡片 JSON 可解析、中英文各 538 键且集合一致，静态确认详情图钉绑定 id，`git diff --check` 无空白错误。未运行测试或启动 Minecraft；需人工确认主题切换 / 聚焦 / 悬停后图钉尺寸与方向、列表与详情同步、详情标题避让及通知内详情布局。
 
-修复：`processResources` 把 jarJar 的 exp4j 解压到模组资源根（`build.gradle:138-148`），`jar` 任务再排除 `net/objecthunter/**`，发布包继续只带 `META-INF/jarjar/exp4j-0.4.8.jar` 这一份嵌套副本。验证：`clean processResources jar` 后资源根下有 51 个 exp4j 类，发布 jar 内 `META-INF/jarjar/exp4j-0.4.8.jar` 与 `metadata.json` 存在、散落的 `net/objecthunter/**` 为 0；`runTestClient` 实际启动正常（游戏可进，日志 `run-test-client/logs/latest.log`）。
+## 2026-11-06 Markdown 卡片节点
 
-同一轮还修了 1.21.1 的元数据要求：FML 4.0.45 的 `ModFileInfo` 强制要求 `modLoader` 与 `loaderVersion`，缺任一项就报 `InvalidModFileException: Missing ModLoader in file`（26.x 的格式没有这两项），两份 `neoforge.mods.toml` 都已补 `modLoader="javafml"` / `loaderVersion="[4,)"`。
+阅读实际 AUI 1.2.9 source JAR 的 Markdown、DOM 文本节点和初始化 API，确认内置 Txtmark 扩展解析器可复用，但 renderSafe 不过滤所有事件属性或 URL。新增 system:markdown / MarkdownNode 和 AssistantMarkdown：解析结果经 JDK 被动 HTML 读取器，只以固定标签和纯文本重建展示；链接限 HTTP / HTTPS 并调用原版流程，图片只保留 alt，未知属性和脚本不会进入 AUI。AI 知识问答与联网答案通过原始 answer 参数使用 Markdown，FTBQ、来源原文和内置提示保留 text，不改变模型 API、历史 Codec 或语音内容。
 
-随后统一了依赖口径：ApricityUI 定为 1.2.6（`gradle.properties` 与文档、产物元数据一致）；可空性注解由 JSpecify 换成 `org.jetbrains:annotations:24.1.0`（compileOnly，NeoForge 本就传递引入同一版本，因此没有版本偏移）。231 个文件把 `import org.jspecify.annotations.NonNull` / `@NonNull` 改成 `org.jetbrains.annotations.NotNull` / `@NotNull`（426 处），`Nullable` 只换包名（38 处），`org.jspecify:jspecify` 依赖删除；`compileJava testModClasses` 通过。
+实际执行 `gradlew compileJava processResources --console=plain` 成功；25 份卡片 JSON 可解析、中英文各 538 键且集合一致，静态确认两个答案模板只为原始 answer 启用 Markdown，`git diff --check` 无空白错误。问答 / 搜索提示词允许简短 Markdown，但仍要求返回 JSON。未运行测试、启动 Minecraft 或调用模型接口；标题 / 强调 / 嵌套列表 / 引用 / 围栏代码的布局、中文换行、带 & 的 URL / 代码、原版链接确认、HUD 交互及资源重载仍待游戏内验收。没有引入新依赖；不支持 GFM 表格、任务复选框或代码高亮。
 
-## 2026-10-29 迁移到 Minecraft 1.21.1
+## 2026-11-06 任务格子图钉与底边进度条
 
-仓库从 26.1.2 迁到 1.21.1：`minecraft_version=1.21.1`、`neo_version=21.1.262`、Java toolchain 21、ApricityUI `1.2.6`、FTB `2101.1.37/2101.1.39/2101.1.11`、SVC `9350472`（`1.21.1-2.6.27`）。Saturn 不再作为外部依赖，其最小闭包源码内联到 `com.iafenvoy.saturn`，`neoforge.mods.toml` 删除 saturn 依赖；`system.mixins.json` 的 `compatibilityLevel` 改为 `JAVA_21`。
+任务列表 JSON 新增 quest_pin / progress 节点；前者切换客户端连接内去重的任务 ID 列表、阻止点击冒泡并刷新同任务按钮，后者读取已同步的数字进度，在下边线上绘制 3px 横条。固定列表不展示、不影响原排序，系统状态清理时一并清空。核对实际 AUI 1.2.9 source JAR 的 Element.init、SVG、事件冒泡与 Document.getAll API，按钮在初始化后绑定，使用 SVG 避免 emoji 字形缺失；通知模式单独覆盖通用按钮最小宽度，避免图钉被撑大。
 
-API 差异逐项按 1.21.1 源码或字节码核对，不凭记忆：`Registry#getValue`→`get`（1.21.1 返回可空值而非 `Optional`）、`EntitySpawnReason`→`MobSpawnType`、`ResourceKey#identifier`→`location`、`advancements.criterion`→`critereon`；1.21.1 无 `SavedDataType`（改用 `SavedData.Factory` + `save(CompoundTag, Provider)`，存于主世界 DataStorage）、无 `SoundEngine.PlayResult`（用 `isActive` 探测）、无 `RenderElement.invalidateLayoutSubtree`（改用 `Element.invalidateStyle`）、`StreamCodec.composite` 最多 6 分量（页标量折叠为内部记录）、`LootItemFunction`/`LootItemCondition` 需 `getType()` 且无 `codec()` 钩子、`ScreenEvent` 按键用 `getKeyCode()` 而 `InputEvent.Key` 用 `getKey()`、`Level.getEntity(UUID)` 仅 `ServerLevel` 提供、`EntityType.create(Level, MobSpawnType)` 不存在。
+实际执行 `gradlew compileJava processResources --console=plain` 成功，25 份卡片 JSON 可解析，中英文各 538 键且集合相同，`git diff --check` 无空白错误。未运行测试、启动 Minecraft 或做游戏内验收；需人工确认任务图标 / 图钉互不遮挡、点击固定不进入详情、翻页 / 重开后保留状态、同任务跨文档同步、登出清理及 0 / 50 / 100 进度条长度。
 
-`AuiCursorReleaseMixin` 的注入目标与所引用 AUI 成员已按 1.2.6 字节码逐一核对：`CursorReleaseController.update(boolean,boolean,boolean,Runnable,Runnable)` 存在，首个 boolean 即 ordinal 0；`Document.getAll/isActive/isManuallyRendered/getPath/getElements`、`Interaction.isDisplayed/isVisible`、`Size.box`、`Element.isConnected/getComputedStyle`、`Style.pointerEvents` 均存在，mixin 无需改动。
+## 2026-11-06 少量任务章节禁止滚动回弹
 
-FTB 2101.1.37 移除了 `CustomTask.enableButton()` getter（类中仅剩 `checkOnLogin()Z` 一个 `()Z`，字段只在客户端 `writeNetData` 同步），`FtbQuestReader` 改为缓存反射读取该私有字段，读不到时告警并退回 `Submission.NONE`；这是已知的脆弱点，FTB 改名或加模块化限制会静默降级。
+阅读实际 AUI 1.2.9 source JAR 的 MouseEvent.resolveScrollTarget、ScrollModel 与 Element.init：overflow:auto 只控制滚动资格，零滚动范围仍可被选为回退目标并产生弹性位移；原始 Element 初始化时不会复制内部监听。GroupedActionsNode 先初始化左栏，再注册内部 wheel 监听；仅在事件路径没有实际滚动范围时阻止默认滚动，保留超长左栏及外层聊天的真实滚动，Shift 滚轮兼顾横向范围。范围查询只在滚轮事件中进行，没有增加逐帧或布局回调测量。
 
-Saturn 内联后补回两处只有独立 `@Mod` 才会做的事：`SaturnIntegration` 在 `SystemMod` 构造函数里注册 `SaturnAttachments` 与 `SaturnContent`（当时的 23 个内容注册器，现已随裁剪减少），并调用 `RegistryCaches.init()` 触发行名与触发规则两张缓存加入 `RegistryCache` 的重建列表。缺任一项都只会让注册表整局为空而不报编译错误。Saturn 的静态订阅者（新建注册表、数据包注册表、标签更新）仍靠 `@EventBusSubscriber` 自动注册，无需手动接线。上游 `assets/saturn/lang/en_us.json` 与 `zh_cn.json` 当时一并复制（各 81 键，现为 23 键）；`incomplete.png` 与 `saturn.mixins.json` 未复制，闭包内 `runtime/hold` 整包不存在且无任何引用。
+实际执行 `gradlew compileJava processResources --console=plain` 成功，`git diff --check` 无空白错误。未运行测试、启动 Minecraft 或做游戏内验收。仍需人工确认单章节无回弹、多章节超高可滚动、外层聊天滚动及通知按 T 交互。修改位于 master / 26.1.2，1.21.1 待同步。
 
-执行 `compileJava testModClasses build --console=plain` 全部通过，产物 `system-1.0-alpha.3.jar` 的元数据已展开为 `[1.21.1,1.22)` / `[21.1.262,)` / `[1.2.6,)` 且无 saturn 依赖，`assets/saturn/lang` 已进包，中英系统语言文件各 493 键且集合一致。未启动 Minecraft，运行时行为、网络协议、mixin 实际注入与 AUI 渲染均未游戏内验收。
+## 2026-11-06 任务图标边缘裁剪
+
+根据用户截图检查任务格子的 CSS，确认 `.card_action_cell` 的 `overflow: hidden` 会裁掉 FTB 原生图标超出 32px 元素盒的边缘。保留格子尺寸与布局，只将任务格子、图标容器和原生图标元素改为 `overflow: visible`，避免方块 / 物品图标的透明边缘或立体模型被截断。
+
+执行 `gradlew compileJava processResources --console=plain` 前一轮通过；本次仅修改 CSS 与文档，未启动游戏或做视觉验收。仍需确认不同 FTB 图标、滚动边界和通知模式下不会溢出任务列表外框。
+
+## 2026-11-06 任务列表居中与原生 Quest 图标
+
+阅读 FTB 26.1.2.8 的 QuestObjectBase.getIcon、ClientQuestFile.exists / getInstance 和 BaseQuestFile.getQuest，确认任务图标的配置优先级与客户端同步入口。新增通用 `system:quest_icon` 节点，使用结果附带的任务 ID，在隔离适配器中读取 Quest.getIcon，复用原生图标绘制与 tooltip；数据不可用时省略图标。任务格子保留 104px 高度，32px 图标和标题居中，编号 / 进度合为一行；带格式文本的内部块与 span 同时指定居中。
+
+执行 `gradlew compileJava processResources --console=plain` 成功。未运行测试、启动游戏或做视觉验收；自定义物品 / 材质 / 动画图标、长标题居中与 tooltip、通知分页和任务文件尚未同步时的展示仍待游戏内验收。修改仅在 master / 26.1.2，1.21.1 待同步。
+
+## 2026-11-06 任务列表货架布局修正
+
+根据用户截图和源码阅读，旧任务格子把带格式的多行标签直接放在 flex 按钮中，标题没有独立块，且两列格子过宽。右侧改用商店 / 抽奖同一套货架 DOM 与 CSS，完整模式 6 列、104px 高，通知 3 列；标题、编号和进度由 JSON children 分块设置，分页仍复用 ActionsNode。左栏改为自然高度内容容器，只有超过高度上限才滚动，取消 gutter 预留。顶层 title 单独显示“任务列表”，提示缩短，保留原摘要播报。后续按截图移除右侧重复的章节名、数量及整行占位，任务货架直接与左侧导航顶部对齐。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功；静态检查通过：25 份卡片 JSON 可解析，中英文各 536 键且集合相同，git diff --check 无空白错误。未运行测试、启动 Minecraft 或做视觉验收；仍需游戏内确认少量章节无滚动、超长章节滚动、格子标题换行、分页 / 分组切换及通知查看后返回。修改位于 master / 26.1.2，1.21.1 尚未同步。
+
+## 2026-11-05 任务列表分组卡片
+
+静态阅读 FTB 26.1.2.8 的 Chapter / ChapterGroup / BaseQuestFile 确认章节归属和顺序，读取 AUI 1.2.9 的 Element.init 确认回调容器需在插入前初始化。任务列表现在仅从本次结果生成分组；章节 ID 避免同名合并，左右区域分别滚动，右侧每组每页 10 项，选中章节与各组页码保留在卡片本地状态中。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功；25 份卡片 JSON 可解析，中英文各 536 键且集合相同，git diff --check 无空白错误。未运行测试、启动游戏、创建存档或调用外部 API。仍需游戏内验收多章节 / 同名章节 / 空分组过滤、左右滚动、分页后原任务编号、HUD 点击详情后返回、窗口缩放及长标题换行。当前仅修改 master / 26.1.2，1.21.1 尚未同步。
+
+## 2026-11-05 通知 HUD 鼠标透传
+
+用户反馈背包内 FTBQ 左上角任务书偶发无法点击，当时通知已隐藏。阅读 AUI 1.2.9 的 Event / MouseEvent / Client 与 FTB Library 26.1.2.9 的侧栏实现，确认 AUI 在原版控件处理前全局分发输入，普通监听器会在回调执行前将事件视为已消费，不能靠回调内的条件判断实现透传。通知面板的鼠标监听改为内部监听，仅可交互状态显式 consumeNative；模板取消文档级自动拦截，HUD 指针规则固定优先于主题。鼠标按下、释放及界面滚轮事件以 HIGHEST 优先级重新检查实际界面，进入背包等非聊天界面时在 AUI 分发前移除残留通知文档。
+
+执行 `gradlew compileJava processResources --console=plain` 通过。未运行测试或启动 Minecraft，未复现并确认此次 FTBQ 按钮故障的唯一原因；背包侧栏点击、通知动画期间透传、聊天栏内通知按钮与滚动仍需游戏内验收。
+
+## 2026-11-05 AgentRequest / AgentResponse 流式分派
+
+请求与响应只用于网络传输，接口的 `codec()` 改为 `streamCodec()`；`SystemRegistries` / `SystemResourceKeys` 的两张协议表改为 `Registry<StreamCodec<? super RegistryFriendlyByteBuf, ? extends ...>>` 并保留 `sync(true)`。根分派用 `ByteBufCodecs.registry(...).dispatch(..., streamCodec -> streamCodec)`，不再经过 `Codec`、`byNameCodec()` 或 `fromCodecWithRegistries` 的整包 NBT。C2S / S2C 载荷直接组合根 `STREAM_CODEC`；`ClientState`、`History`、`Message`、`CardReference`、`CardAction.Server` 新增流式编解码，枚举按序号编码，`AgentResult` / `AgentAction` 因同时用于存档与模型 JSON 仍保留 Codec，并在流式字段中桥接。
+
+执行 `gradlew build testModClasses --console=plain` 通过，`git diff --check` 通过。未运行测试或启动 Minecraft；注册表数字 ID 同步、两端编解码一致性、请求 / 响应收发及未知 ID 的断线行为仍需游戏内验收。
+
+## 2026-11-05 聊天记录底部多余滚动区域
+
+用户截图与调试反馈显示，物品查询卡片已结束，下面仍可滚动到没有内容的区域，重新打开界面也存在。阅读当前 AUI 1.2.9 的 ScrollModel、Flex 和 Grid 源码：滚动范围按直接子元素的位置与整盒尺寸计算，原聊天包装容器还参与 flex 主轴高度分配。将 conversation 改为单列、max-content 行的网格，去掉包装容器的 flex 与自动上边距，让定位和滚动范围共用网格行的尺寸；safe end 在有剩余空间时靠下，溢出时从顶部排列。消息内部保留普通文档流，未增加手动 scrollHeight 修正或重复子树测量。
+
+执行 `gradlew compileJava processResources --console=plain` 编译与资源处理通过；未运行测试或启动 Minecraft。本次按源码检查调整布局，实际底部留白、短对话对齐、长卡片滚动及工具栏切换仍需游戏内验收。
+
+## 2026-11-04 重复包装检查
+
+静态检查 Agent / assistant / module 的服务装配、工具适配与结果转换：抽奖回执改为由交易事务直接填充已有 sourcePool 字段，移除工作流的二次玩家存档读取、临时 LotteryPreviewInput 和第二份回执；商城报价与购买复用 AgentResult.data。语义路由复用 LexicalIndex.Match / Ranking，移除同字段 DTO 复制，保留可用模块过滤、候选排序及覆盖率 / 分差检查。带工具身份、计费、目录权限、玩家代次校验的适配继续保留。
+
+执行 `gradlew compileJava testModClasses --console=plain` 通过，`git diff --check` 通过。testModClasses 仅做开发源集编译检查；未运行测试、启动 Minecraft 或请求收费 API。实际抽奖确认 / 再抽一次、商店展示、语义候选排序与低置信度回退尚未游戏内验收。
+
+## 2026-11-04 Agent 与 MC 业务职责整理
+
+AgentEngine 移除商城目录/报价、数据库、搜索和任务口播的业务所有权；具体工作流移入 module.builtin，游戏 Tool、绑定与交易移入 assistant，输入输出、存储实现、数据库与提示词移入 data，任务口播与背景缓存移入 speech.quest。新增 AgentJournal、AgentLifecycle 和 AssistantBindings；ModuleContext 显式注入服务。存储接口与执行账本契约留在 agent，具体业务存储由宿主注入。目录权限每次使用仍重新求值，搜索的数据库优先及本次联网许可由工作流维持。
+
+执行 `gradlew compileJava testModClasses --console=plain` 与 `gradlew jar --console=plain` 编译、打包通过。静态检查覆盖旧包引用、Agent 对具体功能/游戏运行时类的依赖、Java 包路径、资源与语言键集合，以及 diff 格式。注册表 ID、Codec 字段、配置路径和协议 1 未改变；仅 Java 扩展的导入路径与构造 API 需调整。未运行测试、启动 Minecraft、创建存档或调用外部 API；实际绑定/撤销、商城/签到/抽奖、FTB、语音、客户端展示与专用服务端加载尚未运行验收。
+
+## 2026-10-31 目录注册表、tag 与模块可选项
+
+将签到奖励、商城商品和奖池登记为服务端专用的原生 system:signin_rewards / system:shop_offers / system:lottery_pools 数据包注册表；文件路径不变，删除 CatalogReloadListener 以及 AssistantServer 的目录监听器和逐 tick 刷新。CommerceCatalog 从 RegistryAccess 构建当前服务器的业务快照，条目禁用、原版 ItemStackTemplate 与 Saturn Cost 继续沿用。新增三张表各自的默认 tag、内置模块字段和商业示例包的追加 tag / 混合选择模块。
+
+对实际依赖 Saturn 9349648 JAR 使用 javap 核对 keyOrTagList / matchesKeys / combineCodec，确认单值与数组格式、ResourceKey 编码不要求客户端持有服务端目录。阅读 MC 26.1.2.114 的 RegistryDataLoader、WorldLoader、MinecraftServer.reloadResources 和 TagLoader：Data Pack Registry 在世界加载时读取条目，普通 /reload 为现有注册表更新 tag，不重新读取条目。CatalogModule 使用 rewards / offers / pools 保存可选 ResourceKey/TagKey，同玩家已启用的同类配置取并集，所有业务入口统一读取 availableCatalog；成交前与实际支付前复核来源，成就固定奖励仍使用完整目录。修正同类型多个配置重复装配同一交易存储时被拒绝的问题。
+
+执行 `gradlew compileJava --console=plain` 和 `gradlew testModClasses --console=plain` 编译通过，未运行测试、启动 Minecraft 或请求外部 API。原生数据包的实际世界加载、服务器专用注册表与客户端配置同步、tag 重载、模块条件切换及签到 / 商城 / 抽奖交互仍需游戏内验收。
+
+## 2026-10-30 完整聊天布局与滚动
+
+删除“对话”导航与侧栏分组标题，SETTINGS 类入口由 ClientModuleBindingsCache 放到右上角，模块工具栏移至聊天记录与输入框之间。WorkspaceContext 统一处理当前工具栏入口的重复点击，收起时跳过原打开回调，避免重复查询；即时查询和独立设置页面保持原动作。聊天内容放入普通文档流容器，通过 flex 自动上边距让短对话靠近输入框，长卡片不压缩。
+
+阅读 AUI 26.1 / 1.2.6 的 Flex、Box 与 ScrollModel 源码确认自动边距、滚动范围和 setter 行为。AssistantScreen 在所属 Document 上下文中先提交布局，再按 scrollHeight 减 innerSize.height 计算范围；内容或工具栏变化前记录当前与目标位置，变化后仅在原本接近底部时跟随新消息，否则保留并限制位置到有效范围。
+
+执行 `gradlew compileJava --console=plain` 编译通过，`git diff --check` 通过。未运行测试或启动 Minecraft；工具栏布局、重复点击、短卡片底部对齐及翻阅历史时的滚动仍需游戏内验收。
+
+## 2026-10-30 客户端卡片构建扩展事件
+
+新增 event.client.CardBuildEvent，使用当前 NeoForge bus 8.0.5 的 Event / NeoForge.EVENT_BUS API，提供 ref、原始 CardData 和可变 CardBuilder。将 ClientCards 的 SHOW、REPLACE 和无缓存回退构建收敛到同一个 build 方法，在内置 buildCard 后、不可变 CardView 构建前同步发布事件；历史恢复复用 SHOW 构建，REMOVE / 旧版本与缓存读取不发布。公共 CardBuilder / CardData 和网络 Codec 未改变；新增参数继续由 CardPresentation 统一处理 Component / CardText，然后供 JSON 使用。
+
+执行 `gradlew compileJava --console=plain` 成功。没有运行测试、启动 Minecraft、添加临时探针或调用外部 API。其他模组的实际监听顺序、追加参数后的 GUI / 通知 / 历史显示、资源包重载和专用服务端加载仍需运行验收。文档补充客户端监听及资源包占位符示例，以及事件与缓存的生命周期约定。
+
+## 2026-10-30 玩家模型节点展示参数
+
+核对 AUI 26.1 / 1.2.6 的 Document.getMouseDocumentPosition、Base.toLocalPoint、RenderNode 变换流程，以及 Minecraft 26.1.2 的 MouseHandler.isMouseGrabbed、InventoryScreen 和 LivingEntityRenderer 源码。PlayerNode 新增 follow_mouse、scale、offset_x / offset_y，保留 yaw / pitch 并用于关闭跟随或光标锁定后的固定朝向；固定模式下头部水平旋转与身体对齐。内置 player.json 显式开启跟随并列出所有可调参数，节点缺省仍为固定展示。字段采用 lenientOptionalFieldOf，scale 使用原版 POSITIVE_FLOAT。
+
+编译执行 `gradlew compileJava --console=plain` 成功；未启动 Minecraft、运行测试或请求外部 API。鼠标跟随、GUI 缩放 / 滚动 / CSS 变换、HUD 光标锁定后的回退、固定侧面 / 背面朝向，以及放大 / 偏移后的裁剪仍待游戏内验收。
+
+## 2026-10-30 卡片缓存容错与存储异常
+
+读取用户现有 `run-test-client/logs/latest.log`，确认登录时旧缓存的 `system:player` 卡片缺少新增的 `playerId`，RecordCodecBuilder 的部分结果触发 CardUpdate 构造异常，最终显示通用 MODULE_FAILED。只读核对了玩家文件的缓存类型与字段，没有删除或修改现有存档。
+
+CardUpdate 改为按 mode 分派：SHOW / REPLACE 的 data 必填，缺失时返回 Codec 错误。新增 CodecIO.recoveringMap，仅对 Conversation.requests 逐项捕获解析错误及构造异常，丢弃失败项、保留有效结果，编码不容错。加载时删除无法解析的助手历史卡片，历史结构错误可回退为空；用户消息及严格读取的绑定、业务账本、请求指纹保持原逻辑。FileAgentStore 对 JSON / Codec 运行时异常补充 IOException 包装和错误链，读写失败通过原有日志与 STORAGE_UNAVAILABLE 提示，不覆盖为新的空玩家文件。
+
+执行 `gradlew compileJava --console=plain` 编译通过。没有运行测试、启动 Minecraft、创建临时数据或调用模型 / 语音 API；旧缓存实际自动恢复、历史显示、异常文件的保留与业务防重复仍需运行验收。
 
 ## 2026-10-29 通知取消自动关闭与切换
 
@@ -140,7 +228,7 @@ Saturn 内联后补回两处只有独立 `@Mod` 才会做的事：`SaturnIntegra
 
 ## 2026-10-29 重进世界后客户端模块入口恢复
 
-只读检查现有存档确认系统绑定与模块存储仍保留。对照当前 NeoForge TagsUpdatedEvent 源码、Saturn RegistryCache 实现和本项目 ModDev 的 MC 1.21.1 补丁源码，确认共享静态缓存不覆盖单人连接的客户端标签更新路径，世界加载的 disconnect 又会触发客户端登出清理；原 get 使用 RegistryAccess.EMPTY 惰性装配后不再纠正，造成已绑定但模块入口消失。
+只读检查现有存档确认系统绑定与模块存储仍保留。对照当前 NeoForge TagsUpdatedEvent 源码、Saturn RegistryCache 实现和本项目 ModDev 的 MC 26.1.2 补丁源码，确认共享静态缓存跳过单人连接的 ClientPacketReceived，世界加载的 disconnect 又会触发客户端登出清理；原 get 使用 RegistryAccess.EMPTY 惰性装配后不再纠正，造成已绑定但模块入口消失。
 
 ClientModuleBindingsCache 改为仅按客户端标签同步和登出事件维护自身与命令缓存，包含单人连接，不再继承共享静态 RegistryCache。首次访问优先使用当前连接注册表，配置阶段已收到标签但本地玩家尚未创建时保留快照；连接注册表改变会按需重建。存档与服务端模块权限逻辑无需改动。
 
@@ -224,7 +312,7 @@ ServerModule 仅保留服务端生命周期、存储与依赖可用性；ToolMod
 
 执行 `compileJava testModClasses --console=plain`，主源码与开发源集编译通过；未执行测试或启动 Minecraft。
 
-阅读代码确认：SystemResourceKeys / SystemRegistries 移除 Client 内部类，全部 10 张代码注册表在两端统一创建并登记。客户端模块、节点和语音工厂仍仅在 Dist.CLIENT 入口绑定，专用服务端保留空表；共用卡片载荷在公共入口登记，供服务端构建回复。核对当前 NeoForge 21.1.262 源码，RegistryBuilder 的 sync 默认 false，sync(true) 仅用于数字 ID 同步；本次沿用名称编码，不新增同步协议。专用服务端实际类加载及联机同步尚未游戏内验收。
+阅读代码确认：SystemResourceKeys / SystemRegistries 移除 Client 内部类，全部 10 张代码注册表在两端统一创建并登记。客户端模块、节点和语音工厂仍仅在 Dist.CLIENT 入口绑定，专用服务端保留空表；共用卡片载荷在公共入口登记，供服务端构建回复。核对当前 NeoForge 26.1.2.114 源码，RegistryBuilder 的 sync 默认 false，sync(true) 仅用于数字 ID 同步；本次沿用名称编码，不新增同步协议。专用服务端实际类加载及联机同步尚未游戏内验收。
 
 ## 2026-10-28 响应实现与 Codec 拆分
 
@@ -555,7 +643,7 @@ FTB 仅为 `compileOnly`，默认开发运行不安装。需要用户明确要�
 - OFF 不使用本地索引/意图缓存；SHADOW 不影响路由、候选提示和缓存；无外部模型文件即可使用新配置。
 - ENFORCE 的独立语料评估：领域别名、陌生词与低覆盖率、高分小分差、否定/指代/复合表达、写请求与不支持表达、缺失/多个物品 ID；相似度不充当正确率。
 - 精确意图缓存的成功写入条件、每玩家/全局上限、TTL/LRU、清空/撤销/掉线与迟到写入；更换配置后索引和缓存重建，结果始终查询当前状态。
-- `/ai off` 禁止远程回退但允许已启用的本地只读直达；`/memory off` 不缓存意图；诊断不泄露原文/UUID。
+- 离线模式禁止远程回退但允许已启用的本地只读直达；`/memory off` 不缓存意图；诊断不泄露原文/UUID。
 - 明确指令与高把握直达的真实调用次数、本地索引/缓存耗时及 MSPT；本地诊断不能代替完整性能基准。
 
 - 默认未绑定、管理员自身/指定在线玩家 grant、重复 grant、成功落盘后绑定提示、未授权命令与未绑定请求拒绝。
@@ -750,42 +838,193 @@ AgentCommand、CommandRegistry 与客户端命令声明已接入 Brigadier；Cli
 
 执行 `compileJava testModClasses --console=plain` 编译通过；中英文各 490 个语言键且集合相同，更新文档的本地链接存在，`git diff --check` 通过。没有执行测试、启动 Minecraft、创建临时世界/数据包或请求模型服务。游戏内 Tab/IME、任务候选、模块切换、重载与重连仍需人工验收。
 
-## 2026-10-30 数据库优先问答与可选联网工具
 
-阅读调用链确认：核心 QuestionModule 先通过 database.query 汇总当前玩家 / 共享知识及授权 FTB 说明书；本地命中时只按来源整理，并再次查询复核。查库异常、部分资料或整理失败均不转为搜索。仅空结果、本次 allowWeb=true、搜索导出模块已启用且外部服务允许时打开 ExecutionContext 的联网门禁；每次 Search/Fetch 都检查。搜索改为 ToolModule，删除开发默认 tag 的搜索授予，保留测试数据定义以供管理员手动添加。/question 不允许联网，/search 与搜索页提交允许本地无结果后的回退。
+## 2026-10-30 1.21.1 修改同步至 26.1.2 master
 
-执行 `.\gradlew.bat compileJava testModClasses --console=plain` 编译通过；23 份卡片 JSON 无重复键且节点类型均已注册，中英文各 513 个语言键并且集合一致，routing / knowledge_answer / web_search 提示词占位符有效。动作类型 21 个、卡片数据类型 26 个且注册 ID 无重复；修改文档的本地链接存在，git diff --check 通过。源码中旧 WebSearchInput / WebSearchModule / SEARCH_ACTION 已移除。
+先从干净的 1.21.1 工作区切换 master，再执行 git pull --ff-only，远端更新从 2c459f9 快进至 b6afc9d；随后同步 b601fd7..03ca46a 的功能差异，不带入版本降级、嵌入式 Saturn 或 1.21 专属兼容类。完整行为清单、目标 API 适配和人工验收项见 [跨版本同步记录](ftb-quests-porting.md)。
 
-没有执行测试、启动 Minecraft、创建临时存档 / 数据包或调用外部 API。数据库命中与无结果、拒绝联网、模块未启用、玩家隔离 / FTB 隐藏文本、在途权限变化及供应商计费均尚未游戏内验收。FTB 适配器导出与跨版本同步清单记录在 [26.1.2 待同步项](ftb-quests-porting.md)。
+阅读目标 FTB Quests 26.1.2.8、Library 26.1.2.9、ApricityUI 26.1-1.2.6 的源码，以及实际 Minecraft 26.1.2 JAR 签名，确认服务端实例非 Optional、NeoForge 进度事件、Json5Object 奖励序列化、void claim 与自选原生标记顺序、原版 ItemStackTemplate、ComponentSerialization、Commands.hasPermission 和延迟 GUI 提取机制。图标的几何 / 文字 / 物品在 AUI 当前输出目标与变换中重放，tooltip 使用目标原版 API；这属于源码核对和编译验证，并非渲染验收。
 
-## 2026-10-30 master 交互式任务通知回同步 1.21.1
+实际执行 `gradlew compileJava testModClasses jar --console=plain` 成功：主代码与测试源集编译通过，产物 `build/libs/system-1.0-alpha.3.jar` 为 1,542,493 字节，小于 10 MB。直接检查 JAR，确认数据库、数据库优先问答、目标图标绘制类、卡片和提示词已包含；没有嵌入 Saturn、旧 WebSearchModule / WebSearchInput 或默认 web_search 配置 / tag 授权。已有依赖和版本配置未更改。
 
-切换 1.21.1 并执行 `git pull --ff-only`，远端无新提交，基线为 03ca46a；从 master b97aa1c 选取通知窗口相关修改。阅读差异确认：任务列表每页 10 项，正文内独立翻页；查看详情用 PUSH 保存来源，返回保留页码，底部确定结束整个窗口。单项普通解锁直接详情，多项合并列表，完成任务仍逐项通知。保留 1.21.1 的 Architectury 事件、ResourceLocation、自有 ItemStackTemplate 和 ScreenEvent.Render.Post / GuiGraphics tooltip，没有带入 26.x 渲染提交 API。
+静态检查：双语各 513 个键且集合一致；23 份卡片 JSON 无重复键并可解析，节点 ID 均在 13 个节点类型中注册；动作与卡片数据分别为 21 / 26 个类型。冲突标记与旧版 API 引用检查、重复 import 检查和 git diff HEAD --check 通过。保留 master 的通知替换与手动切换逻辑；根目录两份 README 未改。临时补丁已删除，改动未提交、未推送、未暂存。
 
-实际执行 `gradlew compileJava testModClasses --console=plain` 成功，主代码及测试源集编译通过。静态检查：23 份卡片 JSON 有效且无重复键，任务列表 notification_page_size 为 10；中英文各 517 键且集合完全一致；共享分页 / 卡片展示代码与来源一致，git diff --check 和新增文件空白检查通过。gradle.properties、build.gradle 及根目录两份 README 与目标 HEAD 一致。迁移与后续定位记录在 [跨版本同步记录](ftb-quests-porting.md) 和 learning.md。
+没有运行测试、启动 Minecraft、创建存档 / 数据包或请求收费 API。功能实际验收尚未进行，尤其是目标渲染流程、第三方 FTB 图标、持久化 / 玩家隔离、并发重载和本地优先联网授权；不能将编译通过视作运行通过。
 
-没有运行测试、启动 Minecraft、创建临时数据或调用外部 API。游戏内分页边界、大列表、返回原页、动画期间回包、按 T 交互、语音返回及单 / 多任务解锁尚待人工验收。当前停留在 1.21.1，改动未提交、未推送。
+## 2026-10-30 任务通知交互窗口
 
-## 2026-10-30 通知“下页”点击无效修正
+阅读并修改代码：通知任务列表由 actions 节点每页截取 10 项，上 / 下页和页码位于正文，与宿主底部确定按钮独立。翻页只更新通知持有的 CardPageState 和节点 DOM，不发送请求、不替换通知、不推进队列或重启播报；共用 CSS 保留原宽度与限高视口。QuestList 查看动作改为 PUSH，详情回复仍按原来源原位展示，保留本地返回栈；返回恢复原页且不重复播报列表，确定关闭整个窗口。卡片更新保留页码，移除会清理相应返回项；返回淡出期间的迟到回复不覆盖待返回内容，关闭来源后的迟到回复仍不能抢占其他通知。
 
-用户实测反馈点击下页完全无反应。核对实际依赖 ApricityUI-neoforge-1.21.1:1.2.6 的 sources JAR：Node.prepareForInsertion 经 Element.init 将原始 Element 换成注册的 Div，分页闭包仍持有未挂载的旧对象，isConnected 检查直接返回。ActionsNode 在构造分页回调前初始化实际容器，挂载后闭包持有的即为 DOM 中实例；没有删除交互 / 生命周期检查，也没有增加请求或切换通知。
+服务端普通新解锁任务只有一项时直接构造 QuestOutput 详情并使用 unlocked 播报；多项时继续合并一条 QuestUnlockedOutput。FTB 完成事件循环仍逐个构建、发送独立完成通知，未合并任务完成项。上述结论来自源码阅读。
 
-执行 `gradlew compileJava testModClasses --console=plain` 成功，git diff --check 通过。以上根因来自依赖源码与调用链阅读；没有运行测试、启动 Minecraft 或加入调试探针，点击及连续翻页仍需游戏内复测。修正与 master 待同步项记录在 [跨版本记录](ftb-quests-porting.md)。
+实际执行 `gradlew compileJava testModClasses --console=plain` 成功。静态检查通过：中英文各 517 键且集合完全相同，23 份卡片 JSON 可解析且无重复键，内置任务列表页大小为 10；新源文件和 `git diff --check` 无空白错误。没有运行测试、启动 Minecraft 或请求收费 API。尚未游戏内验收：边界页与大列表、详情返回和页码保持、动画期间迟到回包、忙碌时本地操作、语音返回、资源重载和临时隐藏后的恢复。
 
-## 2026-10-30 Windows 用量账本非法文件名修正
+## 2026-10-30 26.1.2 分页与 ASR 补充移植
 
-用户提供保存异常：InvalidPathException 指向 `data/system:token_usage.dat`。读取实际 NeoForge / Minecraft 1.21.1 sources JAR，确认 DimensionDataStorage.getDataFile 直接使用 `new File(dataFolder, name + ".dat")`。TokenUsageData.FILE_ID 从资源 ID 字符串改为 `SystemMod.MOD_ID + "_token_usage"`，最终文件名为 system_token_usage.dat；更新实际存档路径说明。全主源码（包括内联 Saturn）扫描仅发现该处 SavedData 实现与消费入口，无其他同类存档键。
+切换 master 后先执行 `git pull --ff-only origin master`，远端无新提交，基线为 `b97aa1c`。核对 AUI 26.1 / 1.2.6 的 Node / Element 源码后同步分页容器提前初始化；ASR 同步停止与入队互斥、EOF 复核、终态和计时代次、90 秒会话 / 15 秒收尾超时、取消及后台错误处理，并将正常结束的 EOF 实际移到设备关闭前。26.1.2 原生输入法、SavedDataType、依赖及网络协议未变。
 
-执行 `gradlew compileJava testModClasses --console=plain` 成功，git diff --check 通过。未运行测试、启动游戏或改动用户存档，保存世界和重新加载账本尚待游戏内复测；本次不修改用量数据结构及 revoke 策略。
+实际执行 `gradlew compileJava testModClasses jar --console=plain` 成功；这里的 testModClasses 只编译开发源集，没有运行测试或游戏。静态 / JAR 检查通过：双语各 517 键且集合相同、23 份卡片 JSON 可解析，三个修改类均为 Java 25 字节码。产物 `build/libs/system-1.0-beta.1.jar` 为 1,548,823 字节，没有带入 1.21.1 的内嵌 Saturn、旧输入法 helper 或 IMBlocker Mixin。
 
-## 2026-10-31 1.21.1 存储与目录注册表同步
+没有请求收费 API、创建存档 / 临时配置或执行运行时探针。尚未实际验收：通知翻页点击及返回页码、Java Sound / SVC 录音结束、设备延迟关闭、取消 / 超时后的迟到回调、识别填入与自动发送。完整范围及来源审计见 [跨版本同步记录](ftb-quests-porting.md#2026-10-30-本轮补充移植)。
 
-保留 1.21.1 工作区已有改动，手工同步 master 的近期存储与目录改动：`PlayerData.State`、事件任务和步骤状态改为共享枚举；内置 DataStorage 集合改为私有字段并统一通过 getter / 事务方法修改，变更调用 `markDirty()`；签到奖励、商城商品和抽奖奖池改为原生 `system:signin_rewards`、`system:shop_offers`、`system:lottery_pools` 数据包注册表，模块通过 ID / tag 过滤可用目录，移除旧 `CatalogReloadListener`。所有 1.21.1 代码继续使用 `ResourceLocation`，没有带入 26.x 的 `Identifier` 或客户端渲染 API。同步更新目录、模块和注册表文档，保留用户未提交的其他修改。
+## 2026-11-03 滚动范围查询重复布局修正
 
-执行 `gradlew compileJava testModClasses --console=plain` 成功；主源码和测试源集编译通过。脚本校验 `src/main/resources` 与 `src/test-mod/resources` 共 65 个 JSON，无重复键；`git diff --check` 通过。没有启动 Minecraft、创建临时存档或进行游戏内验收；数据包注册表加载、tag 过滤、目录交易和存档回写仍需实际运行检查。
+阅读实际 ApricityUI 26.1 / 1.2.6 依赖源码确认：LayoutCommit.commit 已更新滚动元素的 scrollHeight，而原 AssistantScreen.scrollLimit 会额外调用 commitScrollMetricsFromLayout，重新查询聊天内容的子元素位置和自然尺寸；该调用及 setScrollTop 内部的 Box 查询均未开启 GeometryQueryScope。移除重复测量，读取范围与恢复位置分别使用几何查询作用域；AssistantPages 的手动布局提交也开启同样的样式 / 测量缓存。DOM 修改前后的查询分开，避免共享失效的矩形缓存。
 
-## 2026-10-31 1.21.1 语音记账后台处理
+实际执行 `gradlew compileJava testModClasses --console=plain` 成功；testModClasses 仅检查开发源集编译。静态检查确认 System 不再主动调用 commitScrollMetricsFromLayout，两处 scrollLimit 及滚动恢复均位于 GeometryQueryScope 内。未启动 Minecraft、运行测试、插入运行时探针或请求外部 API，未取得本次卡死时的线程堆栈；长聊天、嵌套卡片、滚动保持和实际卡死是否消除尚待游戏内验收。
 
-master 的阻塞修复先提交为 `c212876`，再切换 1.21.1 执行 `git pull --ff-only`，远端无更新。仅同步 LocalSpeechUsage 及语音 / 跨版本文档，保留 1.21.1 的版本、依赖、输入法与渲染代码。初始加载、价格计算、归并和写盘进入独立单线程，界面只读 volatile 快照；同步后的 LocalSpeechUsage 与 master 完全一致。
+## 2026-10-30 宿主信息双栏卡片（26.1.2）
 
-实际执行 `gradlew compileJava testModClasses --console=plain` 成功，主代码及开发源集重新编译通过，仅有已有弃用 API 提示。静态检查确认账本构造不调用 Files / CodecIO，加载先排队，快照与更新不再共享同步锁，退出等待只存在于独立 hook；`git diff --check` 通过，版本配置与两份 README 未改。没有运行测试、启动游戏或调用收费 API；不能将编译通过视为卡顿问题已经实际验收。
+核对实际 Minecraft 26.1.2 InventoryScreen、GuiEntityRenderer、EntityRenderDispatcher 的源码及 AUI 26.1 / 1.2.6 MinecraftElement、Mask、物品后端与深度区间。新增 system:player 节点和客户端 PlayerModelElement，服务端快照携带 UUID；player.json 用现有 row / column 组合模型和信息，在线列表折叠，统一 CSS 控制尺寸和窄屏换行。客户端每次按 UUID 解析玩家，不缓存实体，不修改真实实体，不新增依赖或服务端客户端类引用。
+
+实际执行 `gradlew compileJava testModClasses jar --console=plain` 成功。静态检查通过：中英文各 519 键且集合相同，23 份卡片 JSON 无重复键、节点均在 14 个注册类型内、translate 键存在；JAR 包含新增节点 / 元素和更新后的玩家模板，产物 `build/libs/system-1.0-beta.1.jar` 为 1,555,739 字节，`git diff --check` 通过。
+
+未运行测试、启动 Minecraft、创建临时世界或请求收费 API；本次只有编译、源码和资源检查。仍需游戏内确认完整 / 简约 / HUD 的缩放和裁剪、外观 / 装备层、模型与文字淡入淡出、窄屏换行、重生后重新解析玩家、模型不可用时的占位，以及缺少 FTB / SVC 的专用服务端加载。仅修改当前 master / 26.1.2，尚未移植到 1.21.1。
+
+## 2026-10-31 完整模式分页、定位与语音计费同步
+
+1.21.1 全部工作区改动已提交为 `c6fc689`，随后切换 master 并执行 `git pull --ff-only`，远端无更新。以 master `1ef5d80` 为基线，同步完整模式任务列表每页 10 项及按卡片 UUID 保存页码、共享 CSS 固定定位、模块页面节点缺失保护、语音价格表静态初始化和数字金额 Codec、语音账本异常隔离，以及识别完整堆栈日志。逐项核对时保留目标已有的玩家独立渲染状态、原生输入法、自然 EOF 发布顺序、版本和依赖。
+
+实际执行 `gradlew compileJava testModClasses --console=plain` 成功，主代码和开发源集重新编译通过。静态检查通过：中英文各 519 键且集合完全相同，任务卡片页大小为 10，PRICE 在外层 Codec / INSTANCE 之前初始化，保留目标 NonNull 注解；源码无旧分页字段，全部 renderCard 调用已同步，`git diff --check` 无空白错误。
+
+没有运行测试、启动 Minecraft、创建存档或请求收费 API；未修改两份 README，未推送远端。仍需游戏内验收分页与缩放后的页码、界面定位、自定义模板缺页，以及成功识别后的填入 / 自动发送和本地费用。当前进程若已经发生价格类初始化失败，更新后需重启客户端，F3+T 不能恢复该 JVM 类状态。
+
+## 2026-10-31 语音记账阻塞修正
+
+源码审计确认合成请求与解码仍在 `system-speech`，但首次创建本地账本会在调用线程读盘，且用量页读取快照会等待统计计算 / 写盘锁。LocalSpeechUsage 改为独立单线程串行处理初始加载、费用计算、归并与保存，界面只读 volatile 不可变快照；取消的语音任务不会取消账本队列，JVM 退出由独立 hook 做有时限的排空。
+
+实际执行 `gradlew compileJava testModClasses --console=plain` 成功，主代码编译通过，开发源集编译任务为最新。只读抓取用户已启动的 1.21.1 进程时，渲染 / 服务端线程均在正常等待，没有取得卡顿时的堆栈；因此只能确认已移除上述阻塞路径，不能认定它就是用户这次卡顿的唯一根因。没有启动游戏、运行测试、创建存档或请求语音接口；并发记录、后台加载后的页面刷新、关闭时排空和实际卡顿改善仍待验收。当前仅修改 master，1.21.1 尚需同步。
+
+## 2026-11-06 常驻卡片 HUD
+
+本轮只执行 `gradlew compileJava processResources --console=plain`，结果为 `BUILD SUCCESSFUL`。同时用脚本检查 27 份卡片 JSON 无重复键、节点类型均已登记，中英文语言键集合一致（各 581 个），并刷新 `tools/card_editor.html` 的模板 / 语言 / CSS 快照。没有启动 Minecraft、创建存档或进行游戏内 HUD、图钉、FTB 任务刷新验收；位置、滚动、重登恢复及任务完成后的显示仍需客户端实测。
+
+## 2026-11-06 页面样式 / 布局卡顿审计
+
+按实际 ApricityUI 1.2.9 sources JAR 检查六类页面和共用节点，取消事件内整页布局提交、每帧重复提交和空闲 HUD class 重写，增加只读几何入口及消息 / 卡片增量协调；保留原生滚动缓动、通知动画及资源重载。详细原因与边界见[页面布局审计](ui-layout-audit.md)。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功。静态检查确认六份 HTML 无重复 ID、全部引用共享 CSS；27 份卡片 JSON 无重复键且节点属于已注册的 23 个类型；双语语言键集合相同（各 581 个）。源码扫描没有旧 AssistantPages.commit、直接 Box / Size / Rect 测量或原生滚动范围探测调用；离线编辑器可执行脚本的 `node --check` 和 `git diff --check` 通过。
+
+用户已关闭卡死的游戏，现有日志没有对应线程堆栈。本轮未启动游戏、执行运行时测试或添加探针；不能将编译 / 静态检查等同于卡顿已消除。任务翻页、长对话滚动与入场动画、输入法定位、连续通知、HUD 刷新及资源重载仍需游戏内验收。
+
+## 2026-11-06 打开页面卡顿后续修正
+
+用户反馈此前审计后每次打开仍卡数秒。读取新的 `run-test-client/logs/aui.log`：页面创建 175ms，首次布局 8786ms / 45 个元素；该首次布局记录为跨帧墙钟耗时，没有阻塞期间的线程堆栈。按实际 AUI 1.2.9 源码移除提取阶段的重复 prepareRender、初始化重复视口失效及无效的 manuallyRendered 切换；把非空草稿的光标范围设置延后到原生布局完成，空草稿保留默认光标。完整页面固定外壳改用定位边界，body 改块布局，减少嵌套 flex 自然测量。具体依据见[页面布局审计](ui-layout-audit.md)。
+
+实际执行 `gradlew compileJava processResources --console=plain`，结果 `BUILD SUCCESSFUL`。没有启动 Minecraft、运行功能测试或添加探针，不能据此承诺实际页面打开耗时；仍需后续运行日志和交互验收。
+
+## 2026-11-06 HUD 全屏背景修正
+
+阅读实际 AUI 1.2.9 的 HTML.normalizeDocumentMarkup 确认：存在 head/body 时会重新拼接无属性的 html 标签，原通知与常驻卡片的 html class 被丢弃，以它为前提的透明 CSS 未命中，留下共享 body 的半透明全屏背景。两种 HUD 改为在 body 声明 system_hud；AssistantThemes 在实际根节点补同一标记，统一清空根背景色、背景图、阴影、背景滤镜及装饰伪元素，保留面板背景和聊天栏内交互。
+
+实际执行 `gradlew compileJava processResources --console=plain` 成功，静态检查两份 HUD 的 body 标记与元素 ID、刷新编辑器 CSS 快照并通过 `git diff --check`。未启动 Minecraft 或运行功能测试，主题切换、资源重载和实际透明显示仍未游戏内验收。
+
+## 2026-11-06 常驻卡片左右出入动画
+
+阅读 Saturn 实际依赖的锚点 API 与 ApricityUI 1.2.9 的 Transition / Document 源码后，常驻卡片增加稳定包装层，左侧锚点左进左出、右侧锚点右进右出，居中锚点按屏幕半边决定。新增等待原生布局就绪，退出保留到 Transition 结束，进度 / 模板更新只替换内部内容；背包、F1、HUD 编辑器和退出世界继续立即卸载。仅修改 transform / opacity，使用像素位移与几何缓存作用域，不增加手动 prepareRender 或整页几何提交。
+
+实际执行 `gradlew compileJava processResources --console=plain`，结果为 `BUILD SUCCESSFUL`。未启动 Minecraft、运行功能测试或添加探针。左右锚点、居中位置、最后一张退出、快速取消再固定、连续进度更新、滚动容器裁剪和资源重载后的实际效果尚待游戏内验收。
+
+## 2026-11-06 切换界面保留常驻卡片退出动画
+
+用户实测入场正常，但切换界面会瞬间消失。源码确认 tick、ScreenEvent.Opening 和鼠标前置处理均把非聊天 Screen 当作立即卸载条件。现将文档保留条件与卡片显示条件分开：新界面打开时立即禁用交互、清空显示目标并启动既有退出过渡，AUI persistent overlay 继续绘制，所有卡片退出后才卸载。退出途中返回游戏会恢复同一包装层并反向进入；其他界面下不新建卡片，F1 和退出世界仍立即清理。按 AUI 1.2.9 的 Base.drawPersistentScreenDocuments / Client.drawScreen 源码核对跨界面绘制路径，未增加额外渲染或几何提交。
+
+本轮执行 `gradlew compileJava processResources --console=plain` 和 `git diff --check`；编译与静态检查通过。未启动 Minecraft 或运行功能测试。背包、暂停菜单、AUI 页面和 HUD 编辑器中的实际退出效果、快速返回时反向过渡及退出期间鼠标透传仍待游戏内验收。
+
+## 2026-11-06 常驻卡片展示配置
+
+ClientConfig 新增 `cardAnimations=true`、`cardsOnOtherScreens=false`，使用 lenientOptionalFieldOf 逐字段回退；默认文件与“设置 → 常规”开关同步。修改通过 ConfigInstance.set 标脏并立即保存，切换主题 / 界面模式保留新字段。关闭动画后 active 卡片直接切到最终样式，移除 animated class 取消已有过渡，inactive 卡片立即删除；开启其他页面显示后继续刷新快照，页面内保持被动，HUD 编辑器、F1 和登出保留各自边界。
+
+执行 `gradlew compileJava processResources --console=plain` 成功，`git diff --check` 通过。静态检查默认 JSON、设置页 ID 唯一性及翻译引用，中英文各 585 个键且集合一致；同步编辑器的语言快照。未启动 Minecraft 或运行功能测试。仍需游戏内验收两个开关的四种组合、动画中途关闭、背包控件透传及重启后的设置保持。
+
+## 2026-11-06 设置页打开卡死排查
+
+用户确认刚打开设置页就卡死。读取最新 run-test-client 日志：21:03:05 页面创建 147ms，21:03:06 首次布局 35ms / 79 个元素，之后没有对应阻塞段。只读检查进程时游戏已退出，无法补取卡住时的渲染线程堆栈。核对 AUI 1.2.9 Transition.build，确认 transform 过渡会在样式计算时调用 Size.of；设置开关伪元素与多层自动高度 flex 组合存在提前测量路径。设置内容、标签页、分组和开关按钮改为块流，轨道与主题切换器固定局部定位，滑块改用 left 过渡；控件刷新跳过相同的 class / aria-selected / display / disabled，保留两个新配置和即时保存。详见[页面布局审计](ui-layout-audit.md#设置页打开卡顿的后续修正)。
+
+执行 `gradlew compileJava processResources --console=plain` 成功，`git diff --check` 通过；静态检查设置页 ID、翻译引用、块布局与滑块过渡规则，中英文各 585 键且集合相同，同步编辑器 CSS 快照。未启动 Minecraft、运行功能测试或添加探针，未创建存档或改玩家配置。实际卡死是否消除尚未验收，仍需核对首次打开、三种标签、长表单滚动、开关动画、主题切换与不同缩放。
+
+## 2026-11-06 卡片节点与字符串按钮重构
+
+参考 KOOK 官方卡片文档的 button.click / value，按钮支持 link、return-val 和本地 local。CardActionRequest 只传来源版本及字符串；服务端先核对绑定、来源和限流，在游戏线程发布 CardButtonEvent，未处理事件按 CardEventValue 解码进入既有模块权限与业务校验。保留通知的代码定义底部按钮、确定、返回、PUSH / REPLACE 和语音入口；正文按钮独立处理禁用、忙碌与 HUD 交互，修正忙碌更新覆盖原有禁用状态的问题。
+
+节点从 23 种整理为 18 种，按功能分包，以能力接口分离文本投影、纯消息资格、标题、children 与集合；grid / flex / groups 组合替代业务列表节点，共用 CardPagination。CardUiState 独立持有页码、分组、折叠，不再写入 Context。全部 27 份模板、图钉资源和 HTML 编辑器同步迁移；任务 pin 通过客户端构建事件注入，覆盖普通列表、多任务解锁列表、详情及常驻任务。延迟 CardText 只在实际节点读取时解析，避免生成未展示页的物品名称与奖池 tooltip。
+
+实际执行 Gradle compileJava / processResources，结果 BUILD SUCCESSFUL；IDE 增量构建报告成功。静态核对 27 份模板、342 个节点的注册 ID、必填字段和每个占位符的循环深度；游戏与编辑器的 18 种类型一致，内嵌模板 / CSS / 翻译快照与源文件一致，中英文各 585 键且集合相同。Node.js --check 检查编辑器脚本语法，git diff --check 通过。
+
+没有启动 Minecraft、运行测试、添加探针或创建存档。尚未游戏内验收：实际布局与页高、分组翻页后按钮索引、任务图标和 tooltip、图钉同步、通知进入详情再返回、历史按钮禁用、URL 确认、扩展事件字符串，以及缺少 FTB / 专用服务端的运行时类加载。旧节点别名与旧按钮协议不保留，客户端、服务端及自定义资源包需同步更新；网络版本号维持 1。
+
+## 2026-11-06 物品图标偏移与宿主信息留白
+
+核对实际 AUI 1.2.9 sources JAR：原生物品按元素中心绘制。单物品节点改用中心缩放，与居中的预留框保持一致；带名称的物品行保留图标单元尺寸，防止被文字挤窄。通用 card_flex 的基础 gap 提前到语义样式之前，并取消强制 align-items:center，避免覆盖行列布局；宿主模板直接使用 player_information 承载信息面板，移除多余的居中容器。同步 HTML 编辑器的模板与 CSS 快照。
+
+执行 `gradlew compileJava processResources --console=plain` 成功；27 份模板 JSON、编辑器快照、共享 flex 样式顺序、双语键集合（各 585 个）、编辑器脚本语法及 `git diff --check` 通过。未启动 Minecraft 或运行功能测试，实际物品对齐、窄屏换行和宿主信息布局尚需游戏内确认。
+
+## 2026-11-06 单页网格收缩
+
+GridNode 根据筛选后的完整索引数决定预留行数：结果不超过一页容量时取向上取整的条目数 / 列数，多页时所有页均使用 max_row，末页不缩短。仍固定每格高度、保留置灰的单页翻页按钮；商店、抽奖、任务等共用此行为，不测量 DOM 或滚动范围。HTML 编辑器采用相同规则，相关布局文档同步更新。
+
+执行 `gradlew compileJava processResources --console=plain` 成功；静态确认判断依据是分页前的完整筛选结果，编辑器资源快照一致，编辑器脚本语法和 `git diff --check` 通过。未启动 Minecraft 或运行功能测试；实际单页收缩、多页末页高度及分组切换仍需游戏内验收。
+
+## 任务进度条动画
+
+共享轨道从 3px 加粗为 6px。ProgressNode 使用原生 CardProgressElement 绘制填充，按 350ms 缓出插值缩放矩阵；CardUiState 只保存数字与单调时间，不持有 DOM。常驻卡片更新正文时保留 UI 状态，重复目标不重播，中途改目标从当前显示值继续。动画只请求重绘，读取已提交矩形，不逐帧写样式、修改布局宽度或调用 Size.of。核对实际 AUI 1.2.9 sources JAR 的原生元素绘制及矩阵 API；编辑器同步预览动画与 CSS 快照。
+
+执行 `gradlew compileJava processResources --console=plain` 成功。未启动 Minecraft 或运行功能测试；游戏内首次显示、连续进度更新、完成 / 回退、主题与 GUI 缩放、移除及重新显示常驻卡片仍待验收。
+
+## 2026-11-07 服务端与 FTB 运行时生命周期
+
+AssistantServer 使用随 ServerStartedEvent / ServerStoppingEvent 创建和关闭的单个 INSTANCE，get(server) 读取一次 volatile 引用并核对服务器身份。FTB 查询、知识索引和通知跟踪由安装范围的共享 FtbQuestRuntime 持有，事件监听随实例注册和注销；ModuleManager 对共享运行时只 validate / tick / close 一次，安装失败也关闭已创建实例。多个 FTB 配置的玩家 Session 使用引用计数，最后一个关闭时才清理玩家查询和奖励引用。
+
+实际执行 `gradlew compileJava processResources --console=plain`，BUILD SUCCESSFUL；`git diff --check` 通过。静态搜索未发现 MinecraftServer 键 Map、旧通知静态调用或服务器持有器 / Mixin 引用，Mixin 配置无改动。未启动 Minecraft、运行测试或调用收费 API；连续切换存档、多个 FTB 定义启停、通知事件去重及缺少 FTB 时的运行时加载仍待游戏内验收。改动仅在 master，未同步 1.21.1。
+
+## 2026-11-07 ModuleContext 类型化服务 Map
+
+ModuleContext 保留 AgentEngine 和模块注册表为构造器固定字段，通过 engine() / modules() 读取；其余七项内置服务及扩展服务改为 ContextType<T> 键、Map<ContextType<?>, Object> 与泛型 put/get。模块管理、内置模块及可选 FTB 适配器统一迁移调用；同次安装的服务 Map 共享，配置 id、工具缓存及 sharedRuntime 原有生命周期保留。ContextType 按对象身份区分，同名键不混用；内部转换集中在 get，业务调用不需要强制转换。
+
+新增 ModuleContextEvent，由 ModuleManager 在服务端线程发布到游戏事件总线，时机为内置服务注入之后、配置分发及工具 / 工作流装配之前。监听器取得根上下文并同步 put 扩展服务，各配置继承同一 Map；固定字段不经过 put。事件位于管理器初始化 try 内，失败时仍清理已创建的共享运行时。原 AssistantRegistrationEvent 的装配后入口保留。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；静态搜索无 ContextTypes.ENGINE / MODULES 或无参构造残留，事件发布点位于所有安装循环之前，`git diff --check` 通过。testModClasses 只编译开发源集，未运行测试、启动 Minecraft 或新增探针，未修改配置或存档。游戏内扩展监听器、模块装配与可选依赖加载未作运行验证。
+
+## 2026-11-08 Markdown 配置与开发预览
+
+阅读 AUI 随包的 Txtmark 0.13 实现后，AssistantMarkdown 改用 Configuration 的 extended / safe / panic 和独立 Decorator，再交 AUI 解析生成的 HTML。源尖括号在解析期间暂存，避免代码重复转义；原始 HTML 与代码中的 a 标签保持文字。Markdown 链接生成中性 span，解析后仅给合法 HTTP / HTTPS 地址绑定原版 URL 确认动作；图片只显示 alt，不加载资源。开发源集新增 `/debug md` 和可编辑的 Markdown 样例，走系统界面的本地聊天卡片路径。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，全量编译未通过：工作区既有的 HttpTransport.StreamConsumer.accept 改动去掉 throws Exception，AliyunTtsProvider 的流回调仍会抛受检异常；本轮保留该已有修改。随后通过 build 目录内的临时 Gradle 初始化脚本仅编译 AssistantMarkdown，结果 BUILD SUCCESSFUL；执行 `gradlew compileTestModJava processTestModResources -x compileJava --console=plain` 也成功，仅证明开发命令与样例资源可编译 / 处理，不代表全量构建通过。
+
+静态检查主资源双语键集合一致（各 624 个），开发资源双语键集合一致（各 3 个），`git diff --check` 通过；Swing HTML 解析器已移除，调试命令与样例仅位于 test-mod。未启动 Minecraft、运行功能测试或请求 API；实际 Markdown 排版、链接确认、HUD 交互与 `/debug md` 展示尚待游戏内验收。
+
+按用户澄清，`/debug md` 改为开发客户端的本地 ClientModule 命令，通过系统命令缓存执行及补全，移除原版聊天命令注册，不切换当前界面。预览结果仅在本地追加，并用 silent 禁止自动播报；自由模式也先处理以 `/` 开头的显式本地命令，普通输入继续直接交给 AI。SystemClientModules 增加公开的 local(Identifier, ClientModule) 注册入口，沿用缓存的登录、重载及清理生命周期。
+
+实际执行 `gradlew -I build/compile-client-debug.gradle compileTestModJava processTestModResources -x compileJava --no-configuration-cache --console=plain` 成功；该 build 内临时脚本定向编译三个改动的主代码类，并把编译结果加入开发源集编译类路径，绕开上述已有全量编译错误。未启动游戏、运行测试或调用 API。
+
+收尾时发现工作区的 StreamConsumer.accept 已恢复 throws Exception，随后重新执行 `gradlew compileJava processResources testModClasses --console=plain`，全量编译与开发源集编译成功。仍未启动游戏或进行界面功能验收。
+
+## 2026-11-08 Markdown 围栏与字面内容修正
+
+根据用户的三张游戏截图，阅读 Txtmark 0.13 的 Processor.recurse、Emitter 及 AUI HTML.HtmlTokenizer 源码：连续代码块间空行会让第二个块的开头成为空行，而库只清空第一行，遗留真正的起始围栏；扩展模式生成的 ldquo / rdquo 等实体不在 AUI 的六个命名实体中；AssistantMarkdown 的全局 § 码清理还会删除代码原文。
+
+现仅在相邻围栏块之间去掉空白行，保留块内空行；源 HTML 标签整体暂存并在末尾按文字恢复，保留属性引号；生成的 HTML4 命名实体单次转换为数字引用，不递归处理已转义的实体。移除全局 § 码清理。开发 Markdown 样例追加连续三段围栏、块内空行、带比较符号的 HTML 属性、正文 / 代码中的命名实体和 §a 原文说明。
+
+执行 `gradlew compileJava processResources testModClasses --console=plain` 成功；这是编译与资源处理检查，未启动 Minecraft、运行测试或调用 API。修正依据为截图与依赖源码，尚未游戏内验收。
+
+## 2026-11-08 系统人格提示词
+
+SystemDefinition 增加可选的 Identifier 字段 personality_prompt，使用 lenientOptionalFieldOf；默认系统引用 system:personality/default，对应随包 TXT 使用现有提示词监听器加载。AssistantServer 按执行玩家的当前绑定查服务端系统定义，使用 ExecutionContext 的不可变提示词快照渲染人格；ChatSupport 将独立的 personality 提供者结果追加到基础提供者结果，替换基础提供者仍保留人格。扩展兜底与完整自由模式复用该入口，ReAct 开始后复用合成指令，不增加模型请求。专用路由 / 业务提示词不附加人格。省略字段或引用文件不存在时继续使用基础指令，缺失文件记入警告。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL。静态核对默认 JSON 引用能解析到新增 TXT、modules 仍为单个 #system:default；数据包路径与 ID 转换、玩家语言占位符、自由聊天的两个调用点及快照读取路径已按源码确认，`git diff --check` 通过。没有启动 Minecraft、运行测试或请求模型；多玩家人格隔离、实际模型口吻、缺失引用回退和重载效果尚待游戏内验收。
+
+## 2026-11-08 存档自管数据统一目录和 NBT
+
+AssistantServer 以存档根目录的 system/ 作为唯一自管数据根目录，玩家业务写入 players/<UUID>.dat、对话缓存写入 chat/<UUID>.dat、共享和独立数据库写入 database/shared.dat 与 database/players/<UUID>.dat。数据统一通过 FileAccess.NBT 编解码；已阅读实际 Saturn 依赖 JAR 的 NbtFile 字节码，确认使用 NbtOps、NbtIo.readAnyTag/writeAnyTag，没有压缩流。现有 data/system 下的 TokenUsageData 和 AiAccessData 继续使用原版 SavedData；客户端配置、语音统计和 PCM 缓存不在存档内，保持原位置及格式。
+
+业务和数据库复用 AtomicFiles 写临时文件、force(true)、原子替换，写失败不发布新内存状态；玩家枚举、revoke/reset 和临时文件清理同步采用新路径。日志字节预算改按 NBT 编码计量。数据库不存在时延迟创建，解码失败不回退并覆写空库。按用户明确选择，旧 system-agent/ 和 system-database/ 不读取、不迁移、不删除。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；静态检查存档路径、FileAccess 选择、临时文件命名和清理调用点，`git diff --check` 通过。未启动 Minecraft、运行测试、访问存档或调用 API；实际 NBT 重登恢复、并发写入和重置行为尚待游戏内验收。本轮只修改 master，其他分支尚未同步。
+
+## 2026-11-08 存档文件改用 GZIP NBT
+
+FileAgentStore 的玩家业务和对话读写、AgentDatabase 的共享及独立库读写统一改为 FileAccess.NBT_COMPRESSED；文件位置、原子替换和清理行为保持。日志预算也按同一入口的压缩编码字节数计量。读取兼容现有未压缩 NBT 及旧省略根名称格式，后续保存写标准头部加 GZIP，不批量处理已有文件。原版 SavedData、客户端配置、个人语音用量及 PCM 缓存保持各自原有存储方式。
+
+确认用户更新的 CurseMaven 9509793 实际为 Saturn 1.2.6，读取依赖 JAR 的 FileAccess / NbtFiles 签名和字节码确认 NBT_COMPRESSED、自动识别压缩及旧头部、标准头部写入和 GZIPOutputStream。版本与文件 ID 放入 gradle.properties，最低依赖元数据和双语 README / 开发版本表同步为 1.2.6。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；静态检查所有存档 NBT 调用和最低依赖元数据，`git diff --check` 通过。未运行测试、启动 Minecraft、修改现有存档或请求 API；压缩文件在游戏内的往返恢复尚待验收。

@@ -1,0 +1,8 @@
+{
+  "version": 13,
+  "default_reward_team": false,
+  "default_consume_items": false,
+  "default_autoclaim_rewards": "disabled",
+  "progression_mode": "linear",
+  "fallback_locale": "en_us"
+}

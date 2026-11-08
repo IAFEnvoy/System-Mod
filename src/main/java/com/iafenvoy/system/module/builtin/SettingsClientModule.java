@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
 import com.iafenvoy.system.module.client.WorkspaceGroup;
@@ -15,15 +16,12 @@ import net.minecraft.resources.ResourceLocation;
 public final class SettingsClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
-        module.localAction(ResourceLocation.parse("system:settings"), (unused1, unused2) -> {
+        module.localAction(ResourceLocation.fromNamespaceAndPath(SystemMod.MOD_ID, "settings"), (unused1, unused2) -> {
             Minecraft minecraft = Minecraft.getInstance();
             minecraft.setScreen(new AssistantSettingsScreen(minecraft.screen, AssistantSettingsScreen.Tab.GENERAL));
         });
         module.command(SettingsClientModule::open, "settings", "设置", "系统设置");
-        module.workspace("", "nav_settings", WorkspaceGroup.SETTINGS, workspace -> {
-            workspace.labels("nav_settings");
-            workspace.click("nav_settings", SettingsClientModule::open);
-        });
+        module.workspace("", "nav_settings", WorkspaceGroup.SETTINGS, workspace -> workspace.click("nav_settings", SettingsClientModule::open));
     }
 
     public static void open() {

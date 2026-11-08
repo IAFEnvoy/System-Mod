@@ -1,8 +1,8 @@
 package com.iafenvoy.system.assistant.tool.advancement;
 
 import com.iafenvoy.saturn.util.PersistHolder;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.RewardCreditInput;
 import com.iafenvoy.system.data.output.CreditReceiptOutput;
 import com.iafenvoy.system.data.store.Delivery;

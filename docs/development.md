@@ -42,7 +42,11 @@ Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器�
 
 | 路径 | 职责 |
 | --- | --- |
-| `agent` | 主循环、交互/事件执行器、预算和授权、会话记忆、AgentModule/ToolRegistry、AgentStore/AgentJournal 与生命周期接口 |
+| `agent` | AgentResult、AgentException、AgentLifecycle 公共契约；详细分包见 [Agent 运行结构](agent-runtime.md) |
+| `agent/execution` | AgentEngine、交互/事件执行器、执行上下文、预算、取消与会话读写 |
+| `agent/module、agent/tool` | 工作流契约与动作分派、模块登记；工具类型、权限作用域和类型化观察 |
+| `agent/command、agent/react` | Brigadier 指令声明与解析；通用有界 ReAct 循环及独立上下文 |
+| `agent/storage` | AgentStore / AgentJournal 存储契约、ConversationMemory 历史投影；持久化实现仍在 data/store |
 | `agent/routing、agent/model` | 混合路由、语义匹配与缓存；模型接口、统一请求和计量入口、OpenAI 兼容协议 |
 | `agent/request、agent/response` | 独立请求/响应与 MapCodec，注册声明仍由 SystemRequestTypes / SystemResponseTypes 提供 |
 | `assistant` | 服务端组装、绑定业务、玩家连接、请求分派、游戏线程队列、MinecraftTools 与客户端会话桥接 |
@@ -204,6 +208,7 @@ CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式
 | `totalTokens` | 全任务保守输入字节估计+输出预留及实际用量差额，正整数 |
 | `ttlMillis` | 从接受时起的任务期限，正整数 |
 | `modelTimeoutMillis` | 单次模型期限，正整数且不超过任务期限 |
+| `reactIterations` | 单个 ReAct 循环的模型决策轮数，含最终整理，非负整数；0 禁用，缺失 / 无效回退 3 |
 
 预算由模块默认策略或管理员配置决定，不再给预算值另设任意硬上限。配置在 Codec 边界检查有效值，引擎和平台启动时不重复遍历校验相同字段；权限、重复 ID、业务引用、付款状态和执行预算仍在相应边界检查。配置字段继续使用 `lenientOptionalFieldOf`，错误字段回退默认值。
 
@@ -334,16 +339,17 @@ AgentEngine 统一拥有 AgentDatabases：`<存档>/system-database/shared.json`
 
 本地索引只在启动时由可信 profile 和服务端补充例句建立，查询在原有交互工作线程执行，不增加 native 线程池或网络请求。模块、词表、例句和索引语言变动后正常重启；模式、匹配阈值、缓存容量和新条目 TTL 直接读取配置实例。全量大小检查覆盖 System 内嵌资源及库，Minecraft、NeoForge 和原有 UI 依赖另计。
 
-原设计稿是目标，不应把所有章节都当作已经实现。当前未包含：配方/整合包加工链、任意他人私有资料查询、多助手/多会话、模型摘要、通用工具自动规划循环、逐模块可配置公平权重/重试、模型供应商故障熔断、事件热重载、数据库迁移、严格一次背包交付、完整观测后端与 MCP 端点。
+原设计稿是目标，不应把所有章节都当作已经实现。当前未包含：完整配方/整合包加工链规划、任意他人私有资料查询、多助手/多会话、模型摘要、逐模块可配置公平权重/重试、模型供应商故障熔断、事件热重载、数据库迁移、严格一次背包交付、完整观测后端与 MCP 端点。通用的有界只读工具循环已实现，见 [ReAct 循环](agent-react.md)。
 
 本轮验证仅为编译、打包与静态检查；没有实际调用模型服务、启动客户端/服务端或验证游戏内布局/领奖。
 
 ## 知识问答与联网搜索实现入口
 
-- `module/builtin/CoreSystemModule`：装配核心 `QuestionModule`；动作 ID system:question。
+- `module/builtin/CoreSystemModule`：装配核心 `QuestionModule` 和跨能力只读 `ReasoningModule`；动作 ID system:question、system:reasoning。
 - `module/builtin/knowledge`：DatabaseQueryTool 聚合当前玩家 / 共享知识及授权说明书；QuestionModule 固定执行查库、命中整理、空结果授权判断，不让模型跳过查库。
 - `module/builtin/SearchSystemModule`：可选 ToolModule，仅导出两个工具；类型 ID system:web_search。相邻 SearchSystemClientModule 贡献搜索页，提交 QuestionInput.online。
-- `module/builtin/search`：WebResearch 保留有界 ReAct，SearchStep / SearchObservation 数据移至 data/search；WebSearchTool / WebFetchTool 每次检查本次联网门禁。
+- `agent/react`、`agent/tool/ToolContext`：通用的有界循环、独立观察状态和工具权限快照；普通多步分析及搜索共用，不重置请求总预算。
+- `module/builtin/search`：WebResearch 提供搜索工具和引用策略，复用通用 ReActLoop；SearchObservation 位于 data/search，旧 SearchStep 已删除；WebSearchTool / WebFetchTool 每次检查本次联网门禁。
 - `search`：SearchProvider、DeepSeekSearchClient 与统一玩家计量 SearchGateway；复用 HttpTransport。
 - `config/file/SearchConfig`、`SearchPricingConfig`：默认共享 SYSTEM_DEEPSEEK_API_KEY，分别管理连接与按千次价格。
 - `data/usage/SearchUsage`：不可变计数，合入现有世界 SavedData 与 StreamCodec 快照；客户端语音账本不上传。

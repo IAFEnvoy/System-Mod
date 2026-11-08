@@ -1,8 +1,8 @@
 package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentLifecycle;
+import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.model.OpenAiCompatibleClient;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;

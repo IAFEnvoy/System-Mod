@@ -1,5 +1,6 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.agent.storage;
 
+import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.data.store.EventTask;
 import com.iafenvoy.system.data.store.State;
 import com.iafenvoy.system.data.store.Step;

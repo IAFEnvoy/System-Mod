@@ -2,6 +2,7 @@ package com.iafenvoy.system.data.output;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardButton;
 import com.iafenvoy.system.data.card.CardData;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
@@ -34,21 +35,22 @@ public record ItemPageOutput(String query, List<ItemInfoOutput> items, int nextO
 
     @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "items")).title("system.result.items").summary("system.result.items")
-                .list("items", this.items, (_, _) -> {
-                }).put("result_items", this.items.stream().map(item -> ItemPreviewOutput.of(item.item())).toList());
+        CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "items"))
+                .title("system.result.items").summary("system.result.items");
+        builder.list("items", this.items, (prefix, item) -> builder.put(prefix + "item_name", item.name())
+                .put(prefix + "item_id", item.id()).put(prefix + "max_stack", item.maxStack())
+                .put(prefix + "preview", ItemPreviewOutput.of(item.item())));
+        // Item indices and action indices stay aligned, including when the client grid changes pages.
         for (int i = 0; i < this.items.size(); i++) {
             ItemInfoOutput item = this.items.get(i);
-            builder.put("items." + i + ".item_name", item.name()).put("items." + i + ".item_id", item.id())
-                    .put("items." + i + ".max_stack", item.maxStack());
+            builder.serverButton("item." + i, "system.action.item_sources", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_sources"),
+                            Map.of("item_id", item.id()), CardButton.Placement.BODY, CardButton.Behavior.PUSH)
+                    .actionParameter("label", item.name());
         }
         if (this.hasMore)
-            builder.serverButton("next", "system.action.next", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_query"),
-                    Map.of("query", this.query, "offset", Integer.toString(this.nextOffset)));
-        // A single match is a specific item lookup, so its card links to the source query without retyping the ID.
-        if (this.items.size() == 1)
-            builder.serverButton("sources", "system.action.item_sources", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_sources"),
-                    Map.of("item_id", this.items.getFirst().id()));
+            builder.serverButton("next", "system.action.more_items", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_query"),
+                            Map.of("query", this.query, "offset", Integer.toString(this.nextOffset)))
+                    .actionParameter("more_items", true);
         return builder;
     }
 }

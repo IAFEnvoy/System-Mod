@@ -13,7 +13,7 @@ public final class DisplayCardsHudEntry extends AuiHudEntry {
     public static final String TEMPLATE = "system/assistant-cards.html";
 
     public DisplayCardsHudEntry() {
-        super("system.cards", new Layout(TEMPLATE, "card_display", 360, 240, 0.38, 0.72));
+        super("system.cards", new Layout(TEMPLATE, "card_display", 360, 240, 0.38, Double.POSITIVE_INFINITY));
     }
 
     @Override

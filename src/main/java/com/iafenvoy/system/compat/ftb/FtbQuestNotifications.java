@@ -56,7 +56,8 @@ public final class FtbQuestNotifications {
     @SubscribeEvent
     public void questProgress(FTBQuestsEvent.QuestProgress event) {
         QuestProgressEvent.Data data = event.getEventData();
-        if (this.changed(data.progressData()) && data.type() == ProgressType.COMPLETED) this.completed(data.progressData());
+        if (this.changed(data.progressData()) && data.type() == ProgressType.COMPLETED)
+            this.completed(data.progressData());
     }
 
     @SubscribeEvent

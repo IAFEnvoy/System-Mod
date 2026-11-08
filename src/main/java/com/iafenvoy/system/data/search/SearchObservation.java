@@ -1,7 +1,6 @@
 package com.iafenvoy.system.data.search;
 
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import java.util.List;
@@ -28,16 +27,4 @@ public record SearchObservation(String operation, String query, List<Source> sou
         ).apply(i, Source::new));
     }
 
-    public record Input(String question, List<SearchObservation> observations, int remainingTools, boolean finalOnly) {
-        public static final MapCodec<Input> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-                Codec.STRING.fieldOf("question").forGetter(Input::question),
-                SearchObservation.CODEC.listOf().fieldOf("observations").forGetter(Input::observations),
-                Codec.INT.fieldOf("remainingTools").forGetter(Input::remainingTools),
-                Codec.BOOL.fieldOf("finalOnly").forGetter(Input::finalOnly)
-        ).apply(i, Input::new));
-
-        public Input {
-            observations = List.copyOf(observations);
-        }
-    }
 }

@@ -13,14 +13,9 @@ import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.util.LegacyText;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
-
 import net.minecraft.network.chat.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * The single client construction path resolves local text, templates and trusted button callbacks.

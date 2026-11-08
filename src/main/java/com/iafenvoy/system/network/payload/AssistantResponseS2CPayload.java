@@ -1,7 +1,7 @@
 package com.iafenvoy.system.network.payload;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentResponse;
+import com.iafenvoy.system.agent.response.AgentResponse;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;

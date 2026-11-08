@@ -1,6 +1,6 @@
 package com.iafenvoy.system.command;
 
-import com.iafenvoy.system.agent.AgentAction;
+import com.iafenvoy.system.agent.module.AgentAction;
 import net.minecraft.resources.Identifier;
 
 import java.util.function.Predicate;

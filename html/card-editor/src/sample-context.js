@@ -131,6 +131,7 @@ export function sampleContext(template = "quest_list") {
     p.result_actions = [];
     p.other_tasks = 2;
     p.completed = false;
+    p.status = "§c✗§r";
   }
   p.pools = p.offers.map((o) => ({ ...o, tooltip: "奖池概率预览" }));
   for (const [key, entries] of [
@@ -170,11 +171,57 @@ export function sampleContext(template = "quest_list") {
       label: entry.label,
       placement: "footer",
     }));
+  if (template === "items") {
+    const examples = [
+      ["diamond", "钻石"],
+      ["diamond_pickaxe", "钻石镐"],
+      ["diamond_axe", "钻石斧"],
+      ["diamond_sword", "钻石剑"],
+      ["diamond_shovel", "钻石锹"],
+      ["diamond_hoe", "钻石锄"],
+      ["diamond_helmet", "钻石头盔"],
+      ["diamond_chestplate", "钻石胸甲"],
+      ["diamond_leggings", "钻石护腿"],
+      ["diamond_boots", "钻石靴子"],
+      ["diamond_block", "钻石块"],
+      ["diamond_ore", "钻石矿石"],
+      ["deepslate_diamond_ore", "深层钻石矿石"],
+      ["iron_ingot", "铁锭"],
+      ["gold_ingot", "金锭"],
+      ["emerald", "绿宝石"],
+      ["coal", "煤炭"],
+      ["redstone", "红石粉"],
+      ["lapis_lazuli", "青金石"],
+      ["copper_ingot", "铜锭"],
+    ];
+    p.items = examples.length;
+    p.result_actions = examples.map(([id, name], i) => {
+      Object.assign(p, {
+        [`items.${i}.item_name`]: name,
+        [`items.${i}.item_id`]: `minecraft:${id}`,
+        [`items.${i}.max_stack`]: i > 0 && i < 10 ? 1 : 64,
+        [`items.${i}.preview`]: preview(`minecraft:${id}`),
+      });
+      return {
+        id: `item.${i}`,
+        label: name,
+        placement: "body",
+        value: `system:item_sources?item_id=minecraft%3A${id}`,
+      };
+    });
+    p[`actions.${examples.length}.more_items`] = true;
+    p.result_actions.push({
+      id: "next",
+      label: "更多物品",
+      placement: "footer",
+      value: "system:item_query?offset=20&query=ore",
+    });
+  }
   p.actions = p.result_actions.length;
   p.result_actions.forEach((entry, i) =>
     Object.assign(p, {
       [`actions.${i}.label`]: entry.label,
-      [`actions.${i}.value`]: "system:quest_detail?quest=" + i,
+      [`actions.${i}.value`]: entry.value ?? "system:quest_detail?quest=" + i,
       [`actions.${i}.click_type`]: "return-val",
       [`actions.${i}.behavior`]: "push",
       [`actions.${i}.pin`]: `actions.${i}.pin`,

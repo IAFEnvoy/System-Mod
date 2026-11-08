@@ -1,7 +1,7 @@
 package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentModule;
+import com.iafenvoy.system.agent.module.AgentModule;
 import com.iafenvoy.system.agent.response.OpenResponse;
 import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
@@ -11,6 +11,7 @@ import com.iafenvoy.system.data.store.AgentJournalDataStorage;
 import com.iafenvoy.system.module.*;
 import com.iafenvoy.system.module.builtin.knowledge.DatabaseQueryTool;
 import com.iafenvoy.system.module.builtin.knowledge.QuestionModule;
+import com.iafenvoy.system.module.builtin.knowledge.ReasoningModule;
 import com.iafenvoy.system.module.builtin.storage.DisplayCardsDataStorage;
 import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
 import com.iafenvoy.system.util.CodecIO;
@@ -49,7 +50,7 @@ public final class CoreSystemModule implements CoreModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.get(ContextTypes.DATABASES)).tool()));
+        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.get(ContextTypes.DATABASES)).tool()), new ReasoningModule());
     }
 
     @Override

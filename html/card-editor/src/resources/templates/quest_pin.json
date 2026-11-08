@@ -3,10 +3,26 @@
     "result_card",
     "quest_tracking_card"
   ],
+  "show_title": false,
+  "hide_summary": true,
   "body": [
     {
-      "type": "system:title",
-      "text": "{{title}}"
+      "type": "system:flex",
+      "wrap": false,
+      "text_separator": " ",
+      "style": "card_title",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{status}}",
+          "style": "quest_tracking_status"
+        },
+        {
+          "type": "system:text",
+          "text": "{{title}}",
+          "style": "quest_tracking_title"
+        }
+      ]
     },
     {
       "type": "system:button",

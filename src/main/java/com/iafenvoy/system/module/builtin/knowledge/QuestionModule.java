@@ -1,8 +1,14 @@
 package com.iafenvoy.system.module.builtin.knowledge;
 
-import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.execution.ExecutionPolicy;
+import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.DatabaseQueryInput;
 import com.iafenvoy.system.data.input.QuestionInput;
 import com.iafenvoy.system.data.output.DatabaseQueryOutput;
@@ -32,7 +38,7 @@ public final class QuestionModule extends AbstractAgentModule<QuestionInput> {
                         + "Set allowWeb only when highly confident the CURRENT request clearly authorizes external lookup; ordinary questions and negation use false. "
                         + "Prefer dedicated capabilities for current player state, active quests, rewards, shop offers and item name/ID lookup. Preserve the complete question.",
                 List.of(query), Set.of(BuiltinTools.QUEST_GUIDE.id(), BuiltinTools.WEB_SEARCH.id(), BuiltinTools.WEB_FETCH.id()), true, false,
-                new ExecutionPolicy(6, 9, 20, 0, 65536, 1536, 393216, 90000, 20000));
+                new ExecutionPolicy(6, 9, 20, 0, 65536, 1536, 393216, 90000, 20000, 6));
     }
 
     @Override

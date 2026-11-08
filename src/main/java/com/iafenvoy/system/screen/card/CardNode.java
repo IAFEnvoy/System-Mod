@@ -5,7 +5,6 @@ import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.sighs.apricityui.init.Element;
-
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.assistant.tool.item;
 
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.data.input.ItemQueryInput;
 import com.iafenvoy.system.data.output.ItemInfoOutput;
@@ -23,7 +23,8 @@ import java.util.concurrent.CompletionStage;
  */
 public record ItemQueryTool(MinecraftTools game) implements ToolRegistry.Handler<ItemQueryInput, ItemPageOutput> {
     public ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.ITEMS, false, true, false, this);
+        return new ToolRegistry.Tool<>(BuiltinTools.ITEMS, false, true, false, this)
+                .forReasoning("Find item names and registry IDs. Use observed IDs for a later item-source lookup.");
     }
 
     @Override

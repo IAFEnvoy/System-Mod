@@ -1,8 +1,8 @@
 package com.iafenvoy.system.assistant.tool.item;
 
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.data.input.ItemSourceQueryInput;
 import com.iafenvoy.system.data.output.ItemSourceOutput;
@@ -25,7 +25,8 @@ public record ItemSourceQueryTool(
     private static final int MAX_SOURCES = 64;
 
     public ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.ITEM_SOURCES, false, true, false, this);
+        return new ToolRegistry.Tool<>(BuiltinTools.ITEM_SOURCES, false, true, false, this)
+                .forReasoning("Read recipe, loot and tag sources for a known item registry ID.");
     }
 
     @Override

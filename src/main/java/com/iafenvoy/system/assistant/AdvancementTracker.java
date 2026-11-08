@@ -1,8 +1,8 @@
 package com.iafenvoy.system.assistant;
 
-import com.iafenvoy.system.agent.AgentAction;
-import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.AgentStore;
+import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.module.AgentAction;
+import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.config.AdvancementRule;
 import com.iafenvoy.system.config.file.AdvancementConfig;
 import com.iafenvoy.system.data.input.AdvancementInput;

@@ -1,8 +1,8 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.QuestDetailInput;
 import com.iafenvoy.system.data.output.QuestOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -26,7 +26,8 @@ final class FtbQuestDetailTool implements ToolRegistry.Handler<QuestDetailInput,
     }
 
     ToolRegistry.Tool<QuestDetailInput, QuestOutput> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.QUEST_DETAIL, false, true, false, this);
+        return new ToolRegistry.Tool<>(BuiltinTools.QUEST_DETAIL, false, true, false, this)
+                .forReasoning("Read one quest's requirements and rewards. Supply an observed questId or index, never query.");
     }
 
     @Override

@@ -1,6 +1,10 @@
 package com.iafenvoy.system.speech.quest;
 
-import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.AgentLifecycle;
+import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.execution.ExecutionPolicy;
+import com.iafenvoy.system.agent.execution.TaskExecutor;
 import com.iafenvoy.system.config.file.ModelConfig;
 import com.iafenvoy.system.data.card.SpeechContent;
 import com.iafenvoy.system.data.database.AgentDatabase;
@@ -124,7 +128,7 @@ public final class QuestNarration implements AutoCloseable {
         this.workers.submit(() -> {
             if (!this.engine.current(player, incarnation)) return null;
             ExecutionContext context = this.engine.background(player, incarnation,
-                    new ExecutionPolicy(4, 0, 8, 0, 32768, 1024, 131072, 14500, 4000));
+                    new ExecutionPolicy(4, 0, 8, 0, 32768, 1024, 131072, 14500, 4000, 0));
             if (this.active.putIfAbsent(player, context) != null) return null;
             try {
                 Quest current = source.load(context, key.id()).toCompletableFuture().get(context.remainingMillis(), TimeUnit.MILLISECONDS);

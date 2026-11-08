@@ -2,7 +2,7 @@ package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.ExecutionContext;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 

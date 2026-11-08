@@ -32,37 +32,45 @@
       "when": "description"
     },
     {
-      "type": "system:container",
-      "repeat": "tasks",
+      "type": "system:flex",
+      "source": "{{tasks}}",
+      "style": "quest_requirements",
       "children": [
         {
-          "type": "system:flex",
-          "source": "{{tasks.*.task_icons}}",
+          "type": "system:container",
+          "style": "quest_requirement",
           "children": [
             {
-              "type": "system:ftb_icon",
-              "icon": "{{tasks.*.task_icons.*}}"
-            }
-          ],
-          "style": "quest_icon_items"
-        },
-        {
-          "type": "system:flex",
-          "source": "{{tasks.*.task_items}}",
-          "children": [
+              "type": "system:flex",
+              "source": "{{tasks.*.task_icons}}",
+              "children": [
+                {
+                  "type": "system:ftb_icon",
+                  "icon": "{{tasks.*.task_icons.*}}"
+                }
+              ],
+              "style": "quest_icon_items"
+            },
             {
-              "type": "system:item",
-              "item": "{{tasks.*.task_items.*}}",
-              "size": 32,
-              "tooltip": []
+              "type": "system:flex",
+              "source": "{{tasks.*.task_items}}",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{tasks.*.task_items.*}}",
+                  "size": 32,
+                  "tooltip": []
+                }
+              ],
+              "style": "item_group_items"
+            },
+            {
+              "type": "system:text",
+              "text": "{{tasks.*.task_title}} · {{tasks.*.task_progress}}/{{tasks.*.task_required}}",
+              "style": "quest_requirement_text",
+              "unless": "tasks.*.task_icons"
             }
-          ],
-          "style": "item_group_items"
-        },
-        {
-          "type": "system:text",
-          "text": "{{tasks.*.task_title}} · {{tasks.*.task_progress}}/{{tasks.*.task_required}}",
-          "unless": "tasks.*.task_icons"
+          ]
         }
       ]
     },

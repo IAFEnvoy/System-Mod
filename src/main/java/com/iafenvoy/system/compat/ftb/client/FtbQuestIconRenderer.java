@@ -13,6 +13,7 @@ import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.sighs.apricityui.render.Base;
 import com.sighs.apricityui.render.OutputTargets;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import net.minecraft.client.Minecraft;
@@ -46,14 +47,12 @@ final class FtbQuestIconRenderer {
         icon.getRenderer().render(icon.self(), graphics, x, y, width, height);
         Matrix4f matrix = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(pose.last().pose());
         state.forEachElement(element -> drawElement(element, matrix), GuiRenderState.TraverseRange.ALL);
-        state.forEachText(text -> text.font.drawInBatch(text.text, text.x, text.y, text.color, text.dropShadow,
-                new Matrix4f(pose.last().pose()).mul(expand(text.pose)), client.renderBuffers().bufferSource(),
-                Font.DisplayMode.NORMAL, text.backgroundColor, 15728880));
         state.forEachItem(item -> {
             PoseStack itemPose = new PoseStack();
             itemPose.mulPose(pose.last().pose());
             itemPose.mulPose(expand(item.pose()));
-            itemPose.translate(item.x() + 8, item.y() + 8, 0);
+            // Models extend behind their origin; keep them in AUI's item band, above the card background.
+            itemPose.translate(item.x() + 8, item.y() + 8, Base.getGuiItemModelZ());
             itemPose.scale(16, -16, 16);
             client.gameRenderer.getLighting().setupFor(item.itemStackRenderState().usesBlockLight()
                     ? Lighting.Entry.ITEMS_3D : Lighting.Entry.ITEMS_FLAT);
@@ -61,10 +60,15 @@ final class FtbQuestIconRenderer {
                 item.itemStackRenderState().submit(itemPose, client.gameRenderer.getSubmitNodeStorage(),
                         15728880, OverlayTexture.NO_OVERLAY, 0);
                 client.gameRenderer.getFeatureRenderDispatcher().renderAllFeatures();
+                client.renderBuffers().bufferSource().endBatch();
             } finally {
                 client.gameRenderer.getLighting().setupFor(Lighting.Entry.ENTITY_IN_UI);
             }
         });
+        // Native count labels belong above the model, just like AUI's item decorations.
+        state.forEachText(text -> text.font.drawInBatch(text.text, text.x, text.y, text.color, text.dropShadow,
+                new Matrix4f(pose.last().pose()).translate(0, 0, Base.getGuiItemDecorationZ()).mul(expand(text.pose)),
+                client.renderBuffers().bufferSource(), Font.DisplayMode.NORMAL, text.backgroundColor, 15728880));
         client.renderBuffers().bufferSource().endBatch();
     }
 

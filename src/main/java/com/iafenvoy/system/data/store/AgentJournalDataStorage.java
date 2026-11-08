@@ -2,8 +2,8 @@ package com.iafenvoy.system.data.store;
 
 import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentJournal;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.storage.AgentJournal;
 import com.iafenvoy.system.config.file.StorageConfig;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;

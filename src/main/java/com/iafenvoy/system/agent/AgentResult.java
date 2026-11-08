@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent;
 
+import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.data.TextCardData;

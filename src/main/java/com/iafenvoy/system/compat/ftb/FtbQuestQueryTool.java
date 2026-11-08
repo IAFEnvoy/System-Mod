@@ -1,8 +1,8 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.QuestQueryInput;
 import com.iafenvoy.system.data.output.QuestBriefOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -26,7 +26,8 @@ final class FtbQuestQueryTool implements ToolRegistry.Handler<QuestQueryInput, L
     }
 
     ToolRegistry.Tool<QuestQueryInput, List<QuestBriefOutput>> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.QUEST_QUERY, false, true, false, this);
+        return new ToolRegistry.Tool<>(BuiltinTools.QUEST_QUERY, false, true, false, this)
+                .forReasoning("List currently available quest summaries with IDs. Does not submit or claim.");
     }
 
     @Override

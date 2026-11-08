@@ -3,7 +3,7 @@ package com.iafenvoy.system.data.store;
 import com.iafenvoy.saturn.util.FileAccess;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentStore;
+import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.config.file.StorageConfig;
 import com.mojang.serialization.Codec;
 

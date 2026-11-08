@@ -1,8 +1,8 @@
 package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentModule;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.tool.player.PlayerQueryTool;
 import com.iafenvoy.system.data.input.EmptyInput;
 import com.iafenvoy.system.data.output.PlayerSnapshotOutput;

@@ -1,8 +1,8 @@
 package com.iafenvoy.system.module.builtin.knowledge;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.database.AgentDatabase;
 import com.iafenvoy.system.data.database.AgentDatabases;
 import com.iafenvoy.system.data.database.DatabaseTable;
@@ -29,7 +29,8 @@ public record DatabaseQueryTool(
     public static final DatabaseTable<List<KnowledgeIndex.Document>> KNOWLEDGE = AgentDatabase.documents(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "knowledge"));
 
     public ToolRegistry.Tool<DatabaseQueryInput, DatabaseQueryOutput> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.DATABASE_QUERY, false, true, false, this);
+        return new ToolRegistry.Tool<>(BuiltinTools.DATABASE_QUERY, false, true, false, this)
+                .forReasoning("Query the current player's private knowledge, shared knowledge and authorized quest manuals.");
     }
 
     @Override

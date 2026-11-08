@@ -1,9 +1,9 @@
 package com.iafenvoy.system.registry;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentAction;
-import com.iafenvoy.system.agent.AgentRequest;
-import com.iafenvoy.system.agent.AgentResponse;
+import com.iafenvoy.system.agent.module.AgentAction;
+import com.iafenvoy.system.agent.request.AgentRequest;
+import com.iafenvoy.system.agent.response.AgentResponse;
 import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.card.CardData;

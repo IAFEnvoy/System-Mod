@@ -115,7 +115,6 @@ public final class AssistantCardDisplay {
             templatesRevision = CardTemplates.revision();
             try (Document.ContextScope ignored = Document.withContext(document)) {
                 Element root = document.getElementById("card_display");
-                double scroll = root.scrollTop;
                 Set<DisplayCardKey> next = new HashSet<>();
                 for (DisplayCard card : cache.cards())
                     card.data().ifPresent(data -> {
@@ -143,7 +142,6 @@ public final class AssistantCardDisplay {
                 // Outgoing cards retain their slot until their exit finishes, including when the last pin is removed.
                 AssistantView.reconcile(root, RENDERED.values().stream().map(card -> card.element).toList());
                 activeCards = next;
-                root.scrollTop = root.targetScrollTop = scroll;
             }
         }
         if (!shown) {
@@ -163,9 +161,11 @@ public final class AssistantCardDisplay {
     }
 
     private static boolean canShow(Screen screen) {
+        // Chat keeps Screen's default classification; other screens must explicitly identify as in-game.
         return canRender() && SystemHudEntries.DISPLAY_CARDS.visible()
                 && !(screen instanceof HudEditScreen)
-                && (screen == null || screen instanceof ChatScreen || ClientConfig.INSTANCE.get().cardsOnOtherScreens());
+                && (screen == null || screen instanceof ChatScreen
+                || ClientConfig.INSTANCE.get().cardsOnOtherScreens() && screen.isInGameUi());
     }
 
     private static void advanceAnimation() {
@@ -218,7 +218,7 @@ public final class AssistantCardDisplay {
     private static void bindMouse() {
         Document mounted = document;
         Element root = mounted.getElementById("card_display");
-        for (String type : List.of("mousedown", "mouseup", "wheel"))
+        for (String type : List.of("mousedown", "mouseup"))
             root.addInternalEventListener(type, event -> {
                 if (document == mounted && canShow(Minecraft.getInstance().screen)
                         && Minecraft.getInstance().screen instanceof ChatScreen && event instanceof MouseEvent mouse) {

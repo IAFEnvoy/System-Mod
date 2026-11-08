@@ -3,9 +3,9 @@ package com.iafenvoy.system.module;
 import com.iafenvoy.saturn.data.storage.DataStorageContext;
 import com.iafenvoy.saturn.util.formula.FormulaContext;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.AgentModule;
-import com.iafenvoy.system.agent.AgentStore;
+import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.event.ModuleContextEvent;
@@ -60,7 +60,8 @@ public final class ModuleManager implements AutoCloseable {
             }));
             // Workflows may resolve shared services before their lifecycle hooks are installed.
             modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
-                if (module instanceof CatalogModule<?> catalog) context.get(ContextTypes.CATALOGS).register(id, catalog);
+                if (module instanceof CatalogModule<?> catalog)
+                    context.get(ContextTypes.CATALOGS).register(id, catalog);
                 if (module instanceof WorkflowModule workflows)
                     for (AgentModule<?> workflow : workflows.workflows(contexts.get(id)))
                         this.engine.registerModule(id, workflow);

@@ -1,6 +1,6 @@
 package com.iafenvoy.system.agent.routing;
 
-import com.iafenvoy.system.agent.AgentAction;
+import com.iafenvoy.system.agent.module.AgentAction;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 

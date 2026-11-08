@@ -1,4 +1,4 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.agent.request;
 
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import net.minecraft.network.RegistryFriendlyByteBuf;

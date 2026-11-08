@@ -1,7 +1,7 @@
 package com.iafenvoy.system.assistant;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentEngine;
+import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.DisplayCard;
 import com.iafenvoy.system.data.card.DisplayCardKey;

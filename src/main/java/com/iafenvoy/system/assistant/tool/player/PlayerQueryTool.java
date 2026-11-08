@@ -1,7 +1,7 @@
 package com.iafenvoy.system.assistant.tool.player;
 
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.assistant.PlayerInformationView;
 import com.iafenvoy.system.data.input.EmptyInput;
@@ -15,7 +15,8 @@ import java.util.concurrent.CompletionStage;
  */
 public record PlayerQueryTool(MinecraftTools game) implements ToolRegistry.Handler<EmptyInput, PlayerSnapshotOutput> {
     public ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.PLAYER, false, true, true, this);
+        return new ToolRegistry.Tool<>(BuiltinTools.PLAYER, false, true, true, this)
+                .forReasoning("Read the current player's health, level and game information.");
     }
 
     @Override

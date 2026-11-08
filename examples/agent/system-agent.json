@@ -11,9 +11,34 @@
     "outputTokens": 512,
     "totalTokens": 32768,
     "ttlMillis": 14500,
-    "modelTimeoutMillis": 4000
+    "modelTimeoutMillis": 4000,
+    "reactIterations": 0
   },
   "policies": {
+    "system:reasoning": {
+      "modelCalls": 4,
+      "toolCalls": 8,
+      "steps": 14,
+      "writeSteps": 0,
+      "inputBytes": 65536,
+      "outputTokens": 1536,
+      "totalTokens": 262144,
+      "ttlMillis": 60000,
+      "modelTimeoutMillis": 12000,
+      "reactIterations": 3
+    },
+    "system:question": {
+      "modelCalls": 6,
+      "toolCalls": 9,
+      "steps": 20,
+      "writeSteps": 0,
+      "inputBytes": 65536,
+      "outputTokens": 1536,
+      "totalTokens": 393216,
+      "ttlMillis": 90000,
+      "modelTimeoutMillis": 20000,
+      "reactIterations": 6
+    },
     "system:sign_in": {
       "modelCalls": 2,
       "toolCalls": 4,

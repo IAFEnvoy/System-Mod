@@ -1,7 +1,7 @@
 package com.iafenvoy.system.module;
 
-import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.module.SystemModule;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;

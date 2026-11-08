@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.routing;
 
-import com.iafenvoy.system.agent.AgentAction;
-import com.iafenvoy.system.agent.ExecutionContext;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.config.file.SemanticConfig;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;

@@ -43,10 +43,9 @@ public record QuestPinOutput(String id, Component title, Component chapter, doub
 
     @Override
     public CardBuilder buildCard() {
-        Component heading = Component.empty()
-                .append(Component.literal(this.completed ? "✓ " : "✗ ").withStyle(this.completed ? ChatFormatting.GREEN : ChatFormatting.RED))
-                .append(this.title);
-        CardBuilder builder = CardBuilder.template(TEMPLATE).put("id", this.id).put("title", heading)
+        // Keep the marker outside the title's wrapping text column.
+        Component status = Component.literal(this.completed ? "✓" : "✗").withStyle(this.completed ? ChatFormatting.GREEN : ChatFormatting.RED);
+        CardBuilder builder = CardBuilder.template(TEMPLATE).put("id", this.id).put("title", this.title).put("status", status)
                 .put("chapter", this.chapter).put("progress", (int) this.progress).put("completed", this.completed)
                 .put("other_tasks", this.otherTasks);
         return builder.list("tasks", this.tasks, (prefix, task) -> task.fill(builder, prefix));

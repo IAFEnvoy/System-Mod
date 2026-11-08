@@ -1,4 +1,4 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.agent.storage;
 
 import com.iafenvoy.system.data.store.PlayerData;
 

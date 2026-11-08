@@ -1,9 +1,9 @@
 package com.iafenvoy.system.network;
 
-import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentResponse;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.response.AgentResponse;
 import com.iafenvoy.system.agent.response.BindingResponse;
 import com.iafenvoy.system.agent.response.NoticeResponse;
 import com.iafenvoy.system.agent.response.ReplyResponse;

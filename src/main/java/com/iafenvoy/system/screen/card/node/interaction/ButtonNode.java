@@ -1,7 +1,8 @@
 package com.iafenvoy.system.screen.card.node.interaction;
 
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.data.card.*;
+import com.iafenvoy.system.data.card.CardAction;
+import com.iafenvoy.system.data.card.CardButton;
 import com.iafenvoy.system.data.card.client.CardController;
 import com.iafenvoy.system.screen.card.*;
 import com.iafenvoy.system.screen.card.node.layout.FlexNode;
@@ -15,7 +16,9 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.sighs.apricityui.init.Element;
 
-import java.util.*;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 
 /**
  * KOOK-style link / return-val actions, plus local callbacks for client UI operations.

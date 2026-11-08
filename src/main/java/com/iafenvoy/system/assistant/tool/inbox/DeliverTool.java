@@ -1,9 +1,9 @@
 package com.iafenvoy.system.assistant.tool.inbox;
 
-import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.data.input.EntitlementInput;
 import com.iafenvoy.system.data.output.StateOutput;

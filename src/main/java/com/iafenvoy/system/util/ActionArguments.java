@@ -1,8 +1,8 @@
 package com.iafenvoy.system.util;
 
 import com.google.gson.JsonObject;
-import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.module.AgentAction;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.Identifier;
 

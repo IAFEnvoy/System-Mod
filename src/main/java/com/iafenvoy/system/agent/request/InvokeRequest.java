@@ -1,7 +1,6 @@
 package com.iafenvoy.system.agent.request;
 
-import com.iafenvoy.system.agent.AgentAction;
-import com.iafenvoy.system.agent.AgentRequest;
+import com.iafenvoy.system.agent.module.AgentAction;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;

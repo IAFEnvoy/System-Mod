@@ -1,5 +1,8 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.agent.tool;
 
+import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
@@ -61,7 +64,7 @@ public final class ToolRegistry {
         return this.tools.containsKey(id) && (exporting == null || exporting.stream().anyMatch(available));
     }
 
-    void freeze() {
+    public void freeze() {
         this.frozen = true;
     }
 
@@ -75,6 +78,30 @@ public final class ToolRegistry {
         return tool.write();
     }
 
+    /**
+     * Only explicitly advertised read operations enter general reasoning, using an enabled owner's handler.
+     */
+    public Map<String, ScopedTool<?, ?>> reasoning(Predicate<Identifier> available) {
+        Map<String, ScopedTool<?, ?>> result = new LinkedHashMap<>();
+        this.variants.forEach((owner, values) -> {
+            if (!available.test(owner)) return;
+            values.values().stream().sorted(Comparator.comparing(Tool::id)).filter(tool -> !tool.reasoningDescription().isBlank())
+                    .forEach(tool -> result.putIfAbsent(tool.id(), scoped(owner, tool)));
+        });
+        this.tools.values().stream().sorted(Comparator.comparing(Tool::id))
+                .filter(tool -> !tool.reasoningDescription().isBlank() && !this.owners.containsKey(tool.id())
+                        && this.variants.values().stream().noneMatch(values -> values.containsKey(tool.id())))
+                .forEach(tool -> result.putIfAbsent(tool.id(), scoped(null, tool)));
+        return Collections.unmodifiableMap(result);
+    }
+
+    private static <I, O> ScopedTool<I, O> scoped(Identifier owner, Tool<I, O> tool) {
+        return new ScopedTool<>(owner, tool);
+    }
+
+    public record ScopedTool<I, O>(Identifier owner, Tool<I, O> tool) {
+    }
+
     // Identity checks keep a caller-created key or handler from replacing an authorized operation.
     @SuppressWarnings("unchecked")
     public <I, O> Tool<I, O> require(Type<I, O> type) {
@@ -85,15 +112,23 @@ public final class ToolRegistry {
     }
 
     public <I, O> Tool<I, O> require(Type<I, O> type, Identifier owner, Predicate<Identifier> available) {
+        return this.scope(type, owner, available).tool();
+    }
+
+    public <I, O> ScopedTool<I, O> scope(Type<I, O> type, Identifier owner, Predicate<Identifier> available) {
         Set<Identifier> exporting = this.owners.get(type.id());
-        Tool<?, ?> tool = exporting == null ? this.variants.getOrDefault(owner, Map.of()).get(type.id())
-                : exporting.stream().filter(available).map(id -> this.variants.get(id).get(type.id()))
-                .filter(Objects::nonNull).findFirst().orElse(null);
-        if (tool == null && exporting == null) tool = this.tools.get(type.id());
+        Identifier selectedOwner = exporting == null ? owner : exporting.stream().filter(available)
+                .filter(id -> this.variants.get(id).containsKey(type.id())).findFirst().orElse(null);
+        Tool<?, ?> tool = exporting != null && selectedOwner == null ? null
+                : this.variants.getOrDefault(selectedOwner, Map.of()).get(type.id());
+        if (tool == null && exporting == null) {
+            tool = this.tools.get(type.id());
+            selectedOwner = null;
+        }
         if (tool == null) throw new AgentException("CAPABILITY_UNAVAILABLE");
         if (tool.type() != type) throw new AgentException("NOT_AUTHORIZED");
         @SuppressWarnings("unchecked") Tool<I, O> typed = (Tool<I, O>) tool;
-        return typed;
+        return new ScopedTool<>(selectedOwner, typed);
     }
 
     public record Type<I, O>(String id, MapCodec<I> inputCodec, Codec<O> resultCodec) {
@@ -106,10 +141,21 @@ public final class ToolRegistry {
     }
 
     public record Tool<I, O>(Type<I, O> type, boolean write, boolean idempotent, boolean allowEvent,
-                             Handler<I, O> handler) {
+                             Handler<I, O> handler, String reasoningDescription) {
         public Tool {
             Objects.requireNonNull(type);
             Objects.requireNonNull(handler);
+            Objects.requireNonNull(reasoningDescription);
+            if (!reasoningDescription.isBlank() && (write || !(type.inputCodec() instanceof SchemaMapCodec<?>)))
+                throw new IllegalArgumentException("Reasoning tools must be read-only and provide an input schema");
+        }
+
+        public Tool(Type<I, O> type, boolean write, boolean idempotent, boolean allowEvent, Handler<I, O> handler) {
+            this(type, write, idempotent, allowEvent, handler, "");
+        }
+
+        public Tool<I, O> forReasoning(String description) {
+            return new Tool<>(this.type, this.write, this.idempotent, this.allowEvent, this.handler, description);
         }
 
         public String id() {

@@ -1,11 +1,12 @@
 package com.iafenvoy.system.assistant;
 
-import com.iafenvoy.system.agent.*;
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.request.*;
-import com.iafenvoy.system.agent.response.HistoryResponse;
-import com.iafenvoy.system.agent.response.OpenResponse;
-import com.iafenvoy.system.agent.response.ReplyResponse;
-import com.iafenvoy.system.agent.response.StateResponse;
+import com.iafenvoy.system.agent.response.*;
+import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.data.ClientState;
 import com.iafenvoy.system.data.input.StarterGiftsInput;
 import com.iafenvoy.system.data.output.StarterGiftOutput;

@@ -1,6 +1,6 @@
 package com.iafenvoy.system.config;
 
-import com.iafenvoy.system.agent.AgentAction;
+import com.iafenvoy.system.agent.module.AgentAction;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;

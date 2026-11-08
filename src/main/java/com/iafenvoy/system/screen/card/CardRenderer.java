@@ -8,14 +8,9 @@ import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.util.LegacyText;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
-
 import net.minecraft.network.chat.Component;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

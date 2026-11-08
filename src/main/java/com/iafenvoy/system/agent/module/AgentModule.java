@@ -1,7 +1,11 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.agent.module;
 
 import com.google.gson.JsonObject;
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
 

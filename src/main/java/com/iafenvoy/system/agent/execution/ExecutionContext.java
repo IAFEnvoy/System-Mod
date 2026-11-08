@@ -1,8 +1,15 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.agent.execution;
 
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.model.ModelClient;
+import com.iafenvoy.system.agent.module.AgentModule;
 import com.iafenvoy.system.agent.routing.RouteSource;
+import com.iafenvoy.system.agent.storage.AgentJournal;
+import com.iafenvoy.system.agent.storage.AgentStore;
+import com.iafenvoy.system.agent.tool.ToolContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.store.EventTask;
@@ -49,6 +56,7 @@ public final class ExecutionContext {
     private ExecutionPolicy policy;
     private long expires;
     private int models, tools, steps, writes, tokens;
+    private int toolContexts;
     private final Set<String> authorizedExternalTools = new HashSet<>();
 
     ExecutionContext(AgentEngine engine, UUID player, String taskId, String eventKey,
@@ -216,6 +224,55 @@ public final class ExecutionContext {
         return Math.max(0, this.policy.toolCalls() - this.tools);
     }
 
+    public int remainingSteps() {
+        return Math.max(0, this.policy.steps() - this.steps);
+    }
+
+    public int reactIterations() {
+        return this.policy.reactIterations();
+    }
+
+    /**
+     * General reasoning gets only registry-advertised reads; paid external tools are never advertised here.
+     */
+    public ToolContext reasoningTools() {
+        this.ensureMemoryCurrent();
+        if (this.isEvent()) throw new AgentException("NOT_AUTHORIZED");
+        return new ToolContext(this, this.engine.tools().reasoning(owner -> this.engine.moduleEnabled(this.player, owner)),
+                "react/" + this.toolContexts++);
+    }
+
+    public ToolContext tools(ToolRegistry.Type<?, ?>... types) {
+        Map<String, ToolRegistry.ScopedTool<?, ?>> allowed = new LinkedHashMap<>();
+        for (ToolRegistry.Type<?, ?> type : types) this.addTool(allowed, type);
+        return new ToolContext(this, allowed, "react/" + this.toolContexts++);
+    }
+
+    private <I, O> void addTool(Map<String, ToolRegistry.ScopedTool<?, ?>> allowed, ToolRegistry.Type<I, O> type) {
+        this.ensureMemoryCurrent();
+        if (!this.toolAvailable(type)) throw new AgentException("NOT_AUTHORIZED");
+        ToolRegistry.ScopedTool<I, O> scoped = this.engine.tools().scope(type, this.owner, owner -> this.engine.moduleEnabled(this.player, owner));
+        if (scoped.tool().write() && this.module.optionalTools().contains(type.id()))
+            throw new AgentException("NOT_AUTHORIZED");
+        allowed.put(type.id(), scoped);
+    }
+
+    public void checkToolOwner(ToolRegistry.ScopedTool<?, ?> scoped) {
+        this.ensureMemoryCurrent();
+        if (!this.engine.moduleEnabled(this.player, scoped.owner()) || !this.engine.toolAvailable(this.player, scoped.tool().id()))
+            throw new AgentException("CAPABILITY_UNAVAILABLE");
+    }
+
+    public <I, O> O scopedTool(ToolRegistry.ScopedTool<I, O> scoped, String stepId, I input) throws Exception {
+        this.checkToolOwner(scoped);
+        // A scope is a subset of this workflow or an explicitly advertised read, never an alternate write route.
+        if (!this.toolAvailable(scoped.tool().type()) && (scoped.tool().write() || scoped.tool().reasoningDescription().isBlank()))
+            throw new AgentException("NOT_AUTHORIZED");
+        O result = this.executeTool(scoped.tool(), stepId, input);
+        this.checkToolOwner(scoped);
+        return result;
+    }
+
     public void cancel() {
         this.cancelled.set(true);
     }
@@ -313,6 +370,13 @@ public final class ExecutionContext {
             throw new AgentException("NOT_AUTHORIZED");
         ToolRegistry.Tool<I, O> tool = this.engine.tool(this.player, type, this.owner);
         if (this.module.optionalTools().contains(id) && tool.write()) throw new AgentException("NOT_AUTHORIZED");
+        return this.executeTool(tool, stepId, input);
+    }
+
+    private <I, O> O executeTool(ToolRegistry.Tool<I, O> tool, String stepId, I input) throws Exception {
+        ToolRegistry.Type<I, O> type = tool.type();
+        String id = type.id();
+        this.ensureMemoryCurrent();
         if (!this.engine.toolAvailable(this.player, id)) throw new AgentException("CAPABILITY_UNAVAILABLE");
         if ((this.routeSource == RouteSource.SEMANTIC || this.routeSource == RouteSource.ROUTE_CACHE) && tool.write())
             throw new AgentException("NOT_AUTHORIZED");

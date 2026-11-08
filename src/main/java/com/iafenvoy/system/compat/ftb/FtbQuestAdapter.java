@@ -1,9 +1,9 @@
 package com.iafenvoy.system.compat.ftb;
 
-import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.AgentModule;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.data.input.EmptyInput;
 import com.iafenvoy.system.data.input.QuestDetailInput;

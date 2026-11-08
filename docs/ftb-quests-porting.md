@@ -68,6 +68,7 @@
 - **奖励数据**：目标 writeData 接受 Json5Object，以 Json5Util 读取 xp / xp_levels / random_bonus / only_one，不使用 1.21 的 CompoundTag。物品预览采用原版 immutable ItemStackTemplate，按物品与组件相等合并。
 - **文字解码**：JSON Component 通过 ComponentSerialization.CODEC 与注册表 JsonOps 读取，无法解析则保留字面量，不加载 FTB 客户端文本辅助类。
 - **客户端绘制**：目标类型使用 getIcon，Icon 的 renderer 向 GuiGraphicsExtractor 记录渲染状态。新增 FtbQuestIconRenderer 在 AUI BODY 阶段，将几何、文字及物品重放到当前 AUI 输出目标、变换和投影，复用活动 scissor；不调用会重置目标的完整 GuiRenderer。tooltip 使用 setTooltipForNextFrame。不存在旧 GuiGraphics / flush 或全局 GL 深度恢复代码。
+- **方块图标深度**：重放物品模型时使用 `Base.getGuiItemModelZ()`，不能沿用二维图标的 Z=0；模型向后的部分会与卡片背景相交，看起来像面被剔除。保持原版模型剔除规则，并在恢复 GUI 光照前完成物品缓冲提交；数量等文字在模型之后绘制，使用 `Base.getGuiItemDecorationZ()` 保持前景层级。
 - **命令与命名**：原生 Commands.hasPermission；公共资源 ID 使用 Identifier。可选 FTB 类仍隔离于 compat.ftb，专服不引用客户端图标实现；未安装时不加载可选类。
 
 ## 数据格式

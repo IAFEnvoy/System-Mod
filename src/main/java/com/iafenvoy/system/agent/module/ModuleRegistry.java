@@ -1,8 +1,13 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.agent.module;
 
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.command.CommandRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.routing.ModelRoute;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.registry.SystemRegistries;
 import com.iafenvoy.system.util.ActionArguments;
 import com.mojang.serialization.Codec;

@@ -15,6 +15,7 @@ public final class SystemPrompts {
     public static final String QUEST_BACKGROUND = "system:quest_background";
     public static final String WEB_SEARCH = "system:web_search";
     public static final String KNOWLEDGE_ANSWER = "system:knowledge_answer";
+    public static final String REACT = "system:react";
     private final Map<String, PromptTemplate> templates;
     private final String revision = UUID.randomUUID().toString();
 
@@ -42,6 +43,7 @@ public final class SystemPrompts {
         validate(templates, QUEST_BACKGROUND, Set.of("player_language"), Set.of());
         validate(templates, WEB_SEARCH, Set.of("player_language"), Set.of());
         validate(templates, KNOWLEDGE_ANSWER, Set.of("player_language"), Set.of());
+        validate(templates, REACT, Set.of("player_language"), Set.of());
         return new SystemPrompts(templates);
     }
 

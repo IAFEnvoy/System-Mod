@@ -1,7 +1,7 @@
 package com.iafenvoy.system.assistant.tool.shop;
 
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.data.input.ShopPurchaseInput;
 import com.iafenvoy.system.data.output.PurchaseReceiptOutput;

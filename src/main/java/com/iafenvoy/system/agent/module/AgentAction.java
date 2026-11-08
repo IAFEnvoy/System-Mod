@@ -1,4 +1,4 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.agent.module;
 
 import com.iafenvoy.system.registry.SystemRegistries;
 import com.iafenvoy.system.util.CodecIO;

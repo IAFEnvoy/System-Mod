@@ -1,6 +1,7 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.agent.command;
 
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.command.AssistantCommandSource;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;

@@ -1,6 +1,6 @@
 package com.iafenvoy.system.module;
 
-import com.iafenvoy.system.agent.AgentModule;
+import com.iafenvoy.system.agent.module.AgentModule;
 
 import java.util.List;
 

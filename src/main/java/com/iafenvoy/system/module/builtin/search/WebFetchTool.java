@@ -1,8 +1,8 @@
 package com.iafenvoy.system.module.builtin.search;
 
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
 import com.iafenvoy.system.search.SearchException;
 import com.iafenvoy.system.search.SearchGateway;

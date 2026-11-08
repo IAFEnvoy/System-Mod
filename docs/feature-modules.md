@@ -2,6 +2,8 @@
 
 公共接口与运行时位于 `com.iafenvoy.system.module`，客户端缓存位于 `module.client`。内置服务端定义和客户端实现分别为 `module.builtin.*SystemModule`、`*SystemClientModule`，存储类集中在 `module.builtin.storage`。具体 Agent 工作流位于 `module.builtin.<功能>`；Minecraft 单行为工具位于 `assistant.tool`，本地知识与搜索工具随工作流放置。`agent` 保留 AgentModule、AbstractAgentModule、ToolRegistry 等通用契约和执行机制。执行账本实现独立放在 `data.store`。
 
+核心额外提供 `system:reasoning` 组合多个本地只读工具，普通操作继续走原有确定性工作流。扩展工具可通过 `.forReasoning(description)` 主动加入该能力；参数必须提供 SchemaMapCodec，写操作不能加入。通用 ReActLoop 与搜索共用，循环、工具清单和观察均为请求内独立上下文，预算仍归原 ExecutionContext。入口与 `reactIterations` 配置见 [通用 ReAct](agent-react.md)。
+
 ## 两层模块
 
 模块实现类型与模块配置实例分开：
@@ -99,13 +101,15 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
 
 ### 物品来源查询
 
-`system:items` 装配两个工作流：`system:item_query`（名称/ID 检索）与 `system:item_sources`（单个物品的来源）。后者提供 `/system recipe <物品ID> [范围]`、语义路由、稳定动作 ID 和物品卡片上的「查看获取方式」按钮（检索结果只有一个匹配时出现，按钮带注册 ID，不需要玩家重抄）；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`。`ItemSourceOutput` 同时是工具结果与已注册的 CardData，工作流通过 `AgentResult.data` 发送卡片，不再把序列化 JSON 拼进消息正文。以下仅为工具快照的编码示例：
+`system:items` 装配两个工作流：`system:item_query`（名称/ID 检索）与 `system:item_sources`（单个物品的来源）。后者提供 `/system recipe <物品ID> [范围]`、语义路由、稳定动作 ID 和物品检索卡片的点击操作：每个物品格子携带对应注册 ID，点击直接查看其获取方式，不需要玩家重抄；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`。`ItemSourceOutput` 同时是工具结果与已注册的 CardData，工作流通过 `AgentResult.data` 发送卡片，不再把序列化 JSON 拼进消息正文。以下仅为工具快照的编码示例：
 
 ```json
 {"item":"minecraft:iron_ingot","scope":"loot","sources":[
   {"kind":"loot","id":"minecraft:entities/zombie","type":"loot_table",
    "outputs":[{"items":["minecraft:iron_ingot"],"count":1}],"notes":["weight 1"]}],"truncated":false}
 ```
+
+物品检索卡片复用商城的 `grid`、`offer_cell_content` 和 `CardPagination`：图标与名称居中，注册 ID、堆叠上限放在原版物品 tooltip 的附加信息里，取消重复的文字清单。默认完整模式 6 列、最多 3 行，单页按内容收缩；本地翻页仅创建当前页 DOM。服务端仍分批读取最多 20 个匹配项，未读完时单独显示「更多物品」，继续使用原查询和偏移请求下一批，与本地上 / 下页区分。每项操作先于批次操作加入按钮表，保留原始索引；通知点击以 PUSH 展示来源并可返回，简约模式可按物品名称 / 编号选择；空结果显示本地化提示。
 
 `scope` 缺省为 `all`，即完整查询，跑所有已注册来源；也可以只写某个来源的路径（`recipe`、`loot`、`tag`）或它的完整 ID（`system:recipe`）。范围由 `ItemSourceProviders` 在装配时枚举，新增 Provider 后自动出现在补全里；未注册的范围会被拒绝（`INVALID_INPUT`），不会静默返回空列表。命令行写作 `/system recipe minecraft:diamond loot`，省略第二个词即为完整查询；语义路由只在请求里出现「掉落 / 战利品 / 配方 / 合成 / 标签」这类关键词时收窄到对应范围，其余情况保持完整查询。语义路由优先取请求里的显式注册 ID（`CommandArguments.singleItemId`），没有 ID 时再用 `ItemNameIndex` 在本地显示名表里做最长匹配（「如何获取钻石镐」→ `minecraft:diamond_pickaxe`，更长的名字优先于更短的前缀词）；该表在服务器启动装配 `system:items` 时构建一次，名称取自服务端语言，专用服务端只用服务端资源，中文名可能匹配不到，此时退回模型路由。
 

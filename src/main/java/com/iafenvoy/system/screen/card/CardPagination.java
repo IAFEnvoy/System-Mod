@@ -2,7 +2,6 @@ package com.iafenvoy.system.screen.card;
 
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.sighs.apricityui.init.Element;
-
 import net.minecraft.network.chat.Component;
 
 import java.util.List;

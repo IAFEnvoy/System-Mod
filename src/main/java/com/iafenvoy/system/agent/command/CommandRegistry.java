@@ -1,5 +1,7 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.agent.command;
 
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.command.AssistantCommandInput;
 import com.iafenvoy.system.command.AssistantCommandSource;
 import com.iafenvoy.system.util.CodecIO;
@@ -32,14 +34,14 @@ public final class CommandRegistry {
     private final Map<String, Identifier> owners = new LinkedHashMap<>();
     private AgentAction root;
 
-    void validate(List<AgentCommand> commands) {
+    public void validate(List<AgentCommand> commands) {
         Set<String> names = new HashSet<>(this.owners.keySet());
         for (AgentCommand command : commands)
             for (String name : command.names())
                 if (!names.add(name)) throw new IllegalArgumentException("Duplicate command alias " + name);
     }
 
-    void register(Identifier id, List<AgentCommand> commands) {
+    public void register(Identifier id, List<AgentCommand> commands) {
         for (AgentCommand command : commands)
             for (String name : command.names()) {
                 LiteralArgumentBuilder<AssistantCommandSource> node = command.node().apply(name);
@@ -49,7 +51,7 @@ public final class CommandRegistry {
             }
     }
 
-    void root(AgentAction input) {
+    public void root(AgentAction input) {
         if (this.root != null) throw new IllegalArgumentException("Duplicate root command");
         this.root = input;
     }

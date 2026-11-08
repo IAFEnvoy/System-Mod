@@ -1,8 +1,8 @@
 package com.iafenvoy.system.assistant.tool.advancement;
 
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.FeatureInput;
 import com.iafenvoy.system.data.output.FeatureOutput;
 import com.iafenvoy.system.module.ModuleData;

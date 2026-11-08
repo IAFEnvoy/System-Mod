@@ -1,6 +1,8 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.agent.module;
 
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
+import com.iafenvoy.system.agent.execution.ExecutionPolicy;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.registry.SystemRegistries;
 
 import java.util.List;

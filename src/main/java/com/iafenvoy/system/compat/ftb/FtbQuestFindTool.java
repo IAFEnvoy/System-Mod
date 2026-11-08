@@ -1,8 +1,8 @@
 package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.ExecutionContext;
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.QuestFindInput;
 import com.iafenvoy.system.data.output.QuestBriefOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -27,7 +27,8 @@ final class FtbQuestFindTool implements ToolRegistry.Handler<QuestFindInput, Lis
     }
 
     ToolRegistry.Tool<QuestFindInput, List<QuestBriefOutput>> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.QUEST_FIND, false, true, false, this);
+        return new ToolRegistry.Tool<>(BuiltinTools.QUEST_FIND, false, true, false, this)
+                .forReasoning("Find visible quests by name or query and return their actual IDs.");
     }
 
     @Override

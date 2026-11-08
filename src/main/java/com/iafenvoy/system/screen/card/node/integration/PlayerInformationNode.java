@@ -10,7 +10,6 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.sighs.apricityui.init.Element;
-
 import net.minecraft.network.chat.Component;
 
 import java.util.List;

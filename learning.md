@@ -29,7 +29,7 @@
 
 | 需要修改的内容 | 入口 |
 | --- | --- |
-| Agent 循环、路由、预算、会话记忆和 Tool/Module/Store/Journal 契约 | [agent](src/main/java/com/iafenvoy/system/agent)；引擎不再拥有商城、搜索、数据库或任务口播 |
+| Agent 循环、路由、预算、会话记忆和 Tool/Module/Store/Journal 契约 | [agent](src/main/java/com/iafenvoy/system/agent)：execution 引擎/执行，module 工作流契约，tool 工具，command 指令，react 通用循环，storage 存储契约；根包只保留结果/异常/生命周期。完整目录见 [Agent 运行结构](docs/agent-runtime.md) |
 | MC 服务组装、绑定/撤销、玩家和主线程业务、交易与游戏工具 | [assistant](src/main/java/com/iafenvoy/system/assistant)；AssistantServer 创建服务，ModuleContext 显式注入 |
 | 参数/结果 DTO、玩家文件事务、执行账本实现、数据库与提示词加载 | [data](src/main/java/com/iafenvoy/system/data)；data/input、output、store、database、prompt |
 | 功能定义、工作流和单行为工具组合 | [module/builtin](src/main/java/com/iafenvoy/system/module/builtin)；共用工具键 BuiltinTools；业务存储位于 storage |
@@ -64,7 +64,7 @@
 | 客户端 CardBuildEvent：按 CardData 类型给既有 Builder 补参数，再配合资源包 JSON；构建时触发，缓存读取不触发 | [卡片构建事件](docs/cards.md#构建事件给现有卡片补充参数)、[事件类](src/main/java/com/iafenvoy/system/event/client/CardBuildEvent.java) |
 | 已实施卡片数据流：完整业务 DTO、消息 ID/版本、SHOW/REPLACE/REMOVE、状态与历史响应、Status 枚举和 BuiltinTools | [卡片与消息数据流](docs/card-flow-design.md) |
 | OpenAI 兼容接口、DeepSeek 特殊参数、模型连接与 Token 响应 | [模型接口](docs/model-api.md) |
-| 核心 system:question 先查私有 / 共享知识与授权 FTB 说明、可选工具与本次联网授权、WebResearch ReAct、DeepSeek 计费 | [知识问答与网页搜索](docs/search-api.md)、[知识表入口](docs/databases.md#问答知识表) |
+| 通用 ReActLoop、每轮 / 请求总预算、独立工具与观察上下文、system:reasoning；数据库优先问答、联网授权和 DeepSeek 计费 | [通用 ReAct](docs/agent-react.md)、[知识问答与网页搜索](docs/search-api.md)、[知识表入口](docs/databases.md#问答知识表) |
 | 模组和音色工具会请求哪些 API、触发条件、发送数据、客户端 / 服务端归属 | [外部 API 请求清单](docs/external-apis.md) |
 | 领域词表、稀疏 TF-IDF、阈值、玩家意图缓存、只读直达与模型兜底 | [本地意图路由](docs/semantic-routing.md) |
 | 10MB 分发约束、路由方案比较、校准与后续方向 | [路由选型与计划](docs/semantic-routing-plan.md) |
@@ -75,7 +75,7 @@
 | ASR、NLS AccessKey 自动签发与 Token 缓存刷新、停止 / 自然 EOF 与设备关闭解耦、session 超时、可选 SVC、按键录音与按次估价 | [语音识别](docs/asr.md) |
 | 服务端 AI/联网用量 SavedData、仅本地可见的个人 TTS / ASR 用量、字符与 Token、客户端计费配置、撤销后保留 | [用量统计](docs/token-usage.md) |
 | 共享 CSS、完整 / 简约界面、通知与常驻卡片 HUD、Saturn 位置编辑与 config/saturn/hud.json、动画、物品 tooltip、输入法、双语键 | [界面与本地化](docs/ui-localization.md) |
-| UI 卡顿：静态 opacity 的 GPU 回读、Transition.build 提前测量已针对性处理；新慢帧定位全量布局，AUI 将 border-color 动画误判为布局变化，System 排除该过渡，保留消息位移 | [页面布局审计](docs/ui-layout-audit.md) |
+| UI 卡顿：静态 opacity 的 GPU 回读、提前测量与 hover 过渡失效；本地 AUI 优化未解决用户实测，已撤回，按钮 / 卡片恢复即时高亮、图钉无插值，保留消息与 HUD 出入动画 | [页面布局审计](docs/ui-layout-audit.md) |
 | 任务 pin 持久化、核心 DisplayCardsDataStorage、服务端卡片来源、独立左侧 HUD 与逐秒进度刷新 | [常驻卡片](docs/cards.md#常驻卡片-hud)、[AssistantCardDisplays](src/main/java/com/iafenvoy/system/assistant/AssistantCardDisplays.java) |
 | 网文系统语气、提示词与模板边界、公开参考 | [文案与提示词](docs/system-voice.md) |
 | 绑定、新手礼包、任务通知的文案与占位符；该稿不直接作为运行时模板 | [通知文案稿](docs/notification-copy-draft.md) |

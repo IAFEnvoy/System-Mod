@@ -114,16 +114,16 @@ button {
     font-size: 14px;
     font-weight: 600;
     text-align: left;
-    transition: background-color 100ms ease, box-shadow 100ms ease, color 100ms ease;
+    transition: none;
 }
 
-/* AUI measures transform transitions and treats interpolated border colors as layout changes. */
+/* Outrank theme states so hover feedback stays immediate and keeps a stable hit box. */
 body[data-system-theme] button,
 body[data-system-theme] button:hover,
 body[data-system-theme] button:active,
 body[data-system-theme] button[aria-pressed] {
     transform: none;
-    transition: background-color 100ms ease, box-shadow 100ms ease, color 100ms ease;
+    transition: none;
 }
 
 button:hover {
@@ -423,9 +423,79 @@ p {
     margin-top: 0;
 }
 
-.signin {
+#page_signin {
     align-items: center;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    border: 1px solid var(--assistant-line-soft);
+    border-left: 2px solid var(--assistant-accent);
+    background-color: var(--assistant-panel-soft);
+}
+
+#page_signin .signin_icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    padding-top: 6px;
+    border: 1px solid var(--assistant-line);
+    border-top: 3px solid var(--assistant-accent);
+    border-radius: var(--assistant-control-radius);
+    background-color: var(--assistant-highlight);
+    color: var(--assistant-accent);
+    font-size: 20px;
+    line-height: 1;
+    pointer-events: none;
+}
+
+#page_signin .signin_icon::before {
+    position: absolute;
+    top: 6px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: var(--assistant-line);
+    content: "";
+}
+
+#page_signin .signin_copy {
+    display: block;
+    flex: 1 1 180px;
+    min-width: 0;
+}
+
+/* Keep compact toolbar typography above the active theme's heading defaults. */
+#signin_title {
+    margin: 0;
+    color: var(--assistant-ink);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0;
+}
+
+#signin_text {
+    margin: 4px 0 0;
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+#signin_action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 8px 16px;
+    font-size: 14px;
+    text-align: center;
+    white-space: nowrap;
 }
 
 #welcome {
@@ -603,7 +673,7 @@ p {
     background-color: var(--assistant-panel-soft);
     margin-top: 5px;
     box-shadow: var(--assistant-shadow);
-    transition: background-color 100ms ease, box-shadow 100ms ease;
+    transition: none;
 }
 
 .result_card::after {
@@ -925,6 +995,34 @@ p {
     font-size: 11px;
 }
 
+/* Keep each objective's preview and progress together in one wrapping row. */
+.quest_requirements {
+    align-items: center;
+    gap: 8px 14px;
+    margin-top: 8px;
+}
+
+.quest_requirement {
+    display: flex;
+    align-items: center;
+    flex: 0 1 auto;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.quest_requirement > .item_group_items, .quest_requirement > .quest_icon_items {
+    flex: 0 0 auto;
+}
+
+.quest_requirement_text {
+    min-width: 0;
+    color: var(--assistant-ink);
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
 /* Reward sections share one heading and wrap item/type previews in the same compact flow. */
 .reward_section {
     min-width: 0;
@@ -1042,6 +1140,7 @@ p {
     border: 1px solid var(--assistant-line-soft);
     background-color: var(--assistant-surface-deep);
     cursor: pointer;
+    transition: none;
 }
 
 .card_paged {
@@ -1547,7 +1646,6 @@ body button.quest_card_pin:hover, body button.quest_card_pin:focus {
     height: 16px;
     transform: rotate(35deg);
     transform-origin: 50% 50%;
-    /* Keep state rotation without measuring every grid cell to build a transform transition. */
     transition: none;
 }
 
@@ -2465,7 +2563,6 @@ html.system_hud, body.system_hud, body.system_hud * {
     background-color: var(--assistant-muted);
     content: "";
     pointer-events: none;
-    /* AUI resolves transform transitions through Size.of, even during initial style calculation. */
     transition: left 120ms ease, background-color 120ms ease;
 }
 
@@ -2716,12 +2813,11 @@ button.assistant_switch:disabled {
     top: 22vh;
     width: min(360px, 38vw);
     height: auto;
-    max-height: 72vh;
+    max-height: none;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: visible;
 }
 
 .card_display_entry {
@@ -2756,10 +2852,26 @@ button.assistant_switch:disabled {
 }
 
 .quest_tracking_card > .card_title {
+    align-items: flex-start;
     padding-right: 24px;
     white-space: normal;
     overflow-wrap: anywhere;
     font-size: 14px;
+    line-height: 1.5;
+}
+
+/* The status stays beside the first title line even when the title needs several lines. */
+.quest_tracking_status {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.quest_tracking_title {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-all;
 }
 
 .quest_tracking_card .message_text {
@@ -2810,6 +2922,7 @@ body button.offer_cell_content:active {
     border: 0;
     border-radius: 0;
     background-color: transparent;
+    color: var(--assistant-ink);
     box-shadow: none;
     transform: none;
     overflow: visible;

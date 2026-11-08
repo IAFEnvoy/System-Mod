@@ -1,8 +1,8 @@
 package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentEngine;
-import com.iafenvoy.system.agent.AgentModule;
+import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.agent.module.AgentModule;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.PlayerModule;

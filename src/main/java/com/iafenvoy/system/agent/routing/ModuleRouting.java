@@ -1,8 +1,8 @@
 package com.iafenvoy.system.agent.routing;
 
-import com.iafenvoy.system.agent.AgentAction;
-import com.iafenvoy.system.agent.AgentCommand;
 import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.util.ActionArguments;
 
 import java.util.ArrayList;

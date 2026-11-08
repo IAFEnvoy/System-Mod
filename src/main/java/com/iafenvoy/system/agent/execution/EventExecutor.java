@@ -1,5 +1,12 @@
-package com.iafenvoy.system.agent;
+package com.iafenvoy.system.agent.execution;
 
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.module.AgentAction;
+import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.module.ModuleRegistry;
+import com.iafenvoy.system.agent.storage.AgentJournal;
+import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.data.store.EventTask;
 import com.iafenvoy.system.data.store.State;
 import net.minecraft.resources.Identifier;

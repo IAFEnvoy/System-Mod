@@ -1,6 +1,6 @@
 package com.iafenvoy.system.module;
 
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 
 import java.util.List;
 

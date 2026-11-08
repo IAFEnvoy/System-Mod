@@ -1,7 +1,7 @@
 package com.iafenvoy.system.network.payload;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentRequest;
+import com.iafenvoy.system.agent.request.AgentRequest;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;

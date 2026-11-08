@@ -1,8 +1,8 @@
 package com.iafenvoy.system.data.store;
 
-import com.iafenvoy.system.agent.AgentAction;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ExecutionPolicy;
+import com.iafenvoy.system.agent.execution.ExecutionPolicy;
+import com.iafenvoy.system.agent.module.AgentAction;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;

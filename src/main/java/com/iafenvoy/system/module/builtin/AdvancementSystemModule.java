@@ -1,15 +1,11 @@
 package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentModule;
+import com.iafenvoy.system.agent.module.AgentModule;
 import com.iafenvoy.system.assistant.AdvancementTracker;
 import com.iafenvoy.system.assistant.tool.advancement.FeatureUnlockTool;
 import com.iafenvoy.system.assistant.tool.advancement.RewardCreditTool;
-import com.iafenvoy.system.module.ContextTypes;
-import com.iafenvoy.system.module.ModuleContext;
-import com.iafenvoy.system.module.ModuleStorage;
-import com.iafenvoy.system.module.PlayerModule;
-import com.iafenvoy.system.module.WorkflowModule;
+import com.iafenvoy.system.module.*;
 import com.iafenvoy.system.module.builtin.advancement.AdvancementFollowupModule;
 import com.iafenvoy.system.module.builtin.storage.AdvancementDataStorage;
 import com.mojang.serialization.MapCodec;

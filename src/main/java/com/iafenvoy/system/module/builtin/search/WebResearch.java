@@ -1,104 +1,99 @@
 package com.iafenvoy.system.module.builtin.search;
 
+import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
+import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.ExecutionContext;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.react.ReActContext;
+import com.iafenvoy.system.agent.react.ReActLoop;
+import com.iafenvoy.system.agent.react.ReActTool;
+import com.iafenvoy.system.agent.tool.ToolContext;
 import com.iafenvoy.system.data.output.WebSearchOutput;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.search.SearchObservation;
-import com.iafenvoy.system.data.search.SearchStep;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
 import com.iafenvoy.system.search.SearchProvider;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import java.util.*;
 
 /**
- * Read-only web ReAct, entered only after the question workflow authorizes an empty local lookup.
+ * Web-specific evidence and consent policy; the agent package owns all iteration and recovery logic.
  */
 public final class WebResearch {
-    private static final Set<String> RECOVERABLE = Set.of("BUDGET_EXCEEDED", "MODEL_INVALID", "MODEL_TIMEOUT", "MODEL_UNAVAILABLE", "RATE_LIMITED", "BUSY",
-            "SEARCH_INVALID_REQUEST", "SEARCH_TIMEOUT", "SEARCH_UNAVAILABLE", "SEARCH_HTTP_ERROR", "SEARCH_INVALID_RESPONSE");
-
     private WebResearch() {
     }
 
     public static AgentResult answer(ExecutionContext context, String question) throws Exception {
         context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
-        List<SearchObservation> observations = new ArrayList<>();
+        ToolContext tools = context.tools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
         Map<String, SearchObservation.Source> sources = new LinkedHashMap<>();
-        Set<String> queries = new HashSet<>(), fetched = new HashSet<>();
-        boolean finalOnly = false;
-        String failure = "BUDGET_EXCEEDED";
-        while (context.remainingModelCalls() > 0) {
-            context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
-            // Keep both a model call and time to synthesize; repeated or failed exploration must also finish here.
-            finalOnly |= !observations.isEmpty() && (context.remainingModelCalls() == 1 || context.remainingToolCalls() == 0
-                    || context.remainingMillis() <= context.modelTimeoutMillis() + 15000);
-            try {
-                Codec<? extends SearchStep> responseCodec = finalOnly ? SearchStep.Answer.CODEC.codec() : SearchStep.CODEC;
-                SearchStep step = context.model(context.prompt(SystemPrompts.WEB_SEARCH), SearchObservation.Input.CODEC,
-                        new SearchObservation.Input(question, observations, context.remainingToolCalls(), finalOnly),
-                        responseCodec);
-                if (step instanceof SearchStep.Answer(String text, List<Integer> citations)) {
-                    if (observations.isEmpty() || text.isBlank()) throw new AgentException("MODEL_INVALID");
-                    List<SearchObservation.Source> cited = new ArrayList<>();
-                    for (int id : new LinkedHashSet<>(citations)) {
-                        SearchObservation.Source source = sources.values().stream().filter(value -> value.id() == id).findFirst()
-                                .orElseThrow(() -> new AgentException("MODEL_INVALID"));
-                        cited.add(source);
-                    }
-                    return AgentResult.data("system.result.web_search", new WebSearchOutput(text, cited, false));
-                }
-                if (finalOnly) {
-                    failure = "MODEL_INVALID";
-                    break;
-                }
-                if (!observations.isEmpty() && context.remainingMillis() <= context.modelTimeoutMillis() + 15000) {
-                    finalOnly = true;
-                    continue;
-                }
-                if (step instanceof SearchStep.Search(String query)) {
-                    if (!queries.add(query.strip().toLowerCase(Locale.ROOT))) {
-                        finalOnly = true;
-                        continue;
-                    }
-                    SearchProvider.Response response = context.tool(BuiltinTools.WEB_SEARCH, "search/" + observations.size(), new SearchProvider.Request(query, 5, false));
-                    List<SearchObservation.Source> page = new ArrayList<>();
-                    for (SearchProvider.Result result : response.results()) {
-                        SearchObservation.Source source = sources.computeIfAbsent(result.url(), url -> new SearchObservation.Source(sources.size() + 1,
-                                excerpt(result.title(), 200), url, excerpt(result.summary().isBlank() ? result.snippet() : result.summary(), 700)));
-                        page.add(source);
-                    }
-                    observations.add(new SearchObservation("search", query, List.copyOf(page), "", true));
-                } else if (step instanceof SearchStep.Fetch(String url)) {
-                    // A model cannot introduce a new target URL or repeatedly fetch an already observed page.
-                    SearchObservation.Source source = sources.get(url);
-                    if (source == null) throw new AgentException("NOT_AUTHORIZED");
-                    if (!fetched.add(url)) {
-                        finalOnly = true;
-                        continue;
-                    }
-                    SearchProvider.Page page = context.tool(BuiltinTools.WEB_FETCH, "fetch/" + observations.size(), new SearchProvider.FetchRequest(url));
-                    String content = clip(page.content(), 5000);
-                    observations.add(new SearchObservation("fetch", url, List.of(source), content, content.length() < page.content().length()));
-                }
-                context.ensureMemoryCurrent();
-            } catch (AgentException error) {
-                // Never retry a paid tool call. Existing evidence may still be summarized within this task's budget.
-                context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
-                if (observations.isEmpty() || !RECOVERABLE.contains(error.code())) throw error;
-                failure = error.code();
-                if (finalOnly || Set.of("BUDGET_EXCEEDED", "RATE_LIMITED", "BUSY").contains(failure)) break;
-                finalOnly = true;
+        ReActTool<Search, SearchObservation> search = new ReActTool<>("web.search", "Search the web; use first, prefer snippets.", Search.CODEC,
+                input -> input.query().strip().toLowerCase(Locale.ROOT), input -> {
+            SearchProvider.Response response = tools.call(BuiltinTools.WEB_SEARCH, new SearchProvider.Request(input.query(), 5, false));
+            List<SearchObservation.Source> page = new ArrayList<>();
+            for (SearchProvider.Result result : response.results()) {
+                SearchObservation.Source source = sources.computeIfAbsent(result.url(), url -> new SearchObservation.Source(sources.size() + 1,
+                        excerpt(result.title(), 200), url, excerpt(result.summary().isBlank() ? result.snippet() : result.summary(), 700)));
+                page.add(source);
             }
+            return new SearchObservation("search", input.query(), List.copyOf(page), "", true);
+        });
+        ReActTool<Fetch, SearchObservation> fetch = new ReActTool<>("web.fetch", "Fetch missing evidence from an exact URL already observed.", Fetch.CODEC,
+                Fetch::url, input -> {
+            SearchObservation.Source source = sources.get(input.url());
+            if (source == null) throw new AgentException("NOT_AUTHORIZED");
+            SearchProvider.Page page = tools.call(BuiltinTools.WEB_FETCH, new SearchProvider.FetchRequest(input.url()));
+            String content = clip(page.content(), 5000);
+            return new SearchObservation("fetch", input.url(), List.of(source), content, content.length() < page.content().length());
+        });
+        Set<String> recoverable = new HashSet<>(ReActLoop.MODEL_FAILURES);
+        recoverable.addAll(Set.of("SEARCH_INVALID_REQUEST", "SEARCH_TIMEOUT", "SEARCH_UNAVAILABLE", "SEARCH_HTTP_ERROR", "SEARCH_INVALID_RESPONSE"));
+        ReActContext<SearchObservation> loop = new ReActContext<>(context, context.prompt(SystemPrompts.WEB_SEARCH), question,
+                SearchObservation.CODEC, List.of(search, fetch), () -> {
+            tools.check();
+            context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
+        }, recoverable, 15000);
+        return ReActLoop.run(loop, Answer.CODEC, answer -> {
+            if (loop.observations().isEmpty() || answer.text().isBlank()) throw new AgentException("MODEL_INVALID");
+            List<SearchObservation.Source> cited = new ArrayList<>();
+            for (int id : new LinkedHashSet<>(answer.sources()))
+                cited.add(sources.values().stream().filter(value -> value.id() == id).findFirst()
+                        .orElseThrow(() -> new AgentException("MODEL_INVALID")));
+            return AgentResult.data("system.result.web_search", new WebSearchOutput(answer.text(), cited, false));
+        }, reason -> {
+            // Return evidence already paid for, without an extra call outside the configured round limit.
+            SystemMod.LOGGER.warn("Web search synthesis incomplete: reason={}, iterations={}, modelCalls={}, sources={}, remainingMillis={}",
+                    reason, loop.iterations(), context.modelCalls(), sources.size(), context.remainingMillis());
+            return AgentResult.data("system.result.web_search", new WebSearchOutput("", List.copyOf(sources.values()), true));
+        });
+    }
+
+    private record Search(String query) {
+        static final SchemaMapCodec<Search> CODEC = SchemaCodecs.record((i, f) -> i.group(
+                f.required("query", SchemaCodecs.STRING.described("Short targeted query, at most 128 Unicode code points.")).forGetter(Search::query)
+        ).apply(i, Search::new));
+    }
+
+    private record Fetch(String url) {
+        static final SchemaMapCodec<Fetch> CODEC = SchemaCodecs.record((i, f) -> i.group(
+                f.required("url", SchemaCodecs.STRING).forGetter(Fetch::url)
+        ).apply(i, Fetch::new));
+    }
+
+    private record Answer(String text, List<Integer> sources) {
+        static final MapCodec<Answer> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+                Codec.STRING.fieldOf("text").forGetter(Answer::text),
+                Codec.INT.listOf().fieldOf("sources").forGetter(Answer::sources)
+        ).apply(i, Answer::new));
+
+        private Answer {
+            sources = List.copyOf(sources);
         }
-        context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
-        // Exhaustion returns the evidence already paid for without another request or an invented answer.
-        SystemMod.LOGGER.warn("Web search synthesis incomplete: reason={}, modelCalls={}, sources={}, remainingMillis={}",
-                failure, context.modelCalls(), sources.size(), context.remainingMillis());
-        return AgentResult.data("system.result.web_search", new WebSearchOutput("", List.copyOf(sources.values()), true));
     }
 
     private static String excerpt(String text, int max) {

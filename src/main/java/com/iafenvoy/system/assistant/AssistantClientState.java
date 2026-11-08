@@ -1,7 +1,7 @@
 package com.iafenvoy.system.assistant;
 
-import com.iafenvoy.system.agent.AgentRequest;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.request.AgentRequest;
 import com.iafenvoy.system.agent.request.ControlRequest;
 import com.iafenvoy.system.data.ClientState;
 import com.iafenvoy.system.data.History;

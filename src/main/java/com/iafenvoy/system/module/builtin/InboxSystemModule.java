@@ -1,7 +1,7 @@
 package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentModule;
+import com.iafenvoy.system.agent.module.AgentModule;
 import com.iafenvoy.system.assistant.tool.inbox.DeliverTool;
 import com.iafenvoy.system.module.*;
 import com.iafenvoy.system.module.builtin.inbox.DeliverModule;

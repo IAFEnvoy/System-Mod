@@ -1,6 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
-import com.iafenvoy.system.agent.ToolRegistry;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.*;
 import com.iafenvoy.system.data.output.*;
 import com.iafenvoy.system.search.SearchProvider;

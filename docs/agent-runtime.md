@@ -2,9 +2,22 @@
 
 `com.iafenvoy.system.agent` 只负责执行、路由、预算、会话记忆与 Agent 契约。具体工作流位于 `module.builtin.<功能>`，Minecraft 业务、主线程桥接和游戏 Tool 位于 `assistant`，数据与加载位于 `data`，任务文案和语音行为位于 `speech`。完整依赖方向及扩展入口见[包职责与数据流](architecture.md)。指令解析器和路由器不包含模块 ID 的业务 switch。
 
-外层内置模块定义位于 `module.builtin`；其业务 DataStorage 位于 `module.builtin.storage`。Agent 执行账本的接口 `AgentJournal` 留在 `agent`，实现 `AgentJournalDataStorage` 与文件存储位于 `data.store`，在服务端装配时注入。`AgentStore` 同样只声明事务接口；引擎不直接依赖 CoreSystemModule、Saturn 存储实现或具体功能模块。
+外层内置模块定义位于 `module.builtin`；其业务 DataStorage 位于 `module.builtin.storage`。Agent 执行账本的接口 `AgentJournal` 位于 `agent.storage`，实现 `AgentJournalDataStorage` 与文件存储位于 `data.store`，在服务端装配时注入。`AgentStore` 同样只声明事务接口；引擎不直接依赖 CoreSystemModule、Saturn 存储实现或具体功能模块。
 
-Agent 根包保留引擎、执行器、上下文、Module/Tool 契约、注册表、指令与请求结果；`routing`、`model`、`request`、`response` 分别保存对应协议和实现。`AbstractAgentModule` 为具体工作流提供注册 ID、Schema 与工具白名单的共用实现。业务输入输出统一放在 `data.input` / `data.output`，共享工具键放在 `module.builtin.BuiltinTools`。共用 Codec、Schema 和 HTTP 工具继续放在外层 `util`。
+Agent 根包只保留 `AgentResult`、`AgentException`、`AgentLifecycle` 三个公共契约，其他类型按职责分包：
+
+| 子包 | 内容 |
+| --- | --- |
+| `execution` | AgentEngine、交互/事件执行器、ExecutionContext、ExecutionPolicy、有界任务队列与会话读写服务；紧密协作的内部方法仍使用包可见性 |
+| `module` | AgentAction、AgentModule、AbstractAgentModule 和 ModuleRegistry，声明工作流、动作类型及入口 |
+| `tool` | ToolRegistry、ToolContext 和 ToolObservation，负责工具类型、实例、作用域及类型化观察 |
+| `command` | AgentCommand、CommandRegistry 和 CommandArguments，负责 Brigadier 入口与参数解析 |
+| `react` | ReActLoop、ReActContext 和 ReActTool，负责通用有界循环与循环独立状态 |
+| `storage` | AgentStore、AgentJournal 和 ConversationMemory，负责存储契约与历史上下文投影；具体持久化仍由 data.store 实现 |
+| `routing` / `model` | 混合路由、语义索引与缓存；模型接口、网关与协议实现 |
+| `request` / `response` | 请求/响应基接口、实现与 MapCodec |
+
+`AbstractAgentModule` 为具体工作流提供注册 ID、Schema 与工具白名单的共用实现。业务输入输出统一放在 `data.input` / `data.output`，共享工具键放在 `module.builtin.BuiltinTools`。共用 Codec、Schema 和 HTTP 工具继续放在外层 `util`。这里的 `agent.module` 是 Agent 工作流契约，与外层 `module` 的功能安装和生命周期管理分工不同。
 
 执行预算、模型连接、语义路由与成就规则由 `AgentConfig`、`ModelConfig`、`SemanticConfig`、`AdvancementConfig` 的 ConfigInstance 管理，读取使用 `INSTANCE.get()`，提交使用 `INSTANCE.set(next)` 并自动标记保存。引擎构造只接收 AgentStore、ModelClient 与事务账本解析函数；商城目录、搜索、数据库与任务口播由 AssistantServer 装配，通过 ModuleContext 注入需要它们的模块。配置的动态读取与启动时快照仍遵循各使用方原有行为。
 
@@ -159,6 +172,6 @@ FTB 查询 Tool 使用固定返回类型：`ftb.query` 列出当前可执行或�
 
 SearchSystemModule 仅实现 ToolModule，导出 `web.search` / `web.fetch`，由数据包或管理员明确授予；开发默认 tag 也不自动启用。问答仅在本地为空、allowWeb=true、工具导出模块已启用且外部服务允许时打开本次 ExecutionContext 的联网门禁；两种网络工具每次都检查该门禁。`/question` 使用 false，`/search` 及搜索页明确提交使用 true；普通问题由模型识别但默认 false，仅非常确信当前请求授权外部查询时才设 true。语义样例仅作提示，不直接路由或缓存授权；事件、历史和资料正文不能开启联网。
 
-获准后的 `WebResearch` 持有紧凑的 SearchObservation，模型经 SearchStep Codec dispatch 选择 Search、Fetch 或 Answer，最终整理只解码 Answer。仅允许抓取本次检索返回的 URL，引用编号由服务器核对。整个问答默认 6 次模型 / 9 次工具 / 20 步 / 90 秒，单次模型 20 秒；数据库查询、内部 FTB 查询、复核和联网共用预算，按 `system:question` 覆盖。重复检索或可恢复的探索失败改为整理已有资料，不重试收费工具。每次网络工具都检查取消、模块权限与外部服务偏好，经 SearchGateway 计量；模型 Token 继续由 ModelGateway 记录。详见[问答与联网](search-api.md)。
+获准后的 `WebResearch` 提供紧凑的 SearchObservation 和独立工具上下文，由通用 ReActLoop 按本次工具 MapCodec dispatch 选择 `web.search`、`web.fetch` 或 `answer`，最终整理只解码 Answer。仅允许抓取本次检索返回的 URL，引用编号由服务器核对。整个问答默认 6 轮循环 / 6 次模型 / 9 次工具 / 20 步 / 90 秒，单次模型 20 秒；数据库查询、内部 FTB 查询、复核和联网共用预算，按 `system:question` 覆盖。重复检索或可恢复的探索失败改为整理已有资料，不重试收费工具。每次网络工具都检查取消、模块权限与外部服务偏好，经 SearchGateway 计量；模型 Token 继续由 ModelGateway 记录。普通跨能力分析由核心 `system:reasoning` 复用相同循环，默认 3 轮，只开放已启用模块主动声明的只读工具，不自动授予联网。详见[通用 ReAct](agent-react.md)与[问答与联网](search-api.md)。
 
 模块实现与配置分离：SystemModule 数据包条目提供 server/client，系统引用动态配置 ID 或 tag；ServerModule.CODEC 按 type 分派注册的 MapCodec。不同配置的同类型工作流与工具按玩家启用的 owner 选择，执行上下文保存选中 owner 并持续检查权限。ClientModule 只在客户端 Map 中登记，服务端类不再实现或引用客户端接口；客户端按 client ID 合并 UI、按关联配置 ID 进行权限判断。

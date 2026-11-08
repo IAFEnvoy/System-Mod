@@ -1,7 +1,7 @@
 package com.iafenvoy.system.assistant;
 
-import com.iafenvoy.system.agent.AgentEngine;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.data.store.SystemBindings;
 import net.minecraft.resources.Identifier;

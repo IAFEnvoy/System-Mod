@@ -1,0 +1,10 @@
+{
+  "values": [
+    "saturn:dimension",
+    "saturn:experience",
+    "saturn:food",
+    "saturn:game_mode",
+    "saturn:health",
+    "saturn:name"
+  ]
+}

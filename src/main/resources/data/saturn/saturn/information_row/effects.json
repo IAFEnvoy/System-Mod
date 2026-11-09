@@ -1,0 +1,70 @@
+{
+  "order": 20,
+  "importance": 60,
+  "label": {
+    "translate": "info.saturn.field.effects"
+  },
+  "value": {
+    "type": "saturn:list",
+    "source": {
+      "type": "saturn:getter",
+      "getter": {
+        "type": "saturn:effects"
+      }
+    },
+    "element": {
+      "type": "saturn:translate",
+      "key": "info.saturn.effect_entry",
+      "arguments": [
+        {
+          "type": "saturn:local",
+          "path": [
+            "id"
+          ]
+        },
+        {
+          "type": "saturn:arithmetic",
+          "operation": "add",
+          "left": {
+            "type": "saturn:local",
+            "path": [
+              "amplifier"
+            ]
+          },
+          "right": 1
+        },
+        {
+          "type": "saturn:if",
+          "condition": {
+            "type": "saturn:compare",
+            "operation": "lt",
+            "left": {
+              "type": "saturn:local",
+              "path": [
+                "duration"
+              ]
+            },
+            "right": 0
+          },
+          "then": {
+            "type": "saturn:translate",
+            "key": "info.saturn.permanent",
+            "arguments": []
+          },
+          "else": {
+            "type": "saturn:translate",
+            "key": "info.saturn.duration_ticks",
+            "arguments": [
+              {
+                "type": "saturn:local",
+                "path": [
+                  "duration"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

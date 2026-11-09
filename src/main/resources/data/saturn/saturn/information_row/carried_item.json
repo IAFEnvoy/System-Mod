@@ -1,0 +1,16 @@
+{
+  "order": 30,
+  "importance": 20,
+  "label": {
+    "translate": "info.saturn.field.carried_item"
+  },
+  "value": {
+    "type": "saturn:items",
+    "value": {
+      "type": "saturn:getter",
+      "getter": {
+        "type": "saturn:carried_item"
+      }
+    }
+  }
+}

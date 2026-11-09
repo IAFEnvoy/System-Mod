@@ -1,0 +1,28 @@
+{
+  "order": 50,
+  "importance": 40,
+  "label": {
+    "translate": "info.saturn.field.game_mode"
+  },
+  "value": {
+    "type": "saturn:translate",
+    "key": {
+      "type": "saturn:format",
+      "format": "gameMode.%s",
+      "arguments": [
+        {
+          "type": "saturn:getter",
+          "getter": {
+            "type": "saturn:game_mode"
+          }
+        }
+      ]
+    },
+    "fallback": {
+      "type": "saturn:getter",
+      "getter": {
+        "type": "saturn:game_mode"
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "order": 30,
+  "importance": 80,
+  "label": {
+    "translate": "info.saturn.field.experience"
+  },
+  "value": {
+    "type": "saturn:number",
+    "value": {
+      "type": "saturn:getter",
+      "path": [
+        "level"
+      ],
+      "getter": {
+        "type": "saturn:experience"
+      }
+    }
+  }
+}

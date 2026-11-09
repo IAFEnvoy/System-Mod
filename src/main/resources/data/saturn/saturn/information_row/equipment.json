@@ -1,0 +1,16 @@
+{
+  "order": 0,
+  "importance": 60,
+  "label": {
+    "translate": "info.saturn.field.equipment"
+  },
+  "value": {
+    "type": "saturn:items",
+    "value": {
+      "type": "saturn:getter",
+      "getter": {
+        "type": "saturn:equipment"
+      }
+    }
+  }
+}

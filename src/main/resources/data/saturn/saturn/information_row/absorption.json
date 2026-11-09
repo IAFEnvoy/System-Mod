@@ -1,0 +1,16 @@
+{
+  "order": 0,
+  "importance": 40,
+  "label": {
+    "translate": "info.saturn.field.absorption"
+  },
+  "value": {
+    "type": "saturn:number",
+    "value": {
+      "type": "saturn:getter",
+      "getter": {
+        "type": "saturn:absorption"
+      }
+    }
+  }
+}

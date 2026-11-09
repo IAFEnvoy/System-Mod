@@ -1,0 +1,16 @@
+{
+  "order": 20,
+  "importance": 20,
+  "label": {
+    "translate": "info.saturn.field.ender_chest"
+  },
+  "value": {
+    "type": "saturn:items",
+    "value": {
+      "type": "saturn:getter",
+      "getter": {
+        "type": "saturn:ender_chest"
+      }
+    }
+  }
+}

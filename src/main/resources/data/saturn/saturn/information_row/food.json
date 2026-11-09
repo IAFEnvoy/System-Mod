@@ -1,0 +1,19 @@
+{
+  "order": 20,
+  "importance": 50,
+  "label": {
+    "translate": "info.saturn.field.food"
+  },
+  "value": {
+    "type": "saturn:number",
+    "value": {
+      "type": "saturn:getter",
+      "path": [
+        "level"
+      ],
+      "getter": {
+        "type": "saturn:food"
+      }
+    }
+  }
+}

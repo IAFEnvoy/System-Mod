@@ -1,0 +1,19 @@
+{
+  "order": 40,
+  "importance": 60,
+  "label": {
+    "translate": "info.saturn.field.dimension"
+  },
+  "value": {
+    "type": "saturn:text",
+    "value": {
+      "type": "saturn:getter",
+      "path": [
+        "dimension"
+      ],
+      "getter": {
+        "type": "saturn:location"
+      }
+    }
+  }
+}

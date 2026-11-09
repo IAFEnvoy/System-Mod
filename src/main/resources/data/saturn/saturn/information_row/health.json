@@ -1,0 +1,37 @@
+{
+  "order": 10,
+  "importance": 100,
+  "label": {
+    "translate": "info.saturn.field.health"
+  },
+  "value": {
+    "type": "saturn:coalesce",
+    "values": [
+      {
+        "type": "saturn:meter",
+        "value": {
+          "type": "saturn:getter",
+          "getter": {
+            "type": "saturn:health"
+          }
+        },
+        "min": 0,
+        "max": {
+          "type": "saturn:getter",
+          "getter": {
+            "type": "saturn:max_health"
+          }
+        }
+      },
+      {
+        "type": "saturn:number",
+        "value": {
+          "type": "saturn:getter",
+          "getter": {
+            "type": "saturn:health"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "order": 30,
+  "importance": 20,
+  "label": {
+    "translate": "info.saturn.field.attributes"
+  },
+  "value": {
+    "type": "saturn:table",
+    "source": {
+      "type": "saturn:getter",
+      "getter": {
+        "type": "saturn:attributes"
+      }
+    },
+    "row_id": {
+      "type": "saturn:local",
+      "path": [
+        "id"
+      ]
+    },
+    "columns": [
+      {
+        "id": "name",
+        "label": {
+          "translate": "info.saturn.field.name"
+        },
+        "value": {
+          "type": "saturn:registry_name",
+          "registry": "minecraft:attribute",
+          "value": {
+            "type": "saturn:local",
+            "path": [
+              "id"
+            ]
+          }
+        }
+      },
+      {
+        "id": "base",
+        "label": {
+          "translate": "info.saturn.field.base"
+        },
+        "value": {
+          "type": "saturn:number",
+          "value": {
+            "type": "saturn:local",
+            "path": [
+              "base"
+            ]
+          }
+        }
+      },
+      {
+        "id": "value",
+        "label": {
+          "translate": "info.saturn.field.value"
+        },
+        "value": {
+          "type": "saturn:number",
+          "value": {
+            "type": "saturn:local",
+            "path": [
+              "effective"
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

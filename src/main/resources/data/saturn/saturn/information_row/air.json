@@ -1,0 +1,16 @@
+{
+  "order": 10,
+  "importance": 20,
+  "label": {
+    "translate": "info.saturn.field.air"
+  },
+  "value": {
+    "type": "saturn:number",
+    "value": {
+      "type": "saturn:getter",
+      "getter": {
+        "type": "saturn:air"
+      }
+    }
+  }
+}

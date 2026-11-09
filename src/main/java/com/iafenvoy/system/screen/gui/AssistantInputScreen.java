@@ -1,5 +1,6 @@
 package com.iafenvoy.system.screen.gui;
 
+import com.iafenvoy.system.screen.AssistantCardDisplay;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
@@ -358,6 +359,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         popup.setInnerHTML("");
         // Rebuild off-screen; the render phase anchors the independent overlay before showing it.
         popup.setInlineStyleProperty("display", "none");
+        popup.setTopLayer(false);
         this.suggestionArea = null;
         if (this.suggestions.isEmpty()) return;
         int start = Math.clamp(this.selectedSuggestion - 2, 0, Math.max(0, this.suggestions.size() - 6));
@@ -387,6 +389,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         int maxHeight = Math.max(0, (int) Math.floor(bounds.top - 12));
         if (document.getFocusedElement() != message || this.imeOwnsKeys() || bounds.width <= 0 || bounds.height <= 0 || maxHeight == 0) {
             popup.setInlineStyleProperty("display", "none");
+            popup.setTopLayer(false);
             this.suggestionArea = null;
             return;
         }
@@ -402,6 +405,8 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         popup.setInlineStyleProperty("width", width + "px");
         popup.setInlineStyleProperty("max-height", maxHeight + "px");
         popup.setInlineStyleProperty("display", "flex");
+        // Painted above the document tree so item models cannot show through the suggestion list.
+        popup.setTopLayer(true);
     }
 
     private void completeSuggestion(int index) {
@@ -452,6 +457,8 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         this.stopRecognition();
         this.stopSpeech();
         this.clearTextInputFocus();
+        // Closing the page while a popup hid the overlay must not leave it hidden.
+        AssistantCardDisplay.clearSuspensions();
         super.onClose();
     }
 

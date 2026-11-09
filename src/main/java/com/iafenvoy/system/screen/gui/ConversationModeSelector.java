@@ -1,5 +1,6 @@
 package com.iafenvoy.system.screen.gui;
 
+import com.iafenvoy.system.screen.AssistantCardDisplay;
 import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
@@ -97,6 +98,11 @@ final class ConversationModeSelector {
     private void open(boolean open) {
         this.open = open;
         display(this.menu, open ? "flex" : "none");
+        // Top-layer nodes paint after the document tree with depth testing off, so item models and the
+        // player preview in the cards behind the composer cannot show through the menu.
+        this.menu.setTopLayer(open);
+        // The card overlay is a separate document painted above this page; hide it while the menu is open.
+        AssistantCardDisplay.suspend(this, open);
         String expanded = Boolean.toString(open);
         if (!expanded.equals(this.trigger.getAttribute("aria-expanded"))) this.trigger.setAttribute("aria-expanded", expanded);
     }

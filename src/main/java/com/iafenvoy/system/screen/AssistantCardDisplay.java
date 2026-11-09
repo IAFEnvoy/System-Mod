@@ -44,6 +44,8 @@ public final class AssistantCardDisplay {
     private static long templatesRevision = -1;
     private static long failedRevision = -1;
     private static Set<DisplayCardKey> activeCards = Set.of();
+    private static final Set<Object> SUSPENDERS = Collections.newSetFromMap(new IdentityHashMap<>());
+    private static boolean suspended;
     private static final Map<DisplayCardKey, RenderedCard> RENDERED = new LinkedHashMap<>();
 
     private enum Phase {
@@ -70,6 +72,11 @@ public final class AssistantCardDisplay {
     public static void tick(ClientTickEvent.Post event) {
         DisplayCardCache cache = ClientModuleCaches.DISPLAY_CARDS;
         cache.tick();
+        if (suspended) {
+            // Keep the hidden document mounted; the popup restores it when it closes.
+            applySuspended();
+            return;
+        }
         Minecraft minecraft = Minecraft.getInstance();
         if (!canRender()) {
             unmount();
@@ -273,11 +280,45 @@ public final class AssistantCardDisplay {
     }
 
     public static void unmount() {
+        SUSPENDERS.clear();
+        suspended = false;
         if (document != null) document.remove();
         document = null;
         RENDERED.clear();
         activeCards = Set.of();
         generation = cardsRevision = templatesRevision = -1;
         SystemHudEntries.DISPLAY_CARDS.detach();
+    }
+
+    /**
+     * Hides the persistent card overlay while a page-level popup is open. The overlay lives in its own document,
+     * which AUI paints above screen documents, so its cards would otherwise show through that popup. Owners keep
+     * their own flag so closing one popup never reveals the overlay under another.
+     */
+    public static void suspend(Object owner, boolean value) {
+        if (owner == null) return;
+        boolean was = suspended;
+        if (value) SUSPENDERS.add(owner);
+        else SUSPENDERS.remove(owner);
+        suspended = !SUSPENDERS.isEmpty();
+        if (was != suspended) applySuspended();
+    }
+
+    /**
+     * Releases every popup that was hiding the overlay, for page teardown while a popup is still open.
+     */
+    public static void clearSuspensions() {
+        if (SUSPENDERS.isEmpty()) return;
+        SUSPENDERS.clear();
+        suspended = false;
+        applySuspended();
+    }
+
+    private static void applySuspended() {
+        if (document == null || document.isDisposed()) return;
+        try (Document.ContextScope ignored = Document.withContext(document)) {
+            Element root = document.getElementById("card_display");
+            if (root != null) root.setInlineStyleProperty("display", suspended ? "none" : "flex");
+        }
     }
 }

@@ -38,7 +38,7 @@
 | `WorkflowModule` | 提供 `List<AgentModule<?>>`，包括成就等服务端事件工作流 |
 | `SharedModule extends WorkflowModule` | 额外提供 `serverCommands(root)`；不再继承 ClientModule |
 | `CoreModule extends SharedModule` | 基础设施；已安装的对应配置对绑定玩家始终启用且不可移除 |
-| `CatalogModule<T> extends SharedModule` | 签到、商城、抽奖声明目录注册表与可选 ID/tag，按玩家已启用定义合并目录权限 |
+| `CatalogModule<T> extends SharedModule` | 声明目录注册表与可选 ID/tag；签到、商城、抽奖合并玩家目录权限，在线作业使用所选工作流配置 |
 | `ClientModule` | 仅客户端的页面、命令和本地卡片动作 |
 
 类型由接口表达，`available()` 仅检查可选依赖。核心、绑定、用量实现 CoreModule，玩家、物品、签到、收件箱、商城、抽奖和任务实现 SharedModule，成就实现 WorkflowModule，搜索实现 ToolModule。聊天、设置、语音以及基础界面操作由客户端本地目录常驻，不依赖进入世界后的注册表同步。
@@ -89,6 +89,8 @@ public static void moduleContext(ModuleContextEvent event) {
 
 三类目录的可选项另由 CatalogModule 声明，按玩家启用的同类配置取并集，不仅限于执行工作流时选中的第一份配置。对应注册表为 system:signin_rewards、system:shop_offers、system:lottery_pools；字段支持 ID、tag 或混合数组，复用 Saturn keyOrTagList，省略为全表、空数组为空，内置模块显式使用对应 #system:default。`assistant.commerce.CommerceCatalogs.available(player)` 是统一的玩家目录入口，通过 ModuleContext 注入工作流和交易服务，列表、模型候选、状态、报价与扣款共用筛选。详见[目录选项](datapacks.md#模块目录可选项)。
 
+在线作业同样实现 CatalogModule，但目录由所选工作流配置的 jobs 筛选，不进入交易目录的并集。它使用独立的 system:online_jobs 数据包注册表和共用的玩家作业账本，详见[在线作业](online-jobs.md)。
+
 每个服务端实现类型的游戏指令只装配一次。SystemCommand 只创建 `/system` 根节点、收集 SharedModule.serverCommands，再连接 Agent 通用指令。绑定、用量和核心模块分别负责 grant/revoke/reset、usage 与打开界面/ask/routing/module 管理。补全和模块管理从当前世界的 system_module 注册表读取 ID。
 
 ### 纯工具模块
@@ -101,7 +103,7 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
 
 ### 物品来源查询
 
-`system:items` 装配两个工作流：`system:item_query`（名称/ID 检索）与 `system:item_sources`（单个物品的来源）。后者提供 `/system recipe <物品ID> [范围]`、语义路由、稳定动作 ID 和物品检索卡片的点击操作：每个物品格子携带对应注册 ID，点击直接查看其获取方式，不需要玩家重抄；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`。`ItemSourceOutput` 同时是工具结果与已注册的 CardData，工作流通过 `AgentResult.data` 发送卡片，不再把序列化 JSON 拼进消息正文。以下仅为工具快照的编码示例：
+`system:items` 装配三个工作流：`system:item_query`（名称/ID 检索）、`system:item_sources`（单个物品的来源）、`system:item_inspect`（主手实际物品鉴定，见[鉴定说明](item-inspection.md)）。来源查询提供 `/system recipe <物品ID> [范围]`、语义路由、稳定动作 ID 和物品检索卡片的点击操作：每个物品格子携带对应注册 ID，点击直接查看其获取方式，不需要玩家重抄；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`。`ItemSourceOutput` 同时是工具结果与已注册的 CardData，工作流通过 `AgentResult.data` 发送卡片，不再把序列化 JSON 拼进消息正文。以下仅为工具快照的编码示例：
 
 ```json
 {"item":"minecraft:iron_ingot","scope":"loot","sources":[

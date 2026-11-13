@@ -1,5 +1,7 @@
 # 扩展配置
 
+新增的本地玩法定义见[装备工坊](workshop.md)和[在线作业](online-jobs.md)。工坊在模块 server 内配置 Saturn Cost；作业使用独立原生数据包注册表与 tag，`jobs` 可选项支持 ID/tag/混合数组。二者均有同名内置模块，并加入默认模块 tag。[物品鉴定](item-inspection.md)属于已有 items 模块。
+
 旧的 `SystemFunction` 执行机制已移除。执行预算、模型连接、本地路由和成就规则分别来自服务端 `config/system/` 中的 `system-agent.json`、`system-model.json`、`system-semantic.json` 和 `system-advancements.json`；系统名称与介绍使用下述新的系统定义注册表，签到奖励池、商城目录、抽奖奖池和模型提示词仍有独立的数据包入口。客户端不能提供价格、商品内容、抽奖权重或触发规则。
 
 完整示例见 [执行预算](../examples/agent/system-agent.json)、[模型连接](../examples/agent/system-model.json)、[本地路由](../examples/agent/system-semantic.json) 和 [成就规则](../examples/agent/system-advancements.json)。首次初始化会从 JAR 内 `defaults/` 复制各默认文件，修改后正常重启。密钥只使用 `apiKeyEnvironment` 指定的环境变量。默认 DeepSeek 与其他 OpenAI 兼容服务的配置见 [模型接口与 DeepSeek 兼容](model-api.md)。

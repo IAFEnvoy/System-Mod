@@ -1,0 +1,9 @@
+{
+  "order": 40,
+  "server": {
+    "type": "system:online_jobs",
+    "jobs": "#system:default"
+  },
+  "client": "system:online_jobs"
+}
+

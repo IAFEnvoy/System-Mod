@@ -8,7 +8,9 @@ import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.config.file.StorageConfig;
 import com.iafenvoy.system.util.AtomicFiles;
+import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
+import net.minecraft.core.HolderLookup;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -34,7 +36,8 @@ import java.util.stream.Stream;
  */
 public final class FileAgentStore implements AgentStore {
     private static final String SUFFIX = ".dat";
-    private static final Codec<Conversation> CHAT_CODEC = Conversation.CODEC.codec();
+    private final Codec<Conversation> chatCodec;
+    private final HolderLookup.Provider registries;
     private final Path playerRoot;
     private final Path chatRoot;
     private final Supplier<ConversationMode> defaultMode;
@@ -46,11 +49,13 @@ public final class FileAgentStore implements AgentStore {
     private final ReentrantReadWriteLock lifecycle = new ReentrantReadWriteLock();
     private boolean closed;
 
-    public FileAgentStore(Path root, Supplier<ConversationMode> defaultMode) throws IOException {
+    public FileAgentStore(Path root, Supplier<ConversationMode> defaultMode, HolderLookup.Provider registries) throws IOException {
+        this.registries = registries;
+        this.chatCodec = this.codec(Conversation.CODEC.codec());
         this.playerRoot = root.resolve("players");
         this.chatRoot = root.resolve("chat");
         this.defaultMode = Objects.requireNonNull(defaultMode);
-        this.businessCodec = PlayerData.codec(defaultMode);
+        this.businessCodec = this.codec(PlayerData.codec(defaultMode));
         Arrays.setAll(this.locks, ignored -> new ReentrantLock());
         Files.createDirectories(this.playerRoot);
         Files.createDirectories(this.chatRoot);
@@ -71,6 +76,11 @@ public final class FileAgentStore implements AgentStore {
 
     private static StorageConfig config() {
         return StorageConfig.INSTANCE.get();
+    }
+
+    @Override
+    public <T> Codec<T> codec(Codec<T> codec) {
+        return CodecIO.contextual(codec, this.registries);
     }
 
     private CachedPlayer load(UUID player) throws IOException {
@@ -105,7 +115,7 @@ public final class FileAgentStore implements AgentStore {
     }
 
     private Conversation decodeChat(byte[] bytes) {
-        return FileAccess.NBT_COMPRESSED.decode(CHAT_CODEC, bytes).orElseGet(Conversation::new);
+        return FileAccess.NBT_COMPRESSED.decode(this.chatCodec, bytes).orElseGet(Conversation::new);
     }
 
     @Override
@@ -205,20 +215,20 @@ public final class FileAgentStore implements AgentStore {
         Path path = this.chatRoot.resolve(player + SUFFIX);
         try {
             this.prune(conversation);
-            byte[] bytes = encode(CHAT_CODEC, conversation, player);
+            byte[] bytes = encode(this.chatCodec, conversation, player);
             // Full lists can outweigh count-based retention; evict exchanges, never business records.
             while (bytes.length > config().chatBytes() && !conversation.history.isEmpty()) {
                 String request = conversation.history.getFirst().requestId();
                 conversation.history.removeIf(message -> message.requestId().equals(request));
                 conversation.requests.remove(request);
                 conversation.requestInputs.remove(request);
-                bytes = encode(CHAT_CODEC, conversation, player);
+                bytes = encode(this.chatCodec, conversation, player);
             }
             while (bytes.length > config().chatBytes() && !conversation.requests.isEmpty()) {
                 String request = conversation.requests.keySet().iterator().next();
                 conversation.requests.remove(request);
                 conversation.requestInputs.remove(request);
-                bytes = encode(CHAT_CODEC, conversation, player);
+                bytes = encode(this.chatCodec, conversation, player);
             }
             // Nothing to store yet; an empty cache must not create a file for every player.
             if (cached.chatDigest == null && conversation.history.isEmpty()

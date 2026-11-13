@@ -14,7 +14,7 @@
 | Java | `25`，toolchain 与字节码均使用 Java 25 | [build.gradle](build.gradle)、[Mixin 配置](src/main/resources/system.mixins.json) |
 | Gradle / ModDev | `9.2.1` / `2.0.148` | [Wrapper 配置](gradle/wrapper/gradle-wrapper.properties)、[build.gradle](build.gradle) |
 | ApricityUI | 开发配置与客户端最低版本 `1.2.9`；需兼容 MC `26.1.2` | [gradle.properties](gradle.properties) 的 `apricityui_version` |
-| Saturn | `1.2.6`，CurseMaven 文件 ID `9509793`；两端必装，提供 Cost、DataStorage、Codec 工具、压缩 NBT 与 HUD 编辑器 | [gradle.properties](gradle.properties) 的 `saturn_version` / `saturn_file_id`、[开发与架构](docs/development.md) |
+| Saturn | `1.3`，CurseMaven 文件 ID `9538254`；两端必装，提供 Cost、DataStorage、Codec 工具、压缩 NBT 与 HUD 编辑器 | [build.gradle](build.gradle) 的依赖声明、[模组元数据](src/main/templates/META-INF/neoforge.mods.toml) 的最低版本、[开发与架构](docs/development.md) |
 | Simple Voice Chat | 开发适配 `2.6.26+26.1.2`，CurseMaven 文件 ID `9307181`；可选客户端录音后端，不打入发布 JAR，服务端不要求安装 | [gradle.properties](gradle.properties)、[build.gradle](build.gradle) |
 | FTB Quests | `26.1.2.8`；可选集成 | [gradle.properties](gradle.properties) 的 `ftb_quests_version` |
 | FTB Library / FTB Teams | `26.1.2.9` / `26.1.2.4`；FTB 集成配套依赖 | [gradle.properties](gradle.properties) |
@@ -70,6 +70,9 @@
 | 领域词表、稀疏 TF-IDF、阈值、玩家意图缓存、只读直达与模型兜底 | [本地意图路由](docs/semantic-routing.md) |
 | 10MB 分发约束、路由方案比较、校准与后续方向 | [路由选型与计划](docs/semantic-routing-plan.md) |
 | 物品来源工作流、typed CardData、RecipeDisplay 有序材料 / 组件快照、配方 / 掉落 / 标签分类及独立分页、tooltip 与读取边界 | [物品来源查询](docs/feature-modules.md#物品来源查询)、[RecipeNode](src/main/java/com/iafenvoy/system/screen/card/node/integration/RecipeNode.java) |
+| 主手实际物品鉴定、耐久 / 附魔 / 组件快照，世界 RegistryOps 在存储、历史及工具回执中的绑定 | [物品鉴定](docs/item-inspection.md) |
+| 装备工坊、Saturn Cost、两分钟报价、主手目标复核及显式维修确认 | [装备维修](docs/workshop.md) |
+| 在线作业数据包注册表 / tag、单项目在线 tick、DataStorage 暂停续计与收件箱幂等入账 | [在线作业](docs/online-jobs.md) |
 | 系统定义、personality_prompt 引用 TXT 并追加到自由聊天、system_module 配置实例与 server.type/client、grant 指定系统与单绑定/多系统结构预留、模块 ID/tag/condition、模块增删 action、签到奖励、商城商品、抽奖奖池、提示词、成就规则 | [数据包与扩展配置](docs/datapacks.md) |
 | 三张服务端 Data Pack Registry：signin_rewards / shop_offers / lottery_pools；CatalogModule 的 rewards / offers / pools 支持 ID、tag、混合数组；玩家并集权限与扣款前复核 | [目录可选项](docs/datapacks.md#模块目录可选项)、[注册表](docs/registries.md#数据包注册表与外部注册表)、[CommerceCatalog](src/main/java/com/iafenvoy/system/data/catalog/CommerceCatalog.java) |
 | TTS 接口、流式播放、语种、音色、取消 session、Python 设计 / 复刻 / 临时上传 | [语音合成与音色设计](docs/tts.md) |

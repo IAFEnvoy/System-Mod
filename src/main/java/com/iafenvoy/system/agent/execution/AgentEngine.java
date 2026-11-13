@@ -22,6 +22,7 @@ import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.data.History;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.store.PlayerData;
+import com.mojang.serialization.Codec;
 import net.minecraft.resources.Identifier;
 
 import java.util.*;
@@ -163,6 +164,11 @@ public final class AgentEngine implements AutoCloseable {
 
     AgentStore playerStore(UUID player, long incarnation) {
         return new AgentStore() {
+            @Override
+            public <T> Codec<T> codec(Codec<T> codec) {
+                return AgentEngine.this.store.codec(codec);
+            }
+
             private void check(UUID requested) {
                 if (!player.equals(requested) || !AgentEngine.this.current(player, incarnation))
                     throw new AgentException(AgentFailure.CANCELLED);

@@ -76,9 +76,9 @@ final class ConversationService {
                 // The page never carries request IDs; oversized results keep complete cards and clipped prose.
                 Message entry = data.conversation.history.get(index).withRequestId("");
                 if (entry instanceof Message.Assistant assistant
-                        && CodecIO.write(AgentResult.CODEC, assistant.result()).length() > MAX_ENTRY_CHARS)
-                    entry = new Message.Assistant("", assistant.time(), clip(assistant.result()));
-                int length = Message.CODEC.encodeStart(JsonOps.INSTANCE, entry).getOrThrow().toString().length();
+                        && CodecIO.write(store.codec(AgentResult.CODEC), assistant.result()).length() > MAX_ENTRY_CHARS)
+                    entry = new Message.Assistant("", assistant.time(), clip(assistant.result(), store));
+                int length = store.codec(Message.CODEC).encodeStart(JsonOps.INSTANCE, entry).getOrThrow().toString().length();
                 // The newest turn is always sent; an entry that does not fit only stops older ones.
                 if (!selected.isEmpty() && size + length > MAX_PAGE_CHARS) break;
                 size += length;
@@ -92,11 +92,11 @@ final class ConversationService {
      * Keeps a complete JSON result under the per-entry cap; never truncates the middle of a card or action.
      * The first card always survives: an entry without cards renders as an empty row on the client.
      */
-    private static AgentResult clip(AgentResult result) {
+    private static AgentResult clip(AgentResult result, AgentStore store) {
         List<CardUpdate> cards = new ArrayList<>();
         for (CardUpdate card : result.cards()) {
             cards.add(card);
-            if (cards.size() > 1 && CodecIO.write(AgentResult.CODEC, presentation(result, cards)).length() > MAX_ENTRY_CHARS) {
+            if (cards.size() > 1 && CodecIO.write(store.codec(AgentResult.CODEC), presentation(result, cards)).length() > MAX_ENTRY_CHARS) {
                 cards.removeLast();
                 break;
             }

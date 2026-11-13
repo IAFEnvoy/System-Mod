@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "system:gather_wood",
+    "system:gather_stone",
+    "system:make_charcoal"
+  ]
+}
+

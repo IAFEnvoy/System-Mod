@@ -84,7 +84,7 @@ public final class AssistantServer {
             Path storageRoot = server.getWorldPath(LevelResource.ROOT).resolve(SystemMod.MOD_ID);
             this.databases = this.own(new AgentDatabases(storageRoot.resolve("database")));
             FileAgentStore store = this.own(new FileAgentStore(storageRoot,
-                    () -> this.aiAccessData.get().defaultMode()));
+                    () -> this.aiAccessData.get().defaultMode(), server.registryAccess()));
             OpenAiCompatibleClient model = this.own(new OpenAiCompatibleClient());
             this.engine = this.own(new AgentEngine(store, model, data -> ModuleData.get(data, CoreSystemModule.JOURNAL)));
             this.engine.permissions(player -> this.aiAccessData.get().permissions(player, player.equals(this.localOwner)));

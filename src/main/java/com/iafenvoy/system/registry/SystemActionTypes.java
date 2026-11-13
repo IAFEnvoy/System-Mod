@@ -22,6 +22,13 @@ public final class SystemActionTypes {
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<InboxInput>> INBOX_ACTION = REGISTRY.register("inbox", () -> InboxInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<SignInInput>> SIGN_IN_ACTION = REGISTRY.register("sign_in", () -> SignInInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ItemQueryInput>> ITEMS_ACTION = REGISTRY.register("item_query", () -> ItemQueryInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ItemInspectInput>> ITEM_INSPECT_ACTION = REGISTRY.register("item_inspect", () -> ItemInspectInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<RepairQuoteInput>> REPAIR_QUOTE_ACTION = REGISTRY.register("repair_quote", () -> RepairQuoteInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<RepairConfirmInput>> REPAIR_CONFIRM_ACTION = REGISTRY.register("repair_confirm", () -> RepairConfirmInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<OnlineJobsInput>> ONLINE_JOBS_ACTION = REGISTRY.register("online_jobs", () -> OnlineJobsInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<JobStartInput>> JOB_START_ACTION = REGISTRY.register("job_start", () -> JobStartInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<JobClaimInput>> JOB_CLAIM_ACTION = REGISTRY.register("job_claim", () -> JobClaimInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<JobCancelInput>> JOB_CANCEL_ACTION = REGISTRY.register("job_cancel", () -> JobCancelInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ItemSourceQueryInput>> ITEM_SOURCES_ACTION = REGISTRY.register("item_sources", () -> ItemSourceQueryInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<EntitlementInput>> DELIVER_ACTION = REGISTRY.register("deliver", () -> EntitlementInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ShopQueryInput>> SHOP_ACTION = REGISTRY.register("shop", () -> ShopQueryInput.CODEC);

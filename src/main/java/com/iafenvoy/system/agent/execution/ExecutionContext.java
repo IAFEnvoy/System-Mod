@@ -409,7 +409,7 @@ public final class ExecutionContext {
         this.engine.model().checkConfigured();
         if (++this.steps > this.policy.steps() || this.models >= this.policy.modelCalls())
             throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
-        String content = CodecIO.write(ModelInput.codec(inputCodec), new ModelInput<>(input, new RequestContext(this.language)));
+        String content = CodecIO.write(this.store().codec(ModelInput.codec(inputCodec)), new ModelInput<>(input, new RequestContext(this.language)));
         // Reserve input bytes conservatively as tokens; this execution budget is separate from billed usage.
         long inputBytes = (long) instruction.getBytes(StandardCharsets.UTF_8).length + content.getBytes(StandardCharsets.UTF_8).length;
         if (inputBytes > this.policy.inputBytes() || this.tokens + inputBytes + this.policy.outputTokens() > this.policy.totalTokens())
@@ -448,7 +448,7 @@ public final class ExecutionContext {
             this.requireExternalServices();
             if (this.tokens > this.policy.totalTokens()) throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
             try {
-                return CodecIO.parse(outputCodec, reply.value());
+                return CodecIO.parse(this.store().codec(outputCodec), reply.value());
             } catch (RuntimeException error) {
                 throw new AgentException(AgentFailure.MODEL_INVALID);
             }
@@ -493,7 +493,7 @@ public final class ExecutionContext {
             throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         if (this.isEvent() && !tool.allowEvent()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         String operationKey = this.taskId + ":" + this.stepPrefix + stepId;
-        String encodedInput = tool.write() ? CodecIO.write(type.inputCodec().codec(), input) : null;
+        String encodedInput = tool.write() ? CodecIO.write(this.store().codec(type.inputCodec().codec()), input) : null;
         String fingerprint = id + ":" + encodedInput;
         // Replay completed writes by task/step; an unfinished non-idempotent write has an unknown effect.
         if (tool.write()) {
@@ -507,7 +507,7 @@ public final class ExecutionContext {
             });
             if (previous != null) {
                 this.completedLocalSteps.add(stepId);
-                return type.resultCodec().parse(previous).getOrThrow(_ -> new AgentException(AgentFailure.INVALID_INPUT));
+                return this.store().codec(type.resultCodec()).parse(previous).getOrThrow(_ -> new AgentException(AgentFailure.INVALID_INPUT));
             }
         }
         if (++this.steps > this.policy.steps() || ++this.tools > this.policy.toolCalls() || (tool.write() && ++this.writes > this.policy.writeSteps()))
@@ -531,7 +531,7 @@ public final class ExecutionContext {
             }
             if (tool.write()) this.store().update(this.player, data -> {
                 this.engine.journal(data).completeOperation(operationKey,
-                        new Dynamic<>(JsonOps.INSTANCE, type.resultCodec().encodeStart(JsonOps.INSTANCE, result).getOrThrow()));
+                        new Dynamic<>(JsonOps.INSTANCE, this.store().codec(type.resultCodec()).encodeStart(JsonOps.INSTANCE, result).getOrThrow()));
                 return null;
             });
             if (tool.write()) this.completedLocalSteps.add(stepId);

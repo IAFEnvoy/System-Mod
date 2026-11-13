@@ -1,0 +1,88 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.result.item_inspection"
+    },
+    {
+      "type": "system:flex",
+      "direction": "row",
+      "style": "card_row",
+      "children": [
+        {
+          "type": "system:item",
+          "item": "{{item}}",
+          "size": 40
+        },
+        {
+          "type": "system:flex",
+          "direction": "column",
+          "style": "card_column",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{item_name}}",
+              "style": "card_title"
+            },
+            {
+              "type": "system:text",
+              "text": "{{item_id}}",
+              "style": "card_context"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "system:text",
+      "text": "{{stack_info}}"
+    },
+    {
+      "type": "system:text",
+      "text": "{{durability}}",
+      "when": "damageable"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.inspection.unbreakable",
+      "when": "unbreakable"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.inspection.enchantments",
+      "style": "card_title"
+    },
+    {
+      "type": "system:text",
+      "text": "{{enchantments}}"
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

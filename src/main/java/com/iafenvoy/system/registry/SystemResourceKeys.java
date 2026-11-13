@@ -8,6 +8,7 @@ import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.catalog.ShopOfferEntry;
+import com.iafenvoy.system.data.catalog.OnlineJobEntry;
 import com.iafenvoy.system.data.catalog.SignInRewardEntry;
 import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.module.ServerModule;
@@ -29,6 +30,7 @@ public final class SystemResourceKeys {
     public static final ResourceKey<Registry<StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentRequest>>> AGENT_REQUEST_TYPE = create("agent_request_type");
     public static final ResourceKey<Registry<StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>>> AGENT_RESPONSE_TYPE = create("agent_response_type");
     // Datapack
+    public static final ResourceKey<Registry<OnlineJobEntry>> ONLINE_JOBS = create("online_jobs");
     public static final ResourceKey<Registry<SystemModule>> SYSTEM_MODULE = create("system_module");
     public static final ResourceKey<Registry<SystemDefinition>> SYSTEM = create("system");
     public static final ResourceKey<Registry<SignInRewardEntry>> SIGNIN_REWARDS = create("signin_rewards");

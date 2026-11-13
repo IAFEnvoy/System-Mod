@@ -14,6 +14,9 @@ interaction. Local commands and intent matching work without AI; connect a model
   manually, and pin quests to persistent cards. Includes completion/unlock notifications and local guide lookup.
 - **Check-ins, shop and lottery:** AI selects daily rewards from approved pools. Shops and lotteries use Saturn Costs,
   with rewards delivered to the inbox. Content is configured through data packs.
+- **Inspection, repairs and online jobs:** inspect held-item durability and enchantments, confirm a priced repair,
+  or run a data-driven gathering/production job. Progress pauses offline; claim output manually through the inbox.
+  All three support Offline mode. See [inspection](docs/item-inspection.md), [workshop](docs/workshop.md) and [jobs](docs/online-jobs.md).
 - **Conversation and tools:** choose Offline, Standard, Extended or Free mode. Free mode can call authorized tools;
   administrators control available modes and daily usage.
 - **Cards and HUD:** messages, interactive cards and persistent cards share JSON templates. Notifications leave gameplay
@@ -32,7 +35,7 @@ These requirements apply to the current branch. Use the corresponding branch or 
 | System               | `1.0-beta.3`                                       | Client and server |
 | Minecraft / NeoForge | `26.1.2` / `26.1.2.114+`                           | Client and server |
 | Java                 | `25`                                               | Client and server |
-| Saturn               | `1.2.6+`, built for the matching Minecraft version | Client and server |
+| Saturn               | `1.3+`, built for the matching Minecraft version | Client and server |
 | ApricityUI           | `1.2.9+`, built for the matching Minecraft version | Client            |
 
 FTB Quests and its dependencies are **optional**, needed only for quest integration. Simple Voice Chat is an **optional

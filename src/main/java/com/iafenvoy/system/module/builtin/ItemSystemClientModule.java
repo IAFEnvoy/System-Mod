@@ -2,6 +2,7 @@ package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.data.input.ItemQueryInput;
+import com.iafenvoy.system.data.input.ItemInspectInput;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
 
@@ -11,6 +12,7 @@ public final class ItemSystemClientModule implements ClientModule {
         module.workspace("items", "nav_items", workspace -> {
             workspace.input("item_query", "system.ui.item_placeholder", "item_search");
             workspace.click("nav_items", () -> workspace.show("items"));
+            workspace.click("item_inspect", () -> AssistantClient.send(ItemInspectInput.INSTANCE, ""));
             workspace.click("item_search", () -> {
                 String query = workspace.query("item_query");
                 if (!query.isBlank())

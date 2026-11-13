@@ -15,7 +15,7 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 | Minecraft / NeoForge | 26.1.2 / 26.1.2.114 |
 | ApricityUI | 1.2.9；客户端最低版本 1.2.9 |
 | Jupiter | CurseMaven 8569832 |
-| Saturn | 1.2.6 / CurseMaven 9509793；客户端和服务端均必装，统一 Cost、模块 DataStorage、Codec 工具、压缩 NBT 文件、玩家信息视图及 HUD 编辑器 |
+| Saturn | 1.3 / CurseMaven 9538254；客户端和服务端均必装，统一 Cost、模块 DataStorage、Codec 工具、压缩 NBT 文件、玩家信息视图及 HUD 编辑器 |
 | Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
 | Card JSON 编辑器（独立开发工具） | Vite 8.3.6；Node.js ^20.19.0 或 >=22.12.0，位于 html/card-editor；不进入模组 JAR |
 | Gson | 2.13.2；主项目直接声明依赖，Minecraft 提供运行时类 |
@@ -26,7 +26,7 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 
 AUI 1.2.9 将布局状态从 `RenderElement` 拆到 `LayoutState`。卡片折叠与分页刷新通过 `Element.getLayout().invalidateLayoutSubtree()` 使布局失效，再由 `AssistantPages.commit` 提交更新。
 
-玩家查询与卡片使用 Saturn 的 `data.information.PlayerViews`、`PlayerInformation` 与 `InformationText`，展示结果类型为 `data.information.model.InformationEntry`。查询仍选取 basic/status 分组和既有行白名单，并保留 32 行、每行 256 字的上限；分组按 ResourceKey 从当前世界解析为 Holder，结果通过 entry.value()/label()/tooltip() 直接使用；排序和 importance 从原始行定义读取。Saturn 为必装依赖，最低版本为 1.2.6，通知位置编辑复用其 HUD 框架，存档使用其 `NBT_COMPRESSED` 入口。版本和 CurseMaven 文件 ID 分别由 `gradle.properties` 的 `saturn_version`、`saturn_file_id` 管理，依赖元数据同步使用同一最低版本。
+玩家查询与卡片使用 Saturn 的 `data.information.PlayerViews`、`PlayerInformation` 与 `InformationText`，展示结果类型为 `data.information.model.InformationEntry`。查询仍选取 basic/status 分组和既有行白名单，并保留 32 行、每行 256 字的上限；分组按 ResourceKey 从当前世界解析为 Holder，结果通过 entry.value()/label()/tooltip() 直接使用；排序和 importance 从原始行定义读取。Saturn 为必装依赖，最低版本为 1.3，通知位置编辑复用其 HUD 框架，存档使用其 `NBT_COMPRESSED` 入口。CurseMaven 文件 ID 在 build.gradle 声明，最低版本在 neoforge.mods.toml 声明；不再引用已删除的 saturn_version/saturn_file_id 属性。
 
 Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器、上下文、Module/Tool/Store/Journal 契约、路由与模型调用。具体工作流和功能装配位于 `module/builtin`，MC 业务、绑定和交易位于 `assistant`，参数结果、持久化与资源加载位于 `data`，语音行为及任务口播位于 `speech`。业务 DataStorage 继续放在 `module/builtin/storage`，执行账本实现位于 `data/store`。通用工具、配置、游戏界面、网络与可选兼容层保留对应包；所有代码仍共用主源码集与 Java 25 工具链。详细边界见[包职责与数据流](architecture.md)及[功能模块化](feature-modules.md)。
 

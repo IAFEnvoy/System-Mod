@@ -1,0 +1,66 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.ui.nav_workshop"
+    },
+    {
+      "type": "system:flex",
+      "direction": "row",
+      "style": "card_row",
+      "children": [
+        {
+          "type": "system:item",
+          "item": "{{item}}",
+          "size": 40
+        },
+        {
+          "type": "system:text",
+          "text": "{{item_name}}",
+          "style": "card_title"
+        }
+      ]
+    },
+    {
+      "type": "system:text",
+      "text": "{{repair_info}}"
+    },
+    {
+      "type": "system:text",
+      "text": "{{tr:system.workshop.price}} {{price}}"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.workshop.confirm_note",
+      "style": "card_context"
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

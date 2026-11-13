@@ -11,6 +11,13 @@ import java.util.List;
  * Stable typed keys shared by workflows and platform implementations; no game classes are referenced.
  */
 public final class BuiltinTools {
+    public static final ToolRegistry.Type<ItemInspectInput, ItemInspectionOutput> ITEM_INSPECT = new ToolRegistry.Type<>("game.item_inspect", ItemInspectInput.CODEC, ItemInspectionOutput.CODEC.codec());
+    public static final ToolRegistry.Type<RepairQuoteInput, RepairQuoteOutput> REPAIR_QUOTE = new ToolRegistry.Type<>("game.repair.quote", RepairQuoteInput.CODEC, RepairQuoteOutput.CODEC.codec());
+    public static final ToolRegistry.Type<RepairConfirmInput, ItemInspectionOutput> REPAIR_CONFIRM = new ToolRegistry.Type<>("game.repair.confirm", RepairConfirmInput.CODEC, ItemInspectionOutput.CODEC.codec());
+    public static final ToolRegistry.Type<OnlineJobsInput, OnlineJobsOutput> ONLINE_JOBS = new ToolRegistry.Type<>("jobs.query", OnlineJobsInput.CODEC, OnlineJobsOutput.CODEC.codec());
+    public static final ToolRegistry.Type<JobStartInput, OnlineJobsOutput> JOB_START = new ToolRegistry.Type<>("jobs.start", JobStartInput.CODEC, OnlineJobsOutput.CODEC.codec());
+    public static final ToolRegistry.Type<JobClaimInput, RewardOutput> JOB_CLAIM = new ToolRegistry.Type<>("jobs.claim", JobClaimInput.CODEC, RewardOutput.CODEC.codec());
+    public static final ToolRegistry.Type<JobCancelInput, OnlineJobsOutput> JOB_CANCEL = new ToolRegistry.Type<>("jobs.cancel", JobCancelInput.CODEC, OnlineJobsOutput.CODEC.codec());
     public static final ToolRegistry.Type<DatabaseQueryInput, DatabaseQueryOutput> DATABASE_QUERY = new ToolRegistry.Type<>("database.query", DatabaseQueryInput.CODEC, DatabaseQueryOutput.CODEC);
     public static final ToolRegistry.Type<SearchProvider.Request, SearchProvider.Response> WEB_SEARCH = new ToolRegistry.Type<>("web.search", SearchProvider.Request.MAP_CODEC, SearchProvider.Response.CODEC);
     public static final ToolRegistry.Type<SearchProvider.FetchRequest, SearchProvider.Page> WEB_FETCH = new ToolRegistry.Type<>("web.fetch", SearchProvider.FetchRequest.MAP_CODEC, SearchProvider.Page.CODEC);

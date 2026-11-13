@@ -27,7 +27,7 @@
 
 ### 内置模块
 
-服务端类型包括 core、binding、usage、player、items、signin、inbox、shop、lottery、advancement、ftb_quests、web_search，命名空间均为 system。每类提供 CODEC / codec()，无参数类型使用 MapCodec.unit 单例；ServerModule.CODEC 从 SERVER_MODULE 按 type dispatch。
+服务端类型包括 core、binding、usage、player、items、workshop、online_jobs、signin、inbox、shop、lottery、advancement、ftb_quests、web_search，命名空间均为 system。每类提供 CODEC / codec()，无参数类型使用 MapCodec.unit 单例；ServerModule.CODEC 从 SERVER_MODULE 按 type dispatch。
 
 动态配置独立登记在 `system:system_module`，并通过 `SystemDataPackRegistries.modules(RegistryAccess)` 访问。内置动态条目采用同名 ID，扩展可给同一类型创建不同 ID 与参数；不能用静态 SERVER_MODULE 查询模块配置或取玩家可用条目。
 
@@ -48,9 +48,9 @@
 
 ### 卡片数据与动作载荷
 
-卡片类型共 31 个：`chat`、`text`、`selection`、`binding`、`shop_offer`、`shop_catalog`、`shop_quote`、`player`、`items`、`item_sources`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`、`quest_pin`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
+卡片类型共 34 个：`chat`、`text`、`selection`、`binding`、`shop_offer`、`shop_catalog`、`shop_quote`、`player`、`items`、`item_sources`、`item_inspection`、`repair_quote`、`online_jobs`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`、`quest_pin`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
 
-动作类型共 24 个：`free_chat`、`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`item_sources`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`、`reasoning`。
+动作类型共 31 个：`free_chat`、`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`item_sources`、`item_inspect`、`repair_quote`、`repair_confirm`、`online_jobs`、`job_start`、`job_claim`、`job_cancel`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`、`reasoning`。
 
 内置条目均以 `public static DeferredHolder` 暴露。卡片实现 `CardData`，动作实现 `AgentAction`，都直接创建和传递数据对象；各实现的 `codec()` 返回自己的已注册 MapCodec：
 
@@ -117,9 +117,10 @@ JSON 示例：`{"type":"system:item","item":"{{result_items.0}}"}`。完整字�
 | 签到奖励注册表 `system:signin_rewards` | `SystemDataPackRegistries`、`SystemResourceKeys.SIGNIN_REWARDS` | 服务端 SignInRewardEntry；模块 rewards 筛选 |
 | 商城商品注册表 `system:shop_offers` | `SystemDataPackRegistries`、`SystemResourceKeys.SHOP_OFFERS` | 服务端 ShopOfferEntry；模块 offers 筛选 |
 | 抽奖奖池注册表 `system:lottery_pools` | `SystemDataPackRegistries`、`SystemResourceKeys.LOTTERY_POOLS` | 服务端 LotteryPool；模块 pools 筛选 |
+| 在线作业注册表 `system:online_jobs` | `SystemDataPackRegistries`、`SystemResourceKeys.ONLINE_JOBS` | 服务端 OnlineJobEntry；模块 jobs 允许 ID/tag/混合数组，tag 路径 tags/system/online_jobs |
 | Saturn `SaturnResourceKeys.ENTITY_ACTION_TYPE` | `SystemEntityActions` | `system:add_module`、`system:remove_module` |
 | Saturn `SaturnResourceKeys.ENTITY_CONDITION_TYPE` | `SystemEntityConditions` | `system:has_module`、`system:has_system` |
-| Saturn `SaturnRegistries.DATA_STORAGE_TYPE` | `SystemDataStorages` | 模块权限、成就、Agent 日志、交易、收件箱、签到及常驻卡片的 DataStorage Codec；`DISPLAY_CARDS` 对应 system:display_cards |
+| Saturn `SaturnRegistries.DATA_STORAGE_TYPE` | `SystemDataStorages` | 模块权限、成就、Agent 日志、交易、收件箱、签到、在线作业及常驻卡片的 DataStorage Codec；`ONLINE_JOBS` 对应 system:online_jobs，`DISPLAY_CARDS` 对应 system:display_cards |
 | 原版 `Registries.SOUND_EVENT` | `SystemSoundEvents` | `system:notification` |
 | 客户端按键注册事件 | `SystemKeyMappings` | `CATEGORY`、`TOGGLE_INTERFACE`、`VOICE_INPUT`；使用 NeoForge 专用事件登记 |
 | Saturn HUD 登记表 | `SystemHudEntries` | `NOTIFICATIONS` / `DISPLAY_CARDS`；布局键 `system.notification` / `system.cards`，物理客户端登记一次，共用 AuiHudEntry 坐标桥接和 Saturn 编辑器 / 布局存储 |

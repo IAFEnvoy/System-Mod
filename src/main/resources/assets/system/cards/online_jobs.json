@@ -1,0 +1,125 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.ui.nav_online_jobs"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.jobs.note",
+      "style": "card_context"
+    },
+    {
+      "type": "system:flex",
+      "direction": "column",
+      "style": "card_column",
+      "when": "active",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{current_label}}",
+          "style": "card_title"
+        },
+        {
+          "type": "system:text",
+          "text": "{{current_status}} · {{current_time}}"
+        },
+        {
+          "type": "system:flex",
+          "source": "{{current_items}}",
+          "children": [
+            { "type": "system:item", "item": "{{current_items.*}}", "size": 32 }
+          ]
+        },
+        {
+          "type": "system:progress",
+          "value": "{{progress}}"
+        }
+      ]
+    },
+    {
+      "type": "system:text",
+      "translate": "system.jobs.empty",
+      "unless": "jobs",
+      "style": "card_context"
+    },
+    {
+      "type": "system:grid",
+      "source": "{{jobs}}",
+      "columns": 3,
+      "compact_columns": 2,
+      "max_row": 3,
+      "cell": 156,
+      "unless": "busy",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "label": "{{jobs.*.label}}",
+          "style": "offer_cell_content",
+          "children": [
+            {
+              "type": "system:flex",
+              "style": "offer_cell_items",
+              "source": "{{jobs.*.items}}",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{jobs.*.items.*}}",
+                  "size": 32
+                }
+              ]
+            },
+            {
+              "type": "system:text",
+              "text": "{{jobs.*.label}}",
+              "style": "offer_cell_label"
+            },
+            {
+              "type": "system:text",
+              "text": "{{jobs.*.duration}}",
+              "style": "card_context"
+            },
+            {
+              "type": "system:text",
+              "text": "{{jobs.*.description}}",
+              "style": "card_context"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.footer}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "when": "actions.*.visible",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

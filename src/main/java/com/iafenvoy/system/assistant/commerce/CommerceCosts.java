@@ -42,6 +42,10 @@ public final class CommerceCosts {
 
     public static Prepared prepare(List<Cost> costs, ServerPlayer player, PurchaseType type, Identifier source) {
         CostContext context = CostContext.of(player, "system:" + type.getSerializedName()).with("system:source", source);
+        return prepare(costs, player, context);
+    }
+
+    public static Prepared prepare(List<Cost> costs, ServerPlayer player, CostContext context) {
         CostPayment bill = CostPayment.of(context);
         AtomicBoolean started = new AtomicBoolean();
         AtomicBoolean uncertain = new AtomicBoolean();

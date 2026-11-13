@@ -1,0 +1,17 @@
+{
+  "order": 45,
+  "server": {
+    "type": "system:workshop",
+    "costs": [
+      {
+        "type": "saturn:item",
+        "items": [
+          "minecraft:emerald"
+        ],
+        "amount": 1
+      }
+    ]
+  },
+  "client": "system:workshop"
+}
+

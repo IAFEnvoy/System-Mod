@@ -33,7 +33,7 @@ side = "BOTH"
 [[dependencies.${mod_id}]]
 modId = "saturn"
 type = "required"
-versionRange = "[${saturn_version},)"
+versionRange = "[1.3,)"
 ordering = "AFTER"
 side = "BOTH"
 

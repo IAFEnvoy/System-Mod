@@ -31,7 +31,7 @@ public record ShopSystemModule(
         Optional<List<Either<ResourceKey<ShopOfferEntry>, TagKey<ShopOfferEntry>>>> offers) implements CatalogModule<ShopOfferEntry> {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop");
     public static final MapCodec<ShopSystemModule> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            RegistryCodecs.keyOrTagList(SystemResourceKeys.SHOP_OFFERS).optionalFieldOf("offers").forGetter(ShopSystemModule::offers)
+            RegistryCodecs.keyOrTagList(SystemResourceKeys.SHOP_OFFER).optionalFieldOf("offers").forGetter(ShopSystemModule::offers)
     ).apply(i, ShopSystemModule::new));
     public static final ModuleStorage<CommerceDataStorage> STORAGE = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "commerce"), CommerceDataStorage.class, CommerceDataStorage.CODEC, CommerceDataStorage::new);
 
@@ -41,7 +41,7 @@ public record ShopSystemModule(
 
     @Override
     public ResourceKey<Registry<ShopOfferEntry>> catalog() {
-        return SystemResourceKeys.SHOP_OFFERS;
+        return SystemResourceKeys.SHOP_OFFER;
     }
 
     @Override

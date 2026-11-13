@@ -1,0 +1,6 @@
+{
+  "name": "system.currency.coin",
+  "description": "system.currency.coin.description",
+  "icon": "minecraft:gold_nugget",
+  "order": 100
+}

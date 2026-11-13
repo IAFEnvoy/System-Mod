@@ -31,7 +31,7 @@ public record LotterySystemModule(
         Optional<List<Either<ResourceKey<LotteryPool>, TagKey<LotteryPool>>>> pools) implements CatalogModule<LotteryPool> {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery");
     public static final MapCodec<LotterySystemModule> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            RegistryCodecs.keyOrTagList(SystemResourceKeys.LOTTERY_POOLS).optionalFieldOf("pools").forGetter(LotterySystemModule::pools)
+            RegistryCodecs.keyOrTagList(SystemResourceKeys.LOTTERY_POOL).optionalFieldOf("pools").forGetter(LotterySystemModule::pools)
     ).apply(i, LotterySystemModule::new));
     public static final ModuleStorage<CommerceDataStorage> STORAGE = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "commerce"), CommerceDataStorage.class, CommerceDataStorage.CODEC, CommerceDataStorage::new);
 
@@ -41,7 +41,7 @@ public record LotterySystemModule(
 
     @Override
     public ResourceKey<Registry<LotteryPool>> catalog() {
-        return SystemResourceKeys.LOTTERY_POOLS;
+        return SystemResourceKeys.LOTTERY_POOL;
     }
 
     @Override

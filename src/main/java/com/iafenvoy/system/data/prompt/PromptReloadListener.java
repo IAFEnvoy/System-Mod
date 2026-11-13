@@ -19,8 +19,8 @@ import java.util.Map;
  * Retained with server resources; failed reloads cannot replace the active engine's prompt catalog.
  */
 public final class PromptReloadListener extends SimplePreparableReloadListener<SystemPrompts> {
-    public static final ListenerKey<PromptReloadListener> KEY = ListenerKey.create(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "prompts"));
-    private static final String DIRECTORY = "system/prompts";
+    public static final ListenerKey<PromptReloadListener> KEY = ListenerKey.create(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "prompt"));
+    private static final String DIRECTORY = "system/prompt";
     private SystemPrompts prompts;
 
     @Override

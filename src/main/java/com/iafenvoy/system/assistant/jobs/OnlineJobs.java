@@ -36,7 +36,7 @@ public final class OnlineJobs {
     public OnlineJobs(RegistryAccess registries, OnlineJobsSystemModule module) {
         this.registries = registries;
         this.module = module;
-        Registry<OnlineJobEntry> jobs = registries.lookupOrThrow(SystemResourceKeys.ONLINE_JOBS);
+        Registry<OnlineJobEntry> jobs = registries.lookupOrThrow(SystemResourceKeys.ONLINE_JOB);
         this.entries = jobs.listElements().filter(holder -> holder.value().enabled())
                 .map(PersistHolder::new).sorted(Comparator.<PersistHolder<OnlineJobEntry>>comparingInt(job -> job.value().order())
                         .reversed().thenComparing(PersistHolder::id)).toList();

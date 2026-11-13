@@ -386,7 +386,8 @@ public final class ModuleManager implements AutoCloseable {
         session.initialized.complete(false);
     }
 
-    private void flush(UUID player) {
+    /** Coalesce memory-only module mutations into worker-side persistence without blocking the game thread. */
+    public void flush(UUID player) {
         if (!this.flushing.add(player)) {
             // Never drop a later request: an in-flight flush may have read the cache before these changes.
             this.flushPending.add(player);

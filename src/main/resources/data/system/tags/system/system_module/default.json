@@ -4,6 +4,7 @@
     "system:usage",
     "system:player",
     "system:items",
+    "system:economy",
     "system:workshop",
     "system:online_jobs",
     "system:signin",

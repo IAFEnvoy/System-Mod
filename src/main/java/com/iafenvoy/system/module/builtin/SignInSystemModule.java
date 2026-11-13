@@ -31,7 +31,7 @@ public record SignInSystemModule(
         Optional<List<Either<ResourceKey<SignInRewardEntry>, TagKey<SignInRewardEntry>>>> rewards) implements CatalogModule<SignInRewardEntry> {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "signin");
     public static final MapCodec<SignInSystemModule> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            RegistryCodecs.keyOrTagList(SystemResourceKeys.SIGNIN_REWARDS).optionalFieldOf("rewards").forGetter(SignInSystemModule::rewards)
+            RegistryCodecs.keyOrTagList(SystemResourceKeys.SIGNIN_REWARD).optionalFieldOf("rewards").forGetter(SignInSystemModule::rewards)
     ).apply(i, SignInSystemModule::new));
     public static final ModuleStorage<SignInDataStorage> STORAGE = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "sign_in"), SignInDataStorage.class, SignInDataStorage.CODEC, SignInDataStorage::new);
 
@@ -41,7 +41,7 @@ public record SignInSystemModule(
 
     @Override
     public ResourceKey<Registry<SignInRewardEntry>> catalog() {
-        return SystemResourceKeys.SIGNIN_REWARDS;
+        return SystemResourceKeys.SIGNIN_REWARD;
     }
 
     @Override

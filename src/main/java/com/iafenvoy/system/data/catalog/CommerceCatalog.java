@@ -35,9 +35,9 @@ public record CommerceCatalog(String revision, List<Holder<SignInRewardEntry>> r
     public static CommerceCatalog create(RegistryAccess registries) {
         Comparator<Holder<?>> comparator = Comparator.comparing(HolderHelper::id);
         return new CommerceCatalog(UUID.randomUUID().toString(),
-                entries(registries.lookupOrThrow(SystemResourceKeys.SIGNIN_REWARDS), comparator),
-                entries(registries.lookupOrThrow(SystemResourceKeys.SHOP_OFFERS), comparator),
-                entries(registries.lookupOrThrow(SystemResourceKeys.LOTTERY_POOLS), comparator),
+                entries(registries.lookupOrThrow(SystemResourceKeys.SIGNIN_REWARD), comparator),
+                entries(registries.lookupOrThrow(SystemResourceKeys.SHOP_OFFER), comparator),
+                entries(registries.lookupOrThrow(SystemResourceKeys.LOTTERY_POOL), comparator),
                 registries);
     }
 

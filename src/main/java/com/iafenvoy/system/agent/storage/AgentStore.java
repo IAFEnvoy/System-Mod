@@ -4,6 +4,7 @@ import com.iafenvoy.system.data.store.PlayerData;
 import com.mojang.serialization.Codec;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -15,6 +16,9 @@ public interface AgentStore extends AutoCloseable {
     }
 
     <T> T read(UUID player, Function<PlayerData, T> query);
+
+    /** Read the last published in-memory snapshot without loading a file or waiting for a player's writer. */
+    <T> Optional<T> readLoaded(UUID player, Function<PlayerData, T> query);
 
     <T> T update(UUID player, Function<PlayerData, T> transaction);
 

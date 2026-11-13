@@ -123,6 +123,19 @@ public final class FileAgentStore implements AgentStore {
         return this.whileOpen(() -> this.readPlayer(player, query));
     }
 
+    @Override
+    public <T> Optional<T> readLoaded(UUID player, Function<PlayerData, T> query) {
+        if (!this.lifecycle.readLock().tryLock()) return Optional.empty();
+        try {
+            if (this.closed) return Optional.empty();
+            CachedPlayer cached = this.loaded.get(player);
+            // Writers replace the published version only after committing; callers always receive a detached copy.
+            return cached == null ? Optional.empty() : Optional.ofNullable(query.apply(cached.data.copy()));
+        } finally {
+            this.lifecycle.readLock().unlock();
+        }
+    }
+
     private ReentrantLock lock(UUID player) {
         return this.locks[(player.hashCode() & Integer.MAX_VALUE) % this.locks.length];
     }
@@ -354,7 +367,7 @@ public final class FileAgentStore implements AgentStore {
     }
 
     private static final class CachedPlayer {
-        private PlayerData data;
+        private volatile PlayerData data;
         private boolean dirty;
         private byte[] chatDigest;
 

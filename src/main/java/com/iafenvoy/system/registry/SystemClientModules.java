@@ -25,6 +25,7 @@ public final class SystemClientModules {
     public static final SpeechClientModule SPEECH = local("speech", new SpeechClientModule());
     public static final PlayerSystemClientModule PLAYER = register("player", new PlayerSystemClientModule());
     public static final ItemSystemClientModule ITEMS = register("items", new ItemSystemClientModule());
+    public static final EconomySystemClientModule ECONOMY = register("economy", new EconomySystemClientModule());
     public static final WorkshopSystemClientModule WORKSHOP = register("workshop", new WorkshopSystemClientModule());
     public static final OnlineJobsSystemClientModule ONLINE_JOBS = register("online_jobs", new OnlineJobsSystemClientModule());
     public static final SignInSystemClientModule SIGN_IN = register("signin", new SignInSystemClientModule());

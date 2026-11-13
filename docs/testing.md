@@ -168,7 +168,7 @@ AgentEngine 移除商城目录/报价、数据库、搜索和任务口播的业�
 
 ## 2026-10-31 目录注册表、tag 与模块可选项
 
-将签到奖励、商城商品和奖池登记为服务端专用的原生 system:signin_rewards / system:shop_offers / system:lottery_pools 数据包注册表；文件路径不变，删除 CatalogReloadListener 以及 AssistantServer 的目录监听器和逐 tick 刷新。CommerceCatalog 从 RegistryAccess 构建当前服务器的业务快照，条目禁用、原版 ItemStackTemplate 与 Saturn Cost 继续沿用。新增三张表各自的默认 tag、内置模块字段和商业示例包的追加 tag / 混合选择模块。
+将签到奖励、商城商品和奖池登记为服务端专用的原生 system:signin_reward / system:shop_offer / system:lottery_pool 数据包注册表（名称与目录已更新为现行单数形式），删除 CatalogReloadListener 以及 AssistantServer 的目录监听器和逐 tick 刷新。CommerceCatalog 从 RegistryAccess 构建当前服务器的业务快照，条目禁用、原版 ItemStackTemplate 与 Saturn Cost 继续沿用。新增三张表各自的默认 tag、内置模块字段和商业示例包的追加 tag / 混合选择模块。
 
 对实际依赖 Saturn 9349648 JAR 使用 javap 核对 keyOrTagList / matchesKeys / combineCodec，确认单值与数组格式、ResourceKey 编码不要求客户端持有服务端目录。阅读 MC 26.1.2.114 的 RegistryDataLoader、WorldLoader、MinecraftServer.reloadResources 和 TagLoader：Data Pack Registry 在世界加载时读取条目，普通 /reload 为现有注册表更新 tag，不重新读取条目。CatalogModule 使用 rewards / offers / pools 保存可选 ResourceKey/TagKey，同玩家已启用的同类配置取并集，所有业务入口统一读取 availableCatalog；成交前与实际支付前复核来源，成就固定奖励仍使用完整目录。修正同类型多个配置重复装配同一交易存储时被拒绝的问题。
 
@@ -524,7 +524,7 @@ TF-IDF 核心抽为 `LexicalIndex<T>`，服务端模块路由保留原领域别�
 
 执行 `compileJava testModClasses --console=plain`，主源码和开发源集编译通过；`testModClasses` 只编译开发源集。静态检查确认中英文各 399 个语言键且集合一致，10 份内置及示例商业目录 JSON 可解析，抽奖界面元素 ID 无重复且与 Java 引用一致，抽奖模块语言键齐全，`git diff --check` 通过。
 
-阅读代码确认：奖池从 `system/lottery_pools` 资源加载，使用 Codec 定义奖品、正整数权重及可选消耗；默认池消耗 1 个绿宝石，三个奖品权重为 60/30/10。浏览和预览接入模块注册表、指令与语义路由，单抽只接受独立结构化确认。商城与抽奖共用报价、支付和订单流程；确认绑定玩家、操作类型及目录版本，服务端选中奖励并保存快照，重复确认不会重新收费或抽样。支付前在游戏线程验证整个奖池的物品模板，待支付或结果未知时隐藏未结算奖品，成功后存入收件箱供领取。完整界面有抽奖入口，简约界面复用编号操作，结算口播只读奖品名称。
+阅读代码确认：奖池从 `system/lottery_pool` 资源加载，使用 Codec 定义奖品、正整数权重及可选消耗；默认池消耗 1 个绿宝石，三个奖品权重为 60/30/10。浏览和预览接入模块注册表、指令与语义路由，单抽只接受独立结构化确认。商城与抽奖共用报价、支付和订单流程；确认绑定玩家、操作类型及目录版本，服务端选中奖励并保存快照，重复确认不会重新收费或抽样。支付前在游戏线程验证整个奖池的物品模板，待支付或结果未知时隐藏未结算奖品，成功后存入收件箱供领取。完整界面有抽奖入口，简约界面复用编号操作，结算口播只读奖品名称。
 
 没有运行测试、启动 Minecraft、创建存档或调用外部 API；奖池重载、概率分布、实际扣款与交付、重复确认、重启恢复、两种界面交互和 TTS 尚未作运行验收。订单存档已改用 `Purchase.order`，没有旧 `Purchase.offer` 兼容逻辑；开发存档若无法解析，使用 `/system reset [玩家]` 后重新授予。
 

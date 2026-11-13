@@ -1,0 +1,13 @@
+{
+  "label": "system.jobs.gather_stone",
+  "description": "system.jobs.gather_stone.description",
+  "duration": 60,
+  "items": [
+    {
+      "id": "minecraft:cobblestone",
+      "count": 8
+    }
+  ],
+  "order": 20
+}
+

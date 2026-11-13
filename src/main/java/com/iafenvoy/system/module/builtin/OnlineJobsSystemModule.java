@@ -27,7 +27,7 @@ import java.util.Optional;
 public record OnlineJobsSystemModule(Optional<List<Either<ResourceKey<OnlineJobEntry>, TagKey<OnlineJobEntry>>>> jobs) implements CatalogModule<OnlineJobEntry> {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "online_jobs");
     public static final MapCodec<OnlineJobsSystemModule> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            RegistryCodecs.keyOrTagList(SystemResourceKeys.ONLINE_JOBS).optionalFieldOf("jobs").forGetter(OnlineJobsSystemModule::jobs)
+            RegistryCodecs.keyOrTagList(SystemResourceKeys.ONLINE_JOB).optionalFieldOf("jobs").forGetter(OnlineJobsSystemModule::jobs)
     ).apply(i, OnlineJobsSystemModule::new));
     public static final ModuleStorage<OnlineJobsDataStorage> STORAGE = new ModuleStorage<>(ID, ID, OnlineJobsDataStorage.class, OnlineJobsDataStorage.CODEC, OnlineJobsDataStorage::new);
 
@@ -37,7 +37,7 @@ public record OnlineJobsSystemModule(Optional<List<Either<ResourceKey<OnlineJobE
 
     @Override
     public ResourceKey<Registry<OnlineJobEntry>> catalog() {
-        return SystemResourceKeys.ONLINE_JOBS;
+        return SystemResourceKeys.ONLINE_JOB;
     }
 
     @Override

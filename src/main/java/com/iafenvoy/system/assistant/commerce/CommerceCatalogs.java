@@ -38,9 +38,9 @@ public final class CommerceCatalogs {
         List<CatalogModule<?>> modules = this.modules.entrySet().stream()
                 .filter(entry -> this.enabled.test(player, entry.getKey())).map(Map.Entry::getValue).toList();
         return new CommerceCatalog(this.catalog.revision(),
-                this.filter(this.catalog.rewards(), SystemResourceKeys.SIGNIN_REWARDS, modules),
-                this.filter(this.catalog.offers(), SystemResourceKeys.SHOP_OFFERS, modules),
-                this.filter(this.catalog.lotteries(), SystemResourceKeys.LOTTERY_POOLS, modules),
+                this.filter(this.catalog.rewards(), SystemResourceKeys.SIGNIN_REWARD, modules),
+                this.filter(this.catalog.offers(), SystemResourceKeys.SHOP_OFFER, modules),
+                this.filter(this.catalog.lotteries(), SystemResourceKeys.LOTTERY_POOL, modules),
                 this.catalog.registries());
     }
 

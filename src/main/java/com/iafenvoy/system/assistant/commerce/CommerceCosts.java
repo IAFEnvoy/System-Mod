@@ -16,8 +16,10 @@ import com.iafenvoy.saturn.util.matcher.builtin.TagEntry;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
+import com.iafenvoy.system.data.cost.CurrencyCost;
 import com.iafenvoy.system.data.output.ItemPreviewOutput;
 import com.iafenvoy.system.data.store.PurchaseType;
+import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -76,6 +78,10 @@ public final class CommerceCosts {
                     Item item
             ))
                 items.add(new ItemPreviewOutput(new ItemStackTemplate(item), number(Math.ceil(transaction.amount()))));
+            else if (transaction.target() instanceof CurrencyCost.Target target)
+                descriptions.add(Component.translatable("system.economy.price",
+                        player.level().registryAccess().lookupOrThrow(SystemResourceKeys.CURRENCY).getValue(target.currency()).name(),
+                        number(transaction.amount())));
             else if (transaction.target() instanceof CostTarget.Account target)
                 descriptions.add(Component.translatableWithFallback(DefinitionText.key(target.resource()), target.resource().unwrapKey().orElseThrow().identifier().toString()).append(" × " + number(transaction.amount())));
             else if (transaction.target() instanceof CostTarget.Items target) {

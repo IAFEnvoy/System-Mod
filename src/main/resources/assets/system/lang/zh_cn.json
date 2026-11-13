@@ -665,5 +665,16 @@
   "system.error.empty_hand": "主手没有物品，请先拿起要操作的物品。",
   "system.error.item_not_damaged": "请在主手放置一件有耐久损耗的装备。",
   "system.error.job_active": "当前还有未领取的作业，请先完成并领取，或取消未完成的作业。",
-  "system.error.job_not_ready": "作业尚未完成，请稍后刷新进度。"
+  "system.error.job_not_ready": "作业尚未完成，请稍后刷新进度。",
+  "system.ui.nav_economy": "钱包",
+  "system.result.balance": "当前货币余额",
+  "system.action.balance_refresh": "刷新余额",
+  "system.economy.empty": "尚未定义任何币种。",
+  "system.economy.price": "%s × %s",
+  "system.currency.coin": "系统币",
+  "system.currency.coin.description": "系统内流通的货币。",
+  "system.command.economy.balance": "%s · %s余额：%s",
+  "system.error.unknown_currency": "该币种尚未定义。",
+  "system.error.insufficient_balance": "余额不足，本次未扣款。",
+  "system.error.balance_overflow": "操作后的余额超出了整数可表示的范围。"
 }

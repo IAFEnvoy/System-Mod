@@ -14,6 +14,8 @@ interaction. Local commands and intent matching work without AI; connect a model
   manually, and pin quests to persistent cards. Includes completion/unlock notifications and local guide lookup.
 - **Check-ins, shop and lottery:** AI selects daily rewards from approved pools. Shops and lotteries use Saturn Costs,
   with rewards delivered to the inbox. Content is configured through data packs.
+- **Currency wallets:** define multiple currencies through data packs, keep per-player balances and pay through Saturn
+  Costs. Includes administrator commands and entity actions/conditions. See [economy](docs/economy.md).
 - **Inspection, repairs and online jobs:** inspect held-item durability and enchantments, confirm a priced repair,
   or run a data-driven gathering/production job. Progress pauses offline; claim output manually through the inbox.
   All three support Offline mode. See [inspection](docs/item-inspection.md), [workshop](docs/workshop.md) and [jobs](docs/online-jobs.md).

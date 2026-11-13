@@ -87,9 +87,9 @@ public static void moduleContext(ModuleContextEvent event) {
 
 不同配置可以提供相同动作 ID 的同类工作流。ModuleRegistry 按配置实例 ID 保存候选，命令/模型/语义目录只声明一次，执行时选择该玩家已启用的候选与对应工具。入口 Codec、工作流类型、版本、交互/事件属性、工具契约和只读权限必须一致；参数可影响执行和预算，不应让同一动作类型声明不同的路由契约。同一玩家同时启用多个候选时按模块实例 ID 排序选择第一个；数据包通常应让同类变体的条件互斥。流程选中后保留 owner，移除该配置会取消其在途和排队操作，不会中途换用另一份参数。
 
-三类目录的可选项另由 CatalogModule 声明，按玩家启用的同类配置取并集，不仅限于执行工作流时选中的第一份配置。对应注册表为 system:signin_rewards、system:shop_offers、system:lottery_pools；字段支持 ID、tag 或混合数组，复用 Saturn keyOrTagList，省略为全表、空数组为空，内置模块显式使用对应 #system:default。`assistant.commerce.CommerceCatalogs.available(player)` 是统一的玩家目录入口，通过 ModuleContext 注入工作流和交易服务，列表、模型候选、状态、报价与扣款共用筛选。详见[目录选项](datapacks.md#模块目录可选项)。
+三类目录的可选项另由 CatalogModule 声明，按玩家启用的同类配置取并集，不仅限于执行工作流时选中的第一份配置。对应注册表为 system:signin_reward、system:shop_offer、system:lottery_pool；字段支持 ID、tag 或混合数组，复用 Saturn keyOrTagList，省略为全表、空数组为空，内置模块显式使用对应 #system:default。`assistant.commerce.CommerceCatalogs.available(player)` 是统一的玩家目录入口，通过 ModuleContext 注入工作流和交易服务，列表、模型候选、状态、报价与扣款共用筛选。详见[目录选项](datapacks.md#模块目录可选项)。
 
-在线作业同样实现 CatalogModule，但目录由所选工作流配置的 jobs 筛选，不进入交易目录的并集。它使用独立的 system:online_jobs 数据包注册表和共用的玩家作业账本，详见[在线作业](online-jobs.md)。
+在线作业同样实现 CatalogModule，但目录由所选工作流配置的 jobs 筛选，不进入交易目录的并集。它使用独立的 system:online_job 数据包注册表和共用的玩家作业账本，详见[在线作业](online-jobs.md)。
 
 每个服务端实现类型的游戏指令只装配一次。SystemCommand 只创建 `/system` 根节点、收集 SharedModule.serverCommands，再连接 Agent 通用指令。绑定、用量和核心模块分别负责 grant/revoke/reset、usage 与打开界面/ask/routing/module 管理。补全和模块管理从当前世界的 system_module 注册表读取 ID。
 

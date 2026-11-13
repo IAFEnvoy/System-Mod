@@ -16,6 +16,7 @@
 | [主手物品鉴定](item-inspection.md) | 实际物品、耐久与附魔快照，获取来源入口 |
 | [装备工坊](workshop.md) | 主手装备报价、Saturn Cost 付款与完整维修 |
 | [在线作业](online-jobs.md) | 数据驱动生产表、在线进度、暂停与收件箱领取 |
+| [系统币与多币种钱包](economy.md) | 币种定义、余额、管理员指令、Saturn Cost、实体 action/condition |
 | [物品来源卡片](feature-modules.md#物品来源查询) | 本地配方 / 掉落 / 标签查询、材料格与产物图标、候选 tooltip、独立翻页及覆盖范围 |
 | [FTB Quests 跨版本修复记录](ftb-quests-porting.md) | 1.21.1 标题 / 勾选礼包 / 领奖修复，以及待同步到 26.1.2 的入口与 API 差异 |
 | [FTB 本地说明书检索](quest-guides.md) | 勾选说明任务收录、纯 Java 稀疏向量索引、查询入口、可见性与存档缓存 |

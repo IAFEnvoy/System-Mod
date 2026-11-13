@@ -17,6 +17,7 @@ public final class SystemMod {
         SystemRequestTypes.REGISTRY.register(bus);
         SystemResponseTypes.REGISTRY.register(bus);
         SystemDataStorages.REGISTRY.register(bus);
+        SystemCosts.REGISTRY.register(bus);
         SystemEntityActions.REGISTRY.register(bus);
         SystemEntityConditions.REGISTRY.register(bus);
         SystemServerModules.REGISTRY.register(bus);

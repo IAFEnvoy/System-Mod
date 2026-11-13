@@ -183,6 +183,14 @@ public final class AgentEngine implements AutoCloseable {
             }
 
             @Override
+            public <T> Optional<T> readLoaded(UUID requested, Function<PlayerData, T> query) {
+                return AgentEngine.this.store.readLoaded(requested, data -> {
+                    this.check(requested);
+                    return query.apply(data);
+                });
+            }
+
+            @Override
             public <T> T update(UUID requested, Function<PlayerData, T> transaction) {
                 return AgentEngine.this.store.update(requested, data -> {
                     this.check(requested);

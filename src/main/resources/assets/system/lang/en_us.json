@@ -665,5 +665,16 @@
   "system.error.empty_hand": "Your main hand is empty. Hold the item you want to use.",
   "system.error.item_not_damaged": "Hold one damaged, repairable item in your main hand.",
   "system.error.job_active": "You already have an unclaimed job. Complete and claim it, or cancel it while unfinished.",
-  "system.error.job_not_ready": "This job is not complete. Refresh its progress later."
+  "system.error.job_not_ready": "This job is not complete. Refresh its progress later.",
+  "system.ui.nav_economy": "Wallet",
+  "system.result.balance": "Your currency balances",
+  "system.action.balance_refresh": "Refresh balances",
+  "system.economy.empty": "No currencies are defined.",
+  "system.economy.price": "%s × %s",
+  "system.currency.coin": "System Coin",
+  "system.currency.coin.description": "A currency used by the system.",
+  "system.command.economy.balance": "%s · %s balance: %s",
+  "system.error.unknown_currency": "This currency is not defined.",
+  "system.error.insufficient_balance": "Insufficient balance. The amount was not deducted.",
+  "system.error.balance_overflow": "The resulting balance exceeds the supported integer range."
 }

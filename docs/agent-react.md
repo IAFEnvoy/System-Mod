@@ -64,7 +64,7 @@
 
 重复动作不重新执行工具，转入最终整理。已有证据时，可恢复模型或搜索错误最多转入一次剩余额度内的整理；授权和取消错误直接终止。轮数、模型、Token、工具或时间预算不会为补偿自动增加，也不自动重试收费请求。搜索保留已获取来源；普通分析整理失败时保留已获得的卡片结果并提示分析未完成，不把工具 JSON 当成玩家回答。
 
-提示词在 `data/system/system/prompts/react.txt` 和 `web_search.txt`，通过既有 txt reload listener 和 `/reload` 重载。每次模型请求仍为 `system` 与 `user` JSON，观察结果显式放入输入；不使用供应商原生 tool_calls，不保存模型的私有推理文本。
+提示词在 `data/system/system/prompt/react.txt` 和 `web_search.txt`，通过既有 txt reload listener 和 `/reload` 重载。每次模型请求仍为 `system` 与 `user` JSON，观察结果显式放入输入；不使用供应商原生 tool_calls，不保存模型的私有推理文本。
 
 本次校验为编译、资源和静态检查；未启动游戏，也未请求真实模型或搜索 API。
 

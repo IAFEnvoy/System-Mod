@@ -11,6 +11,7 @@ import java.util.List;
  * Stable typed keys shared by workflows and platform implementations; no game classes are referenced.
  */
 public final class BuiltinTools {
+    public static final ToolRegistry.Type<BalanceInput, WalletOutput> BALANCE = new ToolRegistry.Type<>("economy.balance", BalanceInput.CODEC, WalletOutput.CODEC.codec());
     public static final ToolRegistry.Type<ItemInspectInput, ItemInspectionOutput> ITEM_INSPECT = new ToolRegistry.Type<>("game.item_inspect", ItemInspectInput.CODEC, ItemInspectionOutput.CODEC.codec());
     public static final ToolRegistry.Type<RepairQuoteInput, RepairQuoteOutput> REPAIR_QUOTE = new ToolRegistry.Type<>("game.repair.quote", RepairQuoteInput.CODEC, RepairQuoteOutput.CODEC.codec());
     public static final ToolRegistry.Type<RepairConfirmInput, ItemInspectionOutput> REPAIR_CONFIRM = new ToolRegistry.Type<>("game.repair.confirm", RepairConfirmInput.CODEC, ItemInspectionOutput.CODEC.codec());

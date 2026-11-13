@@ -1,5 +1,7 @@
 # 扩展配置
 
+[系统币经济](economy.md)新增 `system:currency` 原生数据包注册表，并提供多币种钱包、`system:currency` 费用/条件和 `system:add_currency` 实体动作；使用格式与字段见专页。
+
 新增的本地玩法定义见[装备工坊](workshop.md)和[在线作业](online-jobs.md)。工坊在模块 server 内配置 Saturn Cost；作业使用独立原生数据包注册表与 tag，`jobs` 可选项支持 ID/tag/混合数组。二者均有同名内置模块，并加入默认模块 tag。[物品鉴定](item-inspection.md)属于已有 items 模块。
 
 旧的 `SystemFunction` 执行机制已移除。执行预算、模型连接、本地路由和成就规则分别来自服务端 `config/system/` 中的 `system-agent.json`、`system-model.json`、`system-semantic.json` 和 `system-advancements.json`；系统名称与介绍使用下述新的系统定义注册表，签到奖励池、商城目录、抽奖奖池和模型提示词仍有独立的数据包入口。客户端不能提供价格、商品内容、抽奖权重或触发规则。
@@ -31,7 +33,7 @@
 }
 ```
 
-`personality_prompt` 是可选的提示词 Identifier，使用 lenientOptionalFieldOf 读取；省略或字段无效时不附加人格。上例对应 `data/example/system/prompts/personality/sign_in.txt`，例如：
+`personality_prompt` 是可选的提示词 Identifier，使用 lenientOptionalFieldOf 读取；省略或字段无效时不附加人格。上例对应 `data/example/system/prompt/personality/sign_in.txt`，例如：
 
 ```text
 You are the Host's daily supply system: calm, practical and attentive.
@@ -176,19 +178,19 @@ tag 来自动态模块配置注册表 `system:system_module`，成员为模块�
 
 ## 提示词模板
 
-模型提示词使用 UTF-8 `.txt` 文件，支持 UTF-8 BOM，不经过 JSON 注册表。服务端 `PromptReloadListener` 在启动和 `/reload` 时扫描 `data/<namespace>/system/prompts/<path>.txt`，模板 ID 为 `<namespace>:<path>`。JAR 内自带以下默认模板；在数据包中放置同路径文件即可按数据包优先级整份覆盖，不必复制另一份未修改的模板：
+模型提示词使用 UTF-8 `.txt` 文件，支持 UTF-8 BOM，不经过 JSON 注册表。服务端 `PromptReloadListener` 在启动和 `/reload` 时扫描 `data/<namespace>/system/prompt/<path>.txt`，模板 ID 为 `<namespace>:<path>`。JAR 内自带以下默认模板；在数据包中放置同路径文件即可按数据包优先级整份覆盖，不必复制另一份未修改的模板：
 
 | 数据包文件 | 模板 ID | 可用占位符 |
 | --- | --- | --- |
-| `data/system/system/prompts/routing.txt` | `system:routing` | `{{player_language}}`、`{{capabilities}}` |
-| `data/system/system/prompts/web_search.txt` | `system:web_search` | `{{player_language}}` |
-| `data/system/system/prompts/knowledge_answer.txt` | `system:knowledge_answer` | `{{player_language}}` |
-| `data/system/system/prompts/sign_in.txt` | `system:sign_in` | `{{player_language}}` |
-| `data/system/system/prompts/quest_narration.txt` | `system:quest_narration` | `{{player_language}}` |
-| `data/system/system/prompts/quest_background.txt` | `system:quest_background` | `{{player_language}}` |
-| `data/system/system/prompts/react.txt` | `system:react` | `{{player_language}}` |
-| `data/system/system/prompts/free_chat.txt` | `system:free_chat` | `{{player_language}}` |
-| `data/system/system/prompts/personality/default.txt` | `system:personality/default` | `{{player_language}}` |
+| `data/system/system/prompt/routing.txt` | `system:routing` | `{{player_language}}`、`{{capabilities}}` |
+| `data/system/system/prompt/web_search.txt` | `system:web_search` | `{{player_language}}` |
+| `data/system/system/prompt/knowledge_answer.txt` | `system:knowledge_answer` | `{{player_language}}` |
+| `data/system/system/prompt/sign_in.txt` | `system:sign_in` | `{{player_language}}` |
+| `data/system/system/prompt/quest_narration.txt` | `system:quest_narration` | `{{player_language}}` |
+| `data/system/system/prompt/quest_background.txt` | `system:quest_background` | `{{player_language}}` |
+| `data/system/system/prompt/react.txt` | `system:react` | `{{player_language}}` |
+| `data/system/system/prompt/free_chat.txt` | `system:free_chat` | `{{player_language}}` |
+| `data/system/system/prompt/personality/default.txt` | `system:personality/default` | `{{player_language}}` |
 
 `{{player_language}}` 由执行上下文自动提供，例如 `zh_cn`、`en_us`，来源为 MC 同步的玩家语言，模块不能通过同名参数覆盖它。`{{capabilities}}` 由路由器传入当前已注册的交互模块 JSON，包含说明和输入 schema；路由模板必须保留这个占位符。签到的玩家快照、候选奖励和日期仍通过用户消息的结构化 JSON 传入，不内联成系统指令。
 
@@ -196,11 +198,11 @@ tag 来自动态模块配置注册表 `system:system_module`，成员为模块�
 
 模板数量和资源文件大小不设额外硬上限；实际模型请求仍受模块的输入和 Token 预算约束。成功安装服务器资源后，在下一服务端 tick 发布不可变模板快照；失败时继续使用之前的快照，不发布半份模板。已经开始执行的任务保持原版本，新任务读取新版本；精确意图缓存的键也包含版本，旧任务的模型决策不会被新版模板复用。移除覆盖文件后恢复 JAR 内默认模板，无需复制到 `config`。
 
-扩展模块可添加其他命名空间或子目录，例如 `data/example/system/prompts/notice.txt`，然后使用 `context.prompt("example:notice", Map.of("event_name", name))` 渲染，再将结果传给原来的 `context.model(...)`。扩展占位符由模块提供，缺失变量在请求模型前报错；提示词文件本身不会自动注册模块或获得工具权限。预算、奖励候选校验、玩家隔离与支付确认仍由 Java 代码强制执行。
+扩展模块可添加其他命名空间或子目录，例如 `data/example/system/prompt/notice.txt`，然后使用 `context.prompt("example:notice", Map.of("event_name", name))` 渲染，再将结果传给原来的 `context.model(...)`。扩展占位符由模块提供，缺失变量在请求模型前报错；提示词文件本身不会自动注册模块或获得工具权限。预算、奖励候选校验、玩家隔离与支付确认仍由 Java 代码强制执行。
 
 ## 奖励目录
 
-奖励、商品和奖池直接使用 NeoForge Data Pack Registry，由原版读取条目和 tag，不再使用自定义目录 reload listener。三张表仅在服务端加载，不向客户端同步完整目录与 Cost；客户端只接收业务结果和报价快照。条目 ID 来自注册表键，正文包含 `label`（纯文本字符串或 `Component`）和 `items` 列表；商品另有 Saturn `costs` 列表。产出物品直接使用原版 `ItemStackTemplate.CODEC`，包含注册 ID、可选的 `count`（默认 1，原版范围 1～99）及 `components`。签到奖励和商品产出每包为 1～36 项，与交付时主背包预留空位的规则一致。注册表加载时只读取模板，不构建 `ItemStack`；实际扣款前或交付时才调用 `create()`，由原版校验最终组件及产出的实际堆叠上限。支付定义使用 Saturn `Cost.LIST_CODEC`，数量由 `amount` 提供，不受产出模板的堆叠数量限制。
+奖励、商品和奖池直接使用 NeoForge Data Pack Registry，由原版读取条目和 tag，不再使用自定义目录 reload listener。三张表仅在服务端加载，不向客户端同步完整目录与 Cost；客户端只接收业务结果和报价快照。条目 ID 来自注册表键，正文包含 `label`（翻译键字符串或 `Component`）和 `items` 列表；商品另有 Saturn `costs` 列表。产出物品直接使用原版 `ItemStackTemplate.CODEC`，包含注册 ID、可选的 `count`（默认 1，原版范围 1～99）及 `components`。签到奖励和商品产出每包为 1～36 项，与交付时主背包预留空位的规则一致。注册表加载时只读取模板，不构建 `ItemStack`；实际扣款前或交付时才调用 `create()`，由原版校验最终组件及产出的实际堆叠上限。支付定义使用 Saturn `Cost.LIST_CODEC`，数量由 `amount` 提供，不受产出模板的堆叠数量限制。
 
 AI 只返回候选奖励 ID，不能修改条目数量。入账保存完整奖励快照，修改目录不会改写已经获得的权益。正常签到必须成功调用 AI；成就固定奖励不受此要求影响。
 
@@ -210,9 +212,9 @@ AI 只返回候选奖励 ID，不能修改条目数量。入账保存完整奖�
 
 | 注册表 | 文件路径 | tag 文件路径 |
 | --- | --- | --- |
-| `system:signin_rewards` | `data/<namespace>/system/signin_rewards/<path>.json` | `data/<namespace>/tags/system/signin_rewards/<path>.json` |
-| `system:shop_offers` | `data/<namespace>/system/shop_offers/<path>.json` | `data/<namespace>/tags/system/shop_offers/<path>.json` |
-| `system:lottery_pools` | `data/<namespace>/system/lottery_pools/<path>.json` | `data/<namespace>/tags/system/lottery_pools/<path>.json` |
+| `system:signin_reward` | `data/<namespace>/system/signin_reward/<path>.json` | `data/<namespace>/tags/system/signin_reward/<path>.json` |
+| `system:shop_offer` | `data/<namespace>/system/shop_offer/<path>.json` | `data/<namespace>/tags/system/shop_offer/<path>.json` |
+| `system:lottery_pool` | `data/<namespace>/system/lottery_pool/<path>.json` | `data/<namespace>/tags/system/lottery_pool/<path>.json` |
 
 三个目录的所有有效资源按条目 ID 汇总：不同路径会新增条目，同路径按数据包优先级覆盖。JAR 内置奖励为 `system:food`、`system:mining`、`system:building`，商品为 `system:torch_bundle`，奖池为 `system:supplies`，默认内容和自定义内容使用同一加载流程。`{"enabled":false}` 可以覆盖并禁用单个条目；需要空目录时，禁用该类所有有效条目，或通过数据包过滤移除资源。移除覆盖文件会恢复下层数据包的同路径条目；若最终没有有效资源则保持空目录，不从配置补回。奖励包、商品、奖池及奖品总数和资源文件大小不设额外硬上限；每个奖励包内产出使用上述 1～36 项限制，付款材料列表不设额外项数上限。
 
@@ -224,9 +226,9 @@ tag 使用原版 `values` / `replace`、嵌套 `#tag`、可选成员 `{ "id": ".
 
 | 模块类型 | 字段 | 引用注册表 |
 | --- | --- | --- |
-| `system:signin` | `rewards` | `system:signin_rewards` |
-| `system:shop` | `offers` | `system:shop_offers` |
-| `system:lottery` | `pools` | `system:lottery_pools` |
+| `system:signin` | `rewards` | `system:signin_reward` |
+| `system:shop` | `offers` | `system:shop_offer` |
+| `system:lottery` | `pools` | `system:lottery_pool` |
 
 ```json
 {
@@ -240,7 +242,7 @@ tag 使用原版 `values` / `replace`、嵌套 `#tag`、可选成员 `{ "id": ".
 
 单条可简写为 `"offers": "system:torch_bundle"` 或 `"offers": "#example:starter"`；签到和抽奖分别替换为 `rewards` / `pools`。省略字段表示允许该表全部有效条目，`[]` 表示不允许任何条目。未知 ID、空 / 未定义 tag 和已禁用条目不会回退为全表；重复 ID 或重叠 tag 只显示一次。条目按 ID 排序，同一玩家启用多个同类型模块时，合并各模块允许的集合；没有启用对应模块时集合为空。
 
-例如上面的商城 tag 定义在 `data/example/tags/system/shop_offers/starter.json`：
+例如上面的商城 tag 定义在 `data/example/tags/system/shop_offer/starter.json`：
 
 ```json
 {
@@ -297,13 +299,15 @@ tag 使用原版 `values` / `replace`、嵌套 `#tag`、可选成员 `{ "id": ".
 
 Saturn 逐项模拟后按列表顺序扣款，不合并重复或重叠的需求。因此同一种材料 / 资源尽量合并成一条 Cost，避免多个独立费用共享同一份余额导致部分扣款。若真实扣款失败或抛出异常，System 将订单标为 `PAYMENT_UNKNOWN` 并锁住奖励，不自动重试或退款，需管理员核对；不保证跨多个 Cost 的原子回滚。
 
-`label` 非空，可写纯文本字符串或 `Component`，后者在客户端按当前语言解析，例如 `{"translate":"example.shop.torch"}`；纯文本标签仍按字符串编码，旧数据包无需改动。服务端的关键词搜索和路由摘要只取 `label.getString()`，没有默认语言的资源翻译时会得到键名，建议组件同时写 `fallback`。无效物品 ID、不在原版范围内的数量、无法解析的组件、产出列表不在 1～36 项范围内或缺失价格都会由注册表 Codec 报错，拒绝加载该数据包注册表。依赖最终物品组件的校验留到运行时；商品产出无法创建时会在扣款前失败，奖励无法创建时保留为待领取。未知字段遵循原版 Codec 行为忽略。目录版本按服务端实例生成，旧会话报价不跨重启；正在推理的签到决策提交前仍校验版本及当前候选。已入账的签到/商城奖励、订单和当日唯一标记均保留。
+`label` 非空，字符串直接作为翻译键，例如 `"label": "example.shop.torch"`，由客户端按当前语言解析。币种的 `name` / `description`、在线作业的 `label` / `description`、签到和商品的 `label`、奖池及嵌套奖励的 `label` 统一使用 Saturn `MiscCodecs.TRANSLATABLE_COMPONENT`。需要显式字面量或样式时仍可写原版 Component 对象，例如 `{"text":"火把补给"}`；找不到翻译时，字符串显示原值。服务端的关键词搜索和路由摘要只取 `label.getString()`，未加载对应翻译时会得到键名。
+
+无效物品 ID、不在原版范围内的数量、无法解析的组件、产出列表不在 1～36 项范围内或缺失价格都会由注册表 Codec 报错，拒绝加载该数据包注册表。依赖最终物品组件的校验留到运行时；商品产出无法创建时会在扣款前失败，奖励无法创建时保留为待领取。未知字段遵循原版 Codec 行为忽略。目录版本按服务端实例生成，旧会话报价不跨重启；正在推理的签到决策提交前仍校验版本及当前候选。已入账的签到/商城奖励、订单和当日唯一标记均保留。
 
 成就 `rewardId` 引用当前奖励池中的完整资源 ID，例如 `system:mining`。
 
 ## 抽奖奖池
 
-奖池使用原生 `system:lottery_pools` 数据包注册表，奖池 ID 来自 `data/<namespace>/system/lottery_pools/<path>.json` 的路径。默认 `system:supplies` 消耗 1 个绿宝石，奖品分别为 16 个火把（60%）、8 个面包（30%）、4 个铁锭（10%）；可覆盖同路径文件或用 `{"enabled":false}` 禁用。可复制的示例在 [supplies.json](../examples/commerce-pack/data/example/system/lottery_pools/supplies.json)。
+奖池使用原生 `system:lottery_pool` 数据包注册表，奖池 ID 来自 `data/<namespace>/system/lottery_pool/<path>.json` 的路径。默认 `system:supplies` 消耗 1 个绿宝石，奖品分别为 16 个火把（60%）、8 个面包（30%）、4 个铁锭（10%）；可覆盖同路径文件或用 `{"enabled":false}` 禁用。可复制的示例在 [supplies.json](../examples/commerce-pack/data/example/system/lottery_pool/supplies.json)。
 
 ```json
 {
@@ -332,7 +336,7 @@ Saturn 逐项模拟后按列表顺序扣款，不合并重复或重叠的需求�
 }
 ```
 
-`label` 非空，字符串与 `Component` 均可，奖池内每个 `reward.label` 同样如此；启用的奖池至少有一项 `entries`。`weight` 默认为 1，必须为正整数；单项概率等于该项权重除以奖池总权重，上例为 90% 与 10%。每次独立抽取一个完整奖励包，没有保底、多连抽或额外 AI 调用。`reward` 复用奖励 Codec：`id` 为 `Identifier`，`items` 为 1～36 项原版 `ItemStackTemplate`；奖品内联定义，不依赖签到奖励池。默认和示例均只引用必装的原版物品。
+`label` 非空，字符串直接作为翻译键，也支持原版 `Component` 对象，奖池内每个 `reward.label` 同样如此；启用的奖池至少有一项 `entries`。`weight` 默认为 1，必须为正整数；单项概率等于该项权重除以奖池总权重，上例为 90% 与 10%。每次独立抽取一个完整奖励包，没有保底、多连抽或额外 AI 调用。`reward` 复用奖励 Codec：`id` 为 `Identifier`，`items` 为 1～36 项原版 `ItemStackTemplate`；奖品内联定义，不依赖签到奖励池。默认和示例均只引用必装的原版物品。
 
 `costs` 为每次单抽的消耗，使用与商城相同的 Saturn `Cost.LIST_CODEC`，支持物品、资源和扩展费用。省略或设为 `[]` 表示免费，免费奖池可重复抽取。无法完成 Cost 定价的奖池可查看失败原因，不提供确认按钮；余额不足在确认时拒绝支付。旧的 `price` / `ITEMS` / `SYSTEM_COIN` 格式已移除，请按新格式重写，模组尚未发布，不提供旧数据迁移。
 

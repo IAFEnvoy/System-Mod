@@ -2,6 +2,8 @@
 
 所有正式注册表的键集中在 [`SystemResourceKeys`](../src/main/java/com/iafenvoy/system/registry/SystemResourceKeys.java)，实例集中在 [`SystemRegistries`](../src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)。代码定义通过 NeoForge `NewRegistryEvent` 加入内置根注册表，通过 `DeferredRegister` 登记条目，由模组加载流程统一冻结。协议类型与卡片节点使用正式注册表；ASR / TTS 使用独立的普通工厂 Map，见下文。
 
+注册表 ID 与公开键字段统一使用单数，数据包定义和 tag 目录沿用注册表路径，例如 `system:shop_offer` 对应 `system/shop_offer/` 与 `tags/system/shop_offer/`。
+
 ## 客户端模块绑定缓存
 
 公开入口为 `module.client.ClientModuleCaches.BINDINGS` 和 `COMMAND`。`ClientModuleBindingsCache` 直接保存 Workspace 列表与本地卡片动作 Map；`ClientCommandCache` 直接保存命令声明和编译后的树。SystemClientMod 在客户端构造阶段调用 `ClientModuleCaches.init()`，提前创建缓存，不提前读取模块注册表。
@@ -27,7 +29,7 @@
 
 ### 内置模块
 
-服务端类型包括 core、binding、usage、player、items、workshop、online_jobs、signin、inbox、shop、lottery、advancement、ftb_quests、web_search，命名空间均为 system。每类提供 CODEC / codec()，无参数类型使用 MapCodec.unit 单例；ServerModule.CODEC 从 SERVER_MODULE 按 type dispatch。
+服务端类型包括 core、binding、usage、player、items、economy、workshop、online_jobs、signin、inbox、shop、lottery、advancement、ftb_quests、web_search，命名空间均为 system。每类提供 CODEC / codec()，无参数类型使用 MapCodec.unit 单例；ServerModule.CODEC 从 SERVER_MODULE 按 type dispatch。
 
 动态配置独立登记在 `system:system_module`，并通过 `SystemDataPackRegistries.modules(RegistryAccess)` 访问。内置动态条目采用同名 ID，扩展可给同一类型创建不同 ID 与参数；不能用静态 SERVER_MODULE 查询模块配置或取玩家可用条目。
 
@@ -48,9 +50,9 @@
 
 ### 卡片数据与动作载荷
 
-卡片类型共 34 个：`chat`、`text`、`selection`、`binding`、`shop_offer`、`shop_catalog`、`shop_quote`、`player`、`items`、`item_sources`、`item_inspection`、`repair_quote`、`online_jobs`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`、`quest_pin`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
+卡片类型共 35 个：`chat`、`text`、`selection`、`binding`、`shop_offer`、`shop_catalog`、`shop_quote`、`player`、`items`、`item_sources`、`item_inspection`、`repair_quote`、`online_jobs`、`wallet`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`、`quest_pin`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
 
-动作类型共 31 个：`free_chat`、`help`、`player_query`、`inbox`、`sign_in`、`item_query`、`item_sources`、`item_inspect`、`repair_quote`、`repair_confirm`、`online_jobs`、`job_start`、`job_claim`、`job_cancel`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`、`reasoning`。
+动作类型共 32 个：`free_chat`、`help`、`player_query`、`inbox`、`balance`、`sign_in`、`item_query`、`item_sources`、`item_inspect`、`repair_quote`、`repair_confirm`、`online_jobs`、`job_start`、`job_claim`、`job_cancel`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`、`reasoning`。
 
 内置条目均以 `public static DeferredHolder` 暴露。卡片实现 `CardData`，动作实现 `AgentAction`，都直接创建和传递数据对象；各实现的 `codec()` 返回自己的已注册 MapCodec：
 
@@ -114,20 +116,22 @@ JSON 示例：`{"type":"system:item","item":"{{result_items.0}}"}`。完整字�
 | --- | --- | --- |
 | System 模块数据包注册表 `system:system_module` | `SystemDataPackRegistries`、`SystemResourceKeys.SYSTEM_MODULE` | `modules/moduleIds(RegistryAccess)`；模块配置、server 类型分派与 client ID |
 | System 数据包注册表 `system:system` | `SystemDataPackRegistries`、`SystemResourceKeys.SYSTEM` | `SystemDataPackRegistries.get/ids(RegistryAccess, ...)`；系统名、介绍与模块定义 |
-| 签到奖励注册表 `system:signin_rewards` | `SystemDataPackRegistries`、`SystemResourceKeys.SIGNIN_REWARDS` | 服务端 SignInRewardEntry；模块 rewards 筛选 |
-| 商城商品注册表 `system:shop_offers` | `SystemDataPackRegistries`、`SystemResourceKeys.SHOP_OFFERS` | 服务端 ShopOfferEntry；模块 offers 筛选 |
-| 抽奖奖池注册表 `system:lottery_pools` | `SystemDataPackRegistries`、`SystemResourceKeys.LOTTERY_POOLS` | 服务端 LotteryPool；模块 pools 筛选 |
-| 在线作业注册表 `system:online_jobs` | `SystemDataPackRegistries`、`SystemResourceKeys.ONLINE_JOBS` | 服务端 OnlineJobEntry；模块 jobs 允许 ID/tag/混合数组，tag 路径 tags/system/online_jobs |
-| Saturn `SaturnResourceKeys.ENTITY_ACTION_TYPE` | `SystemEntityActions` | `system:add_module`、`system:remove_module` |
-| Saturn `SaturnResourceKeys.ENTITY_CONDITION_TYPE` | `SystemEntityConditions` | `system:has_module`、`system:has_system` |
-| Saturn `SaturnRegistries.DATA_STORAGE_TYPE` | `SystemDataStorages` | 模块权限、成就、Agent 日志、交易、收件箱、签到、在线作业及常驻卡片的 DataStorage Codec；`ONLINE_JOBS` 对应 system:online_jobs，`DISPLAY_CARDS` 对应 system:display_cards |
+| 签到奖励注册表 `system:signin_reward` | `SystemDataPackRegistries`、`SystemResourceKeys.SIGNIN_REWARD` | 服务端 SignInRewardEntry；模块 rewards 筛选 |
+| 商城商品注册表 `system:shop_offer` | `SystemDataPackRegistries`、`SystemResourceKeys.SHOP_OFFER` | 服务端 ShopOfferEntry；模块 offers 筛选 |
+| 抽奖奖池注册表 `system:lottery_pool` | `SystemDataPackRegistries`、`SystemResourceKeys.LOTTERY_POOL` | 服务端 LotteryPool；模块 pools 筛选 |
+| 在线作业注册表 `system:online_job` | `SystemDataPackRegistries`、`SystemResourceKeys.ONLINE_JOB` | 服务端 OnlineJobEntry；模块 jobs 允许 ID/tag/混合数组，tag 路径 tags/system/online_job |
+| 币种注册表 `system:currency` | `SystemDataPackRegistries`、`SystemResourceKeys.CURRENCY` | 同步 CurrencyDefinition 元数据；路径 system/currency，不同步玩家余额 |
+| Saturn `SaturnResourceKeys.COST_TYPE` | `SystemCosts` | `system:currency`；从经济模块钱包扣款，复用 CostTransaction |
+| Saturn `SaturnResourceKeys.ENTITY_ACTION_TYPE` | `SystemEntityActions` | `system:add_module`、`system:remove_module`、`system:add_currency` |
+| Saturn `SaturnResourceKeys.ENTITY_CONDITION_TYPE` | `SystemEntityConditions` | `system:has_module`、`system:has_system`、`system:currency` |
+| Saturn `SaturnRegistries.DATA_STORAGE_TYPE` | `SystemDataStorages` | 模块权限、成就、Agent 日志、交易、收件箱、签到、在线作业、钱包及常驻卡片的 DataStorage Codec；`ECONOMY` 对应 system:economy，`ONLINE_JOBS` 对应 system:online_jobs，`DISPLAY_CARDS` 对应 system:display_cards |
 | 原版 `Registries.SOUND_EVENT` | `SystemSoundEvents` | `system:notification` |
 | 客户端按键注册事件 | `SystemKeyMappings` | `CATEGORY`、`TOGGLE_INTERFACE`、`VOICE_INPUT`；使用 NeoForge 专用事件登记 |
 | Saturn HUD 登记表 | `SystemHudEntries` | `NOTIFICATIONS` / `DISPLAY_CARDS`；布局键 `system.notification` / `system.cards`，物理客户端登记一次，共用 AuiHudEntry 坐标桥接和 Saturn 编辑器 / 布局存储 |
 
 系统与模块定义通过 `RegistryAccess` 查询，在世界加载时读取、连接时同步；修改定义或参数需要重开世界或重启服务器，tag 仍遵循原版资源重载规则。不能用静态 `SystemRegistries` 查询世界数据包条目。系统文件路径为 `data/<条目命名空间>/system/system/<路径>.json`，格式见[数据包文档](datapacks.md)。
 
-三张目录表仅服务端加载，不注册网络 Codec；路径保持 data/<namespace>/system/signin_rewards、shop_offers、lottery_pools，tag 分别位于 data/<namespace>/tags/system/<对应表名>/<path>.json。模块选择字段使用 Saturn RegistryCodecs.keyOrTagList / matchesKeys，支持 ID、#tag、混合数组，配置同步只编码资源键。内置三模块引用各表的 #system:default，tag 不跨表混用；具体语义与示例见[模块目录可选项](datapacks.md#模块目录可选项)。不再登记 CatalogReloadListener，修改条目需重新加载世界。
+三张目录表仅服务端加载，不注册网络 Codec；路径为 data/<namespace>/system/signin_reward、shop_offer、lottery_pool，tag 分别位于 data/<namespace>/tags/system/<对应表名>/<path>.json。模块选择字段使用 Saturn RegistryCodecs.keyOrTagList / matchesKeys，支持 ID、#tag、混合数组，配置同步只编码资源键。内置三模块引用各表的 #system:default，tag 不跨表混用；具体语义与示例见[模块目录可选项](datapacks.md#模块目录可选项)。不再登记 CatalogReloadListener，修改条目需重新加载世界。
 
 系统定义的 modules 可引用动态 SYSTEM_MODULE 条目或 tag，例如 "system:signin"、"#example:basic"、{ "id": "#example:basic", "condition": ... }。ModuleDefinition 的 Either 为 Holder<SystemModule> 或 TagKey<SystemModule>，由 Saturn RegistryCodecs.holderOrTag / matches 在当前世界注册表求值。模块 tag 路径为 data/<namespace>/tags/system/system_module/<path>.json；客户端状态同步实际启用的配置 ID。完整数据格式见[数据包](datapacks.md#系统模块定义)。
 

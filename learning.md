@@ -73,8 +73,9 @@
 | 主手实际物品鉴定、耐久 / 附魔 / 组件快照，世界 RegistryOps 在存储、历史及工具回执中的绑定 | [物品鉴定](docs/item-inspection.md) |
 | 装备工坊、Saturn Cost、两分钟报价、主手目标复核及显式维修确认 | [装备维修](docs/workshop.md) |
 | 在线作业数据包注册表 / tag、单项目在线 tick、DataStorage 暂停续计与收件箱幂等入账 | [在线作业](docs/online-jobs.md) |
-| 系统定义、personality_prompt 引用 TXT 并追加到自由聊天、system_module 配置实例与 server.type/client、grant 指定系统与单绑定/多系统结构预留、模块 ID/tag/condition、模块增删 action、签到奖励、商城商品、抽奖奖池、提示词、成就规则 | [数据包与扩展配置](docs/datapacks.md) |
-| 三张服务端 Data Pack Registry：signin_rewards / shop_offers / lottery_pools；CatalogModule 的 rewards / offers / pools 支持 ID、tag、混合数组；玩家并集权限与扣款前复核 | [目录可选项](docs/datapacks.md#模块目录可选项)、[注册表](docs/registries.md#数据包注册表与外部注册表)、[CommerceCatalog](src/main/java/com/iafenvoy/system/data/catalog/CommerceCatalog.java) |
+| system:currency 多币种定义、经济模块钱包、整数余额、管理员命令、system:currency Cost / condition 与 system:add_currency action | [系统币经济](docs/economy.md)、[Wallets](src/main/java/com/iafenvoy/system/assistant/economy/Wallets.java) |
+| 系统定义、personality_prompt 引用 system/prompt 下的 TXT 并追加到自由聊天、system_module 配置实例与 server.type/client、grant 指定系统与单绑定/多系统结构预留、模块 ID/tag/condition、模块增删 action、签到奖励、商城商品、抽奖奖池；目录文本字符串直接作为翻译键，复用 MiscCodecs.TRANSLATABLE_COMPONENT；成就规则 | [数据包与扩展配置](docs/datapacks.md) |
+| 三张服务端 Data Pack Registry：signin_reward / shop_offer / lottery_pool；CatalogModule 的 rewards / offers / pools 支持 ID、tag、混合数组；玩家并集权限与扣款前复核 | [目录可选项](docs/datapacks.md#模块目录可选项)、[注册表](docs/registries.md#数据包注册表与外部注册表)、[CommerceCatalog](src/main/java/com/iafenvoy/system/data/catalog/CommerceCatalog.java) |
 | TTS 接口、流式播放、语种、音色、取消 session、Python 设计 / 复刻 / 临时上传 | [语音合成与音色设计](docs/tts.md) |
 | ASR、NLS AccessKey 自动签发与 Token 缓存刷新、停止 / 自然 EOF 与设备关闭解耦、session 超时、可选 SVC、按键录音与按次估价 | [语音识别](docs/asr.md) |
 | 服务端 AI/联网用量 SavedData、仅本地可见的个人 TTS / ASR 用量、字符与 Token、客户端计费配置、撤销后保留 | [用量统计](docs/token-usage.md) |

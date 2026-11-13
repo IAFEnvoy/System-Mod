@@ -1,12 +1,12 @@
 package com.iafenvoy.system.data.catalog;
 
+import com.iafenvoy.saturn.util.codec.MiscCodecs;
 import com.iafenvoy.system.data.store.Reward;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.List;
@@ -15,8 +15,8 @@ import java.util.List;
 public record OnlineJobEntry(Component label, Component description, long duration, List<ItemStackTemplate> items,
                               boolean enabled, int order) {
     public static final MapCodec<OnlineJobEntry> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            ComponentSerialization.CODEC.fieldOf("label").forGetter(OnlineJobEntry::label),
-            ComponentSerialization.CODEC.lenientOptionalFieldOf("description", Component.empty()).forGetter(OnlineJobEntry::description),
+            MiscCodecs.TRANSLATABLE_COMPONENT.fieldOf("label").forGetter(OnlineJobEntry::label),
+            MiscCodecs.TRANSLATABLE_COMPONENT.lenientOptionalFieldOf("description", Component.empty()).forGetter(OnlineJobEntry::description),
             Codec.LONG.validate(value -> value > 0 && value <= Long.MAX_VALUE / 20
                     ? DataResult.success(value) : DataResult.error(() -> "Job duration must be positive and fit in ticks"))
                     .fieldOf("duration").forGetter(OnlineJobEntry::duration),

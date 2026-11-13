@@ -20,6 +20,7 @@ public final class SystemActionTypes {
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ReasoningInput>> REASONING_ACTION = REGISTRY.register("reasoning", () -> ReasoningInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<PlayerQueryInput>> PLAYER_ACTION = REGISTRY.register("player_query", () -> PlayerQueryInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<InboxInput>> INBOX_ACTION = REGISTRY.register("inbox", () -> InboxInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<BalanceInput>> BALANCE_ACTION = REGISTRY.register("balance", () -> BalanceInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<SignInInput>> SIGN_IN_ACTION = REGISTRY.register("sign_in", () -> SignInInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ItemQueryInput>> ITEMS_ACTION = REGISTRY.register("item_query", () -> ItemQueryInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ItemInspectInput>> ITEM_INSPECT_ACTION = REGISTRY.register("item_inspect", () -> ItemInspectInput.CODEC);

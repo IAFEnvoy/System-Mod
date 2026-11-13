@@ -25,12 +25,12 @@
 
 ## 作业定义
 
-原生服务端数据包注册表：`system:online_jobs`。路径：`data/<namespace>/system/online_jobs/<path>.json`，条目 ID 为 `<namespace>:<path>`。不向客户端同步完整注册表，只发送玩家所需的分页卡片快照。
+原生服务端数据包注册表：`system:online_job`。路径：`data/<namespace>/system/online_job/<path>.json`，条目 ID 为 `<namespace>:<path>`。不向客户端同步完整注册表，只发送玩家所需的分页卡片快照。
 
 ```json
 {
-  "label": { "translate": "example.job.wood" },
-  "description": { "translate": "example.job.wood.description" },
+  "label": "example.job.wood",
+  "description": "example.job.wood.description",
   "duration": 60,
   "items": [{ "id": "minecraft:oak_log", "count": 4 }],
   "enabled": true,
@@ -40,14 +40,14 @@
 
 | 字段 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `label` | 文本 Component | 必填 | 名称，推荐翻译键 |
-| `description` | 文本 Component | 空文本 | 简要说明 |
+| `label` | 翻译键字符串或 Component | 必填 | 名称，字符串直接作为翻译键 |
+| `description` | 翻译键字符串或 Component | 空文本 | 简要说明，字符串直接作为翻译键 |
 | `duration` | 正整数 | 必填 | 在线秒数，转换后必须能用 long 表示 tick |
 | `items` | ItemStackTemplate 数组 | 必填 | 1～36 个物品模板，复用 Reward 的背包容量约束 |
 | `enabled` | boolean | `true` | 是否可开始新作业 |
 | `order` | int | `0` | 列表优先级，越高越靠前，同值按 ID 排序 |
 
-作业 tag 路径为 `data/<namespace>/tags/system/online_jobs/<path>.json`，格式与原版 tag 相同。内置 `#system:default` 包含林地采集（60 秒，4 橡木原木）、石料采集（60 秒，8 圆石）和木炭生产（120 秒，2 木炭）。这些是单纯计时产物，不需要实际开采或输入材料；更复杂的生产规则留待后续扩展。
+作业 tag 路径为 `data/<namespace>/tags/system/online_job/<path>.json`，格式与原版 tag 相同。内置 `#system:default` 包含林地采集（60 秒，4 橡木原木）、石料采集（60 秒，8 圆石）和木炭生产（120 秒，2 木炭）。这些是单纯计时产物，不需要实际开采或输入材料；更复杂的生产规则留待后续扩展。
 
 名称和描述的翻译键需要客户端资源包提供双语语言文件。修改注册表定义后重新进入世界/正常重启服务器；已开始作业保存定义快照，不受后续删表或修改产物影响。
 

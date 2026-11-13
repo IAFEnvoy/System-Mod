@@ -2,12 +2,12 @@ package com.iafenvoy.system.data;
 
 import com.iafenvoy.saturn.data.cost.Cost;
 import com.iafenvoy.saturn.util.PersistHolder;
+import com.iafenvoy.saturn.util.codec.MiscCodecs;
 import com.iafenvoy.system.data.store.Reward;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.util.ExtraCodecs;
 
 import java.util.List;
@@ -20,7 +20,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public record LotteryPool(Component label, List<Cost> costs, List<Entry> entries,
                           boolean enabled) implements EnabledEntry {
     public static final Codec<LotteryPool> CODEC = RecordCodecBuilder.<LotteryPool>create(i -> i.group(
-            ComponentSerialization.CODEC.optionalFieldOf("label", Component.empty()).forGetter(LotteryPool::label),
+            MiscCodecs.TRANSLATABLE_COMPONENT.optionalFieldOf("label", Component.empty()).forGetter(LotteryPool::label),
             Cost.LIST_CODEC.optionalFieldOf("costs", List.of()).forGetter(LotteryPool::costs),
             Entry.CODEC.listOf().optionalFieldOf("entries", List.of()).forGetter(LotteryPool::entries),
             Codec.BOOL.optionalFieldOf("enabled", true).forGetter(LotteryPool::enabled)

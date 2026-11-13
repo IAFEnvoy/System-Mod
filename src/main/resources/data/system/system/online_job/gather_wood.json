@@ -1,0 +1,13 @@
+{
+  "label": "system.jobs.gather_wood",
+  "description": "system.jobs.gather_wood.description",
+  "duration": 60,
+  "items": [
+    {
+      "id": "minecraft:oak_log",
+      "count": 4
+    }
+  ],
+  "order": 30
+}
+

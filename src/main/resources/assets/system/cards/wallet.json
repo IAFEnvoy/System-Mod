@@ -1,0 +1,31 @@
+{
+  "body": [
+    { "type": "system:title", "translate": "system.ui.nav_economy" },
+    { "type": "system:text", "translate": "system.economy.empty", "unless": "currencies", "style": "card_context" },
+    {
+      "type": "system:grid", "source": "{{currencies}}", "columns": 3, "compact_columns": 2,
+      "max_row": 3, "cell": 156,
+      "children": [
+        {
+          "type": "system:flex", "direction": "column", "style": "offer_cell_content",
+          "children": [
+            { "type": "system:item", "item": "{{currencies.*.icon}}", "size": 32 },
+            { "type": "system:text", "text": "{{currencies.*.name}}", "style": "offer_cell_label" },
+            { "type": "system:text", "text": "{{currencies.*.balance}}", "style": "card_title" },
+            { "type": "system:text", "text": "{{currencies.*.description}}", "style": "card_context" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "system:flex", "source": "{{actions}}", "filter": "{{actions.*.visible}}", "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button", "click": "{{actions.*.click_type}}", "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}", "behavior": "{{actions.*.behavior}}",
+          "children": [{ "type": "system:text", "text": "{{actions.*.label}}" }]
+        }
+      ]
+    }
+  ]
+}

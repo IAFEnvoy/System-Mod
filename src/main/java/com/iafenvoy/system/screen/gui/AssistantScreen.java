@@ -4,9 +4,11 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.data.card.CardUpdate;
+import com.iafenvoy.system.data.card.CardView;
 import com.iafenvoy.system.module.client.ClientModuleBindingsCache;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.screen.AssistantGeometry;
+import com.iafenvoy.system.screen.card.CardPresentation;
 import com.iafenvoy.system.screen.card.CardTemplates;
 import com.iafenvoy.system.screen.card.CardUiState;
 import com.sighs.apricityui.init.Document;
@@ -25,6 +27,7 @@ import static com.iafenvoy.system.screen.gui.AssistantView.*;
 public final class AssistantScreen extends AssistantInputScreen {
     // Keep independent card pages across transcript redraws and window resizing, only for this screen's lifetime.
     private final Map<UUID, CardUiState> cardPages = new HashMap<>();
+    private final Map<String, CardView> workspaceCards = new LinkedHashMap<>();
     private List<AssistantClientState.ChatEntry> renderedEntries = List.of();
     private final List<Element> renderedRows = new ArrayList<>();
     private PendingScroll pendingScroll;
@@ -53,6 +56,7 @@ public final class AssistantScreen extends AssistantInputScreen {
         document.getElementById("message").setAttribute("placeholder", tr("system.ui.message_placeholder"));
         bind(document, "close", this::onClose);
         bind(document, "send", this::sendMessage);
+        this.workspaceCards.clear();
         ClientModuleCaches.BINDINGS.get().bindWorkspace(this, document);
         this.revision = -1;
         this.pendingScroll = null;
@@ -66,13 +70,17 @@ public final class AssistantScreen extends AssistantInputScreen {
         this.updateLayout(document, false, () -> this.updatePage(document));
     }
 
+    public void workspaceCard(String page, CardView card) {
+        this.workspaceCards.put(page, card);
+    }
+
     private void updatePage(Document document) {
         boolean available = ClientModuleCaches.BINDINGS.get().workspace().stream().anyMatch(entry -> entry.page().equals(this.page) && entry.available());
         if (!available) this.page = "chat";
         for (ClientModuleBindingsCache.Workspace entry : ClientModuleCaches.BINDINGS.get().workspace()) {
             if (!entry.navigation().isBlank()) {
                 Element navigation = document.getElementById(entry.navigation());
-                display(navigation, entry.available() ? "block" : "none");
+                display(navigation, entry.available() ? "flex" : "none");
                 String css = !entry.page().isBlank() && entry.page().equals(this.page) ? "nav active" : "nav";
                 if (!css.equals(navigation.getClassName())) navigation.setClassName(css);
             }
@@ -108,6 +116,13 @@ public final class AssistantScreen extends AssistantInputScreen {
         this.revision = AssistantClient.revision();
         this.templateRevision = CardTemplates.revision();
         this.updateLayout(document, firstNew < entries.size(), () -> {
+            // Rebuild local controls only at initialization or resource reload, never for ordinary replies.
+            if (reload) this.workspaceCards.forEach((page, card) -> {
+                Element target = document.getElementById("page_" + page);
+                if (target == null) return;
+                target.setInnerHTML("");
+                target.appendChild(CardPresentation.local(card).render(document));
+            });
             text(document.getElementById("brand"), tr("system.ui.assistant"));
             text(document.getElementById("welcome_title"), tr(AssistantClient.system().name()));
             text(document.getElementById("welcome_text"), tr(AssistantClient.system().description()));

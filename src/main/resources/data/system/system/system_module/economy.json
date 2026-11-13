@@ -1,5 +1,6 @@
 {
   "order": 55,
+  "icon": { "id": "minecraft:gold_nugget" },
   "server": { "type": "system:economy" },
   "client": "system:economy"
 }

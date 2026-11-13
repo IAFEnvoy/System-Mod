@@ -1,5 +1,6 @@
 {
   "order": 70,
+  "icon": { "id": "minecraft:chest" },
   "server": {
     "type": "system:inbox"
   },

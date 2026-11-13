@@ -5,6 +5,7 @@ import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
+import com.iafenvoy.system.screen.AssistantCardDisplay;
 import com.iafenvoy.system.screen.AssistantGeometry;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
@@ -79,6 +80,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
 
     @Override
     protected void initPage(Document document) {
+        this.closePopups();
         this.stopRecognition();
         this.renderedRecognition = "";
         this.clearTextInputFocus();
@@ -364,7 +366,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         if (popup == null) return;
         popup.setInnerHTML("");
         // Rebuild off-screen; the render phase anchors the independent overlay before showing it.
-        popup.setInlineStyleProperty("display", "none");
+        this.showSuggestions(popup, false);
         this.suggestionArea = null;
         if (this.suggestions.isEmpty()) return;
         int start = Math.clamp(this.selectedSuggestion - 2, 0, Math.max(0, this.suggestions.size() - 6));
@@ -388,12 +390,16 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         Element message = document.getElementById("message");
         if (popup == null || message == null) return;
         Element.DOMRect bounds = AssistantGeometry.bounds(message);
-        if (bounds == null) return;
+        if (bounds == null) {
+            this.showSuggestions(popup, false);
+            this.suggestionArea = null;
+            return;
+        }
         int viewportWidth = document.getViewport().layoutWidth();
         int viewportHeight = document.getViewport().layoutHeight();
         int maxHeight = Math.max(0, (int) Math.floor(bounds.top - 12));
         if (document.getFocusedElement() != message || this.imeOwnsKeys() || bounds.width <= 0 || bounds.height <= 0 || maxHeight == 0) {
-            popup.setInlineStyleProperty("display", "none");
+            this.showSuggestions(popup, false);
             this.suggestionArea = null;
             return;
         }
@@ -408,7 +414,26 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
         popup.setInlineStyleProperty("bottom", bottom + "px");
         popup.setInlineStyleProperty("width", width + "px");
         popup.setInlineStyleProperty("max-height", maxHeight + "px");
-        popup.setInlineStyleProperty("display", "flex");
+        this.showSuggestions(popup, true);
+    }
+
+    private void showSuggestions(Element popup, boolean shown) {
+        popup.setInlineStyleProperty("display", shown ? "flex" : "none");
+        popup.setTopLayer(shown);
+        AssistantCardDisplay.suspend(this, shown);
+    }
+
+    private void closePopups() {
+        if (this.modeSelector != null) {
+            this.modeSelector.close();
+            this.modeSelector = null;
+        }
+        Document document = this.getLinkedDocument();
+        if (document != null && !document.isDisposed()) {
+            Element popup = document.getElementById("command_suggestions");
+            if (popup != null) this.showSuggestions(popup, false);
+        }
+        AssistantCardDisplay.suspend(this, false);
     }
 
     private void completeSuggestion(int index) {
@@ -491,6 +516,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
 
     @Override
     public void onClose() {
+        this.closePopups();
         this.stopRecognition();
         this.stopSpeech();
         this.clearTextInputFocus();
@@ -499,6 +525,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
 
     @Override
     public void removed() {
+        this.closePopups();
         this.stopRecognition();
         this.stopSpeech();
         this.clearTextInputFocus();

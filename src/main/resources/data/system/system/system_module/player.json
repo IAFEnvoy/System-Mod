@@ -1,5 +1,6 @@
 {
   "order": 100,
+  "icon": { "id": "minecraft:player_head" },
   "server": {
     "type": "system:player"
   },

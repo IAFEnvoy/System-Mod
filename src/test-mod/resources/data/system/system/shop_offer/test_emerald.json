@@ -8,11 +8,9 @@
   ],
   "costs": [
     {
-      "type": "saturn:item",
-      "amount": 1,
-      "items": [
-        "minecraft:diamond"
-      ]
+      "type": "system:currency",
+      "currency": "system:coin",
+      "amount": 1
     }
   ]
 }

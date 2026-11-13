@@ -20,6 +20,7 @@
 ```json
 {
   "order": 80,
+  "icon": { "id": "minecraft:book" },
   "server": { "type": "system:signin" },
   "client": "system:signin"
 }
@@ -28,6 +29,8 @@
 此配置实例 ID 为 `example:daily`，服务端实现类型为 `system:signin`。系统的 `modules` 写 `"example:daily"`；`/system module add/remove/list`、玩家手动覆盖与 `has_module` 也使用配置实例 ID。模块 tag 路径为 `data/<namespace>/tags/system/system_module/<path>.json`。
 
 顶层 `order` 是客户端入口的显示优先级，越高越靠前，默认 0；缺失或格式错误时采用默认值。ClientModuleBindingsCache 在发布 Workspace 快照前统一降序排列，同值保持原有顺序；共用 client 实现的配置取最高 order，本地常驻入口读取同 ID 的定义。内置玩家信息为 100，排在其他内置模块之前。此字段不影响模块权限、初始化依赖或服务端工作流候选选择。
+
+顶层可选 `icon` 使用 Saturn `IconReference`，由 `SystemModule.icon()` 返回 `Optional<IconReference>`，缺失或解析失败时为空。字符串表示纹理 Identifier，例如 `"example:textures/gui/module.png"`；物品图标使用 ItemStackTemplate 对象，例如 `{"id":"minecraft:book"}`。字段随模块注册表同步，完整界面的左侧入口在名称前显示 20px 图标，复用 AUI 图片和原生物品渲染。多份配置合并为同一入口时，按 order 从高到低取第一个已配置的 icon；没有图标则保留文字入口。图标不单独接收鼠标事件，点击区域仍为整个按钮；右上角设置类入口保持文字。
 
 `server` 和 `client` 均可省略：纯服务端模块只写 server，纯客户端贡献只写 client。client 始终是 ID，不在服务端解码 ClientModule、客户端 Codec 或 UI 类。专用服务端只加载服务端模块类；原有 ClientHooks 已拆成相邻的客户端实现类。
 
@@ -87,7 +90,7 @@ public static void moduleContext(ModuleContextEvent event) {
 
 不同配置可以提供相同动作 ID 的同类工作流。ModuleRegistry 按配置实例 ID 保存候选，命令/模型/语义目录只声明一次，执行时选择该玩家已启用的候选与对应工具。入口 Codec、工作流类型、版本、交互/事件属性、工具契约和只读权限必须一致；参数可影响执行和预算，不应让同一动作类型声明不同的路由契约。同一玩家同时启用多个候选时按模块实例 ID 排序选择第一个；数据包通常应让同类变体的条件互斥。流程选中后保留 owner，移除该配置会取消其在途和排队操作，不会中途换用另一份参数。
 
-三类目录的可选项另由 CatalogModule 声明，按玩家启用的同类配置取并集，不仅限于执行工作流时选中的第一份配置。对应注册表为 system:signin_reward、system:shop_offer、system:lottery_pool；字段支持 ID、tag 或混合数组，复用 Saturn keyOrTagList，省略为全表、空数组为空，内置模块显式使用对应 #system:default。`assistant.commerce.CommerceCatalogs.available(player)` 是统一的玩家目录入口，通过 ModuleContext 注入工作流和交易服务，列表、模型候选、状态、报价与扣款共用筛选。详见[目录选项](datapacks.md#模块目录可选项)。
+三类目录的可选项另由 CatalogModule 声明，按玩家启用的同类配置取并集，不仅限于执行工作流时选中的第一份配置。对应注册表为 system:signin_reward、system:shop_offer、system:lottery_pool；字段支持 ID、tag 或混合数组，复用 Saturn keyOrTagList，省略为全表、空数组为空，内置模块显式使用对应 #system:default。`assistant.commerce.CommerceCatalogs.available(player)` 是统一的玩家目录入口，通过 ModuleContext 注入工作流和交易服务，列表、模型候选、状态、报价与扣款共用筛选。CommerceCatalogs 保存当前世界注册表的 `Holder<SystemModule>`，从同一引用取得配置 ID 和 CatalogModule 实现，不再另外维护 ID → 实现的 Map；相同实现的不同配置仍按各自 ID 检查玩家权限。详见[目录选项](datapacks.md#模块目录可选项)。
 
 在线作业同样实现 CatalogModule，但目录由所选工作流配置的 jobs 筛选，不进入交易目录的并集。它使用独立的 system:online_job 数据包注册表和共用的玩家作业账本，详见[在线作业](online-jobs.md)。
 

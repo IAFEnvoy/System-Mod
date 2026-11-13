@@ -45,6 +45,7 @@ public final class AssistantCardDisplay {
     private static long templatesRevision = -1;
     private static long failedRevision = -1;
     private static Set<DisplayCardKey> activeCards = Set.of();
+    private static final Set<Object> SUSPENDERS = Collections.newSetFromMap(new IdentityHashMap<>());
     private static final Map<DisplayCardKey, RenderedCard> RENDERED = new LinkedHashMap<>();
 
     private enum Phase {
@@ -74,6 +75,11 @@ public final class AssistantCardDisplay {
         Minecraft minecraft = Minecraft.getInstance();
         if (!canRender()) {
             unmount();
+            return;
+        }
+        if (!SUSPENDERS.isEmpty()) {
+            interaction(false);
+            applySuspended();
             return;
         }
         boolean shown = canShow(minecraft.screen) && cache.cards().stream().anyMatch(card -> card.data().isPresent());
@@ -162,7 +168,7 @@ public final class AssistantCardDisplay {
 
     private static boolean canShow(Screen screen) {
         // Chat keeps Screen's default classification; other screens must explicitly identify as in-game.
-        return canRender() && SystemHudEntries.DISPLAY_CARDS.visible()
+        return canRender() && SUSPENDERS.isEmpty() && SystemHudEntries.DISPLAY_CARDS.visible()
                 && !(screen instanceof HudEditScreen)
                 && (screen == null || screen instanceof ChatScreen
                 || ClientConfig.INSTANCE.get().cardsOnOtherScreens() && screen.isInGameUi());
@@ -257,6 +263,11 @@ public final class AssistantCardDisplay {
             unmount();
             return;
         }
+        if (!SUSPENDERS.isEmpty()) {
+            interaction(false);
+            applySuspended();
+            return;
+        }
         boolean shown = canShow(screen);
         interaction(shown && screen instanceof ChatScreen);
         if (shown || document == null || document.isDisposed()) return;
@@ -281,5 +292,26 @@ public final class AssistantCardDisplay {
         activeCards = Set.of();
         generation = cardsRevision = templatesRevision = -1;
         SystemHudEntries.DISPLAY_CARDS.detach();
+    }
+
+    /**
+     * Screen popups cannot cover a separate overlay document. Retain its cards while each popup owns its suspension;
+     * owners release on hide, screen removal and reinitialization, independently of the HUD document's lifetime.
+     */
+    public static void suspend(Object owner, boolean value) {
+        boolean changed = value ? SUSPENDERS.add(owner) : SUSPENDERS.remove(owner);
+        if (!changed) return;
+        if (!SUSPENDERS.isEmpty()) interaction(false);
+        applySuspended();
+    }
+
+    private static void applySuspended() {
+        if (document == null || document.isDisposed()) return;
+        try (Document.ContextScope ignored = Document.withContext(document)) {
+            Element root = document.getElementById("card_display");
+            String display = SUSPENDERS.isEmpty() ? "flex" : "none";
+            if (root != null && !display.equals(root.getInlineStylePropertyValue("display")))
+                root.setInlineStyleProperty("display", display);
+        }
     }
 }

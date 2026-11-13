@@ -35,6 +35,8 @@
 
 模块定义的顶层 `order` 随注册表同步到客户端，默认 0，越大越靠前。ClientModuleBindingsCache 在装配后统一排序 Workspace；相同客户端实现的多份配置取最高值，同值保留原有顺序。内置玩家信息设为 100，优先显示。
 
+顶层可选 `icon` 同样随注册表同步，类型为 Saturn `IconReference`，通过 `SystemModule.icon()` 读取；未设置或解析失败时为空。完整界面的左侧模块入口在名称前渲染该图标，纹理使用 Identifier 字符串，物品使用 ItemStackTemplate 对象。共享 client 入口按 order 降序取首个已配置图标。
+
 客户端实现位于 SystemClientModules 普通 Map，通过客户端入口初始化、public static 字段公开。数据条目的 client 是该 Map 的 Identifier；服务端不会解析客户端实现。内置双端功能拆为相邻的 *SystemModule / *SystemClientModule，不再共用 ClientHooks 或同一个实现类。聊天、设置、语音与基础界面贡献在本地常驻，其余按动态配置 ID 检查权限。
 
 | 接口 | 用途 |

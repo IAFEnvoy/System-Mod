@@ -39,11 +39,8 @@ final class FtbQuestAccess {
         this.game = game;
         this.knowledge = new FtbQuestKnowledge(engine, database, game.server());
         this.notifications = new FtbQuestNotifications(this);
-        engine.lifecycle(new AgentLifecycle() {
-            @Override
-            public void revoked(UUID player) {
-                FtbQuestAccess.this.clear(player);
-            }
+        engine.lifecycle((player, event) -> {
+            if (event == AgentLifecycle.EventType.REVOKED) this.clear(player);
         });
     }
 
@@ -58,7 +55,8 @@ final class FtbQuestAccess {
             QuestList previous = lists.get(context.player());
             if (previous == null || previous.expires() < System.currentTimeMillis()
                     || previous.incarnation() != context.incarnation() || previous.epoch() != context.memoryEpoch()
-                    || !previous.team().equals(team.getTeamId())) throw new AgentException(AgentFailure.STALE_QUEST_LIST);
+                    || !previous.team().equals(team.getTeamId()))
+                throw new AgentException(AgentFailure.STALE_QUEST_LIST);
             if (index > previous.quests().size()) throw new AgentException(AgentFailure.INVALID_SELECTION);
             Quest selected = previous.quests().get(index - 1);
             if (file.getQuest(selected.getId()) != selected) throw new AgentException(AgentFailure.STALE_QUEST_LIST);

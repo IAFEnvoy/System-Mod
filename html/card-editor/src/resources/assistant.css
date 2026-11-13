@@ -413,13 +413,34 @@ p {
     border-color: var(--assistant-line);
     text-align: center;
     white-space: nowrap;
+    justify-content: center;
 }
 
 .nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin-bottom: 6px;
     border-color: transparent;
     background-color: transparent;
     min-height: 38px;
+}
+
+.nav_icon {
+    display: flex;
+    flex: 0 0 20px;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+}
+
+.nav_label {
+    min-width: 0;
+}
+
+.nav_icon, .nav_icon *, .nav_label, .nav_label * {
+    pointer-events: none;
 }
 
 .nav:hover {
@@ -484,6 +505,60 @@ p {
     gap: 10px;
     padding: 14px 0;
     border-top: 1px solid var(--assistant-line-soft);
+}
+
+/* Local module controls use the card renderer while keeping a content-sized toolbar shell. */
+.toolbar.workspace_card {
+    flex-direction: column;
+    padding: 0;
+    margin: 8px 0;
+    border: 0;
+}
+
+.result_card.workspace_controls {
+    margin: 0;
+    padding: 12px 14px;
+}
+
+.workspace_controls .workspace_controls_layout {
+    align-items: center;
+    gap: 12px;
+}
+
+.workspace_controls .workspace_controls_copy {
+    flex: 1 1 240px;
+    min-width: 0;
+}
+
+.workspace_controls .workspace_controls_title {
+    margin: 0 0 4px;
+    color: var(--assistant-ink);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.workspace_controls .workspace_controls_note {
+    margin: 0;
+    color: var(--assistant-muted);
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.workspace_controls .workspace_controls_action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-height: 36px;
+    margin: 0;
+    padding: 8px 14px;
+    font-size: 13px;
+    text-align: center;
+    white-space: nowrap;
 }
 
 #item_query {
@@ -1467,6 +1542,41 @@ p {
     padding: 10px;
     border: 1px solid var(--assistant-line-soft);
     overflow: visible;
+}
+
+/* Wallet entries keep the icon, name and balance on one line; details live in the item tooltip. */
+.wallet_entry {
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
+}
+
+.wallet_grid .wallet_entry > .item_entry {
+    flex: 0 0 auto;
+    padding: 0;
+    border: none;
+    background-color: transparent;
+}
+
+.wallet_name {
+    flex: 1 1 0;
+    min-width: 0;
+    color: var(--assistant-ink);
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wallet_balance {
+    flex: 0 0 auto;
+    margin-right: 12px;
+    color: var(--assistant-accent);
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+    text-align: right;
 }
 
 .offer_cell:hover, .card_grid_cell:hover {

@@ -1,5 +1,6 @@
 {
   "order": 90,
+  "icon": { "id": "minecraft:book" },
   "server": {
     "type": "system:ftb_quests"
   },

@@ -9,6 +9,7 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerPlayer;
+import org.jspecify.annotations.NonNull;
 
 /** A nonblocking check of already loaded module data; it neither initializes a wallet nor writes a file. */
 public record CurrencyCondition(Holder<CurrencyDefinition> currency, Comparison comparison) implements EntityCondition {
@@ -18,7 +19,7 @@ public record CurrencyCondition(Holder<CurrencyDefinition> currency, Comparison 
     ).apply(i, CurrencyCondition::new));
 
     @Override
-    public MapCodec<CurrencyCondition> codec() {
+    public @NonNull MapCodec<CurrencyCondition> codec() {
         return CODEC;
     }
 

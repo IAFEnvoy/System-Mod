@@ -8,11 +8,9 @@
   ],
   "costs": [
     {
-      "type": "saturn:item",
-      "amount": 4,
-      "items": [
-        "minecraft:sand"
-      ]
+      "type": "system:currency",
+      "currency": "system:coin",
+      "amount": 4
     }
   ]
 }

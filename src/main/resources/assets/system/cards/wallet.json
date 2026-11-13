@@ -3,16 +3,21 @@
     { "type": "system:title", "translate": "system.ui.nav_economy" },
     { "type": "system:text", "translate": "system.economy.empty", "unless": "currencies", "style": "card_context" },
     {
-      "type": "system:grid", "source": "{{currencies}}", "columns": 3, "compact_columns": 2,
-      "max_row": 3, "cell": 156,
+      "type": "system:grid", "source": "{{currencies}}", "columns": 2, "compact_columns": 2,
+      "max_row": 3, "cell": 52, "style": ["card_grid", "wallet_grid"],
       "children": [
         {
-          "type": "system:flex", "direction": "column", "style": "offer_cell_content",
+          "type": "system:flex", "wrap": false, "style": "wallet_entry",
           "children": [
-            { "type": "system:item", "item": "{{currencies.*.icon}}", "size": 32 },
-            { "type": "system:text", "text": "{{currencies.*.name}}", "style": "offer_cell_label" },
-            { "type": "system:text", "text": "{{currencies.*.balance}}", "style": "card_title" },
-            { "type": "system:text", "text": "{{currencies.*.description}}", "style": "card_context" }
+            {
+              "type": "system:item", "item": "{{currencies.*.icon}}", "size": 24,
+              "tooltip": [
+                { "type": "system:text", "text": "{{currencies.*.name}}" },
+                { "type": "system:text", "text": "{{currencies.*.description}}" }
+              ]
+            },
+            { "type": "system:text", "text": "{{currencies.*.name}}", "style": "wallet_name" },
+            { "type": "system:text", "text": "{{currencies.*.balance}}", "style": "wallet_balance" }
           ]
         }
       ]

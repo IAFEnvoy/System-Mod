@@ -2,12 +2,13 @@ package com.iafenvoy.system.assistant.commerce;
 
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
+import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.function.BiPredicate;
@@ -17,17 +18,17 @@ import java.util.function.BiPredicate;
  */
 public final class CommerceCatalogs {
     private final CommerceCatalog catalog;
-    private final BiPredicate<UUID, Identifier> enabled;
-    private final Map<Identifier, CatalogModule<?>> modules = new LinkedHashMap<>();
+    private final BiPredicate<UUID, Holder<SystemModule>> enabled;
+    private final Set<Holder<SystemModule>> modules = new LinkedHashSet<>();
 
-    public CommerceCatalogs(CommerceCatalog catalog, BiPredicate<UUID, Identifier> enabled) {
-        this.catalog = Objects.requireNonNull(catalog);
-        this.enabled = Objects.requireNonNull(enabled);
+    public CommerceCatalogs(@NotNull CommerceCatalog catalog, @NotNull BiPredicate<UUID, Holder<SystemModule>> enabled) {
+        this.catalog = catalog;
+        this.enabled = enabled;
     }
 
-    public void register(Identifier owner, CatalogModule<?> module) {
-        if (this.modules.putIfAbsent(owner, module) != null)
-            throw new IllegalArgumentException("Duplicate module catalog " + owner);
+    public void register(Holder<SystemModule> module) {
+        if (!this.modules.add(module))
+            throw new IllegalArgumentException("Duplicate module catalog " + HolderHelper.id(module));
     }
 
     public CommerceCatalog all() {
@@ -35,8 +36,10 @@ public final class CommerceCatalogs {
     }
 
     public CommerceCatalog available(UUID player) {
-        List<CatalogModule<?>> modules = this.modules.entrySet().stream()
-                .filter(entry -> this.enabled.test(player, entry.getKey())).map(Map.Entry::getValue).toList();
+        List<CatalogModule<?>> modules = this.modules.stream()
+                .filter(holder -> this.enabled.test(player, holder))
+                .flatMap(holder -> holder.value().server().stream()).filter(CatalogModule.class::isInstance)
+                .<CatalogModule<?>>map(CatalogModule.class::cast).toList();
         return new CommerceCatalog(this.catalog.revision(),
                 this.filter(this.catalog.rewards(), SystemResourceKeys.SIGNIN_REWARD, modules),
                 this.filter(this.catalog.offers(), SystemResourceKeys.SHOP_OFFER, modules),
@@ -44,8 +47,7 @@ public final class CommerceCatalogs {
                 this.catalog.registries());
     }
 
-    private <T> List<Holder<T>> filter(List<Holder<T>> entries, ResourceKey<Registry<T>> registry,
-                                       List<CatalogModule<?>> modules) {
+    private <T> List<Holder<T>> filter(List<Holder<T>> entries, ResourceKey<Registry<T>> registry, List<CatalogModule<?>> modules) {
         return entries.stream().filter(entry -> modules.stream().anyMatch(module ->
                 module.catalog().equals(registry) && module.allows(this.catalog.registries(), HolderHelper.id(entry)))).toList();
     }

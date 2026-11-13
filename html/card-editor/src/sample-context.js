@@ -217,6 +217,13 @@ export function sampleContext(template = "quest_list") {
       value: "system:item_query?offset=20&query=ore",
     });
   }
+  if (template === "module_controls") {
+    p.title = "在线作业";
+    p.description =
+      "一次进行一项作业。离线或禁用模块时暂停；完成后手动领取，不自动循环。点击刷新查看最新进度。";
+    p.action_label = "刷新作业";
+    p.result_actions = [];
+  }
   p.actions = p.result_actions.length;
   p.result_actions.forEach((entry, i) =>
     Object.assign(p, {
@@ -238,6 +245,6 @@ export function sampleContext(template = "quest_list") {
       show_card_title: 1,
       ...(template === "quest_pin" ? { hud: 1 } : {}),
     },
-    callbacks: ["example"],
+    callbacks: template === "module_controls" ? ["submit"] : ["example"],
   };
 }

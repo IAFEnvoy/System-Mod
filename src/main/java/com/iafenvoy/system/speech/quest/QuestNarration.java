@@ -1,6 +1,5 @@
 package com.iafenvoy.system.speech.quest;
 
-import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.execution.ExecutionPolicy;
@@ -45,15 +44,9 @@ public final class QuestNarration implements AutoCloseable {
     public QuestNarration(AgentEngine engine, AgentDatabase database) {
         this.engine = engine;
         this.backgrounds = new QuestBackgrounds(database);
-        engine.lifecycle(new AgentLifecycle() {
-            @Override
-            public void revoked(UUID player) {
-                QuestNarration.this.cancel(player);
-            }
-
-            @Override
-            public void disconnected(UUID player) {
-                QuestNarration.this.cancel(player);
+        engine.lifecycle((player, event) -> {
+            switch (event) {
+                case REVOKED, DISCONNECTED -> this.cancel(player);
             }
         });
     }

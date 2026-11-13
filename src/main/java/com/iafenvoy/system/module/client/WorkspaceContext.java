@@ -3,6 +3,7 @@ package com.iafenvoy.system.module.client;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.sighs.apricityui.init.Document;
@@ -21,6 +22,10 @@ public record WorkspaceContext(AssistantScreen screen, Document document,
 
     public void show(String page) {
         this.screen.showPage(page);
+    }
+
+    public void card(CardBuilder builder) {
+        this.screen.workspaceCard(this.workspace.page(), builder.build());
     }
 
     public String query(String id) {

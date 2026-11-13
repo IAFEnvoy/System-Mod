@@ -26,6 +26,8 @@
 
 各功能的本地指令、控件、页面与本地动作由 ClientModule 贡献；业务卡片的文字、按钮和播报由对应 CardData.buildCard 一次描述，不再登记客户端卡片行为表。完整模式始终显示对话，侧栏直接排列模块入口，不再显示分组标题或“对话”按钮；用量统计和设置位于右上角。导航仍来自 workspace 声明，可用性由服务端同步的模块 ID 控制。扩展入口见[功能模块化](feature-modules.md)。
 
+左侧模块入口在名称前显示 system_module 定义的可选 icon，支持 Saturn IconReference 的纹理和物品两种形式，统一占用 20px。图标和文字垂直居中，图标不拦截按钮点击；未配置图标时只显示名称。原生物品图标沿用 AUI 的变换与裁剪，不另开覆盖渲染层。
+
 JSON 模板在 assets/system/cards 中，通过 CardNode 的 dispatch Codec 解析；CardPresentation 统一构建本地展示。Context 的状态、参数和回调三表平铺，CardBuilder/组件会复制不可变快照。仅单个纯文本节点且没有按钮和额外内容时显示为普通消息；文字带按钮仍是卡片。简约模式使用文字编号选择，HUD 正文显示 BODY 按钮，FOOTER 由代码生成；资源包只控制布局。格式见[客户端 JSON 卡片](cards.md)。
 
 任务格子、商店、奖池与奖品预览共用 CardGrid / CardPagination，最大三行，按当前模式的列数自动计算每页容量：完整模式 18 项、通知 9 项。只创建当前页节点，避免长货架一次构建过多 DOM 和原生图标；结果少或到了最后一页仍保留三行区域与分页栏，不能翻页的方向置灰。分页与通知底部确定按钮分开，不发送请求、不切换通知或重播语音；具体字段和扩展方式见[共用分页网格](cards.md#共用分页网格)。
@@ -36,7 +38,7 @@ JSON 模板在 assets/system/cards 中，通过 CardNode 的 dispatch Codec 解�
 
 设置“常规”页嵌入 AUI 原生 `<theme-switcher>`，接收其 `aui-theme-change` 事件；`AssistantThemes` 将主题 ID 写入 `ClientConfig` 并立即保存到 `config/system/system-client.json`。AUI 本身只切换当前文档，本模组在页面初始化及资源重载后应用已保存主题，并同步现有的 `system/` 活动文档，覆盖完整、简约、设置、用量页面和 HUD。主题样式加载成功后才替换旧主题，过期的异步结果不能覆盖新选择；通知交互状态只增删自身状态类，保留主题作用域。HUD 根背景及装饰伪元素固定透明或隐藏，主题只绘制通知面板。其他模组的页面不受影响。
 
-固定文案直接写在模板里，用 AUI 的 `<translation>键</translation>` 承载，由文档在布局和绘制时按当前语言解析，不再由 Java 逐个元素写入；模块工具栏按钮、标题和说明因此随模板走，自定义模板只需替换标记就能自带上这些文案。只有随状态变化的文本（`status`、`send`、`asr_toggle`、设置页状态、`usage_scope`、`usage_page`、区域名、识别后端名）、输入框占位符（`placeholder`）、`aria-label` 以及语种下拉选项仍由 Java 提供，因为这些是属性或运行时取值，节点文本无法表达。子节点文本就是完整键，不能带首尾空白；键缺失时与原版一致直接显示原键。AUI 的 `text-align` 只作用于元素自身的直接文本，内容区被拉伸又需要居中的按钮（`.settings_tab`、`.settings_modes button`）改为 `display:flex` + `justify-content:center`，与已有的 `.shop_controls button` 一致。
+HTML 内的固定文案用 AUI 的 `<translation>键</translation>` 承载，由文档在布局和绘制时按当前语言解析，不再由 Java 逐个元素写入。在线作业和维修工具栏改为 JSON 卡片，文案由模块通过 Component 参数传入，共用 `system:module_controls` 模板；说明靠左、操作按钮靠右，窄窗口换行，扩展方式见[本地模块操作卡片](cards.md#本地模块操作卡片)。随状态变化的文本（`status`、`send`、`asr_toggle`、设置页状态、`usage_scope`、`usage_page`、区域名、识别后端名）、输入框占位符（`placeholder`）、`aria-label` 以及语种下拉选项仍由 Java 提供，因为这些是属性或运行时取值，节点文本无法表达。`<translation>` 子节点文本就是完整键，不能带首尾空白；键缺失时与原版一致直接显示原键。AUI 的 `text-align` 只作用于元素自身的直接文本，内容区被拉伸又需要居中的按钮（`.settings_tab`、`.settings_modes button`）改为 `display:flex` + `justify-content:center`，与已有的 `.shop_controls button` 一致。
 
 每日签到工具栏采用紧凑的日历标记、小标题、奖励去向说明和右侧签到按钮；窄窗口允许换行。标题和说明使用元素 ID 限定字号与间距，避免主题的大标题样式把底部操作区撑高。文案不预先断言今日是否已签到，重复签到仍由服务端返回已有记录。
 
@@ -147,3 +149,7 @@ FTB 详情和完成/解锁通知通过 Codec 同步普通物品奖励预览，�
 ## 对话模式菜单
 
 完整 / 简约发送框左侧共用 ConversationModeSelector，大字名称、小字描述，默认标准。弹层向上绝对定位，不参与消息区布局；只在状态 revision 改变时更新选中和权限，禁用项用颜色置灰，不使用 opacity 合成或主动测量。支持点击外部关闭、Esc 收起、上下键选择和 Enter / Space 激活。管理员设置随 AiStatus 下发，服务端再次检查偏好修改和执行授权。详见 [执行模式](free-chat.md)。
+
+模式菜单和指令补全在显示时使用 AUI `Element.setTopLayer(true)`，隐藏时撤销。玩家和物品模型写入独立深度范围，普通 CSS `z-index` 不能保证覆盖它们；top-layer 在当前文档的普通内容之后绘制，AUI 同时隔离并关闭该阶段的深度测试，避免模型穿透弹层。此方案从 1.21.1 分支的 `8830c68` 同步，并已核对当前 26.1 AUI 1.2.9 的源码接口。
+
+常驻卡片属于另一份 HUD 文档，不能由当前文档的 top-layer 覆盖。弹层打开时按各自的 owner 暂时隐藏常驻卡片并关闭交互，保留卡片节点和进度；全部弹层关闭后恢复。初始化、关闭和 `removed()` 都释放本页面的隐藏请求，多个弹层互不覆盖，也不因 HUD 卸载而提前丢失请求；登出或 F1 仍优先卸载 HUD。不增加布局测量、模型渲染层级常量或额外渲染循环。

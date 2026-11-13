@@ -5,7 +5,6 @@ import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.MinecraftTools;
@@ -50,15 +49,9 @@ public final class CommerceTransactions {
         this.engine = engine;
         this.game = game;
         this.catalogs = catalogs;
-        engine.lifecycle(new AgentLifecycle() {
-            @Override
-            public void revoked(UUID player) {
-                CommerceTransactions.this.quotes.clear(player);
-            }
-
-            @Override
-            public void accessChanged(UUID player) {
-                CommerceTransactions.this.quotes.clear(player);
+        engine.lifecycle((player, event) -> {
+            switch (event) {
+                case REVOKED, ACCESS_CHANGED -> this.quotes.clear(player);
             }
         });
     }

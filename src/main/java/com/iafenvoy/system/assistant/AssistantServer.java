@@ -93,11 +93,8 @@ public final class AssistantServer {
             // Transfer ownership only after construction succeeds, so a failed initialization still releases the file lock.
             this.resources.remove(store);
             this.resources.remove(model);
-            this.engine.lifecycle(new AgentLifecycle() {
-                @Override
-                public void revoked(UUID player) {
-                    AssistantServer.this.databases.deletePlayer(player);
-                }
+            this.engine.lifecycle((player, event) -> {
+                if (event == AgentLifecycle.EventType.REVOKED) this.databases.deletePlayer(player);
             });
             SearchGateway search = this.own(new SearchGateway(new DeepSeekSearchClient()));
             this.narration = this.own(new QuestNarration(this.engine, this.databases.shared()));
@@ -202,11 +199,10 @@ public final class AssistantServer {
         Optional<Identifier> prompt = context.store().read(context.player(), data -> data.systems.current())
                 .flatMap(id -> this.server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM).getOptional(id))
                 .flatMap(SystemDefinition::personalityPrompt);
-        if (prompt.isEmpty()) return "";
-        return context.findPrompt(prompt.get()).orElseGet(() -> {
-            SystemMod.LOGGER.warn("Missing personality prompt {} for player {}", prompt.get(), context.player());
+        return prompt.map(identifier -> context.findPrompt(identifier).orElseGet(() -> {
+            SystemMod.LOGGER.warn("Missing personality prompt {} for player {}", identifier, context.player());
             return "";
-        });
+        })).orElse("");
     }
 
     public void refreshAiAccess() {
@@ -225,9 +221,9 @@ public final class AssistantServer {
                 this.engine.cancel(player.getUUID());
                 this.requests.syncState(player);
                 if (policyChanged) player.sendSystemMessage(Component.translatable("system.ai.access_changed",
-                        Component.translatable(permissions.allowAi() ? "system.ai.allowed" : "system.ai.denied"),
-                        Component.translatable(permissions.allowFreeChat() ? "system.ai.allowed" : "system.ai.denied"),
-                        permissions.modelCallsPerDay(), Component.translatable(permissions.maxMode().labelKey()))
+                                Component.translatable(permissions.allowAi() ? "system.ai.allowed" : "system.ai.denied"),
+                                Component.translatable(permissions.allowFreeChat() ? "system.ai.allowed" : "system.ai.denied"),
+                                permissions.modelCallsPerDay(), Component.translatable(permissions.maxMode().labelKey()))
                         .withStyle(permissions.allowAi() ? ChatFormatting.YELLOW : ChatFormatting.RED));
                 if (availabilityChanged) player.sendSystemMessage(Component.translatable(configured
                                 ? "system.ai.model_ready_hint" : "system.ai.model_missing_hint")

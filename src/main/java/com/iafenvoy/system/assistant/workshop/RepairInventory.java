@@ -3,6 +3,7 @@ package com.iafenvoy.system.assistant.workshop;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import org.jspecify.annotations.NonNull;
 
 /** Costs see the live inventory except the stack being repaired; it can never pay for its own repair. */
 record RepairInventory(Container inventory, int excluded) implements Container {
@@ -17,22 +18,22 @@ record RepairInventory(Container inventory, int excluded) implements Container {
     }
 
     @Override
-    public ItemStack getItem(int slot) {
+    public @NonNull ItemStack getItem(int slot) {
         return slot == this.excluded ? ItemStack.EMPTY : this.inventory.getItem(slot);
     }
 
     @Override
-    public ItemStack removeItem(int slot, int count) {
+    public @NonNull ItemStack removeItem(int slot, int count) {
         return slot == this.excluded ? ItemStack.EMPTY : this.inventory.removeItem(slot, count);
     }
 
     @Override
-    public ItemStack removeItemNoUpdate(int slot) {
+    public @NonNull ItemStack removeItemNoUpdate(int slot) {
         return slot == this.excluded ? ItemStack.EMPTY : this.inventory.removeItemNoUpdate(slot);
     }
 
     @Override
-    public void setItem(int slot, ItemStack stack) {
+    public void setItem(int slot, @NonNull ItemStack stack) {
         if (slot != this.excluded) this.inventory.setItem(slot, stack);
     }
 
@@ -42,7 +43,7 @@ record RepairInventory(Container inventory, int excluded) implements Container {
     }
 
     @Override
-    public boolean stillValid(Player player) {
+    public boolean stillValid(@NonNull Player player) {
         return this.inventory.stillValid(player);
     }
 

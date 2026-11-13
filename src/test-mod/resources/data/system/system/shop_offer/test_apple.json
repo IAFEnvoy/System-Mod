@@ -8,11 +8,9 @@
   ],
   "costs": [
     {
-      "type": "saturn:item",
-      "amount": 2,
-      "items": [
-        "minecraft:oak_log"
-      ]
+      "type": "system:currency",
+      "currency": "system:coin",
+      "amount": 2
     }
   ]
 }

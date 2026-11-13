@@ -1,5 +1,6 @@
 {
   "order": 60,
+  "icon": { "id": "minecraft:emerald" },
   "server": {
     "type": "system:shop",
     "offers": "#system:default"

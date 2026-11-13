@@ -1,7 +1,7 @@
 {
   "label": "测试：大补给池",
   "costs": [
-    { "type": "saturn:item", "items": ["minecraft:emerald"], "amount": 1 }
+    { "type": "system:currency", "currency": "system:coin", "amount": 1 }
   ],
   "entries": [
     {

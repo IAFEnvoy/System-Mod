@@ -91,7 +91,7 @@ public final class Workshop implements PlayerModule {
 
             @Override
             public void close() {
-                quotes.remove(player.getUUID());
+                Workshop.this.quotes.remove(player.getUUID());
             }
         };
     }

@@ -8,11 +8,9 @@
   ],
   "costs": [
     {
-      "type": "saturn:item",
-      "amount": 16,
-      "items": [
-        "minecraft:cobblestone"
-      ]
+      "type": "system:currency",
+      "currency": "system:coin",
+      "amount": 16
     }
   ]
 }

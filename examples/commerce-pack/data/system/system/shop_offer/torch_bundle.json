@@ -4,6 +4,6 @@
     { "id": "minecraft:torch", "count": 4 }
   ],
   "costs": [
-    { "type": "saturn:item", "items": ["minecraft:cobblestone"], "amount": 16 }
+    { "type": "system:currency", "currency": "system:coin", "amount": 16 }
   ]
 }

@@ -3,6 +3,7 @@ package com.iafenvoy.system.module.builtin.economy;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.assistant.economy.Wallets;
+import com.iafenvoy.system.data.catalog.CurrencyDefinition;
 import com.iafenvoy.system.module.ModuleCommands;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.brigadier.arguments.LongArgumentType;
@@ -15,10 +16,13 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.IdentifierArgument;
+import net.minecraft.commands.arguments.selector.EntitySelector;
+import net.minecraft.core.Registry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.util.Locale;
 import java.util.concurrent.CompletionStage;
 
 /** Administrator edits are not Agent tools: model routing can never mint money. */
@@ -30,17 +34,17 @@ public final class EconomyCommands {
         LiteralArgumentBuilder<CommandSourceStack> economy = Commands.literal("economy")
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS));
         economy.then(Commands.literal("currencies").executes(context -> {
-            var currencies = context.getSource().getServer().registryAccess().lookupOrThrow(SystemResourceKeys.CURRENCY);
+            Registry<CurrencyDefinition> currencies = context.getSource().getServer().registryAccess().lookupOrThrow(SystemResourceKeys.CURRENCY);
             context.getSource().sendSuccess(() -> Component.literal(String.join(", ", currencies.keySet().stream().sorted().map(Identifier::toString).toList())), false);
             return currencies.size();
         }));
         for (Operation operation : Operation.values()) {
-            var target = Commands.argument("player", EntityArgument.player());
-            var currency = currency();
+            RequiredArgumentBuilder<CommandSourceStack, EntitySelector> target = Commands.argument("player", EntityArgument.player());
+            RequiredArgumentBuilder<CommandSourceStack, Identifier> currency = currency();
             if (operation == Operation.GET) currency.executes(context -> execute(context, operation));
             else currency.then(Commands.argument("amount", LongArgumentType.longArg(0))
                     .executes(context -> execute(context, operation)));
-            economy.then(Commands.literal(operation.name().toLowerCase(java.util.Locale.ROOT)).then(target.then(currency)));
+            economy.then(Commands.literal(operation.name().toLowerCase(Locale.ROOT)).then(target.then(currency)));
         }
         root.then(economy);
     }

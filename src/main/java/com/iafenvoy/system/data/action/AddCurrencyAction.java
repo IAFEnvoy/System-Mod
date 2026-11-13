@@ -2,6 +2,7 @@ package com.iafenvoy.system.data.action;
 
 import com.iafenvoy.saturn.data.action.EntityAction;
 import com.iafenvoy.saturn.data.context.action.EntityActionContext;
+import com.iafenvoy.saturn.runtime.resulting.Result;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
@@ -11,7 +12,9 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Holder;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import org.jspecify.annotations.NonNull;
 
 /** Signed whole units; a debit that exceeds the balance is refused rather than clamped. */
 public record AddCurrencyAction(Holder<CurrencyDefinition> currency, long amount) implements EntityAction {
@@ -21,17 +24,17 @@ public record AddCurrencyAction(Holder<CurrencyDefinition> currency, long amount
     ).apply(i, AddCurrencyAction::new));
 
     @Override
-    public MapCodec<AddCurrencyAction> codec() {
+    public @NonNull MapCodec<AddCurrencyAction> codec() {
         return CODEC;
     }
 
     @Override
     public void execute(EntityActionContext context) {
         if (!(context.entity() instanceof ServerPlayer player)) return;
-        var id = this.currency.unwrapKey().orElseThrow().identifier();
+        Identifier id = this.currency.unwrapKey().orElseThrow().identifier();
         try {
             Wallets.find(player).ifPresent(wallets -> {
-                var result = wallets.change(player, wallets.store(player), id, this.amount, false);
+                Result<Long> result = wallets.change(player, wallets.store(player), id, this.amount, false);
                 // A one-shot reward must not disappear merely because another transaction currently owns the lock.
                 if (result.getFailure().filter(AgentFailure.BUSY::equals).isPresent())
                     wallets.edit(player, id, this.amount, false).whenComplete((_, error) -> {

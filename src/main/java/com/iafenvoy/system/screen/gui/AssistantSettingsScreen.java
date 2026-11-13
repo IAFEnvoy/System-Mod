@@ -12,9 +12,11 @@ import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.asr.RecognitionCapture;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.iafenvoy.system.speech.tts.SpeechState;
+import com.iafenvoy.system.util.LegacyText;
 import com.sighs.apricityui.element.ThemeSwitcher;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -48,6 +50,7 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
     private SpeechState speechStatus;
     private String asrStatus = "idle";
     private String displayedStatus;
+    private String displayedPermissions;
 
     public AssistantSettingsScreen(Screen parent, Tab tab) {
         super("system/assistant-settings.html", "");
@@ -65,6 +68,7 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
     @Override
     protected void initPage(Document document) {
         super.initPage(document);
+        this.displayedPermissions = null;
         for (Tab value : Tab.values())
             bind(document, "settings_tab_" + value.key(), () -> this.selectTab(value));
         document.getElementById("settings_theme").addEventListener(ThemeSwitcher.THEME_CHANGE_EVENT, event -> {
@@ -325,11 +329,13 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
         Element history = document.getElementById("history_toggle");
         if (history.isDisabled() != busy) history.setDisabled(busy);
         AiStatus permissions = AssistantClient.state().serverState().ai();
-        text(document.getElementById("ai_permissions"), Component.translatable("system.ui.ai_permissions",
-                tr(permissions.allowAi() ? "system.ui.yes" : "system.ui.no"),
-                tr(permissions.allowFreeChat() ? "system.ui.yes" : "system.ui.no"), permissions.modelCallsPerDay(),
-                tr(permissions.maxMode().labelKey())).getString()
-                + (permissions.modelConfigured() ? "" : "\n" + tr("system.ai.model_missing_hint")));
+        String permissionText = LegacyText.formatted(Component.translatable("system.ui.ai_permissions",
+                permissionStatus(permissions.allowAi()), permissionStatus(permissions.allowFreeChat()),
+                permissions.modelCallsPerDay(), tr(permissions.maxMode().labelKey())));
+        if (!permissionText.equals(this.displayedPermissions)) {
+            this.displayedPermissions = permissionText;
+            text(document.getElementById("ai_permissions"), permissionText);
+        }
         String status = switch (this.tab) {
             case GENERAL -> this.savingPreferences ? tr("system.ui.working")
                     : this.generalStatus.isBlank() ? tr("system.ui.settings_auto_save") : this.generalStatus;
@@ -340,6 +346,10 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
             this.displayedStatus = status;
             text(document.getElementById("settings_status"), status);
         }
+    }
+
+    private static Component permissionStatus(boolean allowed) {
+        return Component.literal(allowed ? "√" : "×").withStyle(allowed ? ChatFormatting.GREEN : ChatFormatting.RED);
     }
 
     @Override

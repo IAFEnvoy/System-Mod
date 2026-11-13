@@ -29,6 +29,18 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
     public static CardPresentation of(CardUpdate original, String messageKey, CardContext.Mode mode, int actionOffset, CardUiState pages) {
         CardUpdate update = ClientCards.latest(original);
         CardView view = ClientCards.view(update);
+        return prepare(update.ref(), view, messageKey, mode, actionOffset, pages, ClientCards.active(update.ref()));
+    }
+
+    /**
+     * Local workspace cards reuse templates and callbacks without entering message history or the server card cache.
+     */
+    public static CardPresentation local(CardView view) {
+        return prepare(new CardReference(UUID.randomUUID(), 0), view, "", CardContext.Mode.FULL, 0, new CardUiState(), false);
+    }
+
+    private static CardPresentation prepare(CardReference reference, CardView view, String messageKey,
+                                             CardContext.Mode mode, int actionOffset, CardUiState pages, boolean active) {
         CardTemplate template = CardTemplates.get(view.template());
         if (template == null) template = CardTemplate.fallback();
         CardContext.Builder builder = CardContext.builder();
@@ -61,10 +73,10 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
             else if (button.action() instanceof CardAction.Url(String value))
                 builder.put(prefix + "click_type", "link").put(prefix + "value", value);
             else builder.put(prefix + "click_type", "local").put(prefix + "value", prefix + "click");
-            builder.enable(prefix + "disabled", !ClientCards.active(update.ref()));
-            if (ClientCards.active(update.ref())) builder.callback(prefix + "click", () -> {
-                if (mode != CardContext.Mode.NOTIFICATION || AssistantMessages.canActivate(update.ref()))
-                    CardController.activate(update.ref(), button, mode == CardContext.Mode.NOTIFICATION);
+            builder.enable(prefix + "disabled", !active);
+            if (active) builder.callback(prefix + "click", () -> {
+                if (mode != CardContext.Mode.NOTIFICATION || AssistantMessages.canActivate(reference))
+                    CardController.activate(reference, button, mode == CardContext.Mode.NOTIFICATION);
             });
         }
         // Resolve headings after components, summary and mode flags are ready, just like the card body.
@@ -74,7 +86,7 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
             String title = CardRenderer.text(List.of(template.body().get(hoisted)), template, context, List.of(), "");
             context = builder.put("card_title", title).enable("show_card_title", true).build();
         }
-        return new CardPresentation(template, context, hoisted, pages, update.ref());
+        return new CardPresentation(template, context, hoisted, pages, reference);
     }
 
     /**

@@ -14,6 +14,7 @@ import com.iafenvoy.system.data.output.WalletOutput;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.module.builtin.EconomySystemModule;
+import com.iafenvoy.system.module.builtin.storage.WalletDataStorage;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
@@ -55,7 +56,7 @@ public final class Wallets implements PlayerModule {
     public WalletOutput query(ExecutionContext context) {
         context.ensureMemoryCurrent();
         return context.store().read(context.player(), data -> {
-            var wallet = ModuleData.get(data, EconomySystemModule.STORAGE);
+            WalletDataStorage wallet = ModuleData.get(data, EconomySystemModule.STORAGE);
             return new WalletOutput(this.currencies.listElements()
                     .sorted(Comparator.<Holder.Reference<CurrencyDefinition>>comparingInt(holder -> holder.value().order())
                             .reversed().thenComparing(holder -> holder.key().identifier()))
@@ -70,7 +71,7 @@ public final class Wallets implements PlayerModule {
         AgentStore store = this.store(player);
         return this.engine.maintenance(() -> store.update(player.getUUID(), data -> {
             if (!data.bound() || !this.engine.available(player.getUUID(), QUERY)) throw new AgentException(AgentFailure.NOT_BOUND);
-            var wallet = ModuleData.get(data, EconomySystemModule.STORAGE);
+            WalletDataStorage wallet = ModuleData.get(data, EconomySystemModule.STORAGE);
             return set ? wallet.setBalance(currency, amount) : wallet.addBalance(currency, amount);
         }));
     }
@@ -94,7 +95,7 @@ public final class Wallets implements PlayerModule {
                 answer.set(Result.failure(AgentFailure.NOT_BOUND));
                 return false;
             }
-            var wallet = ModuleData.get(data, EconomySystemModule.STORAGE);
+            WalletDataStorage wallet = ModuleData.get(data, EconomySystemModule.STORAGE);
             try {
                 // updateLoaded supplies a detached draft: simulation discards it, a real pass publishes it atomically.
                 answer.set(Result.success(wallet.addBalance(currency, delta)));

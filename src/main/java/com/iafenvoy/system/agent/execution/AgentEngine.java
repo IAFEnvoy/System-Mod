@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.execution;
 
+import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentLifecycle;
@@ -20,10 +21,13 @@ import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.data.History;
+import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.store.PlayerData;
 import com.mojang.serialization.Codec;
+import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -79,7 +83,9 @@ public final class AgentEngine implements AutoCloseable {
         return this.permissions.apply(player).withModelConfigured(this.model.configured());
     }
 
-    /** The game bridge supplies host identity; workers never inspect client classes or online player lists. */
+    /**
+     * The game bridge supplies host identity; workers never inspect client classes or online player lists.
+     */
     public void permissions(Function<UUID, AiAccess.Permissions> permissions) {
         this.permissions = Objects.requireNonNull(permissions);
     }
@@ -138,7 +144,7 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     public void disconnected(UUID player) {
-        this.lifecycle.forEach(listener -> listener.disconnected(player));
+        this.lifecycle.forEach(listener -> listener.event(player, AgentLifecycle.EventType.DISCONNECTED));
         this.playerLanguages.remove(player);
         this.router.clear(player);
     }
@@ -151,8 +157,8 @@ public final class AgentEngine implements AutoCloseable {
         return !this.revoking.contains(player) && this.incarnation(player) == incarnation;
     }
 
-    public void lifecycle(AgentLifecycle listener) {
-        this.lifecycle.add(Objects.requireNonNull(listener));
+    public void lifecycle(@NotNull AgentLifecycle listener) {
+        this.lifecycle.add(listener);
     }
 
     /**
@@ -229,7 +235,8 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     public <T> CompletionStage<T> invalidatePlayer(UUID player, Callable<T> cleanup) {
-        if (!this.maintenanceOwners.add(player)) return CompletableFuture.failedFuture(new AgentException(AgentFailure.BUSY));
+        if (!this.maintenanceOwners.add(player))
+            return CompletableFuture.failedFuture(new AgentException(AgentFailure.BUSY));
         // Invalidate old callbacks before deleting business data; token accounting has a separate owner.
         this.revoking.add(player);
         this.incarnations.merge(player, 1L, Long::sum);
@@ -237,7 +244,7 @@ public final class AgentEngine implements AutoCloseable {
         this.disableRules(player);
         this.router.clear(player);
         return this.maintenance(() -> {
-            this.lifecycle.forEach(listener -> listener.revoked(player));
+            this.lifecycle.forEach(listener -> listener.event(player, AgentLifecycle.EventType.REVOKED));
             return cleanup.call();
         }).whenComplete((ignored, error) -> {
             this.revoking.remove(player);
@@ -295,6 +302,10 @@ public final class AgentEngine implements AutoCloseable {
         return this.modules.get(workflow, owner -> this.moduleAccess.test(player, owner));
     }
 
+    public boolean moduleEnabled(UUID player, Holder<SystemModule> owner) {
+        return this.moduleEnabled(player, HolderHelper.id(owner));
+    }
+
     public boolean moduleEnabled(UUID player, Identifier owner) {
         return owner == null || this.moduleAccess.test(player, owner);
     }
@@ -309,7 +320,7 @@ public final class AgentEngine implements AutoCloseable {
 
     public void moduleAccessChanged(UUID player) {
         this.router.clear(player);
-        this.lifecycle.forEach(listener -> listener.accessChanged(player));
+        this.lifecycle.forEach(listener -> listener.event(player, AgentLifecycle.EventType.ACCESS_CHANGED));
     }
 
     public Collection<AgentModule.Descriptor> descriptors() {
@@ -345,13 +356,15 @@ public final class AgentEngine implements AutoCloseable {
         try {
             ModuleRegistry.Call<?> call = this.modules.call(input, owner -> this.moduleAccess.test(context.player(), owner));
             AgentModule.Descriptor descriptor = call.module().descriptor();
-            if (!this.available(context.player(), descriptor.id())) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+            if (!this.available(context.player(), descriptor.id()))
+                throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             if (context.isEvent() ? !descriptor.event() : !descriptor.interactive())
                 throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             if (!context.isEvent() && context.routeSource().automatic() && !this.modules.modelSelectable(descriptor.id()))
                 throw new AgentException(AgentFailure.CONFIRM_REQUIRED);
             if ((context.routeSource() == RouteSource.SEMANTIC || context.routeSource() == RouteSource.ROUTE_CACHE)
-                    && !this.modules.semanticSelectable(descriptor.id())) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
+                    && !this.modules.semanticSelectable(descriptor.id()))
+                throw new AgentException(AgentFailure.NOT_AUTHORIZED);
             context.select(call.owner(), descriptor, policy == null ? this.policy(call.module()) : policy);
             context.ensureMemoryCurrent();
             return call.execute(context);
@@ -367,7 +380,8 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     public <T> CompletionStage<T> personalMaintenance(UUID player, Callable<T> work) {
-        if (!this.maintenanceOwners.add(player)) return CompletableFuture.failedFuture(new AgentException(AgentFailure.BUSY));
+        if (!this.maintenanceOwners.add(player))
+            return CompletableFuture.failedFuture(new AgentException(AgentFailure.BUSY));
         return this.maintenance(work).whenComplete((ignored, _) -> this.maintenanceOwners.remove(player));
     }
 

@@ -1,15 +1,19 @@
 package com.iafenvoy.system.module.client;
 
+import com.iafenvoy.saturn.data.IconReference;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.data.card.CardReference;
+import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.registry.SystemClientModules;
 import com.iafenvoy.system.registry.SystemResourceKeys;
+import com.iafenvoy.system.screen.gui.AssistantIcons;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
@@ -131,11 +135,30 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
         topbar.setInnerHTML("");
         for (Workspace entry : this.workspace) {
             if (entry.navigation().isBlank()) continue;
-            Element button = AssistantView.element(document, "button", "nav", AssistantView.tr(entry.label()));
+            Element button = AssistantView.element(document, "button", "nav", "");
             button.setAttribute("id", entry.navigation());
+            if (entry.group() != WorkspaceGroup.SETTINGS)
+                this.icon(entry).ifPresent(icon -> {
+                    Element image = AssistantIcons.create(document, icon, 20);
+                    if (image == null) return;
+                    image.setClassName("nav_icon");
+                    image.setAttribute("aria-hidden", "true");
+                    button.appendChild(image);
+                });
+            button.appendChild(AssistantView.element(document, "span", "nav_label", AssistantView.tr(entry.label())));
             (entry.group() == WorkspaceGroup.SETTINGS ? topbar : navigation).appendChild(button);
         }
         this.workspace.forEach(entry -> entry.bind().accept(new WorkspaceContext(screen, document, entry)));
+    }
+
+    private Optional<IconReference> icon(Workspace entry) {
+        Registry<SystemModule> modules = this.registries.lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE);
+        List<Identifier> definitions = entry.context().definitions();
+        if (definitions.isEmpty()) definitions = List.of(entry.context().id());
+        // A shared client entry follows the same highest-order rule as navigation sorting.
+        return definitions.stream().map(modules::getValue).filter(Objects::nonNull)
+                .sorted(Comparator.comparingInt(SystemModule::order).reversed())
+                .map(SystemModule::icon).flatMap(Optional::stream).findFirst();
     }
 
     public List<Workspace> workspace() {

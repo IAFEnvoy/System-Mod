@@ -469,7 +469,7 @@
   "system.ui.shop_refresh": "All offers",
   "system.ui.shop_search": "Search",
   "system.ui.shop_truncated": "Too many offers; only the first part is shown.",
-  "system.ui.shop_text": "Confirm to pay with items matching the price templates from your main inventory. Goods go to your inbox. System coin payments are not available yet.",
+  "system.ui.shop_text": "Confirm to pay the quoted price. System coins are deducted from your wallet; goods go to your inbox for collection.",
   "system.ui.signin_action": "Sign in now",
   "system.ui.signin_text": "Claim today's supplies. Rewards will be added to your inbox.",
   "system.ui.signin_title": "Daily sign-in",

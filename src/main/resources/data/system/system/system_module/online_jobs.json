@@ -1,5 +1,6 @@
 {
   "order": 40,
+  "icon": { "id": "minecraft:iron_pickaxe" },
   "server": {
     "type": "system:online_jobs",
     "jobs": "#system:default"

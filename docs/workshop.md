@@ -14,7 +14,7 @@
   "server": {
     "type": "system:workshop",
     "costs": [
-      { "type": "saturn:item", "items": ["minecraft:emerald"], "amount": 1 }
+      { "type": "system:currency", "currency": "system:coin", "amount": 1 }
     ]
   },
   "client": "system:workshop"
@@ -26,7 +26,7 @@
 | `type` | Identifier | 必填 | `system:workshop` |
 | `costs` | Saturn Cost 数组 | 必填 | 每次维修一件物品的费用；显式 `[]` 表示免费 |
 
-内置价格为每件 1 颗绿宝石，价格不随损耗变化。可配置 Saturn 资源或物品费用。费用定义解析失败会拒绝加载，不会因为容错而变成免费维修。修改模块参数需要重进世界或正常重启服务端。
+内置价格为每件 1 系统币，从经济模块钱包扣款，价格不随损耗变化。需要已绑定并启用经济模块；余额不足时不维修。也可通过 `costs` 配置其他币种、Saturn 资源或物品费用。费用定义解析失败会拒绝加载，不会因为容错而变成免费维修。修改模块参数需要重进世界或正常重启服务端。
 
 ## 报价与扣款
 

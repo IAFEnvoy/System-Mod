@@ -4,6 +4,7 @@ import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.data.AiStatus;
+import com.iafenvoy.system.screen.AssistantCardDisplay;
 import com.sighs.apricityui.event.KeyEvent;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
@@ -97,8 +98,16 @@ final class ConversationModeSelector {
     private void open(boolean open) {
         this.open = open;
         display(this.menu, open ? "flex" : "none");
+        // Top-layer paint ignores depth left by player/item models in this document.
+        this.menu.setTopLayer(open);
+        // Persistent cards live in another document above the screen, outside this top layer.
+        AssistantCardDisplay.suspend(this, open);
         String expanded = Boolean.toString(open);
         if (!expanded.equals(this.trigger.getAttribute("aria-expanded"))) this.trigger.setAttribute("aria-expanded", expanded);
+    }
+
+    void close() {
+        this.open(false);
     }
 
     private void key(KeyEvent event) {

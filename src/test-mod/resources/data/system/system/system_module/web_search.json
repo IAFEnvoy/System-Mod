@@ -1,5 +1,6 @@
 {
   "order": 30,
+  "icon": { "id": "minecraft:compass" },
   "server": {
     "type": "system:web_search"
   },

@@ -1,5 +1,6 @@
 package com.iafenvoy.system.data.module;
 
+import com.iafenvoy.saturn.data.IconReference;
 import com.iafenvoy.system.module.ServerModule;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -8,13 +9,15 @@ import net.minecraft.resources.Identifier;
 import java.util.Optional;
 
 /**
- * A datapack entry pairs configured behavior with a client implementation ID and display order.
+ * A datapack entry pairs configured behavior with a client implementation ID and display metadata.
  */
-public record SystemModule(Optional<ServerModule> server, Optional<Identifier> client, int order) {
+public record SystemModule(Optional<ServerModule> server, Optional<Identifier> client, int order,
+                           Optional<IconReference> icon) {
     public static final Codec<SystemModule> CODEC = RecordCodecBuilder.create(i -> i.group(
             ServerModule.CODEC.optionalFieldOf("server").forGetter(SystemModule::server),
             Identifier.CODEC.optionalFieldOf("client").forGetter(SystemModule::client),
-            Codec.INT.lenientOptionalFieldOf("order", 0).forGetter(SystemModule::order)
+            Codec.INT.lenientOptionalFieldOf("order", 0).forGetter(SystemModule::order),
+            IconReference.CODEC.lenientOptionalFieldOf("icon").forGetter(SystemModule::icon)
     ).apply(i, SystemModule::new));
 
     public boolean available() {

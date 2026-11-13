@@ -1,5 +1,6 @@
 {
   "order": 40,
+  "icon": { "id": "minecraft:spyglass" },
   "server": {
     "type": "system:items"
   },

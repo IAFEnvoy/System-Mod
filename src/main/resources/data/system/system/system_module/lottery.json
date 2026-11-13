@@ -1,5 +1,6 @@
 {
   "order": 50,
+  "icon": { "id": "minecraft:ender_chest" },
   "server": {
     "type": "system:lottery",
     "pools": "#system:default"

@@ -65,6 +65,7 @@ Keep advice concise and grounded in the available game data.
 ```json
 {
   "order": 80,
+  "icon": { "id": "minecraft:book" },
   "server": { "type": "system:signin" },
   "client": "system:signin"
 }
@@ -73,6 +74,8 @@ Keep advice concise and grounded in the available game data.
 系统配置写 `"modules": ["example:daily"]`，即可引用此实例。server 对象按 type dispatch 解码，其余键交给具体模块 Codec；当前内置类型是无参数单例，使用 MapCodec.unit。后续参数化实现可用 RecordCodecBuilder.mapCodec，字段直接放在 type 同级，不改变系统引用格式。两份模块配置可以选择同一个实现类型，并由不同系统引用不同参数；工作流执行按当前玩家启用的配置选择。相同动作的多个候选同时启用时，按模块配置 ID 排序取第一个，建议同类变体条件互斥。
 
 顶层 `order` 控制客户端模块入口的显示顺序，整数越大越靠前，允许负数；缺失或类型错误时按 0 处理。同值保留原有声明顺序，动态模块原本按 ID 装配；共用同一个 client 实现的多份配置合并为一个入口，取其中最大的 order。本地常驻入口优先读取同 ID 的模块定义，没有定义时为 0。order 不改变服务端工作流候选的选择规则。
+
+顶层 `icon` 为可选的 Saturn `IconReference`：纹理写 Identifier 字符串，如 `"example:textures/gui/module.png"`；物品写 ItemStackTemplate 对象，如 `{"id":"minecraft:book"}`。裸字符串始终按纹理解析，不作为物品 ID。字段通过 `lenientOptionalFieldOf` 读取，缺失或格式错误时为空；随模块配置同步给客户端，显示在完整界面的左侧模块名称前。共享同一个 client 入口时按 order 降序取首个已配置图标，没有图标则只显示文字。内置侧栏模块已提供默认物品图标，可由数据包替换。
 
 内置顺序为玩家信息 100、任务 90、签到 80、收件箱 70、商城 60、抽奖 50、物品查询 40；测试源集的联网搜索为 30。模块定义属于同步数据包注册表，调整 order 后需要重新进入世界或正常重启服务器。
 
@@ -274,26 +277,26 @@ tag 使用原版 `values` / `replace`、嵌套 `#tag`、可选成员 `{ "id": ".
   "label": "火把补给",
   "items": [{ "id": "minecraft:torch", "count": 4 }],
   "costs": [
-    { "type": "saturn:item", "items": ["minecraft:cobblestone"], "amount": 16 }
+    { "type": "system:currency", "currency": "system:coin", "amount": 16 }
   ]
 }
 ```
 
 `costs` 通过 Saturn 的 Cost 类型注册表分派，可以混合物品、资源及其他已注册的费用；列表各项都需要支付。启用的商品必须显式提供 `costs`，空列表 `[]` 表示免费。`saturn:item.items` 中的匹配项是可替代关系，例如 `["minecraft:cobblestone", "#minecraft:planks"]` 表示总计消耗 `amount` 个圆石或木板，不是每种各扣一次。普通物品 ID 只匹配物品类型，可能消耗带名称、附魔或其他组件的同类物品；组件条件使用 Saturn 注册的 matcher。实际读取玩家 `Inventory` 暴露的槽位，匹配、跨槽位选材和数量取整由 Saturn 执行。
 
-系统币使用 Saturn 资源费用，例如：
+系统币使用经济模块的 `system:currency` 费用，例如：
 
 ```json
 {
   "label": "系统币补给",
   "items": [{ "id": "minecraft:bread", "count": 6 }],
   "costs": [
-    { "type": "saturn:resource", "resource": "example:system_coin", "amount": 20 }
+    { "type": "system:currency", "currency": "system:coin", "amount": 20 }
   ]
 }
 ```
 
-资源需要先在 `data/example/saturn/resource/system_coin.json` 定义，例如 `{"default_value":0,"max":1000000000}`；示例包已附带该资源和 `system:coin_food` 商品，初始余额为 0，不会自动发币。资源与商品注册表均在世界加载时读取，添加或修改资源、商品费用需重开世界 / 重启服务器，不能只 `/reload`。资源名称使用 Saturn 的翻译键格式，例如 `saturn.resource.example.system_coin`；客户端资源包未翻译时显示资源 ID。
+内置 `system:coin` 已在 `data/system/system/currency/coin.json` 定义，支付从玩家的经济模块钱包扣款，不使用 Saturn Resource 余额。示例包的 `system:coin_food` 商品使用同一币种，不另建一份“系统币”资源。初始余额为 0，不会自动发币；管理员可用 `/system economy add <玩家> system:coin 100` 发币，数据驱动奖励可用 `system:add_currency`。自定义币种、名称翻译和权限要求见[经济系统](economy.md)。注册表及商品费用在世界加载时读取，添加或修改后需重开世界 / 重启服务器，不能只 `/reload`；其他 Saturn 资源仍可独立使用 `saturn:resource` 费用。
 
 `amount` 交由 Saturn `NumberProvider` 解析，支持其常量、公式和注册类型。浏览及生成报价均在服务端游戏线程求值，确认报价保留本次求值后的账单，两分钟内确认不会重新计算动态金额；确认仍会重新检查当前支付条件。客户端和模型只收到展示快照及报价引用，不能提供可执行 Cost。新增费用类型在 Saturn 注册，无需修改 System 的支付分支。
 
@@ -307,13 +310,13 @@ Saturn 逐项模拟后按列表顺序扣款，不合并重复或重叠的需求�
 
 ## 抽奖奖池
 
-奖池使用原生 `system:lottery_pool` 数据包注册表，奖池 ID 来自 `data/<namespace>/system/lottery_pool/<path>.json` 的路径。默认 `system:supplies` 消耗 1 个绿宝石，奖品分别为 16 个火把（60%）、8 个面包（30%）、4 个铁锭（10%）；可覆盖同路径文件或用 `{"enabled":false}` 禁用。可复制的示例在 [supplies.json](../examples/commerce-pack/data/example/system/lottery_pool/supplies.json)。
+奖池使用原生 `system:lottery_pool` 数据包注册表，奖池 ID 来自 `data/<namespace>/system/lottery_pool/<path>.json` 的路径。默认 `system:supplies` 消耗 1 系统币，奖品分别为 16 个火把（60%）、8 个面包（30%）、4 个铁锭（10%）；可覆盖同路径文件或用 `{"enabled":false}` 禁用。可复制的示例在 [supplies.json](../examples/commerce-pack/data/example/system/lottery_pool/supplies.json)。
 
 ```json
 {
   "label": "补给奖池",
   "costs": [
-    { "type": "saturn:item", "items": ["minecraft:emerald"], "amount": 1 }
+    { "type": "system:currency", "currency": "system:coin", "amount": 1 }
   ],
   "entries": [
     {

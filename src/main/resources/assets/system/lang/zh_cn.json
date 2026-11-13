@@ -469,7 +469,7 @@
   "system.ui.shop_refresh": "全部商品",
   "system.ui.shop_search": "搜索",
   "system.ui.shop_truncated": "商品过多，仅显示前一部分。",
-  "system.ui.shop_text": "确认后扣除主背包中符合价格模板的材料，商品存入收件箱。系统币支付暂未开放。",
+  "system.ui.shop_text": "确认后按报价支付，系统币从钱包扣除；商品存入收件箱，可另行领取。",
   "system.ui.signin_action": "立即签到",
   "system.ui.signin_text": "领取今日补给，奖励将存入收件箱。",
   "system.ui.signin_title": "每日签到",

@@ -1,5 +1,6 @@
 {
   "order": 80,
+  "icon": { "id": "minecraft:clock" },
   "server": {
     "type": "system:signin",
     "rewards": "#system:default"

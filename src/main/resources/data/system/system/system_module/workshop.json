@@ -1,13 +1,12 @@
 {
   "order": 45,
+  "icon": { "id": "minecraft:anvil" },
   "server": {
     "type": "system:workshop",
     "costs": [
       {
-        "type": "saturn:item",
-        "items": [
-          "minecraft:emerald"
-        ],
+        "type": "system:currency",
+        "currency": "system:coin",
         "amount": 1
       }
     ]

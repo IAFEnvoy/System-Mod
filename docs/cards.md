@@ -28,6 +28,12 @@ public CardBuilder buildCard() {
 
 知识问答使用 `KnowledgeAnswerOutput` / `system:knowledge_answer`，正文显示回答、本地来源默认折叠，包含标题、分类和命中段落；只播报回答或原文提示，不提供网页链接或任务操作。联网回退继续使用独立的 WebSearchOutput / web_search 模板；两种卡片都只展示服务端准备的结果。
 
+## 本地模块操作卡片
+
+模块工具栏也可以通过 `WorkspaceContext.card(CardBuilder)` 使用 JSON 卡片。在线作业和维修共用 `assets/system/cards/module_controls.json`：`title`、`description`、`action_label` 分别提供标题、说明和操作文案，`submit` 是由模块绑定的本地 callback。模板左侧显示说明，右侧显示按钮，窄窗口自动换行；布局与样式可由资源包覆盖。
+
+这类卡片由 `CardPresentation.local` 渲染，仅属于当前界面的工具栏，不写入聊天历史或服务端卡片缓存，不触发通知和播报。按钮使用 `system:button` 的 `click: "local"`、`value: "submit"` 调用 Context callback，由回调发送既有业务请求；服务端继续检查权限与业务状态。卡片只在界面初始化或模板资源重载时重建，普通回复不重复构建操作区。
+
 ## 构建事件：给现有卡片补充参数
 
 [`CardBuildEvent`](../src/main/java/com/iafenvoy/system/event/client/CardBuildEvent.java) 在客户端 `NeoForge.EVENT_BUS` 同步发布，不走 mod event bus，不可取消。统一入口位于 `ClientCards`：先调用原 `CardData.buildCard()` 填好内置内容，再发布事件，最后 `CardBuilder.build()` 复制出不可变快照。公共 CardData / CardBuilder 不负责发布事件，专用服务端不会走这个客户端入口。

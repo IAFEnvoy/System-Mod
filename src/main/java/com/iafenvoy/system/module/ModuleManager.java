@@ -60,8 +60,8 @@ public final class ModuleManager implements AutoCloseable {
             }));
             // Workflows may resolve shared services before their lifecycle hooks are installed.
             modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
-                if (module instanceof CatalogModule<?> catalog)
-                    context.get(ContextTypes.CATALOGS).register(id, catalog);
+                if (module instanceof CatalogModule<?>)
+                    context.get(ContextTypes.CATALOGS).register(context.modules().get(id).orElseThrow());
                 if (module instanceof WorkflowModule workflows)
                     for (AgentModule<?> workflow : workflows.workflows(contexts.get(id)))
                         this.engine.registerModule(id, workflow);

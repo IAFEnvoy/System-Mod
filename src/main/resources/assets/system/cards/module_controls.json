@@ -1,0 +1,37 @@
+{
+  "style": ["result_card", "workspace_controls"],
+  "show_title": false,
+  "hide_summary": true,
+  "body": [
+    {
+      "type": "system:flex",
+      "style": "workspace_controls_layout",
+      "children": [
+        {
+          "type": "system:container",
+          "style": "workspace_controls_copy",
+          "children": [
+            {
+              "type": "system:title",
+              "level": 2,
+              "text": "{{title}}",
+              "style": "workspace_controls_title"
+            },
+            {
+              "type": "system:text",
+              "text": "{{description}}",
+              "style": "workspace_controls_note"
+            }
+          ]
+        },
+        {
+          "type": "system:button",
+          "click": "local",
+          "value": "submit",
+          "text": "{{action_label}}",
+          "style": "workspace_controls_action"
+        }
+      ]
+    }
+  ]
+}

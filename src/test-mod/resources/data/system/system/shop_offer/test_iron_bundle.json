@@ -16,11 +16,9 @@
   ],
   "costs": [
     {
-      "type": "saturn:item",
-      "amount": 8,
-      "items": [
-        "minecraft:iron_ingot"
-      ]
+      "type": "system:currency",
+      "currency": "system:coin",
+      "amount": 8
     }
   ]
 }

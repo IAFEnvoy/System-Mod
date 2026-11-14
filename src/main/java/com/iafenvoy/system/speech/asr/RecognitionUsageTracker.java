@@ -12,6 +12,7 @@ final class RecognitionUsageTracker {
     private final String provider, region;
     private final AtomicBoolean completed = new AtomicBoolean();
     private boolean started;
+    private AsrProvider.Usage usage = AsrProvider.Usage.UNKNOWN;
 
     RecognitionUsageTracker(String provider, String region) {
         this.provider = provider;
@@ -26,6 +27,10 @@ final class RecognitionUsageTracker {
 
     void complete(boolean successful) {
         if (this.started && this.completed.compareAndSet(false, true))
-            this.ledger.completeRecognition(this.provider, this.region, successful);
+            this.ledger.completeRecognition(this.provider, this.region, this.usage, successful);
+    }
+
+    void usage(AsrProvider.Usage usage) {
+        this.usage = usage;
     }
 }

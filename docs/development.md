@@ -6,7 +6,7 @@ ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，�
 
 NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通过 JDK HMAC-SHA1 签名调用 CreateToken，跨 session 复用内存缓存并在有效期不足两分钟时按需刷新。设置保存和 `validate` 不联网，签发随识别工作线程取消；`AsrProvider.recognize` 的 `requestStarted` 回调在发送首次识别命令前启动计量，鉴权和握手失败不计 ASR 尝试。
 
-语音供应商接口及客户端录音和播放分别位于 `speech.asr` 与 `speech.tts`，供应商工厂 `TtsProviders` / `AsrProviders` 位于 `speech`，协议实现位于 `speech.aliyun`；配置集中在 `config`。阿里云默认使用 `qwen3-tts-flash`，额外兼容设计音色绑定的 Qwen-Audio-TTS HTTP 协议；复用 `HttpTransport`，没有新增依赖或模型文件。详见 [语音合成与音色设计](tts.md)。
+语音供应商接口及客户端录音和播放分别位于 `speech.asr` 与 `speech.tts`，服务构造入口为 `registry.SystemServices.TTS / ASR`，按具体 Credential 类创建供应商；协议实现位于 `speech.aliyun` 和 `speech.deepseek`，配置集中在 `config`。阿里云默认使用 `qwen3-tts-flash`，额外兼容设计音色绑定的 Qwen-Audio-TTS HTTP 协议；复用 `HttpTransport`，没有新增依赖或模型文件。详见 [语音合成与音色设计](tts.md)。
 
 | 组件 | 配置 |
 | --- | --- |
@@ -15,7 +15,7 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 | Minecraft / NeoForge | 26.1.2 / 26.1.2.114 |
 | ApricityUI | 1.2.9；客户端最低版本 1.2.9 |
 | Jupiter | CurseMaven 8569832 |
-| Saturn | 1.3 / CurseMaven 9538254；客户端和服务端均必装，统一 Cost、模块 DataStorage、Codec 工具、压缩 NBT 文件、玩家信息视图及 HUD 编辑器 |
+| Saturn | 1.3.1 / CurseMaven 9606807；客户端和服务端均必装，提供 CostTarget.display、Cost、模块 DataStorage、Codec 工具、压缩 NBT 文件、玩家信息视图及 HUD 编辑器 |
 | Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
 | Card JSON 编辑器（独立开发工具） | Vite 8.3.6；Node.js ^20.19.0 或 >=22.12.0，位于 html/card-editor；不进入模组 JAR |
 | Gson | 2.13.2；主项目直接声明依赖，Minecraft 提供运行时类 |
@@ -26,7 +26,9 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 
 AUI 1.2.9 将布局状态从 `RenderElement` 拆到 `LayoutState`。卡片折叠与分页刷新通过 `Element.getLayout().invalidateLayoutSubtree()` 使布局失效，再由 `AssistantPages.commit` 提交更新。
 
-玩家查询与卡片使用 Saturn 的 `data.information.PlayerViews`、`PlayerInformation` 与 `InformationText`，展示结果类型为 `data.information.model.InformationEntry`。查询仍选取 basic/status 分组和既有行白名单，并保留 32 行、每行 256 字的上限；分组按 ResourceKey 从当前世界解析为 Holder，结果通过 entry.value()/label()/tooltip() 直接使用；排序和 importance 从原始行定义读取。Saturn 为必装依赖，最低版本为 1.3，通知位置编辑复用其 HUD 框架，存档使用其 `NBT_COMPRESSED` 入口。CurseMaven 文件 ID 在 build.gradle 声明，最低版本在 neoforge.mods.toml 声明；不再引用已删除的 saturn_version/saturn_file_id 属性。
+玩家查询与卡片使用 Saturn 的 `data.information.PlayerViews`、`PlayerInformation` 与 `InformationText`，展示结果类型为 `data.information.model.InformationEntry`。查询仍选取 basic/status 分组和既有行白名单，并保留 32 行、每行 256 字的上限；分组按 ResourceKey 从当前世界解析为 Holder，结果通过 entry.value()/label()/tooltip() 直接使用；排序和 importance 从原始行定义读取。Saturn 为必装依赖，最低版本为 1.3.1，通知位置编辑复用其 HUD 框架，存档使用其 `NBT_COMPRESSED` 入口。费用展示 API 已包含在发布版 1.3.1 中，依赖坐标为 `curse.maven:saturn-lib-1767455:9606807`；版本与文件 ID 分别由 `gradle.properties` 的 `saturn_version`、`saturn_file_id` 管理，模组元数据使用同一最低版本。
+
+直接执行下方 System 编译命令，Gradle 会从 CurseMaven 解析 Saturn 发布文件。
 
 Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器、上下文、Module/Tool/Store/Journal 契约、路由与模型调用。具体工作流和功能装配位于 `module/builtin`，MC 业务、绑定和交易位于 `assistant`，参数结果、持久化与资源加载位于 `data`，语音行为及任务口播位于 `speech`。业务 DataStorage 继续放在 `module/builtin/storage`，执行账本实现位于 `data/store`。通用工具、配置、游戏界面、网络与可选兼容层保留对应包；所有代码仍共用主源码集与 Java 25 工具链。详细边界见[包职责与数据流](architecture.md)及[功能模块化](feature-modules.md)。
 
@@ -107,7 +109,7 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 
 `ConfigInstance.getConfigFolder()` 提供所有配置共用的根目录，配置实例和 TTS 缓存分别在其下拼接文件名及固定 `tts-cache` 子目录，不再维护额外的 `SystemConfig` 路径工具。
 
-`AgentConfig` 只保留执行预算、并发、每日模型限额和时区；`ModelConfig` 管模型连接和提供商参数，`SemanticConfig` 管本地路由，`AdvancementConfig` 管成就绑定，`StorageConfig` 管玩家文件的容量预算。对应文件为 `system-agent.json`、`system-model.json`、`system-semantic.json`、`system-advancements.json`、`system-storage.json`，均位于 `config/system/`。奖励、商品和奖池完全由数据包定义，不参与配置解析，不提供旧聚合配置自动迁移。
+`AgentConfig` 只保留执行预算、并发、每日模型限额和时区；`ApiConfig` 管本进程凭据、服务声明和用途绑定，`ModelConfig` 只管模型连接和提供商参数，`SemanticConfig` 管本地路由，`AdvancementConfig` 管成就绑定，`StorageConfig` 管玩家文件的容量预算。对应文件为 `system-agent.json`、`system-api.json`、`system-model.json`、`system-semantic.json`、`system-advancements.json`、`system-storage.json`，均位于 `config/system/`。奖励、商品和奖池完全由数据包定义，不参与配置解析，不提供旧聚合配置自动迁移。
 
 `CodecIO` 统一 JSON 文本边界与 Codec 编解码。`Conversation` 的 `history` 与 `requests` 都用 Saturn `CollectionCodecs` 的容错容器：逐项解码，解析错误或构造异常只丢弃该项并记日志，不接受部分值，编码仍严格执行；外层 `lenientOptionalFieldOf` 处理整个字段类型无效的情况；不迁移旧载荷。`history` 的一轮对话是 sealed `Message`，`role` 是唯一判别字段：`user` 存原文，`assistant` 直接嵌套 `AgentResult`（与 `requests` 相同），读取方按变体取值，不再各自解析 JSON 字符串；新增 role 只需加一个 record 和 dispatch 的一个分支。绑定、奖励、订单、写步骤、请求输入指纹等保持严格读取。配置使用不可变 record、`RecordCodecBuilder` 和 record getter，按字段以 `lenientOptionalFieldOf` 读取。范围与字段语义在子 Codec 校验，枚举及嵌套构造异常通过 `ConfigCodecs` 转为解析错误。配置中缺失、null、类型错误、无效枚举、越界值或嵌套 Codec 构造异常只回退该字段，其他有效配置保留；配置集合返回不可变快照，玩家文件仍使用 FileAgentStore 的原有 force/原子替换事务。
 
@@ -271,7 +273,7 @@ ModuleAccess 在登录事务中取得绑定 ID，在主线程确认定义仍存�
 
 签到、商城和抽奖实现 CatalogModule，声明对应目录注册表与可选 ResourceKey / TagKey 列表。ModuleManager 将配置注册到 CommerceCatalogs，catalogs.available(player) 仅合并该玩家已启用定义允许的条目，同类配置取并集、目录顺序稳定且不重复；省略字段允许全表，空数组为空。内置三模块显式引用各表自己的 #system:default。所有列表、签到候选与提交、报价和扣款均读取这份受限视图，收件箱状态也使用同一入口；成就事件显式读取原始目录。原生 tag 重载无需重建业务内容快照，后续查询读取当前成员；确认和支付前还会检查报价来源是否仍可用。同类配置共用原有对应交易账本，允许重复装配同一静态 ModuleStorage，不重复注册存储类型。格式见 [扩展配置](datapacks.md#模块目录可选项)。
 
-奖励和商品 ID 使用 `Identifier`，通过 `Identifier.CODEC` 解析；签到选择、报价请求和成就奖励引用保留该类型，只在搜索或对话摘要等文本边界转换。商品与奖池直接保存 `List<Cost>`，通过 Saturn `Cost.LIST_CODEC` 按注册类型分派；目录由原生注册表加载流程提供 RegistryOps，支持资源 Cost 的动态注册表引用。`CommerceCatalog.Price` 仅保存求值后的物品图标和文字组件，供客户端及订单快照使用，不含可执行费用。
+奖励和商品 ID 使用 `Identifier`，通过 `Identifier.CODEC` 解析；签到选择、报价请求和成就奖励引用保留该类型，只在搜索或对话摘要等文本边界转换。商品与奖池直接保存 `List<Cost>`，通过 Saturn `Cost.LIST_CODEC` 按注册类型分派；目录由原生注册表加载流程提供 RegistryOps，支持资源 Cost 的动态注册表引用。`CommerceCatalog.Price` 仅保存求值后的物品图标和文字组件，供客户端及订单快照使用，不含可执行费用。展示通过 `CostTarget.display(transaction.amount())` 多态生成 `CostDisplay`，由各个 Target 负责物品、资源或币种的展示；`CommerceCosts` 只转换和汇总，不按目标类型分支，也不重新求值。
 
 `system:shop` 分页浏览、`system:shop_quote` 生成预览、`system:shop_purchase` 处理独立确认，后者拒绝模型路由直接进入。支付内容只来自服务端签发的 `CommerceQuotes`，绑定玩家、操作类型与目录版本；订单按报价 ID 持久化，清空对话不删除订单。`ShopPurchaseTool` 与 `LotteryDrawTool` 各自只负责一种确认行为，通过同一 `CommerceTransactions` 预留 `CommerceOrder` 与锁定的收件箱权益，再进入受限主线程队列验证模板并扣除材料，最后在同一玩家事务中完成订单并解锁权益。扣款失败与结果未知分别记录；未知订单不自动重试，权益保持锁定。`Purchase.order` 保存操作类型、来源、价格及完整奖励快照；没有迁移旧 `Purchase.offer` 的兼容逻辑，开发存档若无法解析，使用 `/system reset [玩家]` 后重新授予。
 
@@ -362,7 +364,9 @@ AssistantServer 统一拥有 AgentDatabases：`<存档>/system/database/shared.d
 - `agent/react`、`agent/tool/ToolContext`：通用的有界循环、独立观察状态和工具权限快照；普通多步分析及搜索共用，不重置请求总预算。
 - `module/builtin/search`：WebResearch 提供搜索工具和引用策略，复用通用 ReActLoop；SearchObservation 位于 data/search，旧 SearchStep 已删除；WebSearchTool / WebFetchTool 每次检查本次联网门禁。
 - `search`：SearchProvider、DeepSeekSearchClient 与统一玩家计量 SearchGateway；复用 HttpTransport。
-- `config/file/SearchConfig`、`SearchPricingConfig`：默认共享 SYSTEM_DEEPSEEK_API_KEY，分别管理连接与按千次价格。
+- `config/file/SearchConfig`、`SearchPricingConfig`：分别管理连接与按千次价格；凭据从 `ApiConfig` 的 SEARCH 绑定解析，默认和模型共用 DeepSeek 凭据。
+- `config/credential`、`registry/SystemCredentialTypes`、`registry/SystemServices`、`screen/gui/ApiSettings`：凭据实现自己的 Codec、环境变量和控件，正式注册表分派类型；各用途 CredentialManager 直接创建实际服务，只选择账号，不保存服务 ID。设置编辑副本、标脏并立即保存；模型与搜索按请求捕获连接和凭据，语音继续独立会话，不同步密钥，见[API 管理](api-management.md)。
+- `speech/deepseek`、`data/speech/DeepSeek*Message`：HTTP PCM 流式合成、内存 WAV multipart 识别及协议 Codec；AsrProvider 可观察返回音频时长，SpeechPricingConfig 支持 SECONDS 逐次取整计费。详见[DeepSeek 语音](deepseek-speech.md)。
 - `data/usage/SearchUsage`：不可变计数，合入现有世界 SavedData 与 StreamCodec 快照；客户端语音账本不上传。
 
 system:question 默认 6 次模型、9 次工具、20 步、90 秒，单次模型最多 20 秒，查库 / 内部 FTB 查询和网络步骤共用预算。Descriptor.optionalTools 声明可选只读依赖，未启用搜索模块不会禁用本地问答。数据库为空、当前 QuestionInput.allowWeb 明确允许且搜索工具已启用时才进入 WebResearch；有结果或查库失败均不搜索。问答语义样例仅作提示，不本地直达或缓存授权；网络已有证据时预留最终整理，不自动重试收费工具。详见[搜索配置与流程](search-api.md)。

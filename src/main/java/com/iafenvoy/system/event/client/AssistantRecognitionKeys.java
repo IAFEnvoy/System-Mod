@@ -96,7 +96,7 @@ public final class AssistantRecognitionKeys {
         if (AssistantClient.state().busy()) return false;
         if (minecraft.screen == null) {
             if (!RecognitionConfig.INSTANCE.get().enabled()) {
-                minecraft.setScreen(new AssistantSettingsScreen(null, AssistantSettingsScreen.Tab.ASR));
+                minecraft.setScreen(new AssistantSettingsScreen(null, AssistantSettingsScreen.Tab.VOICE));
                 return true;
             }
             AssistantClient.open(AssistantClient.simpleMode(), "");

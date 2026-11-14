@@ -7,6 +7,8 @@
 | 文档 | 内容 |
 | --- | --- |
 | [使用与配置](usage.md) | 打开助手、服务端密钥、功能入口、隐私及奖励状态 |
+| [统一 API 管理](api-management.md) | Credential 类型注册表、自动识别环境变量、CredentialManager 构造实际服务、多字段鉴权和两端隔离 |
+| [DeepSeek TTS / ASR](deepseek-speech.md) | 共享 DeepSeek 凭据、流式 PCM、整段 WAV 识别、字符及音频时长计费 |
 | [模型接口与 DeepSeek 兼容](model-api.md) | OpenAI Chat Completions、提供商配置、DeepSeek 思考参数与用量格式 |
 | [数据库优先问答与网页搜索](search-api.md) | 当前玩家 / 共享知识、授权说明书、空结果与本次联网许可、可选搜索工具、预算和按次计费 |
 | [外部 API 请求清单](external-apis.md) | 模组与独立音色工具访问的接口、客户端/服务端归属、触发条件和发送的数据 |
@@ -40,4 +42,4 @@
 | [编译与验收](testing.md) | 本次已执行检查、尚未执行的验收和可选开发依赖 |
 | [原始设计稿](agent-design.md) | 完整目标架构；其中未落地的部分以开发文档中的实现范围为准 |
 
-默认未绑定，管理员先用 `/system grant <系统ID> [玩家]`（例如 `/system grant system:default Steve`）授予，自己绑定可用 `/system grant system:default`，系统 ID 从数据包注册表补全，当前每人最多一个系统；再用 `/system`、`/system simple` 或 `/system full` 打开界面。`/system revoke [玩家]` 撤销并清空该玩家业务记录，累计 AI / TTS / ASR 用量保留，可用 `/system usage` 查看。服务端首次初始化会分别创建执行预算、模型连接、语义路由和成就规则配置；模型连接位于 `config/system/system-model.json`。默认使用 DeepSeek，设置环境变量 `SYSTEM_DEEPSEEK_API_KEY` 后启动服务端即可使用模型路由和 AI 签到，也可配置其他 OpenAI 兼容服务。新配置默认启用轻量本地路由，无需额外模型；已有关闭配置保留。高把握只读请求可直接处理。结构化玩家、物品、任务查询不需要模型密钥。
+默认未绑定，管理员先用 `/system grant <系统ID> [玩家]`（例如 `/system grant system:default Steve`）授予，自己绑定可用 `/system grant system:default`，系统 ID 从数据包注册表补全，当前每人最多一个系统；再用 `/system`、`/system simple` 或 `/system full` 打开界面。`/system revoke [玩家]` 撤销并清空该玩家业务记录，累计 AI / TTS / ASR 用量保留，可用 `/system usage` 查看。服务端首次初始化会分别创建执行预算、模型连接、语义路由和成就规则配置；模型连接位于 `config/system/system-model.json`，凭据及用途绑定统一位于 `config/system/system-api.json`。默认使用 DeepSeek，设置环境变量 `SYSTEM_DEEPSEEK_API_KEY` 后启动服务端即可使用模型路由和 AI 签到，也可配置其他 OpenAI 兼容服务。新配置默认启用轻量本地路由，无需额外模型；已有关闭配置保留。高把握只读请求可直接处理。结构化玩家、物品、任务查询不需要模型密钥。

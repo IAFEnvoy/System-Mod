@@ -1,19 +1,21 @@
 # 语音合成与音色设计
 
-语音输入另外使用 NLS 一句话识别，通过 `/settings` 打开统一设置后选择“语音输入”标签，需要独立 AppKey 与阿里云 AccessKey ID / Secret，NLS Token 自动签发，详见[语音识别](asr.md)。
+除下述阿里云服务外，也支持 DeepSeek HTTP 流式 TTS：在 API Key管理声明 `deepseek_tts`，在播报标签选中对应凭据即可，音色为 `stella` / `tide`，无需模型、地域或语种。见 [DeepSeek 语音配置、限制与价格](deepseek-speech.md)。本页音色设计工具仅适用于百炼。
+
+语音输入另外使用 NLS 一句话识别，通过 `/settings` 打开统一设置后选择“语音交互”的“语音识别”分组，需要独立 AppKey 与阿里云 AccessKey ID / Secret，NLS Token 自动签发，详见[语音识别](asr.md)。
 
 ## 模组内使用
 
-完整界面点击“设置”，或在**助手的输入框**输入 `/settings`，再选择“语音播报”标签。设置指令只有这一处入口，是客户端界面指令，不是原版聊天栏中的服务器命令。所有标签继续使用唯一的 `assistant.css`，输入法处理与助手输入框共用；控件修改后立即自动保存，切换标签或关闭页面无需额外保存，离开播报标签会停止试听。
+完整界面点击“设置”，或在**助手的输入框**输入 `/settings`，再选择“语音交互”标签中的“语音播报”分组。设置指令只有这一处入口，是客户端界面指令，不是原版聊天栏中的服务器命令。所有标签继续使用唯一的 `assistant.css`，输入法处理与助手输入框共用；控件修改后立即自动保存，切换标签或关闭页面无需额外保存，离开播报标签会停止试听。
 
-1. 填写阿里云百炼 API Key，选择与密钥一致的地域（默认北京）。也可把密钥留空，在启动客户端前设置 `DASHSCOPE_API_KEY`。有密钥后才开放音色设置。
-2. 默认模型为 **`qwen3-tts-flash`**，默认音色 **`Cherry`**。也可填 `Serena`、`Ethan` 等[系统音色](https://help.aliyun.com/zh/model-studio/qwen-tts-voice-list)。Workspace ID 可留空使用兼容域名；填写后使用业务空间专属域名。
+1. 在“API Key管理”新建或选择百炼类型凭据并填写字段，留空时自动识别 `DASHSCOPE_API_KEY`。回到“语音播报”选择该凭据，服务与供应商自动匹配，再选择地域（默认北京）。凭据就绪后才开放音色设置。
+2. 默认模型为 **`qwen3-tts-flash`**，默认音色 **`Cherry`**。也可填 `Serena`、`Ethan` 等[系统音色](https://help.aliyun.com/zh/model-studio/qwen-tts-voice-list)。Workspace ID 在 API Key管理的同一份百炼凭据中填写，可留空使用兼容域名；填写后使用业务空间专属域名。
 3. 设置语种和音量，点击“试听”。参数已经自动保存，试听不要求先开启自动朗读。填写过程中允许保留不完整的凭据，完整参数在试听或实际合成时校验。
 4. 开启“自动朗读”即自动保存；“停止朗读”取消当前合成和播放。
 
 同页的“通知音效”默认开启，独立于“自动朗读”，不需要 API Key。关闭后只取消通知展开时的本地提示音，正文继续按自动朗读设置播放，不再等待提示音。对应客户端 `config/system/system-speech.json` 的 `notificationSoundEnabled`，已有文件缺少该字段时默认开启；切换后立即保存。
 
-语音默认关闭。`config/system/system-speech.json` 是**客户端本地**配置，和服务器 `system-agent.json`、界面模式配置分开。界面填写后保存的密钥以明文保存在该本地文件；环境变量回退的密钥不会写入文件或填进页面。密钥不发送到 MC 服务端、不进对话、附件或存档。开启后，新到达的系统消息正文会发送给所选语音服务合成，聊天栏、其他模组与玩家聊天不在此监听范围。
+语音默认关闭。`config/system/system-speech.json` 是**客户端本地**配置，和服务器 `system-agent.json`、界面模式配置分开。凭据统一由本机 `config/system/system-api.json` 管理，直接填写的值明文保存；环境变量的实际值不会写入文件或填进页面。语音配置只保存播报参数，见[统一 API Key管理](api-management.md)。密钥不发送到 MC 服务端、不进对话、附件或存档。开启后，新到达的系统消息正文会发送给所选语音服务合成，聊天栏、其他模组与玩家聊天不在此监听范围。
 
 “跟随游戏语言”按客户端当前语言映射语种（兼容 `en_us` 与 `en-US` 等写法），不支持的语种回退 `Auto`。也可选择自动识别或明确指定语种。Qwen3 使用 `input.language_type`；Qwen-Audio-TTS 使用官方 `input.language_hints`，例如英语发送 `["en"]`、中文发送 `["zh"]`，自动识别时省略该字段。流式与非流式共用映射。固定语言键先通过客户端 `Component.translatable` 翻译为文本，然后合成；中英文配置页面、预览文案与错误提示均有语言键。
 
@@ -69,7 +71,7 @@ HUD 通知框从隐藏状态首次展开时，播放一次注册的 `system:noti
 
 本次额外接入 Qwen-Audio-TTS 的[非实时 HTTP 接口](https://help.aliyun.com/zh/model-studio/qwen-audio-tts-http-api)，支持 `qwen-audio-3.1-tts-flash`、`qwen-audio-3.1-tts-plus`、`qwen-audio-3.0-tts-flash`、`qwen-audio-3.0-tts-plus`。可使用业务空间专属域名，也可在 Workspace ID 留空时使用兼容域名。默认 `qwen3-tts-flash` 不变。CosyVoice 合成不在本次实现范围内。
 
-工具导出的 `system-voice.json` 包含 provider、region、workspace、model、voice、language，**不包含密钥**，供工具继续合成或人工查阅。在模组中通过 `/settings` 的“语音播报”标签手工填写地域、Workspace ID、模型、音色 ID 和语种，修改自动保存，再点击试听。模组不提供 JSON 导入或页面内重新加载按钮；常规持久化仍使用 `config/system/system-speech.json`。音色创建后可能处于审核中；用工具 `query` 查看状态，`OK` 后才能正常使用。
+工具导出的 `system-voice.json` 包含 provider、region、workspace、model、voice、language，**不包含密钥**，供工具继续合成或人工查阅。在模组中通过 `/settings` 的“语音交互 → 语音播报”分组手工填写地域、模型、音色 ID 和语种，Workspace ID 在“API Key管理”的百炼凭据中填写，修改自动保存，再点击试听。模组不提供 JSON 导入或页面内重新加载按钮；常规持久化仍使用 `config/system/system-speech.json`。音色创建后可能处于审核中；用工具 `query` 查看状态，`OK` 后才能正常使用。
 
 ## CosyVoice 与当前模型价格对比
 
@@ -118,7 +120,7 @@ python tools/voice_design.py --lang zh --workspace YOUR_WORKSPACE_ID delete VOIC
 `clone` 接受 16-bit PCM WAV（至少 5 秒、不超过 60 秒、采样率至少 16 kHz、单/双声道、不超过 10 MiB）。官方推荐 10～20 秒清晰连续人声。浮点 WAV 需先转成 16-bit PCM；不会修改原音频。复刻也是 `voice-enrollment/create_voice`，传入参考音频 `audio`，不是文字音色设计。
 
 ```powershell
-python tools/voice_design.py --lang zh --config run-test-client/config/system/system-speech.json clone voice-input/system-test1.wav --id system-test1
+python tools/voice_design.py --lang zh --config run-test-client/config/system/system-api.json clone voice-input/system-test1.wav --id system-test1
 ```
 
 `--config` 只读取指定客户端配置中的密钥、地域和 Workspace ID，不输出密钥；没有配置文件也可继续使用环境变量。默认目标模型为 `qwen-audio-3.1-tts-flash`。
@@ -151,7 +153,7 @@ python tools/voice_design.py --lang zh upload reference.wav --model voice-enroll
 
 ## 接口与边界
 
-- `com.iafenvoy.system.speech.tts.TtsProvider` 是无 MC 依赖的合成接口，保留 WAV 字节接口，并提供可选的流式 PCM 回调。供应商由 `speech.TtsProviders` 的普通工厂 Map 管理，内置键为 `aliyun`。扩展在客户端初始化时调用 `TtsProviders.register(name, factory)`，不参与 MC 注册表生命周期；`TtsProviders.create(provider)` 按配置字符串精确查找并创建独占实例，不自动补命名空间。收费表另将短名补为 `system:` 后匹配；新供应商自行校验协议参数。完整示例见[注册表速查](registries.md)。
+- `com.iafenvoy.system.speech.tts.TtsProvider` 是无 MC 依赖的合成接口，保留 WAV 字节接口，并提供可选的流式 PCM 回调。供应商由 `SystemServices.TTS` 的 CredentialManager 按凭据类构造，内置为 DeepSeek / 百炼；扩展调用 `SystemServices.TTS.register(ExampleCredential.class, ExampleTtsProvider::new)`，选择账号后直接创建服务。供应商从具体凭据读取鉴权字段，负责 `configured()`、`request(...)`、本地验证、协议与关闭。收费表另将短名补为 `system:` 后匹配；新供应商自行校验协议参数。完整示例见[注册表速查](registries.md)。
 - `AliyunTtsProvider` 通过共享的 `HttpTransport` 实现两种阿里云 HTTP 协议，MC 默认使用上述 SSE 路径。保留的非流式接口总响应超时 45 秒，音频下载 25 秒；JSON 最大 12MiB，音频最大 8MiB。无重定向、无自动重试。非流式下载仅接受阿里云 OSS 音频域名，旧 HTTP URL 升级 HTTPS，下载不携带 Bearer。
 - `AssistantSpeech.Session` 由界面和当前通知持有；全局只保留当前朗读及一个待启动项，新朗读替换旧项，文字队列由 `AssistantMessages` 管理。关闭 session 同时取消在途 Future、PCM 和播放，已关闭的 session 不能重新提交。单个合成工作线程及单个工作等待槽保持有界；请求、SSE 解析及旧供应商 WAV 解码不占 MC 线程，旧代次结果不得重新开始播放。
 - 本地用量账本不在启动播报时同步读取文件；加载、费用计算和保存由独立 `system-speech-usage` 串行执行器处理。用量界面只读取最新快照，不等待后台锁或磁盘。网络请求、SSE 解析、WAV 解码和音频缓存仍在合成后台线程；主线程只管理会话和播放状态。

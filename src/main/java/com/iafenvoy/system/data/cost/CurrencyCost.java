@@ -1,6 +1,7 @@
 package com.iafenvoy.system.data.cost;
 
 import com.iafenvoy.saturn.data.cost.Cost;
+import com.iafenvoy.saturn.data.cost.CostDisplay;
 import com.iafenvoy.saturn.data.cost.CostTarget;
 import com.iafenvoy.saturn.data.cost.CostTransaction;
 import com.iafenvoy.saturn.data.cost.Debit;
@@ -15,7 +16,7 @@ import com.iafenvoy.system.data.catalog.CurrencyDefinition;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Holder;
-import net.minecraft.resources.Identifier;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
@@ -35,8 +36,7 @@ public record CurrencyCost(Holder<CurrencyDefinition> currency, NumberProvider a
         if (wallets == null) return Result.failure(CostFailure.NO_CHANNEL);
         double amount = this.amount.evaluate(context.formula());
         if (!valid(amount)) return Result.failure(CostFailure.INVALID_AMOUNT);
-        return Result.success(new Transaction(wallets, player, wallets.store(player),
-                this.currency.unwrapKey().orElseThrow().identifier(), amount));
+        return Result.success(new Transaction(wallets, player, wallets.store(player), this.currency, amount));
     }
 
     private static boolean valid(double value) {
@@ -49,10 +49,15 @@ public record CurrencyCost(Holder<CurrencyDefinition> currency, NumberProvider a
         return CODEC;
     }
 
-    public record Target(UUID player, Identifier currency) implements CostTarget {
+    public record Target(UUID player, Holder<CurrencyDefinition> currency) implements CostTarget {
         @Override
         public String label() {
-            return this.currency.toString();
+            return this.currency.unwrapKey().orElseThrow().identifier().toString();
+        }
+
+        @Override
+        public CostDisplay display(double amount) {
+            return CostDisplay.text(Component.translatable("system.economy.price", this.currency.value().name(), CostDisplay.number(amount)));
         }
     }
 
@@ -60,9 +65,9 @@ public record CurrencyCost(Holder<CurrencyDefinition> currency, NumberProvider a
         private final Wallets wallets;
         private final ServerPlayer player;
         private final AgentStore store;
-        private final Identifier currency;
+        private final Holder<CurrencyDefinition> currency;
 
-        private Transaction(Wallets wallets, ServerPlayer player, AgentStore store, Identifier currency, double amount) {
+        private Transaction(Wallets wallets, ServerPlayer player, AgentStore store, Holder<CurrencyDefinition> currency, double amount) {
             super(new Target(player.getUUID(), currency), amount);
             this.wallets = wallets;
             this.player = player;
@@ -74,7 +79,8 @@ public record CurrencyCost(Holder<CurrencyDefinition> currency, NumberProvider a
         protected Result<List<Debit>> perform(boolean simulate) {
             if (!valid(this.amount())) return refused(CostFailure.INVALID_AMOUNT);
             try {
-                Result<Long> result = this.wallets.change(this.player, this.store, this.currency, -(long) this.amount(), simulate);
+                Result<Long> result = this.wallets.change(this.player, this.store,
+                        this.currency.unwrapKey().orElseThrow().identifier(), -(long) this.amount(), simulate);
                 if (result.getFailure().isPresent()) return refused(result.getFailure().orElseThrow());
                 return took(simulate ? List.of() : List.of(Debit.of(this.target(), this.amount())));
             } catch (AgentException error) {

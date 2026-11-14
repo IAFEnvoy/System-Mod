@@ -31,6 +31,10 @@ public final class AssistantItems {
     }
 
     public static Element entry(Document document, ItemPreviewOutput preview, List<Component> tooltip, int size) {
+        return entry(document, preview, tooltip, size, true);
+    }
+
+    public static Element entry(Document document, ItemPreviewOutput preview, List<Component> tooltip, int size, boolean showTooltip) {
         ItemStack stack = preview.item().create();
         if (stack.isEmpty()) return null;
         Element entry = element(document, "div", "item_entry compact", "");
@@ -38,7 +42,7 @@ public final class AssistantItems {
         frame.setInlineStyleProperty("width", size + "px");
         frame.setInlineStyleProperty("height", size + "px");
         frame.setInlineStyleProperty("flex", "0 0 " + size + "px");
-        Item icon = iconElement(document, stack, preview, tooltip);
+        Item icon = iconElement(document, stack, preview, tooltip, showTooltip);
         icon.setInlineStyleProperty("transform", "scale(" + (double) size / NATIVE_ICON + ")");
         // The native item is centered in its frame, so scaling must keep the same center.
         icon.setInlineStyleProperty("transform-origin", "50% 50%");
@@ -47,10 +51,10 @@ public final class AssistantItems {
         return entry;
     }
 
-    private static Item iconElement(Document document, ItemStack stack, ItemPreviewOutput preview, List<Component> tooltip) {
+    private static Item iconElement(Document document, ItemStack stack, ItemPreviewOutput preview, List<Component> tooltip, boolean showTooltip) {
         Item icon = tooltip.isEmpty() ? new Item(document) : new AssistantItemElement(document, tooltip);
         icon.setClassName("item_icon");
-        icon.setAttribute("interactive", "tooltip");
+        icon.setAttribute("interactive", showTooltip ? "tooltip" : "none");
         icon.setDrivenState(stack, preview.amount().equals("1") ? "" : preview.amount(), false, false, Item.Source.INGREDIENT);
         return icon;
     }

@@ -455,11 +455,6 @@ p {
     box-shadow: var(--assistant-glow);
 }
 
-#privacy {
-    margin-top: auto;
-    padding: 22px 8px 12px;
-}
-
 #privacy_heading {
     color: var(--assistant-accent-hover);
     font-size: 12px;
@@ -471,19 +466,6 @@ p {
     color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.6;
-}
-
-.small {
-    font-size: 12px;
-    padding: 7px 8px;
-    margin-bottom: 5px;
-    color: var(--assistant-muted);
-}
-
-.sidebar_actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
 }
 
 #main {
@@ -2684,6 +2666,59 @@ html.system_hud, body.system_hud, body.system_hud * {
     min-width: 0;
 }
 
+.api_field {
+    display: block;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--assistant-line-soft);
+}
+
+.api_field > * + * {
+    margin-top: 6px;
+}
+
+.api_field label > span {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.settings .speech_step select {
+    width: 100%;
+    min-width: 0;
+}
+
+#api_add_controls, .api_credential_header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+#api_new_type {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+#api_add, .api_credential_header button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+#api_credentials > * + * {
+    margin-top: 12px;
+}
+
+.settings .speech_step .api_credential_header h2 {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+}
+
+.api_credential_name > span {
+    display: block;
+    margin-bottom: 6px;
+}
+
 .settings .settings_page > * + * {
     margin-top: 12px;
 }
@@ -2941,10 +2976,6 @@ button.assistant_switch:disabled {
     #topbar_navigation .nav {
         padding: 8px;
         font-size: 12px;
-    }
-
-    #privacy {
-        padding: 12px 4px 8px;
     }
 
     .simple #workspace {

@@ -110,7 +110,7 @@ configurations {
 
 dependencies {
     implementation "curse.maven:jupiter-1072905:8569832"
-    implementation "curse.maven:saturn-lib-1767455:9538254"
+    implementation "curse.maven:saturn-lib-1767455:${saturn_file_id}"
     implementation "com.sighs:ApricityUI-neoforge-26.1:${apricityui_version}"
 
     // SVC for optional voice input support
@@ -141,6 +141,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_license            : mod_license,
             mod_version            : mod_version,
             ftb_quests_version     : ftb_quests_version,
+            saturn_version         : saturn_version,
     ]
     inputs.properties replaceProperties
     expand replaceProperties

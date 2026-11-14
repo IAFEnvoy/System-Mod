@@ -1,6 +1,7 @@
 package com.iafenvoy.system.config.file;
 
 import com.iafenvoy.system.config.ConfigInstance;
+import com.iafenvoy.system.registry.SystemServices;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -12,17 +13,13 @@ import java.util.Locale;
 /**
  * Client-local settings; keys never enter packets, player attachments or assistant conversations.
  */
-public record SpeechConfig(boolean enabled, String provider, String apiKey, String region, String workspace,
-                           String model, String voice, String language, int volume, boolean cacheEnabled,
+public record SpeechConfig(boolean enabled, String region, String model, String voice, String language, int volume, boolean cacheEnabled,
                            boolean questRequirements, boolean questRewards, boolean questDescription,
                            boolean notificationSoundEnabled) {
     public static final String FILE_NAME = "system-speech.json";
     public static final Codec<SpeechConfig> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.BOOL.lenientOptionalFieldOf("enabled", false).forGetter(SpeechConfig::enabled),
-            Codec.STRING.lenientOptionalFieldOf("provider", "aliyun").forGetter(SpeechConfig::provider),
-            Codec.STRING.lenientOptionalFieldOf("apiKey", "").forGetter(SpeechConfig::apiKey),
             Codec.STRING.lenientOptionalFieldOf("region", "beijing").forGetter(SpeechConfig::region),
-            Codec.STRING.lenientOptionalFieldOf("workspace", "").forGetter(SpeechConfig::workspace),
             Codec.STRING.lenientOptionalFieldOf("model", "qwen3-tts-flash").forGetter(SpeechConfig::model),
             Codec.STRING.lenientOptionalFieldOf("voice", "Cherry").forGetter(SpeechConfig::voice),
             Codec.STRING.lenientOptionalFieldOf("language", "Client").forGetter(SpeechConfig::language),
@@ -38,21 +35,32 @@ public record SpeechConfig(boolean enabled, String provider, String apiKey, Stri
     public static final List<String> LANGUAGES = List.of("Client", "Auto", "Chinese", "English", "German", "Italian", "Portuguese", "Spanish", "Japanese", "Korean", "French", "Russian");
 
     public static SpeechConfig defaults() {
-        return new SpeechConfig(false, "aliyun", "", "beijing", "", "qwen3-tts-flash", "Cherry", "Client", 80, false, true, true, false, true);
+        return new SpeechConfig(false, "beijing", "qwen3-tts-flash", "Cherry", "Client", 80, false, true, true, false, true);
     }
 
     public boolean hasKey() {
-        return !this.effectiveKey().isBlank();
+        try (TtsProvider provider = ApiConfig.INSTANCE.get().create("tts", SystemServices.TTS).orElse(null)) {
+            return provider != null && provider.configured();
+        } catch (RuntimeException unavailable) {
+            return false;
+        }
     }
 
-    private String effectiveKey() {
-        String environment = System.getenv("DASHSCOPE_API_KEY");
-        return this.apiKey.isBlank() && environment != null ? environment.strip() : this.apiKey.strip();
+    public String provider() {
+        try (TtsProvider provider = ApiConfig.INSTANCE.get().create("tts", SystemServices.TTS).orElse(null)) {
+            return provider == null ? "" : provider.id();
+        } catch (RuntimeException unavailable) {
+            return "";
+        }
     }
 
-    public TtsProvider.Request request(String text, String clientLanguage) {
-        return new TtsProvider.Request(text, this.effectiveKey(), this.region, this.workspace, this.model, this.voice,
-                this.language.equals("Client") ? languageFor(clientLanguage) : this.language);
+    public SpeechConfig withVoice(String model, String voice) {
+        return new SpeechConfig(this.enabled, this.region, model, voice, this.language, this.volume, this.cacheEnabled,
+                this.questRequirements, this.questRewards, this.questDescription, this.notificationSoundEnabled);
+    }
+
+    public String synthesisLanguage(String clientLanguage) {
+        return this.language.equals("Client") ? languageFor(clientLanguage) : this.language;
     }
 
     private static String languageFor(String locale) {
@@ -73,6 +81,6 @@ public record SpeechConfig(boolean enabled, String provider, String apiKey, Stri
 
     @Override
     public @NonNull String toString() {
-        return "SpeechSettings[provider=" + this.provider + ", enabled=" + this.enabled + "]";
+        return "SpeechSettings[enabled=" + this.enabled + "]";
     }
 }

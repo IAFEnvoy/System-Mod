@@ -22,6 +22,6 @@ public final class AssistantIcons {
             image.setInlineStyleProperty("width", size + "px");
             image.setInlineStyleProperty("height", size + "px");
             return image;
-        }, item -> AssistantItems.entry(document, ItemPreviewOutput.of(item), List.of(), size));
+        }, item -> AssistantItems.entry(document, ItemPreviewOutput.of(item), List.of(), size, false));
     }
 }

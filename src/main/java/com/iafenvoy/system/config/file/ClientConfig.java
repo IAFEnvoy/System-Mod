@@ -5,7 +5,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 /**
- * Presentation preference only; model and speech credentials use separate private files.
+ * Presentation preferences only; ApiConfig owns process-local credentials.
  */
 public record ClientConfig(boolean simpleMode, String theme, boolean cardAnimations, boolean cardsOnOtherScreens) {
     public static final String FILE_NAME = "system-client.json";

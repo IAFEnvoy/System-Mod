@@ -2,6 +2,8 @@ package com.iafenvoy.system.speech.aliyun;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import com.iafenvoy.system.config.credential.builtin.DashScopeCredential;
+import com.iafenvoy.system.config.file.SpeechConfig;
 import com.iafenvoy.system.data.speech.AliyunTtsMessage;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.tts.TtsProvider;
@@ -31,6 +33,33 @@ public final class AliyunTtsProvider implements TtsProvider {
     public static final Set<String> LANGUAGES = Set.of("Auto", "Chinese", "English", "German", "Italian", "Portuguese", "Spanish", "Japanese", "Korean", "French", "Russian");
     public static final Set<String> MODELS = Set.of("qwen-audio-3.1-tts-flash", "qwen-audio-3.1-tts-plus", "qwen-audio-3.0-tts-flash", "qwen-audio-3.0-tts-plus");
     private final HttpTransport transport = new HttpTransport();
+    private final String key;
+    private final String workspace;
+
+    public AliyunTtsProvider(DashScopeCredential credential) {
+        this.key = credential.getApiKey();
+        this.workspace = credential.getWorkspace();
+    }
+
+    @Override
+    public String id() {
+        return "aliyun";
+    }
+
+    @Override
+    public boolean configured() {
+        return !this.key.isBlank();
+    }
+
+    @Override
+    public Request request(SpeechConfig config, String text, String clientLanguage) {
+        return new Request(text, this.key, config.region(), this.workspace, config.model(), config.voice(), config.synthesisLanguage(clientLanguage));
+    }
+
+    @Override
+    public SpeechConfig defaults(SpeechConfig current) {
+        return current.withVoice("qwen3-tts-flash", "Cherry");
+    }
 
     @Override
     public boolean supportsStreaming() {

@@ -5,6 +5,7 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.config.ConfigInstance;
 import com.iafenvoy.system.data.usage.RecognitionUsage;
 import com.iafenvoy.system.data.usage.SpeechUsage;
+import com.iafenvoy.system.speech.asr.AsrProvider;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
@@ -109,8 +110,8 @@ public final class LocalSpeechUsage {
             this.update(value -> new Snapshot(value.speech(), value.recognition().begin()));
         }
 
-        public void completeRecognition(String provider, String region, boolean successful) {
-            this.update(value -> new Snapshot(value.speech(), value.recognition().complete(provider, region, successful)));
+        public void completeRecognition(String provider, String region, AsrProvider.Usage usage, boolean successful) {
+            this.update(value -> new Snapshot(value.speech(), value.recognition().complete(provider, region, usage, successful)));
         }
 
         private void update(UnaryOperator<Snapshot> action) {

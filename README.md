@@ -37,7 +37,7 @@ These requirements apply to the current branch. Use the corresponding branch or 
 | System               | `1.0-beta.3`                                       | Client and server |
 | Minecraft / NeoForge | `26.1.2` / `26.1.2.114+`                           | Client and server |
 | Java                 | `25`                                               | Client and server |
-| Saturn               | `1.3+`, built for the matching Minecraft version | Client and server |
+| Saturn               | `1.3.1+`, CurseForge file `9606807` for the matching Minecraft version | Client and server |
 | ApricityUI           | `1.2.9+`, built for the matching Minecraft version | Client            |
 
 FTB Quests and its dependencies are **optional**, needed only for quest integration. Simple Voice Chat is an **optional
@@ -63,7 +63,10 @@ $env:SYSTEM_DEEPSEEK_API_KEY = "<your-api-key>"
 ```
 
 For single-player, the Minecraft process must inherit the variable. Restart the process after changing its environment.
-Server-side `config/system/system-model.json` stores the endpoint, model ID and the key’s **environment-variable name**.
+Server-side `config/system/system-model.json` stores the endpoint and model options. Credentials and per-use account selections
+are shared through `config/system/system-api.json`; profiles have a credential type and can contain multiple authentication fields.
+Create typed credentials in **API Key management**; environment variables are detected automatically, and services declare which credential types they accept. Only single-player / LAN hosts can edit model and search settings in the UI.
+Dedicated servers use their own configuration files and environment variables; remote clients, including operators, cannot edit these settings. API keys never transfer between client and server; TTS/ASR credentials stay local. See [API Key management](docs/api-management.md).
 Other OpenAI Chat Completions-compatible services are also supported.
 
 Set `baseUrl` to the API prefix without `/chat/completions`. See [model configuration](docs/model-api.md) for all
@@ -112,7 +115,7 @@ Run these in Minecraft chat. Available features depend on the enabled modules.
 | `/system help`                    | Show available features and help                                    |
 
 Inside the assistant, use `/settings` to open settings. The input supports command completion and Enter to send. You can
-assign **Toggle System interface** in Minecraft’s controls; it is unbound by default.
+assign **Open system interface** in Minecraft’s controls; it is unbound by default.
 
 While a notification is visible, open vanilla chat (**T by default**) to interact. Consecutive notifications keep the
 panel expanded; use their buttons to confirm or continue. Finishing speech does not automatically advance the queue.
@@ -141,15 +144,16 @@ subcommands.
 
 ## Optional Speech
 
-Voice input and automatic speech are disabled by default. Both run on the **client using the player’s own Aliyun
+Voice input and automatic speech are disabled by default. Both support Aliyun and DeepSeek and run on the **client using the player’s own
 credentials**, separately from the server model configuration.
 
 | Feature             | Configuration                                                                                                   | Usage                                                                                                           |
 |---------------------|-----------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
-| Voice input (ASR)   | NLS project AppKey, AccessKey ID / Secret and region; temporary tokens are acquired and refreshed automatically | Hold F8 to record and release to recognize; results fill the draft, with an option to send immediately          |
-| Speech output (TTS) | Model Studio API key and region, or the client’s `DASHSCOPE_API_KEY`                                            | Defaults to `qwen3-tts-flash` / `Cherry` and the game language; preview and enable automatic speech in settings |
+| Voice input (ASR)   | A DeepSeek key, or NLS project AppKey, AccessKey ID / Secret and region | Hold F8 to record and release to recognize; results fill the draft, with an option to send immediately          |
+| Speech output (TTS) | A Model Studio profile or a DeepSeek key; DeepSeek voices are `stella` / `tide` | Defaults to `qwen3-tts-flash` / `Cherry` and the game language; preview and enable automatic speech in settings |
 
-Configure the corresponding tab in `/system settings`; changes save automatically. Custom voices must match their
+Create credentials in **API Key management**, then select them under **Voice interaction** in `/system settings`; changes save automatically.
+DeepSeek ASR uploads complete recordings, while TTS streams audio. See [DeepSeek speech](docs/deepseek-speech.md). Custom voices must match their
 creation model and region. Enter their parameters directly; JSON import is not supported. The notification sound has a
 separate switch, enabled by default, and does not call TTS.
 
@@ -193,8 +197,8 @@ See [database-first questions and web research](docs/search-api.md).
 - **TTS / ASR usage** stays on the local machine per client account. It is not uploaded to the server, and
   administrators cannot aggregate other players’ voice records.
 - **Costs are estimates**; provider billing is authoritative, and rate changes do not recalculate history. Search and
-  Fetch are counted separately, TTS uses the model’s reported characters or tokens, and ASR estimates use successful
-  recognition counts.
+  Fetch are counted separately. Aliyun TTS uses reported characters or tokens; DeepSeek TTS uses a local character
+  estimate. NLS ASR uses successful calls, while DeepSeek ASR uses reported audio duration.
 
 See the [external API request list](docs/external-apis.md) and [usage accounting](docs/token-usage.md) for triggers,
 transmitted data and billing details.

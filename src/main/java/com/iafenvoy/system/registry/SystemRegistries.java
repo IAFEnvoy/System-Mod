@@ -3,6 +3,7 @@ package com.iafenvoy.system.registry;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.request.AgentRequest;
 import com.iafenvoy.system.agent.response.AgentResponse;
+import com.iafenvoy.system.config.credential.Credential;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.module.ServerModule;
 import com.iafenvoy.system.screen.card.CardNode;
@@ -25,6 +26,7 @@ public final class SystemRegistries {
     public static final Registry<MapCodec<? extends CardData>> CARD_DATA_TYPE = new RegistryBuilder<>(SystemResourceKeys.CARD_DATA_TYPE).create();
     public static final Registry<MapCodec<? extends CardNode>> CARD_NODE_TYPE = new RegistryBuilder<>(SystemResourceKeys.CARD_NODE_TYPE).create();
     public static final Registry<MapCodec<? extends AgentAction>> ACTION_TYPE = new RegistryBuilder<>(SystemResourceKeys.ACTION_TYPE).create();
+    public static final Registry<MapCodec<? extends Credential>> CREDENTIAL_TYPE = new RegistryBuilder<>(SystemResourceKeys.CREDENTIAL_TYPE).create();
     public static final Registry<StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentRequest>> AGENT_REQUEST_TYPE = new RegistryBuilder<>(SystemResourceKeys.AGENT_REQUEST_TYPE).sync(true).create();
     public static final Registry<StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>> AGENT_RESPONSE_TYPE = new RegistryBuilder<>(SystemResourceKeys.AGENT_RESPONSE_TYPE).sync(true).create();
 
@@ -34,6 +36,7 @@ public final class SystemRegistries {
         event.register(CARD_DATA_TYPE);
         event.register(CARD_NODE_TYPE);
         event.register(ACTION_TYPE);
+        event.register(CREDENTIAL_TYPE);
         event.register(AGENT_REQUEST_TYPE);
         event.register(AGENT_RESPONSE_TYPE);
     }

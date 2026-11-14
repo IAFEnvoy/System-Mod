@@ -1,6 +1,5 @@
 package com.iafenvoy.system.event.client;
 
-import com.iafenvoy.system.screen.gui.AssistantPageScreen;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
@@ -15,7 +14,7 @@ import org.lwjgl.glfw.GLFW;
 import static com.iafenvoy.system.registry.SystemKeyMappings.TOGGLE_INTERFACE;
 
 /**
- * A remappable, initially unbound key toggles the assistant interface in and out.
+ * A remappable, initially unbound key opens the assistant interface.
  */
 @EventBusSubscriber(Dist.CLIENT)
 public final class AssistantKeys {
@@ -29,13 +28,6 @@ public final class AssistantKeys {
         if (!TOGGLE_INTERFACE.matches(event.getKeyEvent())) return;
         if (event.getAction() == GLFW.GLFW_RELEASE) held = false;
         else if (event.getAction() == GLFW.GLFW_PRESS && Minecraft.getInstance().screen == null) press();
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGH)
-    public static void screenKey(ScreenEvent.KeyPressed.Pre event) {
-        if (!(event.getScreen() instanceof AssistantPageScreen) || !TOGGLE_INTERFACE.matches(event.getKeyEvent())
-                || !TOGGLE_INTERFACE.isConflictContextAndModifierActive()) return;
-        if (press()) event.setCanceled(true);
     }
 
     @SubscribeEvent
@@ -55,19 +47,18 @@ public final class AssistantKeys {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.getConnection() == null || !minecraft.isWindowActive()
                 || !TOGGLE_INTERFACE.isConflictContextAndModifierActive()
-                || minecraft.screen != null && !(minecraft.screen instanceof AssistantPageScreen)) return false;
+                || minecraft.screen != null) return false;
         if (held) return true;
         held = true;
-        if (minecraft.screen instanceof AssistantPageScreen) minecraft.setScreen(null);
-            // The ordinary command checks binding and opens the player's configured interface.
-        else minecraft.getConnection().sendCommand("system");
+        // The ordinary command checks binding and opens the player's configured interface.
+        minecraft.getConnection().sendCommand("system");
         return true;
     }
 
     @SubscribeEvent
     public static void tick(ClientTickEvent.Post event) {
         while (TOGGLE_INTERFACE.consumeClick()) {
-            // Input events own the press; queued vanilla clicks must not toggle the next screen.
+            // Input events own the press; queued vanilla clicks must not reopen the interface.
         }
         if (!held) return;
         Minecraft minecraft = Minecraft.getInstance();

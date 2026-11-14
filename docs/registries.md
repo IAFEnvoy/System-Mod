@@ -1,6 +1,6 @@
 # 注册表速查
 
-所有正式注册表的键集中在 [`SystemResourceKeys`](../src/main/java/com/iafenvoy/system/registry/SystemResourceKeys.java)，实例集中在 [`SystemRegistries`](../src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)。代码定义通过 NeoForge `NewRegistryEvent` 加入内置根注册表，通过 `DeferredRegister` 登记条目，由模组加载流程统一冻结。协议类型与卡片节点使用正式注册表；ASR / TTS 使用独立的普通工厂 Map，见下文。
+所有正式注册表的键集中在 [`SystemResourceKeys`](../src/main/java/com/iafenvoy/system/registry/SystemResourceKeys.java)，实例集中在 [`SystemRegistries`](../src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)。代码定义通过 NeoForge `NewRegistryEvent` 加入内置根注册表，通过 `DeferredRegister` 登记条目，由模组加载流程统一冻结。协议类型与卡片节点使用正式注册表；模型、搜索、ASR / TTS 使用各自的 CredentialManager 构造实际服务，见下文。
 
 注册表 ID 与公开键字段统一使用单数，数据包定义和 tag 目录沿用注册表路径，例如 `system:shop_offer` 对应 `system/shop_offer/` 与 `tags/system/shop_offer/`。
 
@@ -21,11 +21,40 @@
 | `system:server_module` | `SERVER_MODULE` | `MapCodec<? extends ServerModule>` | SystemServerModules |
 | `system:card_data_type` | `CARD_DATA_TYPE` | `MapCodec<? extends CardData>` | SystemCardDataTypes |
 | `system:action_type` | `ACTION_TYPE` | `MapCodec<? extends AgentAction>` | SystemActionTypes |
+| `system:credential_type` | `CREDENTIAL_TYPE` | `MapCodec<? extends Credential>` | SystemCredentialTypes |
 | `system:agent_request_type` | `AGENT_REQUEST_TYPE` | `StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentRequest>` | SystemRequestTypes |
 | `system:agent_response_type` | `AGENT_RESPONSE_TYPE` | `StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>` | SystemResponseTypes |
 | `system:card_node_type` | `CARD_NODE_TYPE` | `MapCodec<? extends CardNode>` | SystemCardNodeTypes |
 
-共 6 张代码注册表。只有卡片节点的 DeferredRegister 在 SystemClientMod 绑定；专用服务端保留其空表。ClientModule 已移出 MC 注册表，SystemRegistries 与 SystemResourceKeys 不再引用该接口。
+共 7 张代码注册表。只有卡片节点的 DeferredRegister 在 SystemClientMod 绑定；专用服务端保留其空表。ClientModule 已移出 MC 注册表，SystemRegistries 与 SystemResourceKeys 不再引用该接口。
+
+### 凭据类型与服务选择
+
+`config.credential.Credential` 由每种凭据实现自己的 `codec()` 和 `createWidget()`；`Credential.CODEC` 按 `type` 从正式的 `CREDENTIAL_TYPE` 注册表分派。`SystemCredentialTypes` 登记四个内置实现，扩展可向相同注册表登记自己的 `MapCodec<? extends Credential>`。
+
+| 类型 ID | 实现 | 字段 |
+| --- | --- | --- |
+| `system:deepseek` | `DeepSeekCredential` | `api_key` |
+| `system:openai` | `OpenAiCredential` | `api_key` |
+| `system:dashscope` | `DashScopeCredential` | `api_key`、可选 `workspace` |
+| `system:aliyun_nls` | `AliyunNlsCredential` | `app_key`、`access_key_id`、`access_key_secret` |
+
+各实现使用 `RecordCodecBuilder.mapCodec` 和 `lenientOptionalFieldOf`，缺失或错误的字段单独回退为空字符串。序列化字段直接平铺，例如 `{"type":"system:deepseek","api_key":""}`。getter 优先返回直接填写值，留空时按各自定义的环境变量自动读取；Codec 和控件只处理原始填写值，不把环境变量中的密钥写回。
+
+`createWidget()` 在客户端当前 `Document.withContext(document)` 作用域中调用，返回可挂入页面的字段编辑控件。设置页使用脱离配置的凭据副本，接到冒泡输入事件后通过 Codec 复制为新快照，调用 `ConfigInstance.set()` 标记脏状态并立即保存。敏感字段使用密码输入框。`ApiConfig` 保存 `CredentialEntry` 和用途 → 账号 ID，不再保存服务 ID 或字段 Map。
+
+`CredentialManager<S>` 管理一种服务对应的凭据实现与构造函数映射。例如语音合成和语音识别各使用一个 Manager，同一份 DeepSeek 凭据可以分别创建两类服务。注册使用 Credential 的 Java 类，与序列化注册表独立；选择控件通过 `supports(credential)` 筛选可选 API Key，选中后调用 `create(credential)`，不再单独选择供应商或服务 ID。
+
+```java
+CredentialManager<MyService> services = new CredentialManager<>();
+services.register(DeepSeekCredential.class, DeepSeekService::new);
+services.register(DashScopeCredential.class, credential -> new DashScopeService(credential, options));
+
+// The factories above accept the typed Credential in their constructors.
+Optional<MyService> service = services.create(selectedCredential);
+```
+
+示例中的 `MyService` 及其实现由服务调用方定义；Manager 不要求它们实现新的公共接口。每个凭据实现类在一个 Manager 内只能登记一次，匹配采用精确类，不回退到其他账号或父类。`credentialTypes()` 提供按登记顺序排列的只读快照；未知类型返回 `Optional.empty()`，构造失败直接交给调用方处理。每次 `create` 将本次选中的原始凭据对象传入工厂，不提前解析或复制密钥，也不缓存服务实例；服务的取消、关闭和生命周期由调用方负责。内置四种服务入口为 `SystemServices.MODEL / SEARCH / TTS / ASR`，已接入实际调用和设置页。扩展及配置示例见 [API 管理](api-management.md)。
 
 ### 内置模块
 
@@ -103,14 +132,16 @@ button 直接声明 click/value：link 在本地打开 URL，return-val 发送�
 
 JSON 示例：`{"type":"system:item","item":"{{result_items.0}}"}`。完整字段、能力接口、资源路径与示例见[客户端 JSON 卡片](cards.md)。
 
-### 语音供应商 Map
+### 服务构造映射
 
-| 工厂入口 | 内置键 | 扩展登记 | 创建实例 |
+| Manager | 接受的凭据类 | 扩展登记 | 创建实例 |
 | --- | --- | --- | --- |
-| [`TtsProviders`](../src/main/java/com/iafenvoy/system/speech/TtsProviders.java) | `aliyun` | `TtsProviders.register(id, factory)` | `TtsProviders.create(config.provider())` |
-| [`AsrProviders`](../src/main/java/com/iafenvoy/system/speech/AsrProviders.java) | `aliyun-nls` | `AsrProviders.register(id, factory)` | `AsrProviders.create(config.provider())` |
+| `SystemServices.MODEL` | DeepSeek / OpenAi / DashScope | `MODEL.register(CredentialClass.class, factory)` | `ApiConfig.create("model", MODEL)` |
+| `SystemServices.SEARCH` | DeepSeek | `SEARCH.register(CredentialClass.class, factory)` | `ApiConfig.create("search", SEARCH)` |
+| `SystemServices.TTS` | DeepSeek / DashScope | `TTS.register(CredentialClass.class, factory)` | `ApiConfig.create("tts", TTS)` |
+| `SystemServices.ASR` | DeepSeek / AliyunNls | `ASR.register(CredentialClass.class, factory)` | `ApiConfig.create("asr", ASR)` |
 
-内部的 `Map<String, Supplier<...>>` 使用 ConcurrentHashMap，由公开的 `register` 方法维护，不参与 MC 注册、冻结或同步，也不需要绑定 mod event bus。供应商按配置中的完整字符串精确查找工厂，每次调用返回新的实例，按原 session 生命周期关闭；不会自动补命名空间。默认键为 `aliyun` 和 `aliyun-nls`，扩展可自行使用 `example:voice` 等名称。收费表另将无命名空间的供应商名补为 `system:` 后匹配。未知供应商仍报告 `provider` 错误。
+各 Manager 内部维护凭据实现类 → 有类型构造函数的 Map，不参与 MC 注册、冻结或网络同步。`create` 返回新服务，由请求或语音会话关闭；构造器只做本地初始化，网络操作仍在工作线程执行。服务自己提供配置检查、请求构建与默认参数。语音服务 `id()` 保留计费键：TTS 为 `aliyun` / `deepseek`，ASR 为 `aliyun-nls` / `deepseek`；收费表将短名补为 `system:` 后匹配。凭据类型 Codec 仍使用正式的 `CREDENTIAL_TYPE` 注册表，实际账号只存在本机 ApiConfig。详见[统一 API 管理](api-management.md)。
 
 ## 数据包注册表与外部注册表
 
@@ -187,14 +218,14 @@ NODES.register(bus);
 
 ### 新语音供应商
 
-在客户端初始化时通过工厂入口登记名称和构造器引用，无需 DeferredRegister：
+凭据类型向 `CREDENTIAL_TYPE` 登记 MapCodec，实际服务向对应 Manager 登记具体凭据类和构造器：
 
 ```java
-TtsProviders.register("example:voice", ExampleTtsProvider::new);
-AsrProviders.register("example:recognition", ExampleAsrProvider::new);
+SystemServices.TTS.register(ExampleCredential.class, ExampleTtsProvider::new);
+SystemServices.ASR.register(ExampleCredential.class, ExampleAsrProvider::new);
 ```
 
-对应配置的 `provider` 填 `example:voice` 或 `example:recognition`。同名 `register` 会替换已有工厂，扩展应使用自己的命名空间，并在开始语音会话前完成配置。新增协议/鉴权字段、设置表单和计费单位仍由对应供应商适配，不因添加工厂而自动支持。
+构造器直接接收 `ExampleCredential`，供应商提供 `id()`（用量和计费键）、`configured()`、`request(...)` 及协议实现。设置页自动列出该 Manager 支持的凭据；不再有供应商字符串工厂和第二级服务选择。凭据自己定义多字段 Codec、环境变量及编辑控件，实际服务负责解析后的请求参数、用量与资源关闭。每种凭据类在同一 Manager 中只能登记一次。构造器和本地检查不得联网；网络、录音和合成仍由会话工作线程执行，详见 [API 管理](api-management.md)。
 
 ### 查询已有条目
 
@@ -209,7 +240,7 @@ SystemRegistries.CARD_DATA_TYPE.forEach(entry -> { /* inspect registered types *
 
 ## 仍保留的运行时登记表
 
-`ModuleRegistry`、`ToolRegistry`、`CommandRegistry` 是每个 Agent 服务实例的工作流、工具和指令索引。客户端命令由 `ClientCommandCache` 装配，页面和本地动作由 `ClientModuleBindingsCache` 装配。ModuleRouting.button 提供按钮字符串参数解码，CardController 从绑定缓存分派本地动作；CardButtonEvent 处理服务端字符串。这些只负责运行行为，不承担 Codec 类型注册。ClientCards/ServerCards 保存连接内消息及版本，ASR/TTS 使用供应商工厂 Map。卡片布局直接取 CardView.template，不维护额外渲染或卡片行为登记表。
+`ModuleRegistry`、`ToolRegistry`、`CommandRegistry` 是每个 Agent 服务实例的工作流、工具和指令索引。客户端命令由 `ClientCommandCache` 装配，页面和本地动作由 `ClientModuleBindingsCache` 装配。ModuleRouting.button 提供按钮字符串参数解码，CardController 从绑定缓存分派本地动作；CardButtonEvent 处理服务端字符串。这些只负责运行行为，不承担 Codec 类型注册。ClientCards/ServerCards 保存连接内消息及版本，模型、搜索和 ASR/TTS 通过 SystemServices 的 CredentialManager 选择实际服务。卡片布局直接取 CardView.template，不维护额外渲染或卡片行为登记表。
 
 `ClientModuleCaches.COMMAND` 保存助手执行树、补全树与游戏客户端 `/system` 节点，注册、编译、访问和清理逻辑均在 `ClientCommandCache` 内。绑定缓存负责调用 begin / finish / clear，避免两个独立 Saturn 回调重复装配或依赖事件先后；get 确保整轮绑定装配完成，revision 在清理和重建时递增，界面以版本号拒绝旧异步补全。RegisterClientCommandsEvent 从此缓存复制节点，不再重新遍历模块。缓存只存声明和回调，权限、按钮与任务候选实时求值。MC 26.1.2 客户端配置完成时先应用标签并发布 TagsUpdatedEvent.ClientPacketReceived，随后登录/命令包合并触发客户端指令注册；服务端命令构造则早于 ServerDataLoad 标签事件，不能假设两端顺序相同。
 

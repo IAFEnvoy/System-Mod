@@ -18,13 +18,6 @@ public final class ConversationClientModule implements ClientModule {
         module.command(() -> AssistantClient.send(ControlRequest.FORGET), "forget", "清空记忆");
         module.command(() -> preferences(true), "memory on");
         module.command(() -> preferences(false), "memory off");
-        module.workspace("", "", workspace -> {
-            workspace.click("forget", () -> AssistantClient.send(ControlRequest.FORGET));
-            workspace.click("history", () -> {
-                workspace.show("chat");
-                AssistantClient.send(ControlRequest.HISTORY);
-            });
-        });
     }
 
     private static void preferences(boolean history) {

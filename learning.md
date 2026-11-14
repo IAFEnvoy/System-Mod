@@ -14,7 +14,7 @@
 | Java | `25`，toolchain 与字节码均使用 Java 25 | [build.gradle](build.gradle)、[Mixin 配置](src/main/resources/system.mixins.json) |
 | Gradle / ModDev | `9.2.1` / `2.0.148` | [Wrapper 配置](gradle/wrapper/gradle-wrapper.properties)、[build.gradle](build.gradle) |
 | ApricityUI | 开发配置与客户端最低版本 `1.2.9`；需兼容 MC `26.1.2` | [gradle.properties](gradle.properties) 的 `apricityui_version` |
-| Saturn | `1.3`，CurseMaven 文件 ID `9538254`；两端必装，提供 Cost、DataStorage、Codec 工具、压缩 NBT 与 HUD 编辑器 | [build.gradle](build.gradle) 的依赖声明、[模组元数据](src/main/templates/META-INF/neoforge.mods.toml) 的最低版本、[开发与架构](docs/development.md) |
+| Saturn | `1.3.1` / CurseMaven `9606807`；两端必装，提供 CostTarget.display、Cost、DataStorage、Codec 工具、压缩 NBT 与 HUD 编辑器 | [gradle.properties](gradle.properties) 的 `saturn_version` / `saturn_file_id`、[build.gradle](build.gradle) 的依赖声明、[模组元数据](src/main/templates/META-INF/neoforge.mods.toml) 的最低版本、[开发与架构](docs/development.md) |
 | Simple Voice Chat | 开发适配 `2.6.26+26.1.2`，CurseMaven 文件 ID `9307181`；可选客户端录音后端，不打入发布 JAR，服务端不要求安装 | [gradle.properties](gradle.properties)、[build.gradle](build.gradle) |
 | FTB Quests | `26.1.2.8`；可选集成 | [gradle.properties](gradle.properties) 的 `ftb_quests_version` |
 | FTB Library / FTB Teams | `26.1.2.9` / `26.1.2.4`；FTB 集成配套依赖 | [gradle.properties](gradle.properties) |
@@ -44,6 +44,8 @@
 | 修改主题 / 查询内容 | 文档 |
 | --- | --- |
 | 安装、绑定 / 撤销 / 重置、指令、界面、任务、商城、抽奖、隐私 | [使用与配置](docs/usage.md) |
+| 类型化 Credential、多字段鉴权、自动环境变量、正式类型注册表；用途仅选择账号，CredentialManager 构造实际服务；编辑副本与立即保存，两端隔离 | [API 管理](docs/api-management.md)、[ApiConfig](src/main/java/com/iafenvoy/system/config/file/ApiConfig.java)、[服务构造入口](src/main/java/com/iafenvoy/system/registry/SystemServices.java)、[凭据类型](src/main/java/com/iafenvoy/system/registry/SystemCredentialTypes.java) |
+| DeepSeek TTS / ASR、流式 PCM、完整 WAV 上传、自动语种、可选语音服务与按时长计费 | [DeepSeek 语音](docs/deepseek-speech.md)、[协议实现](src/main/java/com/iafenvoy/system/speech/deepseek) |
 | Agent 执行流程、AgentAction 与 MapCodec 分派、Module / Tool 契约、类型化输入输出、玩家模块 DataStorage 扩展 | [Agent 运行结构与扩展](docs/agent-runtime.md) |
 | 助手 Brigadier 命令、ClientModuleCaches（绑定/命令缓存直接持有数据与维护逻辑）、原生命令补全、标签同步与两端命令构建顺序 | [Agent 入口](docs/agent-runtime.md#给-module-声明入口)、[客户端模块贡献](docs/feature-modules.md)、[缓存时序](docs/registries.md#仍保留的运行时登记表) |
 | 包组织、依赖、配置、持久化、MC 桥接、实现边界 | [开发与架构](docs/development.md) |
@@ -53,10 +55,10 @@
 | 12 章 80 个开发任务、JSON5 双语任务文件、显式安装到开发配置及手动检查步骤 | [FTBQ 开发任务集](docs/test-quests.md)、[测试配置](src/test-mod/ftbquests) |
 | AgentDatabases 共享库 / 玩家独立库、Codec 数据表与段落索引、/system ftb reload、revoke / reset 清理私有库 | [分层本地数据库](docs/databases.md) |
 | JVector 4.0.2 分发体积、磁盘图索引、Java / SIMD、TF-IDF 适配、性能边界与后续测量；仅评估未实施 | [JVector 索引评估](docs/jvector-evaluation.md) |
-| 按键、声音、action/condition、模块目录、卡片节点注册与语音供应商工厂 Map；公开静态入口 | [registry 包](src/main/java/com/iafenvoy/system/registry)、[目录与职责](docs/development.md#目录与职责) |
+| 按键、声音、action/condition、模块目录、卡片节点注册与CredentialManager 服务构造映射；公开静态入口 | [registry 包](src/main/java/com/iafenvoy/system/registry)、[目录与职责](docs/development.md#目录与职责) |
 | 内置功能定义与工作流集中 module.builtin、业务 DataStorage 位于 module.builtin.storage、执行账本位于 data.store、available() 可选依赖检查、模块侧栏 / 顶栏设置、底部工具栏开关、对话底部对齐与滚动跟随、模块条件/手动覆盖、两端指令与 ModuleManager 生命周期 | [功能模块化](docs/feature-modules.md)、[界面与滚动](docs/ui-localization.md)、[内置模块](src/main/java/com/iafenvoy/system/module/builtin) |
 | ServerModule / ClientModule 及 ToolModule / WorkflowModule / SharedModule / CoreModule 分类、按接口判断类型、配置 owner 权限、服务端 MapCodec dispatch、动态 system_module、客户端独立实现 Map | [功能模块化](docs/feature-modules.md)、[注册表](src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)、[编译与验收](docs/testing.md) |
-| 注册表 ID 与公开字段速查、协议/载荷/卡片节点注册表、语音工厂 Map、注册时序及扩展示例 | [注册表速查](docs/registries.md) |
+| 注册表 ID 与公开字段速查、协议/载荷/卡片节点注册表、CredentialManager 服务构造映射、注册时序及扩展示例 | [注册表速查](docs/registries.md) |
 | CardData.buildCard、公共 CardBuilder/CardView/CardUpdate、客户端 CardPresentation、26 份结构化模板的 title 约定与格式化后标题解析、纯文本无按钮约定、JSON 节点与平铺 Context、MarkdownNode / Txtmark Configuration 与 Decorator / AUI HTML 展示 / test-mod 在系统输入框执行的 /debug md 样例、FTBQ text、宿主双栏卡片 / player 模型跟随、朝向、缩放和偏移、KOOK 风格 click/value、CardButtonEvent 服务端字符串解析、本地/URL 动作 | [客户端 JSON 卡片](docs/cards.md) |
 | 已实施：18 种节点分类与整理、PlainMessageNode / TextProjectingNode / HeadingNode 等能力接口、grid / groups、单物品 / FTB 图标、统一按钮及模板迁移 | [卡片节点设计稿](docs/card-nodes-design.md) |
 | Vite Card JSON 编辑器、多文件脚本与独立模板、节点树／属性／源码、平铺示例 Context、模式与分页预览、工作文件导出及资源同步 | [编辑器说明](docs/card-editor.md)、[工具目录](html/card-editor)、[Vite 入口](html/card-editor/index.html) |

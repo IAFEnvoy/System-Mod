@@ -32,7 +32,7 @@ MESSAGES = {
     "design": ("按文字描述创建音色并保存试听 WAV 和模组配置", "Design a voice and save a preview WAV plus mod profile"),
     "clone": ("从 16-bit PCM WAV 复刻音色，保存本地 ID 与真实音色 ID 的映射", "Clone a 16-bit PCM WAV and save a local ID to provider voice ID mapping"),
     "synthesize": ("使用导出的音色配置合成测试 WAV", "Synthesize a test WAV using an exported voice profile"),
-    "config": ("读取客户端 config/system/system-speech.json 中的密钥、地域与 Workspace ID", "Read key, region and Workspace ID from client config/system/system-speech.json"),
+    "config": ("读取 system-api.json 的 TTS 凭据；也可传入同目录的 system-speech.json", "Read TTS credentials from system-api.json, or pass the adjacent system-speech.json"),
     "id": ("本地音色标识，如 system-test1；云端 ID 由阿里云生成", "Local voice ID, e.g. system-test1; Alibaba generates the provider ID"),
     "clone_audio": ("参考音频需为 16-bit PCM WAV，至少 5 秒、最多 60 秒，采样率不低于 16 kHz，最大 10 MiB。", "Reference must be a 16-bit PCM WAV, 5-60 seconds, at least 16 kHz, at most 10 MiB."),
     "exists": ("此本地 ID 已有结果或提交记录；先查询，避免重复创建收费音色。", "This local ID already has a result or submission record; query first to avoid duplicate billable voices."),
@@ -57,7 +57,7 @@ MESSAGES = {
     "confirm": ("输入音色 ID 确认删除: ", "Type the voice ID to confirm deletion: "),
     "cancel": ("已取消。", "Cancelled."),
     "voice": ("音色 ID: {0}", "Voice ID: {0}"),
-    "profile": ("配置: {0}\n将音色参数合并到 MC config/system/system-speech.json，保留密钥和本地偏好，再在语音设置中重新加载；此文件不包含密钥。", "Profile: {0}\nMerge its voice parameters into MC config/system/system-speech.json, preserving credentials and local preferences, then reload Speech settings; this file contains no key."),
+    "profile": ("配置: {0}\n在 MC 语音设置中填写 model、voice 和 language；workspace 在 API 管理中填写。此文件不包含密钥。", "Profile: {0}\nSet model, voice and language in MC Speech settings; set workspace in API management. This file contains no key."),
     "audio": ("试听: {0}", "Preview: {0}"),
     "audio_failed": ("音色已创建且配置已保存，但试听数据无效；请用 query 查询音色，不要重复创建。", "Voice created and profile saved, but preview data is invalid; use query instead of creating again."),
     "upload_note": ("有效期 48 小时；模型请求需加 X-DashScope-OssResourceResolve: enable。", "Valid for 48 hours; model requests must include X-DashScope-OssResourceResolve: enable."),
@@ -380,6 +380,48 @@ def parser():
     return result
 
 
+def read_configuration(path):
+    def read(file):
+        try:
+            result = json.loads(file.read_text(encoding="utf-8-sig"))
+        except (ValueError, UnicodeError):
+            raise ToolError(tr("invalid", "config")) from None
+        if not isinstance(result, dict):
+            raise ToolError(tr("invalid", "config"))
+        return result
+
+    config = read(path)
+    api_path = path if "credentials" in config else path.with_name("system-api.json")
+    api = config if api_path == path else read(api_path)
+    bindings, credentials = api.get("bindings", {}), api.get("credentials", [])
+    if not isinstance(bindings, dict) or not isinstance(credentials, list):
+        raise ToolError(tr("invalid", "config"))
+    binding = bindings.get("tts", "")
+    if not isinstance(binding, str):
+        raise ToolError(tr("invalid", "TTS binding"))
+    profiles = [entry for entry in credentials
+                if isinstance(entry, dict) and entry.get("id") == binding]
+    if len(profiles) != 1:
+        raise ToolError(tr("invalid", "TTS credential"))
+    fields = profiles[0].get("credential", {})
+    if not isinstance(fields, dict) or fields.get("type") != "system:dashscope":
+        raise ToolError(tr("invalid", "TTS credential type"))
+
+    def field(name):
+        value = fields.get(name, "")
+        if not isinstance(value, str):
+            raise ToolError(tr("invalid", "credential field"))
+        environment = {"api_key": "DASHSCOPE_API_KEY", "workspace": "DASHSCOPE_WORKSPACE_ID"}[name]
+        return value.strip() or os.environ.get(environment, "").strip()
+
+    speech_path = path.with_name("system-speech.json")
+    speech = config if api_path != path else read(speech_path) if speech_path.exists() else {}
+    region = speech.get("region", "beijing")
+    if not isinstance(region, str):
+        raise ToolError(tr("invalid", "region"))
+    return {"apiKey": field("api_key"), "workspace": field("workspace"), "region": region}
+
+
 def main():
     global LANG
     if hasattr(sys.stdout, "reconfigure"):
@@ -393,16 +435,9 @@ def main():
     try:
         config = {}
         if args.config:
-            if args.config.stat().st_size > 8192:
-                raise ToolError(tr("oversize"))
-            try:
-                config = json.loads(args.config.read_text(encoding="utf-8-sig"))
-            except (ValueError, UnicodeError):
-                raise ToolError(tr("invalid", "config")) from None
-            if not isinstance(config, dict) or any(not isinstance(config.get(name, ""), str) for name in ("apiKey", "region", "workspace")):
-                raise ToolError(tr("invalid", "config"))
+            config = read_configuration(args.config)
         args.region = args.region or config.get("region") or "beijing"
-        args.workspace = args.workspace or os.environ.get("DASHSCOPE_WORKSPACE_ID") or config.get("workspace", "")
+        args.workspace = args.workspace or config.get("workspace") or ("" if args.config else os.environ.get("DASHSCOPE_WORKSPACE_ID", ""))
         if args.region not in ("beijing", "singapore"):
             raise ToolError(tr("invalid", "region"))
         if args.workspace and not re.fullmatch(r"[A-Za-z0-9-]{1,80}", args.workspace):
@@ -413,7 +448,7 @@ def main():
         if args.command == "delete" and input(tr("confirm")) != args.voice_id:
             print(tr("cancel"))
             return 0
-        key = config.get("apiKey", "").strip() or os.environ.get("DASHSCOPE_API_KEY", "").strip() or getpass.getpass(tr("key")).strip()
+        key = config.get("apiKey", "").strip() or ("" if args.config else os.environ.get("DASHSCOPE_API_KEY", "").strip()) or getpass.getpass(tr("key")).strip()
         if not key or len(key) > 512 or any(c.isspace() for c in key):
             raise ToolError(tr("key_required"))
         if args.command == "design":

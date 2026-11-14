@@ -2,6 +2,7 @@ package com.iafenvoy.system.agent.model;
 
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
+import com.iafenvoy.system.config.file.ModelConfig;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
@@ -11,6 +12,11 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public interface ModelClient extends AutoCloseable {
+    /** Defaults applied when switching credential types, before the next request is created. */
+    default ModelConfig defaults(ModelConfig current) {
+        return current;
+    }
+
     /** Report local readiness only; no network request or credential is exposed to callers. */
     default boolean configured() {
         return true;

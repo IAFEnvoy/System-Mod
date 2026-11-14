@@ -33,15 +33,15 @@ public final class ChatCompletion {
                 Codec.STRING.optionalFieldOf("reasoning_effort").forGetter(Request::reasoningEffort)
         ).apply(i, Request::new));
 
-        public static Request of(List<ModelClient.Message> messages, int maxOutputTokens) {
-            boolean deepSeek = ModelConfig.INSTANCE.get().isDeepSeek();
-            return new Request(ModelConfig.INSTANCE.get().model(), List.copyOf(messages), false,
-                    ModelConfig.INSTANCE.get().outputTokenParameter().equals("max_tokens") ? Optional.of(maxOutputTokens) : Optional.empty(),
-                    ModelConfig.INSTANCE.get().outputTokenParameter().equals("max_completion_tokens") ? Optional.of(maxOutputTokens) : Optional.empty(),
-                    ModelConfig.INSTANCE.get().jsonMode() ? Optional.of(new Type("json_object")) : Optional.empty(),
-                    deepSeek ? Optional.of(new Type(ModelConfig.INSTANCE.get().thinkingEnabled() ? "enabled" : "disabled")) : Optional.empty(),
-                    deepSeek && ModelConfig.INSTANCE.get().thinkingEnabled() && !ModelConfig.INSTANCE.get().reasoningEffort().isEmpty()
-                            ? Optional.of(ModelConfig.INSTANCE.get().reasoningEffort()) : Optional.empty());
+        public static Request of(ModelConfig config, List<ModelClient.Message> messages, int maxOutputTokens) {
+            boolean deepSeek = config.isDeepSeek();
+            return new Request(config.model(), List.copyOf(messages), false,
+                    config.outputTokenParameter().equals("max_tokens") ? Optional.of(maxOutputTokens) : Optional.empty(),
+                    config.outputTokenParameter().equals("max_completion_tokens") ? Optional.of(maxOutputTokens) : Optional.empty(),
+                    config.jsonMode() ? Optional.of(new Type("json_object")) : Optional.empty(),
+                    deepSeek ? Optional.of(new Type(config.thinkingEnabled() ? "enabled" : "disabled")) : Optional.empty(),
+                    deepSeek && config.thinkingEnabled() && !config.reasoningEffort().isEmpty()
+                            ? Optional.of(config.reasoningEffort()) : Optional.empty());
         }
     }
 

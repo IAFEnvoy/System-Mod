@@ -1,0 +1,36 @@
+{
+  "credentials": [
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "credential": {
+        "type": "system:deepseek",
+        "api_key": ""
+      }
+    },
+    {
+      "id": "dashscope",
+      "name": "DashScope",
+      "credential": {
+        "type": "system:dashscope",
+        "api_key": ""
+      }
+    },
+    {
+      "id": "aliyun_nls",
+      "name": "Aliyun NLS",
+      "credential": {
+        "type": "system:aliyun_nls",
+        "app_key": "",
+        "access_key_id": "",
+        "access_key_secret": ""
+      }
+    }
+  ],
+  "bindings": {
+    "model": "deepseek",
+    "search": "deepseek",
+    "tts": "dashscope",
+    "asr": "aliyun_nls"
+  }
+}

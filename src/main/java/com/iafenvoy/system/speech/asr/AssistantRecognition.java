@@ -1,12 +1,15 @@
 package com.iafenvoy.system.speech.asr;
 
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.config.credential.Credential;
+import com.iafenvoy.system.config.file.ApiConfig;
 import com.iafenvoy.system.config.file.RecognitionConfig;
-import com.iafenvoy.system.speech.AsrProviders;
+import com.iafenvoy.system.registry.SystemServices;
 import com.iafenvoy.system.speech.SpeechException;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 
+import java.net.http.HttpTimeoutException;
 import java.util.concurrent.*;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -44,8 +47,14 @@ public final class AssistantRecognition {
 
     public static void validate() throws SpeechException {
         RecognitionConfig config = RecognitionConfig.INSTANCE.get();
-        try (AsrProvider provider = AsrProviders.create(config.provider())) {
-            provider.validate(config.request());
+        try (AsrProvider provider = selected()) {
+            provider.validate(provider.request(config));
+        }
+    }
+
+    private static AsrProvider selected() throws SpeechException {
+        synchronized (ApiConfig.INSTANCE) {
+            return ApiConfig.INSTANCE.get().create("asr", SystemServices.ASR).orElseThrow(() -> new SpeechException("provider"));
         }
     }
 
@@ -70,59 +79,72 @@ public final class AssistantRecognition {
         }
 
         public void start() {
-            String providerId;
-            AsrProvider.Request request;
-            // Freeze this call's wire parameters, not a second copy of the shared configuration.
+            RecognitionConfig config;
+            Credential credential;
+            // Freeze the selected account and preferences; construct the actual service on WORKER.
             synchronized (RecognitionConfig.INSTANCE) {
-                providerId = RecognitionConfig.INSTANCE.get().provider();
-                request = RecognitionConfig.INSTANCE.get().request();
+                synchronized (ApiConfig.INSTANCE) {
+                    config = RecognitionConfig.INSTANCE.get();
+                    credential = ApiConfig.INSTANCE.get().selected("asr").orElse(null);
+                }
+            }
+            if (credential == null) {
+                this.complete();
+                this.status = "provider";
+                return;
             }
             WORKER.purge();
             this.scheduleTimeout(90);
             try {
-                this.pending = WORKER.submit(() -> {
-                    RecognitionUsageTracker accounting = new RecognitionUsageTracker(providerId, request.region());
-                    try (AsrProvider provider = AsrProviders.create(providerId); RecognitionRecording capture = this.microphone) {
-                        provider.validate(request);
-                        capture.open();
-                        if (this.closed || Thread.currentThread().isInterrupted()) return;
-                        this.update(() -> this.status = this.stopping ? "recognizing" : "recording");
-                        String recognized = provider.recognize(request, new AsrProvider.AudioSource() {
-                            @Override
-                            public void start() throws Exception {
-                                capture.start();
-                            }
-
-                            @Override
-                            public int read(byte[] buffer) throws Exception {
-                                int count = capture.read(buffer);
-                                if (count < 0) Session.this.update(Session.this::finish);
-                                return count;
-                            }
-                        }, text -> this.update(() -> this.intermediate = text), accounting::begin);
-                        accounting.complete(true);
-                        this.update(() -> {
-                            this.complete();
-                            this.status = recognized.isBlank() ? "empty" : "done";
-                            if (!recognized.isBlank()) this.result.accept(recognized);
-                        });
-                    } catch (Exception | LinkageError error) {
-                        String code = error instanceof SpeechException speech ? speech.code()
-                                : error instanceof TimeoutException ? "timeout" : "network";
-                        // Keep the cause chain so initialization and dependency failures can be diagnosed.
-                        if (!this.closed)
-                            SystemMod.LOGGER.warn("Recognition failed: {}", code, error);
-                        this.update(() -> {
-                            this.complete();
-                            this.status = code;
-                        });
-                    } finally {
-                        accounting.complete(false);
-                    }
-                });
+                this.pending = WORKER.submit(() -> this.recognize(credential, config));
             } catch (RejectedExecutionException error) {
                 this.complete();
                 this.status = "busy";
+            }
+        }
+
+        private void recognize(Credential credential, RecognitionConfig config) {
+            RecognitionUsageTracker accounting = null;
+            try (AsrProvider provider = SystemServices.ASR.create(credential).orElseThrow(() -> new SpeechException("provider"));
+                 RecognitionRecording capture = this.microphone) {
+                AsrProvider.Request request = provider.request(config);
+                RecognitionUsageTracker tracker = new RecognitionUsageTracker(provider.id(), request.region());
+                accounting = tracker;
+                provider.validate(request);
+                if (this.closed || Thread.currentThread().isInterrupted()) return;
+                capture.open();
+                if (this.closed || Thread.currentThread().isInterrupted()) return;
+                this.update(() -> this.status = this.stopping ? "recognizing" : "recording");
+                String recognized = provider.recognize(request, new AsrProvider.AudioSource() {
+                    @Override
+                    public void start() throws Exception {
+                        capture.start();
+                    }
+
+                    @Override
+                    public int read(byte[] buffer) throws Exception {
+                        int count = capture.read(buffer);
+                        if (count < 0) Session.this.update(Session.this::finish);
+                        return count;
+                    }
+                }, text -> this.update(() -> this.intermediate = text), tracker::begin, tracker::usage);
+                tracker.complete(true);
+                this.update(() -> {
+                    this.complete();
+                    this.status = recognized.isBlank() ? "empty" : "done";
+                    if (!recognized.isBlank()) this.result.accept(recognized);
+                });
+            } catch (Exception | LinkageError error) {
+                String code = error instanceof SpeechException speech ? speech.code()
+                        : error instanceof TimeoutException || error instanceof HttpTimeoutException ? "timeout" : "network";
+                // Keep the cause chain so initialization and dependency failures can be diagnosed.
+                if (!this.closed) SystemMod.LOGGER.warn("Recognition failed: {}", code, error);
+                this.update(() -> {
+                    this.complete();
+                    this.status = code;
+                });
+            } finally {
+                if (accounting != null) accounting.complete(false);
             }
         }
 

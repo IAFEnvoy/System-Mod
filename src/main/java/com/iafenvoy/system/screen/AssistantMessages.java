@@ -487,7 +487,7 @@ public final class AssistantMessages {
         Minecraft minecraft = Minecraft.getInstance();
         if (!hasVoiceTarget() || recognition != null && !recognition.finished()) return null;
         if (!RecognitionConfig.INSTANCE.get().enabled()) {
-            minecraft.setScreen(new AssistantSettingsScreen(minecraft.screen, AssistantSettingsScreen.Tab.ASR));
+            minecraft.setScreen(new AssistantSettingsScreen(minecraft.screen, AssistantSettingsScreen.Tab.VOICE));
             return null;
         }
         stopRecognition();

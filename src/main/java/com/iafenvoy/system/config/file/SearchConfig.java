@@ -8,20 +8,19 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.net.URI;
 
 /**
- * Search uses its own endpoint and credentials even when the chat provider changes.
+ * Search owns its endpoint and response budget; API management may share credentials with chat.
  */
-public record SearchConfig(String baseUrl, String apiKeyEnvironment, int maxResponseBytes) {
+public record SearchConfig(String baseUrl, int maxResponseBytes) {
     public static final String FILE_NAME = "system-search.json";
     public static final Codec<SearchConfig> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.comapFlatMap(value -> MiscCodecs.mapOrError(() -> {
                 endpoint(value, "search");
                 return value;
             }), value -> value).lenientOptionalFieldOf("baseUrl", "https://api.deepseek.com/v1").forGetter(SearchConfig::baseUrl),
-            MiscCodecs.NOT_BLANK_STRING.lenientOptionalFieldOf("apiKeyEnvironment", "SYSTEM_DEEPSEEK_API_KEY").forGetter(SearchConfig::apiKeyEnvironment),
             MiscCodecs.checked(Codec.INT, value1 -> value1 > 0).lenientOptionalFieldOf("maxResponseBytes", 4194304).forGetter(SearchConfig::maxResponseBytes)
     ).apply(i, SearchConfig::new));
     public static final ConfigInstance<SearchConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC,
-            new SearchConfig("https://api.deepseek.com/v1", "SYSTEM_DEEPSEEK_API_KEY", 4194304));
+            new SearchConfig("https://api.deepseek.com/v1", 4194304));
 
     public URI searchEndpoint() {
         return endpoint(this.baseUrl, "search");

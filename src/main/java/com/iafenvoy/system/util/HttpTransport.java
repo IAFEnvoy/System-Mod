@@ -16,14 +16,23 @@ import java.util.concurrent.*;
  * Reusable bounded HTTP transport for text or binary APIs; callers own protocol parsing and status handling.
  */
 public final class HttpTransport implements AutoCloseable {
-    private final HttpClient client;
+    private final Duration connectTimeout;
+    private HttpClient client;
+    private boolean closed;
 
     public HttpTransport() {
         this(Duration.ofSeconds(5));
     }
 
     public HttpTransport(Duration connectTimeout) {
-        this.client = HttpClient.newBuilder().connectTimeout(connectTimeout).followRedirects(HttpClient.Redirect.NEVER).build();
+        this.connectTimeout = connectTimeout;
+    }
+
+    private synchronized HttpClient client() {
+        if (this.closed) throw new IllegalStateException("HTTP transport is closed");
+        if (this.client == null)
+            this.client = HttpClient.newBuilder().connectTimeout(this.connectTimeout).followRedirects(HttpClient.Redirect.NEVER).build();
+        return this.client;
     }
 
     /**
@@ -31,7 +40,7 @@ public final class HttpTransport implements AutoCloseable {
      */
     public WebSocket webSocket(URI endpoint, Map<String, String> headers, Duration timeout, WebSocket.Listener listener)
             throws IOException, InterruptedException, TimeoutException {
-        WebSocket.Builder builder = this.client.newWebSocketBuilder().connectTimeout(timeout);
+        WebSocket.Builder builder = this.client().newWebSocketBuilder().connectTimeout(timeout);
         headers.forEach(builder::header);
         CompletableFuture<WebSocket> future = builder.buildAsync(endpoint, listener);
         try {
@@ -60,7 +69,7 @@ public final class HttpTransport implements AutoCloseable {
         Objects.requireNonNull(request);
         if (maxResponseBytes < 1) throw new IllegalArgumentException("A positive response byte limit is required");
         Duration timeout = request.timeout().orElseThrow(() -> new IllegalArgumentException("An HTTP request timeout is required"));
-        CompletableFuture<HttpResponse<byte[]>> future = this.client.sendAsync(request, ignored -> new LimitedBody(maxResponseBytes));
+        CompletableFuture<HttpResponse<byte[]>> future = this.client().sendAsync(request, ignored -> new LimitedBody(maxResponseBytes));
         return await(future, timeout);
     }
 
@@ -72,7 +81,7 @@ public final class HttpTransport implements AutoCloseable {
         Objects.requireNonNull(consumer);
         if (maxResponseBytes < 1) throw new IllegalArgumentException("A positive response byte limit is required");
         Duration timeout = request.timeout().orElseThrow(() -> new IllegalArgumentException("An HTTP request timeout is required"));
-        CompletableFuture<HttpResponse<Void>> future = this.client.sendAsync(request, info -> new StreamingBody(maxResponseBytes, info, consumer));
+        CompletableFuture<HttpResponse<Void>> future = this.client().sendAsync(request, info -> new StreamingBody(maxResponseBytes, info, consumer));
         return await(future, timeout);
     }
 
@@ -204,7 +213,8 @@ public final class HttpTransport implements AutoCloseable {
     }
 
     @Override
-    public void close() {
-        this.client.shutdownNow();
+    public synchronized void close() {
+        this.closed = true;
+        if (this.client != null) this.client.shutdownNow();
     }
 }

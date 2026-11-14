@@ -2,10 +2,12 @@ package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.config.credential.Credential;
+import com.iafenvoy.system.config.file.ApiConfig;
 import com.iafenvoy.system.config.file.SpeechConfig;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.speech.SpeechException;
-import com.iafenvoy.system.speech.TtsProviders;
+import com.iafenvoy.system.registry.SystemServices;
 import com.iafenvoy.system.util.LegacyText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.sounds.SoundEngine;
@@ -101,8 +103,14 @@ public final class AssistantSpeech {
     public static void validate(SpeechConfig next) throws SpeechException {
         if (!SpeechConfig.LANGUAGES.contains(next.language()) || next.volume() < 0 || next.volume() > 100)
             throw new SpeechException("settings");
-        try (TtsProvider provider = TtsProviders.create(next.provider())) {
-            provider.validate(next.request("Preview", Minecraft.getInstance().options.languageCode));
+        try (TtsProvider provider = selected()) {
+            provider.validate(provider.request(next, "Preview", Minecraft.getInstance().options.languageCode));
+        }
+    }
+
+    private static TtsProvider selected() throws SpeechException {
+        synchronized (ApiConfig.INSTANCE) {
+            return ApiConfig.INSTANCE.get().create("tts", SystemServices.TTS).orElseThrow(() -> new SpeechException("provider"));
         }
     }
 
@@ -151,10 +159,13 @@ public final class AssistantSpeech {
         // Local cues also work with automatic speech disabled, missing credentials or a cloud cooldown.
         if (normalized.isEmpty() || !utterance.preview() && !canSpeak()) return;
         String language = minecraft.options.languageCode;
-        String providerId = current.provider();
+        Credential credential = ApiConfig.INSTANCE.get().selected("tts").orElse(null);
+        if (credential == null) {
+            fail(SpeechState.PROVIDER);
+            return;
+        }
         int volume = current.volume();
         boolean cacheEnabled = current.cacheEnabled();
-        SpeechUsageTracker accounting = new SpeechUsageTracker(providerId, current.model(), current.region());
         SpeechAudio sourceAudio = new SpeechAudio();
         audio = sourceAudio;
         AtomicBoolean playbackQueued = new AtomicBoolean();
@@ -172,9 +183,14 @@ public final class AssistantSpeech {
         };
         WORKER.purge();
         pending = WORKER.submit(() -> {
-            try (TtsProvider provider = TtsProviders.create(providerId)) {
+            SpeechUsageTracker accounting = null;
+            // Construction and protocol work run here; a cancelled queued task owns no provider resources.
+            try (TtsProvider provider = SystemServices.TTS.create(credential).orElseThrow(() -> new SpeechException("provider"))) {
+                TtsProvider.Request request = provider.request(current, normalized, language);
+                String providerId = provider.id();
+                SpeechUsageTracker tracker = new SpeechUsageTracker(providerId, request.model(), request.region());
+                accounting = tracker;
                 // Cards already carry server-prepared narration; synthesis starts without another quest request.
-                TtsProvider.Request request = current.request(normalized, language);
                 provider.validate(request);
                 if (Thread.currentThread().isInterrupted()) return;
                 String cacheKey = cacheEnabled ? SpeechAudioCache.key(providerId, request) : null;
@@ -189,7 +205,7 @@ public final class AssistantSpeech {
                     }
                 }
                 // Cache playback is local: only an actual cloud request starts usage accounting.
-                accounting.begin();
+                tracker.begin();
                 if (provider.supportsStreaming()) {
                     AtomicReference<TtsProvider.Usage> usage = new AtomicReference<>(TtsProvider.Usage.UNKNOWN);
                     boolean successful = false;
@@ -202,11 +218,11 @@ public final class AssistantSpeech {
                         successful = true;
                     } finally {
                         // SSE usage is cumulative: report the latest snapshot once, even after cancellation.
-                        accounting.complete(usage.get(), successful);
+                        tracker.complete(usage.get(), successful);
                     }
                 } else {
-                    byte[] wav = provider.synthesize(request, usage -> accounting.complete(usage, true));
-                    accounting.complete(TtsProvider.Usage.UNKNOWN, true);
+                    byte[] wav = provider.synthesize(request, usage -> tracker.complete(usage, true));
+                    tracker.complete(TtsProvider.Usage.UNKNOWN, true);
                     sourceAudio.loadWav(wav);
                 }
                 startPlayback.run();
@@ -214,7 +230,7 @@ public final class AssistantSpeech {
                     SpeechAudio.Snapshot snapshot = sourceAudio.snapshot();
                     if (snapshot != null) SpeechAudioCache.write(cacheKey, snapshot);
                 }
-            } catch (Exception error) {
+            } catch (Exception | LinkageError error) {
                 if (Thread.currentThread().isInterrupted()) return;
                 SpeechState failure = error instanceof SpeechException speech ? SpeechState.fromCode(speech.code())
                         : error instanceof TimeoutException || error instanceof HttpTimeoutException ? SpeechState.TIMEOUT : SpeechState.NETWORK;
@@ -223,7 +239,7 @@ public final class AssistantSpeech {
                     fail(failure);
                 });
             } finally {
-                accounting.complete(TtsProvider.Usage.UNKNOWN, false);
+                if (accounting != null) accounting.complete(TtsProvider.Usage.UNKNOWN, false);
             }
         });
     }

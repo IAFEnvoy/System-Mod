@@ -51,6 +51,7 @@ public final class TokenUsageScreen extends AssistantPageScreen {
                     new Metric("speechOutputTokens", usage -> usage.speech().tokens().outputTokens()))),
             new MetricGroup("asr", "usage_recognition_counts", List.of(
                     new Metric("recognitionCalls", usage -> usage.recognition().calls()),
+                    new Metric("recognitionSeconds", usage -> usage.recognition().durationMillis()),
                     new Metric("recognitionCost", usage -> usage.recognition().estimatedNanoYuan()))));
     private final Screen parent;
     private LocalSpeechUsage.Snapshot localUsage = LocalSpeechUsage.snapshot();
@@ -67,6 +68,7 @@ public final class TokenUsageScreen extends AssistantPageScreen {
     private record Metric(String key, ToLongFunction<DisplayUsage> value) {
         private String format(DisplayUsage usage) {
             long value = this.value.applyAsLong(usage);
+            if (this.key.equals("recognitionSeconds")) return BigDecimal.valueOf(value, 3).stripTrailingZeros().toPlainString();
             return this.key.endsWith("Cost") ? "¥" + BigDecimal.valueOf(value, 9).stripTrailingZeros().toPlainString() : number(value);
         }
     }

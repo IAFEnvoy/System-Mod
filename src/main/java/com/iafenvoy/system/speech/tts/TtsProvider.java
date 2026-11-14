@@ -1,6 +1,7 @@
 package com.iafenvoy.system.speech.tts;
 
 import com.iafenvoy.system.speech.SpeechException;
+import com.iafenvoy.system.config.file.SpeechConfig;
 import org.jspecify.annotations.NonNull;
 
 import java.util.function.Consumer;
@@ -9,6 +10,16 @@ import java.util.function.Consumer;
  * Provider protocol only; credentials, requests and audio have no Minecraft dependency.
  */
 public interface TtsProvider extends AutoCloseable {
+    String id();
+
+    boolean configured();
+
+    Request request(SpeechConfig config, String text, String clientLanguage);
+
+    default SpeechConfig defaults(SpeechConfig current) {
+        return current;
+    }
+
     /**
      * Sockets and transports close without a checked failure; narrow the inherited signature for try-with-resources.
      */
@@ -51,16 +62,16 @@ public interface TtsProvider extends AutoCloseable {
     enum Unit {UNKNOWN, CHARACTERS, TOKENS}
 
     /**
-     * Only provider-reported billing units; character and token totals are never interchanged.
+     * Provider-reported units or locally counted characters; reported=false keeps estimates distinct from API usage.
      */
     record Usage(Unit unit, boolean reported, long characters, long inputTokens, long outputTokens, long totalTokens) {
         public static final Usage UNKNOWN = new Usage(Unit.UNKNOWN, false, 0, 0, 0, 0);
 
         public Usage {
             if (unit == null || characters < 0 || inputTokens < 0 || outputTokens < 0 || totalTokens < inputTokens
-                    || outputTokens > totalTokens - inputTokens || (!reported || unit == Unit.UNKNOWN)
+                    || outputTokens > totalTokens - inputTokens || unit == Unit.UNKNOWN
                     && (characters != 0 || inputTokens != 0 || outputTokens != 0 || totalTokens != 0)
-                    || reported && unit == Unit.UNKNOWN || !reported && unit != Unit.UNKNOWN || unit == Unit.CHARACTERS && totalTokens != 0
+                    || reported && unit == Unit.UNKNOWN || !reported && unit == Unit.TOKENS || unit == Unit.CHARACTERS && totalTokens != 0
                     || unit == Unit.TOKENS && characters != 0)
                 throw new IllegalArgumentException("Invalid speech usage");
         }

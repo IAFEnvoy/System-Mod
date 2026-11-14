@@ -1,35 +1,20 @@
 package com.iafenvoy.system.assistant.commerce;
 
-import com.iafenvoy.saturn.data.cost.Cost;
-import com.iafenvoy.saturn.data.cost.CostPayment;
-import com.iafenvoy.saturn.data.cost.CostTarget;
-import com.iafenvoy.saturn.data.cost.Debit;
+import com.iafenvoy.saturn.data.cost.*;
 import com.iafenvoy.saturn.data.cost.context.CostContext;
-import com.iafenvoy.saturn.registry.SaturnRegistries;
 import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.saturn.runtime.resulting.Result;
 import com.iafenvoy.saturn.runtime.resulting.failures.CostFailure;
-import com.iafenvoy.saturn.util.DefinitionText;
-import com.iafenvoy.saturn.util.matcher.ItemMatcher;
-import com.iafenvoy.saturn.util.matcher.builtin.ItemEntry;
-import com.iafenvoy.saturn.util.matcher.builtin.TagEntry;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
-import com.iafenvoy.system.data.cost.CurrencyCost;
 import com.iafenvoy.system.data.output.ItemPreviewOutput;
 import com.iafenvoy.system.data.store.PurchaseType;
-import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStackTemplate;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -74,25 +59,9 @@ public final class CommerceCosts {
                 break;
             }
             if (transaction.amount() == 0) continue;
-            if (transaction.target() instanceof CostTarget.Items target && target.entries().size() == 1 && target.entries().getFirst() instanceof ItemEntry(
-                    Item item
-            ))
-                items.add(new ItemPreviewOutput(new ItemStackTemplate(item), number(Math.ceil(transaction.amount()))));
-            else if (transaction.target() instanceof CurrencyCost.Target target)
-                descriptions.add(Component.translatable("system.economy.price",
-                        player.level().registryAccess().lookupOrThrow(SystemResourceKeys.CURRENCY).getValue(target.currency()).name(),
-                        number(transaction.amount())));
-            else if (transaction.target() instanceof CostTarget.Account target)
-                descriptions.add(Component.translatableWithFallback(DefinitionText.key(target.resource()), target.resource().unwrapKey().orElseThrow().identifier().toString()).append(" × " + number(transaction.amount())));
-            else if (transaction.target() instanceof CostTarget.Items target) {
-                MutableComponent alternatives = Component.empty();
-                for (ItemMatcher.Entry entry : target.entries()) {
-                    if (!alternatives.getSiblings().isEmpty()) alternatives.append(" / ");
-                    alternatives.append(describe(entry));
-                }
-                descriptions.add(Component.translatable("system.cost.any_of", alternatives).append(" × " + number(Math.ceil(transaction.amount()))));
-            } else
-                descriptions.add(Component.literal(transaction.target().label() + " × " + number(transaction.amount())));
+            CostDisplay display = transaction.target().display(transaction.amount());
+            display.items().forEach(item -> items.add(new ItemPreviewOutput(item.item(), item.amount())));
+            descriptions.addAll(display.descriptions());
         }
         // The quote always carries a display price, even when pricing was refused, so only the refusal is optional.
         Optional<Failure> refusal = Optional.empty();
@@ -101,20 +70,6 @@ public final class CommerceCosts {
             refusal = Optional.of(failedResource == null ? failure : failure.withResource(failedResource));
         }
         return new Prepared(player, bill, new CommerceCatalog.Price(items, descriptions), refusal, started, uncertain);
-    }
-
-    private static Component describe(ItemMatcher.Entry entry) {
-        if (entry instanceof ItemEntry(Item item1))
-            return new ItemStackTemplate(item1).create().getHoverName();
-        if (entry instanceof TagEntry(
-                TagKey<Item> tag1
-        )) return Component.literal("#" + tag1.location());
-        return Component.translatable("system.cost.custom_item",
-                String.valueOf(SaturnRegistries.ITEM_MATCHER_ENTRY_TYPE.getKey(entry.codec())));
-    }
-
-    private static String number(double value) {
-        return Double.isFinite(value) ? BigDecimal.valueOf(value).stripTrailingZeros().toPlainString() : Double.toString(value);
     }
 
     /**
@@ -129,8 +84,7 @@ public final class CommerceCosts {
         private final Optional<Failure> failure;
         private final AtomicBoolean started, uncertain;
 
-        private Prepared(ServerPlayer payer, CostPayment bill, CommerceCatalog.Price price, Optional<Failure> failure,
-                         AtomicBoolean started, AtomicBoolean uncertain) {
+        private Prepared(ServerPlayer payer, CostPayment bill, CommerceCatalog.Price price, Optional<Failure> failure, AtomicBoolean started, AtomicBoolean uncertain) {
             this.payer = payer;
             this.bill = bill;
             this.price = price;

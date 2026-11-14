@@ -1,7 +1,7 @@
 package com.iafenvoy.system.screen.gui;
 
-import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.agent.chat.ConversationMode;
+import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
@@ -9,8 +9,8 @@ import com.iafenvoy.system.screen.AssistantCardDisplay;
 import com.iafenvoy.system.screen.AssistantGeometry;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
-import com.iafenvoy.system.speech.tts.AssistantSpeech.Session;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
+import com.iafenvoy.system.speech.tts.AssistantSpeech.Session;
 import com.mojang.brigadier.CommandDispatcher;
 import com.sighs.apricityui.element.AbstractText;
 import com.sighs.apricityui.event.KeyEvent;
@@ -184,7 +184,7 @@ public abstract class AssistantInputScreen extends AssistantPageScreen {
                 || AssistantClient.state().busy() || this.recognition != null && !this.recognition.finished())
             return false;
         if (!RecognitionConfig.INSTANCE.get().enabled()) {
-            this.minecraft.setScreen(new AssistantSettingsScreen(this, AssistantSettingsScreen.Tab.ASR));
+            this.minecraft.setScreen(new AssistantSettingsScreen(this, AssistantSettingsScreen.Tab.VOICE));
             return false;
         }
         try {

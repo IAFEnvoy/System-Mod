@@ -2,6 +2,9 @@ package com.iafenvoy.system.agent.model;
 
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
+import com.iafenvoy.system.config.credential.builtin.DashScopeCredential;
+import com.iafenvoy.system.config.credential.builtin.DeepSeekCredential;
+import com.iafenvoy.system.config.credential.builtin.OpenAiCredential;
 import com.iafenvoy.system.config.file.ModelConfig;
 import com.iafenvoy.system.util.CodecIO;
 import com.iafenvoy.system.util.HttpTransport;
@@ -22,16 +25,46 @@ import java.util.function.Consumer;
  */
 public final class OpenAiCompatibleClient implements ModelClient {
     private final HttpTransport http = new HttpTransport();
+    private final ModelConfig config = ModelConfig.INSTANCE.get();
+    private final String key;
+    private final String defaultUrl;
+    private final String defaultModel;
+    private final String protocol;
+
+    /** Anonymous OpenAI-compatible endpoints remain usable when apiKeyRequired is disabled. */
+    public OpenAiCompatibleClient() {
+        this("", "", "", "auto");
+    }
+
+    public OpenAiCompatibleClient(DeepSeekCredential credential) {
+        this(credential.getApiKey(), "https://api.deepseek.com", "deepseek-chat", "deepseek");
+    }
+
+    public OpenAiCompatibleClient(OpenAiCredential credential) {
+        this(credential.getApiKey(), "https://api.openai.com/v1", "", "openai");
+    }
+
+    public OpenAiCompatibleClient(DashScopeCredential credential) {
+        this(credential.getApiKey(), "https://dashscope.aliyuncs.com/compatible-mode/v1", "qwen-plus", "openai");
+    }
+
+    private OpenAiCompatibleClient(String key, String defaultUrl, String defaultModel, String protocol) {
+        this.key = key;
+        this.defaultUrl = defaultUrl;
+        this.defaultModel = defaultModel;
+        this.protocol = protocol;
+    }
+
+    @Override
+    public ModelConfig defaults(ModelConfig current) {
+        return new ModelConfig(this.defaultModel.isBlank() ? current.model() : this.defaultModel,
+                this.defaultUrl.isBlank() ? current.baseUrl() : this.defaultUrl, this.protocol,
+                current.thinkingEnabled(), current.reasoningEffort(), current.apiKeyRequired(), current.jsonMode(), current.outputTokenParameter());
+    }
 
     @Override
     public boolean configured() {
-        ModelConfig config = ModelConfig.INSTANCE.get();
-        String key = apiKey(config);
-        return !config.apiKeyRequired() || key != null && !key.isBlank();
-    }
-
-    private static String apiKey(ModelConfig config) {
-        return config.apiKeyEnvironment().isBlank() ? null : System.getenv(config.apiKeyEnvironment());
+        return !this.config.apiKeyRequired() || !this.key.isBlank();
     }
 
     @Override
@@ -42,17 +75,10 @@ public final class OpenAiCompatibleClient implements ModelClient {
 
     @Override
     public Reply complete(List<Message> messages, int maxOutputTokens, Duration timeout, Consumer<Usage> observer) throws Exception {
-        ChatCompletion.Request request;
-        URI endpoint;
-        Map<String, String> headers;
-        // Read one request's endpoint, credentials and body atomically with config reloads; HTTP holds no lock.
-        synchronized (ModelConfig.INSTANCE) {
-            this.checkConfigured();
-            String key = apiKey(ModelConfig.INSTANCE.get());
-            request = ChatCompletion.Request.of(messages, maxOutputTokens);
-            endpoint = ModelConfig.INSTANCE.get().chatCompletionsEndpoint();
-            headers = key == null || key.isBlank() ? Map.of() : Map.of("Authorization", "Bearer " + key);
-        }
+        this.checkConfigured();
+        ChatCompletion.Request request = ChatCompletion.Request.of(this.config, messages, maxOutputTokens);
+        URI endpoint = this.config.chatCompletionsEndpoint();
+        Map<String, String> headers = this.key.isBlank() ? Map.of() : Map.of("Authorization", "Bearer " + this.key);
         String body = CodecIO.write(ChatCompletion.Request.CODEC, request);
         HttpResponse<byte[]> response;
         try {

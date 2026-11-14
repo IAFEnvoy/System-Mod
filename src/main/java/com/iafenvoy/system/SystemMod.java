@@ -13,6 +13,7 @@ public final class SystemMod {
 
     public SystemMod(IEventBus bus) {
         SystemActionTypes.REGISTRY.register(bus);
+        SystemCredentialTypes.REGISTRY.register(bus);
         SystemCardDataTypes.REGISTRY.register(bus);
         SystemRequestTypes.REGISTRY.register(bus);
         SystemResponseTypes.REGISTRY.register(bus);

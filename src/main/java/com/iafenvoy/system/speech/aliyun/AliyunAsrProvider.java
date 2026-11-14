@@ -1,6 +1,7 @@
 package com.iafenvoy.system.speech.aliyun;
 
 import com.iafenvoy.system.config.file.RecognitionConfig;
+import com.iafenvoy.system.config.credential.builtin.AliyunNlsCredential;
 import com.iafenvoy.system.data.speech.AliyunAsrMessage;
 import com.iafenvoy.system.data.speech.AliyunNlsTokenMessage;
 import com.iafenvoy.system.speech.SpeechException;
@@ -30,6 +31,30 @@ public final class AliyunAsrProvider implements AsrProvider {
     private final HttpTransport transport = new HttpTransport();
     private volatile WebSocket socket;
     private AliyunNlsTokenMessage.Token token;
+    private final String appKey;
+    private final String accessKeyId;
+    private final String accessKeySecret;
+
+    public AliyunAsrProvider(AliyunNlsCredential credential) {
+        this.appKey = credential.getAppKey();
+        this.accessKeyId = credential.getAccessKeyId();
+        this.accessKeySecret = credential.getAccessKeySecret();
+    }
+
+    @Override
+    public String id() {
+        return "aliyun-nls";
+    }
+
+    @Override
+    public boolean configured() {
+        return !this.appKey.isBlank() && !this.accessKeyId.isBlank() && !this.accessKeySecret.isBlank();
+    }
+
+    @Override
+    public Request request(RecognitionConfig config) {
+        return new Request("", this.appKey, this.accessKeyId, this.accessKeySecret, config.region());
+    }
 
     @Override
     public void validate(Request request) throws SpeechException {
@@ -44,7 +69,7 @@ public final class AliyunAsrProvider implements AsrProvider {
     @Override
     public String recognize(Request request, AudioSource audio, Consumer<String> intermediate, Runnable requestStarted) throws Exception {
         this.validate(request);
-        String task = id();
+        String task = messageId();
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(90);
         try {
             Events events = this.connect(request, task, intermediate);
@@ -102,10 +127,10 @@ public final class AliyunAsrProvider implements AsrProvider {
 
     private static String command(Request request, String task, String name, AliyunAsrMessage.Parameters payload) {
         return CodecIO.write(AliyunAsrMessage.Command.CODEC, new AliyunAsrMessage.Command(
-                new AliyunAsrMessage.Header(request.appKey(), "SpeechRecognizer", name, task, id()), Optional.ofNullable(payload)));
+                new AliyunAsrMessage.Header(request.appKey(), "SpeechRecognizer", name, task, messageId()), Optional.ofNullable(payload)));
     }
 
-    private static String id() {
+    private static String messageId() {
         return UUID.randomUUID().toString().replace("-", "");
     }
 

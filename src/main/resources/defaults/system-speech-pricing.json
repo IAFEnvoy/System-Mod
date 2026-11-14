@@ -1,7 +1,7 @@
 {
   "version": 1,
   "currency": "CNY",
-  "asOf": "2026-10-25",
+  "asOf": "2026-11-14",
   "rates": [
     {
       "provider": "aliyun",
@@ -118,6 +118,24 @@
       "unit": "CALLS",
       "units": 1000,
       "input": 3.5,
+      "output": 0
+    },
+    {
+      "provider": "deepseek",
+      "model": "tts",
+      "region": "global",
+      "unit": "CHARACTERS",
+      "units": 10000,
+      "input": 1.5,
+      "output": 0
+    },
+    {
+      "provider": "deepseek",
+      "model": "sentence-recognition",
+      "region": "global",
+      "unit": "SECONDS",
+      "units": 3600,
+      "input": 0.39,
       "output": 0
     }
   ]

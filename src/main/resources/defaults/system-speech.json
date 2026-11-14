@@ -1,9 +1,6 @@
 {
   "enabled": false,
-  "provider": "aliyun",
-  "apiKey": "",
   "region": "beijing",
-  "workspace": "",
   "model": "qwen3-tts-flash",
   "voice": "Cherry",
   "language": "Client",

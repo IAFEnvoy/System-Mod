@@ -1,5 +1,6 @@
 package com.iafenvoy.system.search;
 
+import com.iafenvoy.system.config.credential.builtin.DeepSeekCredential;
 import com.iafenvoy.system.config.file.SearchConfig;
 import com.iafenvoy.system.util.CodecIO;
 import com.iafenvoy.system.util.HttpTransport;
@@ -19,6 +20,22 @@ import java.util.concurrent.TimeoutException;
  */
 public final class DeepSeekSearchClient implements SearchProvider {
     private final HttpTransport http = new HttpTransport();
+    private final SearchConfig config = SearchConfig.INSTANCE.get();
+    private final String key;
+
+    public DeepSeekSearchClient(DeepSeekCredential credential) {
+        this.key = credential.getApiKey();
+    }
+
+    @Override
+    public boolean configured() {
+        return !this.key.isBlank();
+    }
+
+    @Override
+    public String defaultBaseUrl() {
+        return "https://api.deepseek.com/v1";
+    }
 
     @Override
     public Response search(Request request, Duration timeout) throws SearchException, InterruptedException {
@@ -38,17 +55,10 @@ public final class DeepSeekSearchClient implements SearchProvider {
         } catch (RuntimeException invalidRequest) {
             throw new SearchException("SEARCH_INVALID_REQUEST", invalidRequest);
         }
-        URI endpoint;
-        Map<String, String> headers;
-        int maxResponseBytes;
-        // Snapshot connection settings under the reload lock; no network operation holds that lock.
-        synchronized (SearchConfig.INSTANCE) {
-            String key = System.getenv(SearchConfig.INSTANCE.get().apiKeyEnvironment());
-            if (key == null || key.isBlank()) throw new SearchException("SEARCH_NOT_CONFIGURED");
-            endpoint = fetch ? SearchConfig.INSTANCE.get().fetchEndpoint() : SearchConfig.INSTANCE.get().searchEndpoint();
-            headers = Map.of("Authorization", "Bearer " + key);
-            maxResponseBytes = SearchConfig.INSTANCE.get().maxResponseBytes();
-        }
+        if (!this.configured()) throw new SearchException("SEARCH_NOT_CONFIGURED");
+        URI endpoint = fetch ? this.config.fetchEndpoint() : this.config.searchEndpoint();
+        Map<String, String> headers = Map.of("Authorization", "Bearer " + this.key);
+        int maxResponseBytes = this.config.maxResponseBytes();
         HttpResponse<byte[]> response;
         try {
             response = this.http.postJson(endpoint, body, headers, timeout, maxResponseBytes);

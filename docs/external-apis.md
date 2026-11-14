@@ -2,7 +2,7 @@
 
 自由聊天使用同一个服务端 Chat Completions API，发送当前文字与按玩家设置裁剪的本人历史；复用原有账号、计费和限额。该模式本轮不调用工具或联网搜索。见 [自由聊天](free-chat.md)。
 
-本文根据当前仓库代码整理，核对日期：2026-10-30。描述的是本模组内置实现发出的外部请求，不包含 Minecraft、加载器或其他模组自身的联网行为，也不包含第三方扩展自行注册的模型、TTS、ASR 或支付实现。
+本文根据当前仓库代码整理，核对日期：2026-11-14。描述的是本模组内置实现发出的外部请求，不包含 Minecraft、加载器或其他模组自身的联网行为，也不包含第三方扩展自行注册的模型、TTS、ASR 或支付实现。
 
 ## 总览
 
@@ -10,8 +10,8 @@
 | --- | --- | --- | --- | --- |
 | AI 意图判断、签到奖励选择、特殊任务文案整理、任务背景筛选 | Minecraft 服务端；单人游戏为内置服务端 | 配置的 OpenAI Chat Completions 兼容服务，默认 DeepSeek | 实际需要模型且当前玩家允许外部 AI 时 | 默认提供商为 DeepSeek；需要服务端配置密钥 |
 | 网页搜索与抓取 | Minecraft 服务端工作线程 | 独立配置的 DeepSeek Search / Fetch API | 本地查库为空、搜索模块已启用且当前请求明确允许联网 | 不自动授予；普通提问不代表授权，复用 DeepSeek 环境变量 |
-| 文字转语音（TTS） | Minecraft 客户端 | 阿里云百炼 / DashScope | 开启自动朗读后播报当前消息，或手动试听 | 自动朗读默认关闭 |
-| 语音转文字（ASR） | Minecraft 客户端 | 阿里云智能语音交互 NLS | 玩家开启语音输入并主动录音 | 默认关闭 |
+| 文字转语音（TTS） | Minecraft 客户端 | 所选阿里云百炼 / DashScope 或 DeepSeek | 开启自动朗读后播报当前消息，或手动试听 | 自动朗读默认关闭 |
+| 语音转文字（ASR） | Minecraft 客户端 | 所选阿里云 NLS 或 DeepSeek | 玩家开启语音输入并主动录音；DeepSeek 在录完后上传 | 默认关闭 |
 | NLS 临时 Token 签发 | Minecraft 客户端 | 阿里云 NLS Meta `CreateToken` | 主动识别时没有可复用 Token、即将到期或鉴权缓存失效 | 随语音输入按需触发，不在设置保存时请求 |
 | 非流式 TTS 音频下载 | Minecraft 客户端 | TTS 响应中指定的阿里云 OSS 地址 | 调用非流式合成且返回音频 URL 时 | 正常游戏播报使用流式 PCM，不需要这次下载 |
 | 音色设计、复刻、查询、删除和临时上传 | 独立 Python 工具 | 阿里云百炼及 OSS | 手动执行 `tools/voice_design.py` 的对应子命令 | 不随模组运行自动执行 |
@@ -29,7 +29,7 @@ FTB [说明书检索](quest-guides.md) 在服务端本地使用稀疏 TF-IDF，�
 - 默认完整地址：`https://api.deepseek.com/chat/completions`，默认模型 `deepseek-chat`。
 - 例如使用 `https://example.com/v1` 作为 `baseUrl`，实际请求 `https://example.com/v1/chat/completions`；配置时不要再填一次 `/chat/completions`。
 - 可替换为其他 OpenAI 兼容服务。远端要求 HTTPS，也允许本机回环地址的 HTTP 服务。
-- 认证：读取 `apiKeyEnvironment` 指定的服务端环境变量，默认 `SYSTEM_DEEPSEEK_API_KEY`，放入 `Authorization: Bearer ...`。允许无需密钥的本地服务时，可关闭 `apiKeyRequired`。
+- 认证：解析服务端 `system-api.json` 的模型绑定，默认引用 `SYSTEM_DEEPSEEK_API_KEY`，放入 `Authorization: Bearer ...`。允许无需密钥的本地服务时，可关闭 `apiKeyRequired`。
 
 DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的参数，不增加另一个接口请求。模型、JSON 模式和输出 Token 参数说明见 [模型接口](model-api.md)。
 
@@ -63,7 +63,7 @@ DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的�
 
 ## 2. 客户端 TTS API
 
-配置文件为客户端的 `config/system/system-speech.json`。密钥取配置中的 `apiKey`，为空时读取客户端环境变量 `DASHSCOPE_API_KEY`；由客户端直接请求阿里云，不交给 Minecraft 服务端代发。
+播报参数位于客户端 `config/system/system-speech.json`，凭据及 Workspace 从本机 `system-api.json` 的 TTS 绑定读取，默认引用 `DASHSCOPE_API_KEY`；由客户端直接请求阿里云，不交给 Minecraft 服务端代发。
 
 ### 域名选择
 
@@ -97,7 +97,7 @@ DeepSeek 的 `thinking`、`reasoning_effort` 兼容只改变同一次请求的�
 
 - 协议：WebSocket over TLS，地址 `wss://nls-gateway-cn-<region>.aliyuncs.com/ws/v1`。
 - 当前支持地域：`shanghai`、`beijing`、`shenzhen`，默认上海；例如 `wss://nls-gateway-cn-shanghai.aliyuncs.com/ws/v1`。
-- 配置：客户端 `config/system/system-asr.json`，使用独立的 NLS 项目 `appKey` 和阿里云 `accessKeyId` / `accessKeySecret`，不是百炼 TTS API Key。
+- 配置：客户端 `config/system/system-asr.json` 保存识别参数；本机 `system-api.json` 的 ASR 绑定提供 NLS 项目 `app_key` 和阿里云 `access_key_id` / `access_key_secret`，不是百炼 TTS API Key。
 - 配置为空时分别读取 `ALIYUN_NLS_APP_KEY`、`ALIYUN_AK_ID`、`ALIYUN_AK_SECRET`。自动签发的 Token 放在握手请求头 `X-NLS-Token`，AppKey 放在识别命令头。
 - 签发：`GET https://nls-meta.cn-shanghai.aliyuncs.com/`，Action 为 `CreateToken`，Version 为 `2019-02-28`，RegionId 固定为 `cn-shanghai`。发送 AccessKey ID、UTC 时间戳、唯一 nonce、格式与签名参数；AccessKey Secret 仅在本地计算 HMAC-SHA1，不直接放入请求。
 - Token 仅内存缓存，实际识别时检查 `ExpireTime`，剩余有效期不超过两分钟则重新签发；凭据变化后重新获取。握手 401 / 403 时清缓存并重新签发、连接一次，尚未提交识别命令；不重试已经开始的收费任务。签发失败和握手失败不计 ASR 尝试。
@@ -132,7 +132,7 @@ Token 签发只发生在玩家主动启动的识别 session 中，打开设置�
 
 功能模块 `system:web_search` 仅导出 Search/Fetch 工具，通过 `SearchGateway` 调用 `DeepSeekSearchClient`。核心 `system:question` 始终先查询本地数据库；只有结果为空、搜索模块已启用且本次明确授权才进入有预算的 WebResearch。`/search <问题>`、明确联网表达或搜索页主动提交允许回退，`/question` 和普通问题不允许。自然表达仍由模型判断当前授权，历史和资料正文不授予权限；查库出错、命中但整理失败、登录、绑定和事件均不会启动搜索。不自动给玩家添加搜索模块。
 
-- 配置：`config/system/system-search.json`，首次使用时从 JAR 默认文件复制；与文本模型配置独立，默认仍读取环境变量 `SYSTEM_DEEPSEEK_API_KEY`。
+- 配置：`config/system/system-search.json`，首次使用时从 JAR 默认文件复制；连接与文本模型独立，凭据从 `system-api.json` 的搜索绑定读取，默认和模型共用 DeepSeek 凭据及 `SYSTEM_DEEPSEEK_API_KEY`。
 - 搜索：`POST https://api.deepseek.com/v1/tools/search`，发送当前问题导出的查询、固定 5 条和不带正文的选项；内置工作流不填原始问题和定位字段，不自动采集玩家资料或 IP。
 - 抓取：`POST https://api.deepseek.com/v1/tools/fetch`，将调用者提供的页面 URL 发给 DeepSeek，由 DeepSeek 获取 Markdown；本机不直接访问该网页。
 - 搜索卡片的外链仅在玩家点击后交给 Minecraft 原版链接流程，根据链接开关与确认设置调用系统浏览器；浏览器届时自行访问目标网站，模组不会将 DeepSeek 密钥附加到该 URL。展开来源摘要不发送网络请求。
@@ -141,7 +141,20 @@ Token 签发只发生在玩家主动启动的识别 session 中，打开设置�
 
 详细配置、返回字段、调用方法和官方资料见 [网页搜索与抓取](search-api.md)。
 
-## 6. 哪些操作不额外访问外部 API
+## 6. 客户端 DeepSeek TTS / ASR
+
+仅在“语音交互”选择 DeepSeek 凭据且实际播报 / 识别时调用，打开设置、启用服务声明和共享凭据本身不请求接口。凭据来自客户端 `system-api.json` 的 `tts` / `asr` 绑定，支持与其他 DeepSeek 服务共用同一份 `api_key`。
+
+| 接口 | 发送数据 | 返回 |
+| --- | --- | --- |
+| `POST https://api.deepseek.com/v1/tools/tts` | 纯文本口播、音色 `stella` / `tide`、`format=pcm`、`filter_markdown=false` 和 Bearer Key | 流式 24 kHz、16-bit、单声道 PCM |
+| `POST https://api.deepseek.com/v1/tools/asr` | 结束录音后，在内存封装的 16 kHz 单声道 WAV，以 multipart `file` 上传；Bearer Key | `request_id`、完整 `text`、`duration_ms` |
+
+不发送玩家 UUID、背包或任务结构；口播文本或玩家录音本身可能含有这些信息。不请求 NLS Token、不保存麦克风文件、不上传 OSS，不向游戏服务端发送凭据、音频或用量。识别文字发送到助手时才进入原有消息流程。关闭 session 中断网络和播放；已提交请求可能产生费用，无自动重试。
+
+TTS 按汉字 2 / 其他字符 1 在完整成功后本地估算（接口无 usage），ASR 按响应音频时长逐次向上取整到秒；价格、默认折扣快照和隐私边界见 [DeepSeek 语音](deepseek-speech.md)。
+
+## 7. 哪些操作不额外访问外部 API
 
 - 玩家与物品查询、FTB 查询/明确提交/领奖、新手礼包领取、商城与抽奖结算：内置逻辑直接读取或修改服务端游戏状态；明确指令或可信按钮执行这些操作本身不需要云端。自然语言先走模型兜底、结果触发 TTS 或特殊任务播报时，仍可能产生对应请求。
 - 绑定成功通知、任务完成/解锁事件与消息队列：事件生成和固定文案在本地处理；语音开启后可另触发 TTS 和按需任务文案整理。
@@ -151,7 +164,7 @@ Token 签发只发生在玩家主动启动的识别 session 中，打开设置�
 
 客户端与服务端之间的助手请求、卡片动作与 AI 用量查询使用 Minecraft 自定义网络载荷，不是新增的公开 HTTP API。TTS 密钥、NLS AccessKey / Token 及语音用量均保留在客户端，不发送给游戏服务端。
 
-按当前内置源码，本模组没有额外的遥测、广告、更新检查或通用数据上传接口。外部请求实现集中于 `OpenAiCompatibleClient`、`AliyunTtsProvider`、`AliyunNlsToken`、`AliyunAsrProvider`、`DeepSeekSearchClient` 和上述 Python 工具；新增提供商或其他第三方扩展后，应同步更新本清单。
+按当前内置源码，本模组没有额外的遥测、广告、更新检查或通用数据上传接口。外部请求实现集中于 `OpenAiCompatibleClient`、`AliyunTtsProvider`、`AliyunNlsToken`、`AliyunAsrProvider`、`DeepSeekTtsProvider`、`DeepSeekAsrProvider`、`DeepSeekSearchClient` 和上述 Python 工具；新增提供商或其他第三方扩展后，应同步更新本清单。
 
 ## 核对范围
 

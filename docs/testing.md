@@ -1028,3 +1028,10 @@ FileAgentStore 的玩家业务和对话读写、AgentDatabase 的共享及独立
 确认用户更新的 CurseMaven 9509793 实际为 Saturn 1.2.6，读取依赖 JAR 的 FileAccess / NbtFiles 签名和字节码确认 NBT_COMPRESSED、自动识别压缩及旧头部、标准头部写入和 GZIPOutputStream。版本与文件 ID 放入 gradle.properties，最低依赖元数据和双语 README / 开发版本表同步为 1.2.6。
 
 实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；静态检查所有存档 NBT 调用和最低依赖元数据，`git diff --check` 通过。未运行测试、启动 Minecraft、修改现有存档或请求 API；压缩文件在游戏内的往返恢复尚待验收。
+
+
+## 2026-11-14：统一凭据接入
+
+模型、搜索、TTS 和 ASR 已由 `SystemServices` 的四个 `CredentialManager` 按具体凭据类构造，设置页直接挂载凭据的 `createWidget()`，用途只保存账号 ID；旧 `config.api`、调用方元数据索引和语音字符串工厂已删除。语音服务在工作线程创建，模型和搜索按请求捕获配置；HttpClient 延迟到实际联网时才创建。
+
+执行 `gradlew compileJava testModClasses --console=plain` 通过；Python AST、默认配置与示例结构、设置 HTML ID 和双语键集合静态检查通过。主资源中英文各 719 键，编辑器中英文各 665 键。读取实际 AUI 1.2.9 sources JAR 确认 input/change 会冒泡，保存监听器在字段更新后运行并去除重复提交；未启动游戏、未执行测试、未录音或调用收费 API。界面交互与实际联网未做运行验收。

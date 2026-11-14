@@ -27,7 +27,7 @@
 | System               | `1.0-beta.3`                | 客户端与服务端 |
 | Minecraft / NeoForge | `26.1.2` / `26.1.2.114+`    | 客户端与服务端 |
 | Java                 | `25`                        | 客户端与服务端 |
-| Saturn               | `1.3+`，使用匹配的 Minecraft 版本 | 客户端与服务端 |
+| Saturn               | `1.3.1+`，CurseForge 文件 `9606807`，使用匹配的 Minecraft 版本 | 客户端与服务端 |
 | ApricityUI           | `1.2.9+`，使用匹配的 Minecraft 版本 | 客户端     |
 
 FTB Quests 及其配套依赖为**可选安装**，仅任务集成需要。Simple Voice Chat 是**可选的客户端录音后端**；未安装时使用 Java
@@ -49,8 +49,9 @@ Sound，服务端无需为此安装 SVC。开发依赖版本见[开发文档](do
 $env:SYSTEM_DEEPSEEK_API_KEY = "<你的 API Key>"
 ```
 
-单人游戏需让 Minecraft 进程继承该变量；修改进程环境变量后需重启。服务端 `config/system/system-model.json` 保存模型地址、模型
-ID 和密钥的**环境变量名**，也可接入其他 OpenAI Chat Completions 兼容服务。
+单人游戏需让 Minecraft 进程继承该变量；修改进程环境变量后需重启。服务端 `config/system/system-model.json` 只保存模型连接选项；凭据和用途绑定集中在 `config/system/system-api.json`。
+设置页新增“API Key管理”，按 DeepSeek、百炼、NLS 等类型新建凭据，支持多字段并自动识别环境变量；服务声明接受的凭据类型，选择凭据后自动匹配。模型和搜索仅单人 / 局域网房主可在界面编辑；独立服需在服务器本机配置，远程客户端（包括 OP）不开放编辑，API Key 不在两端传输。TTS / ASR 凭据仍留在客户端。
+详见[统一 API Key管理](docs/api-management.md)，也支持其他 OpenAI Chat Completions 兼容服务。
 
 `baseUrl` 填 API 前缀，不含 `/chat/completions`。完整参数、DeepSeek
 专用选项与本地免密钥模型配置见[模型接口](docs/model-api.md)。
@@ -93,7 +94,7 @@ ID 和密钥的**环境变量名**，也可接入其他 OpenAI Chat Completions 
 | `/system usage`                   | 查看个人用量，无需绑定        |
 | `/system help`                    | 查看可用功能与帮助          |
 
-助手输入框内使用 `/settings` 打开设置，支持指令补全与 Enter 发送。可在游戏控制设置中给“打开/关闭系统界面”分配按键，默认未绑定。
+助手输入框内使用 `/settings` 打开设置，支持指令补全与 Enter 发送。可在游戏控制设置中给“打开系统界面”分配按键，默认未绑定。
 
 通知显示时，按原版聊天键（**默认 T**）即可交互。连续通知保持面板展开，通过按钮确认或继续；播报完成不会自动切到下一条。关闭、确认或替换通知时会结束对应的语音
 session。
@@ -119,14 +120,14 @@ session。
 
 ## 可选语音
 
-语音输入与自动播报默认关闭，均在**客户端使用玩家自己的阿里云凭据**，与服务端模型配置分开。
+语音输入与自动播报默认关闭，均在**客户端使用玩家自己的凭据**，支持阿里云及 DeepSeek，与服务端模型配置分开。
 
 | 功能        | 所需配置                                                     | 使用方式                                                 |
 |-----------|----------------------------------------------------------|------------------------------------------------------|
-| 语音输入（ASR） | NLS 项目 AppKey、AccessKey ID / Secret 与地域；临时 Token 自动获取并刷新 | 默认按住 F8 录音，松开识别；结果填入草稿，可开启“识别后立即发送”                  |
-| 语音播报（TTS） | 百炼 API Key 与地域，也可使用客户端 `DASHSCOPE_API_KEY`               | 默认 `qwen3-tts-flash` / `Cherry`，语言跟随游戏；设置后可试听、开启自动朗读 |
+| 语音输入（ASR） | 选择 DeepSeek Key，或 NLS 项目 AppKey、AccessKey ID / Secret 与地域 | 默认按住 F8 录音，松开识别；结果填入草稿，可开启“识别后立即发送”                  |
+| 语音播报（TTS） | 选择百炼凭据或 DeepSeek Key；DeepSeek 音色为 `stella` / `tide` | 默认 `qwen3-tts-flash` / `Cherry`，语言跟随游戏；设置后可试听、开启自动朗读 |
 
-在 `/system settings` 的对应标签配置，修改自动保存。自定义音色需与创建时的模型及地域匹配，参数直接填写，不导入
+在 `/system settings` 的 API Key管理中填写凭据，在“语音交互”的对应分组选择凭据，修改自动保存。DeepSeek ASR 在录完后整段上传，TTS 则流式返回音频；详见[DeepSeek 语音](docs/deepseek-speech.md)。自定义音色需与创建时的模型及地域匹配，参数直接填写，不导入
 JSON。通知提示音有独立开关，默认开启，无需调用 TTS。
 
 识别文字优先匹配当前通知按钮，未匹配时再进入主聊天。详细配置见[语音识别](docs/asr.md)与[语音合成](docs/tts.md)。
@@ -158,8 +159,7 @@ JAR。问答优先查本地数据库，只有无结果且满足本次联网授�
 - **业务数据**由服务端按存档与玩家管理；绑定、偏好、任务交互和奖励不依赖客户端自行保存。累计用量独立于业务记录，撤销、重置或清空记忆不会抹除。
 - **AI 与联网用量**由服务端统计。管理员可查看全服记录；模型 API Key 不同步给客户端。
 - **TTS / ASR 用量**仅按当前客户端账号保存在本机，不上传服务端，管理员不能汇总其他玩家的语音账本。
-- **费用是估算值**，实际以供应商账单为准；改价不重算历史累计。联网 Search / Fetch 分别计次，TTS 按模型返回的字符或 Token
-  计量，ASR 按成功识别次数估算。
+- **费用是估算值**，实际以供应商账单为准；改价不重算历史累计。联网 Search / Fetch 分别计次，阿里云 TTS 使用返回的字符或 Token；DeepSeek TTS 按公开字符规则本地估算。ASR 的 NLS 按成功次数、DeepSeek 按返回音频时长估算。
 
 外部请求的触发条件、发送数据和具体计费说明见[外部 API 请求清单](docs/external-apis.md)与[用量统计](docs/token-usage.md)。
 

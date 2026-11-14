@@ -4,14 +4,13 @@
 
 ## 配置
 
-服务端模型配置在 `config/system/system-model.json`，修改后通过资源重载重新读取，后续请求直接使用当前配置；在途请求保持原报文与连接参数。下面是默认配置中的模型字段：
+服务端凭据及用途绑定统一保存在 `config/system/system-api.json`，见[统一 API 管理](api-management.md)。连接与协议配置在 `config/system/system-model.json`，修改后通过资源重载重新读取，后续请求直接使用当前配置；在途请求保持原报文与连接参数。下面是默认配置中的模型字段：
 
 ```json
 {
   "providerType": "auto",
   "baseUrl": "https://api.deepseek.com",
   "model": "deepseek-chat",
-  "apiKeyEnvironment": "SYSTEM_DEEPSEEK_API_KEY",
   "apiKeyRequired": true,
   "jsonMode": true,
   "outputTokenParameter": "max_tokens",
@@ -25,8 +24,7 @@
 | `providerType` | `auto`、`openai` 或 `deepseek`。`auto` 只对 `deepseek.com` 及其子域启用 DeepSeek 分支，其他地址使用通用 OpenAI 格式 |
 | `baseUrl` | API 前缀，不包含 `/chat/completions`。保留自定义前缀并追加该路径，兼容 `/v1`、`/compatible-mode/v1` 等；末尾 `/` 会去掉 |
 | `model` | 原样发送的模型 ID，由目标服务决定可用名称 |
-| `apiKeyEnvironment` | 服务端读取密钥的环境变量名，不是密钥本身 |
-| `apiKeyRequired` | 默认 `true`。无认证的本地服务可设 `false`；环境变量仍有非空值时照常发送 Bearer 头 |
+| `apiKeyRequired` | 默认 `true`。无认证的本地服务可设 `false`；所选凭据仍有非空值时照常发送 Bearer 头 |
 | `jsonMode` | 默认发送 `response_format: {"type":"json_object"}`。服务不支持此参数时设 `false`；本地仍严格要求返回 JSON 对象 |
 | `outputTokenParameter` | `max_tokens`（默认）或 `max_completion_tokens`，每次只发送其中一个；数值仍来自模块执行预算 |
 | `thinkingEnabled` | 仅 DeepSeek 分支使用，默认 `false`，显式发送 `thinking.type=disabled`；开启时发送 `enabled` |
@@ -34,13 +32,13 @@
 
 远程地址使用 HTTPS；`localhost`、`127.0.0.1` 和 `[::1]` 允许 HTTP，便于本地模型服务。地址不允许内嵌用户名/密码、查询参数或 fragment，也不跟随重定向。出站目标始终来自服务端配置。
 
-消息提交与本地指令 / 向量匹配不要求配置模型。`ModelClient.checkConfigured()` 只验证本地配置，不发网络请求；`ExecutionContext.model` 在等待模型并发槽、扣每日调用额度和用量记账之前检查外部 AI 偏好及配置。OpenAI 适配器在 `apiKeyRequired=true` 且环境变量为空或未设置时报告 `MODEL_NOT_CONFIGURED`；`false` 继续支持无认证本地服务，空环境变量名也视为未提供密钥。真正构造请求时仍在配置锁内重新读取密钥和连接参数。
+消息提交与本地指令 / 向量匹配不要求配置模型。`ModelClient.checkConfigured()` 只验证本地配置，不发网络请求；`ExecutionContext.model` 在等待模型并发槽、扣每日调用额度和用量记账之前检查外部 AI 偏好及配置。OpenAI 适配器在 `apiKeyRequired=true` 且所选模型凭据未就绪时报告 `MODEL_NOT_CONFIGURED`；`false` 继续支持无认证本地服务，未选择凭据也视为未提供密钥。真正构造请求时仍在配置锁内重新读取密钥和连接参数。
 
 路由阶段遇到未配置模型或 AI 关闭时，返回可点击的本地操作选项，不将整条消息转成密钥错误；正常的低置信度路由仍可交给已配置的模型。此降级仅发生在选择操作的阶段，不替代签到奖励决策等必需的 AI 行为。详见[本地意图路由](semantic-routing.md)。
 
-切换普通兼容服务时修改 `baseUrl`、`model` 和 `apiKeyEnvironment`，可显式设 `providerType=openai`。若服务使用新的输出限制字段，再设 `outputTokenParameter=max_completion_tokens`。某些模型不支持 JSON 模式，可关闭 `jsonMode`，但仍需遵守现有提示词并直接返回 JSON。
+切换普通兼容服务时在 API 管理中选择凭据及 `openai_chat` 服务，再修改 `baseUrl` 和 `model`，可显式设 `providerType=openai`。若服务使用新的输出限制字段，再设 `outputTokenParameter=max_completion_tokens`。某些模型不支持 JSON 模式，可关闭 `jsonMode`，但仍需遵守现有提示词并直接返回 JSON。
 
-以下片段用于合并到 `system-model.json`；完整默认示例见 [system-model.json](../examples/agent/system-model.json)：
+以下片段只包含连接选项，用于合并到 `system-model.json`；先在 API 管理中绑定目标服务自己的凭据，修改地址不会自动更换账号。完整默认示例见 [system-model.json](../examples/agent/system-model.json) 和 [system-api.json](../examples/agent/system-api.json)：
 
 - [普通兼容服务](../examples/agent/model-openai-compatible.json)：将示例域名与模型 ID 替换为实际值。
 - [本地服务](../examples/agent/model-local.json)：示例端口为 11434，需填写已部署的实际模型 ID。

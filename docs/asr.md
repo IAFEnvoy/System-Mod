@@ -1,11 +1,13 @@
 # 语音识别与语音输入
 
+也支持 DeepSeek ASR：在 API Key管理创建 DeepSeek API Key，在“语音交互”的识别分组选中对应凭据，只需一个 DeepSeek Key。录音结束后上传完整 WAV，无中间识别结果，按音频时长计费。详见 [DeepSeek 语音](deepseek-speech.md)。下文的项目、AccessKey、Token 和地域设置专用于阿里云 NLS。
+
 ## 使用
 
-在助手输入框输入 `/settings` 打开统一设置，再选择“语音输入”标签。识别默认关闭，各控件修改后立即自动保存于客户端 `config/system/system-asr.json`，与百炼 TTS 配置分开；切换标签或关闭设置无需额外保存。AppKey、AccessKey ID 与 Secret 可以逐项填写，开始识别时才校验完整凭据。
+在助手输入框输入 `/settings` 打开统一设置，再选择“语音交互”标签中的“语音识别”分组。识别默认关闭，各控件修改后立即自动保存于客户端 `config/system/system-asr.json`，与百炼 TTS 配置分开；切换标签或关闭设置无需额外保存。鉴权字段统一在“API Key管理”中填写，开始识别时才校验完整凭据，见[统一 API Key管理](api-management.md)。
 
 1. 在阿里云智能语音交互控制台创建项目，取得 **AppKey**，选择支持 **16 kHz** 的一句话识别模型。识别语种与方言在项目控制台设置，API 不接收游戏语言作为模型选择参数。
-2. 填写项目 **AppKey**、有 NLS 权限的阿里云 **AccessKey ID / AccessKey Secret** 和识别地域（上海 / 北京 / 深圳），开启即可，修改自动保存。这里不能使用百炼 `DASHSCOPE_API_KEY`。临时 Token 由程序自动获取，不再手动填写。
+2. 在“API Key管理”新建或选择 `system:aliyun_nls` 类型凭据，一次填写项目 **AppKey** 和有 NLS 权限的阿里云 **AccessKey ID / AccessKey Secret**。回到语音输入选择该凭据，服务与供应商自动匹配，设置识别地域（上海 / 北京 / 深圳）后开启，修改自动保存。这里不能使用百炼 `DASHSCOPE_API_KEY`。临时 Token 由程序自动获取，不再手动填写。
 3. 按住 **F8** 录音，松开结束；可在游戏“控制 → 系统助手”改键，支持键盘/鼠标及修饰键。有可见通知时优先录入通知指令，无通知时打开当前模式的助手；在完整或简约助手内按下则保留草稿。原版聊天栏里有通知时也可录入通知指令，其他页面不触发。也可继续点击“语音输入”或输入 `/listen` /“语音输入”，再点击结束。看到“正在录音”后说话，中间结果在输入框上方或通知底部显示。
 4. 松开按键或点击“结束录音”等待最终识别，结果追加到输入框草稿；默认确认后按 Enter 发送。可在语音识别设置中开启“识别后立即发送”，最终识别成功后自动发送合并后的草稿，按键、按钮和 `/listen` 均适用；中间识别结果不发送。录音最多 60 秒，到时自动结束。识别本身不调用聊天模型，发送草稿后才进入已有路由。
 
@@ -13,17 +15,13 @@
 
 按键自动重复不会创建新任务，松开只结束自己启动的录音。尚未开启语音输入时按键打开设置页，不录音、不发起收费请求。“取消”、关闭界面、切换页面、窗口失焦、发送其他请求、断线或撤销绑定都会取消当前识别 session 并关闭麦克风。迟到回调不写入其他界面或新连接。识别期间如果手动修改草稿，不覆盖修改后的内容，需重新发起语音输入。开始识别会停止当前朗读，后续到达的通知仍按原有 TTS 逻辑处理。
 
-凭据留空时分别读取客户端进程的 `ALIYUN_NLS_APP_KEY`、`ALIYUN_AK_ID`、`ALIYUN_AK_SECRET`；环境变量值不写回配置。页面填写的凭据以明文保存，Secret 控件遮挡显示。配置、音频与识别结果不作为用量报告发给 MC 服务端；只有发送到主聊天的文字或匹配通知按钮后的结构化操作才进入正常助手请求。录音只在内存中分片流转，不保存 WAV 或上传到 OSS。
+NLS 凭据类型的三个字段分别自动识别客户端进程的 `ALIYUN_NLS_APP_KEY`、`ALIYUN_AK_ID`、`ALIYUN_AK_SECRET`；环境变量值不写回配置。页面填写的凭据以明文保存，Secret 控件遮挡显示。配置、音频与识别结果不作为用量报告发给 MC 服务端；只有发送到主聊天的文字或匹配通知按钮后的结构化操作才进入正常助手请求。录音只在内存中分片流转，不保存 WAV 或上传到 OSS。
 
-配置字段如下，留空字段可由上述环境变量补齐：
+识别偏好配置如下；三个鉴权字段统一位于 `system-api.json`，环境变量由类型自动识别：
 
 ```json
 {
   "enabled": false,
-  "provider": "aliyun-nls",
-  "appKey": "",
-  "accessKeyId": "",
-  "accessKeySecret": "",
   "region": "shanghai",
   "autoSend": false
 }
@@ -63,7 +61,7 @@ FTB 启动概览的“查看任务”以及新手礼包的“领取礼包”“�
 
 手动停止与音频入队共用锁，停止后排空已缓冲的 PCM 即返回 EOF，不等待设备读取或关闭；自然录音结束也在设备关闭前发布 EOF，最后一帧在终止标志可见后复核。独立守护计时器对 session 执行 90 秒整体 / 15 秒收尾限制，终态和计时代次阻止迟到回调覆盖成功、错误或取消结果。执行器繁忙及后台失败会结束等待，日志保留本地错误码与完整异常堆栈（含 Caused by），不主动记录凭据、音频或识别文字。
 
-`AsrProvider` 位于 `speech.asr`，协议层不依赖 MC。供应商由 `speech.AsrProviders` 的普通工厂 Map 管理，内置键为 `aliyun-nls`。扩展在客户端初始化时调用 `AsrProviders.register(name, factory)`，不参与 MC 注册表生命周期，`AsrProviders.create(provider)` 按配置字符串精确查找并创建独占实例，不自动补命名空间。供应商实现纯本地的 `validate`、`recognize(Request, AudioSource, Consumer<String>, Runnable requestStarted)` 和 `close`；`requestStarted` 在鉴权、连接完成后、首次发送识别命令前调用，开始统计本次识别，详见[注册表速查](registries.md)。当前配置凭据结构面向 NLS，增加不同鉴权方式的供应商时需扩展相应配置表单。可选供应商自己的单位计费也需单独适配，不套用 NLS 次数单价。
+`AsrProvider` 位于 `speech.asr`，协议层不依赖 MC。供应商由 `SystemServices.ASR` 的 CredentialManager 按凭据类构造，内置为 DeepSeek / NLS。扩展登记 `SystemServices.ASR.register(ExampleCredential.class, ExampleAsrProvider::new)`，实现 `id()`、`configured()` 和 `request(RecognitionConfig)`，直接从具体凭据读取鉴权字段。供应商实现纯本地的 `validate`、`recognize(Request, AudioSource, Consumer<String>, Runnable requestStarted)` 和 `close`；`requestStarted` 在鉴权、连接完成后、首次发送识别命令前调用，开始统计本次识别，详见[注册表速查](registries.md)。凭据通过 `SystemCredentialTypes` 所在的正式类型注册表分派 Codec，字段、环境变量和编辑控件由实现自行定义；设置页仅选择账号，Manager 自动创建对应供应商。可选供应商自己的单位计费也需单独适配，不套用 NLS 次数单价。
 
 ## 用量与费用
 

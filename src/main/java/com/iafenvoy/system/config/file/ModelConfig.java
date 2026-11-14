@@ -12,7 +12,7 @@ import java.util.Set;
 /**
  * Server-private Chat Completions connection and provider-specific request options.
  */
-public record ModelConfig(String model, String baseUrl, String apiKeyEnvironment, String providerType,
+public record ModelConfig(String model, String baseUrl, String providerType,
                           boolean thinkingEnabled, String reasoningEffort, boolean apiKeyRequired,
                           boolean jsonMode, String outputTokenParameter) {
     public static final String FILE_NAME = "system-model.json";
@@ -22,7 +22,6 @@ public record ModelConfig(String model, String baseUrl, String apiKeyEnvironment
                 endpoint(value);
                 return value;
             }), value -> value).lenientOptionalFieldOf("baseUrl", "https://api.deepseek.com").forGetter(ModelConfig::baseUrl),
-            Codec.STRING.lenientOptionalFieldOf("apiKeyEnvironment", "SYSTEM_DEEPSEEK_API_KEY").forGetter(ModelConfig::apiKeyEnvironment),
             MiscCodecs.checked(Codec.STRING, Set.of("auto", "openai", "deepseek")::contains).lenientOptionalFieldOf("providerType", "auto").forGetter(ModelConfig::providerType),
             Codec.BOOL.lenientOptionalFieldOf("thinkingEnabled", false).forGetter(ModelConfig::thinkingEnabled),
             Codec.STRING.lenientOptionalFieldOf("reasoningEffort", "high").forGetter(ModelConfig::reasoningEffort),
@@ -30,7 +29,7 @@ public record ModelConfig(String model, String baseUrl, String apiKeyEnvironment
             Codec.BOOL.lenientOptionalFieldOf("jsonMode", true).forGetter(ModelConfig::jsonMode),
             MiscCodecs.checked(Codec.STRING, Set.of("max_tokens", "max_completion_tokens")::contains).lenientOptionalFieldOf("outputTokenParameter", "max_tokens").forGetter(ModelConfig::outputTokenParameter)
     ).apply(i, ModelConfig::new));
-    public static final ConfigInstance<ModelConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, new ModelConfig("deepseek-chat", "https://api.deepseek.com", "SYSTEM_DEEPSEEK_API_KEY", "auto", false, "high", true, true, "max_tokens"));
+    public static final ConfigInstance<ModelConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, new ModelConfig("deepseek-chat", "https://api.deepseek.com", "auto", false, "high", true, true, "max_tokens"));
 
     public URI chatCompletionsEndpoint() {
         return endpoint(this.baseUrl);

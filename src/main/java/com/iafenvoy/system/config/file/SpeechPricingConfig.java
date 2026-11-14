@@ -3,6 +3,7 @@ package com.iafenvoy.system.config.file;
 import com.iafenvoy.saturn.util.codec.MiscCodecs;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.config.ConfigInstance;
+import com.iafenvoy.system.speech.asr.AsrProvider;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
@@ -62,7 +63,7 @@ public final class SpeechPricingConfig {
 
     public static OptionalLong estimate(String provider, String model, String region, TtsProvider.Usage usage) {
         Rate rate = INSTANCE.get().rates.get(new Key(provider, model, region));
-        if (!usage.reported() || rate == null || !rate.unit().name().equals(usage.unit().name()))
+        if (usage.unit() == TtsProvider.Unit.UNKNOWN || rate == null || !rate.unit().name().equals(usage.unit().name()))
             return OptionalLong.empty();
         BigDecimal units = rate.unit() == Unit.CHARACTERS ? BigDecimal.valueOf(usage.characters())
                 : BigDecimal.valueOf(usage.inputTokens());
@@ -76,13 +77,18 @@ public final class SpeechPricingConfig {
     }
 
     /**
-     * NLS reports no billing units; a completed call is estimated from the configured per-call price.
+     * NLS uses completed calls; duration-based APIs use the returned milliseconds, rounded up per request.
      */
-    public static OptionalLong estimateRecognition(String provider, String region) {
+    public static OptionalLong estimateRecognition(String provider, String region, AsrProvider.Usage usage, boolean successful) {
         Rate rate = INSTANCE.get().rates.get(new Key(provider, "sentence-recognition", region));
-        if (rate == null || rate.unit() != Unit.CALLS) return OptionalLong.empty();
+        if (rate == null) return OptionalLong.empty();
+        BigDecimal amount;
+        if (rate.unit() == Unit.CALLS && successful) amount = BigDecimal.ONE;
+        else if (rate.unit() == Unit.SECONDS && usage.reported())
+            amount = BigDecimal.valueOf(usage.durationMillis()).divide(BigDecimal.valueOf(1000), 0, RoundingMode.CEILING).max(BigDecimal.ONE);
+        else return OptionalLong.empty();
         try {
-            return OptionalLong.of(rate.input().movePointRight(9).divide(BigDecimal.valueOf(rate.units()), 0, RoundingMode.HALF_UP).longValueExact());
+            return OptionalLong.of(amount.multiply(rate.input()).movePointRight(9).divide(BigDecimal.valueOf(rate.units()), 0, RoundingMode.HALF_UP).longValueExact());
         } catch (ArithmeticException error) {
             return OptionalLong.empty();
         }
@@ -125,7 +131,7 @@ public final class SpeechPricingConfig {
     }
 
     private enum Unit implements StringRepresentable {
-        CHARACTERS, TOKENS, CALLS;
+        CHARACTERS, TOKENS, CALLS, SECONDS;
         public static final Codec<Unit> CODEC = Codec.STRING.comapFlatMap(value -> MiscCodecs.mapOrError(
                 () -> valueOf(value.toUpperCase(Locale.ROOT))), Unit::getSerializedName);
 

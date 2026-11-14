@@ -5,7 +5,6 @@ import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.chat.AiAccess;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.model.OpenAiCompatibleClient;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
@@ -24,7 +23,6 @@ import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.module.builtin.CoreSystemModule;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.registry.SystemResourceKeys;
-import com.iafenvoy.system.search.DeepSeekSearchClient;
 import com.iafenvoy.system.search.SearchGateway;
 import com.iafenvoy.system.speech.quest.QuestNarration;
 import com.mojang.authlib.GameProfile;
@@ -85,7 +83,7 @@ public final class AssistantServer {
             this.databases = this.own(new AgentDatabases(storageRoot.resolve("database")));
             FileAgentStore store = this.own(new FileAgentStore(storageRoot,
                     () -> this.aiAccessData.get().defaultMode(), server.registryAccess()));
-            OpenAiCompatibleClient model = this.own(new OpenAiCompatibleClient());
+            ConfiguredModelClient model = this.own(new ConfiguredModelClient());
             this.engine = this.own(new AgentEngine(store, model, data -> ModuleData.get(data, CoreSystemModule.JOURNAL)));
             this.engine.permissions(player -> this.aiAccessData.get().permissions(player, player.equals(this.localOwner)));
             this.engine.chat().personality(this::personalityPrompt);
@@ -96,7 +94,7 @@ public final class AssistantServer {
             this.engine.lifecycle((player, event) -> {
                 if (event == AgentLifecycle.EventType.REVOKED) this.databases.deletePlayer(player);
             });
-            SearchGateway search = this.own(new SearchGateway(new DeepSeekSearchClient()));
+            SearchGateway search = this.own(new SearchGateway(new ConfiguredSearchProvider()));
             this.narration = this.own(new QuestNarration(this.engine, this.databases.shared()));
             this.usage = new AssistantUsage(server, this.engine, search);
             this.refreshPrompts();

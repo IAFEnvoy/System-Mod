@@ -33,12 +33,11 @@
 ```json
 {
   "baseUrl": "https://api.deepseek.com/v1",
-  "apiKeyEnvironment": "SYSTEM_DEEPSEEK_API_KEY",
   "maxResponseBytes": 4194304
 }
 ```
 
-默认与 DeepSeek 文本模型读取同一个服务端环境变量 `SYSTEM_DEEPSEEK_API_KEY`，不需要另一份密钥。搜索连接仍独立配置：换用其他 OpenAI 兼容文本模型后，可以保留 DeepSeek 搜索；若模型密钥环境变量改名，需同时修改搜索的 `apiKeyEnvironment`。
+搜索从统一 `system-api.json` 的 `bindings.search` 读取凭据，默认和文本模型引用同一份 DeepSeek 凭据及其 `SYSTEM_DEEPSEEK_API_KEY` 环境变量，无需重复填写。两种用途可以改选不同凭据；换用其他兼容文本模型后，也可保留 DeepSeek 搜索。见[统一 API 管理](api-management.md)。
 
 `baseUrl` 是包含 `/v1` 的前缀，分别追加 `/tools/search` 和 `/tools/fetch`，不要填写完整操作地址。远端要求 HTTPS，回环地址允许 HTTP；不允许认证信息、查询参数或 fragment。每次请求在配置锁内快照连接信息，网络等待不持锁。最大响应默认 4 MiB，超出则失败，不当作完整结果使用。
 

@@ -41,8 +41,7 @@ public record ItemSource(String kind, String id, String type, List<String> stati
         notes = List.copyOf(notes);
     }
 
-    public ItemSource(String kind, String id, String type, List<String> station, List<ItemSourceSlot> inputs,
-                      List<ItemSourceSlot> outputs, List<String> notes) {
+    public ItemSource(String kind, String id, String type, List<String> station, List<ItemSourceSlot> inputs, List<ItemSourceSlot> outputs, List<String> notes) {
         this(kind, id, type, station, inputs, outputs, notes, 0);
     }
 }

@@ -1,6 +1,7 @@
 package com.iafenvoy.system.module.builtin.knowledge;
 
 import com.iafenvoy.saturn.runtime.resulting.Failure;
+import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
@@ -25,8 +26,6 @@ import com.iafenvoy.system.data.output.DatabaseQueryOutput;
 import com.iafenvoy.system.data.output.KnowledgeAnswerOutput;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
 import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
@@ -91,6 +90,8 @@ public final class ReasoningModule extends AbstractAgentModule<ReasoningInput> {
     }
 
     private record Answer(String text) {
-        static final MapCodec<Answer> CODEC = Codec.STRING.fieldOf("text").xmap(Answer::new, Answer::text);
+        static final SchemaMapCodec<Answer> CODEC = SchemaCodecs.record((i, f) -> i.group(
+                f.required("text", SchemaCodecs.STRING).forGetter(Answer::text)
+        ).apply(i, Answer::new));
     }
 }

@@ -1,4 +1,8 @@
-import sharedCSS from "./resources/assistant.css?raw";
+import themeCSS from "./resources/assistant-theme.css?raw";
+import layoutCSS from "./resources/assistant.css?raw";
+
+// Raw snapshots are embedded in the preview, so resolve the local import before inserting CSS.
+const sharedCSS = themeCSS + "\n" + layoutCSS.replace('@import "assistant-theme.css";', "");
 
 // Vite tracks each snapshot independently, including added or removed templates.
 function namedResources(modules) {
@@ -23,5 +27,29 @@ export const languages = namedResources(
     import: "default",
   }),
 );
+
+export const emotions = namedResources(
+  import.meta.glob("./resources/emotion/*.json", {
+    eager: true,
+    import: "default",
+  }),
+);
+
+export const emotionDefinitions = Object.fromEntries(Object.entries(namedResources(
+  import.meta.glob("./resources/emotion-definition/*.json", {
+    eager: true,
+    import: "default",
+  }),
+)).map(([id, definition]) => ["system:" + id, definition]));
+
+const emotionTextures = import.meta.glob("./resources/textures/emotion/**/*.png", {
+  eager: true,
+  query: "?url&no-inline",
+  import: "default",
+});
+
+export function emotionTexture(id) {
+  return emotionTextures["./resources/" + String(id).replace(/^system:/, "")];
+}
 
 export { sharedCSS };

@@ -1,3 +1,5 @@
+@import "assistant-theme.css";
+
 /* Shared by every assistant page, HUD notification, persistent card and client settings panel. */
 /* Adapted from ApricityUI t09-arwes-transparent and its t08-arwes foundation. */
 * {
@@ -23,34 +25,6 @@ body, button, input, textarea, select {
 }
 
 body {
-    /* AUI's public theme tokens drive every System surface, including the HUD and custom card nodes. */
-    --assistant-ink: var(--color-foreground, var(--ink, #dff8ff));
-    --assistant-muted: var(--color-muted, var(--ink-muted, #b6cfd5));
-    --assistant-heading: var(--ink, #f0bb7b);
-    --assistant-user: var(--color-secondary, var(--purple, #e0a66d));
-    --assistant-accent: var(--color-primary, var(--green, #61e6ff));
-    --assistant-accent-hover: var(--color-primary-hover, var(--green-hover, #9befff));
-    --assistant-accent-shadow: var(--color-primary-active, var(--green-shadow, #187d98));
-    --assistant-focus: var(--color-focus, var(--focus, #f0fdff));
-    --assistant-line: var(--line, var(--color-border, var(--edge, rgba(97, 230, 255, 0.42))));
-    --assistant-line-soft: var(--line-soft, var(--color-border-light, var(--edge-light, rgba(97, 230, 255, 0.18))));
-    --assistant-surface: var(--color-surface, var(--surface, rgba(10, 28, 40, 0.3)));
-    --assistant-surface-deep: var(--color-surface-deep, var(--surface-deep, rgba(6, 19, 29, 0.38)));
-    --assistant-panel-soft: var(--panel-soft-background, var(--surface, rgba(5, 31, 43, 0.18)));
-    --assistant-window: var(--panel-strong-background, var(--canvas, rgba(3, 14, 23, 0.72)));
-    --assistant-popup: var(--surface-deep, rgba(3, 14, 23, 0.98));
-    --assistant-card-hover: var(--card-hover-background, var(--surface-hover, var(--surface-deep, rgba(11, 54, 69, 0.3))));
-    --assistant-highlight: var(--accent-soft, var(--surface-soft, rgba(97, 230, 255, 0.12)));
-    --assistant-button: var(--button-background, var(--surface-deep, rgba(8, 31, 43, 0.22)));
-    --assistant-button-hover: var(--button-hover-background, var(--surface-hover, var(--surface, rgba(23, 89, 106, 0.4))));
-    --assistant-primary: var(--button-primary-background, var(--color-primary, var(--green, rgba(19, 101, 119, 0.44))));
-    --assistant-primary-hover: var(--button-primary-hover-background, var(--color-primary-hover, var(--green-hover, rgba(37, 139, 157, 0.58))));
-    --assistant-primary-ink: var(--ink-on-accent, var(--ink-on-dark, #efffff));
-    --assistant-shadow: var(--elev-ring, none);
-    --assistant-glow: var(--elev-whisper, none);
-    --assistant-window-art: var(--canvas-art, none);
-    --assistant-radius: var(--radius-md, 0);
-    --assistant-control-radius: var(--radius-sm, 0);
     /* Surfaces already anchor themselves to the viewport. */
     display: block;
     overflow: hidden;
@@ -60,18 +34,6 @@ body {
     font-weight: 400;
     selection-color: var(--assistant-highlight);
     caret-color: var(--assistant-accent);
-}
-
-body.t09-arwes-transparent-theme {
-    --assistant-heading: #f0bb7b;
-    --assistant-window: rgba(3, 14, 23, 0.72);
-    --assistant-popup: rgba(3, 14, 23, 0.98);
-    --assistant-primary-ink: #efffff;
-    --assistant-window-art: linear-gradient(135deg, rgba(97, 230, 255, 0.04), transparent 35%, transparent 70%, rgba(97, 230, 255, 0.025));
-}
-
-body.t08-arwes-theme {
-    --assistant-primary-ink: var(--ink-on-dark, #efffff);
 }
 
 #workspace {
@@ -818,6 +780,49 @@ p {
     background-color: var(--assistant-line-soft);
 }
 
+/* Equal column tracks keep Markdown tables aligned without intrinsic table measurements. */
+.markdown_table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    margin: 6px 0;
+    border: 1px solid var(--assistant-line-soft);
+}
+
+.markdown_thead, .markdown_tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+}
+
+.markdown_tr {
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
+    border-bottom: 1px solid var(--assistant-line-soft);
+}
+
+.markdown_th, .markdown_td {
+    display: block;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 5px 8px;
+    border-right: 1px solid var(--assistant-line-soft);
+    text-align: left;
+    word-break: break-all;
+}
+
+.markdown_th {
+    color: var(--assistant-heading);
+    background-color: var(--assistant-surface-deep);
+    font-weight: 700;
+}
+
+.markdown_th:last-child, .markdown_td:last-child { border-right: none; }
+.markdown_tbody .markdown_tr:last-child { border-bottom: none; }
+.markdown_align_center { text-align: center; }
+.markdown_align_right { text-align: right; }
+
 .user {
     border-left: 2px solid var(--assistant-user);
     padding-left: 12px;
@@ -913,6 +918,21 @@ p {
 
 .card_flex {
     gap: 6px;
+}
+
+.chat_reply {
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.card_emotion {
+    flex: 0 0 auto;
+    overflow: hidden;
+}
+
+.chat_reply_text {
+    flex: 1 1 0;
+    min-width: 0;
 }
 
 .card_column {

@@ -1,12 +1,14 @@
 package com.iafenvoy.system.module.builtin.chat;
 
+import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
+import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.chat.ChatActions;
 import com.iafenvoy.system.agent.chat.ChatObservation;
 import com.iafenvoy.system.agent.chat.ChatSupport;
-import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
@@ -37,7 +39,7 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
     private final ChatSupport chat;
 
     public FreeChatModule(ChatSupport chat) {
-        super(FreeChatInput.CODEC, "Free conversation, optionally using enabled workflows in full agent mode.",
+        super(FreeChatInput.CODEC, "Free conversation, optionally using enabled workflows and read tools.",
                 List.of(), Set.of(BuiltinTools.QUEST_GUIDE.id()), true, false,
                 new ExecutionPolicy(6, 16, 32, 6, 32768, 2048, 131072, 90000, 30000, 6));
         this.chat = chat;
@@ -74,30 +76,27 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
             return List.copyOf(selected.reversed());
         });
         Input question = new Input(input.message(), history);
-        if (context.mode() == ConversationMode.FREE) {
-            ToolContext tools = context.chatTools(this.chat.tools(context));
-            ReActContext<ChatObservation> loop = new ReActContext<>(context, this.chat.prompt(context),
-                    CodecIO.write(Input.CODEC.codec(), question), ChatObservation.codec(tools.tools()), ChatActions.bind(context, tools),
-                    () -> {
-                        context.requireFreeChat();
-                        tools.check();
-                    }, ReActLoop.MODEL_FAILURES, 1000);
-            return ReActLoop.run(loop, Answer.CODEC, answer -> finish(answer, loop.observations()), failure -> {
-                List<CardUpdate> cards = cards(loop.observations());
-                cards.addAll(AgentResult.error(failure).cards());
-                return new AgentResult(loop.observations().isEmpty() ? AgentResult.Status.FAILED : AgentResult.Status.PARTIALLY_SUCCEEDED,
-                        failure.key(), "", cards);
-            });
-        }
-        Answer answer = context.model(this.chat.prompt(context), Input.CODEC, question, Answer.CODEC.codec());
-        context.requireFreeChat();
-        return finish(answer, List.of());
+        ToolContext tools = context.chatTools(this.chat.tools(context));
+        ReActContext<ChatObservation> loop = new ReActContext<>(context, this.chat.prompt(context),
+                CodecIO.write(Input.CODEC.codec(), question), ChatObservation.codec(tools.tools()), ChatActions.bind(context, tools),
+                () -> {
+                    context.requireFreeChat();
+                    tools.check();
+                }, ReActLoop.MODEL_FAILURES, 1000);
+        return ReActLoop.run(loop, Answer.CODEC, answer -> finish(answer, loop.observations()), failure -> {
+            SystemMod.LOGGER.warn("Free chat incomplete: task={}, failure={}, iterations={}, observations={}, modelCalls={}, remainingMillis={}",
+                    context.taskId(), failure.name(), loop.iterations(), loop.observations().size(), context.modelCalls(), context.remainingMillis());
+            List<CardUpdate> cards = cards(loop.observations());
+            cards.addAll(AgentResult.error(failure).cards());
+            return new AgentResult(loop.observations().isEmpty() ? AgentResult.Status.FAILED : AgentResult.Status.PARTIALLY_SUCCEEDED,
+                    failure.key(), "", cards);
+        });
     }
 
     private static AgentResult finish(Answer answer, List<ChatObservation> observations) {
         if (answer.text().isBlank()) throw new AgentException(AgentFailure.MODEL_INVALID);
         List<CardUpdate> cards = cards(observations);
-        cards.addAll(AgentResult.data("system.result.chat", new ChatOutput(answer.text())).cards());
+        cards.addAll(AgentResult.data("system.result.chat", new ChatOutput(answer.text(), answer.emotion())).cards());
         AgentResult result = new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.chat", "", cards);
         return observations.stream().anyMatch(value -> value instanceof ChatObservation.Workflow(
                 AgentResult result1
@@ -128,7 +127,10 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
         ).apply(i, Input::new));
     }
 
-    private record Answer(String text) {
-        private static final MapCodec<Answer> CODEC = Codec.STRING.fieldOf("text").xmap(Answer::new, Answer::text);
+    private record Answer(String text, String emotion) {
+        private static final SchemaMapCodec<Answer> CODEC = SchemaCodecs.record((i, f) -> i.group(
+                f.required("text", SchemaCodecs.STRING).forGetter(Answer::text),
+                f.optional("emotion", SchemaCodecs.STRING, "").forGetter(Answer::emotion)
+        ).apply(i, Answer::new));
     }
 }

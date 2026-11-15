@@ -25,7 +25,7 @@
 | `baseUrl` | API 前缀，不包含 `/chat/completions`。保留自定义前缀并追加该路径，兼容 `/v1`、`/compatible-mode/v1` 等；末尾 `/` 会去掉 |
 | `model` | 原样发送的模型 ID，由目标服务决定可用名称 |
 | `apiKeyRequired` | 默认 `true`。无认证的本地服务可设 `false`；所选凭据仍有非空值时照常发送 Bearer 头 |
-| `jsonMode` | 默认发送 `response_format: {"type":"json_object"}`。服务不支持此参数时设 `false`；本地仍严格要求返回 JSON 对象 |
+| `jsonMode` | 普通结构化请求默认发送 `response_format: {"type":"json_object"}`。服务不支持此参数时设 `false`；本地仍校验 JSON。ReAct 原生工具调用自动省略此字段 |
 | `outputTokenParameter` | `max_tokens`（默认）或 `max_completion_tokens`，每次只发送其中一个；数值仍来自模块执行预算 |
 | `thinkingEnabled` | 仅 DeepSeek 分支使用，默认 `false`，显式发送 `thinking.type=disabled`；开启时发送 `enabled` |
 | `reasoningEffort` | 仅 DeepSeek 且开启思考时发送 `reasoning_effort`，默认 `high`，空字符串表示省略。具体可用值由目标模型支持情况决定 |
@@ -48,9 +48,17 @@
 
 实现参考 `E:\Go\ModList-Dashboard\agent\llm.go`：以通用 OpenAI 请求为基础，只为 DeepSeek 注入思考相关字段。通过第三方代理调用 DeepSeek 时，显式配置 `providerType=deepseek`；通过官方域名调用但代理需要完全通用字段时，可强制设为 `openai`。模型名不会用于猜测提供商。
 
-本模组每次调用仍是独立的 `system` 与 `user` JSON 决策；通用 ReActLoop 通过输入中的类型化 observations 反馈工具结果，实现多轮选择与回答，不使用供应商原生 `tool_calls` 协议。因此只使用 `message.content` 作为受限决策，不保存或跨玩家缓存 `reasoning_content`；Dashboard 原生工具循环中的推理内容回传机制不适用于这里的独立请求。轮数、权限和预算见 [ReAct 循环](agent-react.md)。
+本模组每次调用仍是独立的 `system` 与 `user` 消息；通用 ReActLoop 通过输入中的类型化 observations 反馈工具结果。循环请求使用通用 Chat Completions 原生 `tools` / `tool_calls`，不从正文解析 DSML 或模拟调用；不续接上轮 assistant/tool 消息，也不保存或跨玩家缓存 `reasoning_content`。轮数、权限和预算见 [ReAct 循环](agent-react.md)。
 
-基础请求包含 `model`、`messages`、`stream=false` 和选定的输出 token 限制字段；`response_format` 按配置发送。普通分支不会附加 DeepSeek 的 `thinking` 或 `reasoning_effort`。返回内容仍要求 `finish_reason=stop` 和合法 JSON，不自动重试或修复响应。这里实现的是兼容 Chat Completions 的文本接口；不包含 Responses、原生工具循环、图像或流式输出。
+工具规则放入 system 提示词，真实定义通过 `tools` 字段传递；每项函数声明名称、说明与由 SchemaMapCodec 生成的参数 Schema。每轮要求一个调用，禁止并行；收尾时只开放 `answer` 函数。返回的函数名经过本次别名白名单验证，arguments 仍由原 Codec 解析。没有启用可选的 strict 模式，也不依赖特定服务商的内部语法。资料来源和注入方式见[工具协议与定义](agent-react.md#工具协议和定义一起注入)。
+
+基础请求包含 `model`、`messages`、`stream=false` 和选定的输出 token 限制字段；普通结构化请求按配置发送 `response_format`，要求 `finish_reason=stop` 和合法 JSON。工具请求省略 `response_format`，发送 `tool_choice=required`、`parallel_tool_calls=false`，要求 `finish_reason=tool_calls` 及恰好一个函数调用，正文允许为空。普通分支不会附加 DeepSeek 的 `thinking` 或 `reasoning_effort`。不自动重试、修复响应或切回正文模拟；不包含 Responses、图像或流式模型输出。兼容服务与模型须支持标准函数调用。
+
+## 常驻诊断日志
+
+模型、Agent 请求与工作流、ReAct 决策和工具调用失败时永久记录 WARN 日志及完整异常链，不需要开启临时诊断开关。日志按 task 请求编号关联工作流、路由来源、模型调用次数、循环轮数、工具 ID 和失败原因；被循环恢复或转换成部分结果的异常也保留记录，循环耗尽则记录剩余预算和已有观察数量。
+
+`Model decision failed validation` 记录模型实际返回的正文、tool_calls 及原始 Codec / JSON 异常，可区分未知函数、无效参数等情况。接口响应截断会记录 `finish_reason`、预期结束原因、模型名和输出 Token 上限；空 choices、多调用和正文 / 参数过长也有独立原因。非 200 响应保留 HTTP 状态和服务商错误正文，输出前替换当前账号密钥。日志不写请求头、完整提示词或请求历史，但失败的模型回复及异常信息可能包含对话文字；玩家界面仍只显示原有翻译提示，不展示内部堆栈。现有旧日志没有记录过的模型回复无法事后还原。
 
 ## 用量
 

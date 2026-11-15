@@ -86,7 +86,6 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
 
     private void register(Identifier id, ClientModule module, List<Identifier> definitions) {
         module.register(new ClientModuleContext(this, id, module, definitions));
-        ClientModuleCaches.COMMAND.game(module::clientCommands);
     }
 
     private synchronized void clear() {

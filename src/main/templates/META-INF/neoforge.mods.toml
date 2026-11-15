@@ -43,19 +43,3 @@ type = "required"
 versionRange = "[1.2.9,)"
 ordering = "AFTER"
 side = "CLIENT"
-
-# The FTB adapter is loaded only when this optional mod is present.
-[[dependencies.${mod_id}]]
-modId = "ftbquests"
-type = "optional"
-versionRange = "[0,)"
-ordering = "AFTER"
-side = "BOTH"
-
-# SVC is an optional client microphone backend; it is never required on a server.
-[[dependencies.${mod_id}]]
-modId = "voicechat"
-type = "optional"
-versionRange = "[0,)"
-ordering = "AFTER"
-side = "CLIENT"

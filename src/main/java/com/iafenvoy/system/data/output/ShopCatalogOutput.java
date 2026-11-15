@@ -13,6 +13,7 @@ import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * One shelf card lists every browsable offer; each cell dispatches the existing quote action, so prices stay
@@ -20,15 +21,22 @@ import java.util.Map;
  */
 public record ShopCatalogOutput(String revision, String query, List<Offer> offers,
                                 boolean truncated) implements CardData {
-    public record Offer(String id, Component label, List<ItemPreviewOutput> items) implements ShelfEntry {
+    public record Offer(String id, Component label, List<ItemPreviewOutput> items,
+                        Optional<ShopPurchaseLimitOutput> purchaseLimit) implements ShelfEntry {
         public static final Codec<Offer> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("id").forGetter(Offer::id),
                 ComponentSerialization.CODEC.fieldOf("label").forGetter(Offer::label),
-                ItemPreviewOutput.CODEC.listOf().optionalFieldOf("items", List.of()).forGetter(Offer::items)
+                ItemPreviewOutput.CODEC.listOf().optionalFieldOf("items", List.of()).forGetter(Offer::items),
+                ShopPurchaseLimitOutput.CODEC.optionalFieldOf("purchaseLimit").forGetter(Offer::purchaseLimit)
         ).apply(i, Offer::new));
 
         public Offer {
             items = List.copyOf(items);
+        }
+
+        @Override
+        public List<Component> tooltip(int index) {
+            return this.purchaseLimit.map(limit -> List.of(limit.description())).orElse(List.of());
         }
     }
 

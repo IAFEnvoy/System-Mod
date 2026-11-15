@@ -21,7 +21,8 @@ public final class ChatCompletion {
 
     public record Request(String model, List<ModelClient.Message> messages, boolean stream, Optional<Integer> maxTokens,
                           Optional<Integer> maxCompletionTokens, Optional<Type> responseFormat,
-                          Optional<Type> thinking, Optional<String> reasoningEffort) {
+                          Optional<Type> thinking, Optional<String> reasoningEffort, List<ToolDefinition> tools,
+                          Optional<String> toolChoice, Optional<Boolean> parallelToolCalls) {
         public static final Codec<Request> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("model").forGetter(Request::model),
                 ModelClient.Message.CODEC.listOf().fieldOf("messages").forGetter(Request::messages),
@@ -30,19 +31,32 @@ public final class ChatCompletion {
                 Codec.INT.optionalFieldOf("max_completion_tokens").forGetter(Request::maxCompletionTokens),
                 Type.CODEC.optionalFieldOf("response_format").forGetter(Request::responseFormat),
                 Type.CODEC.optionalFieldOf("thinking").forGetter(Request::thinking),
-                Codec.STRING.optionalFieldOf("reasoning_effort").forGetter(Request::reasoningEffort)
+                Codec.STRING.optionalFieldOf("reasoning_effort").forGetter(Request::reasoningEffort),
+                ToolDefinition.CODEC.listOf().optionalFieldOf("tools", List.of()).forGetter(Request::tools),
+                Codec.STRING.optionalFieldOf("tool_choice").forGetter(Request::toolChoice),
+                Codec.BOOL.optionalFieldOf("parallel_tool_calls").forGetter(Request::parallelToolCalls)
         ).apply(i, Request::new));
 
-        public static Request of(ModelConfig config, List<ModelClient.Message> messages, int maxOutputTokens) {
+        public static Request of(ModelConfig config, List<ModelClient.Message> messages, List<ModelClient.Function> functions, int maxOutputTokens) {
             boolean deepSeek = config.isDeepSeek();
             return new Request(config.model(), List.copyOf(messages), false,
                     config.outputTokenParameter().equals("max_tokens") ? Optional.of(maxOutputTokens) : Optional.empty(),
                     config.outputTokenParameter().equals("max_completion_tokens") ? Optional.of(maxOutputTokens) : Optional.empty(),
-                    config.jsonMode() ? Optional.of(new Type("json_object")) : Optional.empty(),
+                    config.jsonMode() && functions.isEmpty() ? Optional.of(new Type("json_object")) : Optional.empty(),
                     deepSeek ? Optional.of(new Type(config.thinkingEnabled() ? "enabled" : "disabled")) : Optional.empty(),
                     deepSeek && config.thinkingEnabled() && !config.reasoningEffort().isEmpty()
-                            ? Optional.of(config.reasoningEffort()) : Optional.empty());
+                            ? Optional.of(config.reasoningEffort()) : Optional.empty(),
+                    functions.stream().map(function -> new ToolDefinition("function", function)).toList(),
+                    functions.isEmpty() ? Optional.empty() : Optional.of("required"),
+                    functions.isEmpty() ? Optional.empty() : Optional.of(false));
         }
+    }
+
+    public record ToolDefinition(String type, ModelClient.Function function) {
+        public static final Codec<ToolDefinition> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.STRING.fieldOf("type").forGetter(ToolDefinition::type),
+                ModelClient.Function.CODEC.fieldOf("function").forGetter(ToolDefinition::function)
+        ).apply(i, ToolDefinition::new));
     }
 
     public record TokenDetails(Optional<Long> cachedTokens) {
@@ -67,8 +81,26 @@ public final class ChatCompletion {
         }
     }
 
-    public record Content(String content) {
-        public static final Codec<Content> CODEC = Codec.STRING.fieldOf("content").xmap(Content::new, Content::content).codec();
+    public record FunctionCall(String name, String arguments) {
+        public static final Codec<FunctionCall> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.STRING.fieldOf("name").forGetter(FunctionCall::name),
+                Codec.STRING.fieldOf("arguments").forGetter(FunctionCall::arguments)
+        ).apply(i, FunctionCall::new));
+    }
+
+    public record ToolCall(String id, String type, FunctionCall function) {
+        public static final Codec<ToolCall> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.STRING.fieldOf("id").forGetter(ToolCall::id),
+                Codec.STRING.fieldOf("type").forGetter(ToolCall::type),
+                FunctionCall.CODEC.fieldOf("function").forGetter(ToolCall::function)
+        ).apply(i, ToolCall::new));
+    }
+
+    public record Content(Optional<String> content, List<ToolCall> toolCalls) {
+        public static final Codec<Content> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.STRING.optionalFieldOf("content").forGetter(Content::content),
+                ToolCall.CODEC.listOf().optionalFieldOf("tool_calls", List.of()).forGetter(Content::toolCalls)
+        ).apply(i, Content::new));
     }
 
     public record Choice(String finishReason, Content message) {

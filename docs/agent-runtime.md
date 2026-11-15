@@ -97,9 +97,9 @@ public ModuleRouting<ItemQueryInput> routing() {
 
 无参数指令使用 `AgentCommand.literal(input, aliases...)`，资源 ID 参数使用 `AgentCommand.identifier(name, parser, aliases...)`；`argument` 把必选 `<query>` / 可选 `[query]` 转为原生 greedyString 节点。复杂命令可直接构造 `new AgentCommand<>(aliases, name -> LiteralArgumentBuilder.<AssistantCommandSource>literal(name).then(...))`，由原生 ArgumentType、requires 和 suggests 描述参数与权限。指令回调只把实现 AgentAction 的输入交给 `source.action(input)`，不在解析时执行业务；CommandRegistry 核对动作归属和 Codec，再进入原来的工作流执行。
 
-CommandRegistry 每服务实例只构建一棵 Brigadier CommandDispatcher，解析、帮助和同步给 `/system` 的节点共用声明。服务端原生命令早于 AgentRuntime 构建，初次启动后由 `SystemCommand.install` 附加工作流节点，资源重载的 RegisterCommandsEvent 使用已有 runtime 装配；平台管理指令优先。同步到客户端的参数须使用 MC 已登记的 ArgumentType，助手专用自定义参数不自动登记为网络类型。模块启用变化和 revoke/reset 后重新发送按当前权限过滤的原生命令树。
+CommandRegistry 每服务实例只构建一棵私有 Brigadier CommandDispatcher，供系统输入框解析、帮助和参数补全共用，不向原版 `/system` 导出节点。客户端通过独立补全请求获取当前玩家有权使用的候选，助手专用参数无需登记为原版网络参数类型。模块启用变化和 revoke/reset 后同步系统状态并重建客户端缓存，不修改原版指令树。
 
-`/view`、`/system view` 等明确指令语法错误会返回输入错误，未知斜杠指令不触发模型；普通文本未完整匹配时继续进入语义和模型路由。英文 literal 别名忽略大小写，任务名称和参数保持原文。客户端本地指令与补全树通过独立 `ClientCommandCache` 缓存，任务候选和按钮仍实时取当前结果，见[功能模块化](feature-modules.md)。
+系统输入框内 `/view` 等明确指令语法错误会返回输入错误，未知斜杠指令不触发模型；普通文本未完整匹配时继续进入语义和模型路由。英文 literal 别名忽略大小写，任务名称和参数保持原文。客户端本地指令与补全树通过独立 `ClientCommandCache` 缓存，任务候选和按钮仍实时取当前结果，见[功能模块化](feature-modules.md)。
 
 `RoutingProfile.read` 是本地直达申请，注册表还要求模块可交互、写预算为零、所有声明工具只读，并通过相似度、分差、覆盖率和语句保护。相似度不是正确概率。写流程使用 `RoutingProfile.hints` 提供样例，仍由模型决定或由明确入口调用。
 
@@ -143,13 +143,13 @@ Descriptor 的 `tools` 为必需工具，`optionalTools` 为可选只读工具 I
 
 助手输入框通过状态快照取得服务端注册表的指令候选。`HelpModule` 从同一注册表生成模块指令说明，FTBQ 未安装时不会显示任务指令。客户端界面切换、设置、历史和当前动作选择仍由客户端处理；它们的执行与补全共用本地指令表。
 
-游戏聊天的 `/system <instruction>` 使用通用参数节点转发给同一 Agent 指令解析器，补全实时读取注册表。平台的 `grant/revoke/reset`、`usage`、`routing/ask/simple/full` 已分别收进绑定、用量及核心功能的 `commands(root)`。新增 Agent 指令只改工作流声明；需要独立的 Brigadier 节点时由所属功能贡献。客户端本地指令、补全及 `/system settings` 也从客户端功能装配，扩展应避开已有别名。
+模块指令仅供系统界面输入，不注册到原版聊天栏或 `/system` 指令树。原版 `/system` 只装配打开界面及绑定、模块、AI、经济、FTB 重载等显式管理节点，不提供通用 instruction 或 ask 转发。Agent 的 Brigadier 指令树独立保留；系统输入框通过 `CommandSuggestionsRequest` / `CommandSuggestionsResponse` 向该私有树请求当前玩家有权使用的候选与参数，不执行工作流、不调用模型、不消耗聊天间隔。客户端本地指令使用 `ClientModuleContext.command`，只装配到 `ClientCommandCache`，不再提供 clientCommands 导出接口。缓存持有唯一的在途补全，换输入、重建和断线会取消旧请求，超时返回空候选。管理指令的显式客户端桥接仍可读取原版玩家及注册表补全。
 
 ## 请求、响应与类型分派
 
 `AgentRequest.STREAM_CODEC` 与 `AgentResponse.STREAM_CODEC` 从正式内置注册表 `SystemRegistries.AGENT_REQUEST_TYPE / AGENT_RESPONSE_TYPE` 读取同步的数字 ID，并由 `StreamCodec.dispatch` 直接调用条目自己的 `streamCodec()`；实例的 `streamCodec()` 返回同一个已注册 StreamCodec。内置条目通过 `SystemRequestTypes / SystemResponseTypes` 的 DeferredRegister 在两端登记，不再维护 DispatchRegistry 或自建类型 Map。未知 ID 在流式解码阶段抛出，定义中不能引用可选模组的类。卡片数据实现公共 card 包的 `CardData`，根 Codec 按相同方式分派各实现的 MapCodec。buildCard 返回包含模板、参数、按钮和 SpeechContent 的 CardBuilder，客户端再 build 成 CardView；不查客户端模块表或业务服务。动作同样实现 AgentAction 并由注册 MapCodec 分派，卡片按钮通过 CardActionRequest 携带来源 CardRef 与动作 ID/字符串参数，ModuleRouting.button 负责适配并校验原输入 Codec。条目列表见[注册表速查](registries.md)。
 
-请求实现为 `agent.request` 下的 `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest` 和 `CardActionRequest`，响应实现为 `agent.response` 下的 `ReplyResponse`、`NoticeResponse`、`OpenResponse`、`BindingResponse`、`StateResponse` 和 `HistoryResponse`。每个实现维护静态 `STREAM_CODEC`，`SystemRequestTypes` / `SystemResponseTypes` 只负责注册；根接口不再内联实现。`ControlRequest` 是枚举，按序号编码；导航与绑定枚举分别由对应响应持有。
+请求实现为 `agent.request` 下的 `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest` 、`CardActionRequest` 和 `CommandSuggestionsRequest`，响应实现为 `agent.response` 下的 `ReplyResponse`、`NoticeResponse`、`OpenResponse`、`BindingResponse`、`StateResponse` 、`HistoryResponse` 和 `CommandSuggestionsResponse`。每个实现维护静态 `STREAM_CODEC`，`SystemRequestTypes` / `SystemResponseTypes` 只负责注册；根接口不再内联实现。`ControlRequest` 是枚举，按序号编码；导航与绑定枚举分别由对应响应持有。
 
 以下是各请求的语义字段；线上不发送 JSON，`type` 对应的只是注册表数字 ID，其余字段按各自的流式编解码器写入：
 
@@ -176,6 +176,6 @@ FTB 查询 Tool 使用固定返回类型：`ftb.query` 列出当前可执行或�
 
 SearchSystemModule 仅实现 ToolModule，导出 `web.search` / `web.fetch`，由数据包或管理员明确授予；开发默认 tag 也不自动启用。问答仅在本地为空、allowWeb=true、工具导出模块已启用且外部服务允许时打开本次 ExecutionContext 的联网门禁；两种网络工具每次都检查该门禁。`/question` 使用 false，`/search` 及搜索页明确提交使用 true；普通问题由模型识别但默认 false，仅非常确信当前请求授权外部查询时才设 true。语义样例仅作提示，不直接路由或缓存授权；事件、历史和资料正文不能开启联网。
 
-获准后的 `WebResearch` 提供紧凑的 SearchObservation 和独立工具上下文，由通用 ReActLoop 按本次工具 MapCodec dispatch 选择 `web.search`、`web.fetch` 或 `answer`，最终整理只解码 Answer。仅允许抓取本次检索返回的 URL，引用编号由服务器核对。整个问答默认 6 轮循环 / 6 次模型 / 9 次工具 / 20 步 / 90 秒，单次模型 20 秒；数据库查询、内部 FTB 查询、复核和联网共用预算，按 `system:question` 覆盖。重复检索或可恢复的探索失败改为整理已有资料，不重试收费工具。每次网络工具都检查取消、模块权限与外部服务偏好，经 SearchGateway 计量；模型 Token 继续由 ModelGateway 记录。普通跨能力分析由核心 `system:reasoning` 复用相同循环，默认 3 轮，只开放已启用模块主动声明的只读工具，不自动授予联网。详见[通用 ReAct](agent-react.md)与[问答与联网](search-api.md)。
+获准后的 `WebResearch` 提供紧凑的 SearchObservation 和独立工具上下文，由通用 ReActLoop 通过标准 tools/tool_calls 选择 `web.search`、`web.fetch` 对应的函数别名或 `answer`。原工具参数仍经 MapCodec 校验，最终答案使用 Answer 的 SchemaMapCodec；finalOnly 仅提供 answer 函数。仅允许抓取本次检索返回的 URL，引用编号由服务器核对。整个问答默认 6 轮循环 / 6 次模型 / 9 次工具 / 20 步 / 90 秒，单次模型 20 秒；数据库查询、内部 FTB 查询、复核和联网共用预算，按 `system:question` 覆盖。重复检索或可恢复的探索失败改为整理已有资料，不重试收费工具。每次网络工具都检查取消、模块权限与外部服务偏好，经 SearchGateway 计量；模型 Token 继续由 ModelGateway 记录。普通跨能力分析由核心 `system:reasoning` 复用相同循环，默认 3 轮，只开放已启用模块主动声明的只读工具，不自动授予联网。详见[通用 ReAct](agent-react.md)与[问答与联网](search-api.md)。
 
 模块实现与配置分离：SystemModule 数据包条目提供 server/client，系统引用动态配置 ID 或 tag；ServerModule.CODEC 按 type 分派注册的 MapCodec。不同配置的同类型工作流与工具按玩家启用的 owner 选择，执行上下文保存选中 owner 并持续检查权限。ClientModule 只在客户端 Map 中登记，服务端类不再实现或引用客户端接口；客户端按 client ID 合并 UI、按关联配置 ID 进行权限判断。

@@ -1,10 +1,13 @@
 package com.iafenvoy.system.agent.model;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.config.file.ModelConfig;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.util.ExtraCodecs;
 
 import java.time.Duration;
 import java.util.List;
@@ -35,6 +38,12 @@ public interface ModelClient extends AutoCloseable {
         return this.complete(messages, maxOutputTokens, timeout);
     }
 
+    default Reply complete(List<Message> messages, List<Function> functions, int maxOutputTokens, Duration timeout, Consumer<Usage> usage) throws Exception {
+        if (!functions.isEmpty()) throw new AgentException(AgentFailure.MODEL_UNAVAILABLE,
+                new UnsupportedOperationException("Model client does not support function calling"));
+        return this.complete(messages, maxOutputTokens, timeout, usage);
+    }
+
     record Message(String role, String content) {
         public static final Codec<Message> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("role").forGetter(Message::role),
@@ -42,7 +51,35 @@ public interface ModelClient extends AutoCloseable {
         ).apply(i, Message::new));
     }
 
-    record Reply(String value, int totalTokens) {
+    record Function(String name, String description, JsonObject parameters) {
+        public static final Codec<Function> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.STRING.fieldOf("name").forGetter(Function::name),
+                Codec.STRING.fieldOf("description").forGetter(Function::description),
+                ExtraCodecs.JSON.xmap(JsonElement::getAsJsonObject, value -> value).fieldOf("parameters").forGetter(Function::parameters)
+        ).apply(i, Function::new));
+
+        public Function {
+            if (!name.matches("[a-zA-Z0-9_-]{1,64}")) throw new IllegalArgumentException("Invalid function name " + name);
+            parameters = parameters.deepCopy();
+        }
+
+        @Override
+        public JsonObject parameters() {
+            return this.parameters.deepCopy();
+        }
+    }
+
+    record ToolCall(String id, String name, String arguments) {
+    }
+
+    record Reply(String value, List<ToolCall> toolCalls, int totalTokens) {
+        public Reply {
+            toolCalls = List.copyOf(toolCalls);
+        }
+
+        public Reply(String value, int totalTokens) {
+            this(value, List.of(), totalTokens);
+        }
     }
 
     record Usage(boolean reported, long inputTokens, long outputTokens, long totalTokens, long cachedInputTokens) {

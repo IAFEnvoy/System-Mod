@@ -4,6 +4,8 @@
 
 注册表 ID 与公开键字段统一使用单数，数据包定义和 tag 目录沿用注册表路径，例如 `system:shop_offer` 对应 `system/shop_offer/` 与 `tags/system/shop_offer/`。
 
+表情语义使用正式同步数据包注册表 `system:emotion`（`SystemResourceKeys.EMOTION`，`EmotionDefinition.CODEC`），定义路径为 `data/<namespace>/system/emotion/<path>.json`。内置 36 个条目与客户端资源配置使用相同完整 ID；AI 表情目录及客户端 emotion 命令从数据读取，不在代码或 TXT 中按图片编号维护枚举。贴图与说话帧仍留在客户端 `assets/<namespace>/emotion/<profile>.json`，见[表情注册表与 HUD](emotions.md)。
+
 ## 客户端模块绑定缓存
 
 公开入口为 `module.client.ClientModuleCaches.BINDINGS` 和 `COMMAND`。`ClientModuleBindingsCache` 直接保存 Workspace 列表与本地卡片动作 Map；`ClientCommandCache` 直接保存命令声明和编译后的树。SystemClientMod 在客户端构造阶段调用 `ClientModuleCaches.init()`，提前创建缓存，不提前读取模块注册表。
@@ -72,10 +74,10 @@ Optional<MyService> service = services.create(selectedCredential);
 | --- | --- |
 | ToolModule | 服务端纯工具集合，无玩家主动请求入口 |
 | WorkflowModule | 服务端工作流与生命周期，成就使用此类型 |
-| SharedModule | 继承 WorkflowModule，增加服务端游戏指令；不继承 ClientModule |
+| SharedModule | 继承 WorkflowModule，增加公共平台 / 管理指令；业务指令只在系统界面执行 |
 | CoreModule | 继承 SharedModule，绑定后必需且不能移除 |
 | CatalogModule | 继承 SharedModule，提供三类业务目录的注册表键与可选 ResourceKey/TagKey 列表 |
-| ClientModule | 客户端界面、本地动作及 clientCommands |
+| ClientModule | 客户端界面、本地动作及系统输入框指令，不导出到原版指令树 |
 
 分类使用接口，available() 仅检查依赖。纯工具和工作流都按配置 ID 保存 owner。Agent 工作流和工具目录支持同类型配置的多个候选，根据当前玩家已启用的模块选择实现；客户端缓存按 client ID 分组，仅装配一份 UI。详见[功能模块化](feature-modules.md)。
 
@@ -107,8 +109,8 @@ AgentAction call = QuestDetailInput.byId(id);
 
 | 注册表 | 内置条目 ID | 对应类型 |
 | --- | --- | --- |
-| `system:agent_request_type` | `system:chat`、`system:invoke`、`system:control`、`system:preferences`、`system:card_action` | `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest`、`CardActionRequest` |
-| `system:agent_response_type` | `system:reply`、`system:notice`、`system:open`、`system:binding`、`system:state`、`system:history` | `ReplyResponse`、`NoticeResponse`、`OpenResponse`、`BindingResponse`、`StateResponse`、`HistoryResponse` |
+| `system:agent_request_type` | `system:chat`、`system:invoke`、`system:control`、`system:preferences`、`system:card_action`、`system:command_suggestions` | `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest`、`CardActionRequest`、`CommandSuggestionsRequest` |
+| `system:agent_response_type` | `system:reply`、`system:notice`、`system:open`、`system:binding`、`system:state`、`system:history`、`system:command_suggestions` | `ReplyResponse`、`NoticeResponse`、`OpenResponse`、`BindingResponse`、`StateResponse`、`HistoryResponse`、`CommandSuggestionsResponse` |
 
 这两张协议表登记的是 `StreamCodec`：根 `STREAM_CODEC` 用 `ByteBufCodecs.registry(...)` 读取同步的数字 ID，再由 `StreamCodec.dispatch` 直接调用条目自己的 `streamCodec()`，不经过 `Codec` / JSON，也没有按 `type` 字符串或 ID Map 分派。两张表因此启用数字 ID 同步（`sync(true)`），两端登记顺序一致；未知 ID 由流式解码阶段抛出。网络版本仍为 `1`。
 
@@ -120,7 +122,7 @@ Codec 在第一次编解码时才访问注册表，避免静态初始化时提�
 
 ### 卡片节点
 
-SystemCardNodeTypes 声明 18 个 MapCodec：text、markdown、title；image、item、player、ftb_icon；flex、grid；container、groups、details；button、link；divider、progress；player_information、recipe。ID 均以 system: 为命名空间，按功能放入 screen.card.node 的对应子包。仅物理客户端绑定 DeferredRegister；专用服务端不加载 AUI 或节点实现。
+SystemCardNodeTypes 声明 19 个 MapCodec：text、markdown、title；image、emotion、item、player、ftb_icon；flex、grid；container、groups、details；button、link；divider、progress；player_information、recipe。ID 均以 system: 为命名空间，按功能放入 screen.card.node 的对应子包。仅物理客户端绑定 DeferredRegister；专用服务端不加载 AUI 或节点实现。表情的名称 / 语义属于同步数据包注册表 `system:emotion`；客户端 `emotion/*.json` 资源只映射贴图与动画，资源重载后的 Map 不取代正式语义注册表。
 
 CardNode 只提供 codec/css/render；文字投影、纯文本资格、标题、children 和集合索引分别由能力接口提供。递归 children Codec 使用 CardTemplate.NODES 延迟初始化。一个客户端内置注册表即可，无需按分类增加注册表。
 
@@ -242,7 +244,7 @@ SystemRegistries.CARD_DATA_TYPE.forEach(entry -> { /* inspect registered types *
 
 `ModuleRegistry`、`ToolRegistry`、`CommandRegistry` 是每个 Agent 服务实例的工作流、工具和指令索引。客户端命令由 `ClientCommandCache` 装配，页面和本地动作由 `ClientModuleBindingsCache` 装配。ModuleRouting.button 提供按钮字符串参数解码，CardController 从绑定缓存分派本地动作；CardButtonEvent 处理服务端字符串。这些只负责运行行为，不承担 Codec 类型注册。ClientCards/ServerCards 保存连接内消息及版本，模型、搜索和 ASR/TTS 通过 SystemServices 的 CredentialManager 选择实际服务。卡片布局直接取 CardView.template，不维护额外渲染或卡片行为登记表。
 
-`ClientModuleCaches.COMMAND` 保存助手执行树、补全树与游戏客户端 `/system` 节点，注册、编译、访问和清理逻辑均在 `ClientCommandCache` 内。绑定缓存负责调用 begin / finish / clear，避免两个独立 Saturn 回调重复装配或依赖事件先后；get 确保整轮绑定装配完成，revision 在清理和重建时递增，界面以版本号拒绝旧异步补全。RegisterClientCommandsEvent 从此缓存复制节点，不再重新遍历模块。缓存只存声明和回调，权限、按钮与任务候选实时求值。MC 26.1.2 客户端配置完成时先应用标签并发布 TagsUpdatedEvent.ClientPacketReceived，随后登录/命令包合并触发客户端指令注册；服务端命令构造则早于 ServerDataLoad 标签事件，不能假设两端顺序相同。
+`ClientModuleCaches.COMMAND` 仅保存系统界面的执行树、补全树及唯一在途的服务端补全请求，注册、编译、访问、超时和清理均在 ClientCommandCache 内；不保存游戏 /system 节点。绑定缓存调用 begin / finish / clear，get 确保整轮装配完成，revision 在清理和重建时递增。ClientModule 不再提供 clientCommands，不通过 RegisterClientCommandsEvent 导出模块指令。EmotionCommands 单独监听该事件，仅注册本地 `/system emotion` 调试入口，不依赖模块缓存，也不导出其他节点。服务端 CommandRegistry 同样不向原版树 attach，模块改动只同步系统状态，不重发原版指令树。私有补全使用 command_suggestions 请求 / 响应，沿用当前玩家的模块权限，且不占用聊天执行预算；新查询、重建和断线取消旧查询，3 秒超时返回空列表。
 
 `TypeDispatch` 是按 Java 类选择内部处理器的工具，资源模板 Map 是重载快照，玩家/session/缓存 Map 是业务状态。这些不属于 MC 的内置注册表，也不应随本次迁移冻结进全局注册表。
 
@@ -256,4 +258,4 @@ ModuleContext 的 AgentEngine 与模块注册表为固定字段，以 engine() /
 
 WebResearch 已迁入通用 ReActLoop，每次循环按工具上下文构建本地 MapCodec 表，以 `type=web.search|web.fetch|answer` dispatch，工具参数位于 input；不是 MC 注册表，也不另加全局 AgentAction。跨能力只读工作流另注册 `SystemActionTypes.REASONING_ACTION` / `system:reasoning`，工具清单从当前玩家启用模块中主动声明 forReasoning 的操作建立，观察结果同样按工具 Type 的 Codec dispatch。QuestionModule 的 ModuleRouting.explicit 解析当前明确联网句式；普通问题由模型路由选择 system:question，allowWeb 默认 false，只有非常确信当前授权外部查询时才为 true。问答语义样例仅作候选提示，不缓存授权；执行时固定先查库，本地为空且可选工具已启用时才开放联网门禁。`explicitOnly()` 与 `structuredOnly()` 仍保留为通用路由声明。详见 [ReAct 循环](agent-react.md)。
 
-自由聊天动作 `system:free_chat` 使用 FreeChatInput，回复卡片 `system:chat` 使用 ChatOutput 与 chat.json；核心模块安装工作流，structuredOnly 将其从模型意图目录排除。完整自由模式从原工作流表及 ToolRegistry 装配可用能力，ToolProvider 可追加已注册的只读类型，目录按 LOCAL / WORKFLOW / PAID 排序；不是新的 MC 注册表。管理员 / 玩家权限、类型化观察及扩展接口见 [自由聊天](free-chat.md)。
+自由聊天动作 `system:free_chat` 使用 FreeChatInput，回复卡片 `system:chat` 使用 ChatOutput 与 chat.json；核心模块安装工作流，structuredOnly 将其从模型意图目录排除。自由模式与扩展模式的聊天兜底均从原工作流表及 ToolRegistry 装配可用能力，ToolProvider 可追加已注册的只读类型，目录按 LOCAL / WORKFLOW / PAID 排序；不是新的 MC 注册表。管理员 / 玩家权限、类型化观察及扩展接口见 [自由聊天](free-chat.md)。

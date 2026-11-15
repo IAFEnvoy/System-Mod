@@ -13,6 +13,7 @@ import com.iafenvoy.system.data.catalog.OnlineJobEntry;
 import com.iafenvoy.system.data.catalog.CurrencyDefinition;
 import com.iafenvoy.system.data.catalog.SignInRewardEntry;
 import com.iafenvoy.system.data.module.SystemModule;
+import com.iafenvoy.system.data.emotion.EmotionDefinition;
 import com.iafenvoy.system.module.ServerModule;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.mojang.serialization.MapCodec;
@@ -33,6 +34,7 @@ public final class SystemResourceKeys {
     public static final ResourceKey<Registry<StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentRequest>>> AGENT_REQUEST_TYPE = create("agent_request_type");
     public static final ResourceKey<Registry<StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>>> AGENT_RESPONSE_TYPE = create("agent_response_type");
     // Datapack
+    public static final ResourceKey<Registry<EmotionDefinition>> EMOTION = create("emotion");
     public static final ResourceKey<Registry<CurrencyDefinition>> CURRENCY = create("currency");
     public static final ResourceKey<Registry<OnlineJobEntry>> ONLINE_JOB = create("online_job");
     public static final ResourceKey<Registry<SystemModule>> SYSTEM_MODULE = create("system_module");

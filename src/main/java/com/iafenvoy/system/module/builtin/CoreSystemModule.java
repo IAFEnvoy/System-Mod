@@ -17,7 +17,6 @@ import com.iafenvoy.system.module.builtin.knowledge.ReasoningModule;
 import com.iafenvoy.system.module.builtin.storage.DisplayCardsDataStorage;
 import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
 import com.iafenvoy.system.util.CodecIO;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.commands.CommandSourceStack;
@@ -70,8 +69,6 @@ public final class CoreSystemModule implements CoreModule {
         root.executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.CURRENT))
                 .then(Commands.literal("simple").executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.SIMPLE)))
                 .then(Commands.literal("full").executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.FULL)))
-                .then(Commands.literal("ask").then(Commands.argument("message", StringArgumentType.greedyString()).executes(context ->
-                        ModuleCommands.ask(context.getSource().getPlayerOrException(), StringArgumentType.getString(context, "message")))))
                 .then(Commands.literal("routing").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS)).executes(context -> {
                     AssistantServer runtime = AssistantServer.get(context.getSource().getServer());
                     if (runtime == null) {

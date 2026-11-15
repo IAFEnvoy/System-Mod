@@ -1,0 +1,728 @@
+{
+  "default_state": "system:neutral",
+  "transitions": {
+    "reset": "system:neutral"
+  },
+  "states": {
+    "system:shouting": {
+      "texture": "system:textures/emotion/panda/01.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/01.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/01.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:shy": {
+      "texture": "system:textures/emotion/panda/02.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/02.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/02.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:friendly": {
+      "texture": "system:textures/emotion/panda/03.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/03.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/03.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:resigned": {
+      "texture": "system:textures/emotion/panda/04.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/04.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/04.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:unimpressed": {
+      "texture": "system:textures/emotion/panda/05.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/05.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/05.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:surprised": {
+      "texture": "system:textures/emotion/panda/06.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/06.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/06.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:confused": {
+      "texture": "system:textures/emotion/panda/07.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/07.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/07.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:stern": {
+      "texture": "system:textures/emotion/panda/08.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/08.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/08.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:bewildered": {
+      "texture": "system:textures/emotion/panda/09.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/09.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/09.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:furious": {
+      "texture": "system:textures/emotion/panda/10.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/10.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/10.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:content": {
+      "texture": "system:textures/emotion/panda/11.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/11.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/11.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:mischievous": {
+      "texture": "system:textures/emotion/panda/12.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/12.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/12.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:pained": {
+      "texture": "system:textures/emotion/panda/13.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/13.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/13.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:sad": {
+      "texture": "system:textures/emotion/panda/14.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/14.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/14.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:smug": {
+      "texture": "system:textures/emotion/panda/15.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/15.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/15.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:happy": {
+      "texture": "system:textures/emotion/panda/16.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/16.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/16.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:excited": {
+      "texture": "system:textures/emotion/panda/17.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/17.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/17.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:serious": {
+      "texture": "system:textures/emotion/panda/18.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/18.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/18.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:laughing": {
+      "texture": "system:textures/emotion/panda/19.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/19.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/19.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:wink": {
+      "texture": "system:textures/emotion/panda/20.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/20.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/20.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:big_laugh": {
+      "texture": "system:textures/emotion/panda/21.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/21.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/21.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:amused": {
+      "texture": "system:textures/emotion/panda/22.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/22.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/22.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:helpless": {
+      "texture": "system:textures/emotion/panda/23.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/23.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/23.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:pleading": {
+      "texture": "system:textures/emotion/panda/24.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/24.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/24.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:awkward": {
+      "texture": "system:textures/emotion/panda/25.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/25.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/25.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:scheming": {
+      "texture": "system:textures/emotion/panda/26.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/26.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/26.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:relieved_smile": {
+      "texture": "system:textures/emotion/panda/27.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/27.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/27.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:delighted": {
+      "texture": "system:textures/emotion/panda/28.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/28.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/28.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:joyful": {
+      "texture": "system:textures/emotion/panda/29.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/29.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/29.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:confident": {
+      "texture": "system:textures/emotion/panda/30.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/30.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/30.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:sinister_laugh": {
+      "texture": "system:textures/emotion/panda/31.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/31.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/31.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:thinking": {
+      "texture": "system:textures/emotion/panda/32.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/32.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/32.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:curious": {
+      "texture": "system:textures/emotion/panda/33.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/33.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/33.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:angry": {
+      "texture": "system:textures/emotion/panda/34.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/34.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/34.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:neutral": {
+      "texture": "system:textures/emotion/panda/35.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/35.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/35.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    },
+    "system:frowning": {
+      "texture": "system:textures/emotion/panda/36.png",
+      "speaking": [
+        {
+          "texture": "system:textures/emotion/panda/36.png",
+          "offset": {
+            "x": -2,
+            "y": -2
+          }
+        },
+        {
+          "texture": "system:textures/emotion/panda/36.png",
+          "offset": {
+            "x": 2,
+            "y": 2
+          }
+        }
+      ],
+      "frame_time": 180
+    }
+  }
+}

@@ -18,6 +18,7 @@ import com.iafenvoy.system.data.input.CommercePreviewInput;
 import com.iafenvoy.system.data.input.ShopQuoteInput;
 import com.iafenvoy.system.data.output.CommercePreviewOutput;
 import com.iafenvoy.system.data.output.ShopQuoteOutput;
+import com.iafenvoy.system.data.output.ShopOfferOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
@@ -56,7 +57,10 @@ public final class ShopQuoteModule extends AbstractAgentModule<ShopQuoteInput> {
                 .orElseThrow(() -> new AgentException(AgentFailure.STALE_QUOTE));
         CommercePreviewOutput price = context.tool(BuiltinTools.COMMERCE_PREVIEW, "quote",
                 new CommercePreviewInput(List.of(id), List.of(), true, catalog.revision())).getFirst();
+        if (price.purchaseLimit().filter(limit -> !limit.available()).isPresent())
+            return AgentResult.data("system.result.shop_offer", new ShopOfferOutput(id, offer.value().label(), offer.value().items(),
+                    price.price(), false, catalog.revision(), price.purchaseLimit()));
         if (!price.available()) throw new AgentException(AgentFailure.INVALID_COST);
-        return AgentResult.data("system.result.shop_confirm", new ShopQuoteOutput(price.quoteRef().orElseThrow(), offer.value().label(), offer.value().items(), price.price()));
+        return AgentResult.data("system.result.shop_confirm", new ShopQuoteOutput(price.quoteRef().orElseThrow(), offer.value().label(), offer.value().items(), price.price(), price.purchaseLimit()));
     }
 }

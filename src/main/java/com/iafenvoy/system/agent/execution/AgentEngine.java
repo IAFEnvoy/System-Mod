@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.execution;
 
 import com.iafenvoy.saturn.util.HolderHelper;
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentLifecycle;
@@ -369,6 +370,8 @@ public final class AgentEngine implements AutoCloseable {
             context.ensureMemoryCurrent();
             return call.execute(context);
         } catch (Exception error) {
+            SystemMod.LOGGER.warn("Agent workflow failed: task={}, workflow={}, source={}, failure={}",
+                    context.taskId(), input.id(), context.routeSource(), AgentException.failure(error).name(), error);
             AgentResult failure = AgentResult.error(AgentException.failure(error));
             return context.hasCompletedSteps() ? failure.partial() : failure;
         }

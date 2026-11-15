@@ -81,7 +81,7 @@ npm run preview
 
 ## 预览范围与内置快照
 
-`src/resources/` 保存当前 27 份卡片模板、中英文语言表及共享 `assistant.css` 的快照。模板位于 `templates/*.json`，可以单独修改或新增；Vite 通过 `import.meta.glob` 收集，不需要维护 HTML 内嵌列表。快照不会自动读取游戏资源的后续修改；完整字段和游戏侧布局规则见 [客户端 JSON 卡片](cards.md)。
+`src/resources/` 保存卡片模板、中英文语言表及共享 `assistant.css`、`assistant-theme.css` 的快照。主题变量与页面布局分开维护；预览嵌入样式前会合并两份 CSS，解析本地导入。模板位于 `templates/*.json`，可以单独修改或新增；Vite 通过 `import.meta.glob` 收集，不需要维护 HTML 内嵌列表。快照不会自动读取游戏资源的后续修改；完整字段和游戏侧布局规则见 [客户端 JSON 卡片](cards.md)。
 
 浏览器预览用于检查结构与参数替换，和 AUI 的布局实现有差异：物品、FTB 图标、玩家模型用占位块和普通 tooltip 展示；Saturn 玩家信息使用示例参数；Markdown 仅近似支持标题、列表、引用、代码、强调及链接。资源包纹理、原生 tooltip、主题细节、按钮权限与业务行为需在游戏内确认。预览对循环和节点绘制设有上限，导出的 JSON 保持完整。
 
@@ -110,6 +110,7 @@ html/
             ├── templates/*.json   每份模板独立维护
             ├── lang/*.json        中英文语言快照
             ├── assistant.css      游戏共享样式快照
+            ├── assistant-theme.css 游戏共享主题变量快照
             └── snapshot.json      最近同步日期
 ```
 
@@ -121,4 +122,4 @@ html/
 npm run sync:resources
 ```
 
-命令读取 `src/main/resources/assets/system/cards/*.json`、`assets/system/lang/{zh_cn,en_us}.json` 和 `assets/apricityui/apricity/system/assistant.css`；先解析输入，再覆盖编辑器对应文件、删除游戏资源中已不存在的模板快照，并更新日期。该命令会覆盖对快照文件的手工修改，请先将要保留的布局保存到游戏资源或导出文件中。平时启动或构建不会自动覆盖快照；只想临时查看最新卡片时仍可使用“打开 JSON”。
+命令读取 `src/main/resources/assets/system/cards/*.json`、`assets/system/lang/{zh_cn,en_us}.json` 和 `assets/apricityui/apricity/system/` 中的 `assistant.css`、`assistant-theme.css`，并复制 `assets/system/emotion`、`textures/emotion` 和 `data/system/system/emotion` 的语义定义；先解析输入，再覆盖编辑器对应文件、删除游戏资源中已不存在的模板快照，并更新日期。该命令会覆盖对快照文件的手工修改，请先将要保留的布局保存到游戏资源或导出文件中。平时启动或构建不会自动覆盖快照；只想临时查看最新卡片时仍可使用“打开 JSON”。表情节点按 `emotion` 参数（如 `system:happy`）预览静止贴图，名称和分类读取同步的语义定义；游戏中的事件、计时与真实语音不在浏览器执行。

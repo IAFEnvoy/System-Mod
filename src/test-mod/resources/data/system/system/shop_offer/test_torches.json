@@ -12,5 +12,9 @@
       "currency": "system:coin",
       "amount": 4
     }
-  ]
+  ],
+  "purchase_limit": {
+    "count": 3,
+    "period": "daily"
+  }
 }

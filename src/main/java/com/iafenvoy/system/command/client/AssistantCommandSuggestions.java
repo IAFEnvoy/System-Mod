@@ -11,6 +11,7 @@ import com.mojang.brigadier.LiteralMessage;
 import com.mojang.brigadier.ParseResults;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import com.mojang.brigadier.tree.CommandNode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.ClientSuggestionProvider;
@@ -18,7 +19,6 @@ import net.minecraft.client.multiplayer.ClientSuggestionProvider;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 /**
  * Providers read only current trusted results; the popup consumes Brigadier replacement ranges.
@@ -47,34 +47,44 @@ public final class AssistantCommandSuggestions {
         CommandDispatcher<AssistantCommandSource> dispatcher = ClientModuleCaches.COMMAND.get().suggestions(source);
         CompletableFuture<List<Suggestion>> local = dispatcher.getCompletionSuggestions(dispatcher.parse(input.reader(dispatcher.getRoot()), source))
                 .thenApply(result -> values(result, draft));
-        // Local candidates remain usable even when a new vanilla suggestion request cancels an older one.
+        // Local candidates remain usable even when a newer server suggestion request cancels an older one.
         local.thenAccept(receive);
         ClientPacketListener connection = Minecraft.getInstance().getConnection();
-        if (connection == null || connection.getCommands().getRoot().getChild(SystemMod.MOD_ID) == null) return;
-        String serverInput = "system " + draft.substring(input.start());
-        // Use the received permission-filtered tree and its native server suggestion providers.
-        CommandDispatcher<ClientSuggestionProvider> server = connection.getCommands();
-        CompletableFuture<Suggestions> remote = server.getCompletionSuggestions(server.parse(new AssistantCommandInput(serverInput, 0, false).reader(server.getRoot()), connection.getSuggestionsProvider()));
-        Set<String> workflows = AssistantClient.state().commands().stream().map(String::strip).collect(Collectors.toSet());
-        local.thenCombine(remote, (result, serverResult) -> {
+        if (connection == null) return;
+        CommandNode<ClientSuggestionProvider> gameRoot = connection.getCommands().getRoot().getChild(SystemMod.MOD_ID);
+        CompletableFuture<List<Suggestion>> remote;
+        if (gameRoot != null && gameRoot.getChild(input.name().toLowerCase(Locale.ROOT)) != null
+                && dispatcher.getRoot().getChild(input.name().toLowerCase(Locale.ROOT)) != null) {
+            // Explicit management bridges may still reuse vanilla player/registry completions.
+            String serverInput = "system " + draft.substring(input.start());
+            CommandDispatcher<ClientSuggestionProvider> server = connection.getCommands();
+            remote = server.getCompletionSuggestions(server.parse(new AssistantCommandInput(serverInput, 0, false)
+                            .reader(server.getRoot()), connection.getSuggestionsProvider()))
+                    .thenApply(result -> result.getList().stream()
+                            .filter(suggestion -> suggestion.apply(serverInput).startsWith("system "))
+                            .map(suggestion -> {
+                                String applied = suggestion.apply(serverInput);
+                                String value = draft.substring(0, input.start()) + applied.substring(7);
+                                return new Suggestion(value, suggestion.getTooltip() == null ? "" : suggestion.getTooltip().getString());
+                            }).filter(suggestion -> !suggestion.value().equals(draft)
+                                    && supported(suggestion.value(), dispatcher, source)).toList());
+        } else {
+            // Workflow arguments remain private; the server completes them without publishing game command nodes.
+            remote = ClientModuleCaches.COMMAND.remoteSuggestions(draft).thenApply(result -> result.stream()
+                    .map(suggestion -> new Suggestion(suggestion.value(), suggestion.hint()))
+                    .filter(suggestion -> !suggestion.value().equals(draft)).toList());
+        }
+        local.thenCombine(remote, (result, extra) -> {
             Map<String, Suggestion> candidates = new LinkedHashMap<>();
             result.forEach(suggestion -> candidates.put(suggestion.value(), suggestion));
-            for (com.mojang.brigadier.suggestion.Suggestion suggestion : serverResult.getList()) {
-                String applied = suggestion.apply(serverInput);
-                if (!applied.startsWith("system ")) continue;
-                String value = draft.substring(0, input.start()) + applied.substring(7);
-                if (!supported(value, dispatcher, source, workflows)) continue;
-                String hint = suggestion.getTooltip() == null ? "" : suggestion.getTooltip().getString();
-                if (!value.equals(draft)) candidates.putIfAbsent(value, new Suggestion(value, hint));
-            }
+            extra.forEach(suggestion -> candidates.putIfAbsent(suggestion.value(), suggestion));
             return List.copyOf(candidates.values());
         }).thenAccept(receive);
     }
 
     private static boolean supported(String value, CommandDispatcher<AssistantCommandSource> dispatcher,
-                                     AssistantCommandSource source, Set<String> workflows) {
+                                     AssistantCommandSource source) {
         AssistantCommandInput input = AssistantCommandInput.of(value);
-        if (workflows.contains(input.name().toLowerCase(Locale.ROOT))) return true;
         // Do not advertise platform commands which the assistant has no execution path for.
         ParseResults<AssistantCommandSource> parsed = dispatcher.parse(input.reader(dispatcher.getRoot()), source);
         return !parsed.getContext().getNodes().isEmpty() && !parsed.getReader().canRead();

@@ -6,6 +6,7 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.AssistantCommandSource;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
+import com.iafenvoy.system.command.client.EmotionCommands;
 import com.iafenvoy.system.data.card.client.ClientCards;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
@@ -29,6 +30,7 @@ import java.util.concurrent.CompletableFuture;
 public final class CoreSystemClientModule implements ClientModule {
     @Override
     public void register(ClientModuleContext module) {
+        module.command(EmotionCommands.node());
         module.localAction(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "close"), (source, _) -> AssistantMessages.dismissCard(source.id()));
         module.localAction(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "open"), (_, _) -> AssistantClient.open(AssistantClient.simpleMode(), ""));
         module.localAction(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "workspace"), (_, arguments) -> {

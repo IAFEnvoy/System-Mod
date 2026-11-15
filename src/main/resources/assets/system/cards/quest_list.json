@@ -6,6 +6,11 @@
     },
     {
       "type": "system:text",
+      "text": "{{summary}}",
+      "when": "unlock_notice"
+    },
+    {
+      "type": "system:text",
       "translate": "system.ui.quest_list_hint",
       "unless": "unlock_notice",
       "style": [

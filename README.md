@@ -19,10 +19,12 @@ interaction. Local commands and intent matching work without AI; connect a model
 - **Inspection, repairs and online jobs:** inspect held-item durability and enchantments, confirm a priced repair,
   or run a data-driven gathering/production job. Progress pauses offline; claim output manually through the inbox.
   All three support Offline mode. See [inspection](docs/item-inspection.md), [workshop](docs/workshop.md) and [jobs](docs/online-jobs.md).
-- **Conversation and tools:** choose Offline, Standard, Extended or Free mode. Free mode can call authorized tools;
+- **Conversation and tools:** choose Offline, Standard, Extended or Free mode. Free mode and Extended mode's free-chat fallback can call authorized tools;
   administrators control available modes and daily usage.
 - **Cards and HUD:** messages, interactive cards and persistent cards share JSON templates. Notifications leave gameplay
   controls available, and Saturn’s HUD editor adjusts their position.
+- **Emotion HUD:** a movable Arwes-style panda avatar appears on demand at the top left, using data-driven emotion IDs and resource-pack speech frames.
+  Inside the assistant, `/emotion` tests emotions and animation locally; `/emotion clear` clears and hides it. See [emotions](docs/emotions.md).
 - **Optional speech:** push-to-talk recording, automatic sending after recognition, streaming speech output and voice
   actions for notification buttons.
 
@@ -50,7 +52,7 @@ See the [development guide](docs/development.md) for development dependency vers
 2. As an administrator, run `/system grant system:default [player]` to bind the bundled system; omit the player to bind
    yourself. Each player currently has at most one system. Data packs can provide other system IDs.
 3. Run `/system` to open the interface, type a request and press Enter. Start with player information or an item search.
-4. Open `/system settings` for unified settings; changes save immediately. Configure a model below when you want AI
+4. Enter `/settings` inside the assistant for unified settings; changes save immediately. Configure a model below when you want AI
    features.
 
 ### Enable AI (Optional)
@@ -80,7 +82,7 @@ Select a mode beside the message box. Your choice saves automatically.
 |--------------------|-------------------------------------------------------------------------------------------------------|
 | Offline            | Local routing and intent matching only; uncertain requests offer clickable actions without calling AI |
 | Standard (default) | Local routing first; AI assists routing and required modules, without free conversation               |
-| Extended           | Routing first, with free AI answers when no action matches                                            |
+| Extended           | Routing first, then free conversation with authorized tools when no action matches                    |
 | Free               | AI directs the conversation, selects tools and calls features                                         |
 
 Administrators set the current world’s initial mode and ordinary players’ mode ceiling with `/system ai default <mode>`;
@@ -91,7 +93,7 @@ per-player `/system ai` rules still take precedence; unavailable choices are gre
 retained. Models configured to work without a key are exempt. Local queries and browsing remain available; features that
 require a model, such as AI check-ins, need a working configuration.
 
-Free mode prefers relevant local read tools, then ordinary workflows, then capabilities with additional API costs.
+Free conversation in Free mode and Extended mode's fallback prefers relevant local read tools, then ordinary workflows, then capabilities with additional API costs.
 Purchases, lottery draws and quest submissions retain their confirmation steps. Web access still requires the search
 module and **explicit permission for the current request**. Free conversation itself also consumes model usage.
 See [modes, permissions and tools](docs/free-chat.md).
@@ -100,19 +102,26 @@ See [modes, permissions and tools](docs/free-chat.md).
 
 ### Player Commands
 
-Run these in Minecraft chat. Available features depend on the enabled modules.
+Minecraft chat exposes interface opening, management commands and a separate emotion debug entry. Business module commands run exclusively inside the assistant and are never registered under `/system`.
 
-| Command                           | Action                                                              |
-|-----------------------------------|---------------------------------------------------------------------|
-| `/system`                         | Open the last selected view                                         |
-| `/system full` / `/system simple` | Open the full workspace / minimal dialogue view                     |
-| `/system settings`                | Open unified settings without a binding or administrator permission |
-| `/system ask <text>`              | Send a natural-language request                                     |
-| `/system player`                  | View your own information                                           |
-| `/system submittable [query]`     | List FTB quests with pending manual or checkmark targets            |
-| `/system search <question>`       | Explicitly request paid web research; requires the search module    |
-| `/system usage`                   | View personal usage without a binding                               |
-| `/system help`                    | Show available features and help                                    |
+| Minecraft chat command | Action |
+| --- | --- |
+| `/system` | Open the last selected view |
+| `/system full` / `/system simple` | Open the full workspace / minimal dialogue view |
+| `/system emotion set <ID>` | Test emotions locally; also supports `speaking true/false/auto`, `clear` and other controls |
+
+Use the following commands inside the assistant. Available features depend on the enabled modules; enter natural-language requests directly as text.
+
+| Assistant command | Action |
+| --- | --- |
+| `/settings` | Open unified settings |
+| `/player` | View your own information |
+| `/submittable [query]` | List FTB quests with pending manual or checkmark targets |
+| `/search <question>` | Explicitly request paid web research; requires the search module |
+| `/usage` | View personal usage |
+| `/usage all` | Administrator view of server-wide AI/web usage; voice usage remains personal |
+| `/help` | Show available features and help |
+| `/emotion set <ID>` | Change the local emotion; see the emotion guide for other controls |
 
 Inside the assistant, use `/settings` to open settings. The input supports command completion and Enter to send. You can
 assign **Open system interface** in Minecraft’s controls; it is unbound by default.
@@ -134,7 +143,6 @@ Closing, confirming or replacing a notification ends its speech session.
 | `/system ai default [mode]`                  | View or change the current world’s default AI mode                                                |
 | `/system ai <player> …`                      | Manage AI/free-chat permissions and daily limits, inspect access or reset overrides               |
 | `/system ftb reload`                         | Reindex currently loaded FTB guide data without changing quest progress                           |
-| `/system usage all`                          | View server-wide AI and web usage; voice usage remains personal                                   |
 | `/system routing`                            | Inspect local routing diagnostics                                                                 |
 
 System, player and module arguments support completion. Granting the same system again does not reset the player; revoke
@@ -152,7 +160,7 @@ credentials**, separately from the server model configuration.
 | Voice input (ASR)   | A DeepSeek key, or NLS project AppKey, AccessKey ID / Secret and region | Hold F8 to record and release to recognize; results fill the draft, with an option to send immediately          |
 | Speech output (TTS) | A Model Studio profile or a DeepSeek key; DeepSeek voices are `stella` / `tide` | Defaults to `qwen3-tts-flash` / `Cherry` and the game language; preview and enable automatic speech in settings |
 
-Create credentials in **API Key management**, then select them under **Voice interaction** in `/system settings`; changes save automatically.
+Create credentials in **API Key management**, then select them under **Voice interaction** in `/settings`; changes save automatically.
 DeepSeek ASR uploads complete recordings, while TTS streams audio. See [DeepSeek speech](docs/deepseek-speech.md). Custom voices must match their
 creation model and region. Enter their parameters directly; JSON import is not supported. The notification sound has a
 separate switch, enabled by default, and does not call TTS.

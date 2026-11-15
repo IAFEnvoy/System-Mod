@@ -8,11 +8,11 @@ import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
-import com.iafenvoy.system.command.SystemCommand;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.database.AgentDatabases;
 import com.iafenvoy.system.data.prompt.PromptReloadListener;
+import com.iafenvoy.system.data.emotion.EmotionDefinition;
 import com.iafenvoy.system.data.store.AiAccessData;
 import com.iafenvoy.system.data.store.FileAgentStore;
 import com.iafenvoy.system.event.AssistantRegistrationEvent;
@@ -46,6 +46,7 @@ import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -116,10 +117,7 @@ public final class AssistantServer {
             this.players = new AssistantPlayers(server, this.engine, this.moduleManager, this.usage);
             this.players.validateModules();
             this.requests = new AssistantRequests(server, this.engine, this.players, this.moduleManager);
-            this.moduleManager.onChange(player -> {
-                this.requests.syncState(player);
-                this.server.getCommands().sendCommands(player);
-            });
+            this.moduleManager.onChange(this.requests::syncState);
             this.engine.start();
         } catch (Exception | LinkageError e) {
             this.closeResources();
@@ -189,7 +187,8 @@ public final class AssistantServer {
         PromptReloadListener listener = this.server.getServerResources().managers().getListener(PromptReloadListener.KEY);
         if (this.promptListener == listener) return;
         // Publish only the listener retained by successfully installed server resources.
-        this.engine.prompts(listener.prompts());
+        String emotions = EmotionDefinition.catalogue(this.server.registryAccess().lookupOrThrow(SystemResourceKeys.EMOTION));
+        this.engine.prompts(listener.prompts().withVariables(Map.of("emotion_catalog", emotions)));
         this.promptListener = listener;
     }
 
@@ -236,7 +235,6 @@ public final class AssistantServer {
         try {
             // Publish only fully constructed services; stale callbacks still check their server identity.
             INSTANCE = new AssistantServer(event.getServer());
-            SystemCommand.install(event.getServer());
         } catch (Exception | LinkageError e) {
             stopping(event.getServer());
             SystemMod.LOGGER.error("Assistant failed to initialize; reward writes are disabled", e);

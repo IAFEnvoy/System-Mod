@@ -1,5 +1,55 @@
 # 编译与验收
 
+## 2026-11-14 Emotion 数据驱动注册表与 Arwes HUD
+
+表情相关类、包、序列化字段、卡片节点 / CSS、数据包 / 资源路径、编辑器及文档统一命名为 emotion，客户端测试命令也统一为 emotion，set 子命令下才接受表情 ID 参数。新增同步数据包注册表 `system:emotion` 与 36 个语义定义；资源包 profile 只映射完整表情 ID 到贴图 / 说话帧和跳转。服务端在不可变提示词快照中注入注册表生成的 `emotion_catalog`，TXT 不再逐个硬编码表情或图片编号。省略或传空 emotion 清除独立 HUD，历史卡片仍使用资源包默认值（内置 35）。
+
+`SystemHudEntries.EMOTION` 向 Saturn HUD 编辑器注册 `system.emotion`；默认左上角，左、上各留 12 个 GUI 像素，初始隐藏。Arwes 中央背景为 25% 不透明度，四角用独立横、竖色条绘制，不依赖单边 border 合并；HTML / CSS 鼠标穿透。编辑器显示实际熊猫头，位置 / 显隐沿用 Saturn 的本机布局。`/system emotion set <状态ID>`、list、speaking true / false / auto、profile、show、clear 和 reset 在原版聊天及系统输入框执行相同客户端代码，只持有连接内存。clear 清除回复关联和说话覆盖并隐藏。新有效服务端 ChatOutput 覆盖本地测试状态，空 emotion 或移除当前关联卡片会清除，历史和过期卡片不覆盖。贴图存在性在资源重载时缓存，缺失目标帧回退 neutral 默认静止贴图，仍缺失则使用原版紫黑 missingno，并按 profile / 状态 / 路径每轮资源重载去重告警；不因缺一张图拒绝整份配置。
+
+说话帧改为 `EmotionFrame(Identifier, Offset)`，静止贴图和说话帧都支持字符串简写或带 offset 的对象。内置两帧复用原图，以 `(-2,-2)` 左上 / `(2,2)` 右下绘制；偏移单位为文档像素，不改变 DOM、样式或布局。重绘比较整个帧，保证同一纹理仅 offset 变化时也能更新。删除 72 张生成的说话贴图，只保留 36 张原图；编辑器同步脚本也移除过期 PNG。指令改为 `/system emotion`，ID 参数仅位于 `set` 下，speaking true / false / auto 均为 literal。所有翻译参数保持 String，Identifier 显式 toString。
+
+阅读 Saturn 1.3.1 的 HUD 接口、AUI 1.2.9 的文档 / 渲染 API 和当前 Minecraft 源码确认签名。本次实际执行 `gradlew compileJava processResources --offline --console=plain`，BUILD SUCCESSFUL；编辑器 `npm run sync:resources` 和 `npm run build` 通过。静态核对 36 个状态均引用原图及左上 / 右下 offset；源码、编辑器、处理后的发布资源均只有 36 张 PNG，无旧说话贴图；编辑器 profile 与来源一致。双语键集合及编辑器语言副本保持一致（各 736 个键）；`git diff --check` 通过。未运行测试、启动 Minecraft 或请求模型 / 语音服务，HUD 实际排版 / 编辑拖动 / 客户端指令、服务端覆盖及缺图显示尚未游戏内验收。仅修改当前 master / 26.1.2。
+
+## 2026-11-14 表情映射再次纠正与默认表情
+
+按最新纠正更新 04、08、09、13、20、21、23、25、26、27、31、34、35、36 的状态语义，35 号设为 neutral 默认表情，26 号改为 scheming。其余编号沿用原名称；36 张图各对应一个状态和一个分类，合计 9 类，不保留重复分类或旧别名。同步资源定义、编辑器副本、自由聊天提示词和表情文档；重新生成编号 / 分类两张对照图，默认 35 用绿色标记，图片沿用此前镜像结果，没有再次翻转。
+
+实际执行 `gradlew compileJava processResources testModClasses --offline --console=plain`，BUILD SUCCESSFUL；静态核对 36 个唯一状态及编号、9 个互斥分类、108 个贴图引用和编辑器逐字节副本、完整提示词目录、默认 / reset 指向及文档本地链接，均通过。已查看两张对照图。未运行测试、启动游戏或请求模型；实际游戏显示与 AI 表情选择尚未验收。
+
+## 2026-11-14 按修正表整理表情映射
+
+按用户表中的编号 / 修正名称 / 一级分类更新 panda.json，状态增加可选 name / categories 元数据，编辑器副本和预览说明同步。35 个表情归入 11 类；20、23、25、35 保留重叠分类，仍各自使用唯一 emotion 与原三帧贴图。04 原表未列出，保留 worried、标注未分类，不加入本次 AI 选择目录。自由聊天提示词从原十个示例状态扩充为完整修正语义目录；图片沿用此前镜像结果，没有再翻转。
+
+重新生成按编号及按大类的两张图片索引，已人工查看分组图片。实际执行 compileJava processResources testModClasses --offline --console=plain 编译通过；静态核对 35 个状态 / 39 个分类成员、定义与编辑器副本、108 个贴图引用和提示词目录，node --check 及 git diff --check 通过。未运行测试、启动游戏或请求模型；AI 实际表情选择效果尚未验收。
+
+## 2026-11-14 Markdown 表格解析
+
+截图中的管道符任务表被合并为普通段落。阅读原实现及 AUI 的 Markdown 源码确认 Txtmark 0.13 没有 GFM 表格扩展；改用 CommonMark Java 0.32.0 核心、GFM tables 与 strikethrough，通过 Jar-in-Jar 随模组分发。源码 API 取自 Maven Central 对应版本 sources JAR。AssistantMarkdown 使用原生 AST / HTML renderer 处理结构及实体，删除旧尖括号暂存和相邻围栏修补；原始 HTML 转义、图片仅显示 alt、Markdown 链接延迟绑定及 HTTP / HTTPS 限制保留。
+
+表格使用固定的 block / flex 样式，列宽均分、长文本换行、分隔行控制列对齐；纯文本投影在行列间保留分隔。同步编辑器 CSS 及有限的表格预览，现有 test-mod Markdown 样例追加三列表格、短分隔线、对齐、转义管道符、HTML 单元格与代码块表格。未新增调试命令、运行时探针或游戏配置，也未启动游戏或调用模型。
+
+依赖下载完成后，实际执行 `gradlew compileJava processResources testModClasses jar --offline --console=plain`，BUILD SUCCESSFUL；没有运行测试。发布 JAR 静态核对包含三个 CommonMark 0.32.0 内嵌依赖及 metadata，不含开发 Markdown 命令或样例。编辑器 `node --check` 与 `npm run build` 通过，游戏 / 编辑器 CSS 副本一致、文档本地链接及 `git diff --check` 通过。首次在线构建停在 Maven 元数据等待，已取消后使用缓存离线完成。表格的实际游戏内排版和交互尚未验收。
+
+## 2026-11-14 通用 Chat Completions 原生工具调用
+
+读取 run-test-client 最新日志，task `b0f71112-0369-4fdc-9022-04ecd9c8a55a` 的 message.content 包含 DSML 片段，第一轮尚未执行工具即解析失败。源码确认此前只把工具定义写入提示词，请求没有 tools、响应只读取 content；仅调整提示词无法补全原生调用协议。
+
+按 OpenAI 官方 Function calling / Chat Completions 文档接入标准 tools/tool_calls，未添加 DeepSeek DSML 解析或专用工具分支。SchemaMapCodec 生成函数参数，真实 ID 映射为请求内无冲突的合法名称；每轮 required 且禁止并行，响应允许 null 正文并要求唯一函数。自由聊天、普通分析及搜索的答案统一通过 answer 函数，finalOnly 只开放 answer。工具请求不发送正文 JSON 模式，非循环模型调用保留原 JSON 路径；ConfiguredModelClient 转发函数定义，执行配额、用量、取消和永久诊断仍走同一入口，Schema 计入输入预算。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；这是主源码及开发源集编译与资源处理，没有运行测试。读取实际 DFU 9.0.19 JsonOps 源码确认可空 content 会映射为 optional 空值。未启动 Minecraft、请求真实模型或修改玩家运行配置；真实模型的调用与游戏内操作尚未验收。协议与扩展说明见 [ReAct](agent-react.md) 和 [模型接口](model-api.md)。
+
+## 2026-11-14 Agent 常驻错误诊断
+
+ExecutionContext 保留模型 JSON / Codec 解码异常的 cause，并永久记录实际决策内容、task、工作流、路由来源和模型调用次数。OpenAiCompatibleClient 区分空 choices、非 stop 的 finish_reason、正文超长和非 200 响应，后者记录服务商错误正文并替换当前账号密钥。AgentEngine 与 InteractiveExecutor 在转为玩家错误卡前记录完整异常链；ReActContext 记录决策及工具失败，包括后续恢复的异常，FreeChatModule 记录循环未完成时的失败原因、轮数和预算。没有新增临时开关、探针或自动重试。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；`git diff --check` 通过。未运行测试、启动 Minecraft 或请求真实模型。读取现有 run-test-client 日志未找到此次模型原始响应，因此不能据此判断截图中的 DeepSeek Flash 请求具体违反了哪个字段或是否被截断；需在更新后复现以获取新诊断。
+
+## 2026-11-14 自由对话统一工具循环
+
+FreeChatModule 移除按模式区分的一次回答分支，自由模式与扩展模式的聊天兜底共用 ReActLoop、工作流与只读工具目录、请求级 ToolProvider、表情输出及部分失败卡片。ExecutionContext 的工作流枚举、调用和工具域入口统一以 requireFreeChat 检查当前聊天许可，事件调用仍禁止；离线 / 标准模式、模块可用性、确认流程、联网授权和计费检查保持生效。扩展模式仍先本地匹配和 AI 路由，进入兜底后共享原模型、步骤、工具、Token 计数与从请求开始计算的期限。
+
+实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL。未运行测试、启动 Minecraft 或调用真实模型；两种模式下模型选择工具和卡片交互仍待游戏内验收。
+
 ## 2026-11-08 AI 等级按存档保存
 
 管理员权限从全局 AiAccessConfig 改为 `AiAccessData` SavedData，保存于 `<存档>/data/system/ai_access.dat`。默认模式与 UUID 玩家覆盖均由当前存档持有，命令更新后 `setDirty`，跟随世界自动保存或正常关闭持久化。`AiAccess` 只提供不可变规则与权限计算；工作线程读取存档快照，默认模式通过当前 FileAgentStore 的 supplier 传入 PlayerData 构造和 Codec，不访问全局配置，也不通过静态服务定位存档。
@@ -1029,6 +1079,14 @@ FileAgentStore 的玩家业务和对话读写、AgentDatabase 的共享及独立
 
 实际执行 `gradlew compileJava processResources testModClasses --console=plain`，BUILD SUCCESSFUL；静态检查所有存档 NBT 调用和最低依赖元数据，`git diff --check` 通过。未运行测试、启动 Minecraft、修改现有存档或请求 API；压缩文件在游戏内的往返恢复尚待验收。
 
+
+## 模块命令仅在系统界面执行
+
+阅读并修改代码：移除 ClientModule.clientCommands、客户端游戏指令缓存及 RegisterClientCommandsEvent 导出；移除服务端 Agent 节点 attach、instruction 贪婪转发和 ask。原版 `/system` 只保留打开界面及绑定、模块、AI、经济和 FTB 重载等明确管理入口。emotion、settings、usage、任务、商店、抽奖等模块指令只在系统输入框执行；界面内仍可使用 `/system` 前缀，但这不会创建原版游戏指令。
+
+系统补全改用私有 CommandRegistry 的 CommandSuggestionsRequest / CommandSuggestionsResponse，依玩家当前模块权限筛选，不执行工作流、不调用模型，也不占聊天请求间隔。ClientCommandCache 持有唯一在途请求，换输入、重建和断线时取消旧 future，3 秒超时；原版管理命令的显式桥接仍可复用玩家 / 注册表补全。用量统计在客户端打开页面后走原有查询包，服务端继续校验全服查看权限，不再发送 system usage 命令。初次页面查询跳过刷新防抖，不会因为刚创建页面而漏发请求。
+
+本次只进行 Java 编译及静态检查，不启动 Minecraft；游戏内指令、补全、权限与页面行为仍需实际验收。
 
 ## 2026-11-14：统一凭据接入
 

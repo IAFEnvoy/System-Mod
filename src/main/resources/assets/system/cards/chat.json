@@ -2,6 +2,12 @@
   "show_title": false,
   "hide_summary": true,
   "body": [
-    { "type": "system:markdown", "text": "{{answer}}" }
+    {
+      "type": "system:flex", "wrap": false, "style": "chat_reply",
+      "children": [
+        { "type": "system:emotion", "state": "{{emotion}}", "size": 72 },
+        { "type": "system:markdown", "text": "{{answer}}", "style": ["card_markdown", "chat_reply_text"] }
+      ]
+    }
   ]
 }

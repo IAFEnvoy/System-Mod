@@ -1,5 +1,7 @@
 # 扩展配置
 
+[表情与 HUD](emotions.md)使用同步数据包注册表 `system:emotion` 定义名称、语义和分类，客户端资源包独立映射相同 ID 的贴图 / 说话动画；AI 目录自动从注册表生成。文件位于 `data/<namespace>/system/emotion/<path>.json`，不使用图片编号作为表情协议。
+
 [系统币经济](economy.md)新增 `system:currency` 原生数据包注册表，并提供多币种钱包、`system:currency` 费用/条件和 `system:add_currency` 实体动作；使用格式与字段见专页。
 
 新增的本地玩法定义见[装备工坊](workshop.md)和[在线作业](online-jobs.md)。工坊在模块 server 内配置 Saturn Cost；作业使用独立原生数据包注册表与 tag，`jobs` 可选项支持 ID/tag/混合数组。二者均有同名内置模块，并加入默认模块 tag。[物品鉴定](item-inspection.md)属于已有 items 模块。
@@ -192,6 +194,7 @@ tag 来自动态模块配置注册表 `system:system_module`，成员为模块�
 | `data/system/system/prompt/quest_narration.txt` | `system:quest_narration` | `{{player_language}}` |
 | `data/system/system/prompt/quest_background.txt` | `system:quest_background` | `{{player_language}}` |
 | `data/system/system/prompt/react.txt` | `system:react` | `{{player_language}}` |
+| `data/system/system/prompt/tool_call.txt` | `system:tool_call` | 无；原生函数调用的共享规则，真实参数定义由请求 tools 字段传递 |
 | `data/system/system/prompt/free_chat.txt` | `system:free_chat` | `{{player_language}}` |
 | `data/system/system/prompt/personality/default.txt` | `system:personality/default` | `{{player_language}}` |
 
@@ -307,6 +310,40 @@ Saturn 逐项模拟后按列表顺序扣款，不合并重复或重叠的需求�
 无效物品 ID、不在原版范围内的数量、无法解析的组件、产出列表不在 1～36 项范围内或缺失价格都会由注册表 Codec 报错，拒绝加载该数据包注册表。依赖最终物品组件的校验留到运行时；商品产出无法创建时会在扣款前失败，奖励无法创建时保留为待领取。未知字段遵循原版 Codec 行为忽略。目录版本按服务端实例生成，旧会话报价不跨重启；正在推理的签到决策提交前仍校验版本及当前候选。已入账的签到/商城奖励、订单和当日唯一标记均保留。
 
 成就 `rewardId` 引用当前奖励池中的完整资源 ID，例如 `system:mining`。
+
+## 商品限购
+
+在 `system:shop_offer` 商品中添加可选的 `purchase_limit`。省略该字段表示不限购，例如每天每位玩家最多购买 3 次：
+
+```json
+{
+  "label": "每日口粮",
+  "items": [{ "id": "minecraft:bread", "count": 6 }],
+  "costs": [
+    { "type": "system:currency", "currency": "system:coin", "amount": 20 }
+  ],
+  "purchase_limit": {
+    "count": 3,
+    "period": "daily"
+  }
+}
+```
+
+| 字段 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `purchase_limit` | 对象 | 不限购 | 每位玩家独立，按商品注册表 ID 统计 |
+| `purchase_limit.count` | 正整数 | 必填 | 一个周期内允许购买的次数，每次购买一个完整商品包 |
+| `purchase_limit.period` | 字符串 | `lifetime` | `lifetime` 累计、`daily` 每日、`weekly` 每周、`monthly` 每月 |
+
+`{"count":1}` 表示每位玩家累计只能购买一次。`daily` 在每天零点重置，`weekly` 在周一零点重置，`monthly` 在每月 1 日零点重置；均使用服务端 `system-agent.json` 的 `timeZone`（默认 `Asia/Shanghai`），不按游戏内日夜或购买后的 24 小时计算。按确认购买时预留订单的时间归属周期，跨周期的旧报价仍须通过新周期的校验。
+
+额度直接从玩家商店模块的持久化订单账本统计，重新登录、重启、清除对话记忆、移除再添加模块都不会重置。同一商品被多个商店模块或 tag 引用时共用额度，不同商品 ID 独立；商品过去未限购时的订单也参与统计。更换商品 ID 会视为另一件商品。
+
+商品货架的物品 tooltip 和商品详情、确认卡片展示限购次数及剩余次数。额度耗尽时仍可查看商品，但不会生成可确认的购买报价；确认旧报价时服务端会在持久化预留订单的同一事务内重新校验，多个报价或连续点击不能绕过限购。同一订单重复确认只返回原结果，不再次占用额度。
+
+待支付、成功和付款结果未知的订单均占用其所属周期的额度；确定未扣款的失败订单不占用。结果未知时仍遵循原有锁单与人工核对规则，不因重启释放额度。奖励是否从收件箱领取不影响计数。卡片显示的是查询时的快照，购买后可刷新商城查看最新剩余次数。限购定义随商品在世界加载时读取，修改后需重开世界 / 重启服务器。现有订单账本最多保留 4096 个订单，到达上限会拒绝新订单，不会静默删除记录或绕过限购。
+
+完整示例见 [coin_food.json](../examples/commerce-pack/data/system/system/shop_offer/coin_food.json)。开发测试源集中的钻石商品设为累计一次，火把商品设为每日三次，发布包内置商品默认不限购。
 
 ## 抽奖奖池
 

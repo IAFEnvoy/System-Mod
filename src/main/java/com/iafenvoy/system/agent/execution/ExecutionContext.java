@@ -37,6 +37,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 /**
  * Per-task authority and budget shared by routing, model calls and tool execution.
@@ -213,7 +214,7 @@ public final class ExecutionContext {
 
     public List<AgentModule<?>> chatActions() {
         this.requireFreeChat();
-        if (this.isEvent() || this.mode() != ConversationMode.FREE) return List.of();
+        if (this.isEvent()) return List.of();
         return this.engine.modules().descriptors().stream()
                 .filter(descriptor -> this.engine.modules().modelSelectable(descriptor.id()) && this.available(descriptor.id()))
                 .<AgentModule<?>>map(descriptor -> this.engine.module(this.player, descriptor.id())).filter(Objects::nonNull).toList();
@@ -225,7 +226,7 @@ public final class ExecutionContext {
      */
     public AgentResult action(AgentAction input) {
         this.requireFreeChat();
-        if (this.isEvent() || this.mode() != ConversationMode.FREE || !this.engine.modules().modelSelectable(input.id()))
+        if (this.isEvent() || !this.engine.modules().modelSelectable(input.id()))
             throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         AgentModule<?> target = this.engine.module(this.player, input.id());
         if (target == null || !this.available(input.id())) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
@@ -339,7 +340,7 @@ public final class ExecutionContext {
     /** Free chat owns an explicit read scope; a provider cannot export a write or a disabled feature. */
     public ToolContext chatTools(Collection<ToolRegistry.Type<?, ?>> additions) {
         this.requireFreeChat();
-        if (this.isEvent() || this.mode() != ConversationMode.FREE) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
+        if (this.isEvent()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         Map<String, ToolRegistry.ScopedTool<?, ?>> allowed = this.engine.tools()
                 .chat(owner -> this.engine.moduleEnabled(this.player, owner), additions);
         allowed.values().forEach(tool -> this.chatReadTools.add(tool.tool().type()));
@@ -404,14 +405,21 @@ public final class ExecutionContext {
     }
 
     public <I, O> O model(String instruction, MapCodec<I> inputCodec, I input, Codec<O> outputCodec) throws Exception {
+        return this.model(instruction, inputCodec, input, List.of(), reply -> CodecIO.parse(this.store().codec(outputCodec), reply.value()));
+    }
+
+    public <I, O> O model(String instruction, MapCodec<I> inputCodec, I input, List<ModelClient.Function> functions,
+                          Function<ModelClient.Reply, O> decoder) throws Exception {
         // Enforce consent, quotas and concurrency here; the gateway owns HTTP and actual usage accounting.
         this.requireExternalServices();
         this.engine.model().checkConfigured();
         if (++this.steps > this.policy.steps() || this.models >= this.policy.modelCalls())
             throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
         String content = CodecIO.write(this.store().codec(ModelInput.codec(inputCodec)), new ModelInput<>(input, new RequestContext(this.language)));
+        functions = List.copyOf(functions);
         // Reserve input bytes conservatively as tokens; this execution budget is separate from billed usage.
         long inputBytes = (long) instruction.getBytes(StandardCharsets.UTF_8).length + content.getBytes(StandardCharsets.UTF_8).length;
+        if (!functions.isEmpty()) inputBytes += CodecIO.write(ModelClient.Function.CODEC.listOf(), functions).getBytes(StandardCharsets.UTF_8).length;
         if (inputBytes > this.policy.inputBytes() || this.tokens + inputBytes + this.policy.outputTokens() > this.policy.totalTokens())
             throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
         int estimated = (int) inputBytes;
@@ -441,16 +449,18 @@ public final class ExecutionContext {
             this.persist();
             ModelClient.Reply reply = this.engine.model().complete(this.player, List.of(
                             new ModelClient.Message(SystemMod.MOD_ID, instruction), new ModelClient.Message("user", content)),
-                    this.policy.outputTokens(), Duration.ofMillis(this.modelTimeoutMillis()));
+                    functions, this.policy.outputTokens(), Duration.ofMillis(this.modelTimeoutMillis()));
             this.tokens = (int) Math.min(Integer.MAX_VALUE, (long) this.tokens + Math.max(0L, (long) reply.totalTokens() - estimated - this.policy.outputTokens()));
             this.persist();
             this.check();
             this.requireExternalServices();
             if (this.tokens > this.policy.totalTokens()) throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
             try {
-                return CodecIO.parse(this.store().codec(outputCodec), reply.value());
+                return decoder.apply(reply);
             } catch (RuntimeException error) {
-                throw new AgentException(AgentFailure.MODEL_INVALID);
+                SystemMod.LOGGER.warn("Model decision failed validation: task={}, workflow={}, source={}, modelCall={}, response={}",
+                        this.taskId, this.module == null ? "routing" : this.module.id(), this.routeSource, this.models, reply, error);
+                throw new AgentException(AgentFailure.MODEL_INVALID, error);
             }
         } finally {
             this.engine.modelSlots().release();

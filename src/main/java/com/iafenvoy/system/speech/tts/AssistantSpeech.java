@@ -21,9 +21,12 @@ import net.neoforged.neoforge.client.event.sound.PlaySoundSourceEvent;
 import net.neoforged.neoforge.client.event.sound.PlayStreamingSourceEvent;
 
 import java.net.http.HttpTimeoutException;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 /**
  * UI-owned speech sessions replace synthesis and playback together; stale results never start a sound.
@@ -46,8 +49,12 @@ public final class AssistantSpeech {
     private static SpeechState status = SpeechState.IDLE;
     private static long cooldownUntil;
     private static long deadline;
+    private static Set<UUID> speakingCards = Set.of();
 
-    private record Utterance(Session source, String text, boolean preview, boolean notification) {
+    private record Utterance(Session source, String text, boolean preview, boolean notification, Set<UUID> cards) {
+        private Utterance {
+            cards = Set.copyOf(cards);
+        }
     }
 
     // A closed UI session cannot enqueue again, including after a delayed streaming callback.
@@ -57,22 +64,31 @@ public final class AssistantSpeech {
         public void result(AgentResult result) {
             stop(this);
             String text = SpeechText.result(result);
-            if (!text.isBlank()) this.say(text);
+            if (!text.isBlank() && !this.closed) AssistantSpeech.say(this, text, false,
+                    result.cards().stream().map(card -> card.ref().id()).collect(Collectors.toUnmodifiableSet()));
         }
 
         public void say(String text) {
-            if (!this.closed) AssistantSpeech.say(this, text, false);
+            if (!this.closed) AssistantSpeech.say(this, text, false, Set.of());
         }
 
         public void notification(String text) {
-            if (!this.closed) AssistantSpeech.say(this, text, true);
+            if (!this.closed) AssistantSpeech.say(this, text, true, Set.of());
+        }
+
+        public void say(String text, UUID card) {
+            if (!this.closed) AssistantSpeech.say(this, text, false, Set.of(card));
+        }
+
+        public void notification(String text, UUID card) {
+            if (!this.closed) AssistantSpeech.say(this, text, true, Set.of(card));
         }
 
         public void preview(SpeechConfig current) throws SpeechException {
             if (this.closed) return;
             validate(current);
             stop();
-            start(new Utterance(this, AssistantView.tr("system.tts.preview_text"), true, false), current);
+            start(new Utterance(this, AssistantView.tr("system.tts.preview_text"), true, false, Set.of()), current);
         }
 
         @Override
@@ -118,11 +134,11 @@ public final class AssistantSpeech {
         return SpeechConfig.INSTANCE.get().enabled() && SpeechConfig.INSTANCE.get().hasKey() && System.nanoTime() >= cooldownUntil;
     }
 
-    private static void say(Session source, String text, boolean notification) {
+    private static void say(Session source, String text, boolean notification, Set<UUID> cards) {
         // The UI selects the current message; speech must never hold the next message behind old audio.
         stop();
         if (!notification && !canSpeak()) return;
-        queued = new Utterance(source, text, false, notification);
+        queued = new Utterance(source, text, false, notification, cards);
         status = SpeechState.QUEUED;
     }
 
@@ -139,6 +155,7 @@ public final class AssistantSpeech {
         if (normalized.isEmpty() && !utterance.notification()) return;
         long epoch = generation;
         owner = source;
+        speakingCards = utterance.cards();
         previewing = utterance.preview();
         status = utterance.notification() ? SpeechState.STARTING : SpeechState.LOADING;
         deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(180);
@@ -248,6 +265,12 @@ public final class AssistantSpeech {
         return status;
     }
 
+    /** Loading, cues, paused playback and unrelated messages never animate this card's avatar. */
+    public static boolean speaking(UUID card) {
+        return owner != null && speakingCards.contains(card) && !Minecraft.getInstance().isPaused()
+                && (status == SpeechState.PLAYING_NATIVE || status == SpeechState.PLAYING_OPENAL);
+    }
+
     private static String normalize(String text) {
         String normalized = LegacyText.plain(text).replaceAll("[\\p{Cc}&&[^\\n\\t]]", " ").strip();
         if (normalized.length() <= 500) return normalized;
@@ -285,6 +308,7 @@ public final class AssistantSpeech {
         }
         playback = null;
         owner = null;
+        speakingCards = Set.of();
     }
 
     private static void fail(SpeechState failure) {

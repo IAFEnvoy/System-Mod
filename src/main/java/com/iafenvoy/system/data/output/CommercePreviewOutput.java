@@ -11,11 +11,12 @@ import java.util.Optional;
  * Display-only evaluated price; the optional reference identifies a server-owned bound payment.
  */
 public record CommercePreviewOutput(Identifier source, CommerceCatalog.Price price, boolean available,
-                                    Optional<String> quoteRef) {
+                                    Optional<String> quoteRef, Optional<ShopPurchaseLimitOutput> purchaseLimit) {
     public static final Codec<CommercePreviewOutput> CODEC = RecordCodecBuilder.create(i -> i.group(
             Identifier.CODEC.fieldOf("source").forGetter(CommercePreviewOutput::source),
             CommerceCatalog.Price.CODEC.fieldOf("price").forGetter(CommercePreviewOutput::price),
             Codec.BOOL.fieldOf("available").forGetter(CommercePreviewOutput::available),
-            Codec.STRING.optionalFieldOf("quoteRef").forGetter(CommercePreviewOutput::quoteRef)
+            Codec.STRING.optionalFieldOf("quoteRef").forGetter(CommercePreviewOutput::quoteRef),
+            ShopPurchaseLimitOutput.CODEC.optionalFieldOf("purchaseLimit").forGetter(CommercePreviewOutput::purchaseLimit)
     ).apply(i, CommercePreviewOutput::new));
 }

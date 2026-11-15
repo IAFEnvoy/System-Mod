@@ -5,5 +5,9 @@
   ],
   "costs": [
     { "type": "system:currency", "currency": "system:coin", "amount": 20 }
-  ]
+  ],
+  "purchase_limit": {
+    "count": 3,
+    "period": "daily"
+  }
 }

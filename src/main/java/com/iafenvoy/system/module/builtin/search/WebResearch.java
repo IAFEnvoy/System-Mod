@@ -18,9 +18,6 @@ import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.search.SearchObservation;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
 import com.iafenvoy.system.search.SearchProvider;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.MapCodec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import java.util.*;
 
@@ -90,9 +87,9 @@ public final class WebResearch {
     }
 
     private record Answer(String text, List<Integer> sources) {
-        static final MapCodec<Answer> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-                Codec.STRING.fieldOf("text").forGetter(Answer::text),
-                Codec.INT.listOf().fieldOf("sources").forGetter(Answer::sources)
+        static final SchemaMapCodec<Answer> CODEC = SchemaCodecs.record((i, f) -> i.group(
+                f.required("text", SchemaCodecs.STRING).forGetter(Answer::text),
+                f.required("sources", SchemaCodecs.NON_NEGATIVE_INT.listOf()).forGetter(Answer::sources)
         ).apply(i, Answer::new));
 
         private Answer {

@@ -7,6 +7,7 @@ import com.iafenvoy.system.data.catalog.OnlineJobEntry;
 import com.iafenvoy.system.data.catalog.CurrencyDefinition;
 import com.iafenvoy.system.data.catalog.SignInRewardEntry;
 import com.iafenvoy.system.data.module.SystemModule;
+import com.iafenvoy.system.data.emotion.EmotionDefinition;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.registries.DataPackRegistryEvent;
@@ -18,6 +19,7 @@ import net.neoforged.neoforge.registries.DataPackRegistryEvent;
 public final class SystemDataPackRegistries {
     @SubscribeEvent
     public static void register(DataPackRegistryEvent.NewRegistry event) {
+        event.dataPackRegistry(SystemResourceKeys.EMOTION, EmotionDefinition.CODEC, EmotionDefinition.CODEC);
         event.dataPackRegistry(SystemResourceKeys.CURRENCY, CurrencyDefinition.DIRECT_CODEC, CurrencyDefinition.DIRECT_CODEC);
         event.dataPackRegistry(SystemResourceKeys.ONLINE_JOB, OnlineJobEntry.CODEC.codec());
         event.dataPackRegistry(SystemResourceKeys.SYSTEM, SystemDefinition.CODEC, SystemDefinition.CODEC);

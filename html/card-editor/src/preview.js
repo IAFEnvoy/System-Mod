@@ -1,6 +1,6 @@
 import { object, own, pathKey, pretty } from "./utils.js";
 import { getDescriptor } from "./schema.js";
-import { languages, sharedCSS } from "./resources.js";
+import { languages, sharedCSS, emotions, emotionDefinitions, emotionTexture } from "./resources.js";
 import previewCSS from "./styles/preview.css?raw";
 
 // Keep iframe DOM and local interaction state separate from the editor document.
@@ -315,6 +315,30 @@ export function createPreview({ frame, getState, select, log }) {
       e.style.width = (node.width ?? 32) + "px";
       e.style.height = (node.height ?? 32) + "px";
       e.title = "游戏内本地图片：" + value(node.source, indices);
+      return e;
+    }
+    if (type === "emotion") {
+      const id = value(node.profile ?? "system:panda", indices);
+      const profile = id.startsWith("system:") ? emotions[id.slice(7)] : null;
+      const name = value(node.state ?? "{{emotion}}", indices);
+      const state = profile?.states?.[name] ?? profile?.states?.[profile.default_state];
+        const definition = emotionDefinitions[name] ?? emotionDefinitions[profile?.default_state];
+      e = element("div", css);
+      e.style.width = (node.size ?? 72) + "px";
+      e.style.height = (node.size ?? 72) + "px";
+      const frame = typeof state?.texture === "string" ? { texture: state.texture } : state?.texture;
+      const texture = frame && emotionTexture(frame.texture);
+      if (texture) {
+        const image = element("img");
+        image.src = texture;
+          image.alt = definition?.name || name;
+        image.style.width = "100%";
+        image.style.height = "100%";
+        image.style.objectFit = "contain";
+        image.style.transform = `translate(${frame.offset?.x ?? 0}px, ${frame.offset?.y ?? 0}px)`;
+        e.append(image);
+      } else e.textContent = "表情：" + name;
+        e.title = [id, name, definition?.name, definition?.category, definition?.description].filter(Boolean).join(" · ") + "（静止帧预览）";
       return e;
     }
     if (type === "item") {
@@ -681,7 +705,7 @@ export function createPreview({ frame, getState, select, log }) {
       code = [],
       list = null;
     function inline(container, text) {
-      const re = /(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\(https?:\/\/[^)]+\))/g;
+      const re = /(`[^`]+`|\*\*[^*]+\*\*|~~[^~]+~~|\[[^\]]+\]\(https?:\/\/[^)]+\))/g;
       let last = 0,
         m;
       while ((m = re.exec(text))) {
@@ -691,6 +715,8 @@ export function createPreview({ frame, getState, select, log }) {
           container.append(element("code", "", token.slice(1, -1)));
         else if (token.startsWith("**"))
           container.append(element("strong", "", token.slice(2, -2)));
+        else if (token.startsWith("~~"))
+          container.append(element("del", "markdown_del", token.slice(2, -2)));
         else {
           const parts = /\[([^\]]+)\]\(([^)]+)\)/.exec(token);
           container.append(
@@ -701,7 +727,27 @@ export function createPreview({ frame, getState, select, log }) {
       }
       container.append(doc.createTextNode(text.slice(last)));
     }
-    for (const line of source.split("\n")) {
+    function cells(line) {
+      const result = [];
+      let cell = "";
+      for (let index = 0; index < line.length; index++) {
+        const char = line[index];
+        if (char === "\\" && line[index + 1] === "|") {
+          cell += "|";
+          index++;
+        } else if (char === "|") {
+          result.push(cell.trim());
+          cell = "";
+        } else cell += char;
+      }
+      result.push(cell.trim());
+      if (line.trimStart().startsWith("|")) result.shift();
+      if (line.trimEnd().endsWith("|") && !line.trimEnd().endsWith("\\|")) result.pop();
+      return result;
+    }
+    const lines = source.replace(/\r\n?/g, "\n").split("\n");
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const line = lines[lineIndex];
       if (/^\s*```/.test(line)) {
         if (fence) {
           const pre = element("pre");
@@ -719,6 +765,34 @@ export function createPreview({ frame, getState, select, log }) {
       if (!line.trim()) {
         list = null;
         continue;
+      }
+      if (line.includes("|") && lineIndex + 1 < lines.length) {
+        const header = cells(line), separator = cells(lines[lineIndex + 1]);
+        if (header.length && separator.length === header.length && separator.every((cell) => /^:?-+:?$/.test(cell))) {
+          list = null;
+          const table = element("table", "markdown_table");
+          const head = element("thead", "markdown_thead");
+          const body = element("tbody", "markdown_tbody");
+          function appendRow(parent, values, tag) {
+            const row = element("tr", "markdown_tr");
+            header.forEach((_, column) => {
+              const rule = separator[column];
+              const alignment = rule.endsWith(":") ? (rule.startsWith(":") ? "center" : "right") : "left";
+              const cell = element(tag, `markdown_${tag} markdown_align_${alignment}`);
+              inline(cell, values[column] ?? "");
+              row.append(cell);
+            });
+            parent.append(row);
+          }
+          appendRow(head, header, "th");
+          lineIndex++;
+          while (lineIndex + 1 < lines.length && lines[lineIndex + 1].trim() && lines[lineIndex + 1].includes("|")) {
+            appendRow(body, cells(lines[++lineIndex]), "td");
+          }
+          table.append(head, body);
+          parent.append(table);
+          continue;
+        }
       }
       const heading = /^(#{1,6})\s+(.*)/.exec(line),
         item = /^\s*(?:[-*+]\s+|\d+\.\s+)(.*)/.exec(line);

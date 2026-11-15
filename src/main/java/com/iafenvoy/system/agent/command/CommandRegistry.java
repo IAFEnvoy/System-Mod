@@ -7,24 +7,14 @@ import com.iafenvoy.system.command.AssistantCommandInput;
 import com.iafenvoy.system.command.AssistantCommandSource;
 import com.iafenvoy.system.util.CodecIO;
 import com.iafenvoy.system.util.CommandTrees;
-import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.ArgumentType;
-import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.mojang.brigadier.context.StringRange;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import com.mojang.brigadier.suggestion.Suggestion;
 import com.mojang.brigadier.suggestion.Suggestions;
-import com.mojang.brigadier.tree.ArgumentCommandNode;
-import com.mojang.brigadier.tree.CommandNode;
 import net.minecraft.resources.Identifier;
-import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
@@ -73,41 +63,6 @@ public final class CommandRegistry {
     public List<String> usages(Predicate<Identifier> available) {
         return Arrays.stream(this.dispatcher.getAllUsage(this.dispatcher.getRoot(), new AssistantCommandSource("", available), true))
                 .map(usage -> "/" + usage).toList();
-    }
-
-    /**
-     * Share standard argument nodes with /system; execution still enters the normal Agent pipeline.
-     */
-    public <S> void attach(CommandNode<S> root, Function<S, Predicate<Identifier>> available, Command<S> execute) {
-        for (CommandNode<AssistantCommandSource> node : this.dispatcher.getRoot().getChildren())
-            if (root.getChild(node.getName()) == null) root.addChild(this.copy(node, available, execute));
-    }
-
-    private <S> CommandNode<S> copy(CommandNode<AssistantCommandSource> node, Function<S, Predicate<Identifier>> available, Command<S> execute) {
-        ArgumentBuilder<S, ?> builder;
-        if (node instanceof ArgumentCommandNode<AssistantCommandSource, ?> argument)
-            builder = this.buildArgument(node, available, argument);
-        else builder = LiteralArgumentBuilder.literal(node.getName());
-        builder.requires(source -> node.canUse(new AssistantCommandSource("", available.apply(source))));
-        if (node.getCommand() != null) builder.executes(execute);
-        for (CommandNode<AssistantCommandSource> child : node.getChildren())
-            builder.then(this.copy(child, available, execute));
-        return builder.build();
-    }
-
-    private <S> @NonNull RequiredArgumentBuilder<S, Object> buildArgument(CommandNode<AssistantCommandSource> node, Function<S, Predicate<Identifier>> available, ArgumentCommandNode<AssistantCommandSource, ?> argument) {
-        RequiredArgumentBuilder<S, Object> argumentBuilder = RequiredArgumentBuilder.argument(node.getName(), cast(argument.getType()));
-        if (argument.getCustomSuggestions() != null)
-            argumentBuilder.suggests((context, _) -> this.suggest("/" + context.getInput(), available.apply(context.getSource()))
-                    .thenApply(suggestions -> Suggestions.create(context.getInput(), suggestions.getList().stream()
-                            .map(suggestion -> new Suggestion(StringRange.between(suggestion.getRange().getStart() - 1,
-                                    suggestion.getRange().getEnd() - 1), suggestion.getText(), suggestion.getTooltip())).toList())));
-        return argumentBuilder;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ArgumentType<Object> cast(ArgumentType<?> type) {
-        return (ArgumentType<Object>) type;
     }
 
     public AgentAction parse(String text, Predicate<Identifier> available) {

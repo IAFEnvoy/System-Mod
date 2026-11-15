@@ -1,6 +1,7 @@
 package com.iafenvoy.system.agent.react;
 
 import com.iafenvoy.saturn.runtime.resulting.Failure;
+import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.mojang.serialization.Codec;
@@ -21,7 +22,7 @@ public final class ReActLoop {
     private ReActLoop() {
     }
 
-    public static <A, O, R> R run(ReActContext<O> context, MapCodec<A> answerCodec,
+    public static <A, O, R> R run(ReActContext<O> context, SchemaMapCodec<A> answerCodec,
                                   Completion<A, R> completion, Fallback<R> fallback) throws Exception {
         Map<String, MapCodec<? extends Step<A, O>>> types = new LinkedHashMap<>();
         types.put("answer", answerCodec.xmap(Final<A, O>::new, Final::answer));
@@ -36,7 +37,7 @@ public final class ReActLoop {
             finalOnly |= context.shouldFinish();
             try {
                 Step<A, O> step = finalOnly
-                        ? new Final<>(context.decide(answerCodec.codec(), true)) : context.decide(codec, false);
+                        ? new Final<>(context.decide(answerCodec.codec(), answerCodec, true)) : context.decide(codec, answerCodec, false);
                 if (step instanceof Final<A, O>(A answer1)) {
                     R result = completion.finish(answer1);
                     context.check();

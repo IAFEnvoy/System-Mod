@@ -347,8 +347,8 @@ public final class AssistantMessages {
         if (playCue || speakCurrent) {
             speech = new AssistantSpeech.Session();
             if (playCue)
-                speech.notification(speakCurrent ? current.speechText() : "");
-            else speech.say(current.speechText());
+                speech.notification(speakCurrent ? current.speechText() : "", current.cardId());
+            else speech.say(current.speechText(), current.cardId());
         }
     }
 

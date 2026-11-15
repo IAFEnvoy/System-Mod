@@ -14,6 +14,7 @@
 | Java | `25`，toolchain 与字节码均使用 Java 25 | [build.gradle](build.gradle)、[Mixin 配置](src/main/resources/system.mixins.json) |
 | Gradle / ModDev | `9.2.1` / `2.0.148` | [Wrapper 配置](gradle/wrapper/gradle-wrapper.properties)、[build.gradle](build.gradle) |
 | ApricityUI | 开发配置与客户端最低版本 `1.2.9`；需兼容 MC `26.1.2` | [gradle.properties](gradle.properties) 的 `apricityui_version` |
+| CommonMark Java | `0.32.0`；核心与 GFM 表格 / 删除线扩展，Jar-in-Jar 内置 | [gradle.properties](gradle.properties) 的 `commonmark_version`、[build.gradle](build.gradle)、[Markdown 正文](docs/cards.md#markdown-正文) |
 | Saturn | `1.3.1` / CurseMaven `9606807`；两端必装，提供 CostTarget.display、Cost、DataStorage、Codec 工具、压缩 NBT 与 HUD 编辑器 | [gradle.properties](gradle.properties) 的 `saturn_version` / `saturn_file_id`、[build.gradle](build.gradle) 的依赖声明、[模组元数据](src/main/templates/META-INF/neoforge.mods.toml) 的最低版本、[开发与架构](docs/development.md) |
 | Simple Voice Chat | 开发适配 `2.6.26+26.1.2`，CurseMaven 文件 ID `9307181`；可选客户端录音后端，不打入发布 JAR，服务端不要求安装 | [gradle.properties](gradle.properties)、[build.gradle](build.gradle) |
 | FTB Quests | `26.1.2.8`；可选集成 | [gradle.properties](gradle.properties) 的 `ftb_quests_version` |
@@ -43,10 +44,12 @@
 
 | 修改主题 / 查询内容 | 文档 |
 | --- | --- |
+| 自由聊天 AI 表情、system:emotion 同步数据包语义注册表与自动提示词目录、客户端资源贴图 / 事件 / 超时、Arwes 表情 HUD、Saturn 编辑器、/emotion 本地状态与服务端覆盖、neutral → 紫黑缺图回退 | [自由聊天表情](docs/emotions.md)、[状态机](src/main/java/com/iafenvoy/system/screen/emotion/EmotionStateMachine.java)、[HUD](src/main/java/com/iafenvoy/system/screen/AssistantEmotionHud.java) |
 | 安装、绑定 / 撤销 / 重置、指令、界面、任务、商城、抽奖、隐私 | [使用与配置](docs/usage.md) |
 | 类型化 Credential、多字段鉴权、自动环境变量、正式类型注册表；用途仅选择账号，CredentialManager 构造实际服务；编辑副本与立即保存，两端隔离 | [API 管理](docs/api-management.md)、[ApiConfig](src/main/java/com/iafenvoy/system/config/file/ApiConfig.java)、[服务构造入口](src/main/java/com/iafenvoy/system/registry/SystemServices.java)、[凭据类型](src/main/java/com/iafenvoy/system/registry/SystemCredentialTypes.java) |
 | DeepSeek TTS / ASR、流式 PCM、完整 WAV 上传、自动语种、可选语音服务与按时长计费 | [DeepSeek 语音](docs/deepseek-speech.md)、[协议实现](src/main/java/com/iafenvoy/system/speech/deepseek) |
 | Agent 执行流程、AgentAction 与 MapCodec 分派、Module / Tool 契约、类型化输入输出、玩家模块 DataStorage 扩展 | [Agent 运行结构与扩展](docs/agent-runtime.md) |
+| 标准 Chat Completions tools/tool_calls、ReAct 函数别名与 answer 收尾、非循环 JSON 决策、额度计费及常驻异常日志 | [模型接口](docs/model-api.md)、[通用 ReAct](docs/agent-react.md)、[协议 DTO](src/main/java/com/iafenvoy/system/agent/model/ChatCompletion.java) |
 | 助手 Brigadier 命令、ClientModuleCaches（绑定/命令缓存直接持有数据与维护逻辑）、原生命令补全、标签同步与两端命令构建顺序 | [Agent 入口](docs/agent-runtime.md#给-module-声明入口)、[客户端模块贡献](docs/feature-modules.md)、[缓存时序](docs/registries.md#仍保留的运行时登记表) |
 | 包组织、依赖、配置、持久化、MC 桥接、实现边界 | [开发与架构](docs/development.md) |
 | 存档自管文件统一 system/players、chat、database，FileAccess.NBT_COMPRESSED GZIP 压缩读写、AtomicFiles 原子替换；旧目录不迁移；SavedData 仍在 data/system；旧卡片缓存丢弃、业务账本严格读取 | [持久化与恢复](docs/development.md#持久化与恢复)、[AtomicFiles](src/main/java/com/iafenvoy/system/util/AtomicFiles.java) |

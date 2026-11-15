@@ -11,6 +11,7 @@ export function sampleContext(template = "quest_list") {
     progress: 65,
     answer:
       "## 获取基础资源\n先收集 **木材**，再制作工作台。\n\n- 木板可以合成木棍\n- 使用石镐获取铁矿\n\n> 完成准备后即可继续探索。",
+    emotion: "system:happy",
     query: "如何获取铁锭",
     item_id: "minecraft:iron_ingot",
     player_id: "00000000-0000-0000-0000-000000000001",
@@ -111,6 +112,10 @@ export function sampleContext(template = "quest_list") {
     prize_count: p.prize_list.length,
     preview_count: p.prize_list.length,
     payment_available: true,
+    payment_unavailable: false,
+    has_purchase_limit: template === "shop_offer",
+    limit_reached: false,
+    purchase_limit: "每日限购 3 次 · 剩余 2 次",
     priced: true,
   });
   p.items = 1;

@@ -1,0 +1,77 @@
+@import "assistant-theme.css";
+
+/* Fixed Arwes frame: no opacity layers, filters, motion or layout measurements during speech. */
+html, body.emotion_hud {
+    display: block;
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    overflow: hidden;
+}
+html::before, html::after, body.emotion_hud::before, body.emotion_hud::after {
+    display: none !important;
+    content: none !important;
+}
+html, body.emotion_hud, body.emotion_hud * {
+    box-sizing: border-box;
+    pointer-events: none !important;
+    user-select: none;
+}
+#emotion_hud {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    width: 224px;
+    height: 224px;
+}
+#emotion_face {
+    position: absolute;
+    top: 28px;
+    left: 28px;
+    width: 168px;
+    height: 168px;
+    padding: 7px;
+    border: 2px solid var(--assistant-accent);
+    background-color: var(--assistant-window);
+    background-image: none;
+}
+#emotion_face::before {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    right: 3px;
+    bottom: 3px;
+    border: 1px solid var(--assistant-accent-hover);
+}
+.emotion_image {
+    width: 150px;
+    height: 150px;
+    flex: none;
+}
+.emotion_corner {
+    position: absolute;
+    width: 42px;
+    height: 42px;
+    background-color: transparent;
+}
+/* Separate solid bars avoid depending on per-side border composition in AUI. */
+.emotion_horizontal, .emotion_vertical {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: var(--assistant-accent);
+}
+.emotion_horizontal { width: 42px; height: 5px; }
+.emotion_vertical { width: 5px; height: 42px; }
+.emotion_top_left { top: 0; left: 0; }
+.emotion_top_right { top: 0; right: 0; }
+.emotion_bottom_left { bottom: 0; left: 0; }
+.emotion_bottom_right { bottom: 0; right: 0; }
+.emotion_top_right .emotion_vertical, .emotion_bottom_right .emotion_vertical { left: auto; right: 0; }
+.emotion_bottom_left .emotion_horizontal, .emotion_bottom_right .emotion_horizontal { top: auto; bottom: 0; }

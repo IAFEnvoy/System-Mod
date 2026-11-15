@@ -1,6 +1,6 @@
 # 通用 ReAct 循环
 
-`agent.react.ReActLoop` 统一执行模型决策 → 一个工具 → 观察结果 → 下一次决策，最终生成答案。它由普通多步分析、联网搜索和自由模式的功能调用共用；精确指令、本地语义直达、任务查看、签到等现有确定性工作流仍直接执行，不额外调用循环。
+`agent.react.ReActLoop` 统一执行模型决策 → 一个工具 → 观察结果 → 下一次决策，最终生成答案。它由普通多步分析、联网搜索和自由对话（包括扩展模式兜底）的功能调用共用；精确指令、本地语义直达、任务查看、签到等现有确定性工作流仍直接执行，不额外调用循环。
 
 ## 入口和默认预算
 
@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | `system:reasoning` | 3 | 4 | 8 | 14 | 60 秒 | 12 秒 |
 | `system:question` 的联网回退 | 6 | 6 | 9 | 20 | 90 秒 | 20 秒 |
-| `system:free_chat` 的自由模式 | 6 | 6 | 16 | 32 | 90 秒 | 30 秒 |
+| `system:free_chat`（自由模式 / 扩展兜底） | 6 | 6 | 16 | 32 | 90 秒 | 30 秒 |
 
 一轮是一趟模型决策尝试，最终回答、无效输出和重复动作都算一轮。最后一轮强制 `finalOnly`，不允许继续执行工具。因此 3 轮通常最多执行两个工具，再整理答案。路由使用的模型调用计入工作流总模型预算，但不算循环轮数；自然语言搜索经过一次模型路由后，最多还剩 5 次模型调用，即使循环上限是 6。查库、数据库内部的 FTB 查询、复核和联网步骤共用工具 / 步数预算。
 
@@ -44,28 +44,43 @@
 - `ReActContext<O>`：独立的问题、提示词快照、工具目录、类型化观察、重复动作集合和轮数。它不挂在玩家存档、全局单例或其他玩家上下文中。
 - `ReActTool<I,O>`：一次工具动作，提供参数 SchemaMapCodec、说明、去重键和观察投影。返回值仍通过 Codec 编码；普通分析的 `ToolObservation` 按本次工具清单构建 dispatch，保留原始类型化参数和结果，不手动拼接业务 JSON。
 
+### 工具协议和定义一起注入
+
+ReActContext 将本次权限过滤后的工具清单转换为 Chat Completions 的原生 `tools`，共享提示词 `system:tool_call` 与业务提示词共同放入 system 消息。工具定义不再作为提示词中的 JSON 目录重复发送，user JSON 只保留问题、类型化观察和剩余预算。自由对话、扩展模式的聊天兜底、普通分析和搜索均走此入口；业务提示词继续负责成本顺序、联网授权和确认约束。
+
+每项函数包含 `name`、`description` 和 `parameters`。参数 Schema 直接来自原 SchemaMapCodec；说明中包含真实能力 ID、用途和 local / workflow / paid 优先级。内部 ID 可能含 `:`、`.`，不符合标准函数名限制，因此按优先级及 ID 的固定顺序分配 `tool_0`、`tool_1` 等本次请求内无冲突的别名，响应只按本次映射还原，不猜测或模糊匹配名称。
+
+每轮发送 `tool_choice=required`、`parallel_tool_calls=false`，读取 `message.tool_calls` 中唯一的函数调用，允许 `content=null`。`function.arguments` 是 JSON 字符串，经过原输入 Codec 和当前世界注册表解析后才能执行。未知名称、非对象参数、多调用或无法通过原参数 Codec 校验的输入均拒绝。不会从 `message.content` 提取 DSML、代码块或伪造工具调用，也不自动重试。
+
+工作流的最终答案同样定义为 `answer` 函数，参数由答案 SchemaMapCodec 提供；它只产生最终回复，不消耗业务工具次数。`finalOnly` 时请求仅提供此函数，从协议白名单上禁止继续操作。工具请求省略 `response_format`，避免把函数调用与正文 JSON 模式混用；普通路由等非循环调用仍走原 JSON 响应路径。工具 Schema 同样计入输入字节和 Token 预算，所有调用继续经过原配置服务代理、ExecutionContext 和 ModelGateway。
+
+调研参考：
+
+- [OpenAI：Function calling](https://developers.openai.com/api/docs/guides/function-calling)：函数定义、参数与返回的 tool_calls，以及代码侧参数校验。
+- [OpenAI：Chat Completions](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)：工具名称限制、tool_choice、parallel_tool_calls、可空正文及结束原因。本实现不启用可选的 strict 模式，也不添加厂商专用工具语法。
+
 普通分析只读取注册表中由 `Tool.forReasoning(description)` 主动声明的只读操作。该声明要求输入具备 SchemaMapCodec，写工具不能声明。当前包括数据库、玩家信息、物品查询 / 来源、FTB 任务查询 / 查找 / 详情；按玩家启用的模块配置选择 handler，未安装 FTB 时不加载 FTB 实现类。未声明的工具不会自动授予。
 
 扩展模组可在自己的只读工具工厂上追加 `.forReasoning("English description")`，由所属模块照常注册。不要给有副作用的 handler 标记 read-only；与现有 AgentModule 一样，Java 扩展本身是可信代码，不是沙箱。
 
-需要自定义循环时，用 `context.tools(TYPE_A, TYPE_B)` 获取该工作流已声明工具的子集，在 `ReActTool` handler 内通过 `tools.call(type, input)` 调用，再构造 `ReActContext` 并运行 `ReActLoop.run`。工作流自行提供最终答案 MapCodec、完成 / 降级函数与业务授权 guard；循环不包含数据库、搜索、商城或 FTB 的具体逻辑。
+需要自定义循环时，用 `context.tools(TYPE_A, TYPE_B)` 获取该工作流已声明工具的子集，在 `ReActTool` handler 内通过 `tools.call(type, input)` 调用，再构造 `ReActContext` 并运行 `ReActLoop.run`。工作流自行提供最终答案 SchemaMapCodec、完成 / 降级函数与业务授权 guard；循环不包含数据库、搜索、商城或 FTB 的具体逻辑。自定义 ModelClient 也须实现带函数定义的 complete 重载；不支持原生工具的实现会明确失败，不静默退回正文模拟。
 
 可恢复原因集合使用 `Set<? extends Failure>`，降级回调接收 Saturn `Failure`；内置原因来自 `AgentFailure`。循环直接使用 `AgentException.failure()`，不再按字符串错误码判断，权限与取消失败仍优先终止。
 
 ## 搜索迁移与降级
 
-`WebResearch` 只保留 Search / Fetch 参数、摘要裁剪、已观察 URL 限制、引用复核和卡片构建。旧的 SearchStep 分派和私有 while 循环已删除，SearchObservation 保留为搜索证据。调用格式统一为：
+`WebResearch` 只保留 Search / Fetch 参数、摘要裁剪、已观察 URL 限制、引用复核和卡片构建。旧的 SearchStep 分派和私有 while 循环已删除，SearchObservation 保留为搜索证据。例如某轮将 `web.search` 映射为 `tool_0`，标准响应中的调用为：
 
 ```json
-{"type":"web.search","input":{"query":"短检索词"}}
+{"id":"call_1","type":"function","function":{"name":"tool_0","arguments":"{\"query\":\"短检索词\"}"}}
 ```
 
-抓取使用 `web.fetch`，最终回答使用 `{"type":"answer","text":"回答","sources":[1]}`。最后一轮也接受只含答案字段的对象。搜索仍固定先查库，本地有结果不会转网；仅在本地为空、本次明确允许联网、搜索模块可用且外部服务开启时创建搜索工具上下文。普通分析的工具目录不包含 Search / Fetch，不会因为启用搜索模块而自动联网。
+抓取通过 `web.fetch` 对应的函数别名，最终调用 `answer`，其参数为 `{"text":"回答","sources":[1]}`。最后一轮仍通过 `answer` 收尾。搜索仍固定先查库，本地有结果不会转网；仅在本地为空、本次明确允许联网、搜索模块可用且外部服务开启时创建搜索工具上下文。普通分析的工具目录不包含 Search / Fetch，不会因为启用搜索模块而自动联网。
 
 重复动作不重新执行工具，转入最终整理。已有证据时，可恢复模型或搜索错误最多转入一次剩余额度内的整理；授权和取消错误直接终止。轮数、模型、Token、工具或时间预算不会为补偿自动增加，也不自动重试收费请求。搜索保留已获取来源；普通分析整理失败时保留已获得的卡片结果并提示分析未完成，不把工具 JSON 当成玩家回答。
 
-提示词在 `data/system/system/prompt/react.txt` 和 `web_search.txt`，通过既有 txt reload listener 和 `/reload` 重载。每次模型请求仍为 `system` 与 `user` JSON，观察结果显式放入输入；不使用供应商原生 tool_calls，不保存模型的私有推理文本。
+业务提示词在 `data/system/system/prompt/react.txt`、`web_search.txt` 和 `free_chat.txt`；共享调用规则在 `tool_call.txt`，无占位符，真实定义通过请求的 `tools` 字段传递。均通过既有 txt reload listener 和 `/reload` 重载。每轮仍为独立的 `system` 与 `user` 消息，观察结果显式放入输入，不续接上一轮 assistant/tool 消息，也不保存模型的私有推理文本；原生调用负责本轮决策，既有循环负责执行与反馈。
 
 本次校验为编译、资源和静态检查；未启动游戏，也未请求真实模型或搜索 API。
 
-自由模式从现有工作流目录绑定工具，同一 ExecutionContext 内嵌套执行，计数共享、子策略收紧、写步骤前缀隔离；保留原确认动作及真实结果卡。扩展模式的聊天兜底只回答一次，不运行工具循环。详见 [四种模式](free-chat.md)。
+自由模式与扩展模式的聊天兜底共用工具循环，从现有工作流目录和已公开的只读工具装配能力，同一 ExecutionContext 内嵌套执行，计数共享、子策略收紧、写步骤前缀隔离；保留原确认动作及真实结果卡。扩展模式先前的路由调用仍计入总预算。详见 [四种模式](free-chat.md)。

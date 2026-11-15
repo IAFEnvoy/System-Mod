@@ -9,15 +9,20 @@ import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
+import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.catalog.ShopOfferEntry;
 import com.iafenvoy.system.data.input.ShopQueryInput;
 import com.iafenvoy.system.data.output.ItemPreviewOutput;
 import com.iafenvoy.system.data.output.ShopCatalogOutput;
+import com.iafenvoy.system.data.output.ShopPurchaseLimitOutput;
 import net.minecraft.core.Holder;
+import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Keeps shop browsing and quoting separate: the shelf lists offers without pricing them, and one cell click
@@ -25,11 +30,13 @@ import java.util.Locale;
  */
 public final class ShopModule extends AbstractAgentModule<ShopQueryInput> {
     private final CommerceCatalogs catalogs;
+    private final CommerceTransactions transactions;
     private static final int MAX_OFFERS = 128;
 
-    public ShopModule(CommerceCatalogs catalogs) {
+    public ShopModule(CommerceCatalogs catalogs, CommerceTransactions transactions) {
         super(ShopQueryInput.CODEC, "Browse the system shop and prices.", List.of(), true, false, ExecutionPolicy.quick(1, 0));
         this.catalogs = catalogs;
+        this.transactions = transactions;
     }
 
     @Override
@@ -51,9 +58,11 @@ public final class ShopModule extends AbstractAgentModule<ShopQueryInput> {
                 || holder.value().label().getString().toLowerCase(Locale.ROOT).contains(query)
                 || holder.value().items().stream().anyMatch(item -> item.item().getRegisteredName().contains(query))).toList();
         // Prices are evaluated only for the offer the player actually opens.
-        List<ShopCatalogOutput.Offer> offers = matches.stream().limit(MAX_OFFERS)
+        List<Holder<ShopOfferEntry>> visible = matches.stream().limit(MAX_OFFERS).toList();
+        Map<Identifier, ShopPurchaseLimitOutput> limits = this.transactions.shopLimits(context, visible);
+        List<ShopCatalogOutput.Offer> offers = visible.stream()
                 .map(holder -> new ShopCatalogOutput.Offer(HolderHelper.id(holder).toString(), holder.value().label(),
-                        holder.value().items().stream().map(ItemPreviewOutput::of).toList())).toList();
+                        holder.value().items().stream().map(ItemPreviewOutput::of).toList(), Optional.ofNullable(limits.get(HolderHelper.id(holder))))).toList();
         return AgentResult.data("system.result.shop",
                 new ShopCatalogOutput(catalog.revision(), query, offers, matches.size() > MAX_OFFERS));
     }

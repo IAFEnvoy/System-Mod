@@ -1,33 +1,41 @@
 package com.iafenvoy.system.screen.gui;
 
-import com.github.rjeschke.txtmark.Configuration;
-import com.github.rjeschke.txtmark.DefaultDecorator;
-import com.github.rjeschke.txtmark.Processor;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.screen.card.CardRenderer;
 import com.sighs.apricityui.init.Element;
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.commonmark.Extension;
+import org.commonmark.ext.gfm.strikethrough.StrikethroughExtension;
+import org.commonmark.ext.gfm.tables.TableCell;
+import org.commonmark.ext.gfm.tables.TablesExtension;
+import org.commonmark.node.*;
+import org.commonmark.parser.IncludeSourceSpans;
+import org.commonmark.parser.Parser;
+import org.commonmark.renderer.html.CoreHtmlNodeRenderer;
+import org.commonmark.renderer.html.HtmlNodeRendererContext;
+import org.commonmark.renderer.html.HtmlRenderer;
+import org.commonmark.renderer.html.HtmlWriter;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-import java.util.regex.Matcher;
+import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * Txtmark owns Markdown structure; AUI parses its generated HTML and vanilla handles explicit Markdown links.
+ * CommonMark owns Markdown structure; AUI parses generated HTML and vanilla handles explicit Markdown links.
  */
 @SuppressWarnings("deprecation")
 public final class AssistantMarkdown {
-    private static final Pattern FENCE = Pattern.compile("^ {0,3}(`{3,}|~{3,})(.*)$");
-    private static final Pattern SOURCE_TAG = Pattern.compile("<(?:/?[A-Za-z][\\w:-]*(?=[\\s/>])|[!?])(?:\"[^\"]*\"|'[^']*'|[^'\">])*>");
+    private static final List<Extension> EXTENSIONS = List.of(TablesExtension.create(), StrikethroughExtension.create());
+    private static final Parser PARSER = Parser.builder().extensions(EXTENSIONS)
+            .includeSourceSpans(IncludeSourceSpans.BLOCKS_AND_INLINES).build();
     private static final Pattern NAMED_ENTITY = Pattern.compile("&[A-Za-z][A-Za-z0-9]*;");
-    private static final Pattern BLOCK_TAG = Pattern.compile("<(p|h[1-6]|pre|blockquote|ul|ol|li|strong|em|sup|code)\\b[^>]*>");
-    private static final Pattern IMAGE = Pattern.compile("<span class=\"markdown_image\" src=\"[^\"]*\" alt=\"([^\"]*)\"(?: title=\"[^\"]*\")?></span>");
-    private static final Pattern LINE_END = Pattern.compile("</(?:p|h[1-6]|pre|blockquote|li)>|<br\\s*/?>|<div class=\"markdown_hr\"></div>");
+    private static final Pattern LINE_END = Pattern.compile("</(?:p|h[1-6]|pre|blockquote|li|tr|table)>|<br\\s*/?>|<div class=\"markdown_hr\"></div>");
+    private static final Pattern CELL_END = Pattern.compile("</(?:th|td)>");
     private static final Pattern TAG = Pattern.compile("<[^>]*>");
 
     private AssistantMarkdown() {
@@ -58,7 +66,7 @@ public final class AssistantMarkdown {
 
     public static String text(String source) {
         try {
-            String lines = LINE_END.matcher(html(source)).replaceAll("\n");
+            String lines = LINE_END.matcher(CELL_END.matcher(html(source)).replaceAll("\t")).replaceAll("\n");
             // Decode once, after removing only renderer-generated tags; literal HTML remains visible text.
             return StringEscapeUtils.unescapeHtml4(TAG.matcher(lines).replaceAll("").replace("&apos;", "&#39;")).strip();
         } catch (RuntimeException error) {
@@ -68,60 +76,23 @@ public final class AssistantMarkdown {
     }
 
     private static String html(String source) {
-        String marker = "\uE000";
-        while (source.contains(marker)) marker += "\uE001";
-        String prefix = marker;
-        List<String> literals = new ArrayList<>();
-        // Keep source tags literal, including their quotes, before Txtmark's smart punctuation runs.
-        String markdown = SOURCE_TAG.matcher(normalizeAdjacentFences(source)).replaceAll(match -> {
-            String token = prefix + literals.size() + "\uE002";
-            literals.add(match.group().replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"));
-            return Matcher.quoteReplacement(token);
-        });
-        // Defer '<' escaping so panic mode cannot double-escape code or literal '&lt;'.
-        String lessThan = prefix + "lt\uE002";
-        markdown = markdown.replace("<", lessThan);
-        Configuration configuration = Configuration.builder().forceExtentedProfile().enableSafeMode().enablePanicMode()
-                .setDecorator(new CardDecorator()).build();
-        String html = Processor.process(markdown, configuration);
-        // These patterns see only Txtmark-generated tags. Discard extended-profile heading/list IDs as well.
-        html = BLOCK_TAG.matcher(html).replaceAll("<$1 class=\"markdown_$1\">");
-        html = IMAGE.matcher(html).replaceAll(match -> Matcher.quoteReplacement("<span>" + match.group(1) + "</span>"));
+        String html = HtmlRenderer.builder().escapeHtml(true)
+                .nodeRendererFactory(context -> new CardHtmlRenderer(context, source))
+                .attributeProviderFactory(_ -> (node, tag, attributes) -> {
+                    String classes = "markdown_" + tag;
+                    if (node instanceof TableCell cell && cell.getAlignment() != null)
+                        classes += " markdown_align_" + cell.getAlignment().name().toLowerCase(Locale.ROOT);
+                    attributes.remove("align");
+                    attributes.put("class", classes);
+                }).extensions(EXTENSIONS).build().render(PARSER.parse(source));
         // AUI accepts numeric references but only a small subset of HTML named entities; decode exactly once.
-        html = NAMED_ENTITY.matcher(html).replaceAll(match -> {
+        return NAMED_ENTITY.matcher(html).replaceAll(match -> {
             String decoded = StringEscapeUtils.unescapeHtml4(match.group().replace("&apos;", "&#39;"));
             if (decoded.equals(match.group())) return match.group();
             StringBuilder numeric = new StringBuilder();
             decoded.codePoints().forEach(point -> numeric.append("&#").append(point).append(';'));
             return numeric.toString();
         });
-        html = Pattern.compile(Pattern.quote(prefix) + "(\\d+)\uE002").matcher(html)
-                .replaceAll(match -> Matcher.quoteReplacement(literals.get(Integer.parseInt(match.group(1)))));
-        return html.replace(lessThan, "&lt;");
-    }
-
-    private static String normalizeAdjacentFences(String source) {
-        List<String> lines = new ArrayList<>();
-        String fence = "";
-        boolean afterFence = false;
-        for (String line : source.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1)) {
-            Matcher match = FENCE.matcher(line);
-            if (match.matches()) {
-                if (fence.isEmpty()) {
-                    // Txtmark otherwise keeps the second opener as code when consecutive blocks have a blank gap.
-                    if (afterFence) while (!lines.isEmpty() && lines.getLast().isBlank()) lines.removeLast();
-                    fence = match.group(1);
-                    afterFence = false;
-                } else if (match.group(1).charAt(0) == fence.charAt(0) && match.group(1).length() >= fence.length() && match.group(2).isBlank()) {
-                    fence = "";
-                    afterFence = true;
-                    lines.add(line);
-                    continue;
-                }
-            } else if (!line.isBlank()) afterFence = false;
-            lines.add(line);
-        }
-        return String.join("\n", lines);
     }
 
     private static String url(String href) {
@@ -136,76 +107,78 @@ public final class AssistantMarkdown {
         }
     }
 
-    /** Per-conversion list counters; generated links and images stay inert while AUI initializes their nodes. */
-    private static final class CardDecorator extends DefaultDecorator {
+    /** Per-conversion list counters; links stay inert until AUI has initialized their nodes. */
+    private static final class CardHtmlRenderer extends CoreHtmlNodeRenderer {
+        private final HtmlWriter html;
+        private final String source;
         private final Deque<Integer> lists = new ArrayDeque<>();
-        private final Deque<Item> items = new ArrayDeque<>();
 
-        private record Item(int start, String marker) {
+        private CardHtmlRenderer(HtmlNodeRendererContext context, String source) {
+            super(context);
+            this.html = context.getWriter();
+            this.source = source;
         }
 
         @Override
-        public void openOrderedList(StringBuilder out) {
-            this.lists.push(1);
-            super.openOrderedList(out);
-        }
-
-        @Override
-        public void closeOrderedList(StringBuilder out) {
+        public void visit(OrderedList list) {
+            this.lists.push(list.getMarkerStartNumber() == null ? 1 : list.getMarkerStartNumber());
+            super.visit(list);
             this.lists.pop();
-            super.closeOrderedList(out);
         }
 
         @Override
-        public void openUnorderedList(StringBuilder out) {
-            this.lists.push(0);
-            super.openUnorderedList(out);
-        }
-
-        @Override
-        public void closeUnorderedList(StringBuilder out) {
+        public void visit(BulletList list) {
+            this.lists.push(-1);
+            super.visit(list);
             this.lists.pop();
-            super.closeUnorderedList(out);
         }
 
         @Override
-        public void openListItem(StringBuilder out) {
+        public void visit(ListItem item) {
             int number = this.lists.pop();
-            this.lists.push(number == 0 ? 0 : number + 1);
-            this.items.push(new Item(out.length(), number == 0 ? "• " : number + ". "));
-            super.openListItem(out);
+            this.lists.push(number < 0 ? -1 : number + 1);
+            this.html.tag("li", Map.of("class", "markdown_li"));
+            this.html.tag("span", Map.of("class", "markdown_marker"));
+            this.html.text(number < 0 ? "• " : number + ". ");
+            this.html.tag("/span");
+            this.visitChildren(item);
+            this.html.tag("/li");
+            this.html.line();
         }
 
         @Override
-        public void closeListItem(StringBuilder out) {
-            Item item = this.items.pop();
-            out.insert(out.indexOf(">", item.start()) + 1, "<span class=\"markdown_marker\">" + item.marker() + "</span>");
-            super.closeListItem(out);
+        public void visit(ThematicBreak line) {
+            this.html.raw("<div class=\"markdown_hr\"></div>");
         }
 
         @Override
-        public void horizontalRuler(StringBuilder out) {
-            out.append("<div class=\"markdown_hr\"></div>");
+        public void visit(Link link) {
+            // Autolinks remain literal; raw HTML is escaped by the core renderer.
+            if (!link.getSourceSpans().isEmpty()) {
+                SourceSpan span = link.getSourceSpans().getFirst();
+                if (this.source.charAt(span.getInputIndex()) == '<') {
+                    this.html.text(this.source.substring(span.getInputIndex(), span.getInputIndex() + span.getLength()));
+                    return;
+                }
+            }
+            this.html.tag("span", Map.of("class", "markdown_a", "href", link.getDestination()));
+            this.visitChildren(link);
+            this.html.tag("/span");
         }
 
         @Override
-        public void openLink(StringBuilder out) {
-            out.append("<span class=\"markdown_a\"");
-        }
+        public void visit(Image image) {
+            image.accept(new AbstractVisitor() {
+                @Override
+                public void visit(Text text) {
+                    CardHtmlRenderer.this.html.text(text.getLiteral());
+                }
 
-        @Override
-        public void closeLink(StringBuilder out) {
-            out.append("</span>");
-        }
-
-        @Override
-        public void openImage(StringBuilder out) {
-            out.append("<span class=\"markdown_image\"");
-        }
-
-        @Override
-        public void closeImage(StringBuilder out) {
-            out.append("></span>");
+                @Override
+                public void visit(Code code) {
+                    CardHtmlRenderer.this.html.text(code.getLiteral());
+                }
+            });
         }
     }
 }

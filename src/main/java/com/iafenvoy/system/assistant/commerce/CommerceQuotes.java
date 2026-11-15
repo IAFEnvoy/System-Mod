@@ -7,6 +7,7 @@ import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.catalog.ShopOfferEntry;
+import com.iafenvoy.system.data.catalog.ShopPurchaseLimit;
 import com.iafenvoy.system.data.store.CommerceOrder;
 import com.iafenvoy.system.data.store.PurchaseType;
 import com.iafenvoy.system.data.store.Reward;
@@ -29,20 +30,20 @@ public final class CommerceQuotes {
     public synchronized Quote create(UUID player, CommerceCatalog catalog, Holder<ShopOfferEntry> offer, CommerceCosts.Prepared payment) {
         Identifier id = HolderHelper.id(offer);
         ShopOfferEntry entry = offer.value();
-        return this.create(player, catalog, PurchaseType.SHOP, id, entry.label(), payment, List.of(new LotteryPool.Entry(new PersistHolder<>(id, new Reward(entry.label(), entry.items())), 1)));
+        return this.create(player, catalog, PurchaseType.SHOP, id, entry.label(), payment, List.of(new LotteryPool.Entry(new PersistHolder<>(id, new Reward(entry.label(), entry.items())), 1)), entry.purchaseLimit());
     }
 
     public synchronized Quote createPool(UUID player, CommerceCatalog catalog, Holder<LotteryPool> pool, CommerceCosts.Prepared payment) {
         return this.create(player, catalog, PurchaseType.LOTTERY, HolderHelper.id(pool), pool.value().label(), payment,
-                pool.value().entries());
+                pool.value().entries(), Optional.empty());
     }
 
-    private Quote create(UUID player, CommerceCatalog catalog, PurchaseType type, Identifier source, Component label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries) {
+    private Quote create(UUID player, CommerceCatalog catalog, PurchaseType type, Identifier source, Component label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries, Optional<ShopPurchaseLimit> purchaseLimit) {
         long now = System.currentTimeMillis();
         this.quotes.values().removeIf(quote -> quote.expires() < now);
         if (this.quotes.size() >= 4096 || this.quotes.values().stream().filter(quote -> quote.player().equals(player)).count() >= 32)
             throw new AgentException(AgentFailure.BUSY);
-        Quote quote = new Quote(UUID.randomUUID().toString(), player, catalog.revision(), type, source, label, payment, entries, now + 120000);
+        Quote quote = new Quote(UUID.randomUUID().toString(), player, catalog.revision(), type, source, label, payment, entries, purchaseLimit, now + 120000);
         this.quotes.put(quote.id(), quote);
         return quote;
     }
@@ -61,7 +62,7 @@ public final class CommerceQuotes {
 
     public record Quote(String id, UUID player, String revision, PurchaseType type, Identifier source,
                         Component label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries,
-                        long expires) {
+                        Optional<ShopPurchaseLimit> purchaseLimit, long expires) {
         public Quote {
             entries = List.copyOf(entries);
         }

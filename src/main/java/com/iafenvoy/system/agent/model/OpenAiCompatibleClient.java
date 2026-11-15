@@ -75,8 +75,13 @@ public final class OpenAiCompatibleClient implements ModelClient {
 
     @Override
     public Reply complete(List<Message> messages, int maxOutputTokens, Duration timeout, Consumer<Usage> observer) throws Exception {
+        return this.complete(messages, List.of(), maxOutputTokens, timeout, observer);
+    }
+
+    @Override
+    public Reply complete(List<Message> messages, List<Function> functions, int maxOutputTokens, Duration timeout, Consumer<Usage> observer) throws Exception {
         this.checkConfigured();
-        ChatCompletion.Request request = ChatCompletion.Request.of(this.config, messages, maxOutputTokens);
+        ChatCompletion.Request request = ChatCompletion.Request.of(this.config, messages, functions, maxOutputTokens);
         URI endpoint = this.config.chatCompletionsEndpoint();
         Map<String, String> headers = this.key.isBlank() ? Map.of() : Map.of("Authorization", "Bearer " + this.key);
         String body = CodecIO.write(ChatCompletion.Request.CODEC, request);
@@ -97,13 +102,32 @@ public final class OpenAiCompatibleClient implements ModelClient {
         }
         // Billing survives invalid content, finish_reason and error responses.
         observer.accept(usage);
-        if (response.statusCode() != 200) throw new AgentException(AgentFailure.MODEL_UNAVAILABLE);
+        if (response.statusCode() != 200) {
+            String detail = this.key.isBlank() ? json : json.replace(this.key, "<redacted>");
+            throw new AgentException(AgentFailure.MODEL_UNAVAILABLE,
+                    new IOException("Model endpoint returned HTTP " + response.statusCode() + " for " + this.config.model() + ": " + detail));
+        }
         try {
             ChatCompletion.Response result = CodecIO.parse(ChatCompletion.Response.CODEC, json);
+            if (result.choices().isEmpty()) throw new IllegalStateException("Model response contains no choices");
             ChatCompletion.Choice choice = result.choices().getFirst();
-            if (!"stop".equals(choice.finishReason()) || choice.message().content().length() > 16384)
-                throw new AgentException(AgentFailure.MODEL_INVALID);
-            return new Reply(choice.message().content(), (int) usage.totalTokens());
+            String expectedFinish = functions.isEmpty() ? "stop" : "tool_calls";
+            if (!expectedFinish.equals(choice.finishReason()))
+                throw new IllegalStateException("Model response finish_reason=" + choice.finishReason()
+                        + ", expected=" + expectedFinish + ", model=" + this.config.model() + ", maxOutputTokens=" + maxOutputTokens
+                        + ", message=" + choice.message());
+            ChatCompletion.Content message = choice.message();
+            String content = message.content().orElse("");
+            List<ToolCall> calls = message.toolCalls().stream().map(call -> {
+                if (!"function".equals(call.type()) || call.id().isBlank() || call.function().name().isBlank())
+                    throw new IllegalStateException("Invalid function call " + call);
+                return new ToolCall(call.id(), call.function().name(), call.function().arguments());
+            }).toList();
+            if (functions.isEmpty() ? message.content().isEmpty() || !calls.isEmpty() : calls.size() != 1)
+                throw new IllegalStateException("Expected " + (functions.isEmpty() ? "text content" : "exactly one function call") + ": " + message);
+            if (content.length() + calls.stream().mapToLong(call -> call.arguments().length()).sum() > 16384)
+                throw new IllegalStateException("Model response exceeds 16384 characters");
+            return new Reply(content, calls, (int) usage.totalTokens());
         } catch (RuntimeException invalidContent) {
             throw new AgentException(AgentFailure.MODEL_INVALID, invalidContent);
         }

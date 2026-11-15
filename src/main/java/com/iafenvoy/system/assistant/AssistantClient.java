@@ -22,6 +22,7 @@ import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.iafenvoy.system.screen.AssistantCardDisplay;
 import com.iafenvoy.system.screen.AssistantMessages;
+import com.iafenvoy.system.screen.emotion.EmotionHudState;
 import com.iafenvoy.system.screen.gui.AssistantInputScreen;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantSimpleScreen;
@@ -163,6 +164,7 @@ public final class AssistantClient {
             screen.stopRecognition();
         }
         List<CardUpdate> updates = result.cards().stream().filter(card -> ClientCards.apply(card, false)).toList();
+        updates.forEach(EmotionHudState::receive);
         AgentResult accepted = result.withPresentation(result.messageKey(), result.text(), updates, result.silent());
         state = state.receive(requestId, accepted, notification, select);
         revision++;

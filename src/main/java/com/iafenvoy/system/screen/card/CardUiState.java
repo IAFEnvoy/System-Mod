@@ -1,5 +1,8 @@
 package com.iafenvoy.system.screen.card;
 
+import com.iafenvoy.system.screen.emotion.EmotionStateMachine;
+import net.minecraft.resources.Identifier;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,6 +14,15 @@ public final class CardUiState {
     private final Map<String, String> selections = new HashMap<>();
     private final Map<String, Boolean> expanded = new HashMap<>();
     private final Map<String, Progress> progress = new HashMap<>();
+    private final Map<EmotionKey, EmotionStateMachine> emotions = new HashMap<>();
+
+    private record EmotionKey(String node, Identifier profile, String initial) {
+    }
+
+    public EmotionStateMachine emotion(String node, Identifier profile, String initial) {
+        return this.emotions.computeIfAbsent(new EmotionKey(node, profile, initial),
+                key -> new EmotionStateMachine(key.profile(), key.initial()));
+    }
 
     public Progress progress(String key, double value) {
         Progress progress = this.progress.computeIfAbsent(key, ignored -> new Progress());

@@ -44,6 +44,9 @@ public final class ClientNetworkHandler {
     }).register(StateResponse.class, (_, response) -> {
         AssistantClient.synchronizedState(response.requestId(), response.state());
         return null;
+    }).register(CommandSuggestionsResponse.class, (_, response) -> {
+        ClientModuleCaches.COMMAND.receive(response);
+        return null;
     }).register(HistoryResponse.class, (_, response) -> {
         AssistantClient.history(response.requestId(), response.history());
         return null;

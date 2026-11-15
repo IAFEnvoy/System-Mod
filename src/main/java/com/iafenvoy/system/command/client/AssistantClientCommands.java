@@ -6,27 +6,15 @@ import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.AssistantCommandInput;
 import com.iafenvoy.system.command.AssistantCommandSource;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
-import com.iafenvoy.system.util.CommandTrees;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.ParseResults;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 
 /**
- * Both assistant execution and game command registration consume the compiled client command cache.
+ * Assistant input consumes the private command cache; no module nodes enter the game command tree.
  */
-@EventBusSubscriber(Dist.CLIENT)
 public final class AssistantClientCommands {
     private AssistantClientCommands() {
-    }
-
-    @SubscribeEvent
-    public static void register(RegisterClientCommandsEvent event) {
-        // Initial client tag application precedes login and command packet merging in Minecraft 26.1.2.
-        event.getDispatcher().getRoot().addChild(CommandTrees.copy(ClientModuleCaches.COMMAND.get().gameRoot()));
     }
 
     public static boolean execute(String text) {

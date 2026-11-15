@@ -51,13 +51,18 @@ public final class ConfiguredModelClient implements ModelClient {
 
     @Override
     public Reply complete(List<Message> messages, int maxOutputTokens, Duration timeout, Consumer<Usage> usage) throws Exception {
+        return this.complete(messages, List.of(), maxOutputTokens, timeout, usage);
+    }
+
+    @Override
+    public Reply complete(List<Message> messages, List<Function> functions, int maxOutputTokens, Duration timeout, Consumer<Usage> usage) throws Exception {
         ModelClient client = selected();
         try (client) {
             synchronized (this) {
                 if (this.closed) throw new IllegalStateException("Model client is closed");
                 this.active.add(client);
             }
-            return client.complete(messages, maxOutputTokens, timeout, usage);
+            return client.complete(messages, functions, maxOutputTokens, timeout, usage);
         } finally {
             synchronized (this) {
                 this.active.remove(client);

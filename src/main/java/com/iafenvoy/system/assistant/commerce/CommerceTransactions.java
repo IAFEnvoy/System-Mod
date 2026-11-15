@@ -8,12 +8,14 @@ import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.MinecraftTools;
+import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.catalog.ShopOfferEntry;
 import com.iafenvoy.system.data.input.CommercePreviewInput;
 import com.iafenvoy.system.data.output.CommercePreviewOutput;
 import com.iafenvoy.system.data.output.PurchaseReceiptOutput;
+import com.iafenvoy.system.data.output.ShopPurchaseLimitOutput;
 import com.iafenvoy.system.data.store.Delivery;
 import com.iafenvoy.system.data.store.Purchase;
 import com.iafenvoy.system.data.store.PurchaseType;
@@ -28,6 +30,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStackTemplate;
 
+import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -91,7 +94,26 @@ public final class CommerceTransactions {
         return this.active.contains(player + ":" + order);
     }
 
+    public Map<Identifier, ShopPurchaseLimitOutput> shopLimits(ExecutionContext context, List<Holder<ShopOfferEntry>> offers) {
+        if (offers.stream().noneMatch(offer -> offer.value().purchaseLimit().isPresent())) return Map.of();
+        ZoneId zone = ZoneId.of(AgentConfig.INSTANCE.get().timeZone());
+        return context.store().read(context.player(), data -> {
+            CommerceDataStorage commerce = ModuleData.get(data, this.storage(PurchaseType.SHOP));
+            long now = System.currentTimeMillis();
+            Map<Identifier, ShopPurchaseLimitOutput> limits = new HashMap<>();
+            for (Holder<ShopOfferEntry> offer : offers) {
+                Identifier id = HolderHelper.id(offer);
+                offer.value().purchaseLimit().ifPresent(limit -> limits.put(id, new ShopPurchaseLimitOutput(limit,
+                        commerce.purchaseCount(PurchaseType.SHOP, id, limit.period().start(now, zone)))));
+            }
+            return Map.copyOf(limits);
+        });
+    }
+
     public CompletionStage<List<CommercePreviewOutput>> preview(ExecutionContext context, CommercePreviewInput input) {
+        // Read the journal on the calling worker; the game thread only evaluates payment conditions.
+        Map<Identifier, ShopPurchaseLimitOutput> limits = this.shopLimits(context, this.catalogs.available(context.player()).offers().stream()
+                .filter(offer -> input.offers().contains(HolderHelper.id(offer))).toList());
         return this.game.onPlayer(context, player -> {
             CommerceCatalog catalog = this.catalogs.available(context.player());
             if (!catalog.revision().equals(input.revision())) throw new AgentException(AgentFailure.STALE_QUOTE);
@@ -100,9 +122,11 @@ public final class CommerceTransactions {
                 Holder<ShopOfferEntry> offer = catalog.offers().stream().filter(value -> HolderHelper.id(value).equals(id)).findFirst()
                         .orElseThrow(() -> new AgentException(AgentFailure.STALE_QUOTE));
                 CommerceCosts.Prepared payment = CommerceCosts.prepare(offer.value().costs(), player, PurchaseType.SHOP, id);
-                Optional<String> reference = input.quote() && payment.isSuccess()
+                Optional<ShopPurchaseLimitOutput> limit = Optional.ofNullable(limits.get(id));
+                boolean available = payment.isSuccess() && limit.map(ShopPurchaseLimitOutput::available).orElse(true);
+                Optional<String> reference = input.quote() && available
                         ? Optional.of(this.quotes.create(context.player(), catalog, offer, payment).id()) : Optional.empty();
-                previews.add(new CommercePreviewOutput(id, payment.getData(), payment.isSuccess(), reference));
+                previews.add(new CommercePreviewOutput(id, payment.getData(), available, reference, limit));
             }
             for (Identifier id : input.lotteries()) {
                 Holder<LotteryPool> pool = catalog.lotteries().stream().filter(value -> HolderHelper.id(value).equals(id)).findFirst()
@@ -110,7 +134,7 @@ public final class CommerceTransactions {
                 CommerceCosts.Prepared payment = CommerceCosts.prepare(pool.value().costs(), player, PurchaseType.LOTTERY, id);
                 Optional<String> reference = input.quote() && payment.isSuccess()
                         ? Optional.of(this.quotes.createPool(context.player(), catalog, pool, payment).id()) : Optional.empty();
-                previews.add(new CommercePreviewOutput(id, payment.getData(), payment.isSuccess(), reference));
+                previews.add(new CommercePreviewOutput(id, payment.getData(), payment.isSuccess(), reference, Optional.empty()));
             }
             return List.copyOf(previews);
         });
@@ -137,13 +161,20 @@ public final class CommerceTransactions {
             context.store().update(context.player(), data -> {
                 CommerceDataStorage commerce = ModuleData.get(data, storage);
                 if (commerce.getPurchase(id) != null) throw new AgentException(AgentFailure.EFFECT_UNKNOWN);
+                long now = System.currentTimeMillis();
+                // Check and reserve under the same player transaction, so concurrent quotes cannot exceed the limit.
+                quote.purchaseLimit().ifPresent(limit -> {
+                    long since = limit.period().start(now, ZoneId.of(AgentConfig.INSTANCE.get().timeZone()));
+                    if (commerce.purchaseCount(type, quote.source(), since) >= limit.count())
+                        throw new AgentException(AgentFailure.PURCHASE_LIMIT_REACHED);
+                });
                 commerce.assertPurchaseCount();
                 InboxDataStorage inbox = ModuleData.get(data, InboxSystemModule.STORAGE);
                 inbox.assertDeliveryCount();
                 Purchase purchase = new Purchase();
                 purchase.id = id;
                 purchase.order = quote.select();
-                purchase.created = System.currentTimeMillis();
+                purchase.created = now;
                 commerce.putPurchase(id, purchase);
                 // Reserve the reward before payment; delivery becomes available only after payment is recorded.
                 Delivery held = new Delivery(type.entitlement(id), purchase.order.reward());

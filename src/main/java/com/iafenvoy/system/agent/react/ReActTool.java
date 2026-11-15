@@ -1,14 +1,10 @@
 package com.iafenvoy.system.agent.react;
 
-import com.google.gson.JsonElement;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
+import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.tool.ToolPriority;
 import com.iafenvoy.system.util.CodecIO;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.util.ExtraCodecs;
 
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -39,17 +35,9 @@ public record ReActTool<I, O>(String id, String description, SchemaMapCodec<I> i
         return new ReActTool<>(this.id, this.description, this.inputCodec, this.repetitionKey, this.handler, priority);
     }
 
-    public Description describe() {
-        return new Description(this.description, this.inputCodec.schema(), this.priority);
-    }
-
-    public record Description(String description, JsonElement input, ToolPriority priority) {
-        public static final Codec<Description> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.STRING.fieldOf("description").forGetter(Description::description),
-                ExtraCodecs.JSON.fieldOf("input").forGetter(Description::input),
-                ToolPriority.CODEC.fieldOf("priority").forGetter(Description::priority)
-        ).apply(i, Description::new));
-        public static final Codec<Map<String, Description>> CATALOGUE = Codec.unboundedMap(Codec.STRING, CODEC);
+    public ModelClient.Function function(String name) {
+        return new ModelClient.Function(name, "Capability: " + this.id + ". Priority: " + this.priority.getSerializedName()
+                + ". " + this.description, this.inputCodec.schema());
     }
 
     @FunctionalInterface

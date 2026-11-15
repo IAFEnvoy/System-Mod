@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,9 +28,11 @@ const languages = await Promise.all(
     await jsonSource(join(assets, "system/lang", `${language}.json`)),
   ]),
 );
-const css = await readFile(
-  join(assets, "apricityui/apricity/system/assistant.css"),
-  "utf8",
+const styles = await Promise.all(
+  ["assistant-theme.css", "assistant.css"].map(async (name) => [
+    name,
+    await readFile(join(assets, "apricityui/apricity/system", name), "utf8"),
+  ]),
 );
 
 for (const [folder, files] of [
@@ -51,7 +53,19 @@ for (const [folder, files] of [
     }
   }
 }
-await writeFile(join(destination, "assistant.css"), css, "utf8");
+for (const [name, css] of styles) {
+  await writeFile(join(destination, name), css, "utf8");
+}
+await cp(join(assets, "system/emotion"), join(destination, "emotion"), { recursive: true });
+await cp(resolve(assets, "../data/system/system/emotion"), join(destination, "emotion-definition"), { recursive: true });
+const textureSource = join(assets, "system/textures/emotion");
+const textureTarget = join(destination, "textures/emotion");
+const textureNames = new Set((await readdir(textureSource, { recursive: true })).filter(name => name.endsWith(".png")));
+await cp(textureSource, textureTarget, { recursive: true });
+// Remove obsolete PNG snapshots as well, so deleted animation duplicates do not stay in the editor bundle.
+for (const name of await readdir(textureTarget, { recursive: true })) {
+  if (name.endsWith(".png") && !textureNames.has(name)) await unlink(join(textureTarget, name));
+}
 await writeFile(
   join(destination, "snapshot.json"),
   JSON.stringify(
@@ -62,5 +76,5 @@ await writeFile(
   "utf8",
 );
 console.log(
-  `Synced ${cards.length} card templates, both languages and assistant.css.`,
+  `Synced ${cards.length} card templates, both languages, assistant.css and emotion assets.`,
 );

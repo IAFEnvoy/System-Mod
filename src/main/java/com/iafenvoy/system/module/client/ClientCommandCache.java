@@ -1,18 +1,24 @@
 package com.iafenvoy.system.module.client;
 
+import com.iafenvoy.system.agent.request.CommandSuggestionsRequest;
+import com.iafenvoy.system.agent.response.CommandSuggestionsResponse;
+import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.AssistantCommandSource;
+import com.iafenvoy.system.data.CommandSuggestion;
+import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
 import com.iafenvoy.system.util.CommandTrees;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.tree.LiteralCommandNode;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
@@ -21,16 +27,17 @@ import java.util.function.Predicate;
 public final class ClientCommandCache {
     private final List<ArgumentBuilder<AssistantCommandSource, ?>> nodes = new ArrayList<>();
     private final List<ArgumentBuilder<AssistantCommandSource, ?>> suggestions = new ArrayList<>();
-    private LiteralArgumentBuilder<CommandSourceStack> gameBuilder;
     private CommandDispatcher<AssistantCommandSource> dispatcher;
     private CommandDispatcher<AssistantCommandSource> completion;
-    private LiteralCommandNode<CommandSourceStack> gameRoot;
+    private Pending pending;
     private boolean building;
     private long revision;
 
+    private record Pending(String id, String input, CompletableFuture<List<CommandSuggestion>> result) {
+    }
+
     void begin() {
         this.clear();
-        this.gameBuilder = Commands.literal("system");
         this.building = true;
     }
 
@@ -38,10 +45,9 @@ public final class ClientCommandCache {
         this.building = false;
         this.nodes.clear();
         this.suggestions.clear();
-        this.gameBuilder = null;
         this.dispatcher = null;
         this.completion = null;
-        this.gameRoot = null;
+        this.cancelSuggestions();
         this.revision++;
     }
 
@@ -54,10 +60,8 @@ public final class ClientCommandCache {
             this.completion.getRoot().addChild(CommandTrees.copy(node.build()));
         }
         this.suggestions.forEach(node -> this.completion.getRoot().addChild(CommandTrees.copy(node.build())));
-        this.gameRoot = this.gameBuilder.build();
         this.nodes.clear();
         this.suggestions.clear();
-        this.gameBuilder = null;
         this.building = false;
     }
 
@@ -86,11 +90,6 @@ public final class ClientCommandCache {
         this.nodes.add(node.requires(source -> available.getAsBoolean() && requirement.test(source)));
     }
 
-    void game(Consumer<LiteralArgumentBuilder<CommandSourceStack>> registration) {
-        this.requireBuilding();
-        registration.accept(this.gameBuilder);
-    }
-
     void suggest(BooleanSupplier available, ArgumentBuilder<AssistantCommandSource, ?> node) {
         this.requireBuilding();
         Predicate<AssistantCommandSource> requirement = node.getRequirement();
@@ -110,8 +109,29 @@ public final class ClientCommandCache {
         return CommandTrees.available(this.completion, source);
     }
 
-    public LiteralCommandNode<CommandSourceStack> gameRoot() {
-        return this.gameRoot;
+    public CompletableFuture<List<CommandSuggestion>> remoteSuggestions(String input) {
+        this.cancelSuggestions();
+        ClientPacketListener connection = Minecraft.getInstance().getConnection();
+        if (connection == null || input.length() > 2000 || AssistantClient.state().commands().isEmpty())
+            return CompletableFuture.completedFuture(List.of());
+        CompletableFuture<List<CommandSuggestion>> result = new CompletableFuture<>();
+        this.pending = new Pending(UUID.randomUUID().toString(), input, result);
+        connection.send(new AssistantRequestC2SPayload(this.pending.id(), new CommandSuggestionsRequest(input)));
+        return result.completeOnTimeout(List.of(), 3, TimeUnit.SECONDS);
+    }
+
+    public void receive(CommandSuggestionsResponse response) {
+        Pending pending = this.pending;
+        if (pending == null || !pending.id().equals(response.requestId()) || !pending.input().equals(response.input())) return;
+        this.pending = null;
+        pending.result().complete(response.suggestions());
+    }
+
+    private void cancelSuggestions() {
+        Pending pending = this.pending;
+        this.pending = null;
+        // Binding rebuilds must not synchronously re-enter UI completion callbacks.
+        if (pending != null) pending.result().cancel(false);
     }
 
     public long revision() {

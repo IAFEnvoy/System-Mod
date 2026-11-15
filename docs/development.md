@@ -14,6 +14,7 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 | Gradle / ModDev | 9.2.1 / 2.0.148 |
 | Minecraft / NeoForge | 26.1.2 / 26.1.2.114 |
 | ApricityUI | 1.2.9；客户端最低版本 1.2.9 |
+| CommonMark Java | 0.32.0；core、GFM tables、GFM strikethrough 三个 JAR 随模组 Jar-in-Jar 分发，用于客户端 Markdown |
 | Jupiter | CurseMaven 8569832 |
 | Saturn | 1.3.1 / CurseMaven 9606807；客户端和服务端均必装，提供 CostTarget.display、Cost、模块 DataStorage、Codec 工具、压缩 NBT 文件、玩家信息视图及 HUD 编辑器 |
 | Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
@@ -105,7 +106,7 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 
 `ConfigReloader` 在资源重载时调用 `reloadAll()`，客户端/服务端 tick 与关闭事件调用 `saveAll()`，只保存有标记的配置。检查标记、保存及加载使用同一实例锁；保存失败恢复标记以便重试，重载前先保存已提交的改动。所有生效配置从对应 `config.file.XxxConfig.INSTANCE.get()` 直接读取；引擎、路由、模型客户端和成就桥接不缓存配置对象，构造函数也不传递全局配置，删除 `settings()` 转发链。
 
-助手输入框的设置指令为 `/settings`，执行与补全共享各 `ClientModule` 贡献的本地指令表；游戏聊天栏通过客户端 `RegisterClientCommandsEvent` 注册 `/system settings`，复用同一设置入口，不发送服务端命令或模型请求，并与服务端 `/system` 的其他子命令合并补全。聊天命令打开设置后返回游戏，助手内打开则保留原页面与草稿。设置控件在 input/change/开关操作时提交本页配置，本地配置先 `INSTANCE.set(next)` 标记修改，再立即 `save()`；服务端偏好沿用请求及确认流程。TTS / ASR 允许先保存不完整凭据，完整参数在试听、合成或开始识别时校验；非法音量保留原值并提示错误，其他设置仍保存。语音页没有 JSON 导入、重新加载或手动保存按钮。TTS 队列只存文本和会话，启动播报时读取配置；模型与语音请求发出后保留该次调用的报文、供应商和计量信息，不因配置变化改写在途请求。模型连接地址、鉴权和请求体在配置实例锁内一起读取，网络请求在锁外执行。路由阈值、缓存容量和新条目 TTL 按当前配置读取；已生成的词法索引和模型并发信号量仍在启动时构建，修改索引例句、索引语言或并发容量后需重启。
+助手输入框的设置指令为 `/settings`，执行与补全共享各 `ClientModule` 贡献的本地指令表，仅在系统界面输入，不注册原版游戏命令。打开设置保留原页面与草稿，不发送服务端命令或模型请求。设置控件在 input/change/开关操作时提交本页配置，本地配置先 `INSTANCE.set(next)` 标记修改，再立即 `save()`；服务端偏好沿用请求及确认流程。TTS / ASR 允许先保存不完整凭据，完整参数在试听、合成或开始识别时校验；非法音量保留原值并提示错误，其他设置仍保存。语音页没有 JSON 导入、重新加载或手动保存按钮。TTS 队列只存文本和会话，启动播报时读取配置；模型与语音请求发出后保留该次调用的报文、供应商和计量信息，不因配置变化改写在途请求。模型连接地址、鉴权和请求体在配置实例锁内一起读取，网络请求在锁外执行。路由阈值、缓存容量和新条目 TTL 按当前配置读取；已生成的词法索引和模型并发信号量仍在启动时构建，修改索引例句、索引语言或并发容量后需重启。
 
 `ConfigInstance.getConfigFolder()` 提供所有配置共用的根目录，配置实例和 TTS 缓存分别在其下拼接文件名及固定 `tts-cache` 子目录，不再维护额外的 `SystemConfig` 路径工具。
 
@@ -140,7 +141,7 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 
 每个 Tool 只负责一个行为，`ToolRegistry.Type<I, O>` 保存稳定 ID、参数 `MapCodec<I>` 和结果 `Codec<O>`，`Tool<I, O>` 保存写入、幂等、事件权限和单一 Handler。模块直接调用 `context.tool(type, stepId, typedInput)` 获得类型化结果；一个流程需要多个行为时使用模块的 `List.of(toolA, toolB)` 组合。同一模块配置内共享工具实例；不同配置可有同类型工具的不同处理器，调用时按配置 owner 选择。相同 ID 不同工具类型键仍被拒绝。
 
-功能类型通过 DeferredRegister<MapCodec<? extends ServerModule>> 注册到 SystemResourceKeys.SERVER_MODULE，codec() 返回登记的 MapCodec；数据包在 system_module 注册表创建可配置实例。ModuleContext 每配置独立，保留当前 id() 与配置内工具缓存；AgentEngine 和模块注册表是构造器固定字段，通过 engine() / modules() 读取。其他服务共用按 ContextType<T> 索引的 Map，AssistantServer 逐项 put，模块 get 直接取得类型化对象。新增服务无需修改 ModuleContext；键按身份匹配，使用同一个公开常量。ModuleContextEvent 在游戏总线发布，位于内置服务注入之后、任何模块装配之前，供扩展同步添加服务。客户端在独立入口调用 SystemClientModules.register(id, instance)，数据包 client 引用该 ID。不同配置提供同一动作时，ModuleRegistry 和 ToolRegistry 按玩家启用的 owner 选择实现、保留当前流程的 owner 校验；命令、模型和语义契约仍按动作类型声明一次。SharedModule 提供服务端指令，CoreModule 表示必需基础设施。只有工作流的扩展仍可通过 AssistantRegistrationEvent 添加；详细契约见[功能模块化](feature-modules.md)。
+功能类型通过 DeferredRegister<MapCodec<? extends ServerModule>> 注册到 SystemResourceKeys.SERVER_MODULE，codec() 返回登记的 MapCodec；数据包在 system_module 注册表创建可配置实例。ModuleContext 每配置独立，保留当前 id() 与配置内工具缓存；AgentEngine 和模块注册表是构造器固定字段，通过 engine() / modules() 读取。其他服务共用按 ContextType<T> 索引的 Map，AssistantServer 逐项 put，模块 get 直接取得类型化对象。新增服务无需修改 ModuleContext；键按身份匹配，使用同一个公开常量。ModuleContextEvent 在游戏总线发布，位于内置服务注入之后、任何模块装配之前，供扩展同步添加服务。客户端在独立入口调用 SystemClientModules.register(id, instance)，数据包 client 引用该 ID。不同配置提供同一动作时，ModuleRegistry 和 ToolRegistry 按玩家启用的 owner 选择实现、保留当前流程的 owner 校验；命令、模型和语义契约仍按动作类型声明一次。SharedModule 仅提供公共平台 / 管理指令，CoreModule 表示必需基础设施。只有工作流的扩展仍可通过 AssistantRegistrationEvent 添加；详细契约见[功能模块化](feature-modules.md)。
 
 `AgentAction.CODEC` 通过正式 `SystemRegistries.ACTION_TYPE` 的 `byNameCodec().dispatch(...)` 按 `moduleId` 选择实例返回的 MapCodec；参数平铺为 `{"moduleId":"system:item_query","query":"stone"}`。`ModuleRegistry.call` 根据 Codec 注册 ID 定位当前服务器已安装模块并核对实例身份。指令、语义提取和按钮解码共用 `AgentAction.validate` 校验 Java 创建的动作；模型只接受当前可用目录中的动作。未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `AgentAction`，没有额外的 type/value 包装。
 
@@ -159,7 +160,7 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 - `HybridRouter` 只编排结构化调用 → 指令注册表 → 本地语义/缓存 → 一次模型回退。每个模块通过 `ModuleRouting<I>` 提供自己的指令、例句、参数提取和可选只读快捷入口。
 - `ExecutionContext` 是执行权限、预算、模型与工具调用的共同入口。Module 组合流程，Tool 每次只执行一个行为。
 
-`engine.start()` 校验模块策略和事件引用，随后冻结模块、工具、指令和语义注册信息。扩展必须在 `AssistantRegistrationEvent` 中完成注册；当前不支持运行中增删模块。管理员生命周期指令与客户端界面操作各留在对应端，Agent 能力通过统一注册表调用。游戏聊天的 `/system <instruction>` 是通用转发入口，补全实时读取 Agent 注册表；助手输入框通过状态快照获得同一组指令，不需要为扩展修改客户端指令表。详细扩展示例见 [Agent 运行结构](agent-runtime.md)。
+`engine.start()` 校验模块策略和事件引用，随后冻结模块、工具、指令和语义注册信息。扩展必须在 `AssistantRegistrationEvent` 中完成注册；当前不支持运行中增删模块。管理员生命周期指令与客户端界面操作各留在对应端，Agent 能力通过统一注册表调用。模块命令只在系统输入框中解析，原版 `/system` 不转发任意文本，也不装配 Agent 节点。助手输入框通过状态快照取得候选，参数补全由专用 command_suggestions 请求读取私有 Agent 指令树，不需要为扩展修改客户端指令表。详细扩展示例见 [Agent 运行结构](agent-runtime.md)。
 
 ### 内置输入与输出
 

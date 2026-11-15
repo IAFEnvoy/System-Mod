@@ -12,5 +12,8 @@
       "currency": "system:coin",
       "amount": 64
     }
-  ]
+  ],
+  "purchase_limit": {
+    "count": 1
+  }
 }

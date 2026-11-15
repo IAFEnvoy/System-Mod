@@ -31,7 +31,12 @@
     {
       "type": "system:text",
       "translate": "system.ui.lottery_unavailable",
-      "unless": "payment_available"
+      "when": "payment_unavailable"
+    },
+    {
+      "type": "system:text",
+      "text": "{{purchase_limit}}",
+      "when": "has_purchase_limit"
     },
     {
       "type": "system:text",

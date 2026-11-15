@@ -8,7 +8,7 @@
 | --- | --- |
 | 离线 `offline` | 明确指令 → 本地意图缓存 / 稀疏向量匹配 → 选项卡；不调用模型或服务端联网搜索 |
 | 标准 `standard`（默认） | 明确指令 → 本地匹配 → 一次 AI 辅助路由 → 工作流或选项卡；AI 可服务于签到、知识整理等必要模块，不直接自由聊天 |
-| 扩展 `extended` | 明确指令 → 较高阈值的本地匹配 → AI 辅助路由；模型无法选出能力时才进入一次自由回答 |
+| 扩展 `extended` | 明确指令 → 较高阈值的本地匹配 → AI 辅助路由；模型无法选出能力时进入与自由模式共用的 ReAct 对话，可调用已授权工具 |
 | 自由 `free` | 文字直接进入有界 ReAct 对话，由 AI 选择已启用的能力、观察结果并回答；跳过客户端指令、本地匹配及单独的 AI 路由步骤 |
 
 `ConversationStrategy` 定义执行策略接口；`ConversationMode` 的四个枚举项各自实现 `route`，只安排共用 `Routes.local / assisted / chat` 步骤的顺序。`HybridRouter` 实现步骤，继续负责指令、候选、模型路由和本地选项。新增策略时不需要在路由器堆积模式分支。网络和存档使用枚举 Codec；新增内置模式时同步菜单、语言和权限语义。
@@ -60,15 +60,15 @@
 
 设置页只读展示当前玩家的管理员许可、模式上限及每日模型上限。客户端只能修改 history、mode 两项个人偏好，无法写入管理员配置或查看其他玩家的权限。
 
-## 自由模式的功能调用和预算
+## 自由对话的功能调用和预算
 
-核心工作流 `system:free_chat` 仍为 structuredOnly，普通模型意图路由不能自行选择它。扩展模式的兜底只生成一次回答。自由模式复用 `ReActLoop`：默认最多 6 轮、6 次模型、16 次底层工具、32 步、6 次写步骤、90 秒总期限，单次模型最多 30 秒。最后一轮只能回答；`system-agent.json` 的 `policies["system:free_chat"]` 可统一修改上限。
+核心工作流 `system:free_chat` 仍为 structuredOnly，普通模型意图路由不能自行选择它。自由模式与扩展模式的聊天兜底共用 `ReActLoop`、工作流目录、只读工具和请求级 ToolProvider。默认最多 6 轮、6 次模型、16 次底层工具、32 步、6 次写步骤、90 秒总期限，单次模型最多 30 秒。最后一轮只能回答；`system-agent.json` 的 `policies["system:free_chat"]` 可统一修改上限。扩展模式前面的 AI 路由调用与耗时仍计入同一次执行的总预算，不为进入聊天兜底重置计数或期限。
 
 `ChatActions` 合并两类能力：ModuleRegistry 中当前玩家可用、允许模型选择的工作流，以及 ToolRegistry 中已公开的只读 Tool 和 `ToolProvider` 为本次请求追加的只读 Tool。工作流支持已启用模块的参数化实例；底层 Tool 保留真实输入 / 结果 Codec，通过独立 ToolContext 执行。玩家、物品、物品来源、任务列表 / 查找 / 详情、说明书、数据库和礼包预览可以直接读取，不必先套一轮业务工作流。数据库仍包含经过 FTB 原生可见性检查的说明书。
 
 目录按 `ToolPriority.LOCAL` → `WORKFLOW` → `PAID` 排序，同级按 ID 排序；每项描述包含 `priority`，提示模型优先选择相关的本地读取，再考虑普通工作流，最后考虑额外付费能力。问答（可能联网或额外调用模型）、组合分析和 AI 签到标记为 PAID；Search / Fetch 也标为 PAID。此优先级指在当前对话推理之外的额外成本，不表示自由聊天本身免费，也不要求遍历所有不相关的本地工具。可用证据足够时直接回答，不通过工具与工作流重复读取同一份信息。
 
-显式入口标记继续提示模型谨慎使用；structuredOnly 的最终确认动作不进入目录。底层写工具不接受 ToolProvider 追加，购买、抽奖、任务提交和礼包领取仍按原有授权 / 确认流程处理。只读域按已启用模块、精确的 Type 实例及 SchemaMapCodec 筛选；调用前后及最终回答前再次检查已使用工具的模块权限，不能借扩展入口访问已关闭功能。扩展模式仍只作一次聊天兜底，不获得这些工具。
+显式入口标记继续提示模型谨慎使用；structuredOnly 的最终确认动作不进入目录。底层写工具不接受 ToolProvider 追加，购买、抽奖、任务提交和礼包领取仍按原有授权 / 确认流程处理。只读域按已启用模块、精确的 Type 实例及 SchemaMapCodec 筛选；调用前后及最终回答前再次检查已使用工具的模块权限，不能借扩展入口访问已关闭功能。两种自由对话入口均复核当前自由聊天许可；降级到标准 / 离线或撤销权限时停止循环。
 
 嵌套工作流在同一个 Agent worker 和 ExecutionContext 内执行，不重新排队或获取自己的玩家执行锁。其 owner、来源、授权集合、策略和步骤前缀暂时隔离，结束后恢复；模型、工具、写入和总步骤共用计数，子策略只缩小余量及期限。每次调用分配独立写步骤前缀，避免多个工作流使用相同步骤名碰撞。循环保留真实结果卡及其按钮，失败 / 达到上限时也展示已获得的结果，不宣称失败操作已经成功。
 
@@ -80,6 +80,8 @@
 
 ## 系统人格
 
+聊天回复支持 AI 选择的表情状态，在正文旁和可移动的 Arwes HUD 中显示头像；说话帧复用原图和左上 / 右下 offset，只跟随本条消息的实际播音。AI 目录由同步的 `system:emotion` 数据包注册表生成，客户端资源包独立定义完整 ID 到贴图的映射；无表情时清除独立 HUD，历史卡片仍按资源包默认状态显示。`/emotion set system:happy` 可本地测试，`/emotion clear` 清除并隐藏；下一条服务端状态会覆盖本地设置。定义格式、默认素材与其他模组的控制接口见[自由聊天表情](emotions.md)。
+
 系统定义可通过 `"personality_prompt": "example:personality/sign_in"` 引用 `data/example/system/prompt/personality/sign_in.txt`。字段为可选 Identifier，省略时只使用基础提示词。默认系统附带 `system:personality/default`，采用克制的系统文口吻，中文称呼宿主、英文称呼 Host。
 
 AssistantServer 从本次玩家存档中的当前绑定 ID 查服务端系统定义，再用 ExecutionContext 的提示词快照渲染该 TXT；Agent 层只接收 PromptProvider 返回的文本，不查询 Minecraft 注册表。ChatSupport 先生成基础指令，再追加人格，两种聊天入口共用该流程；自由模式的 ReAct 在开始时捕获整份提示词，后续轮次不重复读取。人格与基础提示词属于同一条 system 消息，不增加模型调用次数，仍计入输入与 Token 预算。权限、工具白名单和结构化输出保持原来的代码约束。
@@ -88,7 +90,7 @@ AssistantServer 从本次玩家存档中的当前绑定 ID 查服务端系统定
 
 ## 扩展入口
 
-`engine.chat().prompts(PromptProvider)` 可替换基础提示词提供者；默认文件 `data/system/system/prompt/free_chat.txt` 由 txt reload listener 加载，包含直接回答、工具优先级和 ReAct 协议。替换基础提供者后仍会附加系统人格；`engine.chat().personality(PromptProvider)` 可单独替换这项贡献，其默认游戏桥接由 AssistantServer 安装。
+`engine.chat().prompts(PromptProvider)` 可替换基础提示词提供者；默认文件 `data/system/system/prompt/free_chat.txt` 由 txt reload listener 加载，包含回答要求和工具优先级。替换基础提供者后仍会附加系统人格；`engine.chat().personality(PromptProvider)` 可单独替换这项贡献，其默认游戏桥接由 AssistantServer 安装。ReActContext 统一追加 `system:tool_call` 的共享调用规则到同一条 system 消息；真实参数 Schema 放入标准 `tools` 字段，通过 `tool_calls` 接收决策，普通分析及搜索也复用此协议。最终文本及表情通过 `answer` 函数返回；详见[工具协议与定义](agent-react.md#工具协议和定义一起注入)。
 
 底层 Tool 先按原有方式注册到 ToolRegistry，可用 `.forReasoning("说明")` 将带 SchemaMapCodec 的只读操作公开给分析和自由模式；PAID 操作不会进入只允许本地读取的分析目录。`.withPriority(ToolPriority.PAID)` 标记额外付费，执行时仍需通过外部服务门禁，处理器负责自身业务授权。没有公开说明的工具，可通过以下接口按请求追加；未注册、已禁用、写操作和不含 schema 的类型会被过滤，不会因回调返回而取得权限：
 
@@ -96,6 +98,6 @@ AssistantServer 从本次玩家存档中的当前绑定 ID 查服务端系统定
 engine.chat().tools(context -> List.of(MY_READ_TOOL));
 ```
 
-回调只在完整自由模式构建工具域时执行，不影响扩展模式。它返回已注册的 `ToolRegistry.Type` 原实例；同 ID 不同实例不能冒充原工具。与工作流 ID 冲突时保留原工作流。工作流通过 `routing().priority(ToolPriority.PAID)` 声明成本等级；需要改变游戏状态或生成确认卡的功能仍使用工作流。
+回调在自由模式或扩展模式的聊天兜底构建工具域时执行；扩展模式成功路由时不执行。它返回已注册的 `ToolRegistry.Type` 原实例；同 ID 不同实例不能冒充原工具。与工作流 ID 冲突时保留原工作流。工作流通过 `routing().priority(ToolPriority.PAID)` 声明成本等级；需要改变游戏状态或生成确认卡的功能仍使用工作流。
 
 本次只做编译和静态核对，未启动 Minecraft 或请求真实模型。菜单布局、鼠标 / 键盘操作及实际模型选工具仍需游戏内验收。

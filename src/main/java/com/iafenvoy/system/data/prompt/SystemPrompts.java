@@ -1,6 +1,7 @@
 package com.iafenvoy.system.data.prompt;
 
 import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -17,12 +18,19 @@ public final class SystemPrompts {
     public static final String WEB_SEARCH = "system:web_search";
     public static final String KNOWLEDGE_ANSWER = "system:knowledge_answer";
     public static final String REACT = "system:react";
+    public static final String TOOL_CALL = "system:tool_call";
     public static final String FREE_CHAT = "system:free_chat";
     private final Map<String, PromptTemplate> templates;
+    private final Map<String, String> variables;
     private final String revision = UUID.randomUUID().toString();
 
     private SystemPrompts(Map<String, PromptTemplate> templates) {
+        this(templates, Map.of());
+    }
+
+    private SystemPrompts(Map<String, PromptTemplate> templates, Map<String, String> variables) {
         this.templates = Map.copyOf(templates);
+        this.variables = Map.copyOf(variables);
     }
 
     public static SystemPrompts empty() {
@@ -46,7 +54,8 @@ public final class SystemPrompts {
         validate(templates, WEB_SEARCH, Set.of("player_language"), Set.of());
         validate(templates, KNOWLEDGE_ANSWER, Set.of("player_language"), Set.of());
         validate(templates, REACT, Set.of("player_language"), Set.of());
-        validate(templates, FREE_CHAT, Set.of("player_language"), Set.of());
+        validate(templates, TOOL_CALL, Set.of(), Set.of());
+        validate(templates, FREE_CHAT, Set.of("player_language", "emotion_catalog"), Set.of());
         return new SystemPrompts(templates);
     }
 
@@ -62,7 +71,13 @@ public final class SystemPrompts {
     }
 
     public Optional<String> find(String id, Map<String, String> values) {
-        return Optional.ofNullable(this.templates.get(id)).map(template -> template.render(values));
+        Map<String, String> merged = new HashMap<>(this.variables);
+        merged.putAll(values);
+        return Optional.ofNullable(this.templates.get(id)).map(template -> template.render(merged));
+    }
+
+    public SystemPrompts withVariables(Map<String, String> variables) {
+        return new SystemPrompts(this.templates, variables);
     }
 
     public String revision() {

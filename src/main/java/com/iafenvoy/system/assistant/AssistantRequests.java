@@ -10,6 +10,7 @@ import com.iafenvoy.system.agent.response.*;
 import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.data.AiStatus;
 import com.iafenvoy.system.data.ClientState;
+import com.iafenvoy.system.data.CommandSuggestion;
 import com.iafenvoy.system.data.input.StarterGiftsInput;
 import com.iafenvoy.system.data.output.StarterGiftOutput;
 import com.iafenvoy.system.event.CardButtonEvent;
@@ -98,6 +99,12 @@ public final class AssistantRequests {
     }
 
     private void registerRequests() {
+        // Completion is read-only: it neither starts Agent work nor consumes the chat request interval.
+        this.requestHandlers.register(CommandSuggestionsRequest.class, (context, request) ->
+                this.engine.modules().commands().suggest(request.text(), id -> this.engine.available(context.uuid(), id))
+                        .thenApply(suggestions -> new CommandSuggestionsResponse(context.requestId(), request.text(),
+                                suggestions.getList().stream().limit(256).map(suggestion -> new CommandSuggestion(
+                                        suggestion.apply(request.text()), suggestion.getTooltip() == null ? "" : suggestion.getTooltip().getString())).toList())));
         this.registerRequest(ChatRequest.class, (context, chat) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), null, chat.text())));
         this.registerRequest(InvokeRequest.class, (context, invoke) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), invoke.call(), invoke.text())));
         this.registerRequest(CardActionRequest.class, (context, action) -> {

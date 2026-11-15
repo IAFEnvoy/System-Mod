@@ -1,6 +1,7 @@
 # System 文档
 
 - [自由聊天、阈值模式与管理员 AI 权限](free-chat.md)
+- [自由聊天表情、资源包状态机与说话动作](emotions.md)
 
 当前实现已经切换到新的 Agent 架构。旧的数据包定义、绑定与页面流程已移除；旧版说明不再适用。
 
@@ -42,4 +43,4 @@
 | [编译与验收](testing.md) | 本次已执行检查、尚未执行的验收和可选开发依赖 |
 | [原始设计稿](agent-design.md) | 完整目标架构；其中未落地的部分以开发文档中的实现范围为准 |
 
-默认未绑定，管理员先用 `/system grant <系统ID> [玩家]`（例如 `/system grant system:default Steve`）授予，自己绑定可用 `/system grant system:default`，系统 ID 从数据包注册表补全，当前每人最多一个系统；再用 `/system`、`/system simple` 或 `/system full` 打开界面。`/system revoke [玩家]` 撤销并清空该玩家业务记录，累计 AI / TTS / ASR 用量保留，可用 `/system usage` 查看。服务端首次初始化会分别创建执行预算、模型连接、语义路由和成就规则配置；模型连接位于 `config/system/system-model.json`，凭据及用途绑定统一位于 `config/system/system-api.json`。默认使用 DeepSeek，设置环境变量 `SYSTEM_DEEPSEEK_API_KEY` 后启动服务端即可使用模型路由和 AI 签到，也可配置其他 OpenAI 兼容服务。新配置默认启用轻量本地路由，无需额外模型；已有关闭配置保留。高把握只读请求可直接处理。结构化玩家、物品、任务查询不需要模型密钥。
+默认未绑定，管理员先用 `/system grant <系统ID> [玩家]`（例如 `/system grant system:default Steve`）授予，自己绑定可用 `/system grant system:default`，系统 ID 从数据包注册表补全，当前每人最多一个系统；再用 `/system`、`/system simple` 或 `/system full` 打开界面。`/system revoke [玩家]` 撤销并清空该玩家业务记录，累计 AI / TTS / ASR 用量保留，可用 `/usage` 查看。服务端首次初始化会分别创建执行预算、模型连接、语义路由和成就规则配置；模型连接位于 `config/system/system-model.json`，凭据及用途绑定统一位于 `config/system/system-api.json`。默认使用 DeepSeek，设置环境变量 `SYSTEM_DEEPSEEK_API_KEY` 后启动服务端即可使用模型路由和 AI 签到，也可配置其他 OpenAI 兼容服务。新配置默认启用轻量本地路由，无需额外模型；已有关闭配置保留。高把握只读请求可直接处理。结构化玩家、物品、任务查询不需要模型密钥。

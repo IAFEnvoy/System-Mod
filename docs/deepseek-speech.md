@@ -4,7 +4,7 @@ DeepSeek TTS 和 ASR 均使用客户端自己的 DeepSeek API Key，可以与模
 
 ## 配置
 
-1. 打开 `/system settings`，进入“API Key管理”，选择已有 DeepSeek 凭据，或按 **DeepSeek API Key** 类型新建。填写 `api_key`，留空自动识别 `SYSTEM_DEEPSEEK_API_KEY` / `DEEPSEEK_API_KEY`。
+1. 在系统输入框输入 `/settings`，进入“API Key管理”，选择已有 DeepSeek 凭据，或按 **DeepSeek API Key** 类型新建。填写 `api_key`，留空自动识别 `SYSTEM_DEEPSEEK_API_KEY` / `DEEPSEEK_API_KEY`。
 2. 在“语音交互”标签的“语音播报”或“语音识别”分组选择这份凭据，自动匹配服务和供应商，开启对应功能。两者可分别选择，不要求同时切换。
 
 两种服务分别由各自 Manager 接受 `system:deepseek` 类型凭据，无需为凭据启用服务。默认语音绑定继续使用百炼 / NLS，不自动切换供应商。配置结构见[统一 API Key管理](api-management.md)。

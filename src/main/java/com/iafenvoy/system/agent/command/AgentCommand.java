@@ -52,7 +52,7 @@ public record AgentCommand(List<String> names, Function<String, LiteralArgumentB
     }
 
     /**
-     * A registry ID with one optional trailing word, e.g. {@code /system recipe minecraft:diamond loot}.
+     * An assistant-only registry ID with one optional trailing word, e.g. {@code /recipe minecraft:diamond loot}.
      * Omitting the second argument passes an empty string, which callers treat as the default scope.
      */
     public static <I extends AgentAction> AgentCommand identifierWithScope(String argument, String scope, Collection<String> scopes,

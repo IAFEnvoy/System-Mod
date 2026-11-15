@@ -39,10 +39,10 @@
 | `ServerModule` | 提供 `codec()`、依赖可用性、存储、运行时工厂和安装钩子 |
 | `ToolModule` | 导出 `List<Tool>`，仅供 Agent 工作流内部调用，无玩家指令或意图入口 |
 | `WorkflowModule` | 提供 `List<AgentModule<?>>`，包括成就等服务端事件工作流 |
-| `SharedModule extends WorkflowModule` | 额外提供 `serverCommands(root)`；不再继承 ClientModule |
+| `SharedModule extends WorkflowModule` | 额外提供公共平台 / 管理节点 `serverCommands(root)`；业务命令只走 AgentCommand，不继承 ClientModule |
 | `CoreModule extends SharedModule` | 基础设施；已安装的对应配置对绑定玩家始终启用且不可移除 |
 | `CatalogModule<T> extends SharedModule` | 声明目录注册表与可选 ID/tag；签到、商城、抽奖合并玩家目录权限，在线作业使用所选工作流配置 |
-| `ClientModule` | 仅客户端的页面、命令和本地卡片动作 |
+| `ClientModule` | 仅客户端的页面、系统输入框命令和本地卡片动作；不导出游戏指令 |
 
 类型由接口表达，`available()` 仅检查可选依赖。核心、绑定、用量实现 CoreModule，玩家、物品、签到、收件箱、商城、抽奖和任务实现 SharedModule，成就实现 WorkflowModule，搜索实现 ToolModule。聊天、设置、语音以及基础界面操作由客户端本地目录常驻，不依赖进入世界后的注册表同步。
 
@@ -92,9 +92,11 @@ public static void moduleContext(ModuleContextEvent event) {
 
 三类目录的可选项另由 CatalogModule 声明，按玩家启用的同类配置取并集，不仅限于执行工作流时选中的第一份配置。对应注册表为 system:signin_reward、system:shop_offer、system:lottery_pool；字段支持 ID、tag 或混合数组，复用 Saturn keyOrTagList，省略为全表、空数组为空，内置模块显式使用对应 #system:default。`assistant.commerce.CommerceCatalogs.available(player)` 是统一的玩家目录入口，通过 ModuleContext 注入工作流和交易服务，列表、模型候选、状态、报价与扣款共用筛选。CommerceCatalogs 保存当前世界注册表的 `Holder<SystemModule>`，从同一引用取得配置 ID 和 CatalogModule 实现，不再另外维护 ID → 实现的 Map；相同实现的不同配置仍按各自 ID 检查玩家权限。详见[目录选项](datapacks.md#模块目录可选项)。
 
+商店商品可在 `purchase_limit` 中配置累计 / 每日 / 每周 / 每月限购，规则属于商品而非模块实例。额度由 `CommerceDataStorage` 的持久化订单统计，预览只传只读快照，确认时与预留订单在同一玩家事务内再次校验；结果未知的付款继续占额，确定失败释放。详见[商品限购](datapacks.md#商品限购)。
+
 在线作业同样实现 CatalogModule，但目录由所选工作流配置的 jobs 筛选，不进入交易目录的并集。它使用独立的 system:online_job 数据包注册表和共用的玩家作业账本，详见[在线作业](online-jobs.md)。
 
-每个服务端实现类型的游戏指令只装配一次。SystemCommand 只创建 `/system` 根节点、收集 SharedModule.serverCommands，再连接 Agent 通用指令。绑定、用量和核心模块分别负责 grant/revoke/reset、usage 与打开界面/ask/routing/module 管理。补全和模块管理从当前世界的 system_module 注册表读取 ID。
+每个服务端实现类型的公共管理指令只装配一次。SystemCommand 创建 `/system` 根节点并收集 SharedModule.serverCommands，仅用于打开界面及绑定、模块、AI、经济和 FTB 重载等管理操作。模块业务指令由 AgentCommand 声明，运行在私有 CommandRegistry，只接受系统界面发送的请求，不复制到原版指令树，也没有 instruction / ask 转发。客户端页面、本地命令和动作统一通过 ClientModule.register 装配；emotion、settings、usage 等仅在系统输入框执行。私有工作流参数补全通过专门请求返回，权限仍由当前服务端模块状态判断。
 
 ### 纯工具模块
 
@@ -106,7 +108,7 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
 
 ### 物品来源查询
 
-`system:items` 装配三个工作流：`system:item_query`（名称/ID 检索）、`system:item_sources`（单个物品的来源）、`system:item_inspect`（主手实际物品鉴定，见[鉴定说明](item-inspection.md)）。来源查询提供 `/system recipe <物品ID> [范围]`、语义路由、稳定动作 ID 和物品检索卡片的点击操作：每个物品格子携带对应注册 ID，点击直接查看其获取方式，不需要玩家重抄；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`。`ItemSourceOutput` 同时是工具结果与已注册的 CardData，工作流通过 `AgentResult.data` 发送卡片，不再把序列化 JSON 拼进消息正文。以下仅为工具快照的编码示例：
+`system:items` 装配三个工作流：`system:item_query`（名称/ID 检索）、`system:item_sources`（单个物品的来源）、`system:item_inspect`（主手实际物品鉴定，见[鉴定说明](item-inspection.md)）。来源查询提供 `/recipe <物品ID> [范围]`、语义路由、稳定动作 ID 和物品检索卡片的点击操作：每个物品格子携带对应注册 ID，点击直接查看其获取方式，不需要玩家重抄；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`。`ItemSourceOutput` 同时是工具结果与已注册的 CardData，工作流通过 `AgentResult.data` 发送卡片，不再把序列化 JSON 拼进消息正文。以下仅为工具快照的编码示例：
 
 ```json
 {"item":"minecraft:iron_ingot","scope":"loot","sources":[
@@ -116,7 +118,7 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
 
 物品检索卡片复用商城的 `grid`、`offer_cell_content` 和 `CardPagination`：图标与名称居中，注册 ID、堆叠上限放在原版物品 tooltip 的附加信息里，取消重复的文字清单。默认完整模式 6 列、最多 3 行，单页按内容收缩；本地翻页仅创建当前页 DOM。服务端仍分批读取最多 20 个匹配项，未读完时单独显示「更多物品」，继续使用原查询和偏移请求下一批，与本地上 / 下页区分。每项操作先于批次操作加入按钮表，保留原始索引；通知点击以 PUSH 展示来源并可返回，简约模式可按物品名称 / 编号选择；空结果显示本地化提示。
 
-`scope` 缺省为 `all`，即完整查询，跑所有已注册来源；也可以只写某个来源的路径（`recipe`、`loot`、`tag`）或它的完整 ID（`system:recipe`）。范围由 `ItemSourceProviders` 在装配时枚举，新增 Provider 后自动出现在补全里；未注册的范围会被拒绝（`INVALID_INPUT`），不会静默返回空列表。命令行写作 `/system recipe minecraft:diamond loot`，省略第二个词即为完整查询；语义路由只在请求里出现「掉落 / 战利品 / 配方 / 合成 / 标签」这类关键词时收窄到对应范围，其余情况保持完整查询。语义路由优先取请求里的显式注册 ID（`CommandArguments.singleItemId`），没有 ID 时再用 `ItemNameIndex` 在本地显示名表里做最长匹配（「如何获取钻石镐」→ `minecraft:diamond_pickaxe`，更长的名字优先于更短的前缀词）；该表在服务器启动装配 `system:items` 时构建一次，名称取自服务端语言，专用服务端只用服务端资源，中文名可能匹配不到，此时退回模型路由。
+`scope` 缺省为 `all`，即完整查询，跑所有已注册来源；也可以只写某个来源的路径（`recipe`、`loot`、`tag`）或它的完整 ID（`system:recipe`）。范围由 `ItemSourceProviders` 在装配时枚举，新增 Provider 后自动出现在补全里；未注册的范围会被拒绝（`INVALID_INPUT`），不会静默返回空列表。命令行写作 `/recipe minecraft:diamond loot`，省略第二个词即为完整查询；语义路由只在请求里出现「掉落 / 战利品 / 配方 / 合成 / 标签」这类关键词时收窄到对应范围，其余情况保持完整查询。语义路由优先取请求里的显式注册 ID（`CommandArguments.singleItemId`），没有 ID 时再用 `ItemNameIndex` 在本地显示名表里做最长匹配（「如何获取钻石镐」→ `minecraft:diamond_pickaxe`，更长的名字优先于更短的前缀词）；该表在服务器启动装配 `system:items` 时构建一次，名称取自服务端语言，专用服务端只用服务端资源，中文名可能匹配不到，此时退回模型路由。
 
 默认值不会写进 JSON：`type` 缺省为空串，`station`、`inputs`、`notes` 缺省为空数组，`count` 缺省为 1，`scope` 缺省为 `all`，`width` 缺省为 0。槽位的 `items` 使用 ItemStackTemplate.CODEC（可以是 ID 简写，也可以带 components），数量单独保存在 count；候选是可替换项，不是需要一起消耗的材料。`width > 0` 表示有序合成，inputs 保留空格与重复材料，不再按旧的 16 槽上限截断。每槽最多 8 个候选示例，掉落最多检查 4096 张表，标签最多 64 个。汇总结果优先配方、其次掉落与标签，同类按 ID 排序，再截取前 64 条并设置 `truncated`。
 

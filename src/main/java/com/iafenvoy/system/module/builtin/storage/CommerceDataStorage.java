@@ -4,9 +4,11 @@ import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.data.store.Purchase;
+import com.iafenvoy.system.data.store.PurchaseType;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.resources.Identifier;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -53,6 +55,13 @@ public final class CommerceDataStorage extends DataStorage {
 
     public Stream<Purchase> streamPurchases() {
         return this.purchases.values().stream();
+    }
+
+    public int purchaseCount(PurchaseType type, Identifier source, long since) {
+        // Pending and uncertain payments keep their reservation; only a known failure releases it.
+        return (int) this.streamPurchases().filter(purchase -> purchase.order.type() == type
+                && purchase.order.source().equals(source) && purchase.created >= since
+                && !"FAILED".equals(purchase.state)).count();
     }
 
     public void assertPurchaseCount() {

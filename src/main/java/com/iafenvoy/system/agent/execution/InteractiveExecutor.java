@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.execution;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
@@ -105,6 +106,8 @@ final class InteractiveExecutor implements AutoCloseable {
                 if (result.isSuccess()) this.engine.router().remember(context, decision, text);
             }
         } catch (Exception error) {
+            SystemMod.LOGGER.warn("Agent request failed: task={}, workflow={}, source={}, failure={}",
+                    id, moduleId.isBlank() ? "routing" : moduleId, context.routeSource(), AgentException.failure(error).name(), error);
             result = AgentResult.error(AgentException.failure(error));
         }
         AgentResult completed = result;

@@ -24,14 +24,16 @@ import java.util.Optional;
  */
 public record ShopOfferOutput(Identifier id, Component label, List<ItemStackTemplate> items,
                               CommerceCatalog.Price price,
-                              boolean paymentAvailable, String catalogRevision) implements CardData {
+                              boolean paymentAvailable, String catalogRevision,
+                              Optional<ShopPurchaseLimitOutput> purchaseLimit) implements CardData {
     public static final MapCodec<ShopOfferOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Identifier.CODEC.fieldOf("id").forGetter(ShopOfferOutput::id),
             ComponentSerialization.CODEC.fieldOf("label").forGetter(ShopOfferOutput::label),
             Reward.ITEMS_CODEC.fieldOf("items").forGetter(ShopOfferOutput::items),
             CommerceCatalog.Price.CODEC.fieldOf("price").forGetter(ShopOfferOutput::price),
             Codec.BOOL.fieldOf("paymentAvailable").forGetter(ShopOfferOutput::paymentAvailable),
-            Codec.STRING.fieldOf("catalogRevision").forGetter(ShopOfferOutput::catalogRevision)
+            Codec.STRING.fieldOf("catalogRevision").forGetter(ShopOfferOutput::catalogRevision),
+            ShopPurchaseLimitOutput.CODEC.optionalFieldOf("purchaseLimit").forGetter(ShopOfferOutput::purchaseLimit)
     ).apply(i, ShopOfferOutput::new));
 
     public ShopOfferOutput {
@@ -52,8 +54,12 @@ public record ShopOfferOutput(Identifier id, Component label, List<ItemStackTemp
     public CardBuilder buildCard() {
         CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop_offer")).title("system.result.shop_offer").summary(this.label)
                 .put("label", this.label).put("id", this.id.toString()).put("items", new CardText.Items(this.items.stream().map(ItemPreviewOutput::of).toList()))
-                .put("offer_items", this.items.stream().map(ItemPreviewOutput::of).toList()).put("payment_available", this.paymentAvailable).price(this.price);
-        if (this.paymentAvailable)
+                .put("offer_items", this.items.stream().map(ItemPreviewOutput::of).toList()).put("payment_available", this.paymentAvailable).price(this.price)
+                .enable("has_purchase_limit", this.purchaseLimit.isPresent())
+                .enable("limit_reached", this.purchaseLimit.filter(limit -> !limit.available()).isPresent())
+                .enable("payment_unavailable", !this.paymentAvailable && this.purchaseLimit.map(ShopPurchaseLimitOutput::available).orElse(true))
+                .put("purchase_limit", this.purchaseLimit.map(ShopPurchaseLimitOutput::description).orElse(Component.empty()));
+        if (this.paymentAvailable && this.purchaseLimit.map(ShopPurchaseLimitOutput::available).orElse(true))
             builder.serverButton("quote", "system.action.shop_quote", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop_quote"), Map.of("offer", this.id.toString(), "revision", this.catalogRevision));
         return builder;
     }

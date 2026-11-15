@@ -2,7 +2,7 @@
 
 数据流为：服务端生成业务快照 → `CardUpdate` 携带 `CardData` → 客户端调用 `buildCard()` → `CardBuildEvent` 扩展 Builder → `build()` 冻结为 `CardView` → JSON 布局 → 明确的本地或服务端按钮动作。完整模式、简约模式和 HUD 共用构建、版本和交互入口。架构说明见[卡片与消息数据流](card-flow-design.md)，注册入口见[注册表速查](registries.md)。
 
-编辑布局可直接打开 [tools/card_editor.html](../tools/card_editor.html)。它提供离线节点树、属性／JSON 同步编辑、示例 Context 和浏览器近似预览，操作与范围见 [Card JSON 离线编辑器](card-editor.md)。
+编辑布局使用 [html/card-editor](../html/card-editor/)，通过 Vite 运行。它提供节点树、属性／JSON 同步编辑、示例 Context 和浏览器近似预览，操作与范围见 [Card JSON 编辑器](card-editor.md)。
 
 ## 数据与渲染绑定
 
@@ -153,14 +153,14 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 flex / grid 组合 b
 | 分类 | type | 功能 |
 | --- | --- | --- |
 | 文本 | `text` / `markdown` / `title` | FTB 格式文字、受控 Markdown、可提升的标题 |
-| 媒体 | `image` / `item` / `player` / `ftb_icon` | 单张本地图片、单个物品、玩家模型、单个 FTB 图标 |
+| 媒体 | `image` / `emotion` / `item` / `player` / `ftb_icon` | 单张本地图片、表情状态机、单个物品、玩家模型、单个 FTB 图标 |
 | 布局 | `flex` / `grid` | 弹性布局、只创建当前页的固定网格 |
 | 容器 | `container` / `groups` / `details` | 普通流、分组选择、折叠 |
 | 交互 | `button` / `link` | URL、本地回调或服务端字符串；文字链接 |
 | 展示 | `divider` / `progress` | 分割线、进度条 |
 | 集成 | `player_information` / `recipe` | Saturn 信息行、单个有序配方 |
 
-共 18 种节点；原来的批量物品、图标、货架、任务网格、pin、actions 均由这些节点组合，不再保留重复实现或旧节点别名。次要文字使用 `text` 配合 `style: "card_context"`。
+共 19 种节点；原来的批量物品、图标、货架、任务网格、pin、actions 均由这些节点组合，不再保留重复实现或旧节点别名。次要文字使用 `text` 配合 `style: "card_context"`。`emotion` 的资源定义、定时 / 事件切换及播报绑定见[自由聊天表情](emotions.md)。
 
 `text/title` 通过独立的 TextContent 共享 `text/translate/args/inline`：优先使用 translate，先替换 args 中占位符再翻译，inline 默认 false。容器的 children 必填，text_separator 可选，仅影响纯文本连接。
 
@@ -169,6 +169,8 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 flex / grid 组合 b
 标题与正文使用同一份已格式化的 Context：先解析 Component、保留延迟 CardText，并补充 summary、card_title、显示模式和按钮参数，再选择标题。因此 `{{label}}`、`{{title}}`、`{{reward_label}}` 中的组件颜色、翻译和模式条件都能生效，不会因原始对象类型而留下占位符。隐藏、空白及 repeat 标题不占用卡片标题位置。
 
 被提升的标题同时抑制卡片正文里的自动摘要行，避免“标题 + 同一句话”重复；摘要仍保留在卡片数据里，聊天消息与语音播报照常使用。需要保留的业务提示应在模板中明确加入 `{"type":"system:text","text":"{{summary}}"}`，可附加 when 条件；内置兑换确认、奖励回执、任务事件／提交、候选操作及新手礼包都采用这一方式。物品来源保留摘要中的物品名与数量，避免只剩注册 ID。
+
+多项新任务解锁复用 `quest_list`，通过 `unlock_notice` 在正文中显式显示数量摘要，再展示任务列表；普通查询不显示解锁提示。不依赖修改卡片标题来呈现通知文案。
 
 ### 内置模板的标题约定
 
@@ -200,15 +202,15 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 flex / grid 组合 b
 
 `text` 默认为 `{{summary}}`，支持平铺占位符、循环下标和通用 style / when / unless / repeat。节点从原始字符串读取内容，不注入 Minecraft 格式重置符，也不把 `&a` 等字符转换为颜色代码。`system:text` 的行为不变，仍负责 FTBQ 标题、介绍、来源原文与 § / & 格式文本。单个 Markdown 节点保留自己的布局，不触发只适用于单个 `system:text` 的普通消息折叠规则。
 
-底层直接配置 AUI 1.2.9 随包提供的 Txtmark 0.13 扩展解析器，不增加第三方依赖；支持标题、段落、粗体 / 斜体、嵌套有序 / 无序列表、引用、行内代码、围栏代码块、分割线与链接。代码保留换行并允许长行换行；没有代码语法高亮，也不提供 GitHub 风格表格或任务复选框扩展。样式集中于共享 assistant.css 的 card_markdown / markdown_*，完整模式、简约模式和通知使用同一个渲染入口。
+底层使用随模组 Jar-in-Jar 分发的 CommonMark Java 0.32.0，启用 GFM 表格及删除线扩展；支持标题、段落、粗体 / 斜体、嵌套有序 / 无序列表、引用、行内代码、围栏代码块、分割线与链接。代码保留换行并允许长行换行；没有代码语法高亮或任务复选框扩展。样式集中于共享 assistant.css 的 card_markdown / markdown_*，完整模式、简约模式和通知使用同一个渲染入口。FTBQ 的 text 节点不受影响。
 
-`AssistantMarkdown` 使用 Txtmark 的 `Configuration`（extended / safe / panic）和每次转换独立的 `DefaultDecorator` 子类输出 HTML，再通过 AUI `setInnerHTML` 生成元素，不再使用 Swing HTML 解析器或手动重建 DOM。源 HTML 标签整体用无冲突占位符暂存，避免属性引号被扩展模式改成排版引号；其余 `<` 同样暂存，输出完成后才还原为转义文字，避免 panic 模式重复转义。因此 `<`、字面的 `&lt;` 及 `&amp;lt;` 在行内、围栏和缩进代码中保持各自的内容，也不再删除代码原文中的 § 格式码。
+`AssistantMarkdown` 复用不可变 Parser，每次转换创建独立的 HTML renderer 和列表编号栈，再通过 AUI `setInnerHTML` 生成元素。CommonMark 原生处理代码、实体、相邻围栏和原始 HTML；不再预先改写尖括号、暂存 HTML 占位符或修补围栏。输出仅将 AUI 不支持的命名实体转换为等价数字引用，因此 `<`、字面的 `&lt;` 及 `&amp;lt;` 在行内、围栏和缩进代码中保持各自的内容，代码原文中的 § 格式码也保留。
 
-Txtmark 0.13 在连续围栏块之间留有空行时可能保留下一段的起始围栏，因此解析前仅去掉相邻围栏块之间的空白行，代码内部空行保留。库生成的 HTML4 命名实体先单次转换为数字引用，以适配 AUI 的实体解码范围；代码中已转义的实体名称仍显示原文，不重复解码。
+原始 HTML（包括 `<a>`、事件属性、脚本和样式）由 `escapeHtml=true` 按文字输出；HTML 代码块中的链接也没有点击行为。只有 Markdown 链接生成的中性 span 会在解析完成后绑定动作，且仅接受合法的 HTTP / HTTPS 地址，通过 `AssistantPageScreen.openLink` 和原版确认流程打开；HUD 仍需要进入交互状态。尖括号形式的自动链接 `<https://...>` 根据原始 source span 保留为文字，可改用 `[标题](https://...)`。图片只输出 alt 文字，不创建 img 或下载资源。生成器标签统一分配固定的 markdown_* 样式；标题不生成源 HTML 属性或扩展 ID，`{#id}` 属于普通标题文字。列表编号、标记和纯文本投影共用同一份生成结果；解析失败记录日志并退回源文本。
 
-原始 HTML（包括 `<a>`、事件属性、脚本和样式）按文字显示；HTML 代码块中的链接也没有点击行为。只有 Markdown 链接生成的中性 span 会在解析完成后绑定动作，且仅接受合法的 HTTP / HTTPS 地址，通过 `AssistantPageScreen.openLink` 和原版确认流程打开；HUD 仍需要进入交互状态。尖括号形式的自动链接 `<https://...>` 按文字显示，可改用 `[标题](https://...)`。图片同样先输出中性元素，随后只保留转义后的 alt 文字，不创建 img 或下载资源。生成器的标题 / 列表标签统一分配既有 markdown_* 样式，扩展语法追加的 ID 不进入 AUI 属性。列表编号、标记和纯文本投影共用同一份生成结果；解析失败记录日志并退回源文本。
+表格按 GFM 规则识别表头、分隔行、数据行和转义管道符；单元格支持行内 Markdown，代码块中的表格不会被解析。生成的 table / thead / tbody 使用 block，tr 使用 flex，th / td 均分列宽，长文字在单元格内换行；不依赖浏览器的自动表格测量或逐帧 CSS 计算。分隔行的 `:---`、`:---:`、`---:` 分别指定左、中、右对齐。纯文本导出在单元格间保留分隔，行之间换行，不把相邻列拼成一个词。
 
-开发环境可在系统界面的输入框发送 `/debug md`，把 `src/test-mod/resources/assets/system_test/debug/markdown.md` 作为 Markdown 卡片加入当前本地对话，不切换或重开界面。命令通过本地 ClientModule 注册到系统命令缓存，支持补全，不注册到原版聊天栏；命令和样例只在 test-mod 中，不进入发布 JAR。预览不依赖绑定、模型或服务端请求，也不自动播报。自由模式下以 `/` 开头的显式本地命令同样先交客户端执行与补全，普通输入仍直接交 AI。样例覆盖标题、嵌套列表、引用、代码转义、Markdown 链接、原始 HTML a 标签、非法协议、图片 alt 和不可信标题 ID。
+开发环境可在系统界面的输入框发送 `/debug md`，把 `src/test-mod/resources/assets/system_test/debug/markdown.md` 作为 Markdown 卡片加入当前本地对话，不切换或重开界面。命令通过本地 ClientModule 注册到系统命令缓存，支持补全，不注册到原版聊天栏；命令和样例只在 test-mod 中，不进入发布 JAR。预览不依赖绑定、模型或服务端请求，也不自动播报。自由模式下以 `/` 开头的显式本地命令同样先交客户端执行与补全，普通输入仍直接交 AI。样例覆盖标题、嵌套列表、引用、代码转义、Markdown 链接、原始 HTML a 标签、非法协议、图片 alt、不可信标题 ID，以及三列表格、对齐、转义管道符和代码块中的表格原文。
 
 本地知识问答和联网回答已改用此节点，两个 CardData 把原始 `answer` 独立放入 Context，避免 summary 的 Minecraft 文字格式化改变代码 / URL。没有模型答案时的内置提示与折叠来源仍用 text 与 card_context 样式。模板设置 hide_summary，避免重复绘制未经排版的答案；问答 / 搜索提示词允许 text 字段使用简短 Markdown，仍要求输出 JSON。没有改变网络 Codec、历史数据或 SpeechContent，TTS 继续使用业务显式提供的播报文本。Markdown 的纯文本投影按块换行、移除排版标记，不把 HTML 带入文字导出。
 
@@ -435,7 +437,7 @@ FTB 来源为隔离适配器 `FtbQuestDisplay`：每次核对当前队伍、任�
 | items | items.<下标>.item_name/item_id/max_stack，result_items |
 | sign_in_status | date/signed_in/history_saved/external_model，candidates.<下标>.reward_label/reward_items/result_items |
 | reward/entitlement/purchase | reward_label/reward_items/result_items；回执另有 entitlement_id/state，购买另有 order_id；状态 delivered 表示已交付，按钮区显示不可点的“已领取” |
-| shop_offer | label/id/items/price/price_text/payment_available，offer_items/price_items |
+| shop_offer | label/id/items/price/price_text/payment_available/payment_unavailable，offer_items/price_items；has_purchase_limit/purchase_limit/limit_reached 展示限购快照 |
 | shop_order | order_id/label/state/error |
 | lottery_catalog | revision/query/truncated；pools.<下标>.label/prizeCount/prizes.<下标>.label/chance/items，单元格由 pool.<下标> 服务端按钮驱动 |
 | lottery_pool | label/id/prize_count/preview_count/price/price_text/free/payment_available/price_items/prizes；状态 priced 表示有单次消耗；prizes.<下标>.reward_label/chance/result_items |

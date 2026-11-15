@@ -67,7 +67,7 @@ public record ShopSystemModule(
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
         ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview = context.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(context.get(ContextTypes.COMMERCE)).tool());
-        return List.of(new ShopModule(context.get(ContextTypes.CATALOGS)), new ShopQuoteModule(context.get(ContextTypes.CATALOGS), preview),
+        return List.of(new ShopModule(context.get(ContextTypes.CATALOGS), context.get(ContextTypes.COMMERCE)), new ShopQuoteModule(context.get(ContextTypes.CATALOGS), preview),
                 new ShopPurchaseModule(new ShopPurchaseTool(context.get(ContextTypes.COMMERCE)).tool()));
     }
 }

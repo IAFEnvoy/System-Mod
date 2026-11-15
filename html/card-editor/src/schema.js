@@ -85,6 +85,19 @@ register(
   "card_image",
 );
 register(
+  "emotion",
+  "媒体",
+  "表情状态机",
+  { profile: "system:panda", state: "{{emotion}}", size: 72 },
+  {
+    profile: ["string", "资源包表情定义 ID，默认 system:panda"],
+    state: ["string", "初始状态名或占位符；编辑器预览静止帧"],
+    size: ["integer", "方形头像尺寸，默认 72"],
+  },
+  [],
+  "card_emotion",
+);
+register(
   "item",
   "媒体",
   "单物品",

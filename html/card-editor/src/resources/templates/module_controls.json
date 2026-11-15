@@ -1,5 +1,8 @@
 {
-  "style": ["result_card", "workspace_controls"],
+  "style": [
+    "result_card",
+    "workspace_controls"
+  ],
   "show_title": false,
   "hide_summary": true,
   "body": [

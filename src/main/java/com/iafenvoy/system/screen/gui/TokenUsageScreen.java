@@ -76,12 +76,22 @@ public final class TokenUsageScreen extends AssistantPageScreen {
     private record MetricGroup(String key, String countsId, List<Metric> metrics) {
     }
 
-    public TokenUsageScreen(Screen parent, TokenUsageResponseS2CPayload initial) {
+    private TokenUsageScreen(Screen parent) {
         super("system/assistant-usage.html");
         this.parent = parent;
         this.setPauseGame(false);
         this.setShowDefaultBackground(false);
+    }
+
+    public TokenUsageScreen(Screen parent, TokenUsageResponseS2CPayload initial) {
+        this(parent);
         this.accept(initial);
+    }
+
+    public TokenUsageScreen(Screen parent, boolean all) {
+        this(parent);
+        this.all = all;
+        this.requestedAt = 0;
     }
 
     @Override
@@ -95,6 +105,7 @@ public final class TokenUsageScreen extends AssistantPageScreen {
         bind(document, "usage_prev", () -> this.request(this.all, Math.max(0, this.offset - PAGE_SIZE)));
         bind(document, "usage_next", () -> this.request(this.all, this.offset + PAGE_SIZE));
         this.renderSnapshot();
+        if (this.snapshot == null && this.error.isEmpty() && this.requestId == null) this.request(this.all, 0);
     }
 
     private void createSummary(Document document) {

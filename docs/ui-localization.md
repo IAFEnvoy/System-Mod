@@ -1,5 +1,11 @@
 # 界面与本地化
 
+## 表情 HUD
+
+`SystemHudEntries.EMOTION` 以 `system.emotion` 登记到 Saturn HUD 编辑器，默认在左上角，左、上各留 12 个 GUI 像素，初始隐藏。中央方框与主面板共用 `assistant-theme.css` 的背景色，边框及四个独立角标跟随当前主题的强调色；通过 `AssistantThemes` 应用已保存样式和即时切换，根区域透明、鼠标完全穿透。HTML / CSS 在 `assistant-emotion.html` / `assistant-emotion.css`，由资源包覆盖；说话复用同一贴图，以左上 / 右下 offset 交替绘制，不更新样式或尺寸。
+
+系统界面的 `/emotion set system:happy`、`/emotion speaking true|false|auto` 与原版聊天栏的 `/system emotion …` 共用客户端实现，只改变客户端内存；收到服务端新的有效聊天状态后覆盖本地测试设置，历史读取不覆盖。表情是独立调试入口，不导出其他模块指令。位置和显隐继续由 Saturn 统一持久化。命令、数据驱动语义、资源格式及缺图回退见[表情文档](emotions.md)。
+
 ## 通知 HUD 位置编辑
 
 直接使用 Saturn 自带的 HUD 编辑入口：默认在游戏中按右 Shift 打开 `HudEditScreen`，也可以用 `/saturn hud open`。System 不另加设置页入口或按键。`SystemHudEntries.NOTIFICATIONS` 在物理客户端初始化时登记为 `system.notification`，由 `NotificationHudEntry` 连接 Saturn 放置逻辑与 AUI 通知。拖动外框移动，拖过窗口边缘锚点可更换参照点；选中后用方向键微调，Shift + 方向键移动 10 像素，右上角勾选框控制显隐。完成返回游戏。通过 `/saturn hud system.notification reset` 恢复默认锚点及偏移。
@@ -104,7 +110,7 @@ FTB 任务完成与新任务解锁复用同一 `event` 路径，使用 `system.r
 
 保留的是视觉风格。旧的绑定页、数据驱动功能列表、旧 HUD、世界窗口与旧完成弹窗没有继续使用。`/system` 打开后同步个人偏好；自动通知统一使用上述 HUD 消息，不抢占游戏焦点。
 
-玩家、FTB 和物品文本继续通过 `AssistantView.text/element` 写入纯文本节点，FTBQ 的 § / & 格式由 text 节点处理。AI 知识问答与联网答案改用独立的 `system:markdown` 节点：复用 AUI 内置解析器，再由 AssistantMarkdown 的被动读取器仅重建预设展示元素、纯文本与原版 URL 点击动作，不把模型 HTML、属性或脚本直接插入 AUI。外部图片只保留 alt 文字，不下载；共享 CSS 统一 Markdown 的标题、列表、引用和代码样式。动作按钮和文字编号仍由 Java 根据业务结果创建，携带固定模块和输入；服务器继续重新校验。详见[Markdown 正文](cards.md#markdown-正文)。
+玩家、FTB 和物品文本继续通过 `AssistantView.text/element` 写入纯文本节点，FTBQ 的 § / & 格式由 text 节点处理。AI 知识问答、联网答案和自由聊天使用独立的 `system:markdown` 节点：CommonMark Java 与 GFM 表格 / 删除线扩展负责解析，AssistantMarkdown 为输出分配固定样式并绑定原版 URL 点击动作；原始 HTML、属性和脚本均转义为文字。外部图片只保留 alt 文字，不下载；共享 CSS 统一 Markdown 的标题、列表、引用、代码和表格样式。动作按钮和文字编号仍由 Java 根据业务结果创建，携带固定模块和输入；服务器继续重新校验。详见[Markdown 正文](cards.md#markdown-正文)。
 
 FTBQ 标题、章节、说明、目标及奖励中的原版 `§` 格式和 FTB 常用的 `&` 格式由共享 `AssistantText` 处理，完整界面、简约模式、HUD 正文及任务按钮共用一条路径。FTBQ 服务端标题保留原始文字，未进行客户端富文本解析；`LegacyText` 先把有效的 `&0`～`&f`、`&k`～`&o`、`&r` 转成原版格式码（大小写均支持），保留未知码和转义的普通与号，再复用原版 `StringDecomposer.iterateFormatted`。显式换行后从空样式重新解析，颜色和粗体等只影响当前行；同一行因宽度自动折行时继续保留格式。任务列表的标题、章节以及目标、奖励名称等独立字段通过 `LegacyText.scoped` 在拼接边界追加重置码，分隔符、编号、进度与状态恢复界面默认样式。按连续样式创建固定 `span` 节点并设置颜色、粗体、斜体、下划线及删除线；`§r` / `&r` 恢复当前界面的默认样式，不强制黑色。混淆样式不生成随机乱码，其他无效或末尾不完整的 `§` 格式码按原版解析规则处理。正文、换行和 Unicode 字符仍通过 `setTextContent` 写入，任务文本中的 HTML 标签只作为文字显示。格式节点保持行内布局和原按钮点击目标，不新增样式文件。TTS 使用同一转换入口提取纯文本，不朗读这两类控制码。
 

@@ -164,7 +164,7 @@ Descriptor 的 `tools` 为必需工具，`optionalTools` 为可选只读工具 I
 
 服务端请求和客户端响应使用 util.TypeDispatch 分派运行行为；控制动作和 NLS 事件使用 Map。卡片本身通过 buildCard 提供展示与播报，ClientCards 按 ID/版本处理 SHOW/REPLACE/REMOVE，不再登记按类型刷新或口播处理器。ReplyResponse 完成请求与是否含卡片无关；客户端跟踪页面归属和超时，迟到更新不能抢新页。详见[卡片数据流](card-flow-design.md)。
 
-FTB 查询 Tool 使用固定返回类型：`ftb.query` 列出当前可执行或可领奖任务、`ftb.find` 搜索可读任务，均返回 `List<QuestBriefOutput>`；`ftb.detail` 按 ID 或玩家上次列表编号返回一个 `QuestOutput`，不存在或不可查看时抛出业务错误。`QuestDetailModule` 负责名称搜索、歧义候选展示和单个详情读取；详情快照的 `starterGift` 只标记任务分类，遇到礼包时由 Module 再调用共享的礼包列表工具。不再为任务查询定义多态结果或类型注册表。任务对象和队伍进度只在兼容层的服务端线程读取，传给 Agent 的是带 Codec 的数据快照。
+任务查询 Tool 使用固定返回类型：`quest.query` 列出当前可执行或可领奖任务、`quest.find` 搜索可读任务，均返回 `List<QuestBriefOutput>`；`quest.detail` 按 ID 或玩家上次列表编号返回一个 `QuestOutput`，不存在或不可查看时抛出业务错误。`QuestDetailModule` 负责名称搜索、歧义候选展示和单个详情读取；详情快照的 `starterGift` 只标记任务分类，遇到礼包时由 Module 再调用共享的礼包列表工具。不再为任务查询定义多态结果或类型注册表。任务对象和队伍进度只在兼容层的服务端线程读取，传给 Agent 的是带 Codec 的数据快照。通用 QuestProvider 接口及 QuestService 统一处理已启用来源、来源 ID、列表编号和可选能力；FTBQ 只是一个实现，详见[通用任务接口](quests.md)。
 
 模型路由仍保留对外的 `capabilityId` 字段，解码 Map 只包含当前可选择的 Module 与 `clarify`，不会因共享输入类型存在就开放未安装模块。
 

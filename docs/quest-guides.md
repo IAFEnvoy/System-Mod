@@ -42,7 +42,7 @@ FtbQuestKnowledge 缓存各语言的静态快照，避免每次查询重新解�
 - `data/database/AgentDatabases / AgentDatabase / DatabaseTable`：两级作用域、文档和其他 Codec 表的统一持久化。
 - `data/database/KnowledgeIndex`：切段、稀疏向量与命中筛选。
 - `compat/ftb/FtbQuestKnowledge`：FTB 静态语料、失效代次与手动重新收录。
-- `compat/ftb/FtbQuestGuideTool`：游戏快照、授权 ID、异步检索与返回前复核。
+- `compat/ftb/FtbQuestGuides`：游戏快照、授权 ID、异步检索与返回前复核。
 - `compat/ftb/FtbQuestReader`、`FtbQuestText`：结构筛选、可见性及按玩家语言读取。
 - `module/builtin/quest/QuestGuideModule`：单检索工具、指令和路由描述。
 - `QuestGuideInput / QuestGuideOutput`：按注册表 dispatch 的动作和卡片 Codec，公共 DTO 不引用 FTB 或客户端类。

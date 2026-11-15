@@ -110,10 +110,19 @@ register(
   "card_item",
 );
 register(
+  "icon",
+  "媒体",
+  "通用图标",
+  { icon: "{{actions.0.action_icon}}" },
+  { icon: ["string!", "单个 IconReference（资源图片或物品），不依赖任务模组"] },
+  [],
+  "quest_icon_entry",
+);
+register(
   "ftb_icon",
   "媒体",
   "单 FTB 图标",
-  { icon: "{{actions.0.action_icon}}" },
+  { icon: "{{actions.0.action_native_icon}}" },
   { icon: ["string!", "单个 FtbIconData"] },
   [],
   "quest_icon_entry",

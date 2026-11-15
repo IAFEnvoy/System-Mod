@@ -5,6 +5,7 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.registry.SystemHudEntries;
 import com.iafenvoy.system.screen.emotion.EmotionHudState;
 import com.iafenvoy.system.screen.emotion.EmotionProfiles;
+import com.iafenvoy.system.screen.gui.AssistantSimpleScreen;
 import com.iafenvoy.system.screen.gui.EmotionElement;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
@@ -77,7 +78,7 @@ public final class AssistantEmotionHud {
         Minecraft minecraft = Minecraft.getInstance();
         return !minecraft.options.hideGui && SystemHudEntries.EMOTION.visible()
                 && (screen instanceof HudEditScreen || EmotionHudState.shown()
-                && (screen == null || screen instanceof ChatScreen || screen.isInGameUi()));
+                && (screen == null || screen instanceof ChatScreen || screen instanceof AssistantSimpleScreen || screen.isInGameUi()));
     }
 
     private static void visibility(Screen screen) {

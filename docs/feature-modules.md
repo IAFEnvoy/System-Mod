@@ -108,7 +108,9 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
 
 ### 物品来源查询
 
-`system:items` 装配三个工作流：`system:item_query`（名称/ID 检索）、`system:item_sources`（单个物品的来源）、`system:item_inspect`（主手实际物品鉴定，见[鉴定说明](item-inspection.md)）。来源查询提供 `/recipe <物品ID> [范围]`、语义路由、稳定动作 ID 和物品检索卡片的点击操作：每个物品格子携带对应注册 ID，点击直接查看其获取方式，不需要玩家重抄；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`。`ItemSourceOutput` 同时是工具结果与已注册的 CardData，工作流通过 `AgentResult.data` 发送卡片，不再把序列化 JSON 拼进消息正文。以下仅为工具快照的编码示例：
+`system:items` 装配三个工作流：`system:item_query`（名称/ID 检索与物品信息）、`system:item_sources`（单个物品的来源）、`system:item_inspect`（主手实际物品鉴定，见[鉴定说明](item-inspection.md)）。物品检索命中单个物品时直接展示名称、图标、注册 ID 和堆叠上限，图标保留原版 tooltip；“查看获取方式”作为独立按钮继续查询。点击多结果网格中的物品会先打开这份物品信息，而非直接跳到来源；完整注册 ID 精确匹配一个条目，例如 `/item minecraft:diamond`，不混入钻石工具等包含相同前缀的结果。名称及不完整 ID 仍作子串搜索。
+
+来源查询继续提供 `/recipe <物品ID> [范围]`、语义路由和物品详情中的按钮，不需要玩家重抄 ID；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`。`ItemSourceOutput` 同时是工具结果与已注册的 CardData，工作流通过 `AgentResult.data` 发送卡片，不再把序列化 JSON 拼进消息正文。以下仅为工具快照的编码示例：
 
 ```json
 {"item":"minecraft:iron_ingot","scope":"loot","sources":[
@@ -116,7 +118,7 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
    "outputs":[{"items":["minecraft:iron_ingot"],"count":1}],"notes":["weight 1"]}],"truncated":false}
 ```
 
-物品检索卡片复用商城的 `grid`、`offer_cell_content` 和 `CardPagination`：图标与名称居中，注册 ID、堆叠上限放在原版物品 tooltip 的附加信息里，取消重复的文字清单。默认完整模式 6 列、最多 3 行，单页按内容收缩；本地翻页仅创建当前页 DOM。服务端仍分批读取最多 20 个匹配项，未读完时单独显示「更多物品」，继续使用原查询和偏移请求下一批，与本地上 / 下页区分。每项操作先于批次操作加入按钮表，保留原始索引；通知点击以 PUSH 展示来源并可返回，简约模式可按物品名称 / 编号选择；空结果显示本地化提示。
+多结果物品检索卡片复用商城的 `grid`、`offer_cell_content` 和 `CardPagination`：图标与名称居中，注册 ID、堆叠上限仍保留在网格图标的原版 tooltip 附加信息里。默认完整模式 6 列、最多 3 行，单页按内容收缩；本地翻页仅创建当前页 DOM。服务端仍分批读取最多 20 个匹配项，未读完时单独显示「更多物品」，继续使用原查询和偏移请求下一批，与本地上 / 下页区分。每项操作先于批次操作加入按钮表，保留原始索引；通知中的「列表 → 信息 → 获取方式」均使用 PUSH 并支持返回，简约模式可按物品名称 / 编号选择；空结果显示本地化提示。单个物品信息复用 `items` 模板与现有服务端快照，通过 `single_item` 切换布局，不额外创建工作流或查询配方。
 
 `scope` 缺省为 `all`，即完整查询，跑所有已注册来源；也可以只写某个来源的路径（`recipe`、`loot`、`tag`）或它的完整 ID（`system:recipe`）。范围由 `ItemSourceProviders` 在装配时枚举，新增 Provider 后自动出现在补全里；未注册的范围会被拒绝（`INVALID_INPUT`），不会静默返回空列表。命令行写作 `/recipe minecraft:diamond loot`，省略第二个词即为完整查询；语义路由只在请求里出现「掉落 / 战利品 / 配方 / 合成 / 标签」这类关键词时收窄到对应范围，其余情况保持完整查询。语义路由优先取请求里的显式注册 ID（`CommandArguments.singleItemId`），没有 ID 时再用 `ItemNameIndex` 在本地显示名表里做最长匹配（「如何获取钻石镐」→ `minecraft:diamond_pickaxe`，更长的名字优先于更短的前缀词）；该表在服务器启动装配 `system:items` 时构建一次，名称取自服务端语言，专用服务端只用服务端资源，中文名可能匹配不到，此时退回模型路由。
 
@@ -184,3 +186,7 @@ system 和 system_module 都是原生数据包注册表，在世界加载时读�
 ## 联网搜索模块
 
 服务端类型为 system:web_search，仅导出 Search/Fetch 两个单行为 Tool；客户端实现 SearchSystemClientModule 可独立配对搜索页。开发动态条目保留 server.type / client，但不自动启用。核心 `system:question` 统一处理问题：先查私有 / 共享知识及可读 FTB 说明，命中则按资料回答；仅本地为空且当前请求允许联网时才调用已启用的搜索工具。搜索页提交同样先查库，普通提问不授权网络回退。详见 [问答与联网](search-api.md)。
+
+## 通用任务来源
+
+任务工作流通过 `assistant.quest.QuestProvider` 接入，使用 `QuestWorkflows.install(context, provider)` 装配。通用层汇总玩家已启用来源、按来源分派不透明 ID 和领奖引用、维护统一编号与常驻卡片来源；可提交、可领奖、说明书、礼包、跟踪和播报分别由二级接口声明。FTBQ 是其中一个实现，公共工具已改为 `quest.*`，模块定义 `system:ftb_quests` 保留。接入流程、失效校验和来源展示见[通用任务接口](quests.md)。

@@ -51,14 +51,14 @@ final class FtbQuestSpeech implements QuestNarration.Source {
 
     @Override
     public CompletionStage<QuestNarration.Quest> load(ExecutionContext context, String questId) {
-        return this.access.game.onPlayer(context, player -> {
+        return this.access.onPlayer(context, player -> {
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
             if (runtime == null || !runtime.moduleManager().hasType(player.getUUID(), QuestSystemModule.CODEC))
                 throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             if (!ServerQuestFile.exists()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             ServerQuestFile file = ServerQuestFile.getInstance();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException(AgentFailure.NOT_AUTHORIZED));
-            Quest quest = file.getQuest(Long.parseUnsignedLong(questId, 16));
+            Quest quest = file.getQuest(Long.parseUnsignedLong(FtbQuestAccess.local(questId), 16));
             if (quest == null || !FtbQuestReader.detailAvailable(team, quest))
                 throw new AgentException(AgentFailure.QUEST_UNAVAILABLE);
             return snapshot(player, team, quest);
@@ -80,7 +80,7 @@ final class FtbQuestSpeech implements QuestNarration.Source {
         Component main = Component.translatable("system.tts.message.quest_" + event, FtbQuestText.title(player, quest));
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
         return runtime == null ? SpeechContent.of(main)
-                : runtime.narration().content(player.getUUID(), FtbQuestAccess.hex(quest.getId()), snapshot(player, team, quest), main);
+                : runtime.narration().content(player.getUUID(), FtbQuestAccess.key(quest.getId()), snapshot(player, team, quest), main);
     }
 
     private static QuestNarration.Line unknown(ServerPlayer player, Task task) {

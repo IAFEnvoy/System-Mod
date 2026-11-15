@@ -30,6 +30,8 @@ public record QuestStartupOutput(int total, List<QuestBriefOutput> quests) imple
     @Override
     public CardBuilder buildCard() {
         CardBuilder builder = CardBuilder.template(TEMPLATE);
+        builder.put("source", CardBuilder.join(this.quests.stream().map(quest -> quest.source().name()).distinct().toList(), " / "))
+                .enable("source", !this.quests.isEmpty());
         builder.put("total", this.total()).put("remaining", Math.max(0, this.total() - this.quests().size()))
                 .list("quests", this.quests(), (prefix, quest) -> builder.put(prefix + "title", quest.title()).put(prefix + "progress", (int) quest.progress()));
         return builder.summary("system.tts.message.quest_startup", this.total)

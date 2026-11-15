@@ -16,6 +16,7 @@ import com.iafenvoy.system.screen.card.node.layout.GridNode;
 import com.iafenvoy.system.screen.card.node.media.FtbIconNode;
 import com.iafenvoy.system.screen.card.node.media.EmotionNode;
 import com.iafenvoy.system.screen.card.node.media.ImageNode;
+import com.iafenvoy.system.screen.card.node.media.IconNode;
 import com.iafenvoy.system.screen.card.node.media.ItemNode;
 import com.iafenvoy.system.screen.card.node.media.PlayerNode;
 import com.iafenvoy.system.screen.card.node.text.MarkdownNode;
@@ -33,6 +34,7 @@ public final class SystemCardNodeTypes {
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<MarkdownNode>> MARKDOWN = REGISTRY.register("markdown", () -> MarkdownNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<TitleNode>> TITLE = REGISTRY.register("title", () -> TitleNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<ImageNode>> IMAGE = REGISTRY.register("image", () -> ImageNode.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<IconNode>> ICON = REGISTRY.register("icon", () -> IconNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<EmotionNode>> EMOTION = REGISTRY.register("emotion", () -> EmotionNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<ItemNode>> ITEM = REGISTRY.register("item", () -> ItemNode.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardNode>, MapCodec<PlayerNode>> PLAYER = REGISTRY.register("player", () -> PlayerNode.CODEC);

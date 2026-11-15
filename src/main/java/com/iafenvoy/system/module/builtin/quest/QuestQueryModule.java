@@ -21,7 +21,7 @@ import java.util.Locale;
  */
 public final class QuestQueryModule extends AbstractAgentModule<QuestQueryInput> {
     public QuestQueryModule(ToolRegistry.Tool<QuestQueryInput, List<QuestBriefOutput>> query) {
-        super(QuestQueryInput.CODEC, "List FTB quests as numbered summaries. view=active: visible, unlocked and incomplete; claimable: completed quests with unclaimed rewards; submittable: quests with pending supported manual or checkmark targets. Submission may be partial and still requires the player's resources. Listing never submits anything.", List.of(query), true, false, ExecutionPolicy.quick(2, 0));
+        super(QuestQueryInput.CODEC, "List quests from enabled sources as numbered summaries. view=active: visible, unlocked and incomplete; claimable: completed quests with unclaimed rewards; submittable: quests with pending supported manual or checkmark targets. Submission may be partial and still requires the player's resources. Listing never submits anything.", List.of(query), true, false, ExecutionPolicy.quick(2, 0));
     }
 
     @Override

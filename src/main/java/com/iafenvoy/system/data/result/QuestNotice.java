@@ -1,6 +1,7 @@
 package com.iafenvoy.system.data.result;
 
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.assistant.quest.QuestSource;
 import com.iafenvoy.system.data.card.*;
 import com.iafenvoy.system.data.output.ItemPreviewOutput;
 import com.iafenvoy.system.data.output.QuestIconOutput;
@@ -24,7 +25,7 @@ public record QuestNotice(String id, Component title, Component chapter, List<It
                           String description, List<Component> requirements, List<QuestIconOutput> rewardIcons,
                           List<QuestIconOutput> taskIcons, boolean manualSubmission, QuestEvent event,
                           QuestSubmission submission, boolean rewardPending, Optional<String> claimRef,
-                          SpeechContent speech) implements CardData {
+                          SpeechContent speech, QuestSource source) implements CardData {
     public static final MapCodec<QuestNotice> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("id").forGetter(QuestNotice::id),
             ComponentSerialization.CODEC.fieldOf("title").forGetter(QuestNotice::title),
@@ -39,7 +40,8 @@ public record QuestNotice(String id, Component title, Component chapter, List<It
             QuestSubmission.CODEC.fieldOf("submission").forGetter(QuestNotice::submission),
             Codec.BOOL.fieldOf("rewardPending").forGetter(QuestNotice::rewardPending),
             Codec.STRING.optionalFieldOf("claimRef").forGetter(QuestNotice::claimRef),
-            SpeechContent.CODEC.fieldOf("speech").forGetter(QuestNotice::speech)
+            SpeechContent.CODEC.fieldOf("speech").forGetter(QuestNotice::speech),
+            QuestSource.CODEC.optionalFieldOf("source", QuestSource.UNKNOWN).forGetter(QuestNotice::source)
     ).apply(i, QuestNotice::new));
     public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_notice");
 
@@ -54,7 +56,7 @@ public record QuestNotice(String id, Component title, Component chapter, List<It
 
     @Override
     public CardBuilder buildCard() {
-        CardBuilder builder = CardBuilder.template(TEMPLATE);
+        CardBuilder builder = CardBuilder.template(TEMPLATE).put("source", this.source.name());
         builder.put("id", this.id()).put("title", this.title()).put("chapter", this.chapter()).put("description", this.description())
                 .put("notice_title", Component.translatable("system.ui.card_title_quest_" + this.event.getSerializedName()))
                 .put("requirements", CardBuilder.join(this.requirements(), "，"))

@@ -30,11 +30,14 @@ public record QuestList(List<QuestBriefOutput> quests) implements CardData {
             builder.serverButton("quest_" + quest.id(), "system.action.quest_detail", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_detail"),
                             Map.of("quest", quest.id()), CardButton.Placement.BODY, CardButton.Behavior.PUSH)
                     .actionParameter("action_quest_id", quest.id())
-                    .actionParameter("action_icon", FtbIconData.quest(quest.id(), quest.title()))
+                    .actionParameter("action_source", quest.source().name())
                     .actionParameter("action_number", quest.number()).actionParameter("action_title", quest.title())
-                    .actionParameter("action_chapter", quest.chapter()).actionParameter("action_chapter_id", quest.chapterId())
-                    .actionParameter("action_group", quest.group()).actionParameter("action_group_id", quest.groupId())
+                    .actionParameter("action_chapter", quest.chapter()).actionParameter("action_chapter_id", quest.source().key(quest.chapterId().isBlank() ? "default" : quest.chapterId()))
+                    .actionParameter("action_group", quest.group()).actionParameter("action_group_id", quest.source().key(quest.groupId().isBlank() ? "default" : quest.groupId()))
                     .actionParameter("action_progress", (int) quest.progress());
+            if (quest.icon().isPresent()) builder.actionParameter("action_icon", quest.icon().get());
+            else if (quest.source().id().equals(Identifier.parse("system:ftb_quests")))
+                builder.actionParameter("action_native_icon", FtbIconData.quest(quest.id(), quest.title()));
         }
         return builder;
     }

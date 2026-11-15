@@ -1,6 +1,7 @@
 package com.iafenvoy.system.data.output;
 
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.assistant.quest.QuestSource;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.util.LegacyText;
@@ -27,13 +28,14 @@ public record QuestGuideOutput(String query, List<Entry> entries) implements Car
         entries = List.copyOf(entries);
     }
 
-    public record Entry(String id, Component title, Component chapter, String passage, String body) {
+    public record Entry(String id, Component title, Component chapter, String passage, String body, QuestSource source) {
         public static final Codec<Entry> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("id").forGetter(Entry::id),
                 ComponentSerialization.CODEC.fieldOf("title").forGetter(Entry::title),
                 ComponentSerialization.CODEC.fieldOf("chapter").forGetter(Entry::chapter),
                 Codec.STRING.fieldOf("passage").forGetter(Entry::passage),
-                Codec.STRING.fieldOf("body").forGetter(Entry::body)
+                Codec.STRING.fieldOf("body").forGetter(Entry::body),
+                QuestSource.CODEC.optionalFieldOf("source", QuestSource.UNKNOWN).forGetter(Entry::source)
         ).apply(i, Entry::new));
 
         public Entry {
@@ -47,7 +49,8 @@ public record QuestGuideOutput(String query, List<Entry> entries) implements Car
         CardBuilder builder = CardBuilder.template(TEMPLATE).title("system.result.quest_guide")
                 .summary("system.result.quest_guide").put("query", this.query);
         builder.list("entries", this.entries, (prefix, entry) -> builder.put(prefix + "title", entry.title())
-                .put(prefix + "chapter", entry.chapter()).put(prefix + "passage", entry.passage()).put(prefix + "body", entry.body())
+                .put(prefix + "chapter", entry.chapter()).put(prefix + "source", entry.source().name())
+                .put(prefix + "passage", entry.passage()).put(prefix + "body", entry.body())
                 .enable(prefix + "has_more", !LegacyText.plain(entry.body()).strip().equals(entry.passage().strip())));
         return builder.speech(Component.translatable(this.entries.isEmpty() ? "system.tts.message.quest_guide_empty" : "system.tts.message.quest_guide", this.entries.size()));
     }

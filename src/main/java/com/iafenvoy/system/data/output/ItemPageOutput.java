@@ -35,22 +35,28 @@ public record ItemPageOutput(String query, List<ItemInfoOutput> items, int nextO
 
     @Override
     public CardBuilder buildCard() {
+        boolean singleItem = this.items.size() == 1;
         CardBuilder builder = CardBuilder.template(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "items"))
-                .title("system.result.items").summary("system.result.items");
+                .title("system.result.items").summary("system.result.items").enable("single_item", singleItem);
         builder.list("items", this.items, (prefix, item) -> builder.put(prefix + "item_name", item.name())
                 .put(prefix + "item_id", item.id()).put(prefix + "max_stack", item.maxStack())
                 .put(prefix + "preview", ItemPreviewOutput.of(item.item())));
-        // Item indices and action indices stay aligned, including when the client grid changes pages.
-        for (int i = 0; i < this.items.size(); i++) {
-            ItemInfoOutput item = this.items.get(i);
-            builder.serverButton("item." + i, "system.action.item_sources", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_sources"),
-                            Map.of("item_id", item.id()), CardButton.Placement.BODY, CardButton.Behavior.PUSH)
-                    .actionParameter("label", item.name());
-        }
+        if (singleItem)
+            builder.serverButton("sources", "system.action.item_sources", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_sources"),
+                            Map.of("item_id", this.items.getFirst().id()), CardButton.Placement.FOOTER, CardButton.Behavior.PUSH)
+                    .actionParameter("footer", true);
+        else
+            // Item indices and action indices stay aligned, including when the client grid changes pages.
+            for (int i = 0; i < this.items.size(); i++) {
+                ItemInfoOutput item = this.items.get(i);
+                builder.serverButton("item." + i, "system.action.view_item_info", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_query"),
+                                Map.of("query", item.id()), CardButton.Placement.BODY, CardButton.Behavior.PUSH)
+                        .actionParameter("label", item.name());
+            }
         if (this.hasMore)
             builder.serverButton("next", "system.action.more_items", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "item_query"),
                             Map.of("query", this.query, "offset", Integer.toString(this.nextOffset)))
-                    .actionParameter("more_items", true);
+                    .actionParameter("more_items", true).actionParameter("footer", true);
         return builder;
     }
 }

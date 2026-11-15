@@ -6,6 +6,15 @@
     },
     {
       "type": "system:text",
+      "translate": "system.ui.quest_source",
+      "args": [
+        "{{source}}"
+      ],
+      "when": "source",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
       "translate": "system.ui.quest_startup_count",
       "args": [
         "{{total}}"

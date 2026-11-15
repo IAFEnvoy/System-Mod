@@ -7,6 +7,7 @@ export function sampleContext(template = "quest_list") {
     notice_title: "任务完成",
     id: "5A710001",
     chapter: "资源仓库",
+    source: "FTB 任务",
     description: "收集材料，为接下来的冒险做好准备。",
     progress: 65,
     answer:
@@ -52,6 +53,7 @@ export function sampleContext(template = "quest_list") {
     entries: 1,
     "entries.0.title": "整合包说明",
     "entries.0.chapter": "入门",
+    "entries.0.source": "FTB 任务",
     "entries.0.passage": "先阅读任务书，再领取新手礼包。",
     "entries.0.has_more": true,
     "entries.0.body": "这里是更多说明。",
@@ -89,6 +91,8 @@ export function sampleContext(template = "quest_list") {
       [`actions.${i}.number`]: i + 1,
       [`actions.${i}.action_number`]: i + 1,
       [`actions.${i}.action_title`]: `收集资源 ${i + 1}`,
+      [`actions.${i}.action_source`]: i < 19 ? "FTB 任务" : "内置任务（示例）",
+      [`actions.${i}.action_icon`]: "minecraft:book",
       [`actions.${i}.action_progress`]: (i * 13) % 101,
       [`actions.${i}.action_quest_id`]: `quest_${i}`,
       [`actions.${i}.action_chapter_id`]: i < 19 ? "resources" : "welcome",
@@ -177,6 +181,7 @@ export function sampleContext(template = "quest_list") {
       placement: "footer",
     }));
   if (template === "items") {
+    p.single_item = false;
     const examples = [
       ["diamond", "钻石"],
       ["diamond_pickaxe", "钻石镐"],
@@ -211,10 +216,11 @@ export function sampleContext(template = "quest_list") {
         id: `item.${i}`,
         label: name,
         placement: "body",
-        value: `system:item_sources?item_id=minecraft%3A${id}`,
+        value: `system:item_query?query=minecraft%3A${id}`,
       };
     });
     p[`actions.${examples.length}.more_items`] = true;
+    p[`actions.${examples.length}.footer`] = true;
     p.result_actions.push({
       id: "next",
       label: "更多物品",

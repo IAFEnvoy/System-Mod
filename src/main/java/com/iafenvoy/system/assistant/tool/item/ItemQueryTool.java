@@ -33,13 +33,18 @@ public record ItemQueryTool(MinecraftTools game) implements ToolRegistry.Handler
         return this.game.onPlayer(context, player -> {
             List<ItemInfoOutput> items = new ArrayList<>();
             int matches = 0;
-            for (Identifier id : BuiltInRegistries.ITEM.keySet().stream().sorted().toList()) {
+            // Explicit IDs open one item; partial names and IDs keep the browsable search results.
+            Identifier exact = query.contains(":") ? Identifier.tryParse(query) : null;
+            List<Identifier> candidates = exact != null && BuiltInRegistries.ITEM.containsKey(exact)
+                    ? List.of(exact) : BuiltInRegistries.ITEM.keySet().stream().sorted().toList();
+            for (Identifier id : candidates) {
                 Item item = BuiltInRegistries.ITEM.getValue(id);
-                String name = new ItemStack(item).getHoverName().getString();
+                ItemStack stack = new ItemStack(item);
+                String name = stack.getHoverName().getString();
                 if (!id.toString().contains(query) && !name.toLowerCase(Locale.ROOT).contains(query)) continue;
                 if (matches++ < input.offset()) continue;
                 if (items.size() == 20) break;
-                items.add(new ItemInfoOutput(id.toString(), new ItemStack(item).getHoverName().copy(), new ItemStack(item).getMaxStackSize(), new ItemStackTemplate(item)));
+                items.add(new ItemInfoOutput(id.toString(), stack.getHoverName().copy(), stack.getMaxStackSize(), new ItemStackTemplate(item)));
             }
             return new ItemPageOutput(input.query(), items, input.offset() + items.size(), matches > input.offset() + items.size());
         });

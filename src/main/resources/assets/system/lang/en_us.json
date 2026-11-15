@@ -27,6 +27,7 @@
   "system.action.view_lottery": "Browse lottery pools",
   "system.action.view_help": "Show command help",
   "system.action.view_items": "Look up items",
+  "system.action.view_item_info": "View item information",
   "system.action.view_item_sources": "Look up item sources",
   "system.action.view_guide": "Search the local manual",
   "system.action.view_player": "View my status",
@@ -740,5 +741,8 @@
   "system.emotion.hidden": "Emotion HUD hidden until the next server state",
   "system.emotion.profile": "Client emotion profile selected: %s",
   "system.emotion.reset": "Default emotion restored; following server replies and playback",
-  "system.emotion.cleared": "Emotion state cleared and HUD hidden"
+  "system.emotion.cleared": "Emotion state cleared and HUD hidden",
+  "system.ui.quest_source": "Source: %s",
+  "system.quest.source.unknown": "Unknown source",
+  "system.quest.source.ftb_quests": "FTB Quests"
 }

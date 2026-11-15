@@ -42,9 +42,16 @@
               "behavior": "{{actions.*.behavior}}",
               "children": [
                 {
-                  "type": "system:ftb_icon",
+                  "type": "system:icon",
                   "icon": "{{actions.*.action_icon}}",
+                  "when": "actions.*.action_icon",
                   "style": "quest_card_icon"
+                },
+                {
+                  "type": "system:ftb_icon",
+                  "icon": "{{actions.*.action_native_icon}}",
+                  "style": "quest_card_icon",
+                  "when": "actions.*.action_native_icon"
                 },
                 {
                   "type": "system:text",
@@ -57,6 +64,12 @@
                   "style": "offer_cell_label",
                   "text": "{{actions.*.label}}",
                   "unless": "actions.*.action_title"
+                },
+                {
+                  "type": "system:text",
+                  "text": "{{actions.*.action_source}}",
+                  "style": "card_action_cell_meta",
+                  "when": "actions.*.action_source"
                 },
                 {
                   "type": "system:text",
@@ -94,13 +107,13 @@
     "label": [
       {
         "type": "system:text",
-        "text": "{{actions.*.action_number}}. {{actions.*.action_title}}\n{{actions.*.action_progress}}%",
+        "text": "{{actions.*.action_number}}. {{actions.*.action_title}}\n{{actions.*.action_source}} · {{actions.*.action_progress}}%",
         "when": "actions.*.action_title",
         "unless": "unlock_notice"
       },
       {
         "type": "system:text",
-        "text": "{{actions.*.action_title}}\n{{actions.*.action_progress}}%",
+        "text": "{{actions.*.action_title}}\n{{actions.*.action_source}} · {{actions.*.action_progress}}%",
         "when": "unlock_notice"
       },
       {

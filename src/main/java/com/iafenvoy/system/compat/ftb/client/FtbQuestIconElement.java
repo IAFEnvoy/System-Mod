@@ -1,5 +1,6 @@
 package com.iafenvoy.system.compat.ftb.client;
 
+import com.iafenvoy.system.assistant.quest.QuestKey;
 import com.iafenvoy.system.data.card.FtbIconData;
 import com.iafenvoy.system.data.output.QuestIconOutput;
 import com.iafenvoy.system.screen.AssistantGeometry;
@@ -68,8 +69,13 @@ public final class FtbQuestIconElement extends MinecraftElement implements Assis
         if (!ClientQuestFile.exists()) return null;
         long id;
         try {
+            if (questId.contains("#")) {
+                QuestKey key = QuestKey.parse(questId);
+                if (!key.source().toString().equals("system:ftb_quests")) return null;
+                questId = key.localId();
+            }
             id = Long.parseUnsignedLong(questId, 16);
-        } catch (NumberFormatException ignored) {
+        } catch (IllegalArgumentException ignored) {
             return null;
         }
         Quest quest = ClientQuestFile.getInstance().getQuest(id);

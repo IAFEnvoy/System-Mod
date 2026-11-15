@@ -1,5 +1,7 @@
 package com.iafenvoy.system.compat.ftb;
 
+import com.iafenvoy.system.assistant.quest.QuestProvider;
+import com.iafenvoy.system.assistant.quest.QuestWorkflows;
 import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.module.ContextTypes;
 import com.iafenvoy.system.module.ModuleContext;
@@ -15,11 +17,12 @@ import java.util.UUID;
  */
 final class FtbQuestRuntime implements PlayerModule {
     final FtbQuestAccess access;
+    final QuestProvider provider;
     private final Map<UUID, Integer> sessions = new HashMap<>();
 
     FtbQuestRuntime(ModuleContext context) {
-        this.access = new FtbQuestAccess(context.engine(), context.get(ContextTypes.GAME), context.get(ContextTypes.DATABASES).shared());
-        context.get(ContextTypes.NARRATION).source(new FtbQuestSpeech(this.access));
+        this.access = new FtbQuestAccess(context.engine(), context.get(ContextTypes.GAME), context.get(ContextTypes.DATABASES).shared(), QuestWorkflows.service(context));
+        this.provider = new FtbQuestProvider(this.access);
     }
 
     @Override

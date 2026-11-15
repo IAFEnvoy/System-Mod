@@ -349,6 +349,15 @@ export function createPreview({ frame, getState, select, log }) {
       e.title += "\n" + flatten(node.tooltip, indices);
       return e;
     }
+    if (type === "icon") {
+      const icon = param(node.icon, indices);
+      if (!icon) return null;
+      e = element("div", css);
+      const image = element("span", "editor-icon", "◆");
+      image.title = "IconReference · " + component(icon);
+      e.append(image);
+      return e;
+    }
     if (type === "ftb_icon") {
       const icon = param(node.icon, indices);
       if (!icon) return null;

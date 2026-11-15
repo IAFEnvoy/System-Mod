@@ -49,9 +49,9 @@ public final class ItemSourceProviders {
     public static List<String> scopes() {
         List<String> scopes = new ArrayList<>();
         scopes.add(ALL);
-        for (Identifier id : ids()) {
-            if (!scopes.contains(id.getPath())) scopes.add(id.getPath());
-        }
+        for (Identifier id : ids())
+            if (!scopes.contains(id.getPath()))
+                scopes.add(id.getPath());
         return List.copyOf(scopes);
     }
 
@@ -94,8 +94,7 @@ public final class ItemSourceProviders {
     }
 
     private static boolean matches(Identifier id, String scope) {
-        return scope.isEmpty() || scope.equals(ALL)
-                || scope.equals(id.getPath()) || scope.equals(id.toString().toLowerCase(Locale.ROOT));
+        return scope.isEmpty() || scope.equals(ALL) || scope.equals(id.getPath()) || scope.equals(id.toString().toLowerCase(Locale.ROOT));
     }
 
     private static List<ItemSourceProvider> sorted() {

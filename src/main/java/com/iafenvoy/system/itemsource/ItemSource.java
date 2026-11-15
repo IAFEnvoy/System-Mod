@@ -18,8 +18,8 @@ import java.util.Objects;
  * @param notes   short human-readable hints such as a loot weight; never translated
  * @param width   positive for a shaped pattern (including empty input slots); zero for a material list
  */
-public record ItemSource(String kind, String id, String type, List<String> station,
-                         List<ItemSourceSlot> inputs, List<ItemSourceSlot> outputs, List<String> notes, int width) {
+public record ItemSource(String kind, String id, String type, List<String> station, List<ItemSourceSlot> inputs,
+                         List<ItemSourceSlot> outputs, List<String> notes, int width) {
     public static final Codec<ItemSource> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("kind").forGetter(ItemSource::kind),
             Codec.STRING.fieldOf("id").forGetter(ItemSource::id),

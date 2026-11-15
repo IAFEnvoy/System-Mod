@@ -26,7 +26,7 @@ public final class QuestDetailModule extends AbstractAgentModule<QuestDetailInpu
     public QuestDetailModule(ToolRegistry.Tool<QuestFindInput, List<QuestBriefOutput>> find,
                              ToolRegistry.Tool<QuestDetailInput, QuestOutput> detail,
                              ToolRegistry.Tool<EmptyInput, StarterGiftOutput> gifts) {
-        super(QuestDetailInput.CODEC, "View one FTB quest's description, objectives, progress and rewards. Ambiguous names return a brief candidate list. Never invent IDs or indices.", List.of(find, detail, gifts), true, false, ExecutionPolicy.quick(2, 0));
+        super(QuestDetailInput.CODEC, "View one quest's description, objectives, progress and rewards. Ambiguous names return a brief candidate list. Never invent IDs or indices.", List.of(find, detail, gifts), true, false, ExecutionPolicy.quick(2, 0));
     }
 
     @Override
@@ -58,8 +58,10 @@ public final class QuestDetailModule extends AbstractAgentModule<QuestDetailInpu
                     input.choiceOffset(), input.descriptionOffset(), input.taskOffset());
         }
         QuestOutput quest = context.tool(BuiltinTools.QUEST_DETAIL, "detail", selected);
-        if (quest.starterGift())
-            return StarterGiftModule.preview(context.tool(BuiltinTools.STARTER_GIFTS, "gifts", EmptyInput.INSTANCE));
+        if (quest.starterGift()) {
+            StarterGiftOutput gifts = context.tool(BuiltinTools.STARTER_GIFTS, "gifts", EmptyInput.INSTANCE);
+            if (!gifts.gifts().isEmpty()) return StarterGiftModule.preview(gifts);
+        }
         return AgentResult.data("system.result.quest", quest);
     }
 

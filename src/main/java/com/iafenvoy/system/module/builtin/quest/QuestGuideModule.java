@@ -19,7 +19,7 @@ import java.util.List;
  */
 public final class QuestGuideModule extends AbstractAgentModule<QuestGuideInput> {
     public QuestGuideModule(ToolRegistry.Tool<QuestGuideInput, QuestGuideOutput> search) {
-        super(QuestGuideInput.CODEC, "Search this modpack's local FTB instruction/manual text by topic or question. Sources are explanatory quests with checkmark-only or no objectives; starter gifts are excluded. Returns authorized source passages and originals, not invented instructions. Does not complete quests or claim rewards. Use this for pack guidance, not active quest progress or web research.",
+        super(QuestGuideInput.CODEC, "Search authorized local instruction/manual text from enabled quest sources by topic or question. Each source decides which explanatory tasks are eligible. Returns authorized source passages and originals, not invented instructions. Does not complete quests or claim rewards. Use this for pack guidance, not active quest progress or web research.",
                 List.of(search), true, false, ExecutionPolicy.quick(2, 0));
     }
 

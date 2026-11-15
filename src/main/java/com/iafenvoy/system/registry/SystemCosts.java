@@ -11,5 +11,6 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 @SuppressWarnings("unused")
 public final class SystemCosts {
     public static final DeferredRegister<MapCodec<? extends Cost>> REGISTRY = DeferredRegister.create(SaturnResourceKeys.COST_TYPE, SystemMod.MOD_ID);
+
     public static final DeferredHolder<MapCodec<? extends Cost>, MapCodec<CurrencyCost>> CURRENCY = REGISTRY.register("currency", () -> CurrencyCost.CODEC);
 }

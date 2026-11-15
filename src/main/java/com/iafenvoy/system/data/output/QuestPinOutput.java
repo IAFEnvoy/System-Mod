@@ -1,6 +1,8 @@
 package com.iafenvoy.system.data.output;
 
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.assistant.quest.Quest;
+import com.iafenvoy.system.assistant.quest.QuestSource;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.util.LegacyText;
@@ -18,7 +20,7 @@ import java.util.List;
  * A compact live tracker has no reward references, submission actions, narration or AI work.
  */
 public record QuestPinOutput(String id, Component title, Component chapter, double progress,
-                             boolean completed, List<QuestTaskOutput> tasks, int otherTasks) implements CardData {
+                             boolean completed, List<QuestTaskOutput> tasks, int otherTasks, QuestSource source) implements CardData, Quest {
     public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_pin");
     public static final MapCodec<QuestPinOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("id").forGetter(QuestPinOutput::id),
@@ -27,7 +29,8 @@ public record QuestPinOutput(String id, Component title, Component chapter, doub
             Codec.DOUBLE.fieldOf("progress").forGetter(QuestPinOutput::progress),
             Codec.BOOL.fieldOf("completed").forGetter(QuestPinOutput::completed),
             QuestTaskOutput.CODEC.listOf().fieldOf("tasks").forGetter(QuestPinOutput::tasks),
-            Codec.INT.fieldOf("otherTasks").forGetter(QuestPinOutput::otherTasks)
+            Codec.INT.fieldOf("otherTasks").forGetter(QuestPinOutput::otherTasks),
+            QuestSource.CODEC.optionalFieldOf("source", QuestSource.UNKNOWN).forGetter(QuestPinOutput::source)
     ).apply(i, QuestPinOutput::new));
 
     public QuestPinOutput {
@@ -45,7 +48,7 @@ public record QuestPinOutput(String id, Component title, Component chapter, doub
     public CardBuilder buildCard() {
         // Keep the marker outside the title's wrapping text column.
         Component status = Component.literal(this.completed ? "✓" : "✗").withStyle(this.completed ? ChatFormatting.GREEN : ChatFormatting.RED);
-        CardBuilder builder = CardBuilder.template(TEMPLATE).put("id", this.id).put("title", this.title).put("status", status)
+        CardBuilder builder = CardBuilder.template(TEMPLATE).put("source", this.source.name()).put("id", this.id).put("title", this.title).put("status", status)
                 .put("chapter", this.chapter).put("progress", (int) this.progress).put("completed", this.completed)
                 .put("other_tasks", this.otherTasks);
         return builder.list("tasks", this.tasks, (prefix, task) -> task.fill(builder, prefix));

@@ -1,10 +1,10 @@
 package com.iafenvoy.system.module.client;
 
+import com.iafenvoy.system.assistant.quest.Quest;
+import com.iafenvoy.system.assistant.quest.QuestKey;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.card.DisplayCardKey;
 import com.iafenvoy.system.data.output.QuestBriefOutput;
-import com.iafenvoy.system.data.output.QuestOutput;
-import com.iafenvoy.system.data.output.QuestPinOutput;
 import com.iafenvoy.system.data.output.QuestUnlockedOutput;
 import com.iafenvoy.system.data.result.QuestList;
 import com.iafenvoy.system.data.result.QuestNotice;
@@ -23,7 +23,8 @@ import java.util.List;
 @EventBusSubscriber(Dist.CLIENT)
 public final class QuestCardBindings {
     private static void pin(CardBuilder builder, String prefix, String quest) {
-        DisplayCardKey key = new DisplayCardKey(QuestSystemModule.ID, quest);
+        QuestKey reference = quest.contains("#") ? QuestKey.parse(quest) : new QuestKey(QuestSystemModule.ID, quest);
+        DisplayCardKey key = new DisplayCardKey(reference.source(), reference.localId());
         builder.put(prefix + "pin_binding", (CardButtonBinding) button -> ClientModuleCaches.DISPLAY_CARDS.bind(button, key));
         builder.callback(prefix + "pin", () -> ClientModuleCaches.DISPLAY_CARDS.toggle(key));
     }
@@ -38,8 +39,7 @@ public final class QuestCardBindings {
         ))
             for (int i = 0; i < quests.size(); i++)
                 pin(event.builder(), "actions." + i + ".", quests.get(i).id());
-        else if (event.data() instanceof QuestOutput quest) pin(event.builder(), "", quest.id());
+        else if (event.data() instanceof Quest quest) pin(event.builder(), "", quest.id());
         else if (event.data() instanceof QuestNotice quest) pin(event.builder(), "", quest.id());
-        else if (event.data() instanceof QuestPinOutput quest) pin(event.builder(), "", quest.id());
     }
 }

@@ -12,6 +12,8 @@
 
 `SystemHudEntries.EMOTION` 以 `system.emotion` 注册到 Saturn 自带 HUD 编辑器，默认在左上角，左、上各留 12 个 GUI 像素。使用右 Shift 或 `/saturn hud open` 移动、更换锚点与控制显隐，位置沿用 `config/saturn/hud.json`；`/saturn hud system.emotion reset` 恢复默认位置，已有布局不会被自动覆盖。编辑器内始终预览实际熊猫头。HUD 跟随设置页选择的系统样式：中央方框与系统主面板共用 `--assistant-window` 背景色，边框和四角横、竖色条使用当前主题的强调色。切换样式即时更新，首次创建及资源重载后也会应用已保存的选择；颜色定义共用 `assistant-theme.css`，无需加载整份页面布局。外部区域透明，不铺全屏遮罩，也不接收鼠标或键盘事件。初始和清除后隐藏；有表情时在普通游戏和游戏内 GUI 中显示，设置等菜单暂时隐藏；F1 和 Saturn 的显隐选项优先。
 
+简约模式界面打开时也保留表情 HUD，与普通游戏中的显示状态一致；无表情或清除状态后仍隐藏。完整模式和设置菜单继续沿用原有显示条件。
+
 HTML / CSS 可通过资源包覆盖 `assets/apricityui/apricity/system/assistant-emotion.html` 和 `assistant-emotion.css`。固定尺寸的布局不会在说话时变更；静止 / 说话帧只重新绘制贴图和偏移。指令根节点下只有 literal 子命令，表情 ID 参数放在 `set` 下；speaking 的 true / false / auto 也全部使用 literal。
 
 下列命令在系统界面输入框使用 `/emotion`，在原版聊天栏使用 `/system emotion`；系统界面也接受完整的 `/system emotion` 前缀。表情是单独注册的客户端调试入口，无需 OP、不要求绑定系统，执行不发送网络请求，也不修改服务端或玩家存档。其他模块指令仍仅在系统界面输入，不会随此入口导出。

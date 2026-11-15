@@ -27,6 +27,7 @@
   "system.action.view_lottery": "浏览系统奖池",
   "system.action.view_help": "查看指令帮助",
   "system.action.view_items": "查询物品",
+  "system.action.view_item_info": "查看物品信息",
   "system.action.view_item_sources": "查询物品来源",
   "system.action.view_guide": "查询本地说明书",
   "system.action.view_player": "查看自身状态",
@@ -740,5 +741,8 @@
   "system.emotion.hidden": "已隐藏表情 HUD（收到新状态时恢复）",
   "system.emotion.profile": "已切换客户端表情配置：%s",
   "system.emotion.reset": "表情已恢复默认，重新跟随服务端与播报",
-  "system.emotion.cleared": "已清除表情状态并隐藏 HUD"
+  "system.emotion.cleared": "已清除表情状态并隐藏 HUD",
+  "system.ui.quest_source": "来源：%s",
+  "system.quest.source.unknown": "未知来源",
+  "system.quest.source.ftb_quests": "FTB 任务"
 }

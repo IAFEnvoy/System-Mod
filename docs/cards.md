@@ -264,7 +264,7 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 flex / grid 组合 b
 
 ### 任务与奖励类型图标
 
-`ftb_icon.icon` 绑定单个 `FtbIconData`，不接受图标列表。`FtbIconData.quest(id, title)` 读取 Quest 自身配置的图标；`FtbIconData.type(preview)` 使用服务端提供的 QuestIconOutput 类型、数量和 tooltip。任务列表的单个图标参数为 `actions.<下标>.action_icon`，任务 / 奖励列表用 flex.source + 单 ftb_icon 组合。
+`ftb_icon.icon` 绑定单个 `FtbIconData`，不接受图标列表。`FtbIconData.quest(id, title)` 读取 Quest 自身配置的图标；`FtbIconData.type(preview)` 使用服务端提供的 QuestIconOutput 类型、数量和 tooltip。FTBQ 原生任务图标参数为 `actions.<下标>.action_native_icon`；任务来源可提供通用 `IconReference` 到 `actions.<下标>.action_icon`，使用 `system:icon` 渲染，默认 32 像素，支持资源图与物品。任务 / 奖励的 FTB 原生类型图标仍用 flex.source + 单 ftb_icon 组合。
 
 原生图标适配器仅在安装 FTB 的物理客户端反射加载；共享 DTO 不引用可选类。类型不符时隐藏，适配器不可用时使用标题回退。物品仍走 item 节点和原版 tooltip，图标与数量继续沿用 FTB 的原生展示。
 
@@ -434,7 +434,7 @@ FTB 来源为隔离适配器 `FtbQuestDisplay`：每次核对当前队伍、任�
 | 模板 | 参数 |
 | --- | --- |
 | player | player_id（UUID）、name/health/max_health/experience_level/dimension，player_information |
-| items | items.<下标>.item_name/item_id/max_stack，result_items |
+| items | items.<下标>.item_name/item_id/max_stack/preview；single_item 切换单个物品信息与结果网格，actions.<下标>.footer 标记获取方式 / 更多物品按钮 |
 | sign_in_status | date/signed_in/history_saved/external_model，candidates.<下标>.reward_label/reward_items/result_items |
 | reward/entitlement/purchase | reward_label/reward_items/result_items；回执另有 entitlement_id/state，购买另有 order_id；状态 delivered 表示已交付，按钮区显示不可点的“已领取” |
 | shop_offer | label/id/items/price/price_text/payment_available/payment_unavailable，offer_items/price_items；has_purchase_limit/purchase_limit/limit_reached 展示限购快照 |
@@ -514,3 +514,7 @@ JSON 使用 `"type":"example:badge"`。注册与冻结由 NeoForge 模组加载�
 资源重载依次尝试高优先级资源包、低优先级资源包、上次有效模板；未知 type 或结构错误使整张模板回退，结构字段不作 lenient 吞错。删除资源会移除模板。完整/简约界面刷新已有内容；通知在实际绘制时读取当前模板，队列保存卡片数据；已显示通知不因资源重载重新入队或播报。消息按卡片 ID 去重。
 
 资源只位于客户端 assets，不进入服务端 data、存档或模型请求；无新增依赖，网络协议仍为 1。
+
+### 任务来源参数
+
+任务列表动作参数新增 `actions.<下标>.action_source`；任务详情、完成通知、提交结果和常驻卡片提供 `source`，值为服务端传递的来源显示名 Component。启动提示汇总来源显示名，说明书提供每条 `entries.<下标>.source`。模板使用 `system.ui.quest_source`（中英文）格式化来源标签。任务与领奖引用按 `来源ID#本地ID` 分派；章节和分组键也按来源隔离。客户端 pin 从带来源的任务键提取 `DisplayCardKey`，不再将所有任务固定为 FTBQ 来源。接口与 Codec 范围见[通用任务接口](quests.md)。

@@ -2,7 +2,42 @@
   "body": [
     {
       "type": "system:title",
-      "translate": "system.ui.nav_items"
+      "translate": "system.ui.nav_items",
+      "unless": "single_item"
+    },
+    {
+      "type": "system:title",
+      "text": "{{items.0.item_name}}",
+      "when": "single_item"
+    },
+    {
+      "type": "system:flex",
+      "direction": "row",
+      "style": "card_row",
+      "when": "single_item",
+      "children": [
+        {
+          "type": "system:item",
+          "item": "{{items.0.preview}}",
+          "size": 40
+        },
+        {
+          "type": "system:flex",
+          "direction": "column",
+          "style": "card_column",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{items.0.item_id}}",
+              "style": "card_context"
+            },
+            {
+              "type": "system:text",
+              "text": "{{field:max_stack}}: {{items.0.max_stack}}"
+            }
+          ]
+        }
+      ]
     },
     {
       "type": "system:text",
@@ -16,6 +51,7 @@
       "columns": 6,
       "max_row": 3,
       "cell": 104,
+      "unless": "single_item",
       "children": [
         {
           "type": "system:button",
@@ -59,7 +95,7 @@
     {
       "type": "system:flex",
       "source": "{{actions}}",
-      "filter": "{{actions.*.more_items}}",
+      "filter": "{{actions.*.footer}}",
       "style": "card_actions",
       "children": [
         {

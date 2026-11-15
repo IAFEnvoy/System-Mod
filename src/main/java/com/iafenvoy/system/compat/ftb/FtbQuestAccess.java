@@ -6,6 +6,8 @@ import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.MinecraftTools;
+import com.iafenvoy.system.assistant.quest.QuestKey;
+import com.iafenvoy.system.assistant.quest.QuestService;
 import com.iafenvoy.system.data.database.AgentDatabase;
 import com.iafenvoy.system.data.input.QuestDetailInput;
 import com.iafenvoy.system.data.output.*;
@@ -22,21 +24,24 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.*;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 /**
- * Shared quest list snapshots and reward references; operations are separate single-purpose tools.
+ * Shared native reward references and snapshots; QuestService owns source dispatch and list numbering.
  */
 final class FtbQuestAccess {
     final MinecraftTools game;
+    private final QuestService quests;
     final Map<String, RewardReference> references = new ConcurrentHashMap<>();
-    final Map<UUID, QuestList> lists = new ConcurrentHashMap<>();
     final FtbStarterGifts gifts = new FtbStarterGifts();
     final FtbQuestKnowledge knowledge;
     final FtbQuestNotifications notifications;
 
-    FtbQuestAccess(AgentEngine engine, MinecraftTools game, AgentDatabase database) {
+    FtbQuestAccess(AgentEngine engine, MinecraftTools game, AgentDatabase database, QuestService quests) {
         this.game = game;
+        this.quests = quests;
         this.knowledge = new FtbQuestKnowledge(engine, database, game.server());
         this.notifications = new FtbQuestNotifications(this);
         engine.lifecycle((player, event) -> {
@@ -44,25 +49,45 @@ final class FtbQuestAccess {
         });
     }
 
+    <T> CompletionStage<T> onPlayer(ExecutionContext context, Function<ServerPlayer, T> operation) {
+        return this.game.onPlayer(context, player -> {
+            this.quests.checkAccess(context, FtbQuestProvider.SOURCE.id());
+            return operation.apply(player);
+        });
+    }
+
+    static String key(long id) {
+        return FtbQuestProvider.SOURCE.key(hex(id));
+    }
+
+    static String local(String id) {
+        if (!id.contains("#")) return id;
+        QuestKey key = QuestKey.parse(id);
+        if (!key.source().equals(FtbQuestProvider.SOURCE.id())) throw new AgentException(AgentFailure.INVALID_INPUT);
+        return key.localId();
+    }
+
     void clear(UUID player) {
         this.references.values().removeIf(reference -> reference.player.equals(player));
-        this.lists.remove(player);
         this.gifts.clear(player);
     }
 
-    static Quest selected(ExecutionContext context, ServerQuestFile file, TeamData team, String questId, int index, Map<UUID, QuestList> lists) {
-        if (index > 0) {
-            QuestList previous = lists.get(context.player());
-            if (previous == null || previous.expires() < System.currentTimeMillis()
-                    || previous.incarnation() != context.incarnation() || previous.epoch() != context.memoryEpoch()
-                    || !previous.team().equals(team.getTeamId()))
-                throw new AgentException(AgentFailure.STALE_QUEST_LIST);
-            if (index > previous.quests().size()) throw new AgentException(AgentFailure.INVALID_SELECTION);
-            Quest selected = previous.quests().get(index - 1);
-            if (file.getQuest(selected.getId()) != selected) throw new AgentException(AgentFailure.STALE_QUEST_LIST);
-            return selected;
+    static String revision(TeamData team, Quest quest) {
+        // This is a transient invalidation token, never an authorization token.
+        return team.getTeamId() + ":" + System.identityHashCode(team) + ":"
+                + System.identityHashCode(quest.getQuestFile()) + ":" + System.identityHashCode(quest);
+    }
+
+    static Quest selected(ServerQuestFile file, TeamData team, String questId, Optional<String> expectedRevision) {
+        Quest quest;
+        try {
+            quest = file.getQuest(Long.parseUnsignedLong(local(questId), 16));
+        } catch (IllegalArgumentException error) {
+            throw new AgentException(AgentFailure.INVALID_INPUT, error);
         }
-        return questId.isBlank() ? null : file.getQuest(Long.parseUnsignedLong(questId, 16));
+        if (expectedRevision.isPresent() && (quest == null || !expectedRevision.get().equals(revision(team, quest))))
+            throw new AgentException(AgentFailure.STALE_QUEST_LIST);
+        return quest;
     }
 
     static Optional<String> reference(ServerPlayer player, TeamData team, Quest quest, Reward reward, Map<String, RewardReference> references) {
@@ -71,32 +96,19 @@ final class FtbQuestAccess {
         long owned = references.values().stream().filter(ref -> ref.player.equals(player.getUUID())).count();
         if (!FtbQuestReader.canClaim(player, team, reward) || owned >= 256 || references.size() >= 4096)
             return Optional.empty();
-        String reference = UUID.randomUUID().toString();
+        String reference = FtbQuestProvider.SOURCE.key(UUID.randomUUID().toString());
         references.put(reference, new RewardReference(player.getUUID(), team.getTeamId(), quest.getId(), reward.getId(),
                 team.getCompletedTime(quest.getId()).map(Date::getTime).orElse(0L), quest, reward, choiceVersion(reward), now + 120000));
         return Optional.of(reference);
-    }
-
-    static List<QuestBriefOutput> list(ExecutionContext context, ServerPlayer player, TeamData team, List<Quest> matches, Map<UUID, QuestList> lists) {
-        List<Quest> selected = List.copyOf(matches);
-        List<QuestBriefOutput> quests = new ArrayList<>();
-        for (Quest quest : selected)
-            quests.add(brief(player, team, quest, quests.size() + 1));
-        long now = System.currentTimeMillis();
-        lists.values().removeIf(value -> value.expires < now);
-        if (!lists.containsKey(context.player()) && lists.size() >= 4096) throw new AgentException(AgentFailure.BUSY);
-        // Indices refer to the complete displayed list, never to a newly filtered or reordered quest file.
-        lists.put(context.player(), new QuestList(team.getTeamId(), context.incarnation(), context.memoryEpoch(), selected, now + 600000));
-        return List.copyOf(quests);
     }
 
     static QuestBriefOutput brief(ServerPlayer player, TeamData team, Quest quest, int number) {
         Chapter chapter = quest.getChapter();
         ChapterGroup group = chapter.getGroup();
         // Only metadata of matched quests is exported; no empty or hidden sibling chapters are added.
-        return new QuestBriefOutput(number, hex(quest.getId()), FtbQuestText.title(player, quest),
+        return new QuestBriefOutput(number, key(quest.getId()), FtbQuestText.title(player, quest),
                 FtbQuestText.title(player, chapter), team.getRelativeProgress(quest), hex(chapter.getId()), hex(group.getId()),
-                group.isDefaultGroup() ? Component.empty() : FtbQuestText.title(player, group));
+                group.isDefaultGroup() ? Component.empty() : FtbQuestText.title(player, group), FtbQuestProvider.SOURCE, Optional.empty(), revision(team, quest));
     }
 
     static QuestOutput detail(ServerPlayer player, TeamData team, Quest quest, QuestDetailInput input, Map<String, RewardReference> references) {
@@ -135,7 +147,7 @@ final class FtbQuestAccess {
         String description = FtbQuestText.description(player, team, quest);
         int start = Math.min(descriptionOffset, description.length());
         int end = start + Math.min(2048, description.length() - start);
-        return new QuestOutput(hex(quest.getId()), FtbQuestText.title(player, quest),
+        return new QuestOutput(key(quest.getId()), FtbQuestText.title(player, quest),
                 FtbQuestText.title(player, quest.getChapter()), description.substring(start, end),
                 team.getRelativeProgress(quest), team.isCompleted(quest), FtbQuestReader.submissionAction(player, team, quest),
                 FtbQuestReader.kind(quest) == FtbQuestReader.Kind.STARTER_GIFT,
@@ -143,10 +155,7 @@ final class FtbQuestAccess {
                 new SectionPageOutput(rewardOffset, rewardOffset + rewards.size(), visibleRewards > rewardOffset + rewards.size()),
                 new SectionPageOutput(taskOffset, taskOffset + tasks.size(), quest.getTasksAsList().size() > taskOffset + tasks.size()),
                 new SectionPageOutput(start, end, description.length() > end),
-                FtbQuestSpeech.content(player, team, quest, speechEvent));
-    }
-
-    record QuestList(UUID team, long incarnation, long epoch, List<Quest> quests, long expires) {
+                FtbQuestSpeech.content(player, team, quest, speechEvent), FtbQuestProvider.SOURCE);
     }
 
     static QuestTaskOutput task(ServerPlayer player, TeamData team, Task task) {

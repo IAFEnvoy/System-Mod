@@ -1,6 +1,5 @@
 package com.iafenvoy.system.compat.ftb;
 
-import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.output.QuestPinOutput;
 import com.iafenvoy.system.data.output.QuestTaskOutput;
 import dev.ftb.mods.ftbquests.quest.Quest;
@@ -19,7 +18,7 @@ final class FtbQuestDisplay {
     private FtbQuestDisplay() {
     }
 
-    static Optional<CardData> read(ServerPlayer player, String id) {
+    static Optional<QuestPinOutput> read(ServerPlayer player, String id) {
         if (!ServerQuestFile.exists()) return Optional.empty();
         long questId;
         try {
@@ -34,7 +33,7 @@ final class FtbQuestDisplay {
         List<Task> tasks = quest.getTasksAsList();
         List<QuestTaskOutput> preview = tasks.stream().limit(3).map(task -> new QuestTaskOutput(
                 FtbQuestText.title(player, task), team.getProgress(task), task.getMaxProgress(), List.of(), List.of())).toList();
-        return Optional.of(new QuestPinOutput(id, FtbQuestText.title(player, quest), FtbQuestText.title(player, quest.getChapter()),
-                team.getRelativeProgress(quest), team.isCompleted(quest), preview, Math.max(0, tasks.size() - preview.size())));
+        return Optional.of(new QuestPinOutput(FtbQuestAccess.key(questId), FtbQuestText.title(player, quest), FtbQuestText.title(player, quest.getChapter()),
+                team.getRelativeProgress(quest), team.isCompleted(quest), preview, Math.max(0, tasks.size() - preview.size()), FtbQuestProvider.SOURCE));
     }
 }

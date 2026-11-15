@@ -3,11 +3,9 @@ package com.iafenvoy.system.compat.ftb;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.database.KnowledgeIndex;
 import com.iafenvoy.system.data.input.QuestGuideInput;
 import com.iafenvoy.system.data.output.QuestGuideOutput;
-import com.iafenvoy.system.module.builtin.BuiltinTools;
 import com.iafenvoy.system.util.LegacyText;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
@@ -20,26 +18,20 @@ import java.util.concurrent.CompletionStage;
 /**
  * Snapshot and authorize on the server thread, rank immutable text off-thread, then revalidate every source.
  */
-final class FtbQuestGuideTool implements ToolRegistry.Handler<QuestGuideInput, QuestGuideOutput> {
+final class FtbQuestGuides {
     private final FtbQuestAccess access;
 
-    FtbQuestGuideTool(FtbQuestAccess access) {
+    FtbQuestGuides(FtbQuestAccess access) {
         this.access = access;
-    }
-
-    ToolRegistry.Tool<QuestGuideInput, QuestGuideOutput> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.QUEST_GUIDE, false, true, false, this)
-                .forReasoning("Search authorized local quest manuals and return source passages. Never submits or claims a quest.");
     }
 
     private record Snapshot(FtbQuestKnowledge.Snapshot knowledge, UUID team, Set<String> allowed) {
     }
 
-    @Override
-    public CompletionStage<QuestGuideOutput> execute(ExecutionContext context, QuestGuideInput input) {
-        return this.access.game.onPlayer(context, this::snapshot).thenCompose(snapshot ->
+    CompletionStage<QuestGuideOutput> search(ExecutionContext context, QuestGuideInput input) {
+        return this.access.onPlayer(context, this::snapshot).thenCompose(snapshot ->
                 this.access.knowledge.search(context, snapshot.knowledge(), snapshot.allowed(), input.query(), 5)
-                        .thenCompose(hits -> this.access.game.onPlayer(context, player -> this.result(player, input, snapshot, hits))));
+                        .thenCompose(hits -> this.access.onPlayer(context, player -> this.result(player, input, snapshot, hits))));
     }
 
     private QuestGuideOutput result(ServerPlayer player, QuestGuideInput input, Snapshot snapshot, List<KnowledgeIndex.Hit> hits) {
@@ -57,8 +49,8 @@ final class FtbQuestGuideTool implements ToolRegistry.Handler<QuestGuideInput, Q
             String body = FtbQuestText.description(player, team, quest);
             if (LegacyText.plain(body).isBlank() || !FtbQuestKnowledge.document(this.access.game.server(), snapshot.knowledge().language(), quest).equals(document))
                 continue;
-            entries.add(new QuestGuideOutput.Entry(document.id(), FtbQuestText.title(player, quest), FtbQuestText.title(player, quest.getChapter()),
-                    hit.passage(), body));
+            entries.add(new QuestGuideOutput.Entry(FtbQuestProvider.SOURCE.key(document.id()), FtbQuestText.title(player, quest), FtbQuestText.title(player, quest.getChapter()),
+                    hit.passage(), body, FtbQuestProvider.SOURCE));
         }
         return new QuestGuideOutput(input.query(), entries);
     }

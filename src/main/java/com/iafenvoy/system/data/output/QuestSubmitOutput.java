@@ -1,6 +1,7 @@
 package com.iafenvoy.system.data.output;
 
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.assistant.quest.QuestSource;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardFact;
@@ -16,13 +17,14 @@ import java.util.List;
 import java.util.Optional;
 
 public record QuestSubmitOutput(String questId, Component title, List<QuestTaskOutput> tasks, boolean changed,
-                                boolean completed) implements CardData {
+                                boolean completed, QuestSource source) implements CardData {
     public static final MapCodec<QuestSubmitOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("questId").forGetter(QuestSubmitOutput::questId),
             ComponentSerialization.CODEC.fieldOf("title").forGetter(QuestSubmitOutput::title),
             QuestTaskOutput.CODEC.listOf().fieldOf("tasks").forGetter(QuestSubmitOutput::tasks),
             Codec.BOOL.fieldOf("changed").forGetter(QuestSubmitOutput::changed),
-            Codec.BOOL.fieldOf("completed").forGetter(QuestSubmitOutput::completed)
+            Codec.BOOL.fieldOf("completed").forGetter(QuestSubmitOutput::completed),
+            QuestSource.CODEC.optionalFieldOf("source", QuestSource.UNKNOWN).forGetter(QuestSubmitOutput::source)
     ).apply(i, QuestSubmitOutput::new));
     public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_submit");
 
@@ -35,7 +37,7 @@ public record QuestSubmitOutput(String questId, Component title, List<QuestTaskO
     @Override
     public CardBuilder buildCard() {
         CardBuilder builder = CardBuilder.template(TEMPLATE);
-        builder.put("title", this.title()).put("changed", this.changed())
+        builder.put("title", this.title()).put("source", this.source.name()).put("changed", this.changed())
                 .list("tasks", this.tasks(), (prefix, task) -> task.fill(builder, prefix));
         String event = this.changed ? "quest_submitted" : "quest_submit_unchanged";
         return builder.summary(Component.translatable("system.ui." + event, this.title)).speech(Component.translatable("system.tts.message." + event, this.title));

@@ -16,6 +16,8 @@
 | [包职责与数据流](architecture.md) | Agent / assistant / data / module / speech 边界、依赖注入、线程与关闭顺序 |
 | [开发与架构](development.md) | Agent 包组织、模块与工具接口、预算、持久化、MC 接入和当前限制 |
 | [功能模块化](feature-modules.md) | 功能装配、两端指令、生命周期、页面/通知/口播注册与可选集成 |
+| [模块全量清单与推荐优先级](module-roadmap.md) | 23 类玩法候选、149 个调研细项、现有模块标记、基础服务及分阶段开发建议 |
+| [通用任务接口与任务来源](quests.md) | Quest／QuestProvider、可选能力、跨来源查询、来源展示、编号与领奖校验、FTBQ 适配 |
 | [主手物品鉴定](item-inspection.md) | 实际物品、耐久与附魔快照，获取来源入口 |
 | [装备工坊](workshop.md) | 主手装备报价、Saturn Cost 付款与完整维修 |
 | [在线作业](online-jobs.md) | 数据驱动生产表、在线进度、暂停与收件箱领取 |

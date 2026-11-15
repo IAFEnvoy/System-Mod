@@ -44,18 +44,18 @@ final class FtbStarterGifts {
             // Keep references usable from live chat history; ownership and quest state are checked on every claim.
             String id = this.references.entrySet().stream().filter(entry -> entry.getValue().player().equals(player.getUUID())
                             && entry.getValue().team().equals(team.getTeamId()) && entry.getValue().quest() == quest)
-                    .map(Map.Entry::getKey).findFirst().orElseGet(() -> UUID.randomUUID().toString());
+                    .map(Map.Entry::getKey).findFirst().orElseGet(() -> FtbQuestProvider.SOURCE.key(UUID.randomUUID().toString()));
             this.references.put(id, new Reference(player.getUUID(), team.getTeamId(), quest,
                     List.copyOf(quest.getTasksAsList()), List.copyOf(quest.getRewards()),
                     team.getCompletedTime(quest.getId()).map(Date::getTime).orElse(0L)));
             reference = Optional.of(id);
         }
-        return new StarterGiftOutput.Gift(FtbQuestAccess.hex(quest.getId()), reference, Optional.empty());
+        return new StarterGiftOutput.Gift(FtbQuestAccess.key(quest.getId()), reference, Optional.empty());
     }
 
     private static StarterGiftOutput snapshot(ServerPlayer player, ServerQuestFile file, TeamData team, List<StarterGiftOutput.Gift> gifts) {
         // Merge only display quantities; each gift retains its own trusted claim reference and failure.
-        List<Reward> unclaimed = gifts.stream().map(gift -> file.getQuest(Long.parseUnsignedLong(gift.questId(), 16)))
+        List<Reward> unclaimed = gifts.stream().map(gift -> file.getQuest(Long.parseUnsignedLong(FtbQuestAccess.local(gift.questId()), 16)))
                 .filter(Objects::nonNull).filter(quest -> FtbQuestReader.readable(team, quest))
                 .flatMap(quest -> rewards(team, quest).stream())
                 .filter(reward -> !team.isRewardClaimed(player.getUUID(), reward)).toList();
@@ -80,7 +80,7 @@ final class FtbStarterGifts {
             } catch (RuntimeException error) {
                 Quest quest = reference.quest();
                 if (file.getQuest(quest.getId()) == quest && FtbQuestReader.readable(team, quest))
-                    failures.put(FtbQuestAccess.hex(quest.getId()), new StarterGiftOutput.Gift(FtbQuestAccess.hex(quest.getId()),
+                    failures.put(FtbQuestAccess.key(quest.getId()), new StarterGiftOutput.Gift(FtbQuestAccess.key(quest.getId()),
                             Optional.empty(), Optional.of(AgentException.failure(error).message())));
             }
         }

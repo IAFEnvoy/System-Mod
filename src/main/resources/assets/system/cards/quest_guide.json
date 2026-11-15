@@ -31,6 +31,15 @@
         },
         {
           "type": "system:text",
+          "translate": "system.ui.quest_source",
+          "args": [
+            "{{entries.*.source}}"
+          ],
+          "when": "entries.*.source",
+          "style": "card_context"
+        },
+        {
+          "type": "system:text",
           "text": "{{entries.*.chapter}}",
           "style": [
             "card_context"

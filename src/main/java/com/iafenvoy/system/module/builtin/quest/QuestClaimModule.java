@@ -21,7 +21,7 @@ import java.util.List;
  */
 public final class QuestClaimModule extends AbstractAgentModule<QuestClaimInput> {
     public QuestClaimModule(ToolRegistry.Tool<QuestClaimInput, QuestClaimOutput> claim, ToolRegistry.Tool<QuestDetailInput, QuestOutput> detail) {
-        super(QuestClaimInput.CODEC, "Claim exactly one known FTB reward using a previously returned claimRef. Without a ref, list claimable quests then open system:quest_detail; never invent references.", List.of(claim, detail), true, false, ExecutionPolicy.quick(1, 1));
+        super(QuestClaimInput.CODEC, "Claim exactly one known quest reward using a previously returned claimRef. Without a ref, list claimable quests then open system:quest_detail; never invent references.", List.of(claim, detail), true, false, ExecutionPolicy.quick(1, 1));
     }
 
     @Override

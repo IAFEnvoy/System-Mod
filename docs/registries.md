@@ -116,7 +116,7 @@ AgentAction call = QuestDetailInput.byId(id);
 
 请求与响应分别位于 `agent.request`、`agent.response` 的独立文件，各自定义 `STREAM_CODEC`，`SystemRequestTypes` / `SystemResponseTypes` 只引用并登记这些实例。`ControlRequest` 保留枚举形式，按序号编码；导航枚举为 `OpenResponse.View`，绑定变更枚举为 `BindingResponse.Change`，同样按序号编码。根接口只保留统一分派入口及公共契约。
 
-任务读取不需要类型注册表：`ftb.query` / `ftb.find` 固定返回 `List<QuestBriefOutput>`，`ftb.detail` 固定返回 `QuestOutput`，新手礼包工具固定返回 `StarterGiftOutput`，各自直接使用对应 Codec。名称歧义选择和礼包展示由 `QuestDetailModule` 组合工具处理，详情见[FTB 适配与边界](development.md#ftb-适配与边界)。
+任务读取不需要类型注册表：`quest.query` / `quest.find` 固定返回 `List<QuestBriefOutput>`，`quest.detail` 固定返回 `QuestOutput`，新手礼包工具固定返回 `StarterGiftOutput`，各自直接使用对应 Codec。名称歧义选择和礼包展示由 `QuestDetailModule` 组合工具处理，详情见[FTB 适配与边界](development.md#ftb-适配与边界)。
 
 Codec 在第一次编解码时才访问注册表，避免静态初始化时提前解析尚未绑定的 Holder。声明新的递归 Codec 时继续使用 `Codec.lazyInitialized`，不要在静态字段中提前调用其他 DeferredHolder 的 `.get()`。
 
@@ -254,8 +254,12 @@ ModuleContext 的 AgentEngine 与模块注册表为固定字段，以 engine() /
 
 ## 搜索模块入口
 
-服务端类型 Codec 为 SystemServerModules.SEARCH，客户端 Map 实现为 SystemClientModules.SEARCH；开发动态条目同时指定 server.type 和 client 为 system:web_search，但不再追加到默认模块 tag。搜索类型仅导出工具，不注册独立 AgentAction。核心动作 `SystemActionTypes.QUESTION_ACTION` 的 ID 为 `system:question`，对应 QuestionInput；本地答复卡片为 `SystemCardDataTypes.KNOWLEDGE_ANSWER` / `system:knowledge_answer`，联网答复继续使用 `WEB_SEARCH` / `system:web_search`。模板分别为 `knowledge_answer.json` 与 `web_search.json`。工具键 DATABASE_QUERY / QUEST_GUIDE / WEB_SEARCH / WEB_FETCH 对应 `database.query` / `ftb.guide` / `web.search` / `web.fetch`。
+服务端类型 Codec 为 SystemServerModules.SEARCH，客户端 Map 实现为 SystemClientModules.SEARCH；开发动态条目同时指定 server.type 和 client 为 system:web_search，但不再追加到默认模块 tag。搜索类型仅导出工具，不注册独立 AgentAction。核心动作 `SystemActionTypes.QUESTION_ACTION` 的 ID 为 `system:question`，对应 QuestionInput；本地答复卡片为 `SystemCardDataTypes.KNOWLEDGE_ANSWER` / `system:knowledge_answer`，联网答复继续使用 `WEB_SEARCH` / `system:web_search`。模板分别为 `knowledge_answer.json` 与 `web_search.json`。工具键 DATABASE_QUERY / QUEST_GUIDE / WEB_SEARCH / WEB_FETCH 对应 `database.query` / `quest.guide` / `web.search` / `web.fetch`。
 
 WebResearch 已迁入通用 ReActLoop，每次循环按工具上下文构建本地 MapCodec 表，以 `type=web.search|web.fetch|answer` dispatch，工具参数位于 input；不是 MC 注册表，也不另加全局 AgentAction。跨能力只读工作流另注册 `SystemActionTypes.REASONING_ACTION` / `system:reasoning`，工具清单从当前玩家启用模块中主动声明 forReasoning 的操作建立，观察结果同样按工具 Type 的 Codec dispatch。QuestionModule 的 ModuleRouting.explicit 解析当前明确联网句式；普通问题由模型路由选择 system:question，allowWeb 默认 false，只有非常确信当前授权外部查询时才为 true。问答语义样例仅作候选提示，不缓存授权；执行时固定先查库，本地为空且可选工具已启用时才开放联网门禁。`explicitOnly()` 与 `structuredOnly()` 仍保留为通用路由声明。详见 [ReAct 循环](agent-react.md)。
 
 自由聊天动作 `system:free_chat` 使用 FreeChatInput，回复卡片 `system:chat` 使用 ChatOutput 与 chat.json；核心模块安装工作流，structuredOnly 将其从模型意图目录排除。自由模式与扩展模式的聊天兜底均从原工作流表及 ToolRegistry 装配可用能力，ToolProvider 可追加已注册的只读类型，目录按 LOCAL / WORKFLOW / PAID 排序；不是新的 MC 注册表。管理员 / 玩家权限、类型化观察及扩展接口见 [自由聊天](free-chat.md)。
+
+### 任务来源接入
+
+任务来源不新增 MC 注册表；实现 `QuestProvider` 后在所属服务端模块调用 `QuestWorkflows.install`，Provider 的装配、启用权限和生命周期继续归模块管理。公共只读任务接口为 `Quest`，来源信息为 `QuestSource`。新增卡片节点 `system:icon` 的公开入口是 `SystemCardNodeTypes.ICON`，上下文绑定值为 Saturn `IconReference`；FTBQ 原生图标仍保留 `system:ftb_icon`。完整说明见[通用任务接口](quests.md)。

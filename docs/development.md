@@ -292,18 +292,21 @@ ModuleAccess 在登录事务中取得绑定 ID，在主线程确认定义仍存�
 
 ## FTB 适配与边界
 
+任务已抽出 [Quest／QuestProvider 通用接口](quests.md)。公共工具使用 quest.*，QuestService 汇总启用来源并分派详情、提交和领奖；FTBQ 原生行为在 FtbQuestProvider，说明书检索在 FtbQuestGuides。编号缓存属于通用层，FTBQ 通过任务摘要 revision 在操作前复核队伍和原生对象变化。
+
+
 FTB 的安全模块定义始终注册，`QuestSystemModule.available()` 在内部检查 `ModList.get().isLoaded("ftbquests")`；ModuleManager、指令装配与存储枚举先过滤不可用定义，只有依赖存在才反射加载 `FtbQuestAdapter`。公共 DTO 和存储 Codec 的登记不随依赖改变，保留数据包与存档解析所需类型。适配器内部直接调用 Java API，反射只用于隔离加载，业务不走 MCP 传输。先检查 `ServerQuestFile.exists()`，再访问不可空的 `getInstance()`。
 
 读取 Tool 各自返回固定类型，FTB 原生 `Quest` 和 `TeamData` 只在游戏线程内使用，对外返回可序列化的数据快照：
 
 | Tool | 参数 | 固定返回类型 |
 | --- | --- | --- |
-| `ftb.query` | `QuestQueryInput`：关键词、是否只看可领奖 | `List<QuestBriefOutput>` |
-| `ftb.find` | `QuestFindInput`：任务名或 ID，精确匹配优先 | `List<QuestBriefOutput>` |
-| `ftb.detail` | `QuestDetailInput`：已知 ID 或上次列表编号、详情分页偏移 | `QuestOutput` |
-| `ftb.starter_gifts` | `EmptyInput` | `StarterGiftOutput` |
+| `quest.query` | `QuestQueryInput`：关键词、是否只看可领奖 | `List<QuestBriefOutput>` |
+| `quest.find` | `QuestFindInput`：任务名或 ID，精确匹配优先 | `List<QuestBriefOutput>` |
+| `quest.detail` | `QuestDetailInput`：已知 ID 或上次列表编号、详情分页偏移 | `QuestOutput` |
+| `quest.starter_gifts` | `EmptyInput` | `StarterGiftOutput` |
 
-`QuestDetailModule` 将名称输入先交给 `ftb.find`；无匹配或多匹配显示候选列表，单匹配再按 ID 读取详情。唯一匹配直接打开详情，不替换玩家原先看到的编号列表；ID/编号查询不存在或不可查看时返回业务错误，不切换结果类型。详情的 `starterGift` 标记由兼容层分类，Module 遇到礼包后调用共享的 `ftb.starter_gifts` 工具展示全部可领取礼包，不让详情 Tool 返回礼包对象。这些只读组合最多调用 3 次本地工具，不增加模型调用；礼包工具实例与独立礼包查询模块复用。
+`QuestDetailModule` 将名称输入先交给 `quest.find`；无匹配或多匹配显示候选列表，单匹配再按 ID 读取详情。唯一匹配直接打开详情，不替换玩家原先看到的编号列表；ID/编号查询不存在或不可查看时返回业务错误，不切换结果类型。详情的 `starterGift` 标记由兼容层分类，Module 遇到礼包后调用共享的 `quest.starter_gifts` 工具展示全部可领取礼包，不让详情 Tool 返回礼包对象。这些只读组合最多调用 3 次本地工具，不增加模型调用；礼包工具实例与独立礼包查询模块复用。
 
 查询包含已完成但仍可领奖励的任务。任务列表一次返回全部匹配简表并连续编号，查询与名称候选不再携带列表分页偏移；详情保留每页 4 个奖励、每个自选奖励 8 个选项；更多奖励和选项由独立按钮继续读取。领取引用为随机短期令牌，绑定玩家、队伍、任务/奖励对象、完成时间、自选表版本，2 分钟失效；重启、换队或变化后重新查询。读取回执不以模型文字认定成功。26.1.2 普通奖励使用原生 `TeamData.claimReward`；自选路径校验索引，按目标版本 `ClaimChoiceRewardMessage` 先成功标记外层奖励，再调用候选奖励的 `claim`。此版本 `Reward.claim` 返回 void，没有 `tryClaim`，不能沿用 1.21.1 的布尔成功判断；最终检查原生已领取状态，不对第三方实际交付作独立保证。
 
@@ -339,11 +342,11 @@ FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubm
 
 ## FTB 本地说明书索引
 
-`QuestGuideModule` 提供 `system:quest_guide` 动作、guide / 说明书 / 查说明 指令及一个只读 `ftb.guide` Tool。FtbQuestKnowledge 在服务端线程缓存勾选 / 无目标且不是礼包的各语言静态正文，FtbQuestGuideTool 每次只计算授权 ID 并在返回前复核原文。AgentDatabase 将原文保存在共享库的 `system:ftb_guides` 表，KnowledgeIndex 复用 LexicalIndex 构建内存稀疏 TF-IDF；权限不写入数据库。FTB 原生清缓存事件或 `/system ftb reload` 使快照失效，手动指令后台重建索引。
+`QuestGuideModule` 提供 `system:quest_guide` 动作、guide / 说明书 / 查说明 指令及一个只读 `quest.guide` Tool。FtbQuestKnowledge 在服务端线程缓存勾选 / 无目标且不是礼包的各语言静态正文，FtbQuestGuides 每次只计算授权 ID 并在返回前复核原文。AgentDatabase 将原文保存在共享库的 `system:ftb_guides` 表，KnowledgeIndex 复用 LexicalIndex 构建内存稀疏 TF-IDF；权限不写入数据库。FTB 原生清缓存事件或 `/system ftb reload` 使快照失效，手动指令后台重建索引。
 
 AssistantServer 统一拥有 AgentDatabases：`<存档>/system/database/shared.dat` 为共享库，`players/<UUID>.dat` 为按需创建的独立库，均使用 GZIP 压缩 NBT。两者使用相同的命名空间 DatabaseTable 和 Codec API，任务背景不再单独写文件。读写与索引构建在后台，查询排序使用不可变索引；revoke / reset 删除私有库，关闭服务端释放全部句柄。玩家事务与累计用量保持各自所有权，详细边界见 [分层本地数据库](databases.md)。
 
-返回前重新核对连接 / 执行上下文、任务文件、队伍、语言、可见性和当前正文；intro 只在知识视图读取，不改变进行中 / 礼包 / 完成行为。QuestGuideOutput 直接展示片段和原文，任务页与 guide 指令不调用 embedding / LLM。FtbQuestAdapter 通过 ModuleContext 导出同一个 ftb.guide Tool，供核心 QuestionModule 在授权后复用；普通知识问答可用模型整理片段，再查询一次以复核。两个入口都不自动提交任务。方法、限制和文件说明见 [本地说明书检索](quest-guides.md)。
+返回前重新核对连接 / 执行上下文、任务文件、队伍、语言、可见性和当前正文；intro 只在知识视图读取，不改变进行中 / 礼包 / 完成行为。QuestGuideOutput 直接展示片段和原文，任务页与 guide 指令不调用 embedding / LLM。FtbQuestAdapter 通过 ModuleContext 导出同一个 quest.guide Tool，供核心 QuestionModule 在授权后复用；普通知识问答可用模型整理片段，再查询一次以复核。两个入口都不自动提交任务。方法、限制和文件说明见 [本地说明书检索](quest-guides.md)。
 
 ## 当前语义增强与其余限制
 

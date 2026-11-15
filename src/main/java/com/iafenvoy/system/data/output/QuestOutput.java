@@ -2,6 +2,8 @@ package com.iafenvoy.system.data.output;
 
 import com.iafenvoy.saturn.util.MiscUtil;
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.assistant.quest.Quest;
+import com.iafenvoy.system.assistant.quest.QuestSource;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardFact;
@@ -26,7 +28,7 @@ public record QuestOutput(String id, Component title, Component chapter, String 
                           boolean completed, QuestSubmission submission, boolean starterGift, boolean rewardPending,
                           List<QuestTaskOutput> tasks, List<QuestRewardOutput> rewards, SectionPageOutput rewardPage,
                           SectionPageOutput taskPage, SectionPageOutput descriptionPage,
-                          SpeechContent speech) implements CardData {
+                          SpeechContent speech, QuestSource source) implements CardData, Quest {
     public static final MapCodec<QuestOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("id").forGetter(QuestOutput::id),
             ComponentSerialization.CODEC.fieldOf("title").forGetter(QuestOutput::title),
@@ -42,7 +44,8 @@ public record QuestOutput(String id, Component title, Component chapter, String 
             SectionPageOutput.codec("reward").forGetter(QuestOutput::rewardPage),
             SectionPageOutput.codec("task").forGetter(QuestOutput::taskPage),
             SectionPageOutput.codec("description").forGetter(QuestOutput::descriptionPage),
-            SpeechContent.CODEC.fieldOf("speech").forGetter(QuestOutput::speech)
+            SpeechContent.CODEC.fieldOf("speech").forGetter(QuestOutput::speech),
+            QuestSource.CODEC.optionalFieldOf("source", QuestSource.UNKNOWN).forGetter(QuestOutput::source)
     ).apply(i, QuestOutput::new));
     public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest");
 
@@ -59,7 +62,7 @@ public record QuestOutput(String id, Component title, Component chapter, String 
         Component heading = Component.empty()
                 .append(Component.literal(this.completed ? "✓ " : "✗ ").withStyle(this.completed ? ChatFormatting.GREEN : ChatFormatting.RED))
                 .append(this.title);
-        CardBuilder builder = CardBuilder.template(TEMPLATE).summary(heading);
+        CardBuilder builder = CardBuilder.template(TEMPLATE).put("source", this.source.name()).summary(heading);
         builder.put("id", this.id).put("title", heading).put("chapter", this.chapter()).put("description", this.description())
                 .put("progress", (int) this.progress()).put("completed", this.completed())
                 .list("tasks", this.tasks(), (prefix, task) -> task.fill(builder, prefix))

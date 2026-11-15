@@ -237,7 +237,7 @@ public final class FtbQuestNotifications {
 
     private AgentResult completionNotification(Quest quest, ServerPlayer player, TeamData team) {
         String key = "system.result.quest_completed";
-        String id = String.format(Locale.ROOT, "%016x", quest.getId());
+        String id = FtbQuestAccess.key(quest.getId());
         List<Reward> claimable = quest.getRewards().stream().filter(reward -> FtbQuestReader.canClaim(player, team, reward)).toList();
         Optional<String> claimRef = claimable.size() == 1 && !(claimable.getFirst() instanceof ChoiceReward)
                 ? FtbQuestAccess.reference(player, team, quest, claimable.getFirst(), this.access.references) : Optional.empty();
@@ -249,7 +249,7 @@ public final class FtbQuestNotifications {
                         && FtbQuestAccess.previewItems(reward).isEmpty()).flatMap(reward -> FtbQuestPreviews.reward(player, team, reward).stream()).toList(),
                 List.of(), false, QuestEvent.COMPLETED,
                 QuestSubmission.NONE, !claimable.isEmpty(), claimRef,
-                FtbQuestSpeech.content(player, team, quest, "completed")));
+                FtbQuestSpeech.content(player, team, quest, "completed"), FtbQuestProvider.SOURCE));
     }
 
     private AgentResult unlockNotification(List<Quest> quests, ServerPlayer player, TeamData team) {

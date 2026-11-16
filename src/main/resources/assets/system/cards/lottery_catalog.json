@@ -17,26 +17,70 @@
           "children": [
             {
               "type": "system:flex",
-              "source": "{{pools.*.items}}",
+              "style": "offer_cell_items",
               "children": [
                 {
-                  "type": "system:item",
-                  "item": "{{pools.*.items.*}}",
-                  "size": 36,
-                  "tooltip": [
+                  "type": "system:flex",
+                  "source": "{{pools.*.items}}",
+                  "children": [
                     {
-                      "type": "system:text",
-                      "text": "{{pools.*.tooltip}}"
+                      "type": "system:item",
+                      "item": "{{pools.*.items.*}}",
+                      "size": 36,
+                      "tooltip": [
+                        {
+                          "type": "system:text",
+                          "text": "{{pools.*.tooltip}}"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "system:flex",
+                  "source": "{{pools.*.contents}}",
+                  "children": [
+                    {
+                      "type": "system:flex",
+                      "wrap": false,
+                      "style": [
+                        "item_entry",
+                        "item_labeled"
+                      ],
+                      "children": [
+                        {
+                          "type": "system:icon",
+                          "icon": "{{pools.*.contents.*.icon}}",
+                          "unless": "text_items",
+                          "tooltip": [
+                            {
+                              "type": "system:text",
+                              "text": "{{pools.*.contents.*.label}}"
+                            },
+                            {
+                              "type": "system:text",
+                              "text": "{{pools.*.tooltip}}"
+                            }
+                          ],
+                          "style": "item_entry"
+                        }
+                      ]
+                    }
+                  ],
+                  "style": "item_group_items"
                 }
-              ],
-              "style": "offer_cell_items"
+              ]
             },
             {
               "type": "system:text",
               "text": "{{pools.*.label}}",
               "style": "offer_cell_label"
+            },
+            {
+              "type": "system:text",
+              "translate": "system.ui.condition_unmet",
+              "when": "pools.*.condition_unmet",
+              "style": "card_context"
             }
           ],
           "style": "offer_cell_content"
@@ -48,8 +92,36 @@
     },
     {
       "type": "system:text",
-      "translate": "system.ui.lottery_truncated",
-      "when": "truncated"
+      "text": "{{range}}",
+      "style": "card_context"
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.pager}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "when": "actions.*.visible",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

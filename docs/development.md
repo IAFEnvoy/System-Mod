@@ -61,7 +61,7 @@ Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器�
 | `assistant/usage、data/usage` | 用量服务、独立 SavedData、AI/联网计量和不可变快照，不随 revoke 删除 |
 | `module` | 功能契约、ModuleContext 安装依赖、ModuleManager、玩家权限、存储声明与生命周期 |
 | `module/builtin` | 内置功能装配、平台指令、两端入口；子包按功能组织 Agent 工作流，BuiltinTools 声明共享工具键 |
-| `module/builtin/storage` | 签到、收件箱、成就、交易、模块覆盖与常驻卡片固定记录的业务 DataStorage |
+| `module/builtin/storage` | 签到、系统空间、成就、交易、模块覆盖与常驻卡片固定记录的业务 DataStorage |
 | `module/client` | 客户端模块契约、绑定/指令缓存、动态导航与工作台 |
 | `data` | 公共状态和业务数据；按定义、存储、网络或资源加载职责分包 |
 | `data/input、data/output、data/result、data/search` | 类型化工具/工作流参数、查询结果、卡片业务结果与搜索决策数据 |
@@ -164,7 +164,7 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 
 ### 内置输入与输出
 
-`data.input` 与 `data.output` 中每个类型独立成文件，直接导入后使用 `QuestDetailInput`、`PlayerSnapshotOutput` 等名称，不再通过聚合外类引用。输入使用带校验和 Schema 元数据的 MapCodec，输出使用 Codec；任务列表和名称搜索返回 `List<QuestBriefOutput>`，详情返回 `QuestOutput`，礼包返回 `StarterGiftOutput`。奖励入账参数 `RewardCreditInput` 归入输入包，物品直接使用原版 `ItemStackTemplate.CODEC`，奖励使用 `data.store.Reward.CODEC`；`Reward.ITEMS_CODEC` 统一限制产出为 1～36 项。重载阶段不创建物品堆，运行时在游戏线程调用模板的 `create()`。
+`data.input` 与 `data.output` 中每个类型独立成文件，直接导入后使用 `QuestDetailInput`、`PlayerSnapshotOutput` 等名称，不再通过聚合外类引用。输入使用带校验和 Schema 元数据的 MapCodec，输出使用 Codec；任务列表和名称搜索返回 `List<QuestBriefOutput>`，详情返回 `QuestOutput`，礼包返回 `StarterGiftOutput`。奖励入账参数 `RewardCreditInput` 归入输入包，物品直接使用原版 `ItemStackTemplate.CODEC`，奖励使用 `data.store.Reward.CODEC`；`Reward.ITEMS_CODEC` 与 `CONTENTS_CODEC` 分别接受 0～36 项，签到／商品至少一项产出。`contents` 复用 `SpaceContent` 分派，支持系统币、原版经验与 Saturn action，详见[奖励结果](rewards.md)。重载阶段不创建物品堆，运行时在游戏线程调用模板的 `create()`。
 
 ### 从 Codec 定义生成输入 schema
 
@@ -240,11 +240,11 @@ CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式
 
 长期 AI 用量使用服务器全局 SavedData，保存在 `<存档>/data/system/token_usage.dat`，不进入上述业务文件或玩家附件，也不随 revoke 清理。所有 AI 请求统一经过 `ModelGateway`，按 API 实际 usage 累计。TTS / ASR 由客户端使用私人凭据请求，用量按客户端账号 UUID 只存本机 `config/system/speech-usage/<UUID>.json`，费用读取客户端 `SpeechPricingConfig`。服务端没有语音上报消息、存储字段或快照字段；管理员全服视图只有 AI，个人语音面板跨服务器累计，协议保持 1。详情见[用量统计](token-usage.md)。
 
-业务文件包含每日签到、收件箱、业务操作回执、事件任务、成就状态及模块覆盖，各业务状态分属独立 DataStorage；对话与请求回放单独存放在 `chat/` 下，清空对话不影响业务唯一标记。配置不进入玩家文件；密钥始终来自服务端环境变量。请用宿主机权限保护存档、临时文件和备份。
+业务文件包含每日签到、系统空间、业务操作回执、事件任务、成就状态及模块覆盖，各业务状态分属独立 DataStorage；对话与请求回放单独存放在 `chat/` 下，清空对话不影响业务唯一标记。配置不进入玩家文件；密钥始终来自服务端环境变量。请用宿主机权限保护存档、临时文件和备份。
 
-数据包条目的持久化引用统一用 `PersistHolder<T>(id, value)`（`util`）：codec 把 value 的字段平铺在 `id` 旁边，数据包 JSON 与旧存档形状都不变；订单、收件箱交付、签到历史、回执和奖励卡片保存写入当时的 id 与取值，数据包后续被修改或删除都不会改写已落盘的内容。运行时读取注册表时用 `Holder<T>`（`CommerceCatalog`），只有落盘和跨线程传递才转成 `PersistHolder`。
+数据包条目的持久化引用统一用 `PersistHolder<T>(id, value)`（`util`）：codec 把 value 的字段平铺在 `id` 旁边，数据包 JSON 与旧存档形状都不变；订单、系统空间交付、签到历史、回执和奖励卡片保存写入当时的 id 与取值，数据包后续被修改或删除都不会改写已落盘的内容。运行时读取注册表时用 `Holder<T>`（`CommerceCatalog`），只有落盘和跨线程传递才转成 `PersistHolder`。
 
-`PlayerData` 顶层 `RecordCodecBuilder` 只保存版本、绑定与偏好、`DataStorageHolder<Identifier>` 和 `ModelQuota` 共 6 项；`Conversation` 由独立的聊天文件按同一事务写入，`copy()` 仍复制两份以保持读取快照一致。签到、收件箱、事件/操作回执、商城、成就状态和模块覆盖分别实现 Saturn `DataStorage`，由 ServerModule.storages 声明，内置 Codec 由 `SystemDataStorages` 注册，扩展 Codec 独立注册到 Saturn DATA_STORAGE_TYPE，并由 `DataStorageHolder.codec(Identifier.CODEC)` 分派；扩展模块可用自己的 DataStorage 避免继续扩大共享玩家记录。访问入口为 `ModuleData.get(data, SomeSystemModule.STORAGE)`，底层按 Holder 键和类型调用 `get` / `set`，与 DataStorage Codec 类型 ID 分开；复制必须隔离可变集合和其中的可变记录。玩家文件仍由 `AgentStore.update` 整体事务化写入，不属于玩家附件。对话历史和请求回放由 `Conversation` 管理，`Conversation.clear()` 统一清理并推进记忆代次；内部交付、事件、步骤回执和订单使用 `RecordCodecBuilder`。
+`PlayerData` 顶层 `RecordCodecBuilder` 只保存版本、绑定与偏好、`DataStorageHolder<Identifier>` 和 `ModelQuota` 共 6 项；`Conversation` 由独立的聊天文件按同一事务写入，`copy()` 仍复制两份以保持读取快照一致。签到、系统空间、事件/操作回执、商城、成就状态和模块覆盖分别实现 Saturn `DataStorage`，由 ServerModule.storages 声明，内置 Codec 由 `SystemDataStorages` 注册，扩展 Codec 独立注册到 Saturn DATA_STORAGE_TYPE，并由 `DataStorageHolder.codec(Identifier.CODEC)` 分派；扩展模块可用自己的 DataStorage 避免继续扩大共享玩家记录。访问入口为 `ModuleData.get(data, SomeSystemModule.STORAGE)`，底层按 Holder 键和类型调用 `get` / `set`，与 DataStorage Codec 类型 ID 分开；复制必须隔离可变集合和其中的可变记录。玩家文件仍由 `AgentStore.update` 整体事务化写入，不属于玩家附件。对话历史和请求回放由 `Conversation` 管理，`Conversation.clear()` 统一清理并推进记忆代次；内部交付、事件、步骤回执和订单使用 `RecordCodecBuilder`。
 
 成就规则与事件存档将完整动作保存在 `action` 字段中，动作内部按 moduleId 分派并平铺参数，避免与规则的 advancementId、事件任务的 ruleId 重名；事件授权只使用任务自身保存的 ruleId。结果、语音统计和 ASR 统计按当前 Codec 结构读取，不从旧记录猜测或回退字段。
 
@@ -272,15 +272,17 @@ ModuleAccess 在登录事务中取得绑定 ID，在主线程确认定义仍存�
 
 `data/catalog/CommerceCatalog` 从当前服务端 RegistryAccess 的三张目录注册表建立不可变业务快照；默认内容也放在 JAR 内 `data/system/system/signin_reward/`、`shop_offer/` 与 `lottery_pool/`，目录统一采用注册表的单数名称。CatalogReloadListener、目录文件扫描和逐 tick 发布逻辑已删除。原版负责资源优先级、条目 ID、Codec 加载与 tag，条目修改需重开世界 / 重启服务器；目录版本按服务端实例生成，不使用跨世界静态数据。提示词仍使用 retained reload listener 读取 txt。
 
-签到、商城和抽奖实现 CatalogModule，声明对应目录注册表与可选 ResourceKey / TagKey 列表。ModuleManager 将配置注册到 CommerceCatalogs，catalogs.available(player) 仅合并该玩家已启用定义允许的条目，同类配置取并集、目录顺序稳定且不重复；省略字段允许全表，空数组为空。内置三模块显式引用各表自己的 #system:default。所有列表、签到候选与提交、报价和扣款均读取这份受限视图，收件箱状态也使用同一入口；成就事件显式读取原始目录。原生 tag 重载无需重建业务内容快照，后续查询读取当前成员；确认和支付前还会检查报价来源是否仍可用。同类配置共用原有对应交易账本，允许重复装配同一静态 ModuleStorage，不重复注册存储类型。格式见 [扩展配置](datapacks.md#模块目录可选项)。
+签到、商城和抽奖实现 CatalogModule，声明对应目录注册表与可选 ResourceKey / TagKey 列表。ModuleManager 将配置注册到 CommerceCatalogs，catalogs.available(player) 仅合并该玩家已启用定义允许的条目，同类配置取并集、目录顺序稳定且不重复；省略字段允许全表，空数组为空。内置三模块显式引用各表自己的 #system:default。所有列表、签到候选与提交、报价和扣款均读取这份受限视图，系统空间状态也使用同一入口；成就事件显式读取原始目录。原生 tag 重载无需重建业务内容快照，后续查询读取当前成员；确认和支付前还会检查报价来源是否仍可用。同类配置共用原有对应交易账本，允许重复装配同一静态 ModuleStorage，不重复注册存储类型。格式见 [扩展配置](datapacks.md#模块目录可选项)。
 
 奖励和商品 ID 使用 `Identifier`，通过 `Identifier.CODEC` 解析；签到选择、报价请求和成就奖励引用保留该类型，只在搜索或对话摘要等文本边界转换。商品与奖池直接保存 `List<Cost>`，通过 Saturn `Cost.LIST_CODEC` 按注册类型分派；目录由原生注册表加载流程提供 RegistryOps，支持资源 Cost 的动态注册表引用。`CommerceCatalog.Price` 仅保存求值后的物品图标和文字组件，供客户端及订单快照使用，不含可执行费用。展示通过 `CostTarget.display(transaction.amount())` 多态生成 `CostDisplay`，由各个 Target 负责物品、资源或币种的展示；`CommerceCosts` 只转换和汇总，不按目标类型分支，也不重新求值。
 
-`system:shop` 分页浏览、`system:shop_quote` 生成预览、`system:shop_purchase` 处理独立确认，后者拒绝模型路由直接进入。支付内容只来自服务端签发的 `CommerceQuotes`，绑定玩家、操作类型与目录版本；订单按报价 ID 持久化，清空对话不删除订单。`ShopPurchaseTool` 与 `LotteryDrawTool` 各自只负责一种确认行为，通过同一 `CommerceTransactions` 预留 `CommerceOrder` 与锁定的收件箱权益，再进入受限主线程队列验证模板并扣除材料，最后在同一玩家事务中完成订单并解锁权益。扣款失败与结果未知分别记录；未知订单不自动重试，权益保持锁定。`Purchase.order` 保存操作类型、来源、价格及完整奖励快照；没有迁移旧 `Purchase.offer` 的兼容逻辑，开发存档若无法解析，使用 `/system reset [玩家]` 后重新授予。
+`system:shop` 分页浏览、`system:shop_quote` 生成预览、`system:shop_purchase` 处理独立确认，后者拒绝模型路由直接进入。支付内容只来自服务端签发的 `CommerceQuotes`，绑定玩家、操作类型与目录版本；订单按报价 ID 持久化，清空对话不删除订单。`ShopPurchaseTool` 与 `LotteryDrawTool` 各自只负责一种确认行为，通过同一 `CommerceTransactions` 预留 `CommerceOrder` 与锁定的系统空间权益，再进入受限主线程队列验证模板并扣除材料，最后在同一玩家事务中完成订单并解锁权益。扣款失败与结果未知分别记录；未知订单不自动重试，权益保持锁定。`Purchase.order` 保存操作类型、来源、价格及完整奖励快照；没有迁移旧 `Purchase.offer` 的兼容逻辑，开发存档若无法解析，使用 `/system reset [玩家]` 后重新授予。
 
-`system:lottery` 浏览奖池、`system:lottery_preview` 分页展示奖品权重并签发确认、`system:lottery_draw` 只接受结构化确认。浏览与预览声明指令及语义 profile；实际抽奖不进入模型能力目录。`LotteryPool` 通过 JDK `ThreadLocalRandom.nextLong(totalWeight)` 选择一个奖励，结果在支付前存入订单；整个奖池的物品模板在扣款前创建验证，避免错误奖品改变成功抽奖的概率。待支付或支付未知权益不进入收件箱奖励展示，仅返回订单状态；完成后重复确认返回原回执。
+`system:lottery` 浏览奖池、`system:lottery_preview` 分页展示奖品权重并签发确认、`system:lottery_draw` 只接受结构化确认。浏览与预览声明指令及语义 profile；实际抽奖不进入模型能力目录。`LotteryPool` 通过 JDK `ThreadLocalRandom.nextLong(totalWeight)` 选择一个奖励，结果在支付前存入订单；整个奖池的物品模板在扣款前创建验证，避免错误奖品改变成功抽奖的概率。待支付或支付未知权益不进入系统空间奖励展示，仅返回订单状态；完成后重复确认返回原回执。
 
-奖池浏览只发送一张 `LotteryCatalogOutput` 卡片：单元格携带奖池名与最多 2 件最稀有奖品的公开模板，点击格子才展开该奖池的 `system:lottery_preview`（沿用 `pool.<下标>` 服务端按钮，参数含目录版本），报价仍只在实际打开时求值。详情卡片 `LotteryPoolOutput.prizes` 通过 Codec 携带最多 64 个公开奖励模板、权重及完整总权重，货架与 tooltip 由同一份数据生成；`lottery_prize` 卡片类型保留给旧历史，不再逐奖品发送。预览不会生成抽奖结果、扣款或调用模型。单物品消耗统一由 `AssistantItems` 渲染，免费、资源及其他 Cost 使用文字；签到候选的物品卡片保留所属奖励包名称。
+`LotteryPool.draw_counts/pity/draw_limit/cooldown` 定义可选抽数、硬保底、按周期限额及冷却。`entries[].max_wins` 为每玩家／奖池／奖励 ID 的非负整数获取上限，0 表示不限次数。成功结算的逐奖励命中次数保存在 `LotteryProgress.wins`，连抽先按本组累计次数筛选候选，达到上限后移除；有限奖励的剩余次数总和不足时扣款前拒绝，保底目标耗尽后暂停。旧存档通过 `lotteryCountsReady` 标记在存储线程一次性补齐活动与归档订单的实际逐抽次数，重叠订单按 ID 去重。`LotteryRolls` 在同一玩家预留事务内逐抽计算，并连同完整原奖励、保底标记及结算后的未命中次数存入 `CommerceOrder.lottery`；合并相同 `SpaceContent` 后只创建一份空间权益。普通奖励定义仍限 36 项物品 / 36 项通用内容，结算快照使用 `Reward.SNAPSHOT_CODEC` 支持最多 4096 种合并内容，数量溢出或超容量在付款前拒绝。Cost 绑定金额乘以抽数，不重复执行公式。只有成功结算或管理员确认已支付时，才提交 `CommerceDataStorage.lotteryProgress` 并启动冷却；未知付款继续占用实际抽数，阻止同池后续订单，避免旧保底状态被越过。归档计数按抽数加权，旧单抽仍按一次读取。`system:lottery_history` 是只读工作流，只取当前玩家的记录；列表和逐抽详情分开加载，每批最多 20 条，归档用轻量时间索引避免逐页解码全部文件。规则与配置变更语义见[抽奖文档](lottery.md)。
+
+奖池浏览只发送一张 `LotteryCatalogOutput` 卡片：单元格携带奖池名与最多 2 件最稀有奖品的公开模板，点击格子才展开该奖池的 `system:lottery_preview`（沿用 `pool.<下标>` 服务端按钮，参数含目录版本），报价仍只在实际打开时求值。目录每批最多 128 个奖池，详情卡片 `LotteryPoolOutput.prizes` 每批通过 Codec 携带最多 64 个公开奖励模板、权重及个人当前候选总权重；`offset` 和总数生成独立的 BODY / REPLACE 翻批按钮，已有网格继续在批内本地分页。目录标明初始概率；详情按全池剩余候选计算基础概率，达到获取上限的条目显示为 0%，不按当前页重新归一化。货架与 tooltip 由同一份数据生成；`lottery_prize` 卡片类型保留给旧历史，不再逐奖品发送。预览不会生成抽奖结果、扣款或调用模型。单物品消耗统一由 `AssistantItems` 渲染，免费、资源及其他 Cost 使用文字；签到候选的物品卡片保留所属奖励包名称。
 
 商城 / 抽奖模块共用只读 `CommercePreviewTool`，由 `CommerceTransactions.preview` 在游戏线程按目录 ID 获取可信费用并生成 `CommerceCosts.Prepared`。Cost 只定价一次，短期报价保留绑定玩家实体、支付目标及金额的 Saturn `CostPayment`；确认沿用该账单，掉线 / 重生导致实体更换时拒绝旧账单。`CostContext` 包含 `origin=system:shop` / `system:lottery` 和 `system:source`，扩展 Cost 可读取。支付统一走 Saturn Cost；System 自有钱包通过 system:currency 扩展费用类型接入，Saturn 资源仍可单独使用 saturn:resource，不混用两种余额。
 
@@ -288,7 +290,7 @@ ModuleAccess 在登录事务中取得绑定 ID，在主线程确认定义仍存�
 
 支付全部通过 Saturn 的 `test()` / `pay()` 执行。当前依赖会在实际扣款出错后继续其他费用并可能返回成功，因此 `CommerceCosts` 包装绑定事务，额外追踪每项真实扣款的失败与异常；一旦出现部分 / 不确定扣款，订单和权益保持 `PAYMENT_UNKNOWN`，不发奖、不自动重试。Saturn 不统一预留重复 / 重叠费用，不保证跨费用回滚，数据包应合并同一种需求。扩展 Cost 必须遵守 `prepare`、`execute(true)` 只读的契约。
 
-订单、收件箱各最多 4096 条，文件总体 4MiB；没有历史订单归档工具。材料匹配与扣除由 Saturn Cost 执行，普通物品 ID 可能消耗带自定义组件的同类物品，范围为玩家 Inventory。订单只保存展示价格与完整奖励快照，不序列化绑定的 CostPayment 或恢复后自动扣款。崩溃时 MC 存档与外部文件无法统一提交，人工核对窗口仍存在；旧价格存档不迁移，必要时用 `/system reset [玩家]` 清理开发数据。
+活动订单、系统空间各最多 4096 条，文件总体 4MiB。`CommerceTransactions.compact` 在登录恢复和预留订单时检查归档，账本达到 128 条则将较早的已结清记录写入 `data.store.CommerceArchive`，保留最新 64 条可归档订单；未领取、进行中和未知记录不删除。完整压缩 NBT 位于 `<存档>/system/commerce/`，玩家账本 `archivedCounts` 保留累计和最近 35 天精确时间戳用于限购。先写归档再提交玩家事务，重试校验已有归档，删除订单与累计计数在同一事务内完成。`archiveScope` 为每代账本隔离旧异步 I/O；撤销同时删除玩家归档。`command.CommerceCommands` 注册管理员 `list/show/archive/resolve`；`resolve` 只核对待定付款，记录审计信息，解锁原奖励或关闭订单，不重扣、不重抽、不退款。历史确认 / 领取先查活动记录再查当前代次归档，保留幂等行为。规则见[订单维护](commerce-orders.md)。材料匹配与扣除由 Saturn Cost 执行，普通物品 ID 可能消耗带自定义组件的同类物品，范围为玩家 Inventory。订单只保存展示价格与完整奖励快照，不序列化绑定的 CostPayment 或恢复后自动扣款。崩溃时 MC 存档与外部文件无法统一提交，人工核对窗口仍存在；旧价格存档不迁移，必要时用 `/system reset [玩家]` 清理开发数据。
 
 ## FTB 适配与边界
 
@@ -326,7 +328,7 @@ FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubm
 
 `canComplete(player, team, quest)` 判断全部剩余目标均为原生 `CheckmarkTask`；`canSubmit` 检查可执行状态和至少一个支持直接调用的未完成、顺序允许目标。`submissionAction` 返回公共枚举 `QuestSubmission.NONE / CHECKMARK / SUBMIT`，详情和通知都保存该快照，枚举统一构建“完成此任务”或“提交任务”按钮。查询不模拟提交，不预扣资源，也不承诺材料足够或自定义检查成功；原生接口决定部分提交及实际进度。勾选动作携带 `QuestSubmitInput.checkmarkOnly=true`，真正执行时重查仅剩勾选目标，避免旧按钮提交新增加的资源目标；普通提交在循环中重新检查每个目标的完成和顺序条件。依赖、暂停、重复任务代次和完成通知合并仍沿用原链路。按钮不会自动执行，也不改变介绍任务与新手礼包分类。当前网络协议为 `1`，任务列表没有分页偏移，Tool 直接返回完整简表 List，Module 再包装为 `QuestList` 卡片。
 
-新手礼包详情使用 `StarterGiftOutput.gifts` 汇总全部当前可领取的匹配任务；每组只同步内部任务 ID、领取引用与可选错误，整体 items / icons 保存合计后的物品及经验 / 等级预览，界面和播报不显示任务名或章节。`StarterGiftQueryModule` 与只读 Tool 负责刷新完整列表，领取模块只接受可信按钮携带的 `StarterGiftInput.claimRefs`，不参与自由模型路由。礼包领取引用绑定玩家、队伍、原任务/奖励对象及完成时间，同一连接内保留供聊天历史使用；登出、撤销或任务模块停止时清理。普通任务奖励仍为两分钟引用。显式批量领取先校验引用归属，再逐组核对解锁、暂停、可见和奖励阻止状态，在 `withPlayerContext` 内执行原生勾选提交，并通过 `TeamData.claimReward` 领取原奖励；不消耗物品或经验。成功项从列表移除，失败项保留错误与可用动作；回包仅静默更新状态和原礼包列表，不新建成功通知、对话记录或播报，全部领取后继续下一条通知。任务顺序、自动领取和队伍奖励语义沿用 FTB；不新建签到/收件箱权益，不重复推送礼包任务的普通完成消息。
+新手礼包详情使用 `StarterGiftOutput.gifts` 汇总全部当前可领取的匹配任务；每组只同步内部任务 ID、领取引用与可选错误，整体 items / icons 保存合计后的物品及经验 / 等级预览，界面和播报不显示任务名或章节。`StarterGiftQueryModule` 与只读 Tool 负责刷新完整列表，领取模块只接受可信按钮携带的 `StarterGiftInput.claimRefs`，不参与自由模型路由。礼包领取引用绑定玩家、队伍、原任务/奖励对象及完成时间，同一连接内保留供聊天历史使用；登出、撤销或任务模块停止时清理。普通任务奖励仍为两分钟引用。显式批量领取先校验引用归属，再逐组核对解锁、暂停、可见和奖励阻止状态，在 `withPlayerContext` 内执行原生勾选提交，并通过 `TeamData.claimReward` 领取原奖励；不消耗物品或经验。成功项从列表移除，失败项保留错误与可用动作；回包仅静默更新状态和原礼包列表，不新建成功通知、对话记录或播报，全部领取后继续下一条通知。任务顺序、自动领取和队伍奖励语义沿用 FTB；不新建签到/系统空间权益，不重复推送礼包任务的普通完成消息。
 
 明确提交完成的普通任务与 FTB 原生完成事件合并到同一队伍、任务 ID 的当批完成项；提交回包仅结束请求，不再追加“已提交”或“进度更新”通知。未完成时才返回实际进度是否变化。`AgentResult.silent()` 统一标记这两类静默回包，客户端更新请求与礼包状态，历史不新增空白结果；写步骤与请求回放仍保留。新增礼包列表输入和丰富任务通知载荷后，未发布版本的网络协议统一为 `1`，客户端与服务端需同步更新。
 
@@ -376,3 +378,9 @@ AssistantServer 统一拥有 AgentDatabases：`<存档>/system/database/shared.d
 system:question 默认 6 次模型、9 次工具、20 步、90 秒，单次模型最多 20 秒，查库 / 内部 FTB 查询和网络步骤共用预算。Descriptor.optionalTools 声明可选只读依赖，未启用搜索模块不会禁用本地问答。数据库为空、当前 QuestionInput.allowWeb 明确允许且搜索工具已启用时才进入 WebResearch；有结果或查库失败均不搜索。问答语义样例仅作提示，不本地直达或缓存授权；网络已有证据时预留最终整理，不自动重试收费工具。详见[搜索配置与流程](search-api.md)。
 
 管理员 AI 权限由当前存档的 `AiAccessData` SavedData 保存，按 UUID 覆盖本存档默认等级，不改写玩家的外部 AI / 自由聊天 / 历史偏好。新流程及数据、接口见 [自由聊天](free-chat.md)。
+
+## 目录条目条件
+
+商品、奖池、签到奖励、在线作业实现 `ConditionalEntry`，共用 `EntryConditions` 平铺解码 `display_condition` / `condition`。`assistant.catalog.CatalogAccess` 将条件读取调度到游戏线程；调用方先结束存储事务再等待结果，不能持有玩家存储锁等待主线程。目录与锁定状态经 `CommerceCatalogs.View` 返回；付款前、签到入账前、作业开始前独立复核，不依赖客户端按钮状态。事件奖励工具只接受奖励 ID，由服务端重新查表；已入账先返回原收据。
+
+条件不属于通用奖励快照。`OnlineJobEntry.DISPLAY_CODEC` 排除获得条件，同时用于卡片和已开始作业的存档，避免条件实现成为旧权益的解析依赖。效果继续走 SpaceContent / Saturn action。字段、阶段及恢复语义见[条目条件](catalog-conditions.md)。

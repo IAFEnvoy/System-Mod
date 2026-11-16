@@ -1,6 +1,6 @@
 # 在线作业
 
-模块类型、内置配置与客户端实现 ID 均为 `system:online_jobs`，已加入默认模块 tag。系统对话框输入 `/jobs`、`/作业`，或点击“在线作业”进入。选择项目后最多进行一项；完成后手动领取产物到收件箱，再用既有领取按钮放入背包。领取入账后可开始下一项；旧产物仍可在收件箱领取。
+模块类型、内置配置与客户端实现 ID 均为 `system:online_jobs`，已加入默认模块 tag。系统对话框输入 `/jobs`、`/作业`，或点击“在线作业”进入。选择项目后最多进行一项；完成后手动领取产物到系统空间，再按份取出或领取整包。物品进入背包，非物品执行对应结果。入账后可开始下一项，旧产物仍可在空间领取。
 
 下方操作区使用 `system:module_controls` JSON 卡片：左侧为标题与作业说明，右侧为“刷新作业”按钮。它是本地工具栏，不增加聊天记录或通知；刷新仍走原有作业查询请求。
 
@@ -45,9 +45,14 @@
 | `label` | 翻译键字符串或 Component | 必填 | 名称，字符串直接作为翻译键 |
 | `description` | 翻译键字符串或 Component | 空文本 | 简要说明，字符串直接作为翻译键 |
 | `duration` | 正整数 | 必填 | 在线秒数，转换后必须能用 long 表示 tick |
-| `items` | ItemStackTemplate 数组 | 必填 | 1～36 个物品模板，复用 Reward 的背包容量约束 |
+| `items` | ItemStackTemplate 数组 | `[]` | 0～36 个物品模板 |
+| `contents` | SpaceStack 数组 | `[]` | 0～36 项系统币、经验或 Saturn action；格式见[奖励与非物品结果](rewards.md) |
 | `enabled` | boolean | `true` | 是否可开始新作业 |
 | `order` | int | `0` | 列表优先级，越高越靠前，同值按 ID 排序 |
+| `display_condition` | Saturn EntityCondition 对象或数组 | 始终成立 | 不满足时隐藏该作业，也不能直接按 ID 开工 |
+| `condition` | Saturn EntityCondition 对象或数组 | 始终成立 | 不满足时禁用开工按钮；服务端开工前复核 |
+
+详见[条目条件](catalog-conditions.md)。这两个条件只影响开始新作业，不影响已开始项目的计时和领取；指定位置持续生产等运行中条件尚未接入。
 
 作业 tag 路径为 `data/<namespace>/tags/system/online_job/<path>.json`，格式与原版 tag 相同。内置 `#system:default` 包含林地采集（60 秒，4 橡木原木）、石料采集（60 秒，8 圆石）和木炭生产（120 秒，2 木炭）。这些是单纯计时产物，不需要实际开采或输入材料；更复杂的生产规则留待后续扩展。
 

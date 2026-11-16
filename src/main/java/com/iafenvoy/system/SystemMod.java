@@ -12,6 +12,8 @@ public final class SystemMod {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public SystemMod(IEventBus bus) {
+        SystemTicketTypes.REGISTRY.register(bus);
+        SystemSpaceContentTypes.REGISTRY.register(bus);
         SystemActionTypes.REGISTRY.register(bus);
         SystemCredentialTypes.REGISTRY.register(bus);
         SystemCardDataTypes.REGISTRY.register(bus);

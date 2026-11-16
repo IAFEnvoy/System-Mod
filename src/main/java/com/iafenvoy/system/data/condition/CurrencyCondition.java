@@ -11,7 +11,9 @@ import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerPlayer;
 import org.jspecify.annotations.NonNull;
 
-/** A nonblocking check of already loaded module data; it neither initializes a wallet nor writes a file. */
+/**
+ * A nonblocking check of already loaded module data; it neither initializes a wallet nor writes a file.
+ */
 public record CurrencyCondition(Holder<CurrencyDefinition> currency, Comparison comparison) implements EntityCondition {
     public static final MapCodec<CurrencyCondition> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             CurrencyDefinition.CODEC.fieldOf("currency").forGetter(CurrencyCondition::currency),

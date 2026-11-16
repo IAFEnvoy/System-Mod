@@ -20,7 +20,8 @@ public final class ModuleCommands {
 
     public static AssistantServer runtime(ServerPlayer player) {
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
-        if (runtime == null) ServerNetworkHandler.notice(player, AgentResult.error(AgentFailure.CAPABILITY_UNAVAILABLE));
+        if (runtime == null)
+            ServerNetworkHandler.notice(player, AgentResult.error(AgentFailure.CAPABILITY_UNAVAILABLE));
         return runtime;
     }
 

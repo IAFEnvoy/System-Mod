@@ -7,8 +7,11 @@ import net.minecraft.network.codec.StreamCodec;
 
 import java.util.List;
 
-/** Completion does not create conversation entries, notifications or speech. */
-public record CommandSuggestionsResponse(String requestId, String input, List<CommandSuggestion> suggestions) implements AgentResponse {
+/**
+ * Completion does not create conversation entries, notifications or speech.
+ */
+public record CommandSuggestionsResponse(String requestId, String input,
+                                         List<CommandSuggestion> suggestions) implements AgentResponse {
     public static final StreamCodec<ByteBuf, CommandSuggestionsResponse> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.stringUtf8(36), CommandSuggestionsResponse::requestId,
             ByteBufCodecs.stringUtf8(2000), CommandSuggestionsResponse::input,

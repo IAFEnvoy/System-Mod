@@ -14,7 +14,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
-/** Select the configured service per request; in-flight calls retain their own credential snapshot. */
+/**
+ * Select the configured service per request; in-flight calls retain their own credential snapshot.
+ */
 public final class ConfiguredModelClient implements ModelClient {
     private final Set<ModelClient> active = new HashSet<>();
     private boolean closed;
@@ -46,7 +48,8 @@ public final class ConfiguredModelClient implements ModelClient {
 
     @Override
     public Reply complete(List<Message> messages, int maxOutputTokens, Duration timeout) throws Exception {
-        return this.complete(messages, maxOutputTokens, timeout, _ -> {});
+        return this.complete(messages, maxOutputTokens, timeout, _ -> {
+        });
     }
 
     @Override

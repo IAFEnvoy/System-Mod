@@ -20,6 +20,8 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 @SuppressWarnings("unused")
 public final class SystemCardDataTypes {
     public static final DeferredRegister<MapCodec<? extends CardData>> REGISTRY = DeferredRegister.create(SystemResourceKeys.CARD_DATA_TYPE, SystemMod.MOD_ID);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<AnchorListOutput>> ANCHOR_LIST = REGISTRY.register("anchor_list", () -> AnchorListOutput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<SpaceOutput>> SPACE = REGISTRY.register("space", () -> SpaceOutput.CODEC);
 
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<QuestPinOutput>> QUEST_PIN = REGISTRY.register("quest_pin", () -> QuestPinOutput.CODEC);
 
@@ -50,6 +52,7 @@ public final class SystemCardDataTypes {
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ShopOrder>> SHOP_ORDER = REGISTRY.register("shop_order", () -> ShopOrder.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<LotteryCatalogOutput>> LOTTERY_CATALOG = REGISTRY.register("lottery_catalog", () -> LotteryCatalogOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<LotteryPoolOutput>> LOTTERY_POOL = REGISTRY.register("lottery_pool", () -> LotteryPoolOutput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<LotteryHistoryOutput>> LOTTERY_HISTORY = REGISTRY.register("lottery_history", () -> LotteryHistoryOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<LotteryPrizeOutput>> LOTTERY_PRIZE = REGISTRY.register("lottery_prize", () -> LotteryPrizeOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<QuestList>> QUEST_LIST = REGISTRY.register("quest_list", () -> QuestList.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<QuestUnlockedOutput>> QUEST_UNLOCKED = REGISTRY.register("quest_unlocked", () -> QuestUnlockedOutput.CODEC);

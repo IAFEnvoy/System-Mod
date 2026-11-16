@@ -26,6 +26,7 @@ public final class SystemCommand {
     @SubscribeEvent
     public static void register(RegisterCommandsEvent event) {
         LiteralArgumentBuilder<CommandSourceStack> root = Commands.literal(SystemMod.MOD_ID);
+        CommerceCommands.register(root);
         Set<MapCodec<? extends ServerModule>> types = new HashSet<>();
         event.getBuildContext().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE).listElements()
                 .flatMap(holder -> holder.value().server().stream()).filter(module -> types.add(module.codec()))

@@ -14,10 +14,10 @@ import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
 import java.util.stream.Stream;
 
 /**
@@ -76,9 +76,10 @@ public enum EmotionProfiles implements ResourceManagerReloadListener {
         if (!profile.states().containsKey(profile.defaultState()))
             throw new IllegalArgumentException("Unknown default emotion " + profile.defaultState());
         Stream.concat(profile.transitions().values().stream(), profile.states().values().stream().flatMap(state ->
-                Stream.concat(state.transitions().values().stream(), Stream.of(state.next()).filter(next -> !next.isBlank()))))
+                        Stream.concat(state.transitions().values().stream(), Stream.of(state.next()).filter(next -> !next.isBlank()))))
                 .forEach(target -> {
-                    if (!profile.states().containsKey(target)) throw new IllegalArgumentException("Unknown emotion target " + target);
+                    if (!profile.states().containsKey(target))
+                        throw new IllegalArgumentException("Unknown emotion target " + target);
                 });
     }
 
@@ -96,7 +97,9 @@ public enum EmotionProfiles implements ResourceManagerReloadListener {
         return revision;
     }
 
-    /** Texture presence is cached at resource reload; sampling an animation never reads files. */
+    /**
+     * Texture presence is cached at resource reload; sampling an animation never reads files.
+     */
     public static EmotionFrame frame(Identifier id, String state, EmotionFrame requested) {
         if (textures.contains(requested.texture())) return requested;
         EmotionProfile profile = get(id);

@@ -1,0 +1,30 @@
+{
+  "label": "测试：经验训练",
+  "description": "在线训练一分钟，产出经验点与等级。",
+  "duration": 60,
+  "contents": [
+    {
+      "content": {
+        "type": "system:experience"
+      },
+      "amount": 80
+    },
+    {
+      "content": {
+        "type": "system:experience",
+        "levels": true
+      },
+      "amount": 2
+    }
+  ],
+  "order": 50,
+  "display_condition": {
+    "type": "saturn:advancement",
+    "advancement": "minecraft:story/upgrade_tools"
+  },
+  "condition": {
+    "type": "saturn:experience_level",
+    "comparison": ">=",
+    "compare_to": 10
+  }
+}

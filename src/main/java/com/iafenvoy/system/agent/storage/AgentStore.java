@@ -10,14 +10,18 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 public interface AgentStore extends AutoCloseable {
-    /** Supply the same serialization context to persistence, history sizing and tool receipts. */
+    /**
+     * Supply the same serialization context to persistence, history sizing and tool receipts.
+     */
     default <T> Codec<T> codec(Codec<T> codec) {
         return codec;
     }
 
     <T> T read(UUID player, Function<PlayerData, T> query);
 
-    /** Read the last published in-memory snapshot without loading a file or waiting for a player's writer. */
+    /**
+     * Read the last published in-memory snapshot without loading a file or waiting for a player's writer.
+     */
     <T> Optional<T> readLoaded(UUID player, Function<PlayerData, T> query);
 
     <T> T update(UUID player, Function<PlayerData, T> transaction);

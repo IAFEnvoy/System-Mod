@@ -14,6 +14,7 @@ import com.iafenvoy.system.module.ContextTypes;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.builtin.signin.SignInModule;
+import com.iafenvoy.system.module.builtin.signin.SignInStatusModule;
 import com.iafenvoy.system.module.builtin.storage.SignInDataStorage;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.datafixers.util.Either;
@@ -62,6 +63,7 @@ public record SignInSystemModule(
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
         ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player = context.tool(BuiltinTools.PLAYER, () -> new PlayerQueryTool(context.get(ContextTypes.GAME)).tool());
-        return List.of(new SignInModule(context.get(ContextTypes.CATALOGS), player, new SignInCreditTool(context.get(ContextTypes.CATALOGS)).tool()));
+        return List.of(new SignInModule(context.get(ContextTypes.CATALOGS), player, new SignInCreditTool(context.get(ContextTypes.CATALOGS)).tool()),
+                new SignInStatusModule(context.get(ContextTypes.CATALOGS)));
     }
 }

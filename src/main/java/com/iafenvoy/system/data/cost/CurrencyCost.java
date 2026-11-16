@@ -1,10 +1,6 @@
 package com.iafenvoy.system.data.cost;
 
-import com.iafenvoy.saturn.data.cost.Cost;
-import com.iafenvoy.saturn.data.cost.CostDisplay;
-import com.iafenvoy.saturn.data.cost.CostTarget;
-import com.iafenvoy.saturn.data.cost.CostTransaction;
-import com.iafenvoy.saturn.data.cost.Debit;
+import com.iafenvoy.saturn.data.cost.*;
 import com.iafenvoy.saturn.data.cost.context.CostContext;
 import com.iafenvoy.saturn.runtime.resulting.Result;
 import com.iafenvoy.saturn.runtime.resulting.failures.CostFailure;
@@ -22,7 +18,9 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.List;
 import java.util.UUID;
 
-/** Saturn's payment lifecycle and re-entrancy guard, with System's independent module wallet as its channel. */
+/**
+ * Saturn's payment lifecycle and re-entrancy guard, with System's independent module wallet as its channel.
+ */
 public record CurrencyCost(Holder<CurrencyDefinition> currency, NumberProvider amount) implements Cost {
     public static final MapCodec<CurrencyCost> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             CurrencyDefinition.CODEC.fieldOf("currency").forGetter(CurrencyCost::currency),

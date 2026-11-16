@@ -2,6 +2,7 @@
   "values": [
     "system:test_supplies_large",
     "system:test_free",
-    "system:test_high_roller"
+    "system:test_high_roller",
+    "system:test_non_item"
   ]
 }

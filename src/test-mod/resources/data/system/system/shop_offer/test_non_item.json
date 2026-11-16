@@ -1,0 +1,55 @@
+{
+  "label": "测试：系统币与经验补给",
+  "contents": [
+    {
+      "content": {
+        "type": "system:currency",
+        "currency": "system:coin"
+      },
+      "amount": 100
+    },
+    {
+      "content": {
+        "type": "system:experience"
+      },
+      "amount": 80
+    },
+    {
+      "content": {
+        "type": "system:experience",
+        "levels": true
+      },
+      "amount": 2
+    },
+    {
+      "content": {
+        "type": "system:action",
+        "name": "恢复生命",
+        "icon": {
+          "id": "minecraft:golden_apple"
+        },
+        "action": {
+          "type": "saturn:heal",
+          "amount": 4
+        }
+      },
+      "amount": 1
+    }
+  ],
+  "costs": [
+    {
+      "type": "saturn:item",
+      "items": "minecraft:cobblestone",
+      "amount": 8
+    }
+  ],
+  "display_condition": {
+    "type": "saturn:advancement",
+    "advancement": "minecraft:story/upgrade_tools"
+  },
+  "condition": {
+    "type": "saturn:experience_level",
+    "comparison": ">=",
+    "compare_to": 10
+  }
+}

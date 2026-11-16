@@ -9,8 +9,9 @@ import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.catalog.ShopOfferEntry;
 import com.iafenvoy.system.data.catalog.ShopPurchaseLimit;
 import com.iafenvoy.system.data.store.CommerceOrder;
+import com.iafenvoy.system.data.store.LotteryProgress;
+import com.iafenvoy.system.data.store.LotteryRolls;
 import com.iafenvoy.system.data.store.PurchaseType;
-import com.iafenvoy.system.data.store.Reward;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -30,20 +31,21 @@ public final class CommerceQuotes {
     public synchronized Quote create(UUID player, CommerceCatalog catalog, Holder<ShopOfferEntry> offer, CommerceCosts.Prepared payment) {
         Identifier id = HolderHelper.id(offer);
         ShopOfferEntry entry = offer.value();
-        return this.create(player, catalog, PurchaseType.SHOP, id, entry.label(), payment, List.of(new LotteryPool.Entry(new PersistHolder<>(id, new Reward(entry.label(), entry.items())), 1)), entry.purchaseLimit());
+        return this.create(player, catalog, PurchaseType.SHOP, id, entry.label(), payment, List.of(new LotteryPool.Entry(new PersistHolder<>(id, entry.reward()), 1)), entry.purchaseLimit(), Optional.empty(), 1);
     }
 
-    public synchronized Quote createPool(UUID player, CommerceCatalog catalog, Holder<LotteryPool> pool, CommerceCosts.Prepared payment) {
+    public synchronized Quote createPool(UUID player, CommerceCatalog catalog, Holder<LotteryPool> pool, CommerceCosts.Prepared payment, int count) {
         return this.create(player, catalog, PurchaseType.LOTTERY, HolderHelper.id(pool), pool.value().label(), payment,
-                pool.value().entries(), Optional.empty());
+                pool.value().entries(), pool.value().drawLimit(), Optional.of(pool.value()), count);
     }
 
-    private Quote create(UUID player, CommerceCatalog catalog, PurchaseType type, Identifier source, Component label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries, Optional<ShopPurchaseLimit> purchaseLimit) {
+    private Quote create(UUID player, CommerceCatalog catalog, PurchaseType type, Identifier source, Component label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries, Optional<ShopPurchaseLimit> purchaseLimit, Optional<LotteryPool> pool, int count) {
         long now = System.currentTimeMillis();
-        this.quotes.values().removeIf(quote -> quote.expires() < now);
+        this.quotes.values().removeIf(quote -> quote.expires() < now || quote.player().equals(player)
+                && quote.type() == type && quote.source().equals(source));
         if (this.quotes.size() >= 4096 || this.quotes.values().stream().filter(quote -> quote.player().equals(player)).count() >= 32)
             throw new AgentException(AgentFailure.BUSY);
-        Quote quote = new Quote(UUID.randomUUID().toString(), player, catalog.revision(), type, source, label, payment, entries, purchaseLimit, now + 120000);
+        Quote quote = new Quote(UUID.randomUUID().toString(), player, catalog.revision(), type, source, label, payment, entries, purchaseLimit, pool, count, now + 120000);
         this.quotes.put(quote.id(), quote);
         return quote;
     }
@@ -62,13 +64,16 @@ public final class CommerceQuotes {
 
     public record Quote(String id, UUID player, String revision, PurchaseType type, Identifier source,
                         Component label, CommerceCosts.Prepared payment, List<LotteryPool.Entry> entries,
-                        Optional<ShopPurchaseLimit> purchaseLimit, long expires) {
+                        Optional<ShopPurchaseLimit> purchaseLimit, Optional<LotteryPool> pool, int count,
+                        long expires) {
         public Quote {
             entries = List.copyOf(entries);
         }
 
-        public CommerceOrder select() {
-            return new CommerceOrder(this.type, this.source, this.label, LotteryPool.draw(this.entries), Optional.of(this.payment.getData()));
+        public CommerceOrder select(LotteryProgress progress) {
+            Optional<LotteryRolls> rolls = this.pool.map(pool -> pool.roll(this.count, progress.misses(), progress.wins()));
+            return new CommerceOrder(this.type, this.source, this.label, rolls.map(result -> result.bundle(this.source, this.label))
+                    .orElseGet(() -> LotteryPool.draw(this.entries)), Optional.of(this.payment.getData()), rolls);
         }
     }
 }

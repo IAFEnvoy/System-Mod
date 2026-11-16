@@ -14,6 +14,7 @@ import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.input.LotteryQueryInput;
 import com.iafenvoy.system.data.output.*;
 import net.minecraft.core.Holder;
+import net.minecraft.resources.Identifier;
 
 import java.util.*;
 
@@ -43,22 +44,29 @@ public final class LotteryModule extends AbstractAgentModule<LotteryQueryInput> 
                 .shortcut("system.action.view_lottery", new LotteryQueryInput("", 0));
     }
 
+    static int offset(int requested, int count, int size) {
+        return Math.min(Math.max(0, requested) / size, Math.max(0, count - 1) / size) * size;
+    }
+
     /**
-     * The detail card carries every prize it can show; the label already reports the truncated count.
+     * Each batch uses all eligible rewards' weight, never just the visible subset's weight.
      */
-    static LotteryPoolOutput summary(Holder<LotteryPool> holder, CommercePreviewOutput price, String revision) {
+    static LotteryPoolOutput summary(Holder<LotteryPool> holder, CommercePreviewOutput price, String revision, int requested) {
         LotteryPool pool = holder.value();
-        long totalWeight = pool.totalWeight();
-        List<LotteryPrizeOutput> prizes = pool.entries().stream().limit(MAX_PRIZES)
-                .map(entry -> new LotteryPrizeOutput(entry.reward(), entry.weight(), totalWeight)).toList();
-        return new LotteryPoolOutput(HolderHelper.id(holder), pool.label(), Optional.of(price.price()), pool.entries().size(), price.available(), prizes, price.quoteRef(), revision);
+        Map<Identifier, Integer> wins = price.lottery().map(LotteryStatusOutput::wins).orElse(Map.of());
+        long totalWeight = pool.eligible(wins).stream().mapToLong(LotteryPool.Entry::weight).sum();
+        int offset = offset(requested, pool.entries().size(), MAX_PRIZES);
+        List<LotteryPrizeOutput> prizes = pool.entries().stream().skip(offset).limit(MAX_PRIZES)
+                .map(entry -> new LotteryPrizeOutput(entry.reward(), entry.remaining(wins) == 0 ? 0 : entry.weight(), totalWeight,
+                        entry.maxWins(), wins.getOrDefault(entry.reward().id(), 0))).toList();
+        return new LotteryPoolOutput(HolderHelper.id(holder), pool.label(), Optional.of(price.price()), pool.entries().size(), price.available(), prizes, price.quoteRef(), revision, price.conditionMet(), offset, price.lottery());
     }
 
     /**
      * Shelf cells carry the whole odds list of the pool: up to ten rarest prizes, each with its items. The list is
      * built from the most likely of those down to the rarest, matching how the tooltip reads.
      */
-    static LotteryCatalogOutput.Pool entry(Holder<LotteryPool> holder) {
+    static LotteryCatalogOutput.Pool entry(Holder<LotteryPool> holder, boolean available) {
         LotteryPool pool = holder.value();
         long totalWeight = pool.totalWeight();
         List<LotteryPool.Entry> ranked = pool.entries().stream()
@@ -68,21 +76,24 @@ public final class LotteryModule extends AbstractAgentModule<LotteryQueryInput> 
         for (int index = ranked.size() - 1; index >= 0; index--) {
             LotteryPool.Entry entry = ranked.get(index);
             prizes.add(new LotteryCatalogOutput.Prize(entry.reward().value().label(), LotteryPrizeOutput.chance(entry.weight(), totalWeight),
-                    entry.reward().value().items().stream().map(ItemPreviewOutput::of).toList()));
+                    entry.reward().value().items().stream().map(ItemPreviewOutput::of).toList(), entry.reward().value().contents(), entry.maxWins()));
         }
-        return new LotteryCatalogOutput.Pool(HolderHelper.id(holder).toString(), pool.label(), pool.entries().size(), prizes);
+        return new LotteryCatalogOutput.Pool(HolderHelper.id(holder).toString(), pool.label(), pool.entries().size(), prizes, available);
     }
 
     @Override
     public AgentResult execute(ExecutionContext context, LotteryQueryInput input) {
         String query = input.query().toLowerCase(Locale.ROOT);
-        CommerceCatalog catalog = this.catalogs.available(context.player());
+        CommerceCatalogs.View view = this.catalogs.view(context);
+        CommerceCatalog catalog = view.catalog();
         List<Holder<LotteryPool>> matches = catalog.lotteries().stream().filter(holder -> HolderHelper.id(holder).toString().contains(query)
                 || holder.value().label().getString().toLowerCase(Locale.ROOT).contains(query)).toList();
         // Prices are evaluated only for the pool the player actually opens.
-        List<LotteryCatalogOutput.Pool> pools = matches.stream().limit(MAX_POOLS).map(LotteryModule::entry).toList();
+        int offset = offset(input.offset(), matches.size(), MAX_POOLS);
+        List<LotteryCatalogOutput.Pool> pools = matches.stream().skip(offset).limit(MAX_POOLS)
+                .map(holder -> entry(holder, !view.lockedLotteries().contains(HolderHelper.id(holder)))).toList();
         if (pools.isEmpty()) return AgentResult.ok("system.result.lottery_empty");
         return AgentResult.data("system.result.lottery",
-                new LotteryCatalogOutput(catalog.revision(), input.query(), pools, matches.size() > MAX_POOLS));
+                new LotteryCatalogOutput(catalog.revision(), input.query(), pools, offset, matches.size()));
     }
 }

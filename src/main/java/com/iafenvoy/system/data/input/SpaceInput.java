@@ -8,12 +8,12 @@ import com.mojang.serialization.MapCodec;
 /**
  * A distinct parameterless action keeps registry dispatch unambiguous.
  */
-public enum InboxInput implements AgentAction {
+public enum SpaceInput implements AgentAction {
     INSTANCE;
-    public static final SchemaMapCodec<InboxInput> CODEC = SchemaCodecs.unit(INSTANCE);
+    public static final SchemaMapCodec<SpaceInput> CODEC = SchemaCodecs.unit(INSTANCE);
 
     @Override
-    public MapCodec<InboxInput> codec() {
+    public MapCodec<SpaceInput> codec() {
         return CODEC;
     }
 }

@@ -17,7 +17,9 @@ public record ClientModuleContext(ClientModuleBindingsCache bindings, Identifier
         definitions = List.copyOf(definitions);
     }
 
-    /** Commands are exclusive to assistant input and never registered beneath the game's /system root. */
+    /**
+     * Commands are exclusive to assistant input and never registered beneath the game's /system root.
+     */
     public void command(Runnable action, String... aliases) {
         ClientModuleCaches.COMMAND.register(this::available, action, aliases);
     }

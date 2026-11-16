@@ -1,7 +1,7 @@
 package com.iafenvoy.system.speech.asr;
 
-import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.config.file.RecognitionConfig;
+import com.iafenvoy.system.speech.SpeechException;
 import org.jspecify.annotations.NonNull;
 
 import java.util.function.Consumer;
@@ -29,7 +29,9 @@ public interface AsrProvider extends AutoCloseable {
      */
     String recognize(Request request, AudioSource audio, Consumer<String> intermediate, Runnable requestStarted) throws Exception;
 
-    /** Providers with duration-based billing report the response duration before returning the text. */
+    /**
+     * Providers with duration-based billing report the response duration before returning the text.
+     */
     default String recognize(Request request, AudioSource audio, Consumer<String> intermediate, Runnable requestStarted,
                              Consumer<Usage> observer) throws Exception {
         return this.recognize(request, audio, intermediate, requestStarted);

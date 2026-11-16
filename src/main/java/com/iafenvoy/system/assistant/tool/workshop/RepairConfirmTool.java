@@ -9,7 +9,8 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 
 import java.util.concurrent.CompletionStage;
 
-public record RepairConfirmTool(Workshop workshop) implements ToolRegistry.Handler<RepairConfirmInput, ItemInspectionOutput> {
+public record RepairConfirmTool(
+        Workshop workshop) implements ToolRegistry.Handler<RepairConfirmInput, ItemInspectionOutput> {
     public ToolRegistry.Tool<RepairConfirmInput, ItemInspectionOutput> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.REPAIR_CONFIRM, true, false, false, this);
     }

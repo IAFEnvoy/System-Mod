@@ -24,7 +24,7 @@ public record RewardOutput(PersistHolder<Reward> reward, Optional<String> entitl
                            String reason,
                            boolean delivered) implements CardData {
     public static final MapCodec<RewardOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            PersistHolder.mapCodec(Reward.CODEC).fieldOf("reward").forGetter(RewardOutput::reward),
+            PersistHolder.mapCodec(Reward.SNAPSHOT_CODEC).fieldOf("reward").forGetter(RewardOutput::reward),
             Codec.STRING.optionalFieldOf("entitlementId").forGetter(RewardOutput::entitlementId),
             ComponentSerialization.CODEC.fieldOf("summary").forGetter(RewardOutput::summary),
             Codec.STRING.optionalFieldOf("reason", "").forGetter(RewardOutput::reason),

@@ -24,7 +24,7 @@ public final class OnlineJobsModule extends AbstractAgentModule<OnlineJobsInput>
         return ModuleRouting.<OnlineJobsInput>defaults().button(a -> new OnlineJobsInput(a.number(0, "offset")))
                 .command(AgentCommand.literal(new OnlineJobsInput(0), "jobs", "作业"))
                 .semantic(RoutingProfile.read(_ -> new OnlineJobsInput(0), List.of("查看挂机作业", "当前采集进度", "有哪些在线生产项目"),
-                        List.of("Show online jobs", "Check my production progress", "List available gathering jobs"))
+                                List.of("Show online jobs", "Check my production progress", "List available gathering jobs"))
                         .choice("system.action.job_refresh"));
     }
 

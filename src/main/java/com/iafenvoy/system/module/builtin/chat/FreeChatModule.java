@@ -106,12 +106,13 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
 
     private static List<CardUpdate> cards(List<ChatObservation> observations) {
         List<CardUpdate> cards = new ArrayList<>();
-        for (ChatObservation observation : observations) switch (observation) {
-            case ChatObservation.Workflow workflow -> cards.addAll(workflow.result().cards());
-            case ChatObservation.Tool tool -> {
-                if (tool.result().result() instanceof CardData card) cards.add(CardUpdate.show(card));
+        for (ChatObservation observation : observations)
+            switch (observation) {
+                case ChatObservation.Workflow workflow -> cards.addAll(workflow.result().cards());
+                case ChatObservation.Tool tool -> {
+                    if (tool.result().result() instanceof CardData card) cards.add(CardUpdate.show(card));
+                }
             }
-        }
         return cards;
     }
 

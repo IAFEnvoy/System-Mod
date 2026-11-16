@@ -90,7 +90,8 @@ public final class AiManagementCommands {
         AiAccess.Permissions permissions = runtime.engine().permissions(player.getUUID());
         MutableComponent message = Component.translatable(key, player.getName(), permission(permissions.allowAi()),
                 permission(permissions.allowFreeChat()), permissions.modelCallsPerDay(), Component.translatable(permissions.maxMode().labelKey()));
-        if (!permissions.modelConfigured()) message.append("\n").append(Component.translatable("system.ai.model_missing_hint"));
+        if (!permissions.modelConfigured())
+            message.append("\n").append(Component.translatable("system.ai.model_missing_hint"));
         return message;
     }
 

@@ -1,8 +1,8 @@
 package com.iafenvoy.system.speech.deepseek;
 
-import com.iafenvoy.system.data.speech.DeepSeekAsrMessage;
 import com.iafenvoy.system.config.credential.builtin.DeepSeekCredential;
 import com.iafenvoy.system.config.file.RecognitionConfig;
+import com.iafenvoy.system.data.speech.DeepSeekAsrMessage;
 import com.iafenvoy.system.speech.PcmWav;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AsrProvider;
@@ -20,7 +20,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
-/** DeepSeek accepts one complete WAV upload; microphone collection remains session-owned and cancellable. */
+/**
+ * DeepSeek accepts one complete WAV upload; microphone collection remains session-owned and cancellable.
+ */
 public final class DeepSeekAsrProvider implements AsrProvider {
     private static final URI ENDPOINT = URI.create("https://api.deepseek.com/v1/tools/asr");
     private static final int MAX_PCM_BYTES = 16000 * 2 * 60;
@@ -71,7 +73,8 @@ public final class DeepSeekAsrProvider implements AsrProvider {
             if (System.nanoTime() >= deadline) throw new TimeoutException();
             int count = audio.read(buffer);
             if (count < 0) break;
-            if (count > buffer.length || (count & 1) != 0 || count > MAX_PCM_BYTES - pcm.size()) throw new SpeechException("audio");
+            if (count > buffer.length || (count & 1) != 0 || count > MAX_PCM_BYTES - pcm.size())
+                throw new SpeechException("audio");
             pcm.write(buffer, 0, count);
         }
         if (pcm.size() == 0) throw new SpeechException("empty");

@@ -1,12 +1,6 @@
 package com.iafenvoy.system.config.credential;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
 /**
@@ -28,12 +22,16 @@ public final class CredentialManager<S> {
         return this;
     }
 
-    /** A selection control can filter credentials without constructing services or reading their secrets. */
+    /**
+     * A selection control can filter credentials without constructing services or reading their secrets.
+     */
     public synchronized boolean supports(Credential credential) {
         return this.factories.containsKey(credential.getClass());
     }
 
-    /** Registration order is retained; callers cannot modify the manager through the returned snapshot. */
+    /**
+     * Registration order is retained; callers cannot modify the manager through the returned snapshot.
+     */
     public synchronized Set<Class<? extends Credential>> credentialTypes() {
         return Collections.unmodifiableSet(new LinkedHashSet<>(this.factories.keySet()));
     }

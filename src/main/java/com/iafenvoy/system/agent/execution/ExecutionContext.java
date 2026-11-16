@@ -152,7 +152,9 @@ public final class ExecutionContext {
         return this.prompts.revision();
     }
 
-    /** Optional contributions use this execution's snapshot, even if resources reload while it runs. */
+    /**
+     * Optional contributions use this execution's snapshot, even if resources reload while it runs.
+     */
     public Optional<String> findPrompt(Identifier id) {
         return this.prompts.find(id.toString(), Map.of("player_language", this.language));
     }
@@ -229,7 +231,8 @@ public final class ExecutionContext {
         if (this.isEvent() || !this.engine.modules().modelSelectable(input.id()))
             throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         AgentModule<?> target = this.engine.module(this.player, input.id());
-        if (target == null || !this.available(input.id())) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+        if (target == null || !this.available(input.id()))
+            throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         if (++this.steps > this.policy.steps()) throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
         AgentModule.Descriptor previousModule = this.module;
         Identifier previousOwner = this.owner;
@@ -284,7 +287,8 @@ public final class ExecutionContext {
         this.requireExternalServices();
         if (this.isEvent()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         for (ToolRegistry.Type<?, ?> type : types) {
-            if (!this.authorizedExternalTools.contains(type.id())) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
+            if (!this.authorizedExternalTools.contains(type.id()))
+                throw new AgentException(AgentFailure.NOT_AUTHORIZED);
             if (!this.toolAvailable(type)) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         }
     }
@@ -306,7 +310,8 @@ public final class ExecutionContext {
         if (!permissions.allowAi() || permissions.maxMode() == ConversationMode.OFFLINE)
             throw new AgentException(AgentFailure.AI_FORBIDDEN);
         if (!permissions.modelConfigured()) throw new AgentException(AgentFailure.MODEL_NOT_CONFIGURED);
-        if (!this.store.read(this.player, data -> data.mode.usesAi())) throw new AgentException(AgentFailure.MODEL_DISABLED);
+        if (!this.store.read(this.player, data -> data.mode.usesAi()))
+            throw new AgentException(AgentFailure.MODEL_DISABLED);
         if (permissions.modelCallsPerDay() == 0)
             throw new AgentException(AgentFailure.RATE_LIMITED);
     }
@@ -337,7 +342,9 @@ public final class ExecutionContext {
                 "react/" + this.toolContexts++);
     }
 
-    /** Free chat owns an explicit read scope; a provider cannot export a write or a disabled feature. */
+    /**
+     * Free chat owns an explicit read scope; a provider cannot export a write or a disabled feature.
+     */
     public ToolContext chatTools(Collection<ToolRegistry.Type<?, ?>> additions) {
         this.requireFreeChat();
         if (this.isEvent()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
@@ -419,12 +426,14 @@ public final class ExecutionContext {
         functions = List.copyOf(functions);
         // Reserve input bytes conservatively as tokens; this execution budget is separate from billed usage.
         long inputBytes = (long) instruction.getBytes(StandardCharsets.UTF_8).length + content.getBytes(StandardCharsets.UTF_8).length;
-        if (!functions.isEmpty()) inputBytes += CodecIO.write(ModelClient.Function.CODEC.listOf(), functions).getBytes(StandardCharsets.UTF_8).length;
+        if (!functions.isEmpty())
+            inputBytes += CodecIO.write(ModelClient.Function.CODEC.listOf(), functions).getBytes(StandardCharsets.UTF_8).length;
         if (inputBytes > this.policy.inputBytes() || this.tokens + inputBytes + this.policy.outputTokens() > this.policy.totalTokens())
             throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
         int estimated = (int) inputBytes;
         long wait = this.modelTimeoutMillis();
-        if (!this.engine.modelSlots().tryAcquire(wait, TimeUnit.MILLISECONDS)) throw new AgentException(AgentFailure.BUSY);
+        if (!this.engine.modelSlots().tryAcquire(wait, TimeUnit.MILLISECONDS))
+            throw new AgentException(AgentFailure.BUSY);
         try {
             this.check();
             this.store().update(this.player, data -> {
@@ -489,7 +498,8 @@ public final class ExecutionContext {
         if (this.module == null || !this.module.tools().contains(id) && !this.module.optionalTools().contains(id))
             throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         ToolRegistry.Tool<I, O> tool = this.engine.tool(this.player, type, this.owner);
-        if (this.module.optionalTools().contains(id) && tool.write()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
+        if (this.module.optionalTools().contains(id) && tool.write())
+            throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         return this.executeTool(tool, stepId, input);
     }
 
@@ -537,7 +547,8 @@ public final class ExecutionContext {
                     .get(this.remainingMillis(), TimeUnit.MILLISECONDS);
             if (!tool.write()) {
                 this.ensureMemoryCurrent();
-                if (!this.engine.toolAvailable(this.player, id)) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+                if (!this.engine.toolAvailable(this.player, id))
+                    throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             }
             if (tool.write()) this.store().update(this.player, data -> {
                 this.engine.journal(data).completeOperation(operationKey,

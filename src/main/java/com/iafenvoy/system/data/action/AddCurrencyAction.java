@@ -16,7 +16,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import org.jspecify.annotations.NonNull;
 
-/** Signed whole units; a debit that exceeds the balance is refused rather than clamped. */
+/**
+ * Signed whole units; a debit that exceeds the balance is refused rather than clamped.
+ */
 public record AddCurrencyAction(Holder<CurrencyDefinition> currency, long amount) implements EntityAction {
     public static final MapCodec<AddCurrencyAction> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             CurrencyDefinition.CODEC.fieldOf("currency").forGetter(AddCurrencyAction::currency),
@@ -38,9 +40,11 @@ public record AddCurrencyAction(Holder<CurrencyDefinition> currency, long amount
                 // A one-shot reward must not disappear merely because another transaction currently owns the lock.
                 if (result.getFailure().filter(AgentFailure.BUSY::equals).isPresent())
                     wallets.edit(player, id, this.amount, false).whenComplete((_, error) -> {
-                        if (error != null) SystemMod.LOGGER.warn("Queued currency action failed for {} currency {}", player.getUUID(), id, error);
+                        if (error != null)
+                            SystemMod.LOGGER.warn("Queued currency action failed for {} currency {}", player.getUUID(), id, error);
                     });
-                else result.ifFailure(failure -> SystemMod.LOGGER.warn("Currency action refused for {} currency {}: {}", player.getUUID(), id, failure.name()));
+                else
+                    result.ifFailure(failure -> SystemMod.LOGGER.warn("Currency action refused for {} currency {}: {}", player.getUUID(), id, failure.name()));
             });
         } catch (AgentException error) {
             SystemMod.LOGGER.warn("Currency action refused for {} currency {}: {}", player.getUUID(), id, error.failure().name());

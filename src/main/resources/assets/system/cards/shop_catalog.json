@@ -17,26 +17,70 @@
           "children": [
             {
               "type": "system:flex",
-              "source": "{{offers.*.items}}",
+              "style": "offer_cell_items",
               "children": [
                 {
-                  "type": "system:item",
-                  "item": "{{offers.*.items.*}}",
-                  "size": 36,
-                  "tooltip": [
+                  "type": "system:flex",
+                  "source": "{{offers.*.items}}",
+                  "children": [
                     {
-                      "type": "system:text",
-                      "text": "{{offers.*.tooltip}}"
+                      "type": "system:item",
+                      "item": "{{offers.*.items.*}}",
+                      "size": 36,
+                      "tooltip": [
+                        {
+                          "type": "system:text",
+                          "text": "{{offers.*.tooltip}}"
+                        }
+                      ]
                     }
                   ]
+                },
+                {
+                  "type": "system:flex",
+                  "source": "{{offers.*.contents}}",
+                  "children": [
+                    {
+                      "type": "system:flex",
+                      "wrap": false,
+                      "style": [
+                        "item_entry",
+                        "item_labeled"
+                      ],
+                      "children": [
+                        {
+                          "type": "system:icon",
+                          "icon": "{{offers.*.contents.*.icon}}",
+                          "unless": "text_items",
+                          "tooltip": [
+                            {
+                              "type": "system:text",
+                              "text": "{{offers.*.contents.*.label}}"
+                            },
+                            {
+                              "type": "system:text",
+                              "text": "{{offers.*.tooltip}}"
+                            }
+                          ],
+                          "style": "item_entry"
+                        }
+                      ]
+                    }
+                  ],
+                  "style": "item_group_items"
                 }
-              ],
-              "style": "offer_cell_items"
+              ]
             },
             {
               "type": "system:text",
               "text": "{{offers.*.label}}",
               "style": "offer_cell_label"
+            },
+            {
+              "type": "system:text",
+              "translate": "system.ui.condition_unmet",
+              "when": "offers.*.condition_unmet",
+              "style": "card_context"
             }
           ],
           "style": "offer_cell_content"

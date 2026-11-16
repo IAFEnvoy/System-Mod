@@ -264,7 +264,7 @@ JSON 控制顺序、嵌套、样式和可见性。通常用 flex / grid 组合 b
 
 ### 任务与奖励类型图标
 
-`ftb_icon.icon` 绑定单个 `FtbIconData`，不接受图标列表。`FtbIconData.quest(id, title)` 读取 Quest 自身配置的图标；`FtbIconData.type(preview)` 使用服务端提供的 QuestIconOutput 类型、数量和 tooltip。FTBQ 原生任务图标参数为 `actions.<下标>.action_native_icon`；任务来源可提供通用 `IconReference` 到 `actions.<下标>.action_icon`，使用 `system:icon` 渲染，默认 32 像素，支持资源图与物品。任务 / 奖励的 FTB 原生类型图标仍用 flex.source + 单 ftb_icon 组合。
+`ftb_icon.icon` 绑定单个 `FtbIconData`，不接受图标列表。`FtbIconData.quest(id, title)` 读取 Quest 自身配置的图标；`FtbIconData.type(preview)` 使用服务端提供的 QuestIconOutput 类型、数量和 tooltip。FTBQ 原生任务图标参数为 `actions.<下标>.action_native_icon`；任务来源可提供通用 `IconReference` 到 `actions.<下标>.action_icon`，使用 `system:icon` 渲染，默认 32 像素，支持资源图与物品。`icon.tooltip` 可选，格式与 item 的 tooltip 节点列表一致；未设置不显示提示，设置后只显示卡片定义的文本，不显示装饰性物品的原版说明。任务 / 奖励的 FTB 原生类型图标仍用 flex.source + 单 ftb_icon 组合。
 
 原生图标适配器仅在安装 FTB 的物理客户端反射加载；共享 DTO 不引用可选类。类型不符时隐藏，适配器不可用时使用标题回退。物品仍走 item 节点和原版 tooltip，图标与数量继续沿用 FTB 的原生展示。
 
@@ -369,7 +369,9 @@ builder.list("prizes", pool.prizes(), (prefix, prize) -> builder
 | `return-val` | 不透明字符串 | CardActionRequest 只发送 source(ref + revision) 和 value，服务端解析 |
 | `local` | CardContext.callbacks 的键名 | 执行代码提供的 Runnable；JSON 不提供脚本 |
 
-按钮可用 text 或 children 构建主体；icon 可引用本地图片；label 提供 tooltip / 无障碍文字。selected / disabled 读取状态绑定。客户端的可选 binding 只接受代码提供的 CardButtonBinding，供 pin 等交互维护实时选中、pending 和可用状态，通用 ButtonNode 不认识任务或缓存。
+`shift_value` 可为服务端按钮指定 Shift 点击时发送的替代字符串，为空时沿用 value；本地和 URL 按钮不受影响。系统空间使用它在取 1 个和取一组之间切换。
+
+按钮可用 text 或 children 构建主体；icon 可引用本地图片；label 提供 tooltip / 无障碍文字。selected / disabled 读取状态绑定；构建数据标记的 actions.*.disabled 与来源卡失效状态取或，不会被来源活动状态覆盖。客户端的可选 binding 只接受代码提供的 CardButtonBinding，供 pin 等交互维护实时选中、pending 和可用状态，通用 ButtonNode 不认识任务或缓存。
 
 内置字符串用 `CardEventValue.encode(Identifier, Map<String,String>)` 生成，例如 `system:quest_detail?quest=...`；键和值采用 UTF-8 URL 编码，参数按键排序。没有参数时只有动作 ID。`CardBuilder.serverButton` 的 Identifier + Map 重载只负责生成该字符串；也可直接传入字符串。客户端不解析服务端行为或请求大模型。
 
@@ -439,8 +441,9 @@ FTB 来源为隔离适配器 `FtbQuestDisplay`：每次核对当前队伍、任�
 | reward/entitlement/purchase | reward_label/reward_items/result_items；回执另有 entitlement_id/state，购买另有 order_id；状态 delivered 表示已交付，按钮区显示不可点的“已领取” |
 | shop_offer | label/id/items/price/price_text/payment_available/payment_unavailable，offer_items/price_items；has_purchase_limit/purchase_limit/limit_reached 展示限购快照 |
 | shop_order | order_id/label/state/error |
-| lottery_catalog | revision/query/truncated；pools.<下标>.label/prizeCount/prizes.<下标>.label/chance/items，单元格由 pool.<下标> 服务端按钮驱动 |
-| lottery_pool | label/id/prize_count/preview_count/price/price_text/free/payment_available/price_items/prizes；状态 priced 表示有单次消耗；prizes.<下标>.reward_label/chance/result_items |
+| lottery_catalog | revision/query/offset/total/range；pools.<下标>.label/prizeCount/prizes.<下标>.label/chance/items，单元格由 pool.<下标> 服务端按钮驱动 |
+| lottery_pool | label/id/prize_count/preview_count/price/price_text/free/payment_available/price_items/prizes；draw_count/rules 展示当前抽数、保底、额度、冷却及剩余奖品，状态 priced 表示有本组消耗；prizes.<下标>.reward_label/chance/result_items/limited/exhausted/max_wins/win_count/remaining_wins/rule；chance 按个人剩余候选计算，limited 表示有获取上限，exhausted 表示已达上限，win_count 为已获得次数 |
+| lottery_history | orders 只含本人记录；detail 区分列表与逐抽详情，range 表示当前批次；orders.*.rolls.*.label/contents/guaranteed 展示已结算结果，按钮按需查询服务端 |
 | lottery_prize | reward_label/reward_items/chance/result_items，概率数值不含百分号 |
 | delivery_state | state |
 | quest/quest_submit | title，tasks.<下标>.task_title/task_progress/task_required/task_items；详情另有 chapter/description/progress/completed；submission 枚举由 CardData 构建提交或勾选按钮 |
@@ -518,3 +521,7 @@ JSON 使用 `"type":"example:badge"`。注册与冻结由 NeoForge 模组加载�
 ### 任务来源参数
 
 任务列表动作参数新增 `actions.<下标>.action_source`；任务详情、完成通知、提交结果和常驻卡片提供 `source`，值为服务端传递的来源显示名 Component。启动提示汇总来源显示名，说明书提供每条 `entries.<下标>.source`。模板使用 `system.ui.quest_source`（中英文）格式化来源标签。任务与领奖引用按 `来源ID#本地ID` 分派；章节和分组键也按来源隔离。客户端 pin 从带来源的任务键提取 `DisplayCardKey`，不再将所有任务固定为 FTBQ 来源。接口与 Codec 范围见[通用任务接口](quests.md)。
+
+## 通用奖励预览
+
+`CardBuilder.reward(prefix, reward)` 同时填充原有 `result_items` 与新增 `contents`。`contents` 是条目计数，`contents.N.name` / `icon` / `amount` / `label` 分别为 Component、IconReference、数量字符串和带数量的 Component；前缀同样适用于 candidates、prizes 和 jobs。卡片使用现有 flex / icon / text 节点组合，正文与简约文本投影都保留非物品结果。JSON 卡片编辑器包含混合奖励与纯系统币／经验示例。定义与领取语义见[奖励结果](rewards.md)。

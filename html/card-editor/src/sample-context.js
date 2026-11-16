@@ -102,7 +102,7 @@ export function sampleContext(template = "quest_list") {
   p.offers = Array.from({ length: 23 }, (_, i) => ({
     id: `offer_${i}`,
     label: `资源补给 ${i + 1}`,
-    items: [
+    items: i % 4 === 0 ? [] : [
       preview(i % 2 ? "minecraft:apple" : "minecraft:diamond", String(i + 1)),
     ],
   }));
@@ -115,8 +115,10 @@ export function sampleContext(template = "quest_list") {
     prizes: p.prize_list.length,
     prize_count: p.prize_list.length,
     preview_count: p.prize_list.length,
+    range: template === "lottery_catalog" ? "奖池 1–23 / 151" : "奖品 1–23 / 87",
     payment_available: true,
     payment_unavailable: false,
+    condition_unmet: false,
     has_purchase_limit: template === "shop_offer",
     limit_reached: false,
     purchase_limit: "每日限购 3 次 · 剩余 2 次",
@@ -152,6 +154,7 @@ export function sampleContext(template = "quest_list") {
         [`${key}.${i}.label`]: entry.label,
         [`${key}.${i}.items`]: entry.items,
         [`${key}.${i}.tooltip`]: entry.tooltip ?? "",
+        [`${key}.${i}.condition_unmet`]: i === 2,
       }),
     );
   p.prize_list.forEach((entry, i) =>
@@ -180,6 +183,11 @@ export function sampleContext(template = "quest_list") {
       label: entry.label,
       placement: "footer",
     }));
+  if (["lottery_catalog", "lottery_pool"].includes(template)) {
+    p.result_actions.forEach((_, i) => (p[`actions.${i}.footer`] = template === "lottery_pool"));
+    p[`actions.${p.result_actions.length}.pager`] = true;
+    p.result_actions.push({ id: "next", label: "下一批", placement: "body" });
+  }
   if (template === "items") {
     p.single_item = false;
     const examples = [
@@ -228,12 +236,149 @@ export function sampleContext(template = "quest_list") {
       value: "system:item_query?offset=20&query=ore",
     });
   }
+  if (template === "space") {
+    const examples = [
+      ["iron_ingot", "铁锭", 128],
+      ["diamond", "钻石", 12],
+      ["bread", "面包", 32],
+      ["diamond_pickaxe", "钻石镐", 1],
+    ];
+    p.entries = examples.length;
+    p.feedback = "";
+    p.result_actions = examples.map(([id, name, amount], i) => {
+      Object.assign(p, {
+        [`entries.${i}.name`]: name,
+        [`entries.${i}.icon`]: { id: `minecraft:${id}` },
+        [`entries.${i}.amount`]: String(amount),
+        [`entries.${i}.blocked`]: false,
+        [`actions.${i}.shift_value`]: `system:space_take?entry=example-${i}&stack=true`,
+      });
+      return {
+        id: `take.${i}`, label: `取出 ${name}（存量 ${amount}）`, placement: "body",
+        value: `system:space_take?entry=example-${i}`,
+      };
+    });
+  }
+  if (template === "anchor_list") {
+    p.capacity = "已保存 4 个锚点 · 当前容量 3";
+    p.cooldown = "查询时传送冷却剩余 5 秒";
+    p.cooling = true;
+    p.feedback = "已保存锚点：家";
+    p.anchors = 4;
+    p.result_actions = [];
+    ["家", "矿井", "村庄", "下界入口"].forEach((name, i) => {
+      const teleport = `system:anchor_teleport?anchor=example-${i}`;
+      const remove = `system:anchor_delete?anchor=example-${i}`;
+      Object.assign(p, {
+        [`anchors.${i}.name`]: name,
+        [`anchors.${i}.dimension`]: i === 3 ? "minecraft:the_nether" : "minecraft:overworld",
+        [`anchors.${i}.position`]: `${128 + i * 160}.5, 64.0, -32.5`,
+        [`anchors.${i}.locked`]: i >= 3,
+        [`anchors.${i}.teleport_value`]: teleport,
+        [`anchors.${i}.delete_value`]: remove,
+        [`actions.${i * 2}.disabled`]: i >= 3,
+      });
+      p.result_actions.push(
+        { id: `teleport.${i}`, label: `传送至 ${name}`, placement: "body", value: teleport },
+        { id: `delete.${i}`, label: `删除锚点 ${name}`, placement: "body", value: remove },
+      );
+    });
+    p[`actions.${p.result_actions.length}.footer`] = true;
+    p[`actions.${p.result_actions.length}.disabled`] = true;
+    p.result_actions.push({ id: "save", label: "保存当前位置", placement: "footer", value: "system:anchor_save" });
+  }
   if (template === "module_controls") {
     p.title = "在线作业";
     p.description =
       "一次进行一项作业。离线或禁用模块时暂停；完成后手动领取，不自动循环。点击刷新查看最新进度。";
     p.action_label = "刷新作业";
     p.result_actions = [];
+  }
+  const currency = { name: "系统币", icon: { id: "minecraft:gold_nugget" }, amount: "100", label: "系统币 × 100" };
+  const experience = { name: "经验点", icon: { id: "minecraft:experience_bottle" }, amount: "80", label: "经验点 × 80" };
+  const levels = { name: "经验等级", icon: { id: "minecraft:experience_bottle" }, amount: "2", label: "经验等级 × 2" };
+  const effect = { name: "恢复生命", icon: { id: "minecraft:golden_apple" }, amount: "1", label: "恢复生命 × 1" };
+  const contents = (prefix, values) => {
+    p[prefix + "contents"] = values.length;
+    values.forEach((value, i) => {
+      for (const [key, entry] of Object.entries(value))
+        p[`${prefix}contents.${i}.${key}`] = entry;
+    });
+  };
+  contents("", [currency, experience, levels, effect]);
+  p.offer_items = p.result_items;
+  for (const key of ["offers", "pools"])
+    p[key].forEach((_, i) => contents(`${key}.${i}.`, i % 4 === 0 ? [currency] : i % 4 === 1 ? [experience] : []));
+  p.prize_list.forEach((_, i) => {
+    const grants = i % 4 === 0 ? [currency] : i % 4 === 1 ? [experience] : [];
+    contents(`prizes.${i}.`, grants);
+    contents(`prizes.${i}.preview_`, grants);
+  });
+  if (template === "sign_in_status") {
+    p.candidates = 2;
+    p["candidates.0.reward_label"] = "系统币补给";
+    p["candidates.0.result_items"] = [];
+    p["candidates.0.reward_items"] = "";
+    p["candidates.1.reward_label"] = "经验补给";
+    p["candidates.1.result_items"] = [];
+    p["candidates.1.reward_items"] = "";
+    p["candidates.1.condition_unmet"] = true;
+    contents("candidates.0.", [currency]);
+    contents("candidates.1.", [experience, levels]);
+  }
+  if (template === "online_jobs") {
+    p.active = true;
+    p.current_label = "训练";
+    p.current_status = "进行中";
+    p.current_time = "30 / 60 秒";
+    p.progress = 50;
+    p.current_items = [];
+    contents("current_", [experience]);
+    p.jobs = 2;
+    [currency, experience].forEach((grant, i) => {
+      p[`jobs.${i}.label`] = i ? "训练" : "赚取系统币";
+      p[`jobs.${i}.duration`] = "60 秒";
+      p[`jobs.${i}.items`] = [];
+      p[`jobs.${i}.reward_text`] = grant.label;
+      p[`jobs.${i}.condition_unmet`] = i === 1;
+      p[`actions.${i}.disabled`] = i === 1;
+      contents(`jobs.${i}.preview_`, [grant]);
+    });
+  }
+  if (template === "lottery_pool") {
+    p.draw_count = "10 抽";
+    p.rules = 3;
+    p["rules.0.text"] = "距离保底最多 4 抽（上限 10 抽）";
+    p["rules.1.text"] = "保底范围：钻石补给";
+    p["rules.2.text"] = "抽取限制（每日）：上限 30 次，剩余 20 次";
+    p["prizes.0.limited"] = true;
+    p["prizes.0.max_wins"] = 2;
+    p["prizes.0.win_count"] = 1;
+    p["prizes.0.remaining_wins"] = 1;
+    p["prizes.0.rule"] = "最多 2 次 · 已获得 1 次";
+    p["prizes.1.limited"] = true;
+    p["prizes.1.exhausted"] = true;
+    p["prizes.1.max_wins"] = 2;
+    p["prizes.1.win_count"] = 2;
+    p["prizes.1.remaining_wins"] = 0;
+    p["prizes.1.rule"] = "最多 2 次 · 已获得 2 次";
+    p["prizes.1.chance"] = "0";
+  }
+  if (template === "lottery_history") {
+    p.detail = true;
+    p.range = "抽取结果 1–4 / 10";
+    p.orders = 1;
+    p["orders.0.heading"] = "资源补给奖池 · 10 抽 · 已结算";
+    p["orders.0.time"] = "2026-11-16T12:00:00Z";
+    p["orders.0.id"] = "00000000-0000-0000-0000-000000000001";
+    p["orders.0.rolls"] = 4;
+    for (let i = 0; i < 4; i++) {
+      p[`orders.0.rolls.${i}.label`] = i === 3 ? "钻石补给" : "食物补给";
+      p[`orders.0.rolls.${i}.contents`] = i === 3 ? "钻石 × 1" : "面包 × 8";
+      p[`orders.0.rolls.${i}.guaranteed`] = i === 3;
+    }
+    p.result_actions = [{ id: "back", label: "返回记录列表", placement: "body" }];
+    p["actions.0.pager"] = true;
   }
   p.actions = p.result_actions.length;
   p.result_actions.forEach((entry, i) =>

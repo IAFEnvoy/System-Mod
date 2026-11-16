@@ -9,6 +9,7 @@
     "system:online_jobs",
     "system:signin",
     "system:inbox",
+    "system:anchor",
     "system:shop",
     "system:lottery",
     "system:advancement",

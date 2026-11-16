@@ -5,7 +5,9 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
-/** The editor owns placement and persistent visibility; emotion test state remains connection-local. */
+/**
+ * The editor owns placement and persistent visibility; emotion test state remains connection-local.
+ */
 public final class EmotionHudEntry extends AuiHudEntry {
     public static final String TEMPLATE = "system/assistant-emotion.html";
 

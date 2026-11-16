@@ -23,13 +23,14 @@ public final class SystemClientModules {
     public static final ConversationClientModule CONVERSATION = local("conversation", new ConversationClientModule());
     public static final SettingsClientModule SETTINGS = local("settings", new SettingsClientModule());
     public static final SpeechClientModule SPEECH = local("speech", new SpeechClientModule());
+    public static final AnchorSystemClientModule ANCHOR = register("anchor", new AnchorSystemClientModule());
     public static final PlayerSystemClientModule PLAYER = register("player", new PlayerSystemClientModule());
     public static final ItemSystemClientModule ITEMS = register("items", new ItemSystemClientModule());
     public static final EconomySystemClientModule ECONOMY = register("economy", new EconomySystemClientModule());
     public static final WorkshopSystemClientModule WORKSHOP = register("workshop", new WorkshopSystemClientModule());
     public static final OnlineJobsSystemClientModule ONLINE_JOBS = register("online_jobs", new OnlineJobsSystemClientModule());
     public static final SignInSystemClientModule SIGN_IN = register("signin", new SignInSystemClientModule());
-    public static final InboxSystemClientModule INBOX = register("inbox", new InboxSystemClientModule());
+    public static final SpaceSystemClientModule SPACE = register("inbox", new SpaceSystemClientModule());
     public static final ShopSystemClientModule SHOP = register("shop", new ShopSystemClientModule());
     public static final LotterySystemClientModule LOTTERY = register("lottery", new LotterySystemClientModule());
     public static final QuestSystemClientModule FTB_QUESTS = register("ftb_quests", new QuestSystemClientModule());

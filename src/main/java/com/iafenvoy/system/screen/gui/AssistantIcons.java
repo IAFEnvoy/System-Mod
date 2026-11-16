@@ -5,6 +5,7 @@ import com.iafenvoy.system.data.output.ItemPreviewOutput;
 import com.sighs.apricityui.element.Img;
 import com.sighs.apricityui.init.Document;
 import com.sighs.apricityui.init.Element;
+import net.minecraft.network.chat.Component;
 
 import java.util.List;
 
@@ -23,5 +24,10 @@ public final class AssistantIcons {
             image.setInlineStyleProperty("height", size + "px");
             return image;
         }, item -> AssistantItems.entry(document, ItemPreviewOutput.of(item), List.of(), size, false));
+    }
+
+    public static Element create(Document document, IconReference icon, int size, List<Component> tooltip) {
+        Element element = create(document, icon, size);
+        return element == null || tooltip.isEmpty() ? element : new AssistantIconElement(document, element, tooltip);
     }
 }

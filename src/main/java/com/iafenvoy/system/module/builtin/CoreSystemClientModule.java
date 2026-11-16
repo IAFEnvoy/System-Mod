@@ -73,7 +73,8 @@ public final class CoreSystemClientModule implements ClientModule {
 
     private static int select(int index) {
         List<ClientCards.Choice> actions = AssistantClient.state().currentActions();
-        if (index < 0 || index >= actions.size()) AssistantClient.local(AgentResult.error(AgentFailure.INVALID_SELECTION));
+        if (index < 0 || index >= actions.size())
+            AssistantClient.local(AgentResult.error(AgentFailure.INVALID_SELECTION));
         else actions.get(index).execute();
         return 1;
     }

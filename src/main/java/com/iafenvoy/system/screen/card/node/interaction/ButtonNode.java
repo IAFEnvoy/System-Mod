@@ -14,17 +14,21 @@ import com.iafenvoy.system.screen.gui.AssistantView;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import com.sighs.apricityui.event.Event;
+import com.sighs.apricityui.event.MouseEvent;
 import com.sighs.apricityui.init.Element;
 
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * KOOK-style link / return-val actions, plus local callbacks for client UI operations.
  */
 public record ButtonNode(String value, String click, String text, String label, String icon, String selected,
-                         String disabled, String binding, String behavior, List<CardTemplate.Node> children)
+                         String disabled, String binding, String behavior, String shiftValue,
+                         List<CardTemplate.Node> children)
         implements ChildrenNode, TextProjectingNode {
     public static final MapCodec<ButtonNode> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.lenientOptionalFieldOf("value", "").forGetter(ButtonNode::value),
@@ -36,6 +40,7 @@ public record ButtonNode(String value, String click, String text, String label, 
             Codec.STRING.lenientOptionalFieldOf("disabled", "").forGetter(ButtonNode::disabled),
             Codec.STRING.lenientOptionalFieldOf("binding", "").forGetter(ButtonNode::binding),
             Codec.STRING.lenientOptionalFieldOf("behavior", "replace").forGetter(ButtonNode::behavior),
+            Codec.STRING.lenientOptionalFieldOf("shift_value", "").forGetter(ButtonNode::shiftValue),
             CardTemplate.NODES.lenientOptionalFieldOf("children", List.of()).forGetter(ButtonNode::children)
     ).apply(i, ButtonNode::new));
 
@@ -55,7 +60,7 @@ public record ButtonNode(String value, String click, String text, String label, 
 
     public static CardTemplate.Node actions() {
         ButtonNode button = new ButtonNode("{{actions.*.value}}", "{{actions.*.click_type}}", "", "", "", "",
-                "{{actions.*.disabled}}", "", "{{actions.*.behavior}}", List.of(
+                "{{actions.*.disabled}}", "", "{{actions.*.behavior}}", "", List.of(
                 new CardTemplate.Node(new TextNode(TextContent.of("{{actions.*.number}}. ")),
                         Optional.empty(), "show_action_numbers", "", "", ""),
                 CardTemplate.Node.of(new TextNode(TextContent.of("{{actions.*.label}}")))));
@@ -87,6 +92,7 @@ public record ButtonNode(String value, String click, String text, String label, 
             element.setAttribute("aria-pressed", Boolean.toString(CardRenderer.enabled(this.selected, view.context(), view.indices())));
         boolean disabled = !this.disabled.isBlank() && CardRenderer.enabled(this.disabled, view.context(), view.indices());
         Runnable callback = null;
+        Consumer<Event> modified = null;
         boolean server = "return-val".equals(type);
         if ("local".equals(type)) {
             callback = view.context().callbacks().get(CardRenderer.binding(value, view.indices()));
@@ -101,9 +107,17 @@ public record ButtonNode(String value, String click, String text, String label, 
             }
             CardButton action = new CardButton(view.path(), "", new CardAction.Server(value), CardButton.Placement.BODY, behavior);
             callback = () -> CardController.activate(view.reference(), action, CardRenderer.enabled("notification", view.context(), List.of()));
+            String shift = CardRenderer.rawValue(this.shiftValue, view.context(), view.indices());
+            if (!shift.isBlank()) {
+                CardButton alternate = new CardButton(view.path(), "", new CardAction.Server(shift), CardButton.Placement.BODY, behavior);
+                modified = event -> CardController.activate(view.reference(),
+                        event instanceof MouseEvent mouse && mouse.shiftKey ? alternate : action,
+                        CardRenderer.enabled("notification", view.context(), List.of()));
+            }
         } else if ("link".equals(type) && !value.isBlank()) callback = () -> AssistantPageScreen.openLink(value);
         if (!simple) {
-            bind(view, element, disabled ? null : callback, server);
+            if (modified == null) bind(view, element, disabled ? null : callback, server);
+            else bindEvent(view, element, disabled ? null : modified, server);
             CardButtonBinding state = view.context().get(CardRenderer.binding(this.binding, view.indices()), CardButtonBinding.class);
             if (state != null) state.bind(element);
         }
@@ -111,6 +125,10 @@ public record ButtonNode(String value, String click, String text, String label, 
     }
 
     public static void bind(CardRenderer.Render view, Element element, Runnable callback, boolean server) {
+        bindEvent(view, element, callback == null ? null : _ -> callback.run(), server);
+    }
+
+    private static void bindEvent(CardRenderer.Render view, Element element, Consumer<Event> callback, boolean server) {
         element.setDisabled(callback == null || server && AssistantClient.state().busy());
         if (server) {
             element.setAttribute("data-requires-idle", "true");
@@ -120,7 +138,7 @@ public record ButtonNode(String value, String click, String text, String label, 
             event.stopPropagation();
             event.preventDefault();
             if (view.interactive() && element.isConnected() && !element.isDisabled()
-                    && (!server || !AssistantClient.state().busy())) callback.run();
+                    && (!server || !AssistantClient.state().busy())) callback.accept(event);
         });
     }
 

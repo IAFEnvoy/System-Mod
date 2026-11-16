@@ -27,7 +27,9 @@ import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** One wallet service per world; durable edits run on workers, Cost's game-thread pass never waits for I/O. */
+/**
+ * One wallet service per world; durable edits run on workers, Cost's game-thread pass never waits for I/O.
+ */
 public final class Wallets implements PlayerModule {
     public static final Identifier QUERY = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "balance");
     private final AgentEngine engine;
@@ -70,7 +72,8 @@ public final class Wallets implements PlayerModule {
         if (this.currencies.getOptional(currency).isEmpty()) throw new AgentException(AgentFailure.UNKNOWN_CURRENCY);
         AgentStore store = this.store(player);
         return this.engine.maintenance(() -> store.update(player.getUUID(), data -> {
-            if (!data.bound() || !this.engine.available(player.getUUID(), QUERY)) throw new AgentException(AgentFailure.NOT_BOUND);
+            if (!data.bound() || !this.engine.available(player.getUUID(), QUERY))
+                throw new AgentException(AgentFailure.NOT_BOUND);
             WalletDataStorage wallet = ModuleData.get(data, EconomySystemModule.STORAGE);
             return set ? wallet.setBalance(currency, amount) : wallet.addBalance(currency, amount);
         }));
@@ -81,13 +84,15 @@ public final class Wallets implements PlayerModule {
         if (this.currencies.getOptional(currency).isEmpty()) throw new AgentException(AgentFailure.UNKNOWN_CURRENCY);
         AgentStore store = this.store(player);
         return this.engine.maintenance(() -> store.read(player.getUUID(), data -> {
-            if (!data.bound() || !this.engine.available(player.getUUID(), QUERY)) throw new AgentException(AgentFailure.NOT_BOUND);
+            if (!data.bound() || !this.engine.available(player.getUUID(), QUERY))
+                throw new AgentException(AgentFailure.NOT_BOUND);
             return ModuleData.get(data, EconomySystemModule.STORAGE).getBalance(currency);
         }));
     }
 
     public Result<Long> change(ServerPlayer player, AgentStore store, Identifier currency, long delta, boolean simulate) {
-        if (!this.server.isSameThread() || !this.available(player)) return Result.failure(AgentFailure.CAPABILITY_UNAVAILABLE);
+        if (!this.server.isSameThread() || !this.available(player))
+            return Result.failure(AgentFailure.CAPABILITY_UNAVAILABLE);
         if (this.currencies.getOptional(currency).isEmpty()) return Result.failure(AgentFailure.UNKNOWN_CURRENCY);
         AtomicReference<Result<Long>> answer = new AtomicReference<>(Result.failure(AgentFailure.BUSY));
         store.updateLoaded(player.getUUID(), data -> {

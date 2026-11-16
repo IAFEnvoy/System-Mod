@@ -1,6 +1,7 @@
 package com.iafenvoy.system.assistant.quest;
 
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.NonNull;
 
 import java.util.Objects;
 
@@ -20,7 +21,7 @@ public record QuestKey(Identifier source, String localId) {
     }
 
     @Override
-    public String toString() {
+    public @NonNull String toString() {
         return this.source + "#" + this.localId;
     }
 }

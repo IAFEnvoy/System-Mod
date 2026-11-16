@@ -4,13 +4,19 @@ import com.iafenvoy.saturn.util.codec.RegistryCodecs;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.module.AgentModule;
 import com.iafenvoy.system.assistant.jobs.OnlineJobs;
-import com.iafenvoy.system.assistant.tool.jobs.*;
+import com.iafenvoy.system.assistant.tool.jobs.JobCancelTool;
+import com.iafenvoy.system.assistant.tool.jobs.JobClaimTool;
+import com.iafenvoy.system.assistant.tool.jobs.JobStartTool;
+import com.iafenvoy.system.assistant.tool.jobs.OnlineJobsQueryTool;
 import com.iafenvoy.system.data.catalog.OnlineJobEntry;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.module.ContextTypes;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.ModuleStorage;
-import com.iafenvoy.system.module.builtin.jobs.*;
+import com.iafenvoy.system.module.builtin.jobs.JobCancelModule;
+import com.iafenvoy.system.module.builtin.jobs.JobClaimModule;
+import com.iafenvoy.system.module.builtin.jobs.JobStartModule;
+import com.iafenvoy.system.module.builtin.jobs.OnlineJobsModule;
 import com.iafenvoy.system.module.builtin.storage.OnlineJobsDataStorage;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.datafixers.util.Either;
@@ -24,7 +30,8 @@ import net.minecraft.tags.TagKey;
 import java.util.List;
 import java.util.Optional;
 
-public record OnlineJobsSystemModule(Optional<List<Either<ResourceKey<OnlineJobEntry>, TagKey<OnlineJobEntry>>>> jobs) implements CatalogModule<OnlineJobEntry> {
+public record OnlineJobsSystemModule(
+        Optional<List<Either<ResourceKey<OnlineJobEntry>, TagKey<OnlineJobEntry>>>> jobs) implements CatalogModule<OnlineJobEntry> {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "online_jobs");
     public static final MapCodec<OnlineJobsSystemModule> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             RegistryCodecs.keyOrTagList(SystemResourceKeys.ONLINE_JOB).optionalFieldOf("jobs").forGetter(OnlineJobsSystemModule::jobs)
@@ -57,7 +64,7 @@ public record OnlineJobsSystemModule(Optional<List<Either<ResourceKey<OnlineJobE
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        OnlineJobs service = new OnlineJobs(context.get(ContextTypes.GAME).server().registryAccess(), this);
+        OnlineJobs service = new OnlineJobs(context.get(ContextTypes.GAME).server().registryAccess(), this, context.get(ContextTypes.CATALOGS).access());
         return List.of(new OnlineJobsModule(new OnlineJobsQueryTool(service).tool()), new JobStartModule(new JobStartTool(service).tool()),
                 new JobClaimModule(new JobClaimTool(service).tool()), new JobCancelModule(new JobCancelTool(service).tool()));
     }

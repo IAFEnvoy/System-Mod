@@ -14,7 +14,9 @@ import net.minecraft.world.item.ItemStackTemplate;
 import java.util.List;
 import java.util.Map;
 
-/** Only the requesting player's balances are included in this display snapshot. */
+/**
+ * Only the requesting player's balances are included in this display snapshot.
+ */
 public record WalletOutput(List<Entry> currencies) implements CardData {
     public static final MapCodec<WalletOutput> CODEC = Entry.CODEC.listOf().fieldOf("currencies").xmap(WalletOutput::new, WalletOutput::currencies);
 

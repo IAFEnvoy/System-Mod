@@ -103,7 +103,8 @@ final class ConversationModeSelector {
         // Persistent cards live in another document above the screen, outside this top layer.
         AssistantCardDisplay.suspend(this, open);
         String expanded = Boolean.toString(open);
-        if (!expanded.equals(this.trigger.getAttribute("aria-expanded"))) this.trigger.setAttribute("aria-expanded", expanded);
+        if (!expanded.equals(this.trigger.getAttribute("aria-expanded")))
+            this.trigger.setAttribute("aria-expanded", expanded);
     }
 
     void close() {

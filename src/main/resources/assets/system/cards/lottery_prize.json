@@ -26,6 +26,12 @@
     },
     {
       "type": "system:text",
+      "text": "{{rule}}",
+      "when": "limited",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
       "text": "{{reward_items}}",
       "when": "text_items"
     },
@@ -61,6 +67,40 @@
               "style": [
                 "item_entry",
                 "item_labeled"
+              ]
+            }
+          ],
+          "style": "item_group_items"
+        },
+        {
+          "type": "system:flex",
+          "source": "{{contents}}",
+          "children": [
+            {
+              "type": "system:flex",
+              "wrap": false,
+              "style": [
+                "item_entry",
+                "item_labeled"
+              ],
+              "children": [
+                {
+                  "type": "system:icon",
+                  "icon": "{{contents.*.icon}}",
+                  "unless": "text_items",
+                  "style": "item_entry",
+                  "tooltip": [
+                    {
+                      "type": "system:text",
+                      "text": "{{contents.*.label}}"
+                    }
+                  ]
+                },
+                {
+                  "type": "system:text",
+                  "text": "{{contents.*.label}}",
+                  "style": "item_name"
+                }
               ]
             }
           ],

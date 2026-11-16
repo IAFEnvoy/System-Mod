@@ -4,7 +4,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
-/** Wrap bounded mono, signed 16-bit little-endian PCM without codecs, files or native dependencies. */
+/**
+ * Wrap bounded mono, signed 16-bit little-endian PCM without codecs, files or native dependencies.
+ */
 public final class PcmWav {
     private PcmWav() {
     }

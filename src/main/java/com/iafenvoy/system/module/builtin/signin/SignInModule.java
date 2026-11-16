@@ -12,8 +12,8 @@ import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.agent.tool.ToolPriority;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
@@ -43,7 +43,7 @@ public final class SignInModule extends AbstractAgentModule<SignInInput> {
     private final CommerceCatalogs catalogs;
 
     public SignInModule(CommerceCatalogs catalogs, ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player, ToolRegistry.Tool<SignInCreditInput, RewardOutput> credit) {
-        super(SignInInput.CODEC, "Perform today's AI sign-in ONLY when explicitly requested. For status/reward questions use system:inbox.", List.of(player, credit), true, false, ExecutionPolicy.quick(2, 1));
+        super(SignInInput.CODEC, "Perform today's AI sign-in ONLY when explicitly requested. For sign-in status use system:sign_in_status; for stored contents use system:inbox.", List.of(player, credit), true, false, ExecutionPolicy.quick(2, 1));
         this.catalogs = catalogs;
     }
 
@@ -66,15 +66,18 @@ public final class SignInModule extends AbstractAgentModule<SignInInput> {
         PersistHolder<Reward> existing = context.store().read(context.player(), data -> ModuleData.get(data, SignInSystemModule.STORAGE).getReward(day));
         if (existing != null)
             return AgentResult.data("system.result.already", new RewardOutput(existing, Optional.of("daily:" + day), Component.translatable("system.result.already"), ""));
-        CommerceCatalog catalog = this.catalogs.available(context.player());
+        CommerceCatalogs.View view = this.catalogs.view(context);
+        CommerceCatalog catalog = view.catalog();
         if (catalog.rewards().isEmpty()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+        List<PersistHolder<Reward>> candidates = catalog.rewards().stream()
+                .filter(holder -> !view.lockedRewards().contains(HolderHelper.id(holder)))
+                .map(holder -> holder.value().reward(HolderHelper.id(holder))).toList();
+        if (candidates.isEmpty()) throw new AgentException(AgentFailure.CONDITION_NOT_MET);
         SignInDecision.Player state = SignInDecision.Player.of(context.tool(BuiltinTools.PLAYER, "snapshot", EmptyInput.INSTANCE));
-        List<PersistHolder<Reward>> candidates = catalog.rewards().stream().map(holder -> holder.value().reward(HolderHelper.id(holder))).toList();
         SignInDecision decision = context.model(context.prompt(SystemPrompts.SIGN_IN), SignInDecision.Input.CODEC, new SignInDecision.Input(state, candidates, day), SignInDecision.CODEC);
         Identifier selectedId = decision.rewardId();
         String reason = MiscUtil.clip(decision.reason(), 240);
-        PersistHolder<Reward> reward = catalog.rewards().stream().filter(value -> HolderHelper.id(value).equals(selectedId))
-                .map(value -> value.value().reward(selectedId)).findFirst()
+        PersistHolder<Reward> reward = candidates.stream().filter(value -> value.id().equals(selectedId)).findFirst()
                 .orElseThrow(() -> new AgentException(AgentFailure.MODEL_INVALID));
         // Recheck date, player and catalog after inference; a successful reply alone does not grant a reward.
         context.ensureMemoryCurrent();

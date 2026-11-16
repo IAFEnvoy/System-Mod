@@ -16,7 +16,9 @@ import com.iafenvoy.system.speech.deepseek.DeepSeekAsrProvider;
 import com.iafenvoy.system.speech.deepseek.DeepSeekTtsProvider;
 import com.iafenvoy.system.speech.tts.TtsProvider;
 
-/** Actual service constructors, independently extensible for each use of a credential. */
+/**
+ * Actual service constructors, independently extensible for each use of a credential.
+ */
 @SuppressWarnings("unused")
 public final class SystemServices {
     public static final CredentialManager<ModelClient> MODEL = new CredentialManager<ModelClient>()

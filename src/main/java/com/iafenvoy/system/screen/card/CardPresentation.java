@@ -40,7 +40,7 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
     }
 
     private static CardPresentation prepare(CardReference reference, CardView view, String messageKey,
-                                             CardContext.Mode mode, int actionOffset, CardUiState pages, boolean active) {
+                                            CardContext.Mode mode, int actionOffset, CardUiState pages, boolean active) {
         CardTemplate template = CardTemplates.get(view.template());
         if (template == null) template = CardTemplate.fallback();
         CardContext.Builder builder = CardContext.builder();
@@ -73,7 +73,7 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
             else if (button.action() instanceof CardAction.Url(String value))
                 builder.put(prefix + "click_type", "link").put(prefix + "value", value);
             else builder.put(prefix + "click_type", "local").put(prefix + "value", prefix + "click");
-            builder.enable(prefix + "disabled", !active);
+            builder.enable(prefix + "disabled", !active || view.context().states().getDouble(prefix + "disabled") != 0);
             if (active) builder.callback(prefix + "click", () -> {
                 if (mode != CardContext.Mode.NOTIFICATION || AssistantMessages.canActivate(reference))
                     CardController.activate(reference, button, mode == CardContext.Mode.NOTIFICATION);

@@ -275,7 +275,8 @@ export function createPreview({ frame, getState, select, log }) {
                   local.set(key, !local.get(key));
                   renderPreview();
                 }
-                simulate(click + ": " + val);
+                const alternate = value(node.shift_value ?? "", indices);
+                simulate(click + ": " + (event.shiftKey && alternate && click === "return-val" ? alternate : val));
               },
               css,
             );
@@ -355,6 +356,7 @@ export function createPreview({ frame, getState, select, log }) {
       e = element("div", css);
       const image = element("span", "editor-icon", "◆");
       image.title = "IconReference · " + component(icon);
+      e.title = flatten(node.tooltip, indices);
       e.append(image);
       return e;
     }

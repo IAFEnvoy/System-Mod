@@ -15,7 +15,8 @@ import java.util.Optional;
  * Built-in result data and its serialization codec.
  */
 public record QuestBriefOutput(int number, String id, Component title, Component chapter, double progress,
-                               String chapterId, String groupId, Component group, QuestSource source, Optional<IconReference> icon,
+                               String chapterId, String groupId, Component group, QuestSource source,
+                               Optional<IconReference> icon,
                                String revision) implements Quest {
     public QuestBriefOutput {
         title = LegacyText.snapshot(title);

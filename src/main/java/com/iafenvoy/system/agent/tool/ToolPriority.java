@@ -6,7 +6,9 @@ import org.jspecify.annotations.NonNull;
 
 import java.util.Locale;
 
-/** Prefer relevant local reads before workflows and capabilities that may incur an additional API charge. */
+/**
+ * Prefer relevant local reads before workflows and capabilities that may incur an additional API charge.
+ */
 public enum ToolPriority implements StringRepresentable {
     LOCAL, WORKFLOW, PAID;
 

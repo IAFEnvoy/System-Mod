@@ -60,7 +60,8 @@ public final class WebResearch {
             context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
         }, recoverable, 15000);
         return ReActLoop.run(loop, Answer.CODEC, answer -> {
-            if (loop.observations().isEmpty() || answer.text().isBlank()) throw new AgentException(AgentFailure.MODEL_INVALID);
+            if (loop.observations().isEmpty() || answer.text().isBlank())
+                throw new AgentException(AgentFailure.MODEL_INVALID);
             List<SearchObservation.Source> cited = new ArrayList<>();
             for (int id : new LinkedHashSet<>(answer.sources()))
                 cited.add(sources.values().stream().filter(value -> value.id() == id).findFirst()

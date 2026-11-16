@@ -26,6 +26,12 @@
     },
     {
       "type": "system:text",
+      "text": "{{range}}",
+      "when": "text_items",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
       "text": "{{id}}",
       "when": "full",
       "style": [
@@ -40,11 +46,89 @@
     },
     {
       "type": "system:text",
+      "translate": "system.ui.condition_unmet",
+      "when": "condition_unmet",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
       "translate": "system.ui.lottery_unavailable",
-      "unless": "payment_available",
       "style": [
         "lottery_unavailable",
         "card_context"
+      ],
+      "when": "payment_unavailable"
+    },
+    {
+      "type": "system:text",
+      "text": "{{draw_count}}",
+      "when": "draw_count",
+      "style": "card_context"
+    },
+    {
+      "type": "system:container",
+      "repeat": "rules",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{rules.*.text}}",
+          "style": "card_context"
+        }
+      ]
+    },
+    {
+      "type": "system:container",
+      "repeat": "prizes",
+      "when": "text_items",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{prizes.*.reward_label}} · {{prizes.*.chance}}%"
+        },
+        {
+          "type": "system:text",
+          "text": "{{prizes.*.rule}}",
+          "when": "prizes.*.limited",
+          "style": "card_context"
+        },
+        {
+          "type": "system:text",
+          "text": "{{prizes.*.reward_items}}"
+        },
+        {
+          "type": "system:flex",
+          "source": "{{prizes.*.contents}}",
+          "children": [
+            {
+              "type": "system:flex",
+              "wrap": false,
+              "style": [
+                "item_entry",
+                "item_labeled"
+              ],
+              "children": [
+                {
+                  "type": "system:icon",
+                  "icon": "{{prizes.*.contents.*.icon}}",
+                  "unless": "text_items",
+                  "style": "item_entry",
+                  "tooltip": [
+                    {
+                      "type": "system:text",
+                      "text": "{{prizes.*.contents.*.label}}"
+                    }
+                  ]
+                },
+                {
+                  "type": "system:text",
+                  "text": "{{prizes.*.contents.*.label}}",
+                  "style": "item_name"
+                }
+              ]
+            }
+          ],
+          "style": "item_group_items"
+        }
       ]
     },
     {
@@ -54,15 +138,11 @@
       "children": [
         {
           "type": "system:text",
-          "translate": "system.ui.lottery_prize_preview",
-          "args": [
-            "{{preview_count}}",
-            "{{prize_count}}"
-          ],
           "style": [
             "item_group_label",
             "card_context"
-          ]
+          ],
+          "text": "{{range}}"
         },
         {
           "type": "system:grid",
@@ -70,22 +150,67 @@
           "children": [
             {
               "type": "system:flex",
-              "source": "{{prizes.*.preview_items}}",
               "style": "offer_cell_items",
               "children": [
                 {
-                  "type": "system:item",
-                  "item": "{{prizes.*.preview_items.*}}",
-                  "size": 36,
-                  "tooltip": [
+                  "type": "system:flex",
+                  "source": "{{prizes.*.preview_items}}",
+                  "children": [
                     {
-                      "type": "system:text",
-                      "translate": "system.ui.lottery_chance",
-                      "args": [
-                        "{{prizes.*.chance}}%"
+                      "type": "system:item",
+                      "item": "{{prizes.*.preview_items.*}}",
+                      "size": 36,
+                      "tooltip": [
+                        {
+                          "type": "system:text",
+                          "translate": "system.ui.lottery_chance",
+                          "args": [
+                            "{{prizes.*.chance}}%"
+                          ]
+                        }
                       ]
                     }
                   ]
+                },
+                {
+                  "type": "system:flex",
+                  "source": "{{prizes.*.preview_contents}}",
+                  "children": [
+                    {
+                      "type": "system:flex",
+                      "wrap": false,
+                      "style": [
+                        "item_entry",
+                        "item_labeled"
+                      ],
+                      "children": [
+                        {
+                          "type": "system:icon",
+                          "icon": "{{prizes.*.preview_contents.*.icon}}",
+                          "unless": "text_items",
+                          "tooltip": [
+                            {
+                              "type": "system:text",
+                              "text": "{{prizes.*.preview_contents.*.label}}"
+                            },
+                            {
+                              "type": "system:text",
+                              "text": "{{prizes.*.reward_label}}"
+                            },
+                            {
+                              "type": "system:text",
+                              "translate": "system.ui.lottery_chance",
+                              "args": [
+                                "{{prizes.*.chance}}%"
+                              ]
+                            }
+                          ],
+                          "style": "item_entry"
+                        }
+                      ]
+                    }
+                  ],
+                  "style": "item_group_items"
                 }
               ]
             },
@@ -93,6 +218,12 @@
               "type": "system:text",
               "text": "{{prizes.*.reward_label}}",
               "style": "offer_cell_label"
+            },
+            {
+              "type": "system:text",
+              "text": "{{prizes.*.rule}}",
+              "when": "prizes.*.limited",
+              "style": "card_context"
             }
           ],
           "columns": 6,
@@ -112,11 +243,40 @@
     {
       "type": "system:flex",
       "source": "{{actions}}",
-      "filter": "{{actions.*.visible}}",
+      "filter": "{{actions.*.pager}}",
       "style": "card_actions",
       "children": [
         {
           "type": "system:button",
+          "when": "actions.*.visible",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.footer}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "when": "actions.*.visible",
           "click": "{{actions.*.click_type}}",
           "value": "{{actions.*.value}}",
           "disabled": "{{actions.*.disabled}}",

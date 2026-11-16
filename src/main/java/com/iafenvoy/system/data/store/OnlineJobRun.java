@@ -6,9 +6,10 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 public record OnlineJobRun(String id, PersistHolder<OnlineJobEntry> job, long elapsed, boolean claimed) {
+    // Acquisition predicates are irrelevant after start and must not become dependencies of saved runs.
     public static final Codec<OnlineJobRun> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("id").forGetter(OnlineJobRun::id),
-            PersistHolder.codec(OnlineJobEntry.CODEC).fieldOf("job").forGetter(OnlineJobRun::job),
+            PersistHolder.codec(OnlineJobEntry.DISPLAY_CODEC).fieldOf("job").forGetter(OnlineJobRun::job),
             Codec.LONG.fieldOf("elapsed").forGetter(OnlineJobRun::elapsed),
             Codec.BOOL.fieldOf("claimed").forGetter(OnlineJobRun::claimed)
     ).apply(i, OnlineJobRun::new));

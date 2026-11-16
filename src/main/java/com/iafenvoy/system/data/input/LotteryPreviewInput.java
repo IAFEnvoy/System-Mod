@@ -12,12 +12,17 @@ import java.util.Optional;
  * A pool preview is read-only; its confirmation carries a separate server-issued quote.
  */
 public record LotteryPreviewInput(Identifier poolId, int offset,
-                                  Optional<String> catalogRevision) implements AgentAction {
+                                  Optional<String> catalogRevision, int count) implements AgentAction {
     public static final SchemaMapCodec<LotteryPreviewInput> CODEC = SchemaCodecs.record((i, f) -> i.group(
             f.required("poolId", SchemaCodecs.IDENTIFIER).forGetter(LotteryPreviewInput::poolId),
             f.optional("offset", SchemaCodecs.NON_NEGATIVE_INT, 0).forGetter(LotteryPreviewInput::offset),
-            f.optional("catalogRevision", SchemaCodecs.STRING).forGetter(LotteryPreviewInput::catalogRevision)
+            f.optional("catalogRevision", SchemaCodecs.STRING).forGetter(LotteryPreviewInput::catalogRevision),
+            f.optional("count", SchemaCodecs.NON_NEGATIVE_INT, 1).forGetter(LotteryPreviewInput::count)
     ).apply(i, LotteryPreviewInput::new));
+
+    public LotteryPreviewInput(Identifier poolId, int offset, Optional<String> catalogRevision) {
+        this(poolId, offset, catalogRevision, 1);
+    }
 
     @Override
     public MapCodec<LotteryPreviewInput> codec() {

@@ -13,7 +13,9 @@ import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 
-/** Process-local credentials; never include this configuration in network or player-state codecs. */
+/**
+ * Process-local credentials; never include this configuration in network or player-state codecs.
+ */
 public record ApiConfig(List<CredentialEntry> credentials, Map<String, String> bindings) {
     public static final String FILE_NAME = "system-api.json";
     public static final Codec<ApiConfig> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -49,7 +51,9 @@ public record ApiConfig(List<CredentialEntry> credentials, Map<String, String> b
         return this.entry(this.binding(usage)).map(CredentialEntry::credential);
     }
 
-    /** Extensions can use their own usage IDs and typed service managers. */
+    /**
+     * Extensions can use their own usage IDs and typed service managers.
+     */
     public <S> Optional<S> create(String usage, CredentialManager<S> manager) {
         return this.selected(usage).flatMap(manager::create);
     }

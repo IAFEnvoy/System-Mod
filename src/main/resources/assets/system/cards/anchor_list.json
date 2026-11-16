@@ -1,0 +1,126 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.ui.nav_anchor"
+    },
+    {
+      "type": "system:text",
+      "text": "{{capacity}}",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "text": "{{cooldown}}",
+      "when": "cooling",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "text": "{{feedback}}",
+      "when": "feedback"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.anchor.empty",
+      "unless": "anchors"
+    },
+    {
+      "type": "system:grid",
+      "source": "{{anchors}}",
+      "columns": 2,
+      "compact_columns": 1,
+      "max_row": 3,
+      "cell": 160,
+      "children": [
+        {
+          "type": "system:flex",
+          "direction": "column",
+          "style": "card_column",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{anchors.*.name}}",
+              "style": "offer_cell_label"
+            },
+            {
+              "type": "system:text",
+              "text": "{{anchors.*.dimension}}",
+              "style": "card_context"
+            },
+            {
+              "type": "system:text",
+              "text": "{{anchors.*.position}}",
+              "style": "card_context"
+            },
+            {
+              "type": "system:text",
+              "translate": "system.anchor.locked",
+              "when": "anchors.*.locked",
+              "style": "card_context"
+            },
+            {
+              "type": "system:flex",
+              "style": "card_actions",
+              "children": [
+                {
+                  "type": "system:button",
+                  "click": "return-val",
+                  "value": "{{anchors.*.teleport_value}}",
+                  "disabled": "{{anchors.*.locked}}",
+                  "behavior": "replace",
+                  "children": [
+                    {
+                      "type": "system:text",
+                      "translate": "system.action.anchor_teleport"
+                    }
+                  ]
+                },
+                {
+                  "type": "system:button",
+                  "click": "return-val",
+                  "value": "{{anchors.*.delete_value}}",
+                  "behavior": "replace",
+                  "children": [
+                    {
+                      "type": "system:text",
+                      "translate": "system.action.anchor_delete"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.footer}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "when": "actions.*.visible",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -4,7 +4,9 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;
 
-/** A texture with a draw-only offset in document pixels; a bare Identifier means zero offset. */
+/**
+ * A texture with a draw-only offset in document pixels; a bare Identifier means zero offset.
+ */
 public record EmotionFrame(Identifier texture, Offset offset) {
     public static final Codec<EmotionFrame> CODEC = Codec.withAlternative(RecordCodecBuilder.create(i -> i.group(
             Identifier.CODEC.fieldOf("texture").forGetter(EmotionFrame::texture),

@@ -1,4 +1,4 @@
-package com.iafenvoy.system.module.builtin.inbox;
+package com.iafenvoy.system.module.builtin.space;
 
 import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.agent.AgentResult;
@@ -8,6 +8,7 @@ import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.assistant.space.SystemSpace;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.EntitlementInput;
@@ -15,11 +16,8 @@ import com.iafenvoy.system.data.output.CreditReceiptOutput;
 import com.iafenvoy.system.data.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.data.output.RewardOutput;
 import com.iafenvoy.system.data.output.StateOutput;
-import com.iafenvoy.system.data.store.Delivery;
 import com.iafenvoy.system.data.store.Reward;
-import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
-import com.iafenvoy.system.module.builtin.InboxSystemModule;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
@@ -30,8 +28,11 @@ import java.util.Optional;
  * Delivers one existing entitlement through the game adapter.
  */
 public final class DeliverModule extends AbstractAgentModule<EntitlementInput> {
-    public DeliverModule(ToolRegistry.Tool<EntitlementInput, StateOutput> deliver) {
+    private final SystemSpace space;
+
+    public DeliverModule(ToolRegistry.Tool<EntitlementInput, StateOutput> deliver, SystemSpace space) {
         super(EntitlementInput.CODEC, "Deliver an existing reward entitlement obtained from the inbox; never invent entitlement IDs.", List.of(deliver), true, false, ExecutionPolicy.quick(1, 1));
+        this.space = space;
     }
 
     @Override
@@ -59,10 +60,7 @@ public final class DeliverModule extends AbstractAgentModule<EntitlementInput> {
      * Rebuilds the originating card from the stored reward and the delivery button's own arguments.
      */
     private CardData receipt(ExecutionContext context, EntitlementInput input) {
-        PersistHolder<Reward> reward = context.store().read(context.player(), data -> {
-            Delivery delivery = ModuleData.get(data, InboxSystemModule.STORAGE).getDelivery(input.entitlementId());
-            return delivery == null ? null : delivery.reward;
-        });
+        PersistHolder<Reward> reward = this.space.reward(context, input.entitlementId()).orElse(null);
         if (reward == null) return null;
         return switch (input.kind().orElse("")) {
             case "purchase" -> new PurchaseReceiptOutput(input.order().orElse(""), input.entitlementId(), reward,

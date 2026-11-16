@@ -122,7 +122,8 @@ public final class ClientCommandCache {
 
     public void receive(CommandSuggestionsResponse response) {
         Pending pending = this.pending;
-        if (pending == null || !pending.id().equals(response.requestId()) || !pending.input().equals(response.input())) return;
+        if (pending == null || !pending.id().equals(response.requestId()) || !pending.input().equals(response.input()))
+            return;
         this.pending = null;
         pending.result().complete(response.suggestions());
     }

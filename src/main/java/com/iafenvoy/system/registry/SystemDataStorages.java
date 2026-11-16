@@ -15,13 +15,14 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 @SuppressWarnings("unused")
 public final class SystemDataStorages {
     public static final DeferredRegister<MapCodec<? extends DataStorage>> REGISTRY = DeferredRegister.create(SaturnRegistries.DATA_STORAGE_TYPE, SystemMod.MOD_ID);
+    public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<AnchorDataStorage>> ANCHOR = REGISTRY.register("anchor", () -> AnchorDataStorage.CODEC);
 
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<ModuleAccessDataStorage>> MODULE_ACCESS = REGISTRY.register("module_access", () -> ModuleAccessDataStorage.CODEC);
 
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<AdvancementDataStorage>> ADVANCEMENT = REGISTRY.register("advancement", () -> AdvancementDataStorage.CODEC);
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<AgentJournalDataStorage>> AGENT_JOURNAL = REGISTRY.register("agent_journal", () -> AgentJournalDataStorage.CODEC);
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<CommerceDataStorage>> COMMERCE = REGISTRY.register("commerce", () -> CommerceDataStorage.CODEC);
-    public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<InboxDataStorage>> INBOX = REGISTRY.register("inbox", () -> InboxDataStorage.CODEC);
+    public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<SpaceDataStorage>> SPACE = REGISTRY.register("inbox", () -> SpaceDataStorage.CODEC);
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<SignInDataStorage>> SIGN_IN = REGISTRY.register("sign_in", () -> SignInDataStorage.CODEC);
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<OnlineJobsDataStorage>> ONLINE_JOBS = REGISTRY.register("online_jobs", () -> OnlineJobsDataStorage.CODEC);
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<WalletDataStorage>> ECONOMY = REGISTRY.register("economy", () -> WalletDataStorage.CODEC);

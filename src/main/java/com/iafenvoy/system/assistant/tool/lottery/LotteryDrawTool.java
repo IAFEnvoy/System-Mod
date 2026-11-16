@@ -11,7 +11,7 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 import java.util.concurrent.CompletionStage;
 
 /**
- * One tool settles one confirmed draw; payment and inbox writes share the shop's lifecycle.
+ * One tool settles a confirmed draw batch; payment and space writes share the shop's lifecycle.
  */
 public record LotteryDrawTool(
         CommerceTransactions transactions) implements ToolRegistry.Handler<LotteryDrawInput, PurchaseReceiptOutput> {

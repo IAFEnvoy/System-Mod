@@ -18,7 +18,9 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 
-/** A tiny passive document. Frames only repaint; screen changes never rebuild the emotion or its CSS. */
+/**
+ * A tiny passive document. Frames only repaint; screen changes never rebuild the emotion or its CSS.
+ */
 @EventBusSubscriber(Dist.CLIENT)
 public final class AssistantEmotionHud {
     private static Document document;

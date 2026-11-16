@@ -9,7 +9,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.RegistryFixedCodec;
 import net.minecraft.world.item.ItemStackTemplate;
 
-/** Public currency metadata; balances are private player module data and never part of this registry. */
+/**
+ * Public currency metadata; balances are private player module data and never part of this registry.
+ */
 public record CurrencyDefinition(Component name, Component description, ItemStackTemplate icon, int order) {
     public static final Codec<Holder<CurrencyDefinition>> CODEC = RegistryFixedCodec.create(SystemResourceKeys.CURRENCY);
     public static final Codec<CurrencyDefinition> DIRECT_CODEC = RecordCodecBuilder.create(i -> i.group(

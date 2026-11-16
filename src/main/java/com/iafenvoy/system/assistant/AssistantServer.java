@@ -5,15 +5,17 @@ import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.chat.AiAccess;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.assistant.catalog.CatalogAccess;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.database.AgentDatabases;
-import com.iafenvoy.system.data.prompt.PromptReloadListener;
 import com.iafenvoy.system.data.emotion.EmotionDefinition;
+import com.iafenvoy.system.data.prompt.PromptReloadListener;
 import com.iafenvoy.system.data.store.AiAccessData;
+import com.iafenvoy.system.data.store.CommerceArchive;
 import com.iafenvoy.system.data.store.FileAgentStore;
 import com.iafenvoy.system.event.AssistantRegistrationEvent;
 import com.iafenvoy.system.module.ContextTypes;
@@ -43,11 +45,7 @@ import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 import java.nio.file.Path;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Optional;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * One active server runtime; player sessions, requests and usage have separate owners.
@@ -65,6 +63,7 @@ public final class AssistantServer {
     private final AssistantRequests requests;
     private final AssistantUsage usage;
     private final ModuleManager moduleManager;
+    private final CommerceTransactions commerce;
     private final AssistantCardDisplays displays;
     private final GameTaskQueue gameQueue = new GameTaskQueue();
     private PromptReloadListener promptListener;
@@ -100,13 +99,14 @@ public final class AssistantServer {
             this.usage = new AssistantUsage(server, this.engine, search);
             this.refreshPrompts();
             MinecraftTools game = new MinecraftTools(server, this.gameQueue);
-            CommerceCatalogs catalogs = new CommerceCatalogs(CommerceCatalog.create(server.registryAccess()), this.engine::moduleEnabled);
-            CommerceTransactions transactions = new CommerceTransactions(this.engine, game, catalogs);
+            CommerceCatalogs catalogs = new CommerceCatalogs(CommerceCatalog.create(server.registryAccess()), this.engine::moduleEnabled,
+                    new CatalogAccess(game));
+            this.commerce = new CommerceTransactions(this.engine, game, catalogs, new CommerceArchive(storageRoot.resolve("commerce")));
             this.displays = this.own(new AssistantCardDisplays(server, this.engine));
             ModuleContext context = new ModuleContext(this.engine, server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE));
             context.put(ContextTypes.SEARCH, search);
             context.put(ContextTypes.GAME, game);
-            context.put(ContextTypes.COMMERCE, transactions);
+            context.put(ContextTypes.COMMERCE, this.commerce);
             context.put(ContextTypes.CATALOGS, catalogs);
             context.put(ContextTypes.DATABASES, this.databases);
             context.put(ContextTypes.NARRATION, this.narration);
@@ -157,6 +157,10 @@ public final class AssistantServer {
 
     public ModuleManager moduleManager() {
         return this.moduleManager;
+    }
+
+    public CommerceTransactions commerce() {
+        return this.commerce;
     }
 
     public AgentEngine engine() {

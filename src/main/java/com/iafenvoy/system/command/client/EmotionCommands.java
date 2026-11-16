@@ -20,11 +20,13 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
 
-import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-/** Explicit client debug entry in game chat and assistant input; changes stay local and require no administrator permission. */
+/**
+ * Explicit client debug entry in game chat and assistant input; changes stay local and require no administrator permission.
+ */
 @EventBusSubscriber(Dist.CLIENT)
 public final class EmotionCommands {
     private EmotionCommands() {
@@ -48,7 +50,8 @@ public final class EmotionCommands {
                                     return builder.buildFuture();
                                 }).executes(context -> {
                                     Identifier state = context.getArgument("state", Identifier.class);
-                                    if (!definitions().containsKey(state)) return feedback("system.emotion.unknown", state.toString());
+                                    if (!definitions().containsKey(state))
+                                        return feedback("system.emotion.unknown", state.toString());
                                     if (!EmotionHudState.machine().setState(state.toString())) {
                                         EmotionProfiles.unknown(EmotionHudState.machine().profileId(), state.toString());
                                         EmotionHudState.machine().setState("");
@@ -76,7 +79,8 @@ public final class EmotionCommands {
                                     return builder.buildFuture();
                                 }).executes(context -> {
                                     Identifier profile = context.getArgument("profile", Identifier.class);
-                                    if (!EmotionHudState.machine().setProfile(profile)) return feedback("system.emotion.unknown", profile.toString());
+                                    if (!EmotionHudState.machine().setProfile(profile))
+                                        return feedback("system.emotion.unknown", profile.toString());
                                     EmotionHudState.shown(true);
                                     return feedback("system.emotion.profile", profile.toString());
                                 })))

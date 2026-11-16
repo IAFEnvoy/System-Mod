@@ -15,12 +15,16 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 public interface ModelClient extends AutoCloseable {
-    /** Defaults applied when switching credential types, before the next request is created. */
+    /**
+     * Defaults applied when switching credential types, before the next request is created.
+     */
     default ModelConfig defaults(ModelConfig current) {
         return current;
     }
 
-    /** Report local readiness only; no network request or credential is exposed to callers. */
+    /**
+     * Report local readiness only; no network request or credential is exposed to callers.
+     */
     default boolean configured() {
         return true;
     }
@@ -59,7 +63,8 @@ public interface ModelClient extends AutoCloseable {
         ).apply(i, Function::new));
 
         public Function {
-            if (!name.matches("[a-zA-Z0-9_-]{1,64}")) throw new IllegalArgumentException("Invalid function name " + name);
+            if (!name.matches("[a-zA-Z0-9_-]{1,64}"))
+                throw new IllegalArgumentException("Invalid function name " + name);
             parameters = parameters.deepCopy();
         }
 

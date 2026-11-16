@@ -1,7 +1,7 @@
 package com.iafenvoy.system.speech.aliyun;
 
-import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.config.credential.builtin.AliyunNlsCredential;
+import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.data.speech.AliyunAsrMessage;
 import com.iafenvoy.system.data.speech.AliyunNlsTokenMessage;
 import com.iafenvoy.system.speech.SpeechException;

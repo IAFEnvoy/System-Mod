@@ -1,5 +1,6 @@
 package com.iafenvoy.system.data.output;
 
+import com.iafenvoy.system.data.space.SpaceStack;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
@@ -12,6 +13,10 @@ public interface ShelfEntry {
     Component label();
 
     List<ItemPreviewOutput> items();
+
+    default List<SpaceStack> contents() {
+        return List.of();
+    }
 
     /**
      * Lines appended after the vanilla item tooltip of one preview; empty by default.

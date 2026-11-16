@@ -5,6 +5,7 @@ import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.assistant.catalog.CatalogAccess;
 import com.iafenvoy.system.data.catalog.OnlineJobEntry;
 import com.iafenvoy.system.data.output.OnlineJobsOutput;
 import com.iafenvoy.system.data.output.RewardOutput;
@@ -12,30 +13,32 @@ import com.iafenvoy.system.data.store.Delivery;
 import com.iafenvoy.system.data.store.OnlineJobRun;
 import com.iafenvoy.system.data.store.Reward;
 import com.iafenvoy.system.module.ModuleData;
-import com.iafenvoy.system.module.builtin.InboxSystemModule;
 import com.iafenvoy.system.module.builtin.OnlineJobsSystemModule;
-import com.iafenvoy.system.module.builtin.storage.InboxDataStorage;
+import com.iafenvoy.system.module.builtin.SpaceSystemModule;
 import com.iafenvoy.system.module.builtin.storage.OnlineJobsDataStorage;
+import com.iafenvoy.system.module.builtin.storage.SpaceDataStorage;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
-/** Worker-side transitions commit progress and reward entitlement in the same player transaction. */
+/**
+ * Worker-side transitions commit progress and reward entitlement in the same player transaction.
+ */
 public final class OnlineJobs {
     private final RegistryAccess registries;
     private final OnlineJobsSystemModule module;
+    private final CatalogAccess access;
     private final List<PersistHolder<OnlineJobEntry>> entries;
 
-    public OnlineJobs(RegistryAccess registries, OnlineJobsSystemModule module) {
+    public OnlineJobs(RegistryAccess registries, OnlineJobsSystemModule module, CatalogAccess access) {
         this.registries = registries;
         this.module = module;
+        this.access = access;
         Registry<OnlineJobEntry> jobs = registries.lookupOrThrow(SystemResourceKeys.ONLINE_JOB);
         this.entries = jobs.listElements().filter(holder -> holder.value().enabled())
                 .map(PersistHolder::new).sorted(Comparator.<PersistHolder<OnlineJobEntry>>comparingInt(job -> job.value().order())
@@ -50,20 +53,30 @@ public final class OnlineJobs {
     public OnlineJobsOutput query(ExecutionContext context, int offset) {
         context.ensureMemoryCurrent();
         Optional<OnlineJobRun> run = context.store().read(context.player(), data -> ModuleData.get(data, OnlineJobsSystemModule.STORAGE).getRun());
-        List<PersistHolder<OnlineJobEntry>> entries = this.available();
-        int start = Math.min(offset, entries.size());
-        int end = Math.min(start + 18, entries.size());
-        return new OnlineJobsOutput(entries.subList(start, end), run, start, end < entries.size());
+        return this.access.read(context, player -> {
+            List<PersistHolder<OnlineJobEntry>> entries = this.available().stream().filter(job -> CatalogAccess.visible(player, job.value())).toList();
+            int start = Math.min(Math.max(0, offset), entries.size());
+            int end = Math.min(start + 18, entries.size());
+            List<PersistHolder<OnlineJobEntry>> page = entries.subList(start, end);
+            Set<Identifier> locked = page.stream().filter(job -> !CatalogAccess.usable(player, job.value()))
+                    .map(PersistHolder::id).collect(Collectors.toUnmodifiableSet());
+            return new OnlineJobsOutput(page, run, start, end < entries.size(), locked);
+        });
     }
 
     public OnlineJobsOutput start(ExecutionContext context, Identifier id) {
-        PersistHolder<OnlineJobEntry> selected = this.available().stream().filter(job -> job.id().equals(id)).findFirst()
-                .orElseThrow(() -> new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE));
+        PersistHolder<OnlineJobEntry> selected = this.access.read(context, player -> {
+            PersistHolder<OnlineJobEntry> job = this.available().stream().filter(value -> value.id().equals(id)).findFirst()
+                    .orElseThrow(() -> new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE));
+            CatalogAccess.require(player, job.value());
+            return job;
+        });
         context.ensureMemoryCurrent();
         context.store().update(context.player(), data -> {
             context.check();
             OnlineJobsDataStorage storage = ModuleData.get(data, OnlineJobsSystemModule.STORAGE);
-            if (storage.getRun().filter(run -> !run.claimed()).isPresent()) throw new AgentException(AgentFailure.JOB_ACTIVE);
+            if (storage.getRun().filter(run -> !run.claimed()).isPresent())
+                throw new AgentException(AgentFailure.JOB_ACTIVE);
             storage.setRun(Optional.of(new OnlineJobRun(UUID.randomUUID().toString(), selected, 0, false)));
             return null;
         });
@@ -81,7 +94,7 @@ public final class OnlineJobs {
                     .orElseThrow(() -> new AgentException(AgentFailure.STALE_REFERENCE));
             if (!run.ready()) throw new AgentException(AgentFailure.JOB_NOT_READY);
             String deliveryId = "job:" + run.id();
-            InboxDataStorage inbox = ModuleData.get(data, InboxSystemModule.STORAGE);
+            SpaceDataStorage inbox = ModuleData.get(data, SpaceSystemModule.STORAGE);
             PersistHolder<Reward> reward = new PersistHolder<>(run.job().id(), run.job().value().reward());
             if (!run.claimed()) {
                 inbox.assertDeliveryCount(deliveryId);

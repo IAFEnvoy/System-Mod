@@ -10,7 +10,7 @@ import com.mojang.serialization.MapCodec;
  */
 public record LotteryDrawInput(String quoteRef) implements AgentAction {
     public static final SchemaMapCodec<LotteryDrawInput> CODEC = SchemaCodecs.record((i, f) -> i.group(
-            f.required("quoteRef", SchemaCodecs.STRING.described("Server-issued single-draw confirmation reference.")).forGetter(LotteryDrawInput::quoteRef)
+            f.required("quoteRef", SchemaCodecs.STRING.described("Server-issued confirmation reference including the chosen draw count and total cost.")).forGetter(LotteryDrawInput::quoteRef)
     ).apply(i, LotteryDrawInput::new));
 
     @Override

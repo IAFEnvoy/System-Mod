@@ -28,11 +28,20 @@ public final class CommerceCosts {
     }
 
     public static Prepared prepare(List<Cost> costs, ServerPlayer player, PurchaseType type, Identifier source) {
+        return prepare(costs, player, type, source, 1);
+    }
+
+    public static Prepared prepare(List<Cost> costs, ServerPlayer player, PurchaseType type, Identifier source, int count) {
         CostContext context = CostContext.of(player, "system:" + type.getSerializedName()).with("system:source", source);
-        return prepare(costs, player, context);
+        return prepare(costs, player, context, count);
     }
 
     public static Prepared prepare(List<Cost> costs, ServerPlayer player, CostContext context) {
+        return prepare(costs, player, context, 1);
+    }
+
+    private static Prepared prepare(List<Cost> costs, ServerPlayer player, CostContext context, int count) {
+        if (count < 1 || count > 100) throw new AgentException(AgentFailure.INVALID_INPUT);
         CostPayment bill = CostPayment.of(context);
         AtomicBoolean started = new AtomicBoolean();
         AtomicBoolean uncertain = new AtomicBoolean();
@@ -48,6 +57,7 @@ public final class CommerceCosts {
                 break;
             }
             Cost.Transaction transaction = result.getData().orElseThrow();
+            if (count != 1) transaction = transaction.withAmount(transaction.amount() * count);
             if (!Double.isFinite(transaction.amount()) || transaction.amount() < 0) {
                 failure = CostFailure.INVALID_AMOUNT;
                 break;

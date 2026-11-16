@@ -120,8 +120,10 @@ public final class QuestService implements PlayerModule {
     private List<QuestBriefOutput> number(ExecutionContext context, List<QuestBriefOutput> quests, boolean remember) {
         for (QuestBriefOutput quest : quests) {
             QuestKey key = QuestKey.parse(quest.id());
-            if (!key.source().equals(quest.source().id())) throw new IllegalArgumentException("Quest source does not match ID " + key);
-            if (quest.revision().isBlank()) throw new IllegalArgumentException("Missing quest selection revision " + key);
+            if (!key.source().equals(quest.source().id()))
+                throw new IllegalArgumentException("Quest source does not match ID " + key);
+            if (quest.revision().isBlank())
+                throw new IllegalArgumentException("Missing quest selection revision " + key);
             this.checkAccess(context, key.source());
         }
         if (remember) this.selections.remember(context, quests);
@@ -140,21 +142,24 @@ public final class QuestService implements PlayerModule {
     }
 
     public CompletionStage<QuestSubmitOutput> submit(ExecutionContext context, QuestSubmitInput input) {
-        if (!input.query().isBlank()) return this.find(context, new QuestFindInput(input.query())).thenCompose(matches -> {
-            if (matches.isEmpty()) throw new AgentException(AgentFailure.QUEST_UNAVAILABLE);
-            if (matches.size() != 1) throw new AgentException(AgentFailure.QUEST_AMBIGUOUS);
-            return this.submit(context, new QuestSubmitInput("", Optional.empty(), matches.getFirst().id(), input.checkmarkOnly()));
-        });
+        if (!input.query().isBlank())
+            return this.find(context, new QuestFindInput(input.query())).thenCompose(matches -> {
+                if (matches.isEmpty()) throw new AgentException(AgentFailure.QUEST_UNAVAILABLE);
+                if (matches.size() != 1) throw new AgentException(AgentFailure.QUEST_AMBIGUOUS);
+                return this.submit(context, new QuestSubmitInput("", Optional.empty(), matches.getFirst().id(), input.checkmarkOnly()));
+            });
         QuestBriefOutput selected = input.index().map(index -> this.selections.select(context, index)).orElse(null);
         QuestKey key = this.key(context, selected == null ? input.questId() : selected.id());
-        if (!(this.provider(context, key) instanceof QuestProvider.Submission submission)) throw new AgentException(AgentFailure.UNSUPPORTED);
+        if (!(this.provider(context, key) instanceof QuestProvider.Submission submission))
+            throw new AgentException(AgentFailure.UNSUPPORTED);
         return submission.submit(context, new QuestSubmitInput("", Optional.empty(), key.toString(), input.checkmarkOnly()),
                 selected == null ? Optional.empty() : Optional.of(selected.revision()));
     }
 
     public CompletionStage<QuestClaimOutput> claim(ExecutionContext context, QuestClaimInput input) {
         QuestKey key = this.key(context, input.claimRef());
-        if (!(this.provider(context, key) instanceof QuestProvider.Rewards rewards)) throw new AgentException(AgentFailure.UNSUPPORTED);
+        if (!(this.provider(context, key) instanceof QuestProvider.Rewards rewards))
+            throw new AgentException(AgentFailure.UNSUPPORTED);
         return rewards.claim(context, new QuestClaimInput(key.toString(), input.choice()));
     }
 
@@ -189,7 +194,8 @@ public final class QuestService implements PlayerModule {
         // Authorize every requested source before the first write; never fall back to a different backend.
         for (String reference : input.claimRefs()) {
             QuestKey key = this.key(context, reference);
-            if (!(this.provider(context, key) instanceof QuestProvider.StarterGifts source)) throw new AgentException(AgentFailure.UNSUPPORTED);
+            if (!(this.provider(context, key) instanceof QuestProvider.StarterGifts source))
+                throw new AgentException(AgentFailure.UNSUPPORTED);
             requests.computeIfAbsent(source, _ -> new ArrayList<>()).add(key.toString());
         }
         return collect(new ArrayList<>(requests.entrySet()), entry -> entry.getKey()

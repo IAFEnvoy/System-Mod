@@ -1,7 +1,7 @@
 package com.iafenvoy.system.speech.tts;
 
-import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.config.file.SpeechConfig;
+import com.iafenvoy.system.speech.SpeechException;
 import org.jspecify.annotations.NonNull;
 
 import java.util.function.Consumer;

@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** A snapshot of the actual held stack, including its component patch and stored enchantments. */
+/**
+ * A snapshot of the actual held stack, including its component patch and stored enchantments.
+ */
 public record ItemInspectionOutput(Identifier id, Component name, ItemStackTemplate item, int maxStack,
                                    int damage, int maxDamage, boolean unbreakable,
                                    List<Component> enchantments) implements CardData {

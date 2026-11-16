@@ -20,7 +20,8 @@ import java.util.List;
  * A compact live tracker has no reward references, submission actions, narration or AI work.
  */
 public record QuestPinOutput(String id, Component title, Component chapter, double progress,
-                             boolean completed, List<QuestTaskOutput> tasks, int otherTasks, QuestSource source) implements CardData, Quest {
+                             boolean completed, List<QuestTaskOutput> tasks, int otherTasks,
+                             QuestSource source) implements CardData, Quest {
     public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_pin");
     public static final MapCodec<QuestPinOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("id").forGetter(QuestPinOutput::id),

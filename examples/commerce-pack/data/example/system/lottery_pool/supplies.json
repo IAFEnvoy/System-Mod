@@ -1,7 +1,11 @@
 {
   "label": "补给抽奖示例",
   "costs": [
-    { "type": "system:currency", "currency": "system:coin", "amount": 1 }
+    {
+      "type": "system:currency",
+      "currency": "system:coin",
+      "amount": 1
+    }
   ],
   "entries": [
     {
@@ -9,16 +13,43 @@
       "reward": {
         "id": "example:lottery/food",
         "label": "食物补给",
-        "items": [{ "id": "minecraft:bread", "count": 8 }]
+        "items": [
+          {
+            "id": "minecraft:bread",
+            "count": 8
+          }
+        ]
       }
     },
     {
       "weight": 1,
+      "max_wins": 2,
       "reward": {
         "id": "example:lottery/diamond",
         "label": "钻石补给",
-        "items": [{ "id": "minecraft:diamond", "count": 1 }]
+        "items": [
+          {
+            "id": "minecraft:diamond",
+            "count": 1
+          }
+        ]
       }
     }
-  ]
+  ],
+  "draw_counts": [
+    1,
+    5,
+    10
+  ],
+  "pity": {
+    "count": 10,
+    "rewards": [
+      "example:lottery/diamond"
+    ]
+  },
+  "draw_limit": {
+    "count": 30,
+    "period": "daily"
+  },
+  "cooldown": 2
 }

@@ -1,8 +1,8 @@
 package com.iafenvoy.system.speech.deepseek;
 
-import com.iafenvoy.system.data.speech.DeepSeekTtsMessage;
 import com.iafenvoy.system.config.credential.builtin.DeepSeekCredential;
 import com.iafenvoy.system.config.file.SpeechConfig;
+import com.iafenvoy.system.data.speech.DeepSeekTtsMessage;
 import com.iafenvoy.system.speech.PcmWav;
 import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.tts.TtsProvider;
@@ -20,7 +20,9 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.function.Consumer;
 
-/** One HTTP request streams PCM directly into the existing cancellable playback pipeline. */
+/**
+ * One HTTP request streams PCM directly into the existing cancellable playback pipeline.
+ */
 public final class DeepSeekTtsProvider implements TtsProvider {
     private static final URI ENDPOINT = URI.create("https://api.deepseek.com/v1/tools/tts");
     private static final int MAX_AUDIO_BYTES = 8 * 1024 * 1024;

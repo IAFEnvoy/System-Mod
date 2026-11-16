@@ -4,6 +4,7 @@ import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.output.ItemPreviewOutput;
 import com.iafenvoy.system.data.output.QuestIconOutput;
+import com.iafenvoy.system.data.space.SpaceStack;
 import com.iafenvoy.system.data.store.Reward;
 import com.iafenvoy.system.util.CardEventValue;
 import com.iafenvoy.system.util.LegacyText;
@@ -79,8 +80,13 @@ public final class CardBuilder {
 
     public CardBuilder reward(String prefix, PersistHolder<Reward> reward) {
         List<ItemPreviewOutput> items = reward.value().items().stream().map(ItemPreviewOutput::of).toList();
-        return this.put(prefix + "reward_label", reward.value().label()).put(prefix + "reward_items", new CardText.Items(items))
+        return this.contents(prefix, reward.value().contents()).put(prefix + "reward_label", reward.value().label()).put(prefix + "reward_items", new CardText.Items(items))
                 .put(prefix + "result_items", items);
+    }
+
+    public CardBuilder contents(String prefix, List<SpaceStack> contents) {
+        return this.list(prefix + "contents", contents, (key, entry) -> this.put(key + "name", entry.name())
+                .put(key + "icon", entry.icon()).put(key + "amount", Long.toString(entry.amount())).put(key + "label", entry.label()));
     }
 
     public CardBuilder price(CommerceCatalog.Price price) {

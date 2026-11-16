@@ -12,6 +12,7 @@ import com.iafenvoy.system.data.output.CommercePreviewOutput;
 import com.iafenvoy.system.data.store.PurchaseType;
 import com.iafenvoy.system.module.*;
 import com.iafenvoy.system.module.builtin.lottery.LotteryDrawModule;
+import com.iafenvoy.system.module.builtin.lottery.LotteryHistoryModule;
 import com.iafenvoy.system.module.builtin.lottery.LotteryModule;
 import com.iafenvoy.system.module.builtin.lottery.LotteryPreviewModule;
 import com.iafenvoy.system.module.builtin.storage.CommerceDataStorage;
@@ -67,6 +68,7 @@ public record LotterySystemModule(
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
         ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview = context.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(context.get(ContextTypes.COMMERCE)).tool());
-        return List.of(new LotteryModule(context.get(ContextTypes.CATALOGS)), new LotteryPreviewModule(context.get(ContextTypes.CATALOGS), preview), new LotteryDrawModule(new LotteryDrawTool(context.get(ContextTypes.COMMERCE)).tool()));
+        return List.of(new LotteryModule(context.get(ContextTypes.CATALOGS)), new LotteryPreviewModule(context.get(ContextTypes.CATALOGS), preview),
+                new LotteryDrawModule(new LotteryDrawTool(context.get(ContextTypes.COMMERCE)).tool()), new LotteryHistoryModule(context.get(ContextTypes.COMMERCE)));
     }
 }

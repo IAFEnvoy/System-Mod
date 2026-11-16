@@ -11,7 +11,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/** Request-scoped search selection; account changes never alter a running request. */
+/**
+ * Request-scoped search selection; account changes never alter a running request.
+ */
 public final class ConfiguredSearchProvider implements SearchProvider {
     private final Set<SearchProvider> active = new HashSet<>();
     private boolean closed;

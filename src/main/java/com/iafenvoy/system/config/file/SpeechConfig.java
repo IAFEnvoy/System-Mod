@@ -13,7 +13,8 @@ import java.util.Locale;
 /**
  * Client-local settings; keys never enter packets, player attachments or assistant conversations.
  */
-public record SpeechConfig(boolean enabled, String region, String model, String voice, String language, int volume, boolean cacheEnabled,
+public record SpeechConfig(boolean enabled, String region, String model, String voice, String language, int volume,
+                           boolean cacheEnabled,
                            boolean questRequirements, boolean questRewards, boolean questDescription,
                            boolean notificationSoundEnabled) {
     public static final String FILE_NAME = "system-speech.json";

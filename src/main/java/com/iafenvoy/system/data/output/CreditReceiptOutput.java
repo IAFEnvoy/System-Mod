@@ -21,7 +21,7 @@ public record CreditReceiptOutput(String entitlementId, PersistHolder<Reward> re
                                   String state) implements CardData {
     public static final MapCodec<CreditReceiptOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("entitlementId").forGetter(CreditReceiptOutput::entitlementId),
-            PersistHolder.mapCodec(Reward.CODEC).fieldOf("reward").forGetter(CreditReceiptOutput::reward),
+            PersistHolder.mapCodec(Reward.SNAPSHOT_CODEC).fieldOf("reward").forGetter(CreditReceiptOutput::reward),
             Codec.STRING.fieldOf("state").forGetter(CreditReceiptOutput::state)
     ).apply(i, CreditReceiptOutput::new));
     public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "entitlement");

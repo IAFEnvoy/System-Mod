@@ -24,7 +24,9 @@ public final class CodecIO {
         return codec.encodeStart(JsonOps.INSTANCE, value).getOrThrow().toString();
     }
 
-    /** Bind the owning world's registries at the serialization boundary, including nested item components. */
+    /**
+     * Bind the owning world's registries at the serialization boundary, including nested item components.
+     */
     public static <A> Codec<A> contextual(Codec<A> codec, HolderLookup.Provider registries) {
         return new Codec<>() {
             private <T> DynamicOps<T> context(DynamicOps<T> ops) {

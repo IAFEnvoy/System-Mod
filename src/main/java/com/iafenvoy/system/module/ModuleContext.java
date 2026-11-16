@@ -63,7 +63,13 @@ public final class ModuleContext {
      * Configured definitions may share a server-local runtime; ModuleManager owns its tick and close exactly once.
      */
     public <T extends PlayerModule> T sharedRuntime(Class<T> type, Supplier<T> factory) {
-        return type.cast(this.sharedRuntimes.computeIfAbsent(type, _ -> Objects.requireNonNull(factory.get())));
+        PlayerModule runtime = this.sharedRuntimes.get(type);
+        if (runtime == null) {
+            // A factory may initialize another runtime in this same map; computeIfAbsent forbids that.
+            runtime = type.cast(Objects.requireNonNull(factory.get()));
+            this.sharedRuntimes.put(type, runtime);
+        }
+        return type.cast(runtime);
     }
 
     List<PlayerModule> sharedRuntimes() {
@@ -78,11 +84,14 @@ public final class ModuleContext {
     }
 
     public <I, O> ToolRegistry.Tool<I, O> tool(ToolRegistry.Type<I, O> type, Supplier<ToolRegistry.Tool<I, O>> factory) {
-        ToolRegistry.Tool<?, ?> value = this.tools.computeIfAbsent(type, _ -> {
+        ToolRegistry.Tool<?, ?> value = this.tools.get(type);
+        if (value == null) {
             ToolRegistry.Tool<I, O> tool = factory.get();
             if (tool.type() != type) throw new IllegalArgumentException("Incorrect tool factory " + type.id());
-            return tool;
-        });
+            // Tool factories can resolve other typed dependencies during module installation as well.
+            this.tools.put(type, tool);
+            value = tool;
+        }
         // The factory is checked once; shared workflows receive the same tool instance.
         @SuppressWarnings("unchecked") ToolRegistry.Tool<I, O> typed = (ToolRegistry.Tool<I, O>) value;
         return typed;

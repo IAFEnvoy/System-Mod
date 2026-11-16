@@ -25,7 +25,9 @@ public final class ChatSupport {
         this.prompts = Objects.requireNonNull(prompts);
     }
 
-    /** The game bridge resolves the player's bound system; custom base prompts retain this contribution. */
+    /**
+     * The game bridge resolves the player's bound system; custom base prompts retain this contribution.
+     */
     public void personality(PromptProvider personality) {
         this.personality = Objects.requireNonNull(personality);
     }

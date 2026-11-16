@@ -14,11 +14,15 @@ public interface Credential {
     @NotNull
     MapCodec<? extends Credential> codec();
 
-    /** Creates an editor in the current Document.withContext scope; edits update this credential. */
+    /**
+     * Creates an editor in the current Document.withContext scope; edits update this credential.
+     */
     @NotNull
     Element createWidget();
 
-    /** Resolve at use time without storing environment secrets in the serialized fields. */
+    /**
+     * Resolve at use time without storing environment secrets in the serialized fields.
+     */
     static String resolveEnvironment(String value, String... names) {
         if (!value.isBlank()) return value.strip();
         for (String name : names) {

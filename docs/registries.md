@@ -22,13 +22,16 @@
 | --- | --- | --- | --- |
 | `system:server_module` | `SERVER_MODULE` | `MapCodec<? extends ServerModule>` | SystemServerModules |
 | `system:card_data_type` | `CARD_DATA_TYPE` | `MapCodec<? extends CardData>` | SystemCardDataTypes |
+| `system:space_content_type` | `SPACE_CONTENT_TYPE` | `SpaceContentType<?>` | SystemSpaceContentTypes |
 | `system:action_type` | `ACTION_TYPE` | `MapCodec<? extends AgentAction>` | SystemActionTypes |
 | `system:credential_type` | `CREDENTIAL_TYPE` | `MapCodec<? extends Credential>` | SystemCredentialTypes |
 | `system:agent_request_type` | `AGENT_REQUEST_TYPE` | `StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentRequest>` | SystemRequestTypes |
 | `system:agent_response_type` | `AGENT_RESPONSE_TYPE` | `StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>` | SystemResponseTypes |
 | `system:card_node_type` | `CARD_NODE_TYPE` | `MapCodec<? extends CardNode>` | SystemCardNodeTypes |
 
-共 7 张代码注册表。只有卡片节点的 DeferredRegister 在 SystemClientMod 绑定；专用服务端保留其空表。ClientModule 已移出 MC 注册表，SystemRegistries 与 SystemResourceKeys 不再引用该接口。
+`system:space_content_type` 内置 `system:item`、`system:currency`、`system:experience`、`system:action`，分别处理物品、钱包入账、原版经验、可信 Saturn EntityAction。空间账本和 Reward.contents 使用同一套分派，详见[奖励结果](rewards.md)。
+
+共 8 张代码注册表。只有卡片节点的 DeferredRegister 在 SystemClientMod 绑定；专用服务端保留其空表。ClientModule 已移出 MC 注册表，SystemRegistries 与 SystemResourceKeys 不再引用该接口。
 
 ### 凭据类型与服务选择
 
@@ -60,7 +63,7 @@ Optional<MyService> service = services.create(selectedCredential);
 
 ### 内置模块
 
-服务端类型包括 core、binding、usage、player、items、economy、workshop、online_jobs、signin、inbox、shop、lottery、advancement、ftb_quests、web_search，命名空间均为 system。每类提供 CODEC / codec()，无参数类型使用 MapCodec.unit 单例；ServerModule.CODEC 从 SERVER_MODULE 按 type dispatch。
+服务端类型包括 core、binding、usage、player、items、economy、workshop、online_jobs、anchor、signin、inbox、shop、lottery、advancement、ftb_quests、web_search，命名空间均为 system。每类提供 CODEC / codec()，无参数类型使用 MapCodec.unit 单例；ServerModule.CODEC 从 SERVER_MODULE 按 type dispatch。
 
 动态配置独立登记在 `system:system_module`，并通过 `SystemDataPackRegistries.modules(RegistryAccess)` 访问。内置动态条目采用同名 ID，扩展可给同一类型创建不同 ID 与参数；不能用静态 SERVER_MODULE 查询模块配置或取玩家可用条目。
 
@@ -83,9 +86,9 @@ Optional<MyService> service = services.create(selectedCredential);
 
 ### 卡片数据与动作载荷
 
-卡片类型共 35 个：`chat`、`text`、`selection`、`binding`、`shop_offer`、`shop_catalog`、`shop_quote`、`player`、`items`、`item_sources`、`item_inspection`、`repair_quote`、`online_jobs`、`wallet`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`、`quest_pin`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。状态与历史不再注册为卡片。
+卡片类型包括：`anchor_list`、`space`、`chat`、`text`、`selection`、`binding`、`shop_offer`、`shop_catalog`、`shop_quote`、`player`、`items`、`item_sources`、`item_inspection`、`repair_quote`、`online_jobs`、`wallet`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_history`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`、`quest_pin`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。会话状态与聊天历史使用独立响应；抽奖业务记录使用 `lottery_history` 卡片。
 
-动作类型共 32 个：`free_chat`、`help`、`player_query`、`inbox`、`balance`、`sign_in`、`item_query`、`item_sources`、`item_inspect`、`repair_quote`、`repair_confirm`、`online_jobs`、`job_start`、`job_claim`、`job_cancel`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`、`reasoning`。
+动作类型包括：`anchor_list`、`anchor_save`、`anchor_delete`、`anchor_teleport`、`space_take`、`sign_in_status`、`free_chat`、`help`、`player_query`、`inbox`、`balance`、`sign_in`、`item_query`、`item_sources`、`item_inspect`、`repair_quote`、`repair_confirm`、`online_jobs`、`job_start`、`job_claim`、`job_cancel`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`lottery_history`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`、`reasoning`。
 
 内置条目均以 `public static DeferredHolder` 暴露。卡片实现 `CardData`，动作实现 `AgentAction`，都直接创建和传递数据对象；各实现的 `codec()` 返回自己的已注册 MapCodec：
 
@@ -263,3 +266,13 @@ WebResearch 已迁入通用 ReActLoop，每次循环按工具上下文构建本�
 ### 任务来源接入
 
 任务来源不新增 MC 注册表；实现 `QuestProvider` 后在所属服务端模块调用 `QuestWorkflows.install`，Provider 的装配、启用权限和生命周期继续归模块管理。公共只读任务接口为 `Quest`，来源信息为 `QuestSource`。新增卡片节点 `system:icon` 的公开入口是 `SystemCardNodeTypes.ICON`，上下文绑定值为 Saturn `IconReference`；FTBQ 原生图标仍保留 `system:ftb_icon`。完整说明见[通用任务接口](quests.md)。
+
+## 系统空间内容类型
+
+`SystemSpaceContentTypes.ITEM` 注册 `system:item`；`SpaceContent.CODEC` 从 `SPACE_CONTENT_TYPE` 按 type 分派。该表是代码定义的正式内置注册表，通过名称 Codec 保存，不同步整份玩家存储。新增内容实现可提供自己的 MapCodec、名称、IconReference、批量数量与取出效果；实体等类型不需要改变空间账本。`SpaceSystemModule` / `SpaceDataStorage` 的现有持久化 ID 保持 `system:inbox`，界面名称统一为系统空间，详见[系统空间](system-space.md)。
+
+## 传送锚点
+
+`SystemServerModules.ANCHOR` 注册模块类型 `system:anchor`，支持 NumberProvider 容量公式；客户端实现由 `SystemClientModules.ANCHOR` 管理。`SystemDataStorages.ANCHOR` 注册私人锚点账本的 Codec，访问入口为 `AnchorSystemModule.STORAGE`。`SystemActionTypes.ANCHOR_*_ACTION` 和 `SystemCardDataTypes.ANCHOR_LIST` 分别登记四种动作和列表卡片。
+
+`SystemTicketTypes.REGISTRY` 直接使用原版 `Registries.TICKET_TYPE`，公开 `SystemTicketTypes.ANCHOR`（`system:anchor`），不新增 System 自有注册表。该 ticket 只用于异步加载传送落点及其周围区块，200 tick 后到期，不持久化。详见[传送锚点](teleport-anchors.md)。

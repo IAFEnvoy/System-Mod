@@ -13,6 +13,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 @SuppressWarnings("unused")
 public final class SystemServerModules {
     public static final DeferredRegister<MapCodec<? extends ServerModule>> REGISTRY = DeferredRegister.create(SystemResourceKeys.SERVER_MODULE, SystemMod.MOD_ID);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<AnchorSystemModule>> ANCHOR = REGISTRY.register("anchor", () -> AnchorSystemModule.CODEC);
 
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<CoreSystemModule>> CORE = REGISTRY.register("core", () -> CoreSystemModule.CODEC);
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<BindingSystemModule>> BINDING = REGISTRY.register("binding", () -> BindingSystemModule.CODEC);
@@ -23,7 +24,7 @@ public final class SystemServerModules {
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<WorkshopSystemModule>> WORKSHOP = REGISTRY.register("workshop", () -> WorkshopSystemModule.CODEC);
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<OnlineJobsSystemModule>> ONLINE_JOBS = REGISTRY.register("online_jobs", () -> OnlineJobsSystemModule.CODEC);
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<SignInSystemModule>> SIGN_IN = REGISTRY.register("signin", () -> SignInSystemModule.CODEC);
-    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<InboxSystemModule>> INBOX = REGISTRY.register("inbox", () -> InboxSystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<SpaceSystemModule>> SPACE = REGISTRY.register("inbox", () -> SpaceSystemModule.CODEC);
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<ShopSystemModule>> SHOP = REGISTRY.register("shop", () -> ShopSystemModule.CODEC);
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<LotterySystemModule>> LOTTERY = REGISTRY.register("lottery", () -> LotterySystemModule.CODEC);
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<AdvancementSystemModule>> ADVANCEMENT = REGISTRY.register("advancement", () -> AdvancementSystemModule.CODEC);

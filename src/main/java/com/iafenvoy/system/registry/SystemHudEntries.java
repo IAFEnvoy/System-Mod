@@ -2,8 +2,8 @@ package com.iafenvoy.system.registry;
 
 import com.iafenvoy.saturn.screen.hud.HudManager;
 import com.iafenvoy.system.screen.DisplayCardsHudEntry;
-import com.iafenvoy.system.screen.NotificationHudEntry;
 import com.iafenvoy.system.screen.EmotionHudEntry;
+import com.iafenvoy.system.screen.NotificationHudEntry;
 
 /**
  * Initialized only by the physical client entrypoint; Saturn owns the shared HUD editor and layout file.

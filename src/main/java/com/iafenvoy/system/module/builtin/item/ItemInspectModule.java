@@ -24,8 +24,8 @@ public final class ItemInspectModule extends AbstractAgentModule<ItemInspectInpu
         return ModuleRouting.<ItemInspectInput>defaults().button(_ -> ItemInspectInput.INSTANCE)
                 .command(AgentCommand.literal(ItemInspectInput.INSTANCE, "inspect", "鉴定"))
                 .semantic(RoutingProfile.read(_ -> ItemInspectInput.INSTANCE,
-                        List.of("鉴定手中的物品", "看看我手里装备的耐久和附魔", "检查主手物品"),
-                        List.of("Inspect my held item", "Check the durability and enchantments of my equipment", "Inspect my main hand"))
+                                List.of("鉴定手中的物品", "看看我手里装备的耐久和附魔", "检查主手物品"),
+                                List.of("Inspect my held item", "Check the durability and enchantments of my equipment", "Inspect my main hand"))
                         .choice("system.action.inspect"));
     }
 

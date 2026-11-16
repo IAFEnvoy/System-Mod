@@ -12,7 +12,8 @@ import net.minecraft.resources.Identifier;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
 
-public record RepairQuoteTool(Workshop workshop, Identifier owner, List<Cost> costs) implements ToolRegistry.Handler<RepairQuoteInput, RepairQuoteOutput> {
+public record RepairQuoteTool(Workshop workshop, Identifier owner,
+                              List<Cost> costs) implements ToolRegistry.Handler<RepairQuoteInput, RepairQuoteOutput> {
     public ToolRegistry.Tool<RepairQuoteInput, RepairQuoteOutput> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.REPAIR_QUOTE, false, true, false, this);
     }

@@ -8,12 +8,13 @@ import com.iafenvoy.system.config.credential.Credential;
 import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.card.CardData;
-import com.iafenvoy.system.data.catalog.ShopOfferEntry;
-import com.iafenvoy.system.data.catalog.OnlineJobEntry;
 import com.iafenvoy.system.data.catalog.CurrencyDefinition;
+import com.iafenvoy.system.data.catalog.OnlineJobEntry;
+import com.iafenvoy.system.data.catalog.ShopOfferEntry;
 import com.iafenvoy.system.data.catalog.SignInRewardEntry;
-import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.data.emotion.EmotionDefinition;
+import com.iafenvoy.system.data.module.SystemModule;
+import com.iafenvoy.system.data.space.SpaceContentType;
 import com.iafenvoy.system.module.ServerModule;
 import com.iafenvoy.system.screen.card.CardNode;
 import com.mojang.serialization.MapCodec;
@@ -26,6 +27,7 @@ import net.minecraft.resources.ResourceKey;
 @SuppressWarnings("unused")
 public final class SystemResourceKeys {
     // Builtin
+    public static final ResourceKey<Registry<SpaceContentType<?>>> SPACE_CONTENT_TYPE = create("space_content_type");
     public static final ResourceKey<Registry<MapCodec<? extends ServerModule>>> SERVER_MODULE = create("server_module");
     public static final ResourceKey<Registry<MapCodec<? extends CardData>>> CARD_DATA_TYPE = create("card_data_type");
     public static final ResourceKey<Registry<MapCodec<? extends CardNode>>> CARD_NODE_TYPE = create("card_node_type");

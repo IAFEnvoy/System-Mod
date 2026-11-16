@@ -12,12 +12,17 @@ interaction. Local commands and intent matching work without AI; connect a model
   local database first; web access requires explicit permission.
 - **FTB Quests integration:** browse actionable quests by chapter, inspect requirements and rewards, submit or claim
   manually, and pin quests to persistent cards. Includes completion/unlock notifications and local guide lookup.
+- **Teleport anchors:** save personal destinations and travel by card or voice, with formula-based capacity, cooldowns,
+  optional cross-dimension travel and safe landing checks.
 - **Check-ins, shop and lottery:** AI selects daily rewards from approved pools. Shops and lotteries use Saturn Costs,
-  with rewards delivered to the inbox. Content is configured through data packs.
+  with rewards delivered to System Space. Mix items, currency, XP points/levels and Saturn actions through [reward definitions](docs/rewards.md). Content is configured through data packs. System Space supports single-item, Shift-click stack and voice withdrawals, with typed storage hooks for other content.
+- **Entry requirements:** offers, lottery pools, check-in rewards and online jobs support separate visibility and execution conditions through Saturn. The server rechecks before granting new entitlements; earned rewards remain claimable. See [entry conditions](docs/catalog-conditions.md).
+- **Order maintenance:** browse all lottery pools and prizes in bounded batches. Settled orders are archived without resetting quotas or losing receipts; administrators can review uncertain payments. See [order maintenance](docs/commerce-orders.md).
+- **Lottery rules:** data-driven hard pity, multi-draw sizes, periodic draw limits, cooldowns and per-reward win limits, with private paged history and per-draw guarantee markers. See [lottery rules](docs/lottery.md).
 - **Currency wallets:** define multiple currencies through data packs, keep per-player balances and pay through Saturn
   Costs. Includes administrator commands and entity actions/conditions. See [economy](docs/economy.md).
 - **Inspection, repairs and online jobs:** inspect held-item durability and enchantments, confirm a priced repair,
-  or run a data-driven gathering/production job. Progress pauses offline; claim output manually through the inbox.
+  or run a data-driven gathering/production job. Progress pauses offline; claim output manually through System Space.
   All three support Offline mode. See [inspection](docs/item-inspection.md), [workshop](docs/workshop.md) and [jobs](docs/online-jobs.md).
 - **Conversation and tools:** choose Offline, Standard, Extended or Free mode. Free mode and Extended mode's free-chat fallback can call authorized tools;
   administrators control available modes and daily usage.

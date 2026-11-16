@@ -25,7 +25,9 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.Locale;
 import java.util.concurrent.CompletionStage;
 
-/** Administrator edits are not Agent tools: model routing can never mint money. */
+/**
+ * Administrator edits are not Agent tools: model routing can never mint money.
+ */
 public final class EconomyCommands {
     private EconomyCommands() {
     }
@@ -70,7 +72,8 @@ public final class EconomyCommands {
             Component name = source.getServer().registryAccess().lookupOrThrow(SystemResourceKeys.CURRENCY).getValue(currency).name();
             result.whenComplete((balance, error) -> source.getServer().execute(() -> {
                 if (error != null) source.sendFailure(AgentException.failure(error).message());
-                else source.sendSuccess(() -> Component.translatable("system.command.economy.balance", player.getName(), name, Long.toString(balance)), operation != Operation.GET);
+                else
+                    source.sendSuccess(() -> Component.translatable("system.command.economy.balance", player.getName(), name, Long.toString(balance)), operation != Operation.GET);
             }));
             return 1;
         } catch (AgentException error) {

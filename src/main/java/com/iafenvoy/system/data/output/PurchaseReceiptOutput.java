@@ -3,6 +3,7 @@ package com.iafenvoy.system.data.output;
 import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.data.card.CardBuilder;
+import com.iafenvoy.system.data.card.CardButton;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardFact;
 import com.iafenvoy.system.data.store.Reward;
@@ -23,7 +24,7 @@ public record PurchaseReceiptOutput(String orderId, String entitlementId, Persis
     public static final MapCodec<PurchaseReceiptOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("orderId").forGetter(PurchaseReceiptOutput::orderId),
             Codec.STRING.fieldOf("entitlementId").forGetter(PurchaseReceiptOutput::entitlementId),
-            PersistHolder.mapCodec(Reward.CODEC).fieldOf("reward").forGetter(PurchaseReceiptOutput::reward),
+            PersistHolder.mapCodec(Reward.SNAPSHOT_CODEC).fieldOf("reward").forGetter(PurchaseReceiptOutput::reward),
             Codec.STRING.fieldOf("state").forGetter(PurchaseReceiptOutput::state),
             Identifier.CODEC.optionalFieldOf("sourcePool").forGetter(PurchaseReceiptOutput::sourcePool)
     ).apply(i, PurchaseReceiptOutput::new));
@@ -47,6 +48,8 @@ public record PurchaseReceiptOutput(String orderId, String entitlementId, Persis
                     Map.of("entitlement", this.entitlementId(), "kind", "purchase", "order", this.orderId(),
                             "pool", this.sourcePool.map(Identifier::toString).orElse("")));
         this.sourcePool.ifPresent(id -> builder.serverButton("again", "system.action.lottery_again", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_preview"), Map.of("pool", id.toString())));
+        this.sourcePool.ifPresent(id -> builder.serverButton("history", "system.lottery.view_record", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_history"),
+                Map.of("pool", id.toString(), "order", this.orderId), CardButton.Placement.BODY, CardButton.Behavior.REPLACE));
         return builder;
     }
 

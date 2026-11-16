@@ -32,7 +32,9 @@ import java.util.function.Predicate;
 
 import static com.iafenvoy.system.screen.gui.AssistantView.*;
 
-/** Credential-owned editors and typed service selection; secrets stay in this process. */
+/**
+ * Credential-owned editors and typed service selection; secrets stay in this process.
+ */
 final class ApiSettings {
     private final Document document;
     private final boolean serverEditable;
@@ -97,7 +99,8 @@ final class ApiSettings {
         for (String id : List.of("api_model_url", "api_model_name", "api_search_url")) {
             Element input = this.document.getElementById(id);
             input.setDisabled(!this.serverEditable);
-            if (this.serverEditable) input.addEventListener("input", _ -> this.saveConnection(id.equals("api_search_url")));
+            if (this.serverEditable)
+                input.addEventListener("input", _ -> this.saveConnection(id.equals("api_search_url")));
         }
         this.render();
     }
@@ -318,7 +321,8 @@ final class ApiSettings {
     }
 
     private record Selector<S extends AutoCloseable>(String usage, String prefix,
-                                                    CredentialManager<S> manager, Predicate<S> ready, Predicate<S> defaults) {
+                                                     CredentialManager<S> manager, Predicate<S> ready,
+                                                     Predicate<S> defaults) {
         boolean configured(ApiConfig config) {
             try (S service = config.create(this.usage, this.manager).orElse(null)) {
                 return service != null && this.ready.test(service);

@@ -28,7 +28,8 @@ public record QuestGuideOutput(String query, List<Entry> entries) implements Car
         entries = List.copyOf(entries);
     }
 
-    public record Entry(String id, Component title, Component chapter, String passage, String body, QuestSource source) {
+    public record Entry(String id, Component title, Component chapter, String passage, String body,
+                        QuestSource source) {
         public static final Codec<Entry> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("id").forGetter(Entry::id),
                 ComponentSerialization.CODEC.fieldOf("title").forGetter(Entry::title),

@@ -9,7 +9,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.Objects;
 import java.util.Optional;
 
-/** Counts only dispatched online module ticks; wall-clock timestamps never generate offline earnings. */
+/**
+ * Counts only dispatched online module ticks; wall-clock timestamps never generate offline earnings.
+ */
 public final class OnlineJobsDataStorage extends DataStorage {
     public static final MapCodec<OnlineJobsDataStorage> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             OnlineJobRun.CODEC.optionalFieldOf("run").forGetter(OnlineJobsDataStorage::getRun)

@@ -18,11 +18,7 @@ import org.commonmark.renderer.html.HtmlWriter;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
 /**
@@ -107,7 +103,9 @@ public final class AssistantMarkdown {
         }
     }
 
-    /** Per-conversion list counters; links stay inert until AUI has initialized their nodes. */
+    /**
+     * Per-conversion list counters; links stay inert until AUI has initialized their nodes.
+     */
     private static final class CardHtmlRenderer extends CoreHtmlNodeRenderer {
         private final HtmlWriter html;
         private final String source;

@@ -115,7 +115,7 @@ register(
   "通用图标",
   { icon: "{{actions.0.action_icon}}" },
   { icon: ["string!", "单个 IconReference（资源图片或物品），不依赖任务模组"] },
-  [],
+  ["tooltip"],
   "quest_icon_entry",
 );
 register(
@@ -217,6 +217,7 @@ register(
     text: ["string", "按钮文字"],
     click: ["string", "link / return-val / local"],
     value: ["string", "URL、服务端字符串或本地回调 ID"],
+    shift_value: ["string", "Shift 点击发送的服务端字符串；为空时使用 value"],
     label: ["string", "无障碍文字"],
     icon: ["string", "本地图片 ID"],
     binding: ["string", "客户端状态绑定"],

@@ -1,0 +1,33 @@
+{
+  "label": "测试：签到混合奖励",
+  "items": [
+    {
+      "id": "minecraft:bread",
+      "count": 2
+    }
+  ],
+  "contents": [
+    {
+      "content": {
+        "type": "system:currency",
+        "currency": "system:coin"
+      },
+      "amount": 100
+    },
+    {
+      "content": {
+        "type": "system:experience"
+      },
+      "amount": 80
+    }
+  ],
+  "display_condition": {
+    "type": "saturn:advancement",
+    "advancement": "minecraft:story/upgrade_tools"
+  },
+  "condition": {
+    "type": "saturn:experience_level",
+    "comparison": ">=",
+    "compare_to": 10
+  }
+}

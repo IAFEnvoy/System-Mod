@@ -87,7 +87,9 @@ public final class ToolRegistry {
         return this.advertised(available, tool -> !tool.reasoningDescription().isBlank() && tool.priority() != ToolPriority.PAID);
     }
 
-    /** Provider additions only widen the read catalogue; owners, exact type identity and schemas still apply. */
+    /**
+     * Provider additions only widen the read catalogue; owners, exact type identity and schemas still apply.
+     */
     public Map<String, ScopedTool<?, ?>> chat(Predicate<Identifier> available, Collection<Type<?, ?>> additions) {
         Set<Type<?, ?>> selected = Collections.newSetFromMap(new IdentityHashMap<>());
         selected.addAll(additions);

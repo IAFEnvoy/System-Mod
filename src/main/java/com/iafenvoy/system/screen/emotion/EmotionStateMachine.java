@@ -68,7 +68,9 @@ public final class EmotionStateMachine {
         return this.setState(target == null ? event : target);
     }
 
-    /** A null override resumes automatic speech tracking. */
+    /**
+     * A null override resumes automatic speech tracking.
+     */
     public void setSpeaking(@Nullable Boolean speaking) {
         this.speakingOverride = speaking;
     }

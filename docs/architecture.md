@@ -65,3 +65,5 @@ AgentLifecycle.disconnected 和 accessChanged 在调用方线程执行，只用�
 关闭服务时按创建顺序的逆序释放：模块会话与工作者、任务口播、搜索、Agent 执行器/模型/玩家文件，最后数据库；某个资源关闭失败会记录日志并继续释放其他资源。创建中途失败也使用同一资源列表收尾。
 
 此次调整保持注册表 ID、持久化 Codec 字段、网络协议 1 和可选依赖的隔离方式。它改变 Java 类型路径和装配 API，其他 Java 扩展需要更新导入及构造调用。验证范围见[编译与验收](testing.md)。
+
+共享运行时和工具工厂允许构造过程中请求其他依赖：例如 `FtbQuestRuntime` 构造时会继续获取 `QuestService`。`ModuleContext.sharedRuntime` / `tool` 在安装线程先查询、构造完成后再写入 Map，不使用禁止回调修改同表的 `computeIfAbsent`；否则即使只有一个服务端线程，也会在 FTB 装配时抛 ConcurrentModificationException，导致整个助手初始化失败。

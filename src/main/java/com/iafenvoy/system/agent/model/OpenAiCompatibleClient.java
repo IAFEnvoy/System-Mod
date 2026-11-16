@@ -31,7 +31,9 @@ public final class OpenAiCompatibleClient implements ModelClient {
     private final String defaultModel;
     private final String protocol;
 
-    /** Anonymous OpenAI-compatible endpoints remain usable when apiKeyRequired is disabled. */
+    /**
+     * Anonymous OpenAI-compatible endpoints remain usable when apiKeyRequired is disabled.
+     */
     public OpenAiCompatibleClient() {
         this("", "", "", "auto");
     }

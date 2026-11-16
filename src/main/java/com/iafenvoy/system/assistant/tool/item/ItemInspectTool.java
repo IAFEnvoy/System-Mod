@@ -11,7 +11,8 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 
 import java.util.concurrent.CompletionStage;
 
-public record ItemInspectTool(MinecraftTools game) implements ToolRegistry.Handler<ItemInspectInput, ItemInspectionOutput> {
+public record ItemInspectTool(
+        MinecraftTools game) implements ToolRegistry.Handler<ItemInspectInput, ItemInspectionOutput> {
     public ToolRegistry.Tool<ItemInspectInput, ItemInspectionOutput> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.ITEM_INSPECT, false, true, false, this)
                 .forReasoning("Inspect the player's current main-hand item, durability and enchantments.");

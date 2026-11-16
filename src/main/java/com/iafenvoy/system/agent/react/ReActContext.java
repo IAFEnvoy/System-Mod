@@ -104,7 +104,8 @@ public final class ReActContext<O> {
             return this.execution.model(this.instruction, this.inputCodec,
                     new Input<>(this.question, this.observations(), remaining,
                             this.execution.remainingToolCalls(), finalOnly), functions, reply -> {
-                        if (reply.toolCalls().size() != 1) throw new IllegalArgumentException("Expected exactly one function call");
+                        if (reply.toolCalls().size() != 1)
+                            throw new IllegalArgumentException("Expected exactly one function call");
                         ModelClient.ToolCall call = reply.toolCalls().getFirst();
                         JsonObject arguments = JsonParser.parseString(call.arguments()).getAsJsonObject();
                         JsonObject decision;

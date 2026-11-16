@@ -16,6 +16,7 @@ import com.iafenvoy.system.data.input.ShopQueryInput;
 import com.iafenvoy.system.data.output.ItemPreviewOutput;
 import com.iafenvoy.system.data.output.ShopCatalogOutput;
 import com.iafenvoy.system.data.output.ShopPurchaseLimitOutput;
+import com.iafenvoy.system.data.space.SpaceContentType;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
 
@@ -53,16 +54,20 @@ public final class ShopModule extends AbstractAgentModule<ShopQueryInput> {
     @Override
     public AgentResult execute(ExecutionContext context, ShopQueryInput input) {
         String query = input.query().toLowerCase(Locale.ROOT);
-        CommerceCatalog catalog = this.catalogs.available(context.player());
+        CommerceCatalogs.View view = this.catalogs.view(context);
+        CommerceCatalog catalog = view.catalog();
         List<Holder<ShopOfferEntry>> matches = catalog.offers().stream().filter(holder -> HolderHelper.id(holder).toString().contains(query)
                 || holder.value().label().getString().toLowerCase(Locale.ROOT).contains(query)
-                || holder.value().items().stream().anyMatch(item -> item.item().getRegisteredName().contains(query))).toList();
+                || holder.value().items().stream().anyMatch(item -> item.item().getRegisteredName().contains(query))
+                || holder.value().contents().stream().anyMatch(content -> content.name().getString().toLowerCase(Locale.ROOT).contains(query)
+                || SpaceContentType.of(content.content()).searchId(content.content()).toLowerCase(Locale.ROOT).contains(query))).toList();
         // Prices are evaluated only for the offer the player actually opens.
         List<Holder<ShopOfferEntry>> visible = matches.stream().limit(MAX_OFFERS).toList();
         Map<Identifier, ShopPurchaseLimitOutput> limits = this.transactions.shopLimits(context, visible);
         List<ShopCatalogOutput.Offer> offers = visible.stream()
                 .map(holder -> new ShopCatalogOutput.Offer(HolderHelper.id(holder).toString(), holder.value().label(),
-                        holder.value().items().stream().map(ItemPreviewOutput::of).toList(), Optional.ofNullable(limits.get(HolderHelper.id(holder))))).toList();
+                        holder.value().items().stream().map(ItemPreviewOutput::of).toList(), holder.value().contents(), Optional.ofNullable(limits.get(HolderHelper.id(holder))),
+                        !view.lockedOffers().contains(HolderHelper.id(holder)))).toList();
         return AgentResult.data("system.result.shop",
                 new ShopCatalogOutput(catalog.revision(), query, offers, matches.size() > MAX_OFFERS));
     }

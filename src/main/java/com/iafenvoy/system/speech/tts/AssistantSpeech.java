@@ -5,9 +5,9 @@ import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.config.credential.Credential;
 import com.iafenvoy.system.config.file.ApiConfig;
 import com.iafenvoy.system.config.file.SpeechConfig;
+import com.iafenvoy.system.registry.SystemServices;
 import com.iafenvoy.system.screen.gui.AssistantView;
 import com.iafenvoy.system.speech.SpeechException;
-import com.iafenvoy.system.registry.SystemServices;
 import com.iafenvoy.system.util.LegacyText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.sounds.SoundEngine;
@@ -265,7 +265,9 @@ public final class AssistantSpeech {
         return status;
     }
 
-    /** Loading, cues, paused playback and unrelated messages never animate this card's avatar. */
+    /**
+     * Loading, cues, paused playback and unrelated messages never animate this card's avatar.
+     */
     public static boolean speaking(UUID card) {
         return owner != null && speakingCards.contains(card) && !Minecraft.getInstance().isPaused()
                 && (status == SpeechState.PLAYING_NATIVE || status == SpeechState.PLAYING_OPENAL);

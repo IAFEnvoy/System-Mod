@@ -5,20 +5,8 @@ import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.quest.QuestProvider;
 import com.iafenvoy.system.assistant.quest.QuestSource;
-import com.iafenvoy.system.data.input.QuestClaimInput;
-import com.iafenvoy.system.data.input.QuestDetailInput;
-import com.iafenvoy.system.data.input.QuestFindInput;
-import com.iafenvoy.system.data.input.QuestGuideInput;
-import com.iafenvoy.system.data.input.QuestQueryInput;
-import com.iafenvoy.system.data.input.QuestSubmitInput;
-import com.iafenvoy.system.data.input.StarterGiftInput;
-import com.iafenvoy.system.data.output.QuestBriefOutput;
-import com.iafenvoy.system.data.output.QuestClaimOutput;
-import com.iafenvoy.system.data.output.QuestGuideOutput;
-import com.iafenvoy.system.data.output.QuestOutput;
-import com.iafenvoy.system.data.output.QuestPinOutput;
-import com.iafenvoy.system.data.output.QuestSubmitOutput;
-import com.iafenvoy.system.data.output.StarterGiftOutput;
+import com.iafenvoy.system.data.input.*;
+import com.iafenvoy.system.data.output.*;
 import com.iafenvoy.system.speech.quest.QuestNarration;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
@@ -109,7 +97,7 @@ final class FtbQuestProvider implements QuestProvider.Submission, QuestProvider.
             if (!ServerQuestFile.exists()) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
             ServerQuestFile file = ServerQuestFile.getInstance();
             TeamData team = file.getTeamData(player).orElseThrow(() -> new AgentException(AgentFailure.NOT_AUTHORIZED));
-            Quest quest = FtbQuestAccess.selected(file, team, input.questId(), revision);
+            Quest quest = selected(file, team, input.questId(), revision);
             if (quest == null || !FtbQuestReader.active(team, quest) || team.isProgressionPaused(player))
                 throw new AgentException(AgentFailure.QUEST_UNAVAILABLE);
             if (input.checkmarkOnly() && !FtbQuestReader.canComplete(player, team, quest))
@@ -118,21 +106,20 @@ final class FtbQuestProvider implements QuestProvider.Submission, QuestProvider.
                     .filter(task -> !input.checkmarkOnly() || task.getClass() == CheckmarkTask.class).toList();
             if (tasks.isEmpty()) throw new AgentException(AgentFailure.NO_SUBMITTABLE_TASK);
             List<Long> before = tasks.stream().map(team::getProgress).toList();
-            Quest target = quest;
-            int completions = team.getCompletionCount(target);
+            int completions = team.getCompletionCount(quest);
             file.withPlayerContext(player, () -> {
                 for (Task task : tasks) {
                     // Auto-claimed repeatable quests may reset immediately; one command never enters the next cycle.
-                    if (team.isCompleted(target) || team.getCompletionCount(target) != completions || team.isLocked()
-                            || !team.canStartTasks(target) || team.isProgressionPaused(player)) break;
+                    if (team.isCompleted(quest) || team.getCompletionCount(quest) != completions || team.isLocked()
+                            || !team.canStartTasks(quest) || team.isProgressionPaused(player)) break;
                     if (FtbQuestReader.pendingSubmission(team, task)) task.submitTask(team, player);
                 }
             });
-            boolean changed = !before.equals(tasks.stream().map(team::getProgress).toList()) || team.getCompletionCount(target) != completions;
-            boolean completed = team.isCompleted(quest) || team.getCompletionCount(target) != completions;
+            boolean changed = !before.equals(tasks.stream().map(team::getProgress).toList()) || team.getCompletionCount(quest) != completions;
+            boolean completed = team.isCompleted(quest) || team.getCompletionCount(quest) != completions;
             if (completed) this.access.notifications.submitted(player, file, team, quest);
-            return new QuestSubmitOutput(FtbQuestAccess.key(quest.getId()), FtbQuestText.title(player, quest), tasks.stream()
-                    .map(task -> FtbQuestAccess.task(player, team, task)).toList(), changed, completed, SOURCE);
+            return new QuestSubmitOutput(key(quest.getId()), FtbQuestText.title(player, quest), tasks.stream()
+                    .map(task -> task(player, team, task)).toList(), changed, completed, SOURCE);
         });
     }
 

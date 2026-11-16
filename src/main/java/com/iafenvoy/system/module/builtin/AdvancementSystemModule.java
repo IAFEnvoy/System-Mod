@@ -30,7 +30,7 @@ public final class AdvancementSystemModule implements WorkflowModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new AdvancementFollowupModule(context.get(ContextTypes.CATALOGS), new FeatureUnlockTool().tool(), new RewardCreditTool().tool()));
+        return List.of(new AdvancementFollowupModule(new FeatureUnlockTool().tool(), new RewardCreditTool(context.get(ContextTypes.CATALOGS)).tool()));
     }
 
     @Override

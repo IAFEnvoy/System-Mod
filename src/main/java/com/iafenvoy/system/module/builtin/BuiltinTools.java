@@ -11,6 +11,12 @@ import java.util.List;
  * Stable typed keys shared by workflows and platform implementations; no game classes are referenced.
  */
 public final class BuiltinTools {
+    public static final ToolRegistry.Type<AnchorListInput, AnchorListOutput> ANCHOR_LIST = new ToolRegistry.Type<>("anchor.list", AnchorListInput.CODEC, AnchorListOutput.CODEC.codec());
+    public static final ToolRegistry.Type<AnchorSaveInput, AnchorListOutput> ANCHOR_SAVE = new ToolRegistry.Type<>("anchor.save", AnchorSaveInput.CODEC, AnchorListOutput.CODEC.codec());
+    public static final ToolRegistry.Type<AnchorDeleteInput, AnchorListOutput> ANCHOR_DELETE = new ToolRegistry.Type<>("anchor.delete", AnchorDeleteInput.CODEC, AnchorListOutput.CODEC.codec());
+    public static final ToolRegistry.Type<AnchorTeleportInput, AnchorListOutput> ANCHOR_TELEPORT = new ToolRegistry.Type<>("anchor.teleport", AnchorTeleportInput.CODEC, AnchorListOutput.CODEC.codec());
+    public static final ToolRegistry.Type<SpaceInput, SpaceOutput> SPACE_QUERY = new ToolRegistry.Type<>("space.query", SpaceInput.CODEC, SpaceOutput.CODEC.codec());
+    public static final ToolRegistry.Type<SpaceTakeInput, SpaceOutput> SPACE_TAKE = new ToolRegistry.Type<>("space.take", SpaceTakeInput.CODEC, SpaceOutput.CODEC.codec());
     public static final ToolRegistry.Type<BalanceInput, WalletOutput> BALANCE = new ToolRegistry.Type<>("economy.balance", BalanceInput.CODEC, WalletOutput.CODEC.codec());
     public static final ToolRegistry.Type<ItemInspectInput, ItemInspectionOutput> ITEM_INSPECT = new ToolRegistry.Type<>("game.item_inspect", ItemInspectInput.CODEC, ItemInspectionOutput.CODEC.codec());
     public static final ToolRegistry.Type<RepairQuoteInput, RepairQuoteOutput> REPAIR_QUOTE = new ToolRegistry.Type<>("game.repair.quote", RepairQuoteInput.CODEC, RepairQuoteOutput.CODEC.codec());

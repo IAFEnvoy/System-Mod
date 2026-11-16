@@ -1,11 +1,6 @@
 package com.iafenvoy.system.data.prompt;
 
-import java.util.LinkedHashMap;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Immutable per-server prompt catalog; executions retain one revision across resource reloads.

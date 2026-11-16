@@ -12,7 +12,9 @@ import net.minecraft.util.ExtraCodecs;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Whole units stay exact; removed definitions do not delete their saved balances. */
+/**
+ * Whole units stay exact; removed definitions do not delete their saved balances.
+ */
 public final class WalletDataStorage extends DataStorage {
     public static final MapCodec<WalletDataStorage> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.unboundedMap(Identifier.CODEC, ExtraCodecs.NON_NEGATIVE_LONG).optionalFieldOf("balances", Map.of())

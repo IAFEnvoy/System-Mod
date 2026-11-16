@@ -24,8 +24,8 @@ public final class BalanceModule extends AbstractAgentModule<BalanceInput> {
         return ModuleRouting.<BalanceInput>defaults().button(_ -> BalanceInput.INSTANCE)
                 .command(AgentCommand.literal(BalanceInput.INSTANCE, "balance", "wallet", "余额", "钱包"))
                 .semantic(RoutingProfile.read(_ -> BalanceInput.INSTANCE,
-                        List.of("查看我的系统币余额", "我还有多少系统币", "打开我的钱包"),
-                        List.of("Check my balance", "How many system coins do I have", "Show my wallet"))
+                                List.of("查看我的系统币余额", "我还有多少系统币", "打开我的钱包"),
+                                List.of("Check my balance", "How many system coins do I have", "Show my wallet"))
                         .choice("system.ui.nav_economy"));
     }
 

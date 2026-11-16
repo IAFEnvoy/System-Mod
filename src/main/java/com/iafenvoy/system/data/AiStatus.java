@@ -1,7 +1,7 @@
 package com.iafenvoy.system.data;
 
-import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.chat.AiAccess;
+import com.iafenvoy.system.agent.chat.ConversationMode;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -9,7 +9,8 @@ import net.minecraft.network.codec.StreamCodec;
 /**
  * Only the receiving player's effective permissions are exposed; preferences stay independently editable.
  */
-public record AiStatus(ConversationMode mode, ConversationMode maxMode, boolean allowAi, boolean allowFreeChat, int modelCallsPerDay, boolean modelConfigured) {
+public record AiStatus(ConversationMode mode, ConversationMode maxMode, boolean allowAi, boolean allowFreeChat,
+                       int modelCallsPerDay, boolean modelConfigured) {
     public static final AiStatus EMPTY = new AiStatus(ConversationMode.STANDARD, ConversationMode.OFFLINE, false, false, 0, false);
     public static final StreamCodec<ByteBuf, AiStatus> STREAM_CODEC = StreamCodec.composite(
             ConversationMode.STREAM_CODEC, AiStatus::mode,

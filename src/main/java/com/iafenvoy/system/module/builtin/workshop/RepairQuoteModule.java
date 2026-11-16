@@ -24,8 +24,8 @@ public final class RepairQuoteModule extends AbstractAgentModule<RepairQuoteInpu
         return ModuleRouting.<RepairQuoteInput>defaults().button(_ -> RepairQuoteInput.INSTANCE)
                 .command(AgentCommand.literal(RepairQuoteInput.INSTANCE, "repair", "维修"))
                 .semantic(RoutingProfile.read(_ -> RepairQuoteInput.INSTANCE,
-                        List.of("维修手中的装备", "帮我修一下主手工具", "看看维修这个装备需要什么"),
-                        List.of("Repair my held equipment", "Fix my main-hand tool", "How much does repairing this cost?"))
+                                List.of("维修手中的装备", "帮我修一下主手工具", "看看维修这个装备需要什么"),
+                                List.of("Repair my held equipment", "Fix my main-hand tool", "How much does repairing this cost?"))
                         .choice("system.action.repair_quote"));
     }
 

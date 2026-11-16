@@ -68,7 +68,8 @@ public final class TokenUsageScreen extends AssistantPageScreen {
     private record Metric(String key, ToLongFunction<DisplayUsage> value) {
         private String format(DisplayUsage usage) {
             long value = this.value.applyAsLong(usage);
-            if (this.key.equals("recognitionSeconds")) return BigDecimal.valueOf(value, 3).stripTrailingZeros().toPlainString();
+            if (this.key.equals("recognitionSeconds"))
+                return BigDecimal.valueOf(value, 3).stripTrailingZeros().toPlainString();
             return this.key.endsWith("Cost") ? "¥" + BigDecimal.valueOf(value, 9).stripTrailingZeros().toPlainString() : number(value);
         }
     }

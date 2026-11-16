@@ -301,7 +301,8 @@ public final class AssistantSettingsScreen extends AssistantInputScreen {
             display(document.getElementById(id), deepseekTts ? "none" : "");
         Element voiceInput = document.getElementById("speech_voice");
         String voiceHint = deepseekTts ? "stella / tide" : "Cherry";
-        if (!voiceHint.equals(voiceInput.getAttribute("placeholder"))) voiceInput.setAttribute("placeholder", voiceHint);
+        if (!voiceHint.equals(voiceInput.getAttribute("placeholder")))
+            voiceInput.setAttribute("placeholder", voiceHint);
         display(document.getElementById("speech_deepseek_hint"), deepseekTts ? "block" : "none");
         boolean deepseekAsr = this.asrForm.provider().equals("deepseek");
         display(document.getElementById("asr_region"), deepseekAsr ? "none" : "inline-block");

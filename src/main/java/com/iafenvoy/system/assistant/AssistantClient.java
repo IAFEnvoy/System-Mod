@@ -4,11 +4,7 @@ import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.module.AgentAction;
-import com.iafenvoy.system.agent.request.AgentRequest;
-import com.iafenvoy.system.agent.request.ChatRequest;
-import com.iafenvoy.system.agent.request.ControlRequest;
-import com.iafenvoy.system.agent.request.InvokeRequest;
-import com.iafenvoy.system.agent.request.PreferencesRequest;
+import com.iafenvoy.system.agent.request.*;
 import com.iafenvoy.system.command.client.AssistantClientCommands;
 import com.iafenvoy.system.config.file.ClientConfig;
 import com.iafenvoy.system.data.ClientState;
@@ -17,6 +13,8 @@ import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.card.CardReference;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.client.ClientCards;
+import com.iafenvoy.system.data.input.SpaceTakeInput;
+import com.iafenvoy.system.data.output.SpaceOutput;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
 import com.iafenvoy.system.registry.SystemResourceKeys;
@@ -99,8 +97,14 @@ public final class AssistantClient {
             return true;
         }
         // Explicit UI commands remain local in free mode; ordinary text still goes directly to the agent.
-        if ((state.mode() != ConversationMode.FREE || text.stripLeading().startsWith("/")) && AssistantClientCommands.execute(text))
-            return true;
+        if (state.mode() != ConversationMode.FREE || text.stripLeading().startsWith("/")) {
+            SpaceTakeInput take = ClientModuleCaches.SPACE.resolve(text);
+            if (take != null) {
+                send(take, text.strip());
+                return true;
+            }
+            if (AssistantClientCommands.execute(text)) return true;
+        }
         send(new ChatRequest(text.strip()));
         return true;
     }
@@ -164,6 +168,8 @@ public final class AssistantClient {
             screen.stopRecognition();
         }
         List<CardUpdate> updates = result.cards().stream().filter(card -> ClientCards.apply(card, false)).toList();
+        updates.stream().flatMap(card -> card.data().stream()).filter(SpaceOutput.class::isInstance)
+                .map(SpaceOutput.class::cast).forEach(ClientModuleCaches.SPACE::receive);
         updates.forEach(EmotionHudState::receive);
         AgentResult accepted = result.withPresentation(result.messageKey(), result.text(), updates, result.silent());
         state = state.receive(requestId, accepted, notification, select);
@@ -241,6 +247,7 @@ public final class AssistantClient {
         AssistantCardDisplay.unmount();
         ClientCards.clear();
         ClientModuleCaches.DISPLAY_CARDS.clear();
+        ClientModuleCaches.SPACE.clear();
         state = AssistantClientState.EMPTY;
         revision++;
     }

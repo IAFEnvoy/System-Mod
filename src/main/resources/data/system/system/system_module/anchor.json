@@ -1,0 +1,13 @@
+{
+  "order": 35,
+  "icon": {
+    "id": "minecraft:lodestone"
+  },
+  "server": {
+    "type": "system:anchor",
+    "limit": "min(12, 3 + floor(caster_level / 10))",
+    "cooldown": 10,
+    "cross_dimension": true
+  },
+  "client": "system:anchor"
+}

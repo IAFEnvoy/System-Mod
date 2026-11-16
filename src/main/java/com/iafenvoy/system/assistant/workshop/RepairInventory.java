@@ -5,7 +5,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.NonNull;
 
-/** Costs see the live inventory except the stack being repaired; it can never pay for its own repair. */
+/**
+ * Costs see the live inventory except the stack being repaired; it can never pay for its own repair.
+ */
 record RepairInventory(Container inventory, int excluded) implements Container {
     @Override
     public int getContainerSize() {

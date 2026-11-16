@@ -49,7 +49,8 @@ public final class ServerCards {
     public static synchronized Ticket begin(UUID player, CardReference source) {
         Map<UUID, Version> cards = PLAYERS.get(player);
         Version version = cards == null ? null : cards.get(source.id());
-        if (version == null || version.issued != source.revision()) throw new AgentException(AgentFailure.STALE_REFERENCE);
+        if (version == null || version.issued != source.revision())
+            throw new AgentException(AgentFailure.STALE_REFERENCE);
         return new Ticket(player, source, ++version.reserved, version);
     }
 

@@ -57,7 +57,9 @@ public enum ConversationMode implements StringRepresentable, ConversationStrateg
         return this == EXTENDED || this == FREE;
     }
 
-    /** Declaration order is the permission hierarchy, from local-only to full agent execution. */
+    /**
+     * Declaration order is the permission hierarchy, from local-only to full agent execution.
+     */
     public ConversationMode atMost(ConversationMode maximum) {
         return this.compareTo(maximum) <= 0 ? this : maximum;
     }

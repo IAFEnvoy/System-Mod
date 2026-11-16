@@ -24,7 +24,9 @@ import java.util.UUID;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Game-thread quote lifetime; the agent journal persists write intent before a confirmation reaches this service. */
+/**
+ * Game-thread quote lifetime; the agent journal persists write intent before a confirmation reaches this service.
+ */
 public final class Workshop implements PlayerModule {
     private final AgentEngine engine;
     private final MinecraftTools game;

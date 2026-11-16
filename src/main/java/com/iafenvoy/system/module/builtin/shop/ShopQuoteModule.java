@@ -17,8 +17,8 @@ import com.iafenvoy.system.data.catalog.ShopOfferEntry;
 import com.iafenvoy.system.data.input.CommercePreviewInput;
 import com.iafenvoy.system.data.input.ShopQuoteInput;
 import com.iafenvoy.system.data.output.CommercePreviewOutput;
-import com.iafenvoy.system.data.output.ShopQuoteOutput;
 import com.iafenvoy.system.data.output.ShopOfferOutput;
+import com.iafenvoy.system.data.output.ShopQuoteOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
@@ -49,7 +49,7 @@ public final class ShopQuoteModule extends AbstractAgentModule<ShopQuoteInput> {
 
     @Override
     public AgentResult execute(ExecutionContext context, ShopQuoteInput input) throws Exception {
-        CommerceCatalog catalog = this.catalogs.available(context.player());
+        CommerceCatalog catalog = this.catalogs.view(context).catalog();
         if (!input.catalogRevision().orElse(catalog.revision()).equals(catalog.revision()))
             throw new AgentException(AgentFailure.STALE_QUOTE);
         Identifier id = input.offerId();
@@ -57,10 +57,10 @@ public final class ShopQuoteModule extends AbstractAgentModule<ShopQuoteInput> {
                 .orElseThrow(() -> new AgentException(AgentFailure.STALE_QUOTE));
         CommercePreviewOutput price = context.tool(BuiltinTools.COMMERCE_PREVIEW, "quote",
                 new CommercePreviewInput(List.of(id), List.of(), true, catalog.revision())).getFirst();
-        if (price.purchaseLimit().filter(limit -> !limit.available()).isPresent())
-            return AgentResult.data("system.result.shop_offer", new ShopOfferOutput(id, offer.value().label(), offer.value().items(),
-                    price.price(), false, catalog.revision(), price.purchaseLimit()));
+        if (!price.conditionMet() || price.purchaseLimit().filter(limit -> !limit.available()).isPresent())
+            return AgentResult.data("system.result.shop_offer", new ShopOfferOutput(id, offer.value().label(), offer.value().items(), offer.value().contents(),
+                    price.price(), false, catalog.revision(), price.purchaseLimit(), price.conditionMet()));
         if (!price.available()) throw new AgentException(AgentFailure.INVALID_COST);
-        return AgentResult.data("system.result.shop_confirm", new ShopQuoteOutput(price.quoteRef().orElseThrow(), offer.value().label(), offer.value().items(), price.price(), price.purchaseLimit()));
+        return AgentResult.data("system.result.shop_confirm", new ShopQuoteOutput(price.quoteRef().orElseThrow(), offer.value().label(), offer.value().items(), offer.value().contents(), price.price(), price.purchaseLimit()));
     }
 }

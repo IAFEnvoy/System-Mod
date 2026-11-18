@@ -1,15 +1,13 @@
 package com.iafenvoy.system.data.catalog;
 
+import com.iafenvoy.system.assistant.calendar.BusinessCalendar;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.StringRepresentable;
 import org.jspecify.annotations.NonNull;
 
-import java.time.DayOfWeek;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.temporal.TemporalAdjusters;
 import java.util.Locale;
 
 /**
@@ -28,10 +26,10 @@ public record ShopPurchaseLimit(int count, Period period) {
 
         public long start(long now, ZoneId zone) {
             if (this == LIFETIME) return Long.MIN_VALUE;
-            LocalDate day = Instant.ofEpochMilli(now).atZone(zone).toLocalDate();
+            LocalDate day = BusinessCalendar.date(now, zone);
             return (switch (this) {
-                case WEEKLY -> day.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-                case MONTHLY -> day.withDayOfMonth(1);
+                case WEEKLY -> BusinessCalendar.week(day);
+                case MONTHLY -> BusinessCalendar.month(day);
                 default -> day;
             }).atStartOfDay(zone).toInstant().toEpochMilli();
         }

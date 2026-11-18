@@ -9,10 +9,7 @@ import com.iafenvoy.system.assistant.tool.jobs.JobClaimTool;
 import com.iafenvoy.system.assistant.tool.jobs.JobStartTool;
 import com.iafenvoy.system.assistant.tool.jobs.OnlineJobsQueryTool;
 import com.iafenvoy.system.data.catalog.OnlineJobEntry;
-import com.iafenvoy.system.module.CatalogModule;
-import com.iafenvoy.system.module.ContextTypes;
-import com.iafenvoy.system.module.ModuleContext;
-import com.iafenvoy.system.module.ModuleStorage;
+import com.iafenvoy.system.module.*;
 import com.iafenvoy.system.module.builtin.jobs.JobCancelModule;
 import com.iafenvoy.system.module.builtin.jobs.JobClaimModule;
 import com.iafenvoy.system.module.builtin.jobs.JobStartModule;
@@ -25,6 +22,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 
 import java.util.List;
@@ -60,6 +58,16 @@ public record OnlineJobsSystemModule(
     @Override
     public List<ModuleStorage<?>> storages() {
         return List.of(STORAGE);
+    }
+
+    @Override
+    public PlayerModule runtime(ModuleContext context) {
+        return new PlayerModule() {
+            @Override
+            public Session login(ServerPlayer player) {
+                return data -> ModuleData.get(data, STORAGE).recover();
+            }
+        };
     }
 
     @Override

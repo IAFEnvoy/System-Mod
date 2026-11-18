@@ -1,0 +1,10 @@
+{
+  "order": 32,
+  "icon": {
+    "id": "minecraft:gold_ingot"
+  },
+  "server": {
+    "type": "system:achievement"
+  },
+  "client": "system:achievement"
+}

@@ -1,0 +1,11 @@
+{
+  "event": "system:quest_completed",
+  "source": "system:ftb_quests",
+  "frequency": "subject",
+  "reward": {
+    "label": "system.currency.quest_point",
+    "contents": [
+      { "content": { "type": "system:currency", "currency": "system:quest_point" }, "amount": 1 }
+    ]
+  }
+}

@@ -15,17 +15,17 @@ import java.util.List;
 
 public final class JobStartModule extends AbstractAgentModule<JobStartInput> {
     public JobStartModule(ToolRegistry.Tool<JobStartInput, OnlineJobsOutput> start) {
-        super(JobStartInput.CODEC, "Start one online job selected by the player.", List.of(start), true, false, ExecutionPolicy.quick(1, 1));
+        super(JobStartInput.CODEC, "Preview one online job and its frozen material costs. Only the player's confirmation can start it; never confirm on their behalf.", List.of(start), true, false, ExecutionPolicy.quick(1, 1));
     }
 
     @Override
     public ModuleRouting<JobStartInput> routing() {
-        return ModuleRouting.<JobStartInput>defaults().button(a -> new JobStartInput(a.identifier("job")))
+        return ModuleRouting.<JobStartInput>defaults().button(a -> new JobStartInput(a.identifier("job"), a.optional("quote")))
                 .command(AgentCommand.identifier("job", JobStartInput::new, "work", "开工"));
     }
 
     @Override
     public AgentResult execute(ExecutionContext context, JobStartInput input) throws Exception {
-        return AgentResult.data("system.result.job_started", context.tool(BuiltinTools.JOB_START, "start", input));
+        return AgentResult.data(input.quote().isPresent() ? "system.result.job_started" : "system.jobs.confirm_start", context.tool(BuiltinTools.JOB_START, "start", input));
     }
 }

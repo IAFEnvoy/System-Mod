@@ -2,25 +2,30 @@ package com.iafenvoy.system.module.client;
 
 import com.iafenvoy.system.data.input.SpaceTakeInput;
 import com.iafenvoy.system.data.output.SpaceOutput;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.locale.Language;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
 
-import java.util.*;
+import java.util.List;
+import java.util.Locale;
 
 /**
  * Client names are selectors only; the server rechecks ownership, contents and available quantities.
  */
 public final class SpaceSelectionCache {
     private long revision = -1;
+    private long itemRevision = -1;
     private List<SpaceOutput.Entry> entries = List.of();
-    private Language language;
-    private Map<String, List<String>> itemNames = Map.of();
+    private List<ItemStackTemplate> items = List.of();
 
     public void receive(SpaceOutput output) {
         if (output.revision() <= this.revision) return;
         this.revision = output.revision();
         this.entries = output.entries();
+        List<ItemStackTemplate> items = this.entries.stream().filter(entry -> !entry.blocked()).flatMap(entry -> entry.item().stream())
+                .map(item -> item.withCount(1)).distinct().toList();
+        if (this.itemRevision < 0 || !this.items.equals(items)) {
+            this.items = items;
+            this.itemRevision++;
+        }
     }
 
     public SpaceTakeInput resolve(String text) {
@@ -36,27 +41,15 @@ public final class SpaceSelectionCache {
             List<String> ids = matches.stream().map(SpaceOutput.Entry::searchId).distinct().toList();
             return ids.size() == 1 ? new SpaceTakeInput("", ids.getFirst(), input.amount(), input.stack(), false) : input;
         }
-        this.indexNames();
-        List<String> ids = this.itemNames.getOrDefault(query, List.of());
-        return ids.size() == 1 ? new SpaceTakeInput("", ids.getFirst(), input.amount(), input.stack(), false) : input;
+        return input;
     }
 
-    private void indexNames() {
-        Language current = Language.getInstance();
-        if (this.language == current) return;
-        Map<String, List<String>> names = new HashMap<>();
-        BuiltInRegistries.ITEM.forEach(item -> {
-            try {
-                String name = normalize(new ItemStack(item).getHoverName().getString());
-                if (!name.isBlank())
-                    names.computeIfAbsent(name, _ -> new ArrayList<>()).add(BuiltInRegistries.ITEM.getKey(item).toString());
-            } catch (RuntimeException ignored) {
-                // Broken modded item names cannot prevent withdrawal of other contents.
-            }
-        });
-        names.replaceAll((_, ids) -> List.copyOf(ids));
-        this.itemNames = Map.copyOf(names);
-        this.language = current;
+    public long itemRevision() {
+        return this.itemRevision;
+    }
+
+    public List<ItemStackTemplate> items() {
+        return this.items;
     }
 
     private static String normalize(String text) {
@@ -65,8 +58,8 @@ public final class SpaceSelectionCache {
 
     public void clear() {
         this.revision = -1;
+        this.itemRevision = -1;
         this.entries = List.of();
-        this.language = null;
-        this.itemNames = Map.of();
+        this.items = List.of();
     }
 }

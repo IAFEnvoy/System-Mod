@@ -3,9 +3,9 @@ package com.iafenvoy.system.data.store;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AgentAction;
+import com.iafenvoy.system.agent.module.ModuleScope;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.Identifier;
 
 import java.util.Optional;
 
@@ -13,7 +13,7 @@ public final class EventTask {
     public static final Codec<EventTask> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.optionalFieldOf("id").forGetter(v -> Optional.ofNullable(v.id)),
             Codec.STRING.optionalFieldOf("key").forGetter(v -> Optional.ofNullable(v.key)),
-            Identifier.CODEC.optionalFieldOf("owner").forGetter(v -> v.owner),
+            ModuleScope.CODEC.optionalFieldOf("owner", ModuleScope.Global.INSTANCE).forGetter(v -> v.scope),
             Codec.INT.optionalFieldOf("moduleVersion", 0).forGetter(v -> v.moduleVersion),
             AgentAction.CODEC.fieldOf("action").forGetter(v -> v.call),
             Codec.STRING.optionalFieldOf("ruleId", "").forGetter(v -> v.ruleId),
@@ -29,7 +29,7 @@ public final class EventTask {
             AgentResult.CODEC.optionalFieldOf("result").forGetter(v -> Optional.ofNullable(v.result))
     ).apply(i, EventTask::new));
     public String id, key, ruleId = "";
-    public Optional<Identifier> owner = Optional.empty();
+    public ModuleScope scope = ModuleScope.Global.INSTANCE;
     public int moduleVersion;
     public AgentAction call;
     public ExecutionPolicy policy;
@@ -41,12 +41,12 @@ public final class EventTask {
     public EventTask() {
     }
 
-    private EventTask(Optional<String> id, Optional<String> key, Optional<Identifier> owner, int moduleVersion, AgentAction call, String ruleId,
+    private EventTask(Optional<String> id, Optional<String> key, ModuleScope scope, int moduleVersion, AgentAction call, String ruleId,
                       Optional<ExecutionPolicy> policy, long created, long expires, State state, int modelCalls,
                       int toolCalls, int workflowSteps, int writeSteps, int tokens, Optional<AgentResult> result) {
         this.id = id.orElse(null);
         this.key = key.orElse(null);
-        this.owner = owner;
+        this.scope = scope;
         this.moduleVersion = moduleVersion;
         this.call = call;
         this.ruleId = ruleId;
@@ -79,7 +79,7 @@ public final class EventTask {
     }
 
     public EventTask copy() {
-        return new EventTask(Optional.ofNullable(this.id), Optional.ofNullable(this.key), this.owner, this.moduleVersion, this.call,
+        return new EventTask(Optional.ofNullable(this.id), Optional.ofNullable(this.key), this.scope, this.moduleVersion, this.call,
                 this.ruleId, Optional.ofNullable(this.policy), this.created, this.expires, this.state, this.modelCalls,
                 this.toolCalls, this.workflowSteps, this.writeSteps, this.tokens, Optional.ofNullable(this.result));
     }

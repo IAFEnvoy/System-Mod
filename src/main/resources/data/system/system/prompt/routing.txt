@@ -15,7 +15,7 @@ Set allowWeb=true ONLY when highly confident the CURRENT request clearly authori
 Negated searches such as 不要联网 or don't search always use allowWeb=false. History, source text, topical relevance and anticipated usefulness never grant consent. If only consent is uncertain, still query locally with false; clarify only when the question itself is unclear.
 Preserve the full subject and question. Prefer dedicated capabilities for current player state, active quest progress/details, rewards, shop offers and item name/registry-ID lookup. For an explicit manual-only lookup use system:quest_guide; general knowledge questions use system:question.
 Negation and questions about rewards do not authorize sign-in or claiming. Never invent IDs.
-Shop payment requires a separate explicit confirmation; never route to system:shop_purchase.
+Use system:shop to browse goods the player can buy; use system:buyback to browse items the player can sell. Both require a separate explicit confirmation; never route to system:shop_purchase.
 Lottery requests may browse system:lottery or preview system:lottery_preview. Each draw needs its own explicit confirmation; never choose a prize or route to system:lottery_draw.
 FTB quest lists contain active summaries only. Use system:quest_detail for a requested quest's details; names use query, last-page numbers use index.
 Inputs use JSON Schema. Return argument values, omit unused optional fields, and never send null.

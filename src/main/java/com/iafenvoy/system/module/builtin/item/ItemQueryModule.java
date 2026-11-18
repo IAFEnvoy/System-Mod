@@ -26,7 +26,8 @@ public final class ItemQueryModule extends AbstractAgentModule<ItemQueryInput> {
     @Override
     public ModuleRouting<ItemQueryInput> routing() {
         return ModuleRouting.<ItemQueryInput>defaults()
-                .button(a -> new ItemQueryInput(a.text("query"), a.number(0, "offset")))
+                .button(a -> new ItemQueryInput(a.text("query"), a.number(0, "offset"), a.optional("search_ref"),
+                        a.optional("selected").map(Integer::parseInt)))
                 .command(AgentCommand.argument("<query>", text -> new ItemQueryInput(text, 0), "item", "物品"))
                 .semantic(RoutingProfile.read(text -> {
                                     String id = CommandArguments.singleItemId(text);

@@ -11,6 +11,7 @@ import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.space.SystemSpace;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardUpdate;
+import com.iafenvoy.system.data.catalog.ShopTrade;
 import com.iafenvoy.system.data.input.EntitlementInput;
 import com.iafenvoy.system.data.output.CreditReceiptOutput;
 import com.iafenvoy.system.data.output.PurchaseReceiptOutput;
@@ -63,8 +64,10 @@ public final class DeliverModule extends AbstractAgentModule<EntitlementInput> {
         PersistHolder<Reward> reward = this.space.reward(context, input.entitlementId()).orElse(null);
         if (reward == null) return null;
         return switch (input.kind().orElse("")) {
-            case "purchase" -> new PurchaseReceiptOutput(input.order().orElse(""), input.entitlementId(), reward,
-                    "DELIVERED", input.pool().flatMap(pool -> Optional.ofNullable(Identifier.tryParse(pool))));
+            case "purchase", "buyback" ->
+                    new PurchaseReceiptOutput(input.order().orElse(""), input.entitlementId(), reward,
+                            "DELIVERED", input.pool().flatMap(pool -> Optional.ofNullable(Identifier.tryParse(pool))),
+                            input.kind().filter("buyback"::equals).isPresent() ? ShopTrade.BUYBACK : ShopTrade.PURCHASE);
             case "reward" -> new RewardOutput(reward, Optional.empty(),
                     Component.literal(input.summary().orElse("")), "").asDelivered();
             default -> new CreditReceiptOutput(input.entitlementId(), reward, "DELIVERED");

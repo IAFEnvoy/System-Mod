@@ -1,5 +1,6 @@
 package com.iafenvoy.system.assistant;
 
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.chat.ConversationMode;
@@ -14,7 +15,9 @@ import com.iafenvoy.system.data.card.CardReference;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.client.ClientCards;
 import com.iafenvoy.system.data.input.SpaceTakeInput;
+import com.iafenvoy.system.data.item.ItemSearchQuery;
 import com.iafenvoy.system.data.output.SpaceOutput;
+import com.iafenvoy.system.module.client.ClientItemSearch;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
 import com.iafenvoy.system.registry.SystemResourceKeys;
@@ -232,7 +235,18 @@ public final class AssistantClient {
         }
         state = state.requested(id, request, viewOwner(), notification);
         revision++;
-        connection.send(new AssistantRequestC2SPayload(id, request));
+        Optional<ItemSearchQuery> search = ClientItemSearch.query(request);
+        if (search.isEmpty()) connection.send(new AssistantRequestC2SPayload(id, request));
+        else ClientItemSearch.search(search.get()).whenComplete((batch, error) ->
+                Minecraft.getInstance().execute(() -> {
+                    if (Minecraft.getInstance().getConnection() != connection || !state.pending().containsKey(id))
+                        return;
+                    if (error != null) {
+                        SystemMod.LOGGER.warn("Client item search failed for query {}", search.get().query(), error);
+                        local(AgentResult.error(AgentFailure.INVALID_INPUT));
+                        complete(id);
+                    } else connection.send(new AssistantRequestC2SPayload(id, request, Optional.of(batch)));
+                }));
     }
 
     @SubscribeEvent
@@ -248,6 +262,7 @@ public final class AssistantClient {
         ClientCards.clear();
         ClientModuleCaches.DISPLAY_CARDS.clear();
         ClientModuleCaches.SPACE.clear();
+        ClientModuleCaches.ITEM_SEARCH.clear();
         state = AssistantClientState.EMPTY;
         revision++;
     }

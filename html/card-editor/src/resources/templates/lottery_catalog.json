@@ -5,6 +5,12 @@
       "translate": "system.ui.nav_lottery"
     },
     {
+      "type": "system:text",
+      "translate": "system.result.lottery_empty",
+      "when": "empty",
+      "style": "card_context"
+    },
+    {
       "type": "system:grid",
       "source": "{{pools}}",
       "children": [
@@ -88,12 +94,14 @@
       ],
       "columns": 6,
       "max_row": 3,
-      "cell": 104
+      "cell": 104,
+      "when": "pools"
     },
     {
       "type": "system:text",
       "text": "{{range}}",
-      "style": "card_context"
+      "style": "card_context",
+      "when": "pools"
     },
     {
       "type": "system:flex",

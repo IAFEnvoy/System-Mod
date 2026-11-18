@@ -1,6 +1,8 @@
 {
   "order": 45,
-  "icon": { "id": "minecraft:anvil" },
+  "icon": {
+    "id": "minecraft:anvil"
+  },
   "server": {
     "type": "system:workshop",
     "costs": [
@@ -9,8 +11,8 @@
         "currency": "system:coin",
         "amount": 1
       }
-    ]
+    ],
+    "salvage": "#system:equipment"
   },
   "client": "system:workshop"
 }
-

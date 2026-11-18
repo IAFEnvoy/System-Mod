@@ -1,0 +1,18 @@
+{
+  "label": "测试广场 / Test plaza",
+  "description": "测试公共目的地：实际传送仍校验落点安全。",
+  "dimension": "minecraft:overworld",
+  "position": [
+    0.5,
+    80,
+    0.5
+  ],
+  "costs": [
+    {
+      "type": "system:currency",
+      "currency": "system:coin",
+      "amount": 2
+    }
+  ],
+  "order": 10
+}

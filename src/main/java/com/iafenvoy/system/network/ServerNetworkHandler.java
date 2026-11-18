@@ -41,7 +41,7 @@ public final class ServerNetworkHandler {
             UUID.fromString(payload.id());
             AssistantServer runtime = AssistantServer.get(player.level().getServer());
             if (runtime == null) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
-            runtime.requests().request(player, payload.id(), payload.request());
+            runtime.requests().request(player, payload.id(), payload.request(), payload.search());
         } catch (RuntimeException e) {
             reply(player, payload.id(), AgentResult.error(AgentException.failure(e)));
         }

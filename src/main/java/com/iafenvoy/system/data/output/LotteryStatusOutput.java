@@ -45,7 +45,7 @@ public record LotteryStatusOutput(List<Integer> counts, int count, Optional<Shop
     }
 
     public List<Component> descriptions() {
-        ArrayList<Component> lines = new ArrayList<Component>();
+        ArrayList<Component> lines = new ArrayList<>();
         this.limit.ifPresent(limit -> lines.add(Component.translatable("system.lottery.limit",
                 Component.translatable("system.ui.shop_limit_period." + limit.period().getSerializedName()),
                 limit.count(), Math.max(0, limit.count() - this.used))));

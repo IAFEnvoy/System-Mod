@@ -15,10 +15,10 @@
 | --- | --- | --- |
 | `system:shop_offer` | `data/<namespace>/system/shop_offer/<path>.json` | 确认订单、实际扣款前 |
 | `system:lottery_pool` | `data/<namespace>/system/lottery_pool/<path>.json` | 确认抽取、实际扣款前 |
-| `system:signin_reward` | `data/<namespace>/system/signin_reward/<path>.json` | AI 选择候选前，以及选择结束、签到奖励入账前 |
+| `system:signin_reward` | `data/<namespace>/system/signin_reward/<path>.json` | AI / 本地选择候选前，以及选择结束、签到奖励入账前 |
 | `system:online_job` | `data/<namespace>/system/online_job/<path>.json` | 开始新作业前 |
 
-`enabled: false` 仍优先禁用条目；模块是否启用、模块的 ID / tag 可选项、限购和费用检查也继续生效。商品和奖池可以打开被执行条件锁定的详情，但操作按钮禁用；作业开始按钮禁用。签到状态展示当前可见候选及锁定提示，AI 只收到可执行候选；没有合格候选时不请求签到模型。
+`enabled: false` 仍优先禁用条目；模块是否启用、模块的 ID / tag 可选项、限购和费用检查也继续生效。商品和奖池可以打开被执行条件锁定的详情，但操作按钮禁用；作业开始按钮禁用。AI 签到状态展示当前可见候选及锁定提示，模型只收到可执行候选；没有合格候选时不请求签到模型。离线签到先去除被条件锁定的包，再按 Evaluate 价值筛选，状态仅展示最终可选包；没有候选时不入账，见[每日签到](sign-in.md)。
 
 成就规则的 `rewardId` 引用签到奖励注册表，因此新奖励入账也检查该奖励条目的条件，但不要求它属于玩家签到模块的 `rewards` 可选项。条件只限制奖励入账，不撤销同一成就规则独立执行的功能解锁。
 

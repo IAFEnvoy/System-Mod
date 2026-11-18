@@ -24,6 +24,7 @@ public final class SystemClientModules {
     public static final SettingsClientModule SETTINGS = local("settings", new SettingsClientModule());
     public static final SpeechClientModule SPEECH = local("speech", new SpeechClientModule());
     public static final AnchorSystemClientModule ANCHOR = register("anchor", new AnchorSystemClientModule());
+    public static final AchievementSystemClientModule ACHIEVEMENT = register("achievement", new AchievementSystemClientModule());
     public static final PlayerSystemClientModule PLAYER = register("player", new PlayerSystemClientModule());
     public static final ItemSystemClientModule ITEMS = register("items", new ItemSystemClientModule());
     public static final EconomySystemClientModule ECONOMY = register("economy", new EconomySystemClientModule());
@@ -35,6 +36,7 @@ public final class SystemClientModules {
     public static final LotterySystemClientModule LOTTERY = register("lottery", new LotterySystemClientModule());
     public static final QuestSystemClientModule FTB_QUESTS = register("ftb_quests", new QuestSystemClientModule());
     public static final SearchSystemClientModule SEARCH = register("web_search", new SearchSystemClientModule());
+    public static final CollectionSystemClientModule COLLECTION = register("collection", new CollectionSystemClientModule());
 
     private SystemClientModules() {
     }

@@ -6,9 +6,9 @@ import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.NonNull;
 
 /**
- * Costs see the live inventory except the stack being repaired; it can never pay for its own repair.
+ * Costs see the live inventory except the workshop target; the target can never pay for its own processing.
  */
-record RepairInventory(Container inventory, int excluded) implements Container {
+record WorkshopInventory(Container inventory, int excluded) implements Container {
     @Override
     public int getContainerSize() {
         return this.inventory.getContainerSize();

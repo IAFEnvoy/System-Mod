@@ -8,6 +8,7 @@ import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.catalog.CatalogAccess;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
+import com.iafenvoy.system.assistant.item.ItemSearches;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
@@ -64,6 +65,7 @@ public final class AssistantServer {
     private final AssistantUsage usage;
     private final ModuleManager moduleManager;
     private final CommerceTransactions commerce;
+    private final ItemSearches itemSearches;
     private final AssistantCardDisplays displays;
     private final GameTaskQueue gameQueue = new GameTaskQueue();
     private PromptReloadListener promptListener;
@@ -99,6 +101,7 @@ public final class AssistantServer {
             this.usage = new AssistantUsage(server, this.engine, search);
             this.refreshPrompts();
             MinecraftTools game = new MinecraftTools(server, this.gameQueue);
+            this.itemSearches = this.own(new ItemSearches(this.engine));
             CommerceCatalogs catalogs = new CommerceCatalogs(CommerceCatalog.create(server.registryAccess()), this.engine::moduleEnabled,
                     new CatalogAccess(game));
             this.commerce = new CommerceTransactions(this.engine, game, catalogs, new CommerceArchive(storageRoot.resolve("commerce")));
@@ -106,6 +109,7 @@ public final class AssistantServer {
             ModuleContext context = new ModuleContext(this.engine, server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE));
             context.put(ContextTypes.SEARCH, search);
             context.put(ContextTypes.GAME, game);
+            context.put(ContextTypes.ITEM_SEARCH, this.itemSearches);
             context.put(ContextTypes.COMMERCE, this.commerce);
             context.put(ContextTypes.CATALOGS, catalogs);
             context.put(ContextTypes.DATABASES, this.databases);
@@ -116,7 +120,7 @@ public final class AssistantServer {
             NeoForge.EVENT_BUS.post(new AssistantRegistrationEvent(this.engine));
             this.players = new AssistantPlayers(server, this.engine, this.moduleManager, this.usage);
             this.players.validateModules();
-            this.requests = new AssistantRequests(server, this.engine, this.players, this.moduleManager);
+            this.requests = new AssistantRequests(server, this.engine, this.players, this.moduleManager, this.itemSearches);
             this.moduleManager.onChange(this.requests::syncState);
             this.engine.start();
         } catch (Exception | LinkageError e) {
@@ -277,7 +281,10 @@ public final class AssistantServer {
         if (event.getEntity() instanceof ServerPlayer player) {
             ServerNetworkHandler.disconnected(player);
             AssistantServer runtime = get(player.level().getServer());
-            if (runtime != null) runtime.players.logout(player);
+            if (runtime != null) {
+                runtime.itemSearches.clear(player.getUUID());
+                runtime.players.logout(player);
+            }
         }
     }
 

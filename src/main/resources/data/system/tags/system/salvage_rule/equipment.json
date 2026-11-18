@@ -1,0 +1,30 @@
+{
+  "values": [
+    "system:iron_sword",
+    "system:iron_pickaxe",
+    "system:iron_axe",
+    "system:iron_shovel",
+    "system:iron_hoe",
+    "system:iron_helmet",
+    "system:iron_chestplate",
+    "system:iron_leggings",
+    "system:iron_boots",
+    "system:golden_sword",
+    "system:golden_pickaxe",
+    "system:golden_axe",
+    "system:golden_shovel",
+    "system:golden_hoe",
+    "system:golden_helmet",
+    "system:golden_chestplate",
+    "system:golden_leggings",
+    "system:golden_boots",
+    "system:diamond_sword",
+    "system:diamond_pickaxe",
+    "system:diamond_axe",
+    "system:diamond_hoe",
+    "system:diamond_helmet",
+    "system:diamond_chestplate",
+    "system:diamond_leggings",
+    "system:diamond_boots"
+  ]
+}

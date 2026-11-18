@@ -12,23 +12,31 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * One provider-neutral snapshot; no native content or authoritative balances return from the client.
  */
 public record SpaceOutput(long revision, List<Entry> entries, Component feedback) implements CardData {
-    public record Entry(String id, String searchId, Component name, IconReference icon, long amount, boolean blocked) {
+    public record Entry(String id, String searchId, Component name, IconReference icon, long amount, boolean blocked,
+                        Optional<ItemStackTemplate> item) {
         public static final Codec<Entry> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("id").forGetter(Entry::id),
                 Codec.STRING.fieldOf("searchId").forGetter(Entry::searchId),
                 ComponentSerialization.CODEC.fieldOf("name").forGetter(Entry::name),
                 IconReference.CODEC.fieldOf("icon").forGetter(Entry::icon),
                 Codec.LONG.fieldOf("amount").forGetter(Entry::amount),
-                Codec.BOOL.fieldOf("blocked").forGetter(Entry::blocked)
+                Codec.BOOL.fieldOf("blocked").forGetter(Entry::blocked),
+                ItemStackTemplate.CODEC.optionalFieldOf("item").forGetter(Entry::item)
         ).apply(i, Entry::new));
+
+        public Entry(String id, String searchId, Component name, IconReference icon, long amount, boolean blocked) {
+            this(id, searchId, name, icon, amount, blocked, Optional.empty());
+        }
     }
 
     public static final MapCodec<SpaceOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(

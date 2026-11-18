@@ -1,0 +1,12 @@
+{
+  "order": 60,
+  "icon": { "id": "minecraft:iron_ingot" },
+  "server": {
+    "type": "system:value_buyback",
+    "currency": "system:coin",
+    "value_per_currency": 1.0,
+    "price_multiplier": 0.5,
+    "hide_fixed": true
+  },
+  "client": "system:shop"
+}

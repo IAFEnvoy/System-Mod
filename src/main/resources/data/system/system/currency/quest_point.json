@@ -1,0 +1,6 @@
+{
+  "name": "system.currency.quest_point",
+  "description": "system.currency.quest_point.description",
+  "icon": "minecraft:experience_bottle",
+  "order": 90
+}

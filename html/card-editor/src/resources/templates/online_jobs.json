@@ -10,6 +10,27 @@
       "style": "card_context"
     },
     {
+      "type": "system:container",
+      "when": "quote",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{quote_label}}",
+          "style": "card_title_2"
+        },
+        {
+          "type": "system:text",
+          "translate": "system.jobs.cost_note",
+          "style": "card_context"
+        },
+        {
+          "type": "system:text",
+          "text": "{{quote_cost}}",
+          "style": "card_context"
+        }
+      ]
+    },
+    {
       "type": "system:flex",
       "direction": "column",
       "style": "card_column",
@@ -87,7 +108,7 @@
       "columns": 3,
       "compact_columns": 2,
       "max_row": 3,
-      "cell": 156,
+      "cell": 180,
       "unless": "busy",
       "children": [
         {
@@ -162,6 +183,11 @@
             {
               "type": "system:text",
               "text": "{{jobs.*.description}}",
+              "style": "card_context"
+            },
+            {
+              "type": "system:text",
+              "text": "{{jobs.*.cost}}",
               "style": "card_context"
             },
             {

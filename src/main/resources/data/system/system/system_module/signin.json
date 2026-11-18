@@ -3,7 +3,14 @@
   "icon": { "id": "minecraft:clock" },
   "server": {
     "type": "system:signin",
-    "rewards": "#system:default"
+    "rewards": "#system:default",
+    "rules": {
+      "milestones": [
+        { "id": "system:first_signin", "metric": "total", "target": 1, "reward": { "label": "system.signin.milestone.first", "contents": [{ "content": { "type": "system:currency", "currency": "system:coin" }, "amount": 1 }] } },
+        { "id": "system:seven_total", "metric": "total", "target": 7, "reward": { "label": "system.signin.milestone.seven_total", "contents": [{ "content": { "type": "system:currency", "currency": "system:coin" }, "amount": 5 }] } },
+        { "id": "system:seven_streak", "metric": "streak", "target": 7, "reward": { "label": "system.signin.milestone.seven_streak", "contents": [{ "content": { "type": "system:currency", "currency": "system:coin" }, "amount": 7 }] } }
+      ]
+    }
   },
   "client": "system:signin"
 }

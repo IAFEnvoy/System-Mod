@@ -52,6 +52,26 @@ public record AgentCommand(List<String> names, Function<String, LiteralArgumentB
     }
 
     /**
+     * Free-text selectors keep native completion for an optional trailing scope.
+     */
+    public static <I extends AgentAction> AgentCommand argumentWithScope(String argument, Collection<String> scopes,
+                                                                         Function<String, I> parser, String... names) {
+        return new AgentCommand(List.of(names), name -> LiteralArgumentBuilder.<AssistantCommandSource>literal(name)
+                .then(RequiredArgumentBuilder.<AssistantCommandSource, String>argument(argument, StringArgumentType.greedyString())
+                        .suggests((_, builder) -> {
+                            String remaining = builder.getRemaining();
+                            int space = remaining.lastIndexOf(' ');
+                            if (space > 0) {
+                                String prefix = remaining.substring(0, space + 1);
+                                String partial = remaining.substring(space + 1).toLowerCase(Locale.ROOT);
+                                scopes.stream().filter(scope -> scope.startsWith(partial)).forEach(scope -> builder.suggest(prefix + scope));
+                            }
+                            return builder.buildFuture();
+                        })
+                        .executes(context -> context.getSource().action(parser.apply(StringArgumentType.getString(context, argument).strip())))));
+    }
+
+    /**
      * An assistant-only registry ID with one optional trailing word, e.g. {@code /recipe minecraft:diamond loot}.
      * Omitting the second argument passes an empty string, which callers treat as the default scope.
      */

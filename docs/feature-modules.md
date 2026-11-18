@@ -30,7 +30,7 @@
 
 顶层 `order` 是客户端入口的显示优先级，越高越靠前，默认 0；缺失或格式错误时采用默认值。ClientModuleBindingsCache 在发布 Workspace 快照前统一降序排列，同值保持原有顺序；共用 client 实现的配置取最高 order，本地常驻入口读取同 ID 的定义。内置玩家信息为 100，排在其他内置模块之前。此字段不影响模块权限、初始化依赖或服务端工作流候选选择。
 
-顶层可选 `icon` 使用 Saturn `IconReference`，由 `SystemModule.icon()` 返回 `Optional<IconReference>`，缺失或解析失败时为空。字符串表示纹理 Identifier，例如 `"example:textures/gui/module.png"`；物品图标使用 ItemStackTemplate 对象，例如 `{"id":"minecraft:book"}`。字段随模块注册表同步，完整界面的左侧入口在名称前显示 20px 图标，复用 AUI 图片和原生物品渲染。多份配置合并为同一入口时，按 order 从高到低取第一个已配置的 icon；没有图标则保留文字入口。图标不单独接收鼠标事件，点击区域仍为整个按钮；右上角设置类入口保持文字。
+顶层可选 `icon` 使用 Saturn `IconReference`，由 `SystemModule.icon()` 返回 `Optional<IconReference>`，缺失或解析失败时为空。字符串表示纹理 Identifier，例如 `"example:textures/gui/module.png"`；物品图标使用 ItemStackTemplate 对象，例如 `{"id":"minecraft:book"}`。字段随模块注册表同步，完整界面的左侧入口在名称前显示 20px 图标，复用 AUI 图片和原生物品渲染。多份配置合并为同一入口时，按 order 从高到低取第一个已配置的 icon；没有图标则保留文字入口。同一客户端实现注册多个入口时，可用 `ClientModuleContext.workspace(page, navigation, icon, bind)` 为单个入口指定独立图标，优先于模块图标；物品收购使用漏斗图标，系统商城继续使用模块定义的图标。图标不单独接收鼠标事件，点击区域仍为整个按钮；右上角设置类入口保持文字。
 
 `server` 和 `client` 均可省略：纯服务端模块只写 server，纯客户端贡献只写 client。client 始终是 ID，不在服务端解码 ClientModule、客户端 Codec 或 UI 类。专用服务端只加载服务端模块类；原有 ClientHooks 已拆成相邻的客户端实现类。
 
@@ -41,12 +41,15 @@
 | `WorkflowModule` | 提供 `List<AgentModule<?>>`，包括成就等服务端事件工作流 |
 | `SharedModule extends WorkflowModule` | 额外提供公共平台 / 管理节点 `serverCommands(root)`；业务命令只走 AgentCommand，不继承 ClientModule |
 | `CoreModule extends SharedModule` | 基础设施；已安装的对应配置对绑定玩家始终启用且不可移除 |
-| `CatalogModule<T> extends SharedModule` | 声明目录注册表与可选 ID/tag；签到、商城、抽奖合并玩家目录权限，在线作业使用所选工作流配置 |
+| `CatalogModule<T> extends SharedModule` | 声明目录注册表与可选 ID/tag；签到、抽奖合并玩家目录权限，在线作业和收藏使用所选工作流配置 |
+| `MergeableModule<C>` | 通过规范 MergeType 提供类型化贡献，组运行时统一工作流、卡片和共享生命周期；固定商城已接入 |
 | `ClientModule` | 仅客户端的页面、系统输入框命令和本地卡片动作；不导出游戏指令 |
 
-类型由接口表达，`available()` 仅检查可选依赖。核心、绑定、用量实现 CoreModule，玩家、物品、签到、收件箱、商城、抽奖和任务实现 SharedModule，成就实现 WorkflowModule，搜索实现 ToolModule。聊天、设置、语音以及基础界面操作由客户端本地目录常驻，不依赖进入世界后的注册表同步。
+类型由接口表达，`available()` 仅检查可选依赖。核心、绑定、用量实现 CoreModule，玩家、物品、签到、收件箱、商城、抽奖和任务实现 SharedModule，累计成就总览实现 SharedModule，原版进度事件实现 WorkflowModule，搜索实现 ToolModule。聊天、设置、语音以及基础界面操作由客户端本地目录常驻，不依赖进入世界后的注册表同步。
 
 ## 服务端装配与指令
+
+商城底层同时支持固定收购：`shop_offer.trade` 为 `buyback`，物品费用是收购输入，奖励是收购报酬。客户端将购买和收购注册为两个独立页面与导航入口；服务端共用报价、确认、订单和系统空间交付，配置仍可分为不同 `system_module` 文件并单独授予。没有独立的收购注册表或复制的交易结算服务，见[固定收购](shop-buyback.md)。
 
 `ServerModule.CODEC` 通过静态类型注册表 `byNameCodec().dispatch("type", ServerModule::codec, codec -> codec)` 分派。无参数内置类型用 `MapCodec.unit(new ...())` 返回单例；签到、商城和抽奖是带 rewards / offers / pools 的不可变 record，使用 RecordCodecBuilder.mapCodec。动态注册表保存独立的 SystemModule 包装，不将同一单例重复注册为多个 MC 注册表值。
 
@@ -90,7 +93,15 @@ public static void moduleContext(ModuleContextEvent event) {
 
 不同配置可以提供相同动作 ID 的同类工作流。ModuleRegistry 按配置实例 ID 保存候选，命令/模型/语义目录只声明一次，执行时选择该玩家已启用的候选与对应工具。入口 Codec、工作流类型、版本、交互/事件属性、工具契约和只读权限必须一致；参数可影响执行和预算，不应让同一动作类型声明不同的路由契约。同一玩家同时启用多个候选时按模块实例 ID 排序选择第一个；数据包通常应让同类变体的条件互斥。流程选中后保留 owner，移除该配置会取消其在途和排队操作，不会中途换用另一份参数。
 
-三类目录的可选项另由 CatalogModule 声明，按玩家启用的同类配置取并集，不仅限于执行工作流时选中的第一份配置。对应注册表为 system:signin_reward、system:shop_offer、system:lottery_pool；字段支持 ID、tag 或混合数组，复用 Saturn keyOrTagList，省略为全表、空数组为空，内置模块显式使用对应 #system:default。`assistant.commerce.CommerceCatalogs.available(player)` 是统一的玩家目录入口，通过 ModuleContext 注入工作流和交易服务，列表、模型候选、状态、报价与扣款共用筛选。CommerceCatalogs 保存当前世界注册表的 `Holder<SystemModule>`，从同一引用取得配置 ID 和 CatalogModule 实现，不再另外维护 ID → 实现的 Map；相同实现的不同配置仍按各自 ID 检查玩家权限。详见[目录选项](datapacks.md#模块目录可选项)。
+签到、抽奖目录的可选项由 CatalogModule 声明，按玩家启用的同类配置取并集。固定商城改由 MergeableModule<ShopContribution> 提供选择，组运行时统一查询与交易入口。三者对应 system:signin_reward、system:shop_offer、system:lottery_pool；字段仍支持 ID、tag 或混合数组，省略为全表、空数组为空，内置定义显式使用对应 #system:default。`CommerceCatalogs.available(player)` 仍为统一的受限目录入口，列表、候选、状态、报价与扣款共用筛选。真实模块归属通过 Holder<SystemModule> 查表，不重复维护 ID → 实现的 Map。详见[目录选项](datapacks.md#模块目录可选项)。
+
+### 合并模块
+
+多个独立配置可实现 `MergeableModule<C>` 并返回同一个规范 `MergeType<C>`。ModuleManager 收集所有贡献后只创建一次 MergeRuntime，公共工具和工作流在显式 Group 作用域登记；原成员独有工作流仍可单独提供，不能与组入口重复声明动作 ID。原有普通配置变体机制保留，合并组不使用“第一个可用变体”的选择方式。
+
+每个真实成员保留自己的启用条件、存储和玩家会话，组共享存储先初始化成功，才发布成员可用性；首个成员启用时创建组会话，最后一个成员离开时关闭。MergeContext.enabled 每次查询玩家当前已就绪成员，require 按真实定义复核来源。调用成员工具使用 ExecutionContext.memberTool，共用原请求预算和回执。
+
+固定商城已接入 `ShopMergeRuntime.TYPE`，统一浏览 / 报价 / 购买与交易账本；同一固定商品 Holder 去重，限购不拆分。非固定库存可实现 ShopContribution 和 ShopOffer 接入同一业务视图，不需要伪造注册表条目；`system:value_shop` / `system:value_buyback` 已接入 Evaluate，分别按搜索提供 P90 限制的无限出售与无限收购；报价和付款按 ID 重新解析，详见[无限交易](value-commerce.md)。共用侧边栏仍填写相同 client ID，组会校验非空 client 一致性。完整契约和双定义示例见[模块合并](module-merging-design.md)。
 
 商店商品可在 `purchase_limit` 中配置累计 / 每日 / 每周 / 每月限购，规则属于商品而非模块实例。额度由 `CommerceDataStorage` 的持久化订单统计，预览只传只读快照，确认时与预留订单在同一玩家事务内再次校验；结果未知的付款继续占额，确定失败释放。详见[商品限购](datapacks.md#商品限购)。
 
@@ -108,9 +119,9 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
 
 ### 物品来源查询
 
-`system:items` 装配三个工作流：`system:item_query`（名称/ID 检索与物品信息）、`system:item_sources`（单个物品的来源）、`system:item_inspect`（主手实际物品鉴定，见[鉴定说明](item-inspection.md)）。物品检索命中单个物品时直接展示名称、图标、注册 ID 和堆叠上限，图标保留原版 tooltip；“查看获取方式”作为独立按钮继续查询。点击多结果网格中的物品会先打开这份物品信息，而非直接跳到来源；完整注册 ID 精确匹配一个条目，例如 `/item minecraft:diamond`，不混入钻石工具等包含相同前缀的结果。名称及不完整 ID 仍作子串搜索。
+`system:items` 装配三个工作流：`system:item_query`（客户端名称／tooltip／ID 检索与物品信息）、`system:item_sources`（单个物品的来源）、`system:item_inspect`（主手实际物品鉴定，见[鉴定说明](item-inspection.md)）。物品检索命中单个物品时直接展示名称、图标、注册 ID 和堆叠上限，图标保留原版 tooltip；“查看获取方式”作为独立按钮继续查询。点击多结果网格中的物品会先打开这份物品信息，而非直接跳到来源；完整注册 ID 只匹配该物品类型，例如 `/item minecraft:diamond` 不混入钻石工具；该类型的组件变体仍可分别出现。页面和 `/item` 从客户端原版 `SearchTree<ItemStack>` 收集完整堆叠，由服务端验证后返回；支持当前语言 tooltip 和 `#标签`，索引范围及信任边界见[客户端物品检索](item-search.md)。
 
-来源查询继续提供 `/recipe <物品ID> [范围]`、语义路由和物品详情中的按钮，不需要玩家重抄 ID；工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`。`ItemSourceOutput` 同时是工具结果与已注册的 CardData，工作流通过 `AgentResult.data` 发送卡片，不再把序列化 JSON 拼进消息正文。以下仅为工具快照的编码示例：
+来源查询提供 `/recipe <物品名称／tooltip／ID／#标签> [范围]`、语义路由和物品详情中的按钮，不需要玩家重抄 ID；名称查询复用客户端物品搜索，多个物品类型返回选择卡，继续搜索及选中后保留原范围。工具 ID 为 `game.item_sources`，输入是 `item_id` 加可选的 `scope`。`ItemSourceOutput` 同时是工具结果与已注册的 CardData，工作流通过 `AgentResult.data` 发送卡片，不再把序列化 JSON 拼进消息正文。以下仅为工具快照的编码示例：
 
 ```json
 {"item":"minecraft:iron_ingot","scope":"loot","sources":[
@@ -118,7 +129,7 @@ ToolRegistry 保存按模块实例区分的处理器。工作流工具使用当�
    "outputs":[{"items":["minecraft:iron_ingot"],"count":1}],"notes":["weight 1"]}],"truncated":false}
 ```
 
-多结果物品检索卡片复用商城的 `grid`、`offer_cell_content` 和 `CardPagination`：图标与名称居中，注册 ID、堆叠上限仍保留在网格图标的原版 tooltip 附加信息里。默认完整模式 6 列、最多 3 行，单页按内容收缩；本地翻页仅创建当前页 DOM。服务端仍分批读取最多 20 个匹配项，未读完时单独显示「更多物品」，继续使用原查询和偏移请求下一批，与本地上 / 下页区分。每项操作先于批次操作加入按钮表，保留原始索引；通知中的「列表 → 信息 → 获取方式」均使用 PUSH 并支持返回，简约模式可按物品名称 / 编号选择；空结果显示本地化提示。单个物品信息复用 `items` 模板与现有服务端快照，通过 `single_item` 切换布局，不额外创建工作流或查询配方。
+多结果物品检索卡片复用商城的 `grid`、`offer_cell_content` 和 `CardPagination`：图标与名称居中，注册 ID、堆叠上限仍保留在网格图标的原版 tooltip 附加信息里。默认完整模式 6 列、最多 3 行，单页按内容收缩；本地翻页仅创建当前页 DOM。客户端每批提交最多 32 个带组件候选；没有客户端附件的服务端工具请求仍按名称／ID 返回最多 20 项。未读完时单独显示「更多物品」，使用原查询和偏移收集下一批，与本地上 / 下页区分。点击某个候选通过玩家专属引用和批内索引保留原组件。每项操作先于批次操作加入按钮表，保留原始索引；通知中的「列表 → 信息 → 获取方式」均使用 PUSH 并支持返回，简约模式可按物品名称 / 编号选择；空结果显示本地化提示。单个物品信息复用 `items` 模板与现有服务端快照，通过 `single_item` 切换布局，不额外创建工作流或查询配方。
 
 `scope` 缺省为 `all`，即完整查询，跑所有已注册来源；也可以只写某个来源的路径（`recipe`、`loot`、`tag`）或它的完整 ID（`system:recipe`）。范围由 `ItemSourceProviders` 在装配时枚举，新增 Provider 后自动出现在补全里；未注册的范围会被拒绝（`INVALID_INPUT`），不会静默返回空列表。命令行写作 `/recipe minecraft:diamond loot`，省略第二个词即为完整查询；语义路由只在请求里出现「掉落 / 战利品 / 配方 / 合成 / 标签」这类关键词时收窄到对应范围，其余情况保持完整查询。语义路由优先取请求里的显式注册 ID（`CommandArguments.singleItemId`），没有 ID 时再用 `ItemNameIndex` 在本地显示名表里做最长匹配（「如何获取钻石镐」→ `minecraft:diamond_pickaxe`，更长的名字优先于更短的前缀词）；该表在服务器启动装配 `system:items` 时构建一次，名称取自服务端语言，专用服务端只用服务端资源，中文名可能匹配不到，此时退回模型路由。
 
@@ -190,3 +201,17 @@ system 和 system_module 都是原生数据包注册表，在世界加载时读�
 ## 通用任务来源
 
 任务工作流通过 `assistant.quest.QuestProvider` 接入，使用 `QuestWorkflows.install(context, provider)` 装配。通用层汇总玩家已启用来源、按来源分派不透明 ID 和领奖引用、维护统一编号与常驻卡片来源；可提交、可领奖、说明书、礼包、跟踪和播报分别由二级接口声明。FTBQ 是其中一个实现，公共工具已改为 `quest.*`，模块定义 `system:ftb_quests` 保留。接入流程、失效校验和来源展示见[通用任务接口](quests.md)。
+
+## 收藏与共用进度服务
+
+`CollectionSystemModule` / `CollectionSystemClientModule` 提供独立图鉴入口。服务端 `Collections` 读取所选配置允许的系列，主线程核对当前背包实物与条件，存储线程在一次玩家事务中保存登记、事实和里程碑。条目谓词不传客户端，登记不消耗物品。列表和详情有界分页，详情显示永久登记进度和实际领奖状态，见[收藏图鉴](collections.md)。
+
+核心模块持有 `CoreSystemModule.FACTS`，通过受生命周期管理的共享 `PlayerFacts` 接收 `PlayerFactEvent`。签到／图鉴直接在本身的事务内写事实；可选 FTBQ 桥接普通任务的真实完成，并在重连／任务重载后核对权威完成历史。只读 `progress.records` 和写入 `progress.claim` 工具对应系统界面内 `/records`、`/record_claim`，客户端或模型不能创建事实。去重、奖励快照及空间入库标记见[进度奖励](progress-rewards.md)。
+
+## 工坊分解
+
+工坊沿用 `system:workshop`，增加 `salvage` ID／tag／混合数组选择服务端 `system:salvage_rule`。省略字段保持旧配置仅维修的行为。`Salvage` 通过共享 PlayerModule 持有临时报价及结算重试，`WorkshopDataStorage` 保存独立订单，AgentEngine 不持有分解业务字段。卡片、数量公式和保护／核对流程见[装备分解](salvage.md)。
+
+## 累计成就总览
+
+`AchievementSystemModule` / `AchievementSystemClientModule` 提供 `system:achievement` 的双端入口。装配层仅连接工作流，查询和系列统计放在 `assistant.progress.Achievements`，事实采集与阈值授予复用 `PlayerFacts` / `FactDataStorage`。定义、进度和领奖边界见[成就总览](achievements.md)。

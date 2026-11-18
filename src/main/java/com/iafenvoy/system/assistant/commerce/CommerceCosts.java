@@ -8,6 +8,8 @@ import com.iafenvoy.saturn.runtime.resulting.failures.CostFailure;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
+import com.iafenvoy.system.data.catalog.ShopOffer;
+import com.iafenvoy.system.data.catalog.ShopTrade;
 import com.iafenvoy.system.data.output.ItemPreviewOutput;
 import com.iafenvoy.system.data.store.PurchaseType;
 import com.mojang.serialization.MapCodec;
@@ -25,6 +27,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public final class CommerceCosts {
     private CommerceCosts() {
+    }
+
+    public static Prepared prepare(ShopOffer offer, ServerPlayer player) {
+        return prepare(offer, player, 1);
+    }
+
+    public static Prepared prepare(ShopOffer offer, ServerPlayer player, int count) {
+        Prepared payment = prepare(offer.value().costs(), player, PurchaseType.SHOP, offer.id(), count);
+        if (offer.value().trade() != ShopTrade.BUYBACK || offer.stockItem().isEmpty()) return payment;
+        List<Component> descriptions = new ArrayList<>();
+        payment.failure().ifPresent(failure -> descriptions.add(failure.message()));
+        CommerceCatalog.Price display = new CommerceCatalog.Price(List.of(new ItemPreviewOutput(offer.stockItem().orElseThrow(), Long.toString((long) offer.stockItem().orElseThrow().count() * count))), descriptions);
+        return new Prepared(payment.payer, payment.bill, display, payment.failure, payment.started, payment.uncertain);
     }
 
     public static Prepared prepare(List<Cost> costs, ServerPlayer player, PurchaseType type, Identifier source) {
@@ -120,6 +135,13 @@ public final class CommerceCosts {
 
         public boolean isFailure() {
             return this.failure.isPresent();
+        }
+
+        /**
+         * Game-thread preview only; confirmation still tests the frozen bill again before collection.
+         */
+        public boolean payable() {
+            return this.isSuccess() && this.bill.test().isEmpty();
         }
 
         public void pay(ServerPlayer player, AtomicBoolean touched) {

@@ -33,11 +33,11 @@ public final class ItemSystemModule implements SharedModule {
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> items = context.tool(BuiltinTools.ITEMS, () -> new ItemQueryTool(context.get(ContextTypes.GAME)).tool());
+        ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> items = context.tool(BuiltinTools.ITEMS, () -> new ItemQueryTool(context.get(ContextTypes.GAME), context.get(ContextTypes.ITEM_SEARCH)).tool());
         ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput> sources = context.tool(BuiltinTools.ITEM_SOURCES, () -> new ItemSourceQueryTool(context.get(ContextTypes.GAME)).tool());
         // Built once on the server thread: local intent parsing needs display names without touching the game thread.
         ItemNameIndex names = ItemNameIndex.build();
-        return List.of(new ItemQueryModule(items), new ItemSourceQueryModule(sources, names),
+        return List.of(new ItemQueryModule(items), new ItemSourceQueryModule(sources, items, names),
                 new ItemInspectModule(context.tool(BuiltinTools.ITEM_INSPECT, () -> new ItemInspectTool(context.get(ContextTypes.GAME)).tool())));
     }
 }

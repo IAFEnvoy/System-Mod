@@ -59,6 +59,10 @@ public final class ModuleContext {
         return new ModuleContext(this.engine, this.modules, this.services, id, this.sharedRuntimes);
     }
 
+    ModuleContext forGroup() {
+        return new ModuleContext(this.engine, this.modules, this.services, null, this.sharedRuntimes);
+    }
+
     /**
      * Configured definitions may share a server-local runtime; ModuleManager owns its tick and close exactly once.
      */

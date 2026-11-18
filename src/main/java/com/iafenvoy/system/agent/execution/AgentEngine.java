@@ -14,6 +14,7 @@ import com.iafenvoy.system.agent.model.ModelGateway;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.module.AgentModule;
 import com.iafenvoy.system.agent.module.ModuleRegistry;
+import com.iafenvoy.system.agent.module.ModuleScope;
 import com.iafenvoy.system.agent.routing.HybridRouter;
 import com.iafenvoy.system.agent.routing.RouteSource;
 import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
@@ -289,6 +290,10 @@ public final class AgentEngine implements AutoCloseable {
         this.modules.register(owner, module);
     }
 
+    public void registerGroup(ModuleScope.Group scope, AgentModule<?> module) {
+        this.modules.registerGroup(scope, module);
+    }
+
     public void moduleAccess(BiPredicate<UUID, Identifier> moduleAccess) {
         this.moduleAccess = Objects.requireNonNull(moduleAccess);
     }
@@ -313,10 +318,6 @@ public final class AgentEngine implements AutoCloseable {
 
     public boolean toolAvailable(UUID player, String tool) {
         return this.tools.available(tool, owner -> this.moduleAccess.test(player, owner));
-    }
-
-    <I, O> ToolRegistry.Tool<I, O> tool(UUID player, ToolRegistry.Type<I, O> type, Identifier owner) {
-        return this.tools.require(type, owner, exporting -> this.moduleAccess.test(player, exporting));
     }
 
     public void moduleAccessChanged(UUID player) {
@@ -366,7 +367,7 @@ public final class AgentEngine implements AutoCloseable {
             if ((context.routeSource() == RouteSource.SEMANTIC || context.routeSource() == RouteSource.ROUTE_CACHE)
                     && !this.modules.semanticSelectable(descriptor.id()))
                 throw new AgentException(AgentFailure.NOT_AUTHORIZED);
-            context.select(call.owner(), descriptor, policy == null ? this.policy(call.module()) : policy);
+            context.select(call.scope(), descriptor, policy == null ? this.policy(call.module()) : policy);
             context.ensureMemoryCurrent();
             return call.execute(context);
         } catch (Exception error) {

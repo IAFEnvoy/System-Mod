@@ -151,6 +151,7 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
     }
 
     private Optional<IconReference> icon(Workspace entry) {
+        if (entry.icon().isPresent()) return entry.icon();
         Registry<SystemModule> modules = this.registries.lookupOrThrow(SystemResourceKeys.SYSTEM_MODULE);
         List<Identifier> definitions = entry.context().definitions();
         if (definitions.isEmpty()) definitions = List.of(entry.context().id());
@@ -165,7 +166,7 @@ public final class ClientModuleBindingsCache implements Supplier<ClientModuleBin
     }
 
     public record Workspace(ClientModuleContext context, String page, String navigation, String label,
-                            WorkspaceGroup group, Consumer<WorkspaceContext> bind) {
+                            WorkspaceGroup group, Optional<IconReference> icon, Consumer<WorkspaceContext> bind) {
         public boolean available() {
             return this.context.available();
         }

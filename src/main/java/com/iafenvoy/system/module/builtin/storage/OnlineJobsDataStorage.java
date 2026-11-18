@@ -36,6 +36,10 @@ public final class OnlineJobsDataStorage extends DataStorage {
         this.markDirty();
     }
 
+    public void recover() {
+        this.setRun(this.run.map(value -> value.state() == OnlineJobRun.State.PREPARED ? value.state(OnlineJobRun.State.UNKNOWN) : value));
+    }
+
     @Override
     public void tick(DataStorageContext context) {
         this.setRun(this.run.map(OnlineJobRun::tick));

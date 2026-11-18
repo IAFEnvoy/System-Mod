@@ -4,7 +4,7 @@
 
 [系统币经济](economy.md)新增 `system:currency` 原生数据包注册表，并提供多币种钱包、`system:currency` 费用/条件和 `system:add_currency` 实体动作；使用格式与字段见专页。
 
-新增的本地玩法定义见[装备工坊](workshop.md)和[在线作业](online-jobs.md)。工坊在模块 server 内配置 Saturn Cost；作业使用独立原生数据包注册表与 tag，`jobs` 可选项支持 ID/tag/混合数组。二者均有同名内置模块，并加入默认模块 tag。[物品鉴定](item-inspection.md)属于已有 items 模块。
+新增的本地玩法定义见[装备工坊](workshop.md)和[在线作业](online-jobs.md)。工坊在模块 server 内配置维修 Saturn Cost，并用 `salvage` 选择服务端 `system:salvage_rule` 注册表的 ID／tag；分解输入、条件、费用与动态产出见[装备分解](salvage.md)。作业使用独立原生数据包注册表与 tag，`jobs` 可选项支持 ID/tag/混合数组。二者均有同名内置模块，并加入默认模块 tag。[物品鉴定](item-inspection.md)属于已有 items 模块。
 
 旧的 `SystemFunction` 执行机制已移除。执行预算、模型连接、本地路由和成就规则分别来自服务端 `config/system/` 中的 `system-agent.json`、`system-model.json`、`system-semantic.json` 和 `system-advancements.json`；系统名称与介绍使用下述新的系统定义注册表，签到奖励池、商城目录、抽奖奖池和模型提示词仍有独立的数据包入口。客户端不能提供价格、商品内容、抽奖权重或触发规则。
 
@@ -79,11 +79,11 @@ Keep advice concise and grounded in the available game data.
 
 顶层 `icon` 为可选的 Saturn `IconReference`：纹理写 Identifier 字符串，如 `"example:textures/gui/module.png"`；物品写 ItemStackTemplate 对象，如 `{"id":"minecraft:book"}`。裸字符串始终按纹理解析，不作为物品 ID。字段通过 `lenientOptionalFieldOf` 读取，缺失或格式错误时为空；随模块配置同步给客户端，显示在完整界面的左侧模块名称前。共享同一个 client 入口时按 order 降序取首个已配置图标，没有图标则只显示文字。内置侧栏模块已提供默认物品图标，可由数据包替换。
 
-内置顺序为玩家信息 100、任务 90、签到 80、系统空间 70、商城 60、抽奖 50、物品查询与在线作业 40、传送锚点 35；测试源集的联网搜索为 30。模块定义属于同步数据包注册表，调整 order 后需要重新进入世界或正常重启服务器。
+内置顺序为玩家信息 100、任务 90、签到 80、系统空间 70、商城 60、抽奖 50、物品查询与在线作业 40、传送锚点 35、成就总览 32；测试源集的联网搜索为 30。模块定义属于同步数据包注册表，调整 order 后需要重新进入世界或正常重启服务器。
 
 server/client 都可省略：成就等纯服务端类型只填 server；仅需要客户端贡献的条目只填 client。client 只是客户端本地实现 Map 的 ID，服务端不加载客户端类。系统定义和模块定义均在世界加载时读取、登录时同步；修改参数需正常重启，不通过 /reload 热替换运行中的工作流。
 
-签到、商城和抽奖的 server 还可分别设置 `rewards`、`offers`、`pools`，引用下文三张目录注册表。字段接受单个 ID、`#tag` 或混合数组，详见[模块目录可选项](#模块目录可选项)。
+签到、商城和抽奖的 server 还可分别设置 `rewards`、`offers`、`pools`，引用下文三张目录注册表。字段接受单个 ID、`#tag` 或混合数组，详见[模块目录可选项](#模块目录可选项)。签到另支持 `offline` 对象配置 Evaluate 分位数和价值区间，见[每日签到](sign-in.md)。
 
 传送锚点的 `server.type` 为 `system:anchor`，支持 `limit`（Saturn NumberProvider，省略为 3）、`cooldown`（秒，省略为 10）、`cross_dimension`（省略为 true）。例如 `"limit": "min(12, 3 + floor(caster_level / 10))"` 随原版经验等级动态解锁数量；完整配置和容量下降规则见[传送锚点](teleport-anchors.md)。
 
@@ -128,6 +128,8 @@ tag 来自动态模块配置注册表 `system:system_module`，成员为模块�
 | 玩家查询 | `system:player` |
 | 物品查询与来源 | `system:items` |
 | 签到 | `system:signin` |
+| 收藏图鉴 | `system:collection` |
+| 成就总览 | `system:achievement` |
 | 系统空间与交付 | `system:inbox` |
 | 私人传送锚点 | `system:anchor` |
 | 商城（浏览、报价、购买） | `system:shop` |
@@ -213,7 +215,7 @@ tag 来自动态模块配置注册表 `system:system_module`，成员为模块�
 
 奖励、商品和奖池直接使用 NeoForge Data Pack Registry，由原版读取条目和 tag，不再使用自定义目录 reload listener。三张表仅在服务端加载，不向客户端同步完整目录与 Cost；客户端只接收业务结果和报价快照。条目 ID 来自注册表键，正文包含 `label`（翻译键字符串或 `Component`）和可选的 `items` / `contents` 列表；商品另有 Saturn `costs` 列表。产出物品直接使用原版 `ItemStackTemplate.CODEC`，包含注册 ID、可选的 `count`（默认 1，原版范围 1～99）及 `components`。`items` 与 `contents` 各为 0～36 项，启用的签到奖励和商品至少有一项产出。`contents` 复用空间内容类型，支持系统币、经验点 / 等级和 Saturn action，完整字段及示例见[奖励与非物品结果](rewards.md)。物品交付时模拟主背包的堆叠与空位。注册表加载时只读取模板，不构建 `ItemStack`；实际扣款前或交付时才调用 `create()`，由原版校验最终组件及产出的实际堆叠上限。支付定义使用 Saturn `Cost.LIST_CODEC`，数量由 `amount` 提供，不受产出模板的堆叠数量限制。
 
-AI 只返回候选奖励 ID，不能修改条目数量。入账保存完整奖励快照，修改目录不会改写已经获得的权益。正常签到必须成功调用 AI；成就固定奖励不受此要求影响。
+AI 签到先按模块可选项及条件筛选奖励，再按玩家与日期固定打乱，最多取 32 项作为当日候选。传给 AI 的只有请求内临时 ID、名称和简短内容摘要，不包含物品组件或可执行效果；实际候选数还受工作流的输入字节数及剩余总预算限制。AI 只返回其中一个临时 ID，服务端映射回原奖励，不能修改条目数量。生效离线模式使用 Evaluate 与玩家 P90 / P95 筛选同一数据包奖励池，无需模型；奖励根级可选 `offline_value` 为有限正数，表示整个包的离线价值，非物品或无法自动估值时需提供。配置、边界和阶段校准见[每日签到](sign-in.md)。两分支共用每日唯一记录并保存完整奖励快照，修改目录不会改写已获得权益。成就固定奖励不使用每日选择流程。
 
 ## 数据包目录
 
@@ -224,6 +226,11 @@ AI 只返回候选奖励 ID，不能修改条目数量。入账保存完整奖�
 | `system:signin_reward` | `data/<namespace>/system/signin_reward/<path>.json` | `data/<namespace>/tags/system/signin_reward/<path>.json` |
 | `system:shop_offer` | `data/<namespace>/system/shop_offer/<path>.json` | `data/<namespace>/tags/system/shop_offer/<path>.json` |
 | `system:lottery_pool` | `data/<namespace>/system/lottery_pool/<path>.json` | `data/<namespace>/tags/system/lottery_pool/<path>.json` |
+| `system:collection` | `data/<namespace>/system/collection/<path>.json` | `data/<namespace>/tags/system/collection/<path>.json` |
+| `system:achievement` | `data/<namespace>/system/achievement/<path>.json` | 按可信事件计数，不使用 tag 筛选 |
+| `system:teleport_destination` | `data/<namespace>/system/teleport_destination/<path>.json` | `data/<namespace>/tags/system/teleport_destination/<path>.json` |
+| `system:online_job` | `data/<namespace>/system/online_job/<path>.json` | `data/<namespace>/tags/system/online_job/<path>.json` |
+| `system:fact_reward` | `data/<namespace>/system/fact_reward/<path>.json` | 不使用 tag 筛选，按事件／来源／对象匹配 |
 
 三个目录的所有有效资源按条目 ID 汇总：不同路径会新增条目，同路径按数据包优先级覆盖。JAR 内置奖励为 `system:food`、`system:mining`、`system:building`，商品为 `system:torch_bundle`，奖池为 `system:supplies`，默认内容和自定义内容使用同一加载流程。`{"enabled":false}` 可以覆盖并禁用单个条目；需要空目录时，禁用该类所有有效条目，或通过数据包过滤移除资源。移除覆盖文件会恢复下层数据包的同路径条目；若最终没有有效资源则保持空目录，不从配置补回。奖励包、商品、奖池及奖品总数和资源文件大小不设额外硬上限；每个奖励包内的两种产出列表分别使用上述 0～36 项限制，付款材料列表不设额外项数上限。
 
@@ -238,6 +245,9 @@ tag 使用原版 `values` / `replace`、嵌套 `#tag`、可选成员 `{ "id": ".
 | `system:signin` | `rewards` | `system:signin_reward` |
 | `system:shop` | `offers` | `system:shop_offer` |
 | `system:lottery` | `pools` | `system:lottery_pool` |
+| `system:collection` | `collections` | `system:collection` |
+| `system:online_jobs` | `jobs` | `system:online_job` |
+| `system:anchor` | `destinations` | `system:teleport_destination` |
 
 ```json
 {
@@ -290,7 +300,9 @@ tag 使用原版 `values` / `replace`、嵌套 `#tag`、可选成员 `{ "id": ".
 }
 ```
 
-`costs` 通过 Saturn 的 Cost 类型注册表分派，可以混合物品、资源及其他已注册的费用；列表各项都需要支付。启用的商品必须显式提供 `costs`，空列表 `[]` 表示免费。`saturn:item.items` 中的匹配项是可替代关系，例如 `["minecraft:cobblestone", "#minecraft:planks"]` 表示总计消耗 `amount` 个圆石或木板，不是每种各扣一次。普通物品 ID 只匹配物品类型，可能消耗带名称、附魔或其他组件的同类物品；组件条件使用 Saturn 注册的 matcher。实际读取玩家 `Inventory` 暴露的槽位，匹配、跨槽位选材和数量取整由 Saturn 执行。
+`costs` 通过 Saturn 的 Cost 类型注册表分派，可以混合物品、资源及其他已注册的费用；列表各项都需要支付。启用的商品必须提供非空 `costs`。`saturn:item.items` 中的匹配项是可替代关系，例如 `["minecraft:cobblestone", "#minecraft:planks"]` 表示总计消耗 `amount` 个圆石或木板，不是每种各扣一次。普通物品 ID 只匹配物品类型，可能消耗带名称、附魔或其他组件的同类物品；组件条件使用 Saturn 注册的 matcher。实际读取玩家 `Inventory` 暴露的槽位，匹配、跨槽位选材和数量取整由 Saturn 执行。
+
+商品可选 `trade` 默认为 `purchase`。设置 `"trade":"buyback"` 即固定收购，`costs` 必须全部为 `saturn:item`；`items` / `contents` 作为收购报酬。列表展示收取物品，出售需单独确认，限额仍使用 `purchase_limit`，完整字段、示例和入口见[固定物品收购](shop-buyback.md)。
 
 系统币使用经济模块的 `system:currency` 费用，例如：
 
@@ -424,3 +436,25 @@ Saturn 逐项模拟后按列表顺序扣款，不合并重复或重叠的需求�
 `system-agent.json` 中 `policies` 的键是模块 ID，值必须提供全部 `ExecutionPolicy` 字段。不同模块有自己的模型数、工具数、写步骤、tokens 与期限。`0` 模型次数表示禁止，不能写负数表示无限。未知模块配置会导致助手初始化失败并停止奖励写入。
 
 配置错误不会回退到不校验的发奖方式。诊断在服务端日志中；修改配置文件或奖励、商品、奖池注册表条目需要正常重启，提示词和 tag 使用原版重载流程。FTB 自身任务配置仍是独立入口。
+
+## 无限出售与无限收购
+
+新增 `system:value_shop`、`system:value_buyback` 服务端模块类型，放入独立的 `system_module` 文件，客户端共用 `system:shop`。前者按玩家 P90 × `ceiling_multiplier` 解锁物品，后者不受 P90 限制；两者支持币种、汇率、价格倍率、物品准入与排除列表，以及按固定额度动态去重。库存仅在搜索时生成，参数表和完整示例见[无限交易](value-commerce.md)。
+
+## 签到里程碑、收藏与事实奖励
+
+`system:signin` 模块的可选 `rules` 配置固定 `daily_cycle` 及按累计／连续／周／月统计的里程碑，见[签到字段表](sign-in.md#连续累计与固定规则)。固定循环仍必须属于该模块可用的奖励目录，并满足奖励条件。
+
+新增服务端数据包注册表 `system:collection` 定义系列、物品匹配谓词、图标和里程碑；`system:collection` 模块的 `collections` 按所选工作流配置筛选 ID／tag／混合数组，不与其他配置取并集，见[收藏字段表](collections.md)。
+
+`system:fact_reward` 把可信事件映射成固定奖励，支持终生每对象、每事件、日、周、月频率。内置 `system:quest_completed` 规则给新完成的普通 FTBQ 任务生成 `system:quest_point` 积分权益，未安装 FTBQ 时不会产生事件，也不引用其可选模块类型。规则字段、持久化和恢复边界见[事实奖励](progress-rewards.md)。
+
+## 累计成就、材料作业与收费传送
+
+累计成就使用独立的 `system:achievement` 注册表，并复用核心可信事实和奖励账本；它与 `system:advancement` 的原版进度事件工作流不同。字段表、系列统计与历史语义见[成就总览](achievements.md)。
+
+`system:online_job` 根级新增可选 `costs`，使用 Saturn 通用费用。开工先报价，玩家确认后支付，取消不退款；参数与异常核对见[在线作业](online-jobs.md)。
+
+`system:anchor` 模块新增 `costs` 和 `destinations`，公共目的地由服务端 `system:teleport_destination` 定义；模块费用与目的地附加费用相加。字段表、tag 和安全规则见[传送锚点](teleport-anchors.md)。
+
+购买／收购报价输入支持 `count`（1～100，默认 1），费用与产物按份数缩放，限购同样按份数结算，见[批量交易](shop-buyback.md#批量购买与出售)。本轮网络协议为 `3`，客户端与服务端需同步更新。

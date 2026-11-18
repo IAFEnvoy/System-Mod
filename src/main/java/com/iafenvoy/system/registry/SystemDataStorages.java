@@ -27,4 +27,7 @@ public final class SystemDataStorages {
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<OnlineJobsDataStorage>> ONLINE_JOBS = REGISTRY.register("online_jobs", () -> OnlineJobsDataStorage.CODEC);
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<WalletDataStorage>> ECONOMY = REGISTRY.register("economy", () -> WalletDataStorage.CODEC);
     public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<DisplayCardsDataStorage>> DISPLAY_CARDS = REGISTRY.register("display_cards", () -> DisplayCardsDataStorage.CODEC);
+    public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<FactDataStorage>> FACTS = REGISTRY.register("facts", () -> FactDataStorage.CODEC);
+    public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<CollectionDataStorage>> COLLECTION = REGISTRY.register("collection", () -> CollectionDataStorage.CODEC);
+    public static final DeferredHolder<MapCodec<? extends DataStorage>, MapCodec<WorkshopDataStorage>> WORKSHOP = REGISTRY.register("workshop", () -> WorkshopDataStorage.CODEC);
 }

@@ -8,10 +8,12 @@ import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.request.*;
 import com.iafenvoy.system.agent.response.*;
 import com.iafenvoy.system.agent.storage.AgentStore;
+import com.iafenvoy.system.assistant.item.ItemSearches;
 import com.iafenvoy.system.data.AiStatus;
 import com.iafenvoy.system.data.ClientState;
 import com.iafenvoy.system.data.CommandSuggestion;
 import com.iafenvoy.system.data.input.StarterGiftsInput;
+import com.iafenvoy.system.data.item.ItemSearchBatch;
 import com.iafenvoy.system.data.output.StarterGiftOutput;
 import com.iafenvoy.system.event.CardButtonEvent;
 import com.iafenvoy.system.module.ModuleManager;
@@ -37,16 +39,18 @@ public final class AssistantRequests {
     private final AgentEngine engine;
     private final AssistantPlayers players;
     private final ModuleManager modules;
+    private final ItemSearches itemSearches;
     private final TypeDispatch<RequestContext, CompletionStage<AgentResponse>> requestHandlers = new TypeDispatch<>((_, _) -> {
         throw new AgentException(AgentFailure.UNSUPPORTED);
     });
     private final Map<ControlRequest, Function<RequestContext, CompletionStage<AgentResponse>>> controlHandlers = new EnumMap<>(ControlRequest.class);
 
-    AssistantRequests(MinecraftServer server, AgentEngine engine, AssistantPlayers players, ModuleManager modules) {
+    AssistantRequests(MinecraftServer server, AgentEngine engine, AssistantPlayers players, ModuleManager modules, ItemSearches itemSearches) {
         this.server = server;
         this.engine = engine;
         this.players = players;
         this.modules = modules;
+        this.itemSearches = itemSearches;
         this.registerRequests();
     }
 
@@ -60,11 +64,13 @@ public final class AssistantRequests {
         }));
     }
 
-    public void request(ServerPlayer player, String requestId, AgentRequest request) {
+    public void request(ServerPlayer player, String requestId, AgentRequest request, Optional<ItemSearchBatch> search) {
         this.players.refreshPlayer(player);
         UUID uuid = player.getUUID();
         UUID connection = ServerNetworkHandler.connectionId(player);
-        CompletionStage<AgentResponse> work = this.requestHandlers.apply(new RequestContext(player, requestId), request);
+        if (search.isPresent() && !(request instanceof InvokeRequest || request instanceof CardActionRequest))
+            throw new AgentException(AgentFailure.INVALID_INPUT);
+        CompletionStage<AgentResponse> work = this.requestHandlers.apply(new RequestContext(player, requestId, search), request);
         work.whenComplete((result, error) -> this.server.execute(() -> {
             ServerPlayer online = this.server.getPlayerList().getPlayer(uuid);
             if (online != null && connection.equals(ServerNetworkHandler.connectionId(online))) {
@@ -74,7 +80,7 @@ public final class AssistantRequests {
         }));
     }
 
-    private record RequestContext(ServerPlayer player, String requestId) {
+    private record RequestContext(ServerPlayer player, String requestId, Optional<ItemSearchBatch> search) {
         UUID uuid() {
             return this.player.getUUID();
         }
@@ -106,7 +112,10 @@ public final class AssistantRequests {
                                 suggestions.getList().stream().limit(256).map(suggestion -> new CommandSuggestion(
                                         suggestion.apply(request.text()), suggestion.getTooltip() == null ? "" : suggestion.getTooltip().getString())).toList())));
         this.registerRequest(ChatRequest.class, (context, chat) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), null, chat.text())));
-        this.registerRequest(InvokeRequest.class, (context, invoke) -> answer(context, this.engine.submit(context.uuid(), context.requestId(), invoke.call(), invoke.text())));
+        this.registerRequest(InvokeRequest.class, (context, invoke) -> {
+            AgentAction call = this.itemSearches.bind(context.player(), invoke.call(), context.search());
+            return answer(context, this.engine.submit(context.uuid(), context.requestId(), call, invoke.text()));
+        });
         this.registerRequest(CardActionRequest.class, (context, action) -> {
             ServerCards.Ticket ticket = ServerCards.begin(context.uuid(), action.source());
             return this.players.requireBound(context.uuid()).thenCompose(ignored -> answer(context, this.dispatchCardEvent(context, action)
@@ -150,6 +159,7 @@ public final class AssistantRequests {
                         throw new AgentException(AgentFailure.INVALID_INPUT, error);
                     }
                     AgentAction call = this.engine.modules().button(decoded.action(), decoded.arguments());
+                    call = this.itemSearches.bind(context.player(), call, context.search());
                     work = this.engine.submit(context.uuid(), context.requestId(), call, "");
                 }
                 work.whenComplete((reply, error) -> {

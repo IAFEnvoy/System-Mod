@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module.client;
 
+import com.iafenvoy.saturn.data.IconReference;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.AssistantCommandSource;
 import com.iafenvoy.system.data.card.CardReference;
@@ -8,6 +9,7 @@ import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -40,12 +42,17 @@ public record ClientModuleContext(ClientModuleBindingsCache bindings, Identifier
         this.workspace(page, navigation, WorkspaceGroup.MODULES, bind);
     }
 
+    public void workspace(String page, String navigation, IconReference icon, Consumer<WorkspaceContext> bind) {
+        this.bindings.workspace(new ClientModuleBindingsCache.Workspace(this, page, navigation,
+                "system.ui." + navigation, WorkspaceGroup.MODULES, Optional.of(icon), bind));
+    }
+
     public void workspace(String page, String navigation, WorkspaceGroup group, Consumer<WorkspaceContext> bind) {
         this.workspace(page, navigation, "system.ui." + navigation, group, bind);
     }
 
     public void workspace(String page, String navigation, String label, WorkspaceGroup group, Consumer<WorkspaceContext> bind) {
-        this.bindings.workspace(new ClientModuleBindingsCache.Workspace(this, page, navigation, label, group, bind));
+        this.bindings.workspace(new ClientModuleBindingsCache.Workspace(this, page, navigation, label, group, Optional.empty(), bind));
     }
 
     public void localAction(Identifier action, BiConsumer<CardReference, Map<String, String>> handler) {

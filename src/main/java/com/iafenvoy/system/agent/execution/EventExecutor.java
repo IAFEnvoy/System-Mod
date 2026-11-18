@@ -12,7 +12,10 @@ import com.iafenvoy.system.data.store.EventTask;
 import com.iafenvoy.system.data.store.State;
 import net.minecraft.resources.Identifier;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,7 +63,7 @@ final class EventExecutor implements AutoCloseable {
                             value.id = UUID.randomUUID().toString();
                             value.key = key;
                             value.ruleId = ruleId;
-                            value.owner = Optional.ofNullable(selected.owner());
+                            value.scope = selected.scope();
                             value.moduleVersion = module.descriptor().version();
                             value.call = input;
                             value.policy = this.engine.policy(module);
@@ -73,7 +76,7 @@ final class EventExecutor implements AutoCloseable {
                             return task.result;
                         }
                         if (!task.call.id().equals(moduleId) || task.moduleVersion != module.descriptor().version()
-                                || !task.owner.equals(Optional.ofNullable(selected.owner())))
+                                || !task.scope.equals(selected.scope()))
                             throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
                         if (!this.enabledRules.getOrDefault(player, Set.of()).contains(task.ruleId))
                             throw new AgentException(AgentFailure.NOT_AUTHORIZED);

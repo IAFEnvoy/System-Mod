@@ -2,11 +2,13 @@ package com.iafenvoy.system.compat.ftb;
 
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantServer;
+import com.iafenvoy.system.assistant.progress.PlayerFacts;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.QuestDetailInput;
 import com.iafenvoy.system.data.output.QuestStartupOutput;
 import com.iafenvoy.system.data.output.QuestSubmission;
 import com.iafenvoy.system.data.output.QuestUnlockedOutput;
+import com.iafenvoy.system.data.progress.PlayerFact;
 import com.iafenvoy.system.data.result.QuestEvent;
 import com.iafenvoy.system.data.result.QuestNotice;
 import com.iafenvoy.system.module.builtin.QuestSystemModule;
@@ -40,6 +42,7 @@ public final class FtbQuestNotifications {
     private ServerQuestFile file;
     private final FtbQuestAccess access;
     private final Map<UUID, TeamState> teams = new HashMap<>();
+    private final Map<UUID, FactSession> factSessions = new HashMap<>();
     private int ticks;
 
     FtbQuestNotifications(FtbQuestAccess access) {
@@ -56,8 +59,61 @@ public final class FtbQuestNotifications {
     @SubscribeEvent
     public void questProgress(FTBQuestsEvent.QuestProgress event) {
         QuestProgressEvent.Data data = event.getEventData();
+        if (data.type() == ProgressType.COMPLETED && data.progressData().object().getQuestFile() instanceof ServerQuestFile file && file.server == this.server)
+            for (ServerPlayer player : data.progressData().onlineMembers())
+                this.fact(player, data.progressData().teamData(), data.progressData().object());
         if (this.changed(data.progressData()) && data.type() == ProgressType.COMPLETED)
             this.completed(data.progressData());
+    }
+
+    static Optional<PlayerFact> completion(TeamData team, Quest quest) {
+        if (team.isLocked() || !team.isCompleted(quest) || !visible(team, quest) || FtbQuestReader.kind(quest) != FtbQuestReader.Kind.NORMAL)
+            return Optional.empty();
+        return team.getCompletedTime(quest.getId()).map(date -> new PlayerFact(PlayerFacts.QUEST_COMPLETED, FtbQuestProvider.SOURCE.id(),
+                FtbQuestAccess.hex(quest.getId()), team.getTeamId() + ":" + date.getTime(), date.getTime()));
+    }
+
+    void fact(ServerPlayer player, TeamData team, Quest quest) {
+        AssistantServer runtime = AssistantServer.get(player.level().getServer());
+        FactSession session = this.factSessions.get(player.getUUID());
+        if (runtime != null && session != null && runtime.moduleManager().hasType(player.getUUID(), QuestSystemModule.CODEC))
+            completion(team, quest).filter(fact -> fact.timestamp() >= session.since && !session.seen.contains(fact.key()))
+                    .ifPresent(fact -> PlayerFacts.emit(player, fact));
+    }
+
+    void observe(ServerPlayer player, long since, Set<String> seen) {
+        this.factSessions.put(player.getUUID(), new FactSession(player, since, seen));
+    }
+
+    private static final class FactSession {
+        private final ServerPlayer player;
+        private final long since;
+        private final Set<String> seen;
+        private ServerQuestFile file;
+        private UUID team;
+        private Iterator<Quest> recovery = Collections.emptyIterator();
+
+        private FactSession(ServerPlayer player, long since, Set<String> seen) {
+            this.player = player;
+            this.since = since;
+            this.seen = seen;
+        }
+    }
+
+    private void recoverFacts(ServerQuestFile file) {
+        for (FactSession session : this.factSessions.values()) {
+            file.getTeamData(session.player).ifPresent(team -> {
+                if (team.isLocked()) return;
+                if (session.file != file || !Objects.equals(session.team, team.getTeamId())) {
+                    session.file = file;
+                    session.team = team.getTeamId();
+                    session.recovery = file.getAllObjects().stream().filter(Quest.class::isInstance).map(Quest.class::cast).toList().iterator();
+                }
+                // Reconcile the enrolled period across reconnects/crashes without replaying the pre-install history.
+                for (int count = 0; count < 64 && session.recovery.hasNext(); count++)
+                    this.fact(session.player, team, session.recovery.next());
+            });
+        }
     }
 
     @SubscribeEvent
@@ -80,6 +136,7 @@ public final class FtbQuestNotifications {
         if (event.getEventData().file() instanceof ServerQuestFile questFile && questFile.server == this.server) {
             this.file = null;
             this.teams.clear();
+            this.factSessions.values().forEach(session -> session.file = null);
             this.access.knowledge.invalidate();
         }
     }
@@ -89,9 +146,11 @@ public final class FtbQuestNotifications {
         this.installed = false;
         this.file = null;
         this.teams.clear();
+        this.factSessions.clear();
     }
 
     void remove(ServerPlayer player) {
+        this.factSessions.remove(player.getUUID());
         this.access.clear(player.getUUID());
         for (TeamState state : this.teams.values()) {
             Map<UUID, Recipient> recipients = new HashMap<>(state.recipients);
@@ -116,10 +175,11 @@ public final class FtbQuestNotifications {
     private void completed(ProgressEventData<Quest> data) {
         TeamState state = this.teams.get(data.teamData().getTeamId());
         Quest quest = data.object();
-        if (state == null || state.silent || state.team.isLocked() || !visible(state.team, quest)
+        if (state == null || state.team.isLocked() || !visible(state.team, quest)
                 || FtbQuestReader.kind(quest) != FtbQuestReader.Kind.NORMAL) return;
         AssistantServer runtime = AssistantServer.get(this.file.server);
         if (runtime == null) return;
+        if (state.silent) return;
         List<Recipient> recipients = new ArrayList<>();
         for (ServerPlayer player : data.onlineMembers()) {
             Recipient previous = state.recipients.get(player.getUUID());
@@ -140,6 +200,7 @@ public final class FtbQuestNotifications {
         if (!ServerQuestFile.exists()) return;
         ServerQuestFile file = ServerQuestFile.getInstance();
         if (file.server != this.server) return;
+        this.recoverFacts(file);
         if (this.file != file) {
             this.file = file;
             this.teams.clear();

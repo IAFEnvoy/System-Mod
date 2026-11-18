@@ -5,7 +5,10 @@ import com.iafenvoy.system.agent.module.AgentModule;
 import com.iafenvoy.system.agent.response.OpenResponse;
 import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.AssistantServer;
+import com.iafenvoy.system.assistant.progress.PlayerFacts;
+import com.iafenvoy.system.command.ActivityCommands;
 import com.iafenvoy.system.data.input.HelpInput;
 import com.iafenvoy.system.data.store.AgentJournalDataStorage;
 import com.iafenvoy.system.module.*;
@@ -14,7 +17,10 @@ import com.iafenvoy.system.module.builtin.chat.FreeChatModule;
 import com.iafenvoy.system.module.builtin.knowledge.DatabaseQueryTool;
 import com.iafenvoy.system.module.builtin.knowledge.QuestionModule;
 import com.iafenvoy.system.module.builtin.knowledge.ReasoningModule;
+import com.iafenvoy.system.module.builtin.progress.RecordClaimModule;
+import com.iafenvoy.system.module.builtin.progress.RecordQueryModule;
 import com.iafenvoy.system.module.builtin.storage.DisplayCardsDataStorage;
+import com.iafenvoy.system.module.builtin.storage.FactDataStorage;
 import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -26,6 +32,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public final class CoreSystemModule implements CoreModule {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "core");
@@ -33,6 +40,7 @@ public final class CoreSystemModule implements CoreModule {
     public static final ModuleStorage<AgentJournalDataStorage> JOURNAL = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "agent_journal"), AgentJournalDataStorage.class, AgentJournalDataStorage.CODEC, AgentJournalDataStorage::new);
     public static final ModuleStorage<ModuleAccessDataStorage> ACCESS = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "module_access"), ModuleAccessDataStorage.class, ModuleAccessDataStorage.CODEC, ModuleAccessDataStorage::new);
     public static final ModuleStorage<DisplayCardsDataStorage> DISPLAY_CARDS = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "display_cards"), DisplayCardsDataStorage.class, DisplayCardsDataStorage.CODEC, DisplayCardsDataStorage::new);
+    public static final ModuleStorage<FactDataStorage> FACTS = new ModuleStorage<>(ID, Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "facts"), FactDataStorage.class, FactDataStorage.CODEC, FactDataStorage::new);
 
     @Override
     public MapCodec<CoreSystemModule> codec() {
@@ -41,17 +49,22 @@ public final class CoreSystemModule implements CoreModule {
 
     @Override
     public List<ModuleStorage<?>> storages() {
-        return List.of(JOURNAL, ACCESS, DISPLAY_CARDS);
+        return List.of(JOURNAL, ACCESS, DISPLAY_CARDS, FACTS);
     }
 
     @Override
     public PlayerModule runtime(ModuleContext context) {
+        PlayerFacts.service(context);
         return context.get(ContextTypes.DISPLAYS);
     }
 
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
-        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.get(ContextTypes.DATABASES)).tool()), new ReasoningModule(), new FreeChatModule(context.engine().chat()));
+        return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.get(ContextTypes.DATABASES)).tool()), new ReasoningModule(), new FreeChatModule(context.engine().chat()),
+                new RecordQueryModule(new ToolRegistry.Tool<>(BuiltinTools.RECORD_QUERY, false, true, false,
+                        (execution, input) -> CompletableFuture.completedFuture(PlayerFacts.query(execution, input.offset())))),
+                new RecordClaimModule(new ToolRegistry.Tool<>(BuiltinTools.RECORD_CLAIM, true, true, false,
+                        (execution, input) -> CompletableFuture.completedFuture(PlayerFacts.claim(execution, input)))));
     }
 
     @Override
@@ -66,6 +79,7 @@ public final class CoreSystemModule implements CoreModule {
     public void serverCommands(LiteralArgumentBuilder<CommandSourceStack> root) {
         ModuleManagementCommands.register(root);
         AiManagementCommands.register(root);
+        ActivityCommands.register(root);
         root.executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.CURRENT))
                 .then(Commands.literal("simple").executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.SIMPLE)))
                 .then(Commands.literal("full").executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.FULL)))

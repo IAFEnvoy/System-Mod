@@ -1,0 +1,20 @@
+{
+  "label": "system.salvage.rule.material_return",
+  "priority": 0,
+  "input": {
+    "items": [
+      "minecraft:iron_pickaxe"
+    ]
+  },
+  "outputs": [
+    {
+      "content": {
+        "type": "system:item",
+        "item": {
+          "id": "minecraft:iron_nugget"
+        }
+      },
+      "amount": "floor(13.5 * salvage_durability)"
+    }
+  ]
+}

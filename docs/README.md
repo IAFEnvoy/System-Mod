@@ -16,18 +16,28 @@
 | [包职责与数据流](architecture.md) | Agent / assistant / data / module / speech 边界、依赖注入、线程与关闭顺序 |
 | [开发与架构](development.md) | Agent 包组织、模块与工具接口、预算、持久化、MC 接入和当前限制 |
 | [功能模块化](feature-modules.md) | 功能装配、两端指令、生命周期、页面/通知/口播注册与可选集成 |
+| [模块合并](module-merging-design.md) | MergeableModule、类型化合并组、共享入口 / 卡片、成员权限、生命周期与固定商城接入 |
 | [模块全量清单与推荐优先级](module-roadmap.md) | 23 类玩法候选、149 个调研细项、现有模块标记、基础服务及分阶段开发建议 |
 | [通用任务接口与任务来源](quests.md) | Quest／QuestProvider、可选能力、跨来源查询、来源展示、编号与领奖校验、FTBQ 适配 |
+| [每日签到与本地进度评估](sign-in.md) | 固定循环、累计／连续／周月计数与里程碑，离线 / AI 路径及 Evaluate P90 / P95 |
+| [成就总览与系列](achievements.md) | 数据驱动累计成就、系列统计、进度和幂等领奖 |
+| [收藏图鉴](collections.md) | 数据包系列与物品谓词、无消耗登记、分页进度及里程碑领奖 |
+| [事实记录、里程碑与任务积分](progress-rewards.md) | 可信服务端事件、永久去重、周期奖励、领奖恢复与 FTBQ 任务积分 |
+| [固定物品收购](shop-buyback.md) | 数据包定义输入与报酬、独立收购列表、批量报价与确认、周期限额和系统空间结算 |
+| [无限出售与无限收购](value-commerce.md) | Evaluate 价格、P90 解锁、汇率与倍率、固定库存优先和搜索生成上限 |
 | [奖励与非物品结果](rewards.md) | 物品、系统币、经验点 / 等级、Saturn action，统一入库、预览与领取事务 |
 | [商城与抽奖订单维护](commerce-orders.md) | 抽奖分批浏览、已结清订单归档、限购计数与管理员支付核对 |
 | [抽奖规则与记录](lottery.md) | 数据驱动硬保底、连抽、按周期限抽、冷却、个人分页记录及结算恢复 |
 | [条目条件与奖励效果](catalog-conditions.md) | 商品、奖池、签到奖励、在线作业的可见性 / 执行条件、服务端复核与已获权益 |
 | [系统空间](system-space.md) | 通用内容类型、物品分页、点击 / Shift / 语音取出、奖励来源与实体扩展接口 |
-| [传送锚点](teleport-anchors.md) | 私人目的地、公式动态容量、分页操作、安全落点、跨维度与冷却 |
+| [传送锚点](teleport-anchors.md) | 私人／公共目的地、公式容量、传送费用、安全落点、跨维度与冷却 |
 | [主手物品鉴定](item-inspection.md) | 实际物品、耐久与附魔快照，获取来源入口 |
-| [装备工坊](workshop.md) | 主手装备报价、Saturn Cost 付款与完整维修 |
-| [在线作业](online-jobs.md) | 数据驱动生产表、在线进度、暂停与系统空间领取 |
+| [装备工坊](workshop.md) | 主手维修与分解入口、Saturn Cost 付款和目标保护 |
+| [装备分解](salvage.md) | 分解规则注册表、耐久／附魔／Evaluate 数量公式、确认与持久订单；[设计推导](salvage-design.md) |
+| [在线作业](online-jobs.md) | 数据驱动生产表、材料投入确认、在线进度、异常核对与系统空间领取 |
 | [系统币与多币种钱包](economy.md) | 币种定义、余额、管理员指令、Saturn Cost、实体 action/condition |
+| [物品相对价值 API](evaluate-api.md) | 内嵌 Evaluate、服务端查询入口、未知值、组件匹配、重载及 Java 估值器扩展 |
+| [客户端物品检索](item-search.md) | 原版 SearchTree 名称／tooltip 检索、组件候选、分批传输与服务端校验 |
 | [物品来源卡片](feature-modules.md#物品来源查询) | 本地配方 / 掉落 / 标签查询、材料格与产物图标、候选 tooltip、独立翻页及覆盖范围 |
 | [FTB Quests 跨版本修复记录](ftb-quests-porting.md) | 1.21.1 标题 / 勾选礼包 / 领奖修复，以及待同步到 26.1.2 的入口与 API 差异 |
 | [FTB 本地说明书检索](quest-guides.md) | 勾选说明任务收录、纯 Java 稀疏向量索引、查询入口、可见性与存档缓存 |

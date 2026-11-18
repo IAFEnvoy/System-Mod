@@ -28,6 +28,7 @@ public final class AssistantClientCommands {
             return false;
         try {
             dispatcher.execute(parsed);
+            if (source.action() != null) AssistantClient.send(source.action(), text.strip());
         } catch (CommandSyntaxException error) {
             AssistantClient.local(AgentResult.error(AgentFailure.INVALID_INPUT));
         }

@@ -13,7 +13,7 @@ import java.util.Optional;
 public record CommercePreviewOutput(Identifier source, CommerceCatalog.Price price, boolean available,
                                     Optional<String> quoteRef, Optional<ShopPurchaseLimitOutput> purchaseLimit,
                                     boolean conditionMet,
-                                    Optional<LotteryStatusOutput> lottery) {
+                                    Optional<LotteryStatusOutput> lottery, Optional<String> stockRevision) {
     public static final Codec<CommercePreviewOutput> CODEC = RecordCodecBuilder.create(i -> i.group(
             Identifier.CODEC.fieldOf("source").forGetter(CommercePreviewOutput::source),
             CommerceCatalog.Price.CODEC.fieldOf("price").forGetter(CommercePreviewOutput::price),
@@ -21,6 +21,7 @@ public record CommercePreviewOutput(Identifier source, CommerceCatalog.Price pri
             Codec.STRING.optionalFieldOf("quoteRef").forGetter(CommercePreviewOutput::quoteRef),
             ShopPurchaseLimitOutput.CODEC.optionalFieldOf("purchaseLimit").forGetter(CommercePreviewOutput::purchaseLimit),
             Codec.BOOL.optionalFieldOf("conditionMet", true).forGetter(CommercePreviewOutput::conditionMet),
-            LotteryStatusOutput.CODEC.optionalFieldOf("lottery").forGetter(CommercePreviewOutput::lottery)
+            LotteryStatusOutput.CODEC.optionalFieldOf("lottery").forGetter(CommercePreviewOutput::lottery),
+            Codec.STRING.optionalFieldOf("stockRevision").forGetter(CommercePreviewOutput::stockRevision)
     ).apply(i, CommercePreviewOutput::new));
 }

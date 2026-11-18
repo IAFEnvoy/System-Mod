@@ -7,8 +7,10 @@ import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.catalog.CatalogAccess;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.catalog.ConditionalEntry;
+import com.iafenvoy.system.data.catalog.ShopTrade;
 import com.iafenvoy.system.data.catalog.SignInRewardEntry;
 import com.iafenvoy.system.data.module.SystemModule;
+import com.iafenvoy.system.data.output.ShopPurchaseLimitOutput;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import net.minecraft.core.Holder;
@@ -29,6 +31,7 @@ public final class CommerceCatalogs {
     private final CatalogAccess access;
     private final BiPredicate<UUID, Holder<SystemModule>> enabled;
     private final Set<Holder<SystemModule>> modules = new LinkedHashSet<>();
+    private ShopInventory shop;
 
     public CommerceCatalogs(@NotNull CommerceCatalog catalog, @NotNull BiPredicate<UUID, Holder<SystemModule>> enabled, CatalogAccess access) {
         this.catalog = catalog;
@@ -39,6 +42,11 @@ public final class CommerceCatalogs {
     public void register(Holder<SystemModule> module) {
         if (!this.modules.add(module))
             throw new IllegalArgumentException("Duplicate module catalog " + HolderHelper.id(module));
+    }
+
+    public void shop(ShopInventory inventory) {
+        if (this.shop != null) throw new IllegalStateException("Shop inventory already installed");
+        this.shop = Objects.requireNonNull(inventory);
     }
 
     public CommerceCatalog all() {
@@ -69,8 +77,28 @@ public final class CommerceCatalogs {
         CommerceCatalog catalog = this.available(player.getUUID());
         Set<Identifier> rewards = new HashSet<>(), offers = new HashSet<>(), pools = new HashSet<>();
         return new View(new CommerceCatalog(catalog.revision(),
-                visible(player, catalog.rewards(), rewards), visible(player, catalog.offers(), offers),
+                visible(player, catalog.rewards(), rewards), catalog.offers().stream()
+                .filter(offer -> CatalogAccess.visible(player, offer.value())).peek(offer -> {
+                    if (!CatalogAccess.usable(player, offer.value())) offers.add(offer.id());
+                }).toList(),
                 visible(player, catalog.lotteries(), pools), catalog.registries()), rewards, offers, pools);
+    }
+
+    public boolean searchOnly(UUID player, ShopTrade trade) {
+        return this.shop != null && this.shop.searchOnly(player, trade);
+    }
+
+    public View view(ServerPlayer player, ShopRequest request, Map<Identifier, ShopPurchaseLimitOutput> limits) {
+        View fixed = this.view(player);
+        if (this.shop == null) return fixed;
+        CommerceCatalog catalog = fixed.catalog();
+        Set<Identifier> locked = new HashSet<>(fixed.lockedOffers());
+        return new View(new CommerceCatalog(catalog.revision(), catalog.rewards(),
+                this.shop.requested(player, catalog, request, limits).stream()
+                        .filter(offer -> CatalogAccess.visible(player, offer.value())).peek(offer -> {
+                            if (!CatalogAccess.usable(player, offer.value())) locked.add(offer.id());
+                        }).toList(), catalog.lotteries(), catalog.registries()),
+                fixed.lockedRewards(), locked, fixed.lockedLotteries());
     }
 
     private static <T extends ConditionalEntry> List<Holder<T>> visible(ServerPlayer player, List<Holder<T>> entries, Set<Identifier> locked) {
@@ -99,7 +127,7 @@ public final class CommerceCatalogs {
                 .<CatalogModule<?>>map(CatalogModule.class::cast).toList();
         return new CommerceCatalog(this.catalog.revision(),
                 this.filter(this.catalog.rewards(), SystemResourceKeys.SIGNIN_REWARD, modules),
-                this.filter(this.catalog.offers(), SystemResourceKeys.SHOP_OFFER, modules),
+                this.shop == null ? List.of() : this.shop.offers(player, this.catalog),
                 this.filter(this.catalog.lotteries(), SystemResourceKeys.LOTTERY_POOL, modules),
                 this.catalog.registries());
     }

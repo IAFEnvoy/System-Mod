@@ -46,8 +46,8 @@ public record AddCurrencyAction(Holder<CurrencyDefinition> currency, long amount
                 else
                     result.ifFailure(failure -> SystemMod.LOGGER.warn("Currency action refused for {} currency {}: {}", player.getUUID(), id, failure.name()));
             });
-        } catch (AgentException error) {
-            SystemMod.LOGGER.warn("Currency action refused for {} currency {}: {}", player.getUUID(), id, error.failure().name());
+        } catch (AgentException e) {
+            SystemMod.LOGGER.warn("Currency action refused for {} currency {}", player.getUUID(), id, e);
         }
     }
 }

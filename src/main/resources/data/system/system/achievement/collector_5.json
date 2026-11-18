@@ -1,0 +1,19 @@
+{
+  "label": "system.achievement.collector_5",
+  "description": "system.achievement.collector_5.description",
+  "series": "system.achievement.series.collection",
+  "event": "system:collected",
+  "target": 5,
+  "reward": {
+    "label": "system.achievement.collector_5",
+    "contents": [
+      {
+        "content": {
+          "type": "system:currency",
+          "currency": "system:coin"
+        },
+        "amount": 5
+      }
+    ]
+  }
+}

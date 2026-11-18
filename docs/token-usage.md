@@ -123,7 +123,7 @@ TTS / ASR 的 API Key 由各客户端自行配置，所有调用及费用由 `Lo
 
 服务端账本保存 AI 和联网调用。内部 `PlayerUsage` 为可变类，名称和调用计数直接更新；四项 AI Token 计数封装在不可变的 `data/usage/TokenUsage` record 中。全服汇总使用独立累加对象，联网请求由不可变 SearchUsage 分开保存 Search/Fetch 的尝试、成功、计费、未知次数和估算费用；存档 Codec 不读取或输出语音统计。
 
-`snapshot()` 返回不可变的 `data/usage/TokenUsageSnapshot` 对象，只包含分页信息、AI/联网汇总和玩家明细，列表复制且不暴露可变账本。`TokenUsageResponseS2C` 通过专用 `StreamCodec` 编码快照对象、错误状态及打开页面的 `open` 标志，客户端直接读取类型字段，再独立展示当前账号的本地语音统计；网络上没有 TTS / ASR 字段。当前网络协议为 **1**，客户端与服务端需一起更新；每包最多 8 位玩家，名字、错误键和请求 ID 都有限长。
+`snapshot()` 返回不可变的 `data/usage/TokenUsageSnapshot` 对象，只包含分页信息、AI/联网汇总和玩家明细，列表复制且不暴露可变账本。`TokenUsageResponseS2C` 通过专用 `StreamCodec` 编码快照对象、错误状态及打开页面的 `open` 标志，客户端直接读取类型字段，再独立展示当前账号的本地语音统计；网络上没有 TTS / ASR 字段。当前网络协议为 **3**，客户端与服务端需一起更新；每包最多 8 位玩家，名字、错误键和请求 ID 都有限长。
 
 `revoke`、`forget`、关闭记忆与重新 `grant` 均不删除累计统计。`revoke` 仍会重置玩家业务文件中的每日模型调用额度；该额度与长期用量账本是独立记录。当前没有清空统计的游戏命令。
 

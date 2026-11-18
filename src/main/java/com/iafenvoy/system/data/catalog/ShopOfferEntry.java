@@ -1,6 +1,7 @@
 package com.iafenvoy.system.data.catalog;
 
 import com.iafenvoy.saturn.data.cost.Cost;
+import com.iafenvoy.saturn.data.cost.builtin.ItemCost;
 import com.iafenvoy.saturn.util.codec.MiscCodecs;
 import com.iafenvoy.system.data.space.SpaceStack;
 import com.iafenvoy.system.data.store.Reward;
@@ -19,7 +20,7 @@ import java.util.Optional;
 public record ShopOfferEntry(Component label, List<ItemStackTemplate> items, List<SpaceStack> contents,
                              List<Cost> costs,
                              Optional<ShopPurchaseLimit> purchaseLimit, boolean enabled,
-                             EntryConditions conditions) implements ConditionalEntry {
+                             EntryConditions conditions, ShopTrade trade) implements ConditionalEntry {
     public static final Codec<ShopOfferEntry> CODEC = RecordCodecBuilder.<ShopOfferEntry>create(i -> i.group(
             MiscCodecs.TRANSLATABLE_COMPONENT.optionalFieldOf("label", Component.empty()).forGetter(ShopOfferEntry::label),
             Reward.ITEMS_CODEC.optionalFieldOf("items", List.of()).forGetter(ShopOfferEntry::items),
@@ -27,10 +28,13 @@ public record ShopOfferEntry(Component label, List<ItemStackTemplate> items, Lis
             Cost.LIST_CODEC.optionalFieldOf("costs", List.of()).forGetter(ShopOfferEntry::costs),
             ShopPurchaseLimit.CODEC.optionalFieldOf("purchase_limit").forGetter(ShopOfferEntry::purchaseLimit),
             Codec.BOOL.optionalFieldOf("enabled", true).forGetter(ShopOfferEntry::enabled),
-            EntryConditions.CODEC.forGetter(ShopOfferEntry::conditions)
+            EntryConditions.CODEC.forGetter(ShopOfferEntry::conditions),
+            ShopTrade.CODEC.optionalFieldOf("trade", ShopTrade.PURCHASE).forGetter(ShopOfferEntry::trade)
     ).apply(i, ShopOfferEntry::new)).validate(entry -> !entry.enabled ? DataResult.success(entry)
             : entry.label.getString().isBlank() || entry.items.isEmpty() && entry.contents.isEmpty() || entry.costs.isEmpty()
-            ? DataResult.error(() -> "Enabled shop offers need a label, reward contents and costs") : DataResult.success(entry));
+            ? DataResult.error(() -> "Enabled shop offers need a label, reward contents and costs")
+            : entry.trade == ShopTrade.BUYBACK && entry.costs.stream().anyMatch(cost -> !(cost instanceof ItemCost))
+            ? DataResult.error(() -> "Buyback offers must collect items using saturn:item costs") : DataResult.success(entry));
 
     public ShopOfferEntry {
         items = List.copyOf(items);

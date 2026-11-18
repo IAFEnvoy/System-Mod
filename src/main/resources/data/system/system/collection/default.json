@@ -1,0 +1,85 @@
+{
+  "label": "system.collection.default.label",
+  "description": "system.collection.default.description",
+  "entries": [
+    {
+      "id": "system:diamond",
+      "label": "item.minecraft.diamond",
+      "predicate": {
+        "items": [
+          "minecraft:diamond"
+        ]
+      },
+      "icon": {
+        "id": "minecraft:diamond"
+      }
+    },
+    {
+      "id": "system:gold_ingot",
+      "label": "item.minecraft.gold_ingot",
+      "predicate": {
+        "items": [
+          "minecraft:gold_ingot"
+        ]
+      },
+      "icon": {
+        "id": "minecraft:gold_ingot"
+      }
+    },
+    {
+      "id": "system:iron_ingot",
+      "label": "item.minecraft.iron_ingot",
+      "predicate": {
+        "items": [
+          "minecraft:iron_ingot"
+        ]
+      },
+      "icon": {
+        "id": "minecraft:iron_ingot"
+      }
+    },
+    {
+      "id": "system:emerald",
+      "label": "item.minecraft.emerald",
+      "predicate": {
+        "items": [
+          "minecraft:emerald"
+        ]
+      },
+      "icon": {
+        "id": "minecraft:emerald"
+      }
+    }
+  ],
+  "milestones": [
+    {
+      "id": "system:first",
+      "target": 1,
+      "reward": {
+        "label": "system.collection.default.first",
+        "items": [
+          {
+            "id": "minecraft:bread",
+            "count": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "system:complete",
+      "target": 4,
+      "reward": {
+        "label": "system.collection.default.complete",
+        "contents": [
+          {
+            "content": {
+              "type": "system:currency",
+              "currency": "system:coin"
+            },
+            "amount": 5
+          }
+        ]
+      }
+    }
+  ]
+}

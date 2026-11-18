@@ -7,6 +7,7 @@ import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.catalog.ShopTrade;
 import com.iafenvoy.system.data.input.ShopPurchaseInput;
 import com.iafenvoy.system.data.output.PurchaseReceiptOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -34,6 +35,6 @@ public final class ShopPurchaseModule extends AbstractAgentModule<ShopPurchaseIn
     @Override
     public AgentResult execute(ExecutionContext context, ShopPurchaseInput input) throws Exception {
         PurchaseReceiptOutput receipt = context.tool(BuiltinTools.SHOP_PURCHASE, "purchase", input);
-        return AgentResult.data("system.result.shop_purchased", receipt);
+        return AgentResult.data(receipt.trade() == ShopTrade.BUYBACK ? "system.result.shop_sold" : "system.result.shop_purchased", receipt);
     }
 }

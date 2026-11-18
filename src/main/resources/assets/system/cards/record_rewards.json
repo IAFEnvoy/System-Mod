@@ -1,0 +1,106 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.records.title"
+    },
+    {
+      "type": "system:text",
+      "text": "{{pending}}",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.records.note",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.records.empty",
+      "unless": "rewards",
+      "style": "card_context"
+    },
+    {
+      "type": "system:grid",
+      "source": "{{rewards}}",
+      "columns": 3,
+      "compact_columns": 2,
+      "max_row": 3,
+      "cell": 144,
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{rewards.*.reward_label}}",
+              "style": "offer_cell_label"
+            },
+            {
+              "type": "system:flex",
+              "source": "{{rewards.*.preview}}",
+              "style": "offer_cell_items",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{rewards.*.preview.*}}",
+                  "size": 32
+                }
+              ]
+            },
+            {
+              "type": "system:text",
+              "text": "{{rewards.*.reward_text}}",
+              "style": "card_context"
+            },
+            {
+              "type": "system:text",
+              "text": "{{rewards.*.status}}",
+              "style": "card_context"
+            }
+          ],
+          "style": "offer_cell_content",
+          "label": "{{rewards.*.reward_label}}"
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "direction": "column",
+      "style": "card_column",
+      "source": "{{counts}}",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{counts.*}}",
+          "style": "card_context"
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.footer}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

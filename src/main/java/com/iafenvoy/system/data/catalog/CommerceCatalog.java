@@ -15,16 +15,17 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Immutable trusted view of the three server-owned catalogues. Entries stay registry-backed holders, so callers read
- * the definition and its id from the same object instead of carrying a copied id next to copied values.
+ * Immutable trusted view of the three server-owned catalogues. Fixed entries retain registry-backed holders;
+ * shop stock may additionally provide immutable runtime offers without registering synthetic holders.
  */
 public record CommerceCatalog(String revision, List<Holder<SignInRewardEntry>> rewards,
-                              List<Holder<ShopOfferEntry>> offers, List<Holder<LotteryPool>> lotteries,
+                              List<ShopOffer> offers, List<Holder<LotteryPool>> lotteries,
                               RegistryAccess registries) {
     public CommerceCatalog {
         rewards = List.copyOf(rewards);
@@ -34,18 +35,30 @@ public record CommerceCatalog(String revision, List<Holder<SignInRewardEntry>> r
 
     public static CommerceCatalog create(RegistryAccess registries) {
         Comparator<Holder<?>> comparator = Comparator.comparing(HolderHelper::id);
-        return new CommerceCatalog(UUID.randomUUID().toString(),
+        String revision = UUID.randomUUID().toString();
+        return new CommerceCatalog(revision,
                 entries(registries.lookupOrThrow(SystemResourceKeys.SIGNIN_REWARD), comparator),
-                entries(registries.lookupOrThrow(SystemResourceKeys.SHOP_OFFER), comparator),
+                entries(registries.lookupOrThrow(SystemResourceKeys.SHOP_OFFER), comparator).stream()
+                        .<ShopOffer>map(holder -> new ShopOffer.Fixed(holder, revision)).toList(),
                 entries(registries.lookupOrThrow(SystemResourceKeys.LOTTERY_POOL), comparator),
                 registries);
     }
 
     public boolean contains(PurchaseType type, Identifier id) {
         return switch (type) {
-            case SHOP -> this.offers.stream().anyMatch(offer -> HolderHelper.id(offer).equals(id));
+            case SHOP -> this.offers.stream().anyMatch(offer -> offer.id().equals(id));
             case LOTTERY -> this.lotteries.stream().anyMatch(pool -> HolderHelper.id(pool).equals(id));
         };
+    }
+
+    /**
+     * List buttons bind to the aggregate stock; individual quotes bind only to their chosen offer version.
+     */
+    public String shopRevision() {
+        StringBuilder version = new StringBuilder(this.revision);
+        this.offers.stream().filter(offer -> !offer.searchOnly()).forEach(offer -> version.append('\0').append(offer.id()).append('\0')
+                .append(offer.revision().length()).append(':').append(offer.revision()));
+        return UUID.nameUUIDFromBytes(version.toString().getBytes(StandardCharsets.UTF_8)).toString();
     }
 
     private static <T extends EnabledEntry> List<Holder<T>> entries(Registry<T> registry, Comparator<Holder<?>> comparator) {

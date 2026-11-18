@@ -2,7 +2,7 @@
 
 ## 当前版本
 
-ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充。TTS / ASR 用量由 `LocalSpeechUsage` 按客户端账号 UUID 独立保存，不向服务端上报；服务端 SavedData 只记录 AI。当前网络协议 1。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
+ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充。TTS / ASR 用量由 `LocalSpeechUsage` 按客户端账号 UUID 独立保存，不向服务端上报；服务端 SavedData 只记录 AI。当前网络协议 3。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
 
 NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通过 JDK HMAC-SHA1 签名调用 CreateToken，跨 session 复用内存缓存并在有效期不足两分钟时按需刷新。设置保存和 `validate` 不联网，签发随识别工作线程取消；`AsrProvider.recognize` 的 `requestStarted` 回调在发送首次识别命令前启动计量，鉴权和握手失败不计 ASR 尝试。
 
@@ -12,11 +12,13 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 | --- | --- |
 | 模组与 Agent Java toolchain / 字节码 | 25 / Java 25 |
 | Gradle / ModDev | 9.2.1 / 2.0.148 |
-| Minecraft / NeoForge | 26.1.2 / 26.1.2.114 |
+| Minecraft / NeoForge | 26.1.2 / 26.1.2.126 |
 | ApricityUI | 1.2.9；客户端最低版本 1.2.9 |
 | CommonMark Java | 0.32.0；core、GFM tables、GFM strikethrough 三个 JAR 随模组 Jar-in-Jar 分发，用于客户端 Markdown |
 | Jupiter | CurseMaven 8569832 |
-| Saturn | 1.3.1 / CurseMaven 9606807；客户端和服务端均必装，提供 CostTarget.display、Cost、模块 DataStorage、Codec 工具、压缩 NBT 文件、玩家信息视图及 HUD 编辑器 |
+| Saturn | 1.4-beta.1 / CurseMaven 9661688；客户端和服务端均必装，提供 CostTarget.display、Cost、模块 DataStorage、Codec 工具、压缩 NBT 文件、玩家信息视图及 HUD 编辑器 |
+| exp4j | 0.4.8；仅 compileOnly，运行时复用 Saturn 内嵌版本，用于分解数量公式的严格求值 |
+| Evaluate | 1.0-beta.2 / CurseMaven 9626124；通过 `implementation jarJar(...)` 内嵌，提供服务端物品相对价值 API，最低 NeoForge 26.1.2.126 |
 | Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
 | Card JSON 编辑器（独立开发工具） | Vite 8.3.6；Node.js ^20.19.0 或 >=22.12.0，位于 html/card-editor；不进入模组 JAR |
 | Gson | 2.13.2；主项目直接声明依赖，Minecraft 提供运行时类 |
@@ -27,9 +29,11 @@ NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通�
 
 AUI 1.2.9 将布局状态从 `RenderElement` 拆到 `LayoutState`。卡片折叠与分页刷新通过 `Element.getLayout().invalidateLayoutSubtree()` 使布局失效，再由 `AssistantPages.commit` 提交更新。
 
-玩家查询与卡片使用 Saturn 的 `data.information.PlayerViews`、`PlayerInformation` 与 `InformationText`，展示结果类型为 `data.information.model.InformationEntry`。查询仍选取 basic/status 分组和既有行白名单，并保留 32 行、每行 256 字的上限；分组按 ResourceKey 从当前世界解析为 Holder，结果通过 entry.value()/label()/tooltip() 直接使用；排序和 importance 从原始行定义读取。Saturn 为必装依赖，最低版本为 1.3.1，通知位置编辑复用其 HUD 框架，存档使用其 `NBT_COMPRESSED` 入口。费用展示 API 已包含在发布版 1.3.1 中，依赖坐标为 `curse.maven:saturn-lib-1767455:9606807`；版本与文件 ID 分别由 `gradle.properties` 的 `saturn_version`、`saturn_file_id` 管理，模组元数据使用同一最低版本。
+玩家查询与卡片使用 Saturn 的 `data.information.PlayerViews`、`PlayerInformation` 与 `InformationText`，展示结果类型为 `data.information.model.InformationEntry`。查询仍选取 basic/status 分组和既有行白名单，并保留 32 行、每行 256 字的上限；分组按 ResourceKey 从当前世界解析为 Holder，结果通过 entry.value()/label()/tooltip() 直接使用；排序和 importance 从原始行定义读取。Saturn 为必装依赖，当前要求最低版本 1.4-beta.1，通知位置编辑复用其 HUD 框架，存档使用其 `NBT_COMPRESSED` 入口。费用展示 API 自发布版 1.3.1 提供，当前依赖坐标为 `curse.maven:saturn-lib-1767455:9661688`；`build.gradle` 通过 `saturn_file_id` 引用此发布文件，版本与文件 ID 分别由 `gradle.properties` 的 `saturn_version`、`saturn_file_id` 管理，模组元数据使用同一最低版本。
 
 直接执行下方 System 编译命令，Gradle 会从 CurseMaven 解析 Saturn 发布文件。
+
+Evaluate 发布 JAR 随 System 的 Jar-in-Jar 分发，不需额外下载；版本与 CurseForge 文件 ID 分别由 `evaluate_version`、`evaluate_file_id` 管理。它要求 Saturn 1.3.1 和 NeoForge 26.1.2.126。离线签到已接入其相对价值查询，商城与抽奖价格仍由数据包 Cost 定义；查询入口、返回值与线程约束见 [物品相对价值 API](evaluate-api.md)。
 
 Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器、上下文、Module/Tool/Store/Journal 契约、路由与模型调用。具体工作流和功能装配位于 `module/builtin`，MC 业务、绑定和交易位于 `assistant`，参数结果、持久化与资源加载位于 `data`，语音行为及任务口播位于 `speech`。业务 DataStorage 继续放在 `module/builtin/storage`，执行账本实现位于 `data/store`。通用工具、配置、游戏界面、网络与可选兼容层保留对应包；所有代码仍共用主源码集与 Java 25 工具链。详细边界见[包职责与数据流](architecture.md)及[功能模块化](feature-modules.md)。
 
@@ -58,6 +62,7 @@ Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器�
 | `assistant` | 服务端组装、绑定业务、玩家连接、请求分派、游戏线程队列、MinecraftTools 与客户端会话桥接 |
 | `assistant/tool、assistant/item` | 玩家、物品、发奖与交易等 MC 单行为 Tool，以及游戏物品名称索引 |
 | `assistant/commerce` | 玩家目录权限、Saturn Cost 求值、短期报价和交易编排；不由 AgentEngine 持有 |
+| `assistant/progression、assistant/signin` | 游戏线程上的 Evaluate 进度评估、离线奖励包筛选与独立的每日权益 / 签到归档维护 |
 | `assistant/usage、data/usage` | 用量服务、独立 SavedData、AI/联网计量和不可变快照，不随 revoke 删除 |
 | `module` | 功能契约、ModuleContext 安装依赖、ModuleManager、玩家权限、存储声明与生命周期 |
 | `module/builtin` | 内置功能装配、平台指令、两端入口；子包按功能组织 Agent 工作流，BuiltinTools 声明共享工具键 |
@@ -80,7 +85,7 @@ Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器�
 | `command、command/client` | 两端指令装配与补全桥接，具体入口由模块声明 |
 | `util、util/codec` | Codec/Schema、类型分派、HTTP/SSE 和其他通用工具 |
 | `compat/ftb、compat/voicechat` | 检测依赖后才加载的 FTB 工具/事件和 SVC 收音实现 |
-| `event、network、network/payload` | 扩展事件、协议 1、Handler 与有界载荷 |
+| `event、network、network/payload` | 扩展事件、协议 3、Handler 与有界载荷 |
 
 上表路径均相对于 `src/main/java/com/iafenvoy/system/`。Agent 与游戏接入代码处于同一主项目；详细依赖和生命周期见[包职责与数据流](architecture.md)。模块、工具和服务接口仍保留职责划分，工具使用稳定逻辑 ID，方便后续扩展业务。
 
@@ -131,7 +136,7 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 | `TokenUsageRequestC2S` | `system:token_usage_request_c2s` |
 | `TokenUsageResponseS2C` | `system:token_usage_response_s2c` |
 
-当前协议版本为 **1**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航、绑定变更、状态与历史，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的流式解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
+当前协议版本为 **3**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航、绑定变更、状态与历史，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的流式解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
 
 ## 扩展模块
 
@@ -146,6 +151,12 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 `AgentAction.CODEC` 通过正式 `SystemRegistries.ACTION_TYPE` 的 `byNameCodec().dispatch(...)` 按 `moduleId` 选择实例返回的 MapCodec；参数平铺为 `{"moduleId":"system:item_query","query":"stone"}`。`ModuleRegistry.call` 根据 Codec 注册 ID 定位当前服务器已安装模块并核对实例身份。指令、语义提取和按钮解码共用 `AgentAction.validate` 校验 Java 创建的动作；模型只接受当前可用目录中的动作。未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `AgentAction`，没有额外的 type/value 包装。
 
 `AgentCodecs.strict` 在原版 Codec 基础上额外拒绝未知键和显式 null；精确整数 Codec 拒绝小数和溢出值，避免原版 `Codec.INT` 的截断行为影响索引。业务参数的缺省值由严格 `optionalFieldOf` 提供，类型错误不静默回退；配置字段统一使用 `lenientOptionalFieldOf` 回退默认值，两者互不影响。Codec 解析失败不接受部分结果。写工具回放要求指纹完全一致，再由对应工具的结果 Codec 恢复对象；不匹配时拒绝执行，不归一旧格式，也不重新执行已完成写操作。
+
+### 客户端物品搜索附件
+
+`AssistantRequestC2SPayload` 在原请求之外携带可选的 `ItemSearchBatch` 二进制附件。客户端通过原版 `SearchTree<ItemStack>` 搜索名称与 tooltip，以 `ItemStackTemplate` 保留全部组件；每批最多 32 项、每堆叠 4 KiB、堆叠合计 24 KiB，最多扫描 256 个匹配项。服务端在正常限流链路内校验请求、游标、物品和组件，再签发玩家隔离的搜索引用；模型和按钮只携带引用及索引。生成商品、报价、付款继续服务端复核，不相信客户端价格或组件来源。引用与选择器由专门 Cache 保存并在退出／权限变化时清理。协议升级为 `3`，详见[客户端物品检索](item-search.md)。
+
+`ItemSearchQuery.searchOffset()` 将物品游标与目录分页区分，抽奖以 `item_offset` 收集下一批候选、以 `offset` 翻奖池；奖池翻页保留搜索引用。`SpaceOutput.Entry.item` 仅在实际内容为物品时提供，客户端用这些真实堆叠建立独立的原版搜索树；图标不作为物品身份证明。空间取出只从服务端当前账本选择目标，候选未读完时不执行。`/recipe` 的名称检索复用物品查询工具及选择卡，原范围在继续检索和选择后保留。
 
 ### 调度、路由与执行职责
 
@@ -195,7 +206,7 @@ ClientCards 保存连接内最新消息、版本和活动状态，ServerCards �
 
 CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式 CARD_NODE_TYPE 按 type 分派；style 支持字符串或列表。Context 三表平铺且共享，items 直接绑定 List<ItemPreviewOutput>，不经 JSON 字符串传物品。通知正文 actions 只显示 BODY 按钮，FOOTER 仍由代码生成；任务列表通知每页 10 项，节点内本地翻页，查看详情后可返回原页。模板缺失使用 summary 和已有按钮回退，不显示原始 DTO。格式见[客户端 JSON 卡片](cards.md)，完整流程和 BuiltinTools 职责见[卡片数据流](card-flow-design.md)。
 
-网络、历史和玩家存档的结果统一使用 AgentResult.CODEC，文本边界使用 CodecIO。协议保持 1；项目未发布，不提供旧卡片、网络或开发存档迁移。CardData 的 Codec 始终共用且不引用可选模组类，FTB 真实工具与工作流仅在安装后加载。TTS/ASR 私人密钥和用量不上传服务端。
+网络、历史和玩家存档的结果统一使用 AgentResult.CODEC，文本边界使用 CodecIO。协议为 3；项目未发布，不提供旧卡片、网络或开发存档迁移。CardData 的 Codec 始终共用且不引用可选模组类，FTB 真实工具与工作流仅在安装后加载。TTS/ASR 私人密钥和用量不上传服务端。
 
 游戏访问继续通过受限主线程队列，禁止在主线程等待模型或工具 Future。扩展模块在 `routing()` 中声明 `ModuleRouting<I>`，由同一次模块注册自动建立指令与 `RoutingProfile`，参见 [轻量本地意图路由](semantic-routing.md)。
 
@@ -226,7 +237,7 @@ CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式
 
 ## 持久化与恢复
 
-存档内的自管文件统一位于 `<存档>/system/`：`players/<UUID>.dat` 保存业务状态，`chat/<UUID>.dat` 保存对话与请求回放缓存，`database/shared.dat` 和 `database/players/<UUID>.dat` 保存共享及玩家独立数据库。所有数据文件均通过 `FileAccess.NBT_COMPRESSED` 与 Codec 读写为 GZIP 压缩 NBT；`store.lock` 是进程文件锁。原版 SavedData 继续由 Minecraft 管理，保留在 `data/system/`。
+存档内的自管文件统一位于 `<存档>/system/`：`players/<UUID>.dat` 保存业务状态，`chat/<UUID>.dat` 保存对话与请求回放缓存，`database/shared.dat` 和 `database/players/<UUID>.dat` 保存共享及玩家独立数据库，`signin/<UUID>/<archiveScope>/<年>/<日期>.dat` 保存签到归档。所有数据文件均通过 `FileAccess.NBT_COMPRESSED` 与 Codec 读写为 GZIP 压缩 NBT；`store.lock` 是进程文件锁。原版 SavedData 继续由 Minecraft 管理，保留在 `data/system/`。
 
 读取由 Saturn 自动识别 GZIP / 未压缩、标准 / 旧版省略根名称头部；新写入始终为 GZIP 加标准 NBT 头部。现有 `system/` 内的未压缩文件无需迁移，后续正常保存时改为压缩格式，不批量重写存档。
 
@@ -238,11 +249,13 @@ CardNode 在 screen/card/node 实现 codec/render/text/css，根 Codec 从正式
 
 `CardUpdate` 按 `mode` 分派，SHOW / REPLACE 要求 `data`，REMOVE 只读取引用，避免缺少载荷时构造出无效的部分对象。读取玩家文件时自动丢弃无法解析的回放结果和助手历史卡片，保留有效结果及用户消息；清理后的内容随下一次正常保存落盘，无需手工删除玩家文件。恢复日志仅记录丢弃数量和必要的文件位置，不记录缓存正文。NBT 格式错误、业务 Codec 构造异常和编码异常统一归入存储错误；保留原文件，不自动创建空玩家覆盖，既有 `STORAGE_FULL` 等业务错误码继续保留。
 
-长期 AI 用量使用服务器全局 SavedData，保存在 `<存档>/data/system/token_usage.dat`，不进入上述业务文件或玩家附件，也不随 revoke 清理。所有 AI 请求统一经过 `ModelGateway`，按 API 实际 usage 累计。TTS / ASR 由客户端使用私人凭据请求，用量按客户端账号 UUID 只存本机 `config/system/speech-usage/<UUID>.json`，费用读取客户端 `SpeechPricingConfig`。服务端没有语音上报消息、存储字段或快照字段；管理员全服视图只有 AI，个人语音面板跨服务器累计，协议保持 1。详情见[用量统计](token-usage.md)。
+长期 AI 用量使用服务器全局 SavedData，保存在 `<存档>/data/system/token_usage.dat`，不进入上述业务文件或玩家附件，也不随 revoke 清理。所有 AI 请求统一经过 `ModelGateway`，按 API 实际 usage 累计。TTS / ASR 由客户端使用私人凭据请求，用量按客户端账号 UUID 只存本机 `config/system/speech-usage/<UUID>.json`，费用读取客户端 `SpeechPricingConfig`。服务端没有语音上报消息、存储字段或快照字段；管理员全服视图只有 AI，个人语音面板跨服务器累计，协议为 3。详情见[用量统计](token-usage.md)。
 
 业务文件包含每日签到、系统空间、业务操作回执、事件任务、成就状态及模块覆盖，各业务状态分属独立 DataStorage；对话与请求回放单独存放在 `chat/` 下，清空对话不影响业务唯一标记。配置不进入玩家文件；密钥始终来自服务端环境变量。请用宿主机权限保护存档、临时文件和备份。
 
 数据包条目的持久化引用统一用 `PersistHolder<T>(id, value)`（`util`）：codec 把 value 的字段平铺在 `id` 旁边，数据包 JSON 与旧存档形状都不变；订单、系统空间交付、签到历史、回执和奖励卡片保存写入当时的 id 与取值，数据包后续被修改或删除都不会改写已落盘的内容。运行时读取注册表时用 `Holder<T>`（`CommerceCatalog`），只有落盘和跨线程传递才转成 `PersistHolder`。
+
+签到由 `assistant.signin.SignIns` 共用运行时维护：玩家文件最多保留 32 条近期签到快照，登录及新签到入账前将较早的快照写入 `data.store.SignInArchive`。先写不可变归档再删除活动快照，新签到始终随玩家事务提交；失败重试校验已有归档一致性。完整奖励及每日去重均可从归档恢复，未领完、处理中或状态未知的空间权益继续保留；仅在归档存在且内容已取完时删除重复交付收据。`archiveScope` 隔离不同绑定代次，撤销系统会删除该玩家的签到归档。
 
 `PlayerData` 顶层 `RecordCodecBuilder` 只保存版本、绑定与偏好、`DataStorageHolder<Identifier>` 和 `ModelQuota` 共 6 项；`Conversation` 由独立的聊天文件按同一事务写入，`copy()` 仍复制两份以保持读取快照一致。签到、系统空间、事件/操作回执、商城、成就状态和模块覆盖分别实现 Saturn `DataStorage`，由 ServerModule.storages 声明，内置 Codec 由 `SystemDataStorages` 注册，扩展 Codec 独立注册到 Saturn DATA_STORAGE_TYPE，并由 `DataStorageHolder.codec(Identifier.CODEC)` 分派；扩展模块可用自己的 DataStorage 避免继续扩大共享玩家记录。访问入口为 `ModuleData.get(data, SomeSystemModule.STORAGE)`，底层按 Holder 键和类型调用 `get` / `set`，与 DataStorage Codec 类型 ID 分开；复制必须隔离可变集合和其中的可变记录。玩家文件仍由 `AgentStore.update` 整体事务化写入，不属于玩家附件。对话历史和请求回放由 `Conversation` 管理，`Conversation.clear()` 统一清理并推进记忆代次；内部交付、事件、步骤回执和订单使用 `RecordCodecBuilder`。
 
@@ -272,7 +285,11 @@ ModuleAccess 在登录事务中取得绑定 ID，在主线程确认定义仍存�
 
 `data/catalog/CommerceCatalog` 从当前服务端 RegistryAccess 的三张目录注册表建立不可变业务快照；默认内容也放在 JAR 内 `data/system/system/signin_reward/`、`shop_offer/` 与 `lottery_pool/`，目录统一采用注册表的单数名称。CatalogReloadListener、目录文件扫描和逐 tick 发布逻辑已删除。原版负责资源优先级、条目 ID、Codec 加载与 tag，条目修改需重开世界 / 重启服务器；目录版本按服务端实例生成，不使用跨世界静态数据。提示词仍使用 retained reload listener 读取 txt。
 
-签到、商城和抽奖实现 CatalogModule，声明对应目录注册表与可选 ResourceKey / TagKey 列表。ModuleManager 将配置注册到 CommerceCatalogs，catalogs.available(player) 仅合并该玩家已启用定义允许的条目，同类配置取并集、目录顺序稳定且不重复；省略字段允许全表，空数组为空。内置三模块显式引用各表自己的 #system:default。所有列表、签到候选与提交、报价和扣款均读取这份受限视图，系统空间状态也使用同一入口；成就事件显式读取原始目录。原生 tag 重载无需重建业务内容快照，后续查询读取当前成员；确认和支付前还会检查报价来源是否仍可用。同类配置共用原有对应交易账本，允许重复装配同一静态 ModuleStorage，不重复注册存储类型。格式见 [扩展配置](datapacks.md#模块目录可选项)。
+签到、抽奖通过 CatalogModule 声明目录选项；固定商城通过 MergeableModule<ShopContribution> 和 ShopMergeRuntime.TYPE 进入通用合并组，组只注册一套工作流并初始化一次共享交易存储。catalogs.available(player) 仍仅合并已启用定义允许的条目，商城统一读取 ShopInventory，不保留另一条固定目录兜底。固定商品保留 Holder，重复引用合为一项并共用限购；非固定商品通过 ShopOffer 保留来源及版本，无需临时注册表条目。省略选项允许全表，空数组为空，三个内置定义仍使用各表的 #system:default；列表、候选、状态、报价和扣款共用受限视图。确认前复核可用性与商品版本，已支付权益不依赖来源继续启用。格式见[扩展配置](datapacks.md#模块目录可选项)，接口和生命周期见[模块合并](module-merging-design.md)。
+
+AI 签到选择使用 `SignInDecision.Candidate`，仅携带请求内临时 ID、最多 80 字符的名称和最多 320 字符的内容摘要（最多 8 项），不序列化物品组件和 action。合格奖励按玩家 UUID 与日期固定打乱，最多生成 32 个候选；逐项使用 `ExecutionContext.fitsModelInput` 检查与 `model()` 相同的 UTF-8 序列化输入、提示词和剩余总预算，只发送能容纳的候选。服务端持有临时 ID 到完整奖励的映射，模型返回后仍校验候选、日期、玩家及目录条件；模型失败不随机发奖。
+
+生效离线模式使用 `assistant.signin.OfflineSignIn`，通过 `CatalogAccess` 在游戏线程调用独立的 `PlayerProgression.estimate`：背包 / 装备 / 副手与可选已解锁配方静态产物去重，Evaluate 单件价值的向下经验 P90（可配 P95）形成区间，再按奖励包总价值筛选。非物品或未知价值包需声明 `offline_value`；样本不足时选允许范围内最低价值包，有样本但区间内为空时只向下找，不能突破价值上界或阶段硬性下界。`PlayerProgressionEvent` 提供阶段校准扩展，暂未安装具体阶段适配。`SignInCreditTool` 在入账前重新验证本地候选，在线分支保留外部服务门禁，两分支共用原有每日权益；详见[每日签到](sign-in.md)。
 
 奖励和商品 ID 使用 `Identifier`，通过 `Identifier.CODEC` 解析；签到选择、报价请求和成就奖励引用保留该类型，只在搜索或对话摘要等文本边界转换。商品与奖池直接保存 `List<Cost>`，通过 Saturn `Cost.LIST_CODEC` 按注册类型分派；目录由原生注册表加载流程提供 RegistryOps，支持资源 Cost 的动态注册表引用。`CommerceCatalog.Price` 仅保存求值后的物品图标和文字组件，供客户端及订单快照使用，不含可执行费用。展示通过 `CostTarget.display(transaction.amount())` 多态生成 `CostDisplay`，由各个 Target 负责物品、资源或币种的展示；`CommerceCosts` 只转换和汇总，不按目标类型分支，也不重新求值。
 
@@ -326,11 +343,11 @@ FTB 没有专门的解锁事件。按队伍保存可见且 `canStartTasks` 的�
 
 FTB 没有通用的服务端“需要手动提交”字段；`requiresManualSubmission(quest)` 对全部目标执行 `anyMatch`，任意一个原生手动目标就将整个任务归入手动提交，包括可选目标或已完成的手动目标。按实际配置区分消耗物品、仅任务界面物品、勾选、经验及仅启用按钮且不自动检查的自定义任务；未适配的资源目标保守交给 FTB 专用输入。类型判定不加载 `TaskClient`，也不把“没有 tick 自动检查”的击杀、观察等目标误当成手动任务。显式提交只遍历 `submittableTasks(quest)` 中支持直接调用的原生目标：消耗物品、勾选、经验和手动自定义按钮；仅任务界面、流体、能量与未知资源目标仍在 FTB 中操作，查询和通知不触发提交。
 
-`canComplete(player, team, quest)` 判断全部剩余目标均为原生 `CheckmarkTask`；`canSubmit` 检查可执行状态和至少一个支持直接调用的未完成、顺序允许目标。`submissionAction` 返回公共枚举 `QuestSubmission.NONE / CHECKMARK / SUBMIT`，详情和通知都保存该快照，枚举统一构建“完成此任务”或“提交任务”按钮。查询不模拟提交，不预扣资源，也不承诺材料足够或自定义检查成功；原生接口决定部分提交及实际进度。勾选动作携带 `QuestSubmitInput.checkmarkOnly=true`，真正执行时重查仅剩勾选目标，避免旧按钮提交新增加的资源目标；普通提交在循环中重新检查每个目标的完成和顺序条件。依赖、暂停、重复任务代次和完成通知合并仍沿用原链路。按钮不会自动执行，也不改变介绍任务与新手礼包分类。当前网络协议为 `1`，任务列表没有分页偏移，Tool 直接返回完整简表 List，Module 再包装为 `QuestList` 卡片。
+`canComplete(player, team, quest)` 判断全部剩余目标均为原生 `CheckmarkTask`；`canSubmit` 检查可执行状态和至少一个支持直接调用的未完成、顺序允许目标。`submissionAction` 返回公共枚举 `QuestSubmission.NONE / CHECKMARK / SUBMIT`，详情和通知都保存该快照，枚举统一构建“完成此任务”或“提交任务”按钮。查询不模拟提交，不预扣资源，也不承诺材料足够或自定义检查成功；原生接口决定部分提交及实际进度。勾选动作携带 `QuestSubmitInput.checkmarkOnly=true`，真正执行时重查仅剩勾选目标，避免旧按钮提交新增加的资源目标；普通提交在循环中重新检查每个目标的完成和顺序条件。依赖、暂停、重复任务代次和完成通知合并仍沿用原链路。按钮不会自动执行，也不改变介绍任务与新手礼包分类。当前网络协议为 `3`，任务列表没有分页偏移，Tool 直接返回完整简表 List，Module 再包装为 `QuestList` 卡片。
 
 新手礼包详情使用 `StarterGiftOutput.gifts` 汇总全部当前可领取的匹配任务；每组只同步内部任务 ID、领取引用与可选错误，整体 items / icons 保存合计后的物品及经验 / 等级预览，界面和播报不显示任务名或章节。`StarterGiftQueryModule` 与只读 Tool 负责刷新完整列表，领取模块只接受可信按钮携带的 `StarterGiftInput.claimRefs`，不参与自由模型路由。礼包领取引用绑定玩家、队伍、原任务/奖励对象及完成时间，同一连接内保留供聊天历史使用；登出、撤销或任务模块停止时清理。普通任务奖励仍为两分钟引用。显式批量领取先校验引用归属，再逐组核对解锁、暂停、可见和奖励阻止状态，在 `withPlayerContext` 内执行原生勾选提交，并通过 `TeamData.claimReward` 领取原奖励；不消耗物品或经验。成功项从列表移除，失败项保留错误与可用动作；回包仅静默更新状态和原礼包列表，不新建成功通知、对话记录或播报，全部领取后继续下一条通知。任务顺序、自动领取和队伍奖励语义沿用 FTB；不新建签到/系统空间权益，不重复推送礼包任务的普通完成消息。
 
-明确提交完成的普通任务与 FTB 原生完成事件合并到同一队伍、任务 ID 的当批完成项；提交回包仅结束请求，不再追加“已提交”或“进度更新”通知。未完成时才返回实际进度是否变化。`AgentResult.silent()` 统一标记这两类静默回包，客户端更新请求与礼包状态，历史不新增空白结果；写步骤与请求回放仍保留。新增礼包列表输入和丰富任务通知载荷后，未发布版本的网络协议统一为 `1`，客户端与服务端需同步更新。
+明确提交完成的普通任务与 FTB 原生完成事件合并到同一队伍、任务 ID 的当批完成项；提交回包仅结束请求，不再追加“已提交”或“进度更新”通知。未完成时才返回实际进度是否变化。`AgentResult.silent()` 统一标记这两类静默回包，客户端更新请求与礼包状态，历史不新增空白结果；写步骤与请求回放仍保留。新增礼包列表输入和丰富任务通知载荷后，当前网络协议统一为 `3`，客户端与服务端需同步更新。
 
 通知接收者为已完成系统绑定初始化的在线队员。`AssistantPlayers.notificationsEnabled` 复用服务端已完成登录基线作为绑定缓存，不在 tick 中读取玩家文件；发送前重新核对原玩家实例、连接代次、绑定运行代次及当前队伍。新加入或刚绑定的成员不接收加入前的解锁差异，离线队伍不保留积压。单队同 tick 最多保留 256 个不同完成项，客户端仍使用 32 个等待槽的限长 HUD 队列；大批量管理操作不承诺无限保留通知。消息由 `notifyEvent` 直接以 `event` 回包进入队列，没有模型请求、Agent 写任务或新奖励副作用；详情按钮继续走既有授权查询。通知没有独立持久化 outbox，不补播停机或离线期间的历史。FTB 原生 toast 不拦截。
 

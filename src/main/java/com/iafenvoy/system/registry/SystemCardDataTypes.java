@@ -39,6 +39,9 @@ public final class SystemCardDataTypes {
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<WalletOutput>> WALLET = REGISTRY.register("wallet", () -> WalletOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ItemInspectionOutput>> ITEM_INSPECTION = REGISTRY.register("item_inspection", () -> ItemInspectionOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<RepairQuoteOutput>> REPAIR_QUOTE = REGISTRY.register("repair_quote", () -> RepairQuoteOutput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<SalvageQuoteOutput>> SALVAGE_QUOTE = REGISTRY.register("salvage_quote", () -> SalvageQuoteOutput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<SalvageReceiptOutput>> SALVAGE_RECEIPT = REGISTRY.register("salvage_receipt", () -> SalvageReceiptOutput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<SalvageHistoryOutput>> SALVAGE_HISTORY = REGISTRY.register("salvage_history", () -> SalvageHistoryOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<OnlineJobsOutput>> ONLINE_JOBS = REGISTRY.register("online_jobs", () -> OnlineJobsOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<ItemSourceOutput>> ITEM_SOURCES = REGISTRY.register("item_sources", () -> ItemSourceOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<StateOutput>> DELIVERY_STATE = REGISTRY.register("delivery_state", () -> StateOutput.CODEC);
@@ -60,4 +63,7 @@ public final class SystemCardDataTypes {
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<QuestStartupOutput>> QUEST_STARTUP = REGISTRY.register("quest_startup", () -> QuestStartupOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<StarterGiftOutput>> STARTER_GIFT = REGISTRY.register("starter_gift", () -> StarterGiftOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<QuestSubmitOutput>> QUEST_SUBMIT = REGISTRY.register("quest_submit", () -> QuestSubmitOutput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<AchievementsOutput>> ACHIEVEMENTS = REGISTRY.register("achievements", () -> AchievementsOutput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<RecordRewardsOutput>> RECORDS = REGISTRY.register("records", () -> RecordRewardsOutput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<CollectionOutput>> COLLECTION = REGISTRY.register("collection", () -> CollectionOutput.CODEC);
 }

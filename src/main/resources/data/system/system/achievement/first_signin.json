@@ -1,0 +1,19 @@
+{
+  "label": "system.achievement.first_signin",
+  "description": "system.achievement.first_signin.description",
+  "series": "system.achievement.series.signin",
+  "event": "system:signed_in",
+  "target": 1,
+  "reward": {
+    "label": "system.achievement.first_signin",
+    "contents": [
+      {
+        "content": {
+          "type": "system:currency",
+          "currency": "system:coin"
+        },
+        "amount": 2
+      }
+    ]
+  }
+}

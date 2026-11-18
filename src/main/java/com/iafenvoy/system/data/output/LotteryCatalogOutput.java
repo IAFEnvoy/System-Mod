@@ -16,16 +16,15 @@ import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * One shelf card lists a batch of browsable pools; each cell dispatches the existing preview action, so odds and costs
  * stay server-side until the player opens a specific pool.
  */
 public record LotteryCatalogOutput(String revision, String query, List<Pool> pools,
-                                   int offset, int total) implements CardData {
+                                   int offset, int total, Optional<String> searchRef, int itemOffset,
+                                   Optional<Integer> nextItemOffset) implements CardData {
     /**
      * One pool prize as the shelf tooltip shows it: its name, odds and the previewed items of that reward.
      */
@@ -117,12 +116,19 @@ public record LotteryCatalogOutput(String revision, String query, List<Pool> poo
             Codec.STRING.optionalFieldOf("query", "").forGetter(LotteryCatalogOutput::query),
             Pool.CODEC.listOf().optionalFieldOf("pools", List.of()).forGetter(LotteryCatalogOutput::pools),
             Codec.INT.optionalFieldOf("offset", 0).forGetter(LotteryCatalogOutput::offset),
-            Codec.INT.optionalFieldOf("total", 0).forGetter(LotteryCatalogOutput::total)
+            Codec.INT.optionalFieldOf("total", 0).forGetter(LotteryCatalogOutput::total),
+            Codec.STRING.optionalFieldOf("searchRef").forGetter(LotteryCatalogOutput::searchRef),
+            Codec.INT.optionalFieldOf("itemOffset", 0).forGetter(LotteryCatalogOutput::itemOffset),
+            Codec.INT.optionalFieldOf("nextItemOffset").forGetter(LotteryCatalogOutput::nextItemOffset)
     ).apply(i, LotteryCatalogOutput::new));
     public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_catalog");
 
     public LotteryCatalogOutput {
         pools = List.copyOf(pools);
+    }
+
+    public LotteryCatalogOutput(String revision, String query, List<Pool> pools, int offset, int total) {
+        this(revision, query, pools, offset, total, Optional.empty(), 0, Optional.empty());
     }
 
     @Override
@@ -133,7 +139,7 @@ public record LotteryCatalogOutput(String revision, String query, List<Pool> poo
     @Override
     public CardBuilder buildCard() {
         CardBuilder builder = CardBuilder.template(TEMPLATE).title("system.result.lottery").summary("system.result.lottery")
-                .put("revision", this.revision).put("query", this.query)
+                .put("revision", this.revision).put("query", this.query).enable("empty", this.pools.isEmpty())
                 .put("range", Component.translatable("system.ui.lottery_pool_range", this.offset + 1,
                         this.offset + this.pools.size(), Math.max(this.total, this.offset + this.pools.size())));
         builder.list("pools", this.pools, (prefix, entry) -> builder.contents(prefix, entry.contents())
@@ -143,18 +149,27 @@ public record LotteryCatalogOutput(String revision, String query, List<Pool> poo
         // Cell order matches the pool list; the grid binds each cell to the matching action callback.
         for (int index = 0; index < this.pools.size(); index++)
             builder.serverButton("pool." + index, "", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_preview"),
-                    Map.of("pool", this.pools.get(index).id(), "revision", this.revision));
+                    Map.of("pool", this.pools.get(index).id(), "revision", this.revision), CardButton.Placement.BODY, CardButton.Behavior.REPLACE);
         if (this.offset > 0) this.page(builder, "previous", this.offset - 1);
         if ((long) this.offset + this.pools.size() < this.total)
             this.page(builder, "next", this.offset + this.pools.size());
+        this.nextItemOffset.ifPresent(next -> builder.serverButton("more_search", "system.action.more_search_results",
+                        Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery"),
+                        Map.of("query", this.query, "item_offset", Integer.toString(next)), CardButton.Placement.FOOTER, CardButton.Behavior.PUSH)
+                .actionParameter("pager", true));
         builder.serverButton("history", "system.lottery.history", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_history"),
                 Map.of(), CardButton.Placement.BODY, CardButton.Behavior.REPLACE).actionParameter("pager", true);
         return builder;
     }
 
     private void page(CardBuilder builder, String direction, int offset) {
+        Map<String, String> arguments = new LinkedHashMap<>();
+        arguments.put("query", this.query);
+        arguments.put("offset", Integer.toString(offset));
+        arguments.put("item_offset", Integer.toString(this.itemOffset));
+        this.searchRef.ifPresent(reference -> arguments.put("search_ref", reference));
         builder.serverButton(direction, "system.action." + direction + "_batch", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery"),
-                        Map.of("query", this.query, "offset", Integer.toString(offset)), CardButton.Placement.BODY, CardButton.Behavior.REPLACE)
+                        arguments, CardButton.Placement.BODY, CardButton.Behavior.REPLACE)
                 .actionParameter("pager", true);
     }
 }

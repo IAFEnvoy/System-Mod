@@ -1,0 +1,112 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.ui.nav_achievements"
+    },
+    {
+      "type": "system:text",
+      "text": "{{overview}}",
+      "style": "card_context"
+    },
+    {
+      "type": "system:flex",
+      "direction": "column",
+      "source": "{{series}}",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{series.*.text}}",
+          "style": "card_context"
+        }
+      ]
+    },
+    {
+      "type": "system:text",
+      "translate": "system.achievements.note",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.achievements.empty",
+      "unless": "entries",
+      "style": "card_context"
+    },
+    {
+      "type": "system:grid",
+      "source": "{{entries}}",
+      "columns": 3,
+      "compact_columns": 2,
+      "max_row": 3,
+      "cell": 184,
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "style": "offer_cell_content",
+          "label": "{{entries.*.label}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{entries.*.series}}",
+              "style": "card_context"
+            },
+            {
+              "type": "system:text",
+              "text": "{{entries.*.label}}",
+              "style": "offer_cell_label"
+            },
+            {
+              "type": "system:text",
+              "text": "{{entries.*.description}}",
+              "style": "card_context"
+            },
+            {
+              "type": "system:text",
+              "text": "{{entries.*.progress_text}}",
+              "style": "card_context"
+            },
+            {
+              "type": "system:progress",
+              "value": "{{entries.*.progress}}"
+            },
+            {
+              "type": "system:text",
+              "text": "{{entries.*.status}}",
+              "style": "card_context"
+            },
+            {
+              "type": "system:text",
+              "text": "{{entries.*.reward}}",
+              "style": "card_context"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.footer}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -21,6 +21,27 @@
       "when": "feedback"
     },
     {
+      "type": "system:container",
+      "when": "quote",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{quote_label}}",
+          "style": "card_title_2"
+        },
+        {
+          "type": "system:text",
+          "translate": "system.anchor.confirm_cost",
+          "style": "card_context"
+        },
+        {
+          "type": "system:text",
+          "text": "{{price_text}}",
+          "style": "card_context"
+        }
+      ]
+    },
+    {
       "type": "system:text",
       "translate": "system.anchor.empty",
       "unless": "anchors"
@@ -78,6 +99,17 @@
                 },
                 {
                   "type": "system:button",
+                  "click": "local",
+                  "value": "{{anchors.*.rename_binding}}",
+                  "children": [
+                    {
+                      "type": "system:text",
+                      "translate": "system.action.anchor_rename"
+                    }
+                  ]
+                },
+                {
+                  "type": "system:button",
                   "click": "return-val",
                   "value": "{{anchors.*.delete_value}}",
                   "behavior": "replace",
@@ -87,6 +119,59 @@
                       "translate": "system.action.anchor_delete"
                     }
                   ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "system:container",
+      "when": "destinations",
+      "children": [
+        {
+          "type": "system:title",
+          "level": 2,
+          "translate": "system.anchor.public_destination"
+        },
+        {
+          "type": "system:grid",
+          "source": "{{destinations}}",
+          "columns": 2,
+          "compact_columns": 1,
+          "max_row": 3,
+          "cell": 160,
+          "children": [
+            {
+              "type": "system:button",
+              "click": "return-val",
+              "value": "{{destinations.*.teleport_value}}",
+              "disabled": "{{destinations.*.locked}}",
+              "behavior": "replace",
+              "style": "offer_cell_content",
+              "label": "{{destinations.*.label}}",
+              "children": [
+                {
+                  "type": "system:text",
+                  "text": "{{destinations.*.label}}",
+                  "style": "offer_cell_label"
+                },
+                {
+                  "type": "system:text",
+                  "text": "{{destinations.*.description}}",
+                  "style": "card_context"
+                },
+                {
+                  "type": "system:text",
+                  "text": "{{destinations.*.dimension}}",
+                  "style": "card_context"
+                },
+                {
+                  "type": "system:text",
+                  "translate": "system.ui.condition_unmet",
+                  "when": "destinations.*.locked",
+                  "style": "card_context"
                 }
               ]
             }

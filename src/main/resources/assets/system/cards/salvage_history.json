@@ -1,0 +1,87 @@
+{
+  "body": [
+    {
+      "type": "system:text",
+      "text": "{{tr:system.salvage.empty}}",
+      "when": "empty",
+      "style": "card_context"
+    },
+    {
+      "type": "system:flex",
+      "direction": "column",
+      "source": "{{orders}}",
+      "children": [
+        {
+          "type": "system:container",
+          "style": "card_container",
+          "children": [
+            {
+              "type": "system:flex",
+              "direction": "row",
+              "wrap": false,
+              "style": ["item_entry", "item_labeled"],
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{orders.*.item}}",
+                  "size": 32
+                },
+                {
+                  "type": "system:text",
+                  "text": "{{orders.*.name}}",
+                  "style": "card_title"
+                }
+              ]
+            },
+            {
+              "type": "system:text",
+              "text": "{{orders.*.state}}"
+            },
+            {
+              "type": "system:text",
+              "text": "{{orders.*.outputs}}",
+              "style": "card_context"
+            },
+            {
+              "type": "system:text",
+              "text": "{{orders.*.id}}",
+              "style": "card_context"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "system:text",
+      "text": "{{page}}",
+      "style": "card_context"
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.visible}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

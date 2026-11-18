@@ -5,11 +5,18 @@ import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.mojang.serialization.MapCodec;
 
-public record AnchorTeleportInput(String anchor, boolean inPlace) implements AgentAction {
+import java.util.Optional;
+
+public record AnchorTeleportInput(String anchor, boolean inPlace, Optional<String> quote) implements AgentAction {
     public static final SchemaMapCodec<AnchorTeleportInput> CODEC = SchemaCodecs.record((i, f) -> i.group(
-            f.required("anchor", SchemaCodecs.STRING.described("An observed personal anchor ID or exact name; never supply arbitrary coordinates.")).forGetter(AnchorTeleportInput::anchor),
-            f.optional("in_place", SchemaCodecs.BOOL, false).forGetter(AnchorTeleportInput::inPlace)
+            f.required("anchor", SchemaCodecs.STRING.described("An observed personal anchor ID/exact name, or an observed public:<namespace>:<path> destination selector. Never invent IDs or coordinates.")).forGetter(AnchorTeleportInput::anchor),
+            f.optional("in_place", SchemaCodecs.BOOL, false).forGetter(AnchorTeleportInput::inPlace),
+            f.optional("quote", SchemaCodecs.STRING).forGetter(AnchorTeleportInput::quote)
     ).apply(i, AnchorTeleportInput::new));
+
+    public AnchorTeleportInput(String anchor, boolean inPlace) {
+        this(anchor, inPlace, Optional.empty());
+    }
 
     @Override
     public MapCodec<AnchorTeleportInput> codec() {

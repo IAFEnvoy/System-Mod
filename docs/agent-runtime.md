@@ -160,7 +160,7 @@ Descriptor 的 `tools` 为必需工具，`optionalTools` 为可选只读工具 I
 {"type":"system:preferences","history":true,"external":true}
 ```
 
-响应类型为 `system:reply`、`system:notice`、`system:open`、`system:binding`、`system:state` 和 `system:history`。状态与历史不占用卡片类型；历史恢复为只读，不播报、不执行按钮；历史条目按 `role` 判别，`assistant` 直接携带 `AgentResult` 对象，不再嵌套 JSON 字符串。回复关联请求 UUID，通知直接进入消息队列；导航携带 `CURRENT/SIMPLE/FULL`，绑定变更携带 `BOUND/REVOKED/INVALIDATED`。请求 ID 只作关联，不再传递 `bound/open/event/revoked` 等操作字符串。网络协议为 1，两端需一起更新。
+响应类型为 `system:reply`、`system:notice`、`system:open`、`system:binding`、`system:state` 和 `system:history`。状态与历史不占用卡片类型；历史恢复为只读，不播报、不执行按钮；历史条目按 `role` 判别，`assistant` 直接携带 `AgentResult` 对象，不再嵌套 JSON 字符串。回复关联请求 UUID，通知直接进入消息队列；导航携带 `CURRENT/SIMPLE/FULL`，绑定变更携带 `BOUND/REVOKED/INVALIDATED`。请求 ID 只作关联，不再传递 `bound/open/event/revoked` 等操作字符串。网络协议为 3，两端需一起更新；请求包新增带组件的客户端物品搜索附件，见[客户端物品检索](item-search.md)。
 
 服务端请求和客户端响应使用 util.TypeDispatch 分派运行行为；控制动作和 NLS 事件使用 Map。卡片本身通过 buildCard 提供展示与播报，ClientCards 按 ID/版本处理 SHOW/REPLACE/REMOVE，不再登记按类型刷新或口播处理器。ReplyResponse 完成请求与是否含卡片无关；客户端跟踪页面归属和超时，迟到更新不能抢新页。详见[卡片数据流](card-flow-design.md)。
 

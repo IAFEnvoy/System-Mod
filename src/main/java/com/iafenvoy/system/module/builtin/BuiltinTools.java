@@ -14,6 +14,7 @@ public final class BuiltinTools {
     public static final ToolRegistry.Type<AnchorListInput, AnchorListOutput> ANCHOR_LIST = new ToolRegistry.Type<>("anchor.list", AnchorListInput.CODEC, AnchorListOutput.CODEC.codec());
     public static final ToolRegistry.Type<AnchorSaveInput, AnchorListOutput> ANCHOR_SAVE = new ToolRegistry.Type<>("anchor.save", AnchorSaveInput.CODEC, AnchorListOutput.CODEC.codec());
     public static final ToolRegistry.Type<AnchorDeleteInput, AnchorListOutput> ANCHOR_DELETE = new ToolRegistry.Type<>("anchor.delete", AnchorDeleteInput.CODEC, AnchorListOutput.CODEC.codec());
+    public static final ToolRegistry.Type<AnchorRenameInput, AnchorListOutput> ANCHOR_RENAME = new ToolRegistry.Type<>("anchor.rename", AnchorRenameInput.CODEC, AnchorListOutput.CODEC.codec());
     public static final ToolRegistry.Type<AnchorTeleportInput, AnchorListOutput> ANCHOR_TELEPORT = new ToolRegistry.Type<>("anchor.teleport", AnchorTeleportInput.CODEC, AnchorListOutput.CODEC.codec());
     public static final ToolRegistry.Type<SpaceInput, SpaceOutput> SPACE_QUERY = new ToolRegistry.Type<>("space.query", SpaceInput.CODEC, SpaceOutput.CODEC.codec());
     public static final ToolRegistry.Type<SpaceTakeInput, SpaceOutput> SPACE_TAKE = new ToolRegistry.Type<>("space.take", SpaceTakeInput.CODEC, SpaceOutput.CODEC.codec());
@@ -21,6 +22,8 @@ public final class BuiltinTools {
     public static final ToolRegistry.Type<ItemInspectInput, ItemInspectionOutput> ITEM_INSPECT = new ToolRegistry.Type<>("game.item_inspect", ItemInspectInput.CODEC, ItemInspectionOutput.CODEC.codec());
     public static final ToolRegistry.Type<RepairQuoteInput, RepairQuoteOutput> REPAIR_QUOTE = new ToolRegistry.Type<>("game.repair.quote", RepairQuoteInput.CODEC, RepairQuoteOutput.CODEC.codec());
     public static final ToolRegistry.Type<RepairConfirmInput, ItemInspectionOutput> REPAIR_CONFIRM = new ToolRegistry.Type<>("game.repair.confirm", RepairConfirmInput.CODEC, ItemInspectionOutput.CODEC.codec());
+    public static final ToolRegistry.Type<SalvageQuoteInput, SalvageQuoteOutput> SALVAGE_QUOTE = new ToolRegistry.Type<>("game.salvage.quote", SalvageQuoteInput.CODEC, SalvageQuoteOutput.CODEC.codec());
+    public static final ToolRegistry.Type<SalvageConfirmInput, SalvageReceiptOutput> SALVAGE_CONFIRM = new ToolRegistry.Type<>("game.salvage.confirm", SalvageConfirmInput.CODEC, SalvageReceiptOutput.CODEC.codec());
     public static final ToolRegistry.Type<OnlineJobsInput, OnlineJobsOutput> ONLINE_JOBS = new ToolRegistry.Type<>("jobs.query", OnlineJobsInput.CODEC, OnlineJobsOutput.CODEC.codec());
     public static final ToolRegistry.Type<JobStartInput, OnlineJobsOutput> JOB_START = new ToolRegistry.Type<>("jobs.start", JobStartInput.CODEC, OnlineJobsOutput.CODEC.codec());
     public static final ToolRegistry.Type<JobClaimInput, RewardOutput> JOB_CLAIM = new ToolRegistry.Type<>("jobs.claim", JobClaimInput.CODEC, RewardOutput.CODEC.codec());
@@ -46,6 +49,12 @@ public final class BuiltinTools {
     public static final ToolRegistry.Type<StarterGiftInput, StarterGiftOutput> STARTER_GIFT = new ToolRegistry.Type<>("quest.starter_gift", StarterGiftInput.CODEC, StarterGiftOutput.CODEC.codec());
     public static final ToolRegistry.Type<EmptyInput, StarterGiftOutput> STARTER_GIFTS = new ToolRegistry.Type<>("quest.starter_gifts", EmptyInput.CODEC, StarterGiftOutput.CODEC.codec());
     public static final ToolRegistry.Type<QuestSubmitInput, QuestSubmitOutput> QUEST_SUBMIT = new ToolRegistry.Type<>("quest.submit", QuestSubmitInput.CODEC, QuestSubmitOutput.CODEC.codec());
+    public static final ToolRegistry.Type<RecordQueryInput, RecordRewardsOutput> RECORD_QUERY = new ToolRegistry.Type<>("progress.records", RecordQueryInput.CODEC, RecordRewardsOutput.CODEC.codec());
+    public static final ToolRegistry.Type<RecordClaimInput, RecordRewardsOutput> RECORD_CLAIM = new ToolRegistry.Type<>("progress.claim", RecordClaimInput.CODEC, RecordRewardsOutput.CODEC.codec());
+    public static final ToolRegistry.Type<CollectionQueryInput, CollectionOutput> COLLECTION_QUERY = new ToolRegistry.Type<>("collection.query", CollectionQueryInput.CODEC, CollectionOutput.CODEC.codec());
+    public static final ToolRegistry.Type<CollectionRegisterInput, CollectionOutput> COLLECTION_REGISTER = new ToolRegistry.Type<>("collection.register", CollectionRegisterInput.CODEC, CollectionOutput.CODEC.codec());
+
+    public static final ToolRegistry.Type<AchievementQueryInput, AchievementsOutput> ACHIEVEMENTS = new ToolRegistry.Type<>("progress.achievements", AchievementQueryInput.CODEC, AchievementsOutput.CODEC.codec());
 
     private BuiltinTools() {
     }

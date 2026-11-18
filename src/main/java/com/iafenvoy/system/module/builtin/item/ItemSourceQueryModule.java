@@ -1,5 +1,7 @@
 package com.iafenvoy.system.module.builtin.item;
 
+import com.iafenvoy.system.agent.AgentException;
+import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.command.AgentCommand;
 import com.iafenvoy.system.agent.command.CommandArguments;
@@ -10,14 +12,17 @@ import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.item.ItemNameIndex;
+import com.iafenvoy.system.data.input.ItemQueryInput;
 import com.iafenvoy.system.data.input.ItemSourceQueryInput;
+import com.iafenvoy.system.data.output.ItemInfoOutput;
+import com.iafenvoy.system.data.output.ItemPageOutput;
 import com.iafenvoy.system.data.output.ItemSourceOutput;
 import com.iafenvoy.system.itemsource.ItemSourceProviders;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 /**
  * Returns a typed source card; paging and recipe presentation stay on the client.
@@ -25,8 +30,8 @@ import java.util.Locale;
 public final class ItemSourceQueryModule extends AbstractAgentModule<ItemSourceQueryInput> {
     private final ItemNameIndex names;
 
-    public ItemSourceQueryModule(ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput> sources, ItemNameIndex names) {
-        super(ItemSourceQueryInput.CODEC, "List every recipe, loot table or item tag that yields one item registry ID.", List.of(sources), true, false, ExecutionPolicy.quick(2, 0));
+    public ItemSourceQueryModule(ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput> sources, ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> items, ItemNameIndex names) {
+        super(ItemSourceQueryInput.CODEC, "Find recipe, loot or item tag sources for a known item registry ID or an item search query.", List.of(sources, items), true, false, ExecutionPolicy.quick(2, 0));
         this.names = names;
     }
 
@@ -34,9 +39,9 @@ public final class ItemSourceQueryModule extends AbstractAgentModule<ItemSourceQ
     public ModuleRouting<ItemSourceQueryInput> routing() {
         return ModuleRouting.<ItemSourceQueryInput>defaults()
                 // Item cards carry the registry ID, so the row never needs the player to retype it.
-                .button(arguments -> new ItemSourceQueryInput(arguments.required("item_id"), arguments.text("scope")))
-                .command(AgentCommand.identifierWithScope("item", "scope", ItemSourceProviders.scopes(),
-                        (id, scope) -> new ItemSourceQueryInput(id.toString(), scope), "recipe", "配方", "来源"))
+                .button(arguments -> new ItemSourceQueryInput(arguments.required("item_id"), arguments.text("scope"),
+                        arguments.number(0, "offset"), arguments.optional("search_ref")))
+                .command(AgentCommand.argumentWithScope("item", ItemSourceProviders.scopes(), ItemSourceQueryInput::parse, "recipe", "配方", "来源"))
                 .semantic(RoutingProfile.read(text -> {
                                     String scope = scopeOf(text);
                                     String id = CommandArguments.singleItemId(text);
@@ -69,6 +74,18 @@ public final class ItemSourceQueryModule extends AbstractAgentModule<ItemSourceQ
 
     @Override
     public AgentResult execute(ExecutionContext context, ItemSourceQueryInput input) throws Exception {
+        if (!ItemSourceProviders.isKnownScope(input.scope())) throw new AgentException(AgentFailure.INVALID_INPUT);
+        Identifier id = Identifier.tryParse(input.itemId());
+        if (input.searchRef().isPresent() || id == null || !BuiltInRegistries.ITEM.containsKey(id)) {
+            ItemPageOutput page = context.tool(BuiltinTools.ITEMS, "resolve_item", new ItemQueryInput(input.itemId(), input.offset(), input.searchRef(), Optional.empty()));
+            Map<String, ItemInfoOutput> unique = new LinkedHashMap<>();
+            page.items().forEach(item -> unique.putIfAbsent(item.id(), item));
+            // Sources are keyed by item type, so multiple potion/enchantment variants share one choice.
+            if (unique.size() != 1 || page.hasMore())
+                return AgentResult.data("system.result.items", new ItemPageOutput(page.query(), List.copyOf(unique.values()),
+                        page.nextOffset(), page.hasMore(), page.searchRef(), page.offset(), Optional.of(input.scope())));
+            input = new ItemSourceQueryInput(unique.keySet().iterator().next(), input.scope());
+        }
         ItemSourceOutput output = context.tool(BuiltinTools.ITEM_SOURCES, "sources", input);
         return AgentResult.data("system.result.item_sources", output);
     }

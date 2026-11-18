@@ -2,7 +2,13 @@
   "body": [
     {
       "type": "system:title",
-      "translate": "system.ui.nav_shop"
+      "text": "{{catalog_title}}"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.ui.shop_search_required",
+      "when": "search_required",
+      "style": "card_context"
     },
     {
       "type": "system:grid",
@@ -94,6 +100,39 @@
       "type": "system:text",
       "translate": "system.ui.shop_truncated",
       "when": "truncated"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.ui.shop_no_matches",
+      "when": "no_matches"
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.footer}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "when": "actions.*.visible",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -7,9 +7,14 @@ import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
+import com.iafenvoy.system.assistant.item.ItemSearches;
+import com.iafenvoy.system.assistant.signin.SignIns;
 import com.iafenvoy.system.data.input.SpaceTakeInput;
+import com.iafenvoy.system.data.item.ItemSearchBatch;
 import com.iafenvoy.system.data.output.SpaceOutput;
 import com.iafenvoy.system.data.output.StateOutput;
+import com.iafenvoy.system.data.progress.EarnedReward;
+import com.iafenvoy.system.data.space.ItemSpaceContent;
 import com.iafenvoy.system.data.space.SpaceContent;
 import com.iafenvoy.system.data.space.SpaceContentType;
 import com.iafenvoy.system.data.space.SpaceEntry;
@@ -17,10 +22,12 @@ import com.iafenvoy.system.data.store.Delivery;
 import com.iafenvoy.system.data.store.Reward;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.PlayerModule;
+import com.iafenvoy.system.module.builtin.CoreSystemModule;
 import com.iafenvoy.system.module.builtin.SpaceSystemModule;
 import com.iafenvoy.system.module.builtin.storage.SpaceDataStorage;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -41,12 +48,16 @@ public final class SystemSpace implements PlayerModule {
     private final AgentEngine engine;
     private final MinecraftTools game;
     private final CommerceTransactions commerce;
+    private final SignIns signIns;
+    private final ItemSearches searches;
     private final AtomicLong revisions = new AtomicLong();
 
-    public SystemSpace(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce) {
+    public SystemSpace(AgentEngine engine, MinecraftTools game, CommerceTransactions commerce, SignIns signIns, ItemSearches searches) {
         this.engine = engine;
         this.game = game;
         this.commerce = commerce;
+        this.signIns = signIns;
+        this.searches = searches;
     }
 
     public CompletionStage<SpaceOutput> query(ExecutionContext context) {
@@ -56,8 +67,11 @@ public final class SystemSpace implements PlayerModule {
     public Optional<PersistHolder<Reward>> reward(ExecutionContext context, String entitlement) {
         return context.store().read(context.player(), data -> {
             Delivery delivery = ModuleData.get(data, SpaceSystemModule.STORAGE).getDelivery(entitlement);
-            return delivery == null ? this.commerce.archivedEntitlement(context.store(), context.player(), data, entitlement)
-                    .filter(purchase -> "COMPLETED".equals(purchase.state)).map(purchase -> purchase.order.reward()) : Optional.of(delivery.reward);
+            return delivery == null ? this.signIns.entitlement(context.store(), context.player(), data, entitlement)
+                    .or(() -> Optional.ofNullable(ModuleData.get(data, CoreSystemModule.FACTS).rewards().get(entitlement))
+                            .filter(EarnedReward::transferred).map(EarnedReward::reward))
+                    .or(() -> this.commerce.archivedEntitlement(context.store(), context.player(), data, entitlement)
+                            .filter(purchase -> "COMPLETED".equals(purchase.state)).map(purchase -> purchase.order.reward())) : Optional.of(delivery.reward);
         });
     }
 
@@ -80,7 +94,8 @@ public final class SystemSpace implements PlayerModule {
     private static <T extends SpaceContent> SpaceOutput.Entry preview(T content, boolean blocked, List<SpaceEntry> entries) {
         SpaceContentType<T> type = SpaceContentType.of(content);
         return new SpaceOutput.Entry(entries.getFirst().id(), type.searchId(content), type.name(content), type.icon(content),
-                entries.stream().mapToLong(SpaceEntry::amount).reduce(0, (sum, amount) -> sum > Long.MAX_VALUE - amount ? Long.MAX_VALUE : sum + amount), blocked);
+                entries.stream().mapToLong(SpaceEntry::amount).reduce(0, (sum, amount) -> sum > Long.MAX_VALUE - amount ? Long.MAX_VALUE : sum + amount), blocked,
+                content instanceof ItemSpaceContent(ItemStackTemplate item) ? Optional.of(item) : Optional.empty());
     }
 
     private static <T extends SpaceContent> int batch(T content) {
@@ -88,12 +103,17 @@ public final class SystemSpace implements PlayerModule {
     }
 
     public CompletionStage<SpaceOutput> take(ExecutionContext context, SpaceTakeInput input) {
+        Optional<ItemSearchBatch> search = this.searches.candidates(context.player(), input);
+        Set<ItemStackTemplate> variants = search.map(batch -> Set.copyOf(batch.items())).orElse(Set.of());
         return this.query(context).thenCompose(snapshot -> this.engine.maintenance(() -> {
             List<SpaceOutput.Entry> candidates = snapshot.entries().stream().filter(entry -> !entry.blocked())
-                    .filter(entry -> !input.entry().isBlank() ? entry.id().equals(input.entry()) : matches(entry, input.query())).toList();
-            if (candidates.size() != 1)
+                    .filter(entry -> !input.entry().isBlank() ? entry.id().equals(input.entry())
+                            : matches(entry, input.query()) || entry.item().filter(item -> variants.contains(item.withCount(1))).isPresent()).toList();
+            // An incomplete client batch cannot prove a unique withdrawal target.
+            if (candidates.size() != 1 || search.filter(ItemSearchBatch::hasMore).isPresent())
                 return CompletableFuture.completedFuture(new SpaceOutput(snapshot.revision(), snapshot.entries(),
-                        Component.translatable(candidates.isEmpty() ? "system.ui.space_missing" : "system.ui.space_ambiguous")));
+                        Component.translatable(candidates.isEmpty() && search.filter(ItemSearchBatch::hasMore).isEmpty()
+                                ? "system.ui.space_missing" : "system.ui.space_ambiguous")));
             String selected = candidates.getFirst().id();
             SpaceContent content = context.store().read(context.player(), data -> {
                 SpaceEntry entry = ModuleData.get(data, SpaceSystemModule.STORAGE).getEntries().get(selected);
@@ -133,7 +153,9 @@ public final class SystemSpace implements PlayerModule {
             SpaceDataStorage storage = ModuleData.get(data, SpaceSystemModule.STORAGE);
             Delivery delivery = storage.getDelivery(entitlement);
             if (delivery == null) {
-                if (this.commerce.archivedEntitlement(context.store(), context.player(), data, entitlement)
+                if (this.signIns.entitlement(context.store(), context.player(), data, entitlement).isPresent()
+                        || Optional.ofNullable(ModuleData.get(data, CoreSystemModule.FACTS).rewards().get(entitlement)).filter(EarnedReward::transferred).isPresent()
+                        || this.commerce.archivedEntitlement(context.store(), context.player(), data, entitlement)
                         .filter(purchase -> "COMPLETED".equals(purchase.state)).isPresent())
                     return new Plan(Map.of(), List.of());
                 throw new AgentException(AgentFailure.NOT_AUTHORIZED);

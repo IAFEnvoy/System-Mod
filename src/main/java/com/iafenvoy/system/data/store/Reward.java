@@ -21,9 +21,10 @@ import java.util.stream.Stream;
 public record Reward(Component label, List<ItemStackTemplate> items, List<SpaceStack> contents) {
     public static final Codec<List<ItemStackTemplate>> ITEMS_CODEC = ItemStackTemplate.CODEC.listOf(0, Inventory.INVENTORY_SIZE);
     public static final Codec<List<SpaceStack>> CONTENTS_CODEC = SpaceStack.CODEC.listOf(0, Inventory.INVENTORY_SIZE);
+    public static final Codec<List<SpaceStack>> SNAPSHOT_CONTENTS_CODEC = SpaceStack.CODEC.listOf(0, 4096);
     public static final MapCodec<Reward> CODEC = codec(CONTENTS_CODEC);
     // A settled multi-draw can combine more content kinds than an individual data-pack reward.
-    public static final MapCodec<Reward> SNAPSHOT_CODEC = codec(SpaceStack.CODEC.listOf(0, 4096));
+    public static final MapCodec<Reward> SNAPSHOT_CODEC = codec(SNAPSHOT_CONTENTS_CODEC);
 
     private static MapCodec<Reward> codec(Codec<List<SpaceStack>> contents) {
         return RecordCodecBuilder.mapCodec(i -> i.group(
@@ -41,6 +42,13 @@ public record Reward(Component label, List<ItemStackTemplate> items, List<SpaceS
 
     public Reward(Component label, List<ItemStackTemplate> items) {
         this(label, items, List.of());
+    }
+
+    public Reward multiply(int count) {
+        if (count < 1 || count > 100) throw new IllegalArgumentException("Reward count must be 1..100");
+        if (count == 1) return this;
+        return new Reward(this.label, List.of(), this.stacks().stream()
+                .map(stack -> new SpaceStack(stack.content(), Math.multiplyExact(stack.amount(), count))).toList());
     }
 
     public List<SpaceStack> stacks() {

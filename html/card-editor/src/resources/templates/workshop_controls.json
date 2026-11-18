@@ -1,0 +1,54 @@
+{
+  "style": [
+    "result_card",
+    "workspace_controls"
+  ],
+  "show_title": false,
+  "hide_summary": true,
+  "body": [
+    {
+      "type": "system:flex",
+      "style": "workspace_controls_layout",
+      "children": [
+        {
+          "type": "system:title",
+          "level": 2,
+          "text": "{{title}}",
+          "style": "workspace_controls_title"
+        },
+        {
+          "type": "system:flex",
+          "style": "card_actions",
+          "children": [
+            {
+              "type": "system:button",
+              "click": "local",
+              "value": "repair",
+              "style": "workspace_controls_action",
+              "text": "{{tr:system.action.repair_quote}}"
+            },
+            {
+              "type": "system:button",
+              "click": "local",
+              "value": "salvage",
+              "style": "workspace_controls_action",
+              "text": "{{tr:system.action.salvage_quote}}"
+            },
+            {
+              "type": "system:button",
+              "click": "local",
+              "value": "history",
+              "style": "workspace_controls_action",
+              "text": "{{tr:system.salvage.history}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "system:text",
+      "text": "{{description}}",
+      "style": "workspace_controls_note"
+    }
+  ]
+}

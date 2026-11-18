@@ -87,6 +87,7 @@ final class FtbQuestProvider implements QuestProvider.Submission, QuestProvider.
             Quest selected = selected(file, team, questId, revision);
             if (selected == null || !FtbQuestReader.detailAvailable(team, selected))
                 throw new AgentException(AgentFailure.QUEST_UNAVAILABLE);
+            this.access.notifications.fact(player, team, selected);
             return FtbQuestAccess.detail(player, team, selected, input, this.access.references);
         });
     }
@@ -117,7 +118,10 @@ final class FtbQuestProvider implements QuestProvider.Submission, QuestProvider.
             });
             boolean changed = !before.equals(tasks.stream().map(team::getProgress).toList()) || team.getCompletionCount(quest) != completions;
             boolean completed = team.isCompleted(quest) || team.getCompletionCount(quest) != completions;
-            if (completed) this.access.notifications.submitted(player, file, team, quest);
+            if (completed) {
+                this.access.notifications.fact(player, team, quest);
+                this.access.notifications.submitted(player, file, team, quest);
+            }
             return new QuestSubmitOutput(key(quest.getId()), FtbQuestText.title(player, quest), tasks.stream()
                     .map(task -> task(player, team, task)).toList(), changed, completed, SOURCE);
         });

@@ -20,15 +20,16 @@ public final class AnchorTeleportModule extends AbstractAgentModule<AnchorTelepo
     private static final Pattern EXPLICIT = Pattern.compile("^(?:(?:传送到锚点|传送锚点|前往锚点)\\s*(.+)|(?:teleport to anchor|go to anchor)\\s+(.+))$", Pattern.CASE_INSENSITIVE);
 
     public AnchorTeleportModule(ToolRegistry.Tool<AnchorTeleportInput, AnchorListOutput> tool) {
-        super(AnchorTeleportInput.CODEC, "Teleport me to an existing personal anchor by observed ID or exact name. Never invent anchor IDs or coordinates. Subject to capacity, cooldown and destination safety checks.",
+        super(AnchorTeleportInput.CODEC, "Travel to an observed personal anchor ID/exact name or a public:<namespace>:<path> destination. Paid travel only previews a fee; the player must confirm. Never invent IDs or coordinates. Subject to capacity, cooldown and destination safety checks.",
                 List.of(tool), true, false, ExecutionPolicy.quick(0, 1));
     }
 
     @Override
     public ModuleRouting<AnchorTeleportInput> routing() {
         return ModuleRouting.<AnchorTeleportInput>defaults()
-                .button(a -> new AnchorTeleportInput(a.required("anchor"), true))
+                .button(a -> new AnchorTeleportInput(a.required("anchor"), true, a.optional("quote")))
                 .command(AgentCommand.argument("<anchor>", value -> new AnchorTeleportInput(value, false), "anchor_tp", "传送锚点"))
+                .command(AgentCommand.identifier("destination", id -> new AnchorTeleportInput("public:" + id, false), "destination", "公共传送"))
                 .explicit(AnchorTeleportModule::parse).explicitOnly()
                 .semantic(RoutingProfile.hints(List.of("传送到锚点家"), List.of("Teleport to anchor home")));
     }

@@ -17,6 +17,6 @@ public record JobStartTool(OnlineJobs jobs) implements ToolRegistry.Handler<JobS
 
     @Override
     public CompletionStage<OnlineJobsOutput> execute(ExecutionContext context, JobStartInput input) {
-        return CompletableFuture.completedFuture(this.jobs.start(context, input.job()));
+        return CompletableFuture.completedFuture(this.jobs.start(context, input));
     }
 }

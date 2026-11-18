@@ -73,10 +73,28 @@ public final class CommerceDataStorage extends DataStorage {
     public int purchaseCount(PurchaseType type, Identifier source, long since) {
         // Pending and uncertain payments keep their reservation; only a known failure releases it.
         long active = this.streamPurchases().filter(purchase -> purchase.order.type() == type
-                && purchase.order.source().equals(source) && purchase.created >= since
-                && !"FAILED".equals(purchase.state)).mapToLong(purchase -> purchase.order.count()).sum();
+                        && purchase.order.source().equals(source) && purchase.created >= since
+                        && !"FAILED".equals(purchase.state))
+                .mapToLong(purchase -> purchase.order.count()).sum();
         long archived = this.archivedCounts.getOrDefault(type.getSerializedName() + ":" + source, PurchaseCounts.EMPTY).count(since);
         return (int) Math.min(Integer.MAX_VALUE, Math.min(Integer.MAX_VALUE, archived) + active);
+    }
+
+    /**
+     * Read the live journal once for an entire fixed shelf; reservations never unlock generated stock.
+     */
+    public Map<Identifier, Integer> settledPurchaseCounts(PurchaseType type, Map<Identifier, Long> periods) {
+        Map<Identifier, Integer> counts = new HashMap<>();
+        periods.forEach((source, since) -> counts.put(source, (int) Math.min(Integer.MAX_VALUE,
+                this.archivedCounts.getOrDefault(type.getSerializedName() + ":" + source, PurchaseCounts.EMPTY).count(since))));
+        for (Purchase purchase : this.purchases.values()) {
+            Long since = periods.get(purchase.order.source());
+            if (since == null || purchase.order.type() != type || purchase.created < since || !"COMPLETED".equals(purchase.state))
+                continue;
+            counts.computeIfPresent(purchase.order.source(), (_, count) ->
+                    (int) Math.min(Integer.MAX_VALUE, (long) count + purchase.order.count()));
+        }
+        return Map.copyOf(counts);
     }
 
     /**

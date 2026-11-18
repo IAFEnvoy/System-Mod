@@ -9,7 +9,7 @@
 | `agent` | 根包只保留公共结果、异常、Failure 实现和生命周期；execution 执行与预算，module 工作流契约，tool 工具能力，command 指令，react 循环，storage 存储契约与历史投影，routing 路由，model 模型，request/response 协议 | 绑定文案、商城目录、报价、扣款、具体任务和游戏 API |
 | `assistant` | MC 服务组装、玩家连接与绑定、请求分派、主线程桥接；游戏 Tool、交易与目录权限 | 意图路由算法、数据文件格式、卡片渲染 |
 | `data` | 业务参数和结果、Codec、玩家文件事务与执行账本实现、共享/玩家数据库、注册表数据和提示词加载 | 工作流选择、游戏线程操作 |
-| `module` | 功能契约与 ModuleManager；builtin 下的配置类型、入口、工作流和工具组合 | 通用执行预算、网络协议处理 |
+| `module` | 功能契约与 ModuleManager；merge 下的类型化合并契约，builtin 下的配置类型、组运行时、工作流和工具组合 | 通用执行预算、网络协议处理 |
 | `speech` | ASR、TTS、播放会话与任务播报整理；quest 下的背景分类与缓存 | 商城和任务进度写入 |
 
 网络、注册表、配置、界面、兼容层与通用工具保留原有职责。这里划分的是代码责任；公共 Codec、Identifier、文本组件仍使用 MC/DFU 类型，并未引入一个脱离 Minecraft 的独立构件。
@@ -52,6 +52,8 @@ flowchart TD
 
 保留有独立职责的适配层：单行为 Tool 固定工具身份和执行标记，ModelGateway / SearchGateway 负责归属与计量，playerStore 视图在事务内校验玩家和运行代次，CommerceCatalogs 按模块权限生成可用目录。ModuleContext 共享服务引用，并为每个配置实例复用工具实例；需要跨配置共享生命周期时，可在安装期间调用 sharedRuntime(type, factory)，由 ModuleManager 按实例去重维护与关闭，不在静态模块定义里缓存运行时。
 
+需要合并多个独立定义的入口和业务结果时，使用 MergeableModule<C> 和规范 MergeType。ModuleManager 管理组与真实成员的会话依赖，agent.module.ModuleScope 明确区分全局、定义与组授权，所有调用继续共用 ExecutionContext 预算。汇总语义属于具体业务：商城由 assistant.commerce.ShopInventory 合并 ShopContribution，data.catalog.ShopOffer 保留固定 Holder 或运行时来源，module.builtin.shop.ShopMergeRuntime 提供一套公共工作流；通用卡片渲染器不拼接来源 JSON。详见[模块合并](module-merging-design.md)。
+
 问答继续先查当前玩家/共享知识及授权的 FTB 说明书；仅在查无结果、本次允许联网且搜索模块启用时授权外部工具。授权集合属于单次 ExecutionContext，选择工作流时重置，每次搜索/抓取再次检查。Agent 只提供通用外部工具授权接口，数据库优先和搜索规则由 QuestionModule / WebResearch 实现。
 
 ## 线程与生命周期
@@ -64,6 +66,6 @@ AgentLifecycle.disconnected 和 accessChanged 在调用方线程执行，只用�
 
 关闭服务时按创建顺序的逆序释放：模块会话与工作者、任务口播、搜索、Agent 执行器/模型/玩家文件，最后数据库；某个资源关闭失败会记录日志并继续释放其他资源。创建中途失败也使用同一资源列表收尾。
 
-此次调整保持注册表 ID、持久化 Codec 字段、网络协议 1 和可选依赖的隔离方式。它改变 Java 类型路径和装配 API，其他 Java 扩展需要更新导入及构造调用。验证范围见[编译与验收](testing.md)。
+此次调整保持注册表 ID、持久化 Codec 字段、网络协议 3 和可选依赖的隔离方式。它改变 Java 类型路径和装配 API，其他 Java 扩展需要更新导入及构造调用。验证范围见[编译与验收](testing.md)。
 
 共享运行时和工具工厂允许构造过程中请求其他依赖：例如 `FtbQuestRuntime` 构造时会继续获取 `QuestService`。`ModuleContext.sharedRuntime` / `tool` 在安装线程先查询、构造完成后再写入 Map，不使用禁止回调修改同表的 `computeIfAbsent`；否则即使只有一个服务端线程，也会在 FTB 装配时抛 ConcurrentModificationException，导致整个助手初始化失败。

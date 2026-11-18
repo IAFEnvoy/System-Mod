@@ -1,0 +1,155 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.collection.title"
+    },
+    {
+      "type": "system:text",
+      "text": "{{label}}",
+      "when": "detail",
+      "style": "card_title"
+    },
+    {
+      "type": "system:text",
+      "text": "{{description}}",
+      "when": "detail",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.collection.note",
+      "when": "detail",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "text": "{{counts}}",
+      "when": "detail",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.ui.condition_unmet",
+      "when": "locked",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.collection.empty",
+      "unless": "rows",
+      "style": "card_context"
+    },
+    {
+      "type": "system:grid",
+      "source": "{{rows}}",
+      "columns": 3,
+      "compact_columns": 2,
+      "max_row": 3,
+      "cell": 144,
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:item",
+              "item": "{{rows.*.item}}",
+              "size": 36,
+              "when": "rows.*.item"
+            },
+            {
+              "type": "system:text",
+              "text": "{{rows.*.label}}",
+              "style": "offer_cell_label"
+            },
+            {
+              "type": "system:text",
+              "text": "{{rows.*.status}}",
+              "style": "card_context"
+            }
+          ],
+          "style": "offer_cell_content",
+          "label": "{{rows.*.label}}"
+        }
+      ],
+      "unless": "detail"
+    },
+    {
+      "type": "system:grid",
+      "source": "{{rows}}",
+      "columns": 3,
+      "compact_columns": 2,
+      "max_row": 3,
+      "cell": 144,
+      "children": [
+        {
+          "type": "system:flex",
+          "direction": "column",
+          "style": "offer_cell_content",
+          "children": [
+            {
+              "type": "system:item",
+              "item": "{{rows.*.item}}",
+              "size": 36,
+              "when": "rows.*.item"
+            },
+            {
+              "type": "system:text",
+              "text": "{{rows.*.label}}",
+              "style": "offer_cell_label"
+            },
+            {
+              "type": "system:text",
+              "text": "{{rows.*.status}}",
+              "style": "card_context"
+            }
+          ]
+        }
+      ],
+      "when": "detail"
+    },
+    {
+      "type": "system:progress",
+      "value": "{{progress}}",
+      "when": "detail"
+    },
+    {
+      "type": "system:flex",
+      "direction": "column",
+      "style": "card_column",
+      "source": "{{milestones}}",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{milestones.*}}",
+          "style": "card_context"
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.footer}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

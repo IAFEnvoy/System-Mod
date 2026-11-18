@@ -9,12 +9,15 @@ import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
+import com.iafenvoy.system.assistant.item.ItemSearches;
 import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.input.LotteryQueryInput;
+import com.iafenvoy.system.data.item.ItemSearchBatch;
 import com.iafenvoy.system.data.output.*;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStackTemplate;
 
 import java.util.*;
 
@@ -24,19 +27,21 @@ import java.util.*;
  */
 public final class LotteryModule extends AbstractAgentModule<LotteryQueryInput> {
     private final CommerceCatalogs catalogs;
+    private final ItemSearches searches;
     static final int MAX_POOLS = 128;
     static final int MAX_PRIZES = 64;
     static final int TOOLTIP_PRIZES = 10;
 
-    public LotteryModule(CommerceCatalogs catalogs) {
+    public LotteryModule(CommerceCatalogs catalogs, ItemSearches searches) {
         super(LotteryQueryInput.CODEC, "Browse lottery pools and their single-draw costs. Viewing never draws or pays.", List.of(), true, false, ExecutionPolicy.quick(1, 0));
         this.catalogs = catalogs;
+        this.searches = searches;
     }
 
     @Override
     public ModuleRouting<LotteryQueryInput> routing() {
         return ModuleRouting.<LotteryQueryInput>defaults()
-                .button(a -> new LotteryQueryInput(a.text("query"), a.number(0, "offset")))
+                .button(a -> new LotteryQueryInput(a.text("query"), a.number(0, "offset"), a.number(0, "item_offset"), a.optional("search_ref")))
                 .command(AgentCommand.argument("[query]", text -> new LotteryQueryInput(text, 0), "lottery", "抽奖"))
                 .semantic(RoutingProfile.read(text -> new LotteryQueryInput("", 0),
                         List.of("打开抽奖界面", "看看有哪些奖池", "我要抽奖", "查询抽奖活动"),
@@ -83,17 +88,22 @@ public final class LotteryModule extends AbstractAgentModule<LotteryQueryInput> 
 
     @Override
     public AgentResult execute(ExecutionContext context, LotteryQueryInput input) {
-        String query = input.query().toLowerCase(Locale.ROOT);
+        String query = input.query().strip().toLowerCase(Locale.ROOT);
+        Optional<ItemSearchBatch> candidates = this.searches.candidates(context.player(), input);
+        Set<ItemStackTemplate> variants = candidates.map(batch -> Set.copyOf(batch.items())).orElse(Set.of());
         CommerceCatalogs.View view = this.catalogs.view(context);
         CommerceCatalog catalog = view.catalog();
         List<Holder<LotteryPool>> matches = catalog.lotteries().stream().filter(holder -> HolderHelper.id(holder).toString().contains(query)
-                || holder.value().label().getString().toLowerCase(Locale.ROOT).contains(query)).toList();
+                || holder.value().label().getString().toLowerCase(Locale.ROOT).contains(query)
+                || holder.value().entries().stream().anyMatch(entry -> ItemSearches.matches(variants, entry.reward().value().items(), entry.reward().value().contents()))).toList();
         // Prices are evaluated only for the pool the player actually opens.
         int offset = offset(input.offset(), matches.size(), MAX_POOLS);
         List<LotteryCatalogOutput.Pool> pools = matches.stream().skip(offset).limit(MAX_POOLS)
                 .map(holder -> entry(holder, !view.lockedLotteries().contains(HolderHelper.id(holder)))).toList();
-        if (pools.isEmpty()) return AgentResult.ok("system.result.lottery_empty");
+        if (pools.isEmpty() && candidates.filter(ItemSearchBatch::hasMore).isEmpty())
+            return AgentResult.ok("system.result.lottery_empty");
         return AgentResult.data("system.result.lottery",
-                new LotteryCatalogOutput(catalog.revision(), input.query(), pools, offset, matches.size()));
+                new LotteryCatalogOutput(catalog.revision(), input.query(), pools, offset, matches.size(), input.searchRef(),
+                        input.itemOffset(), candidates.filter(ItemSearchBatch::hasMore).map(ItemSearchBatch::nextOffset)));
     }
 }

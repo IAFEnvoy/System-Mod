@@ -4,7 +4,7 @@
 
 ## 使用
 
-在系统界面点击“传送锚点”打开列表。卡片分页显示锚点名称、维度、坐标，以及传送和删除按钮；“保存当前位置”自动生成 `#1`、`#2` 等名称。操作成功后原地更新卡片。
+在系统界面点击“传送锚点”打开列表。卡片分页显示锚点名称、维度、坐标，以及传送、重命名和删除按钮；“保存当前位置”自动生成 `#1`、`#2` 等名称。“重命名”打开名称输入窗口，确认后由服务端校验并保存，取消或按 Esc 不会修改记录。操作成功后原地更新卡片。
 
 以下指令仅在系统界面的输入框中使用，不注册到游戏聊天栏的 `/system` 下：
 
@@ -12,12 +12,16 @@
 | --- | --- |
 | `/anchors` | 查看当前玩家的锚点、容量和冷却快照 |
 | `/anchor_save [名称]` | 保存当前位置，不填名称时自动命名 |
-| `/anchor_tp <名称或ID>` | 传送到已有锚点 |
+| `/anchor_tp <名称或ID>` | 传送到已有锚点，收费时先生成报价 |
+| `/destination <ID>` | 传送到数据包公共目的地，中文别名 `/公共传送` |
+| `/anchor_rename <名称或ID> <新名称>` | 重命名已有锚点；旧名称包含空格时用双引号包裹，新名称可直接包含空格或使用双引号 |
 | `/anchor_delete <名称或ID>` | 删除已有锚点，包括暂时锁定的锚点 |
 
-中文入口为“锚点”“设置锚点”“传送锚点”“删除锚点”。也可以输入或语音说“设置锚点 家”“传送到锚点 家”“删除锚点 家”。锚点名称最多 48 个 Unicode 字符，同名检查不区分大小写，不允许控制字符和格式化符号。
+中文入口为“锚点”“设置锚点”“传送锚点”“重命名锚点”“删除锚点”。也可以输入或语音说“设置锚点 家”“传送到锚点 家”“重命名锚点 家 为 基地”“删除锚点 家”。例如 `/anchor_rename 家 主基地`，或 `/anchor_rename "旧 基地" "新 基地"`。锚点名称最多 48 个 Unicode 字符，同名检查不区分大小写，不允许控制字符和格式化符号；重命名不允许空名称。
 
-明确指令和上述固定说法不要求模型密钥。自由聊天可调用查询、创建、删除和传送工作流；传送与删除仅在玩家明确要求时执行。语音识别是否使用外部服务仍取决于 ASR 配置。
+重命名保留锚点 ID、位置、朝向、创建顺序和传送冷却，不占用新的容量。同一个锚点改成自身当前名称视为成功，允许只更改大小写。卡片操作使用稳定 ID，因此名称变化不会把旧按钮指向其他锚点；已删除的锚点会返回不存在提示。
+
+明确指令和上述固定说法不要求模型密钥。自由聊天可调用查询、创建、重命名、删除和传送工作流；重命名、传送与删除仅在玩家明确要求时执行。语音识别是否使用外部服务仍取决于 ASR 配置。
 
 ## 数据驱动配置
 
@@ -43,12 +47,14 @@
 | `limit` | Saturn NumberProvider | `3` | 当前可用锚点数量，支持常数、公式字符串和类型化数字提供器 |
 | `cooldown` | 整数 | `10` | 成功传送的共享冷却秒数，范围 `0..86400`，按服务端游戏 tick 计时 |
 | `cross_dimension` | 布尔值 | `true` | 是否允许传送到其他维度 |
+| `costs` | Saturn Cost 数组 | `[]` | 所有私人／公共传送的基础费用 |
+| `destinations` | ID、`#tag` 或混合数组 | 全表 | 公共目的地可选项，`[]` 关闭公共目的地 |
 
 `caster_level` 是原版经验等级。上例从 3 个开始，每 10 级增加 1 个，最多 12 个；也可以用 `"limit": 5` 固定为 5 个，或使用 Saturn 的属性、资源等公式变量按玩家状态解锁。公式在服务端游戏线程按当前玩家求值，不使用客户端提供的数值。
 
 查询、创建和传送时都会重新计算容量。结果向下取整并限制在 `0..256`，非有限数按 0 处理。动态公式建议使用稳定的成长数据；随机数公式会在不同检查时产生不同容量。
 
-容量下降不会删除记录：按创建顺序，最早的前 `limit` 个可用，其余暂时锁定。锁定锚点仍可删除；恢复容量后自动可用。保存总数达到当前容量时不能继续创建。旧卡片只表示查询时的状态，重新打开列表可查看最新容量和冷却；点击时服务端仍会重新检查。
+容量下降不会删除记录：按创建顺序，最早的前 `limit` 个可用，其余暂时锁定。锁定锚点仍可重命名和删除；恢复容量后自动可用。保存总数达到当前容量时不能继续创建。旧卡片只表示查询时的状态，重新打开列表可查看最新容量和冷却；点击时服务端仍会重新检查。
 
 同类型的多个模块实例共用玩家的锚点账本与传送冷却，配置决定对应操作的容量和跨维度规则。与其他工作流一样，若同时启用同类型变体，按配置实例 ID 选择第一个；建议让变体启用条件互斥。修改模块参数需重新进入世界或正常重启服务器。
 
@@ -63,7 +69,43 @@
 - 模块与配置：`AnchorSystemModule`、`AnchorSystemClientModule`。
 - 业务与游戏线程操作：`assistant.anchor.TeleportAnchors`。
 - 私人存储：`AnchorSystemModule.STORAGE` / `module.builtin.storage.AnchorDataStorage`，按玩家保存于现有存档业务文件；清除聊天记忆不会删除锚点，重置玩家系统数据会删除。
-- 动作：`system:anchor_list`、`system:anchor_save`、`system:anchor_delete`、`system:anchor_teleport`。
-- 工具：`anchor.list`、`anchor.save`、`anchor.delete`、`anchor.teleport`。
+- 动作：`system:anchor_list`、`system:anchor_save`、`system:anchor_delete`、`system:anchor_rename`、`system:anchor_teleport`。
+- 工具：`anchor.list`、`anchor.save`、`anchor.delete`、`anchor.rename`、`anchor.teleport`。
 - 卡片类型及资源模板：`system:anchor_list`；模板可由资源包覆盖。
 - 原版区块 ticket 注册：`SystemTicketTypes.ANCHOR`，条目 ID `system:anchor`。
+
+## 公共目的地与费用
+
+服务端原生注册表 `system:teleport_destination`，路径 `data/<namespace>/system/teleport_destination/<path>.json`。tag 路径 `data/<namespace>/tags/system/teleport_destination/<path>.json`。仅同步展示快照，客户端选择 `public:<namespace>:<path>`，不能提供坐标。
+
+```json
+{
+  "label": "example.destination.plaza",
+  "description": "example.destination.plaza.description",
+  "dimension": "minecraft:overworld",
+  "position": [0.5, 80, 0.5],
+  "yaw": 0,
+  "pitch": 0,
+  "costs": [{ "type": "system:currency", "currency": "system:coin", "amount": 2 }],
+  "order": 10
+}
+```
+
+| 字段 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `label` | 翻译键字符串或 Component | 必填 | 目的地名称 |
+| `description` | 翻译键字符串或 Component | 空文本 | 列表说明 |
+| `dimension` | 维度 ID | 必填 | 必须是服务端存在且允许旅行的维度 |
+| `position` | 三个有限数字的数组 | 必填 | 精确落点，不会忽略碰撞或危险检查 |
+| `yaw` / `pitch` | float | `0` | 朝向；pitch 范围 -90～90 |
+| `costs` | Saturn Cost 数组 | `[]` | 此公共目的地的附加费用 |
+| `order` | int | `0` | 越高越靠前，同值按 ID 排序；列表最多展示 256 项 |
+| `enabled` | boolean | `true` | 是否启用 |
+| `display_condition` | Saturn EntityCondition | 始终成立 | 是否可见 |
+| `condition` | Saturn EntityCondition | 始终成立 | 是否允许前往；实际传送前复核 |
+
+公共目的地不占私人锚点容量，不允许玩家重命名或删除，但共用冷却、跨维度开关与安全检查。正式资源不附带固定坐标；开发源集提供 `system_test:plaza` 示例，整合包应选择实际安全位置。
+
+传送总费用为模块 `costs` 加公共目的地 `costs`。私人锚点只收模块费用。无费用时保留直接传送；有费用时先展示冻结报价，两分钟内由玩家点击确认，AI 只能发起报价。报价一次使用后失效，即使冷却为 0 也不能重复支付同一报价。
+
+`CostContext` 来源为 `system:anchor`，变量 `system:destination` 是私人锚点 ID 或完整公共选择器。确认先异步加载并检查落点，持久保存 PREPARED／冷却，再扣费并传送。已知未产生效果的失败清理预留；已扣费或无法确认传送结果时保留 UNKNOWN，不自动重试或退款。登录恢复和管理员结案见[作业／传送核对](online-jobs.md#异常作业传送核对)。修改公共定义后需重开世界／重启服务端，已确认的报价仍复核当前定义与条件。

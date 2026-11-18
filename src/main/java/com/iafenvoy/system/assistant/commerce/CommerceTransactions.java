@@ -15,10 +15,12 @@ import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
-import com.iafenvoy.system.data.catalog.ShopOfferEntry;
+import com.iafenvoy.system.data.catalog.ShopOffer;
+import com.iafenvoy.system.data.catalog.ShopTrade;
 import com.iafenvoy.system.data.input.CommercePreviewInput;
 import com.iafenvoy.system.data.input.LotteryHistoryInput;
 import com.iafenvoy.system.data.output.*;
+import com.iafenvoy.system.data.result.ShopOrder;
 import com.iafenvoy.system.data.space.SpaceContentType;
 import com.iafenvoy.system.data.space.SpaceStack;
 import com.iafenvoy.system.data.store.*;
@@ -104,6 +106,17 @@ public final class CommerceTransactions {
 
     public boolean active(UUID player, String order) {
         return this.active.contains(player + ":" + order);
+    }
+
+    /**
+     * Both member and group ledgers remain readable after their offering module is disabled.
+     */
+    public List<ShopOrder> pending(ExecutionContext context) {
+        return context.store().read(context.player(), data -> this.storages.values().stream()
+                .flatMap(storage -> data.moduleData.get(storage.owner(), storage.type()).stream())
+                .flatMap(CommerceDataStorage::streamPurchases)
+                .filter(purchase -> !"COMPLETED".equals(purchase.state) && !"FAILED".equals(purchase.state))
+                .limit(8).map(purchase -> new ShopOrder(purchase.id, purchase.order.label(), purchase.state, purchase.error)).toList());
     }
 
     /**
@@ -218,15 +231,15 @@ public final class CommerceTransactions {
         });
     }
 
-    public Map<Identifier, ShopPurchaseLimitOutput> shopLimits(ExecutionContext context, List<Holder<ShopOfferEntry>> offers) {
+    public Map<Identifier, ShopPurchaseLimitOutput> shopLimits(ExecutionContext context, List<ShopOffer> offers) {
         if (offers.stream().noneMatch(offer -> offer.value().purchaseLimit().isPresent())) return Map.of();
         ZoneId zone = ZoneId.of(AgentConfig.INSTANCE.get().timeZone());
         return context.store().read(context.player(), data -> {
             CommerceDataStorage commerce = ModuleData.get(data, this.storage(PurchaseType.SHOP));
             long now = System.currentTimeMillis();
             Map<Identifier, ShopPurchaseLimitOutput> limits = new HashMap<>();
-            for (Holder<ShopOfferEntry> offer : offers) {
-                Identifier id = HolderHelper.id(offer);
+            for (ShopOffer offer : offers) {
+                Identifier id = offer.id();
                 offer.value().purchaseLimit().ifPresent(limit -> limits.put(id, new ShopPurchaseLimitOutput(limit,
                         commerce.purchaseCount(PurchaseType.SHOP, id, limit.period().start(now, zone)))));
             }
@@ -234,10 +247,55 @@ public final class CommerceTransactions {
         });
     }
 
+    /**
+     * Pending/unknown payments keep fixed stock preferred until the quota is actually settled.
+     */
+    private FixedStock fixedStock(ExecutionContext context) {
+        List<ShopOffer> fixed = this.catalogs.available(context.player()).offers();
+        ZoneId zone = ZoneId.of(AgentConfig.INSTANCE.get().timeZone());
+        if (fixed.stream().noneMatch(offer -> offer.value().purchaseLimit().isPresent()))
+            return new FixedStock(Map.of(), System.currentTimeMillis(), zone);
+        return context.store().read(context.player(), data -> {
+            CommerceDataStorage commerce = ModuleData.get(data, this.storage(PurchaseType.SHOP));
+            Map<Identifier, ShopPurchaseLimitOutput> limits = new HashMap<>();
+            long now = System.currentTimeMillis();
+            Map<Identifier, Long> periods = new HashMap<>();
+            for (ShopOffer offer : fixed)
+                offer.value().purchaseLimit().ifPresent(limit ->
+                        periods.put(offer.id(), limit.period().start(now, zone)));
+            Map<Identifier, Integer> counts = commerce.settledPurchaseCounts(PurchaseType.SHOP, periods);
+            for (ShopOffer offer : fixed)
+                offer.value().purchaseLimit().ifPresent(limit -> limits.put(offer.id(), new ShopPurchaseLimitOutput(limit, counts.getOrDefault(offer.id(), 0))));
+            return new FixedStock(Map.copyOf(limits), now, zone);
+        });
+    }
+
+    private record FixedStock(Map<Identifier, ShopPurchaseLimitOutput> limits, long capturedAt, ZoneId zone) {
+        private static final FixedStock EMPTY = new FixedStock(Map.of(), 0, ZoneId.of("UTC"));
+
+        private Map<Identifier, ShopPurchaseLimitOutput> current() {
+            long now = System.currentTimeMillis();
+            // Completed counts are monotonic within a period. Crossing a reset requires a fresh worker snapshot.
+            if (this.limits.values().stream().anyMatch(value -> value.limit().period().start(this.capturedAt, this.zone)
+                    != value.limit().period().start(now, this.zone)))
+                throw new AgentException(AgentFailure.STALE_QUOTE);
+            return this.limits;
+        }
+    }
+
+    public CommerceCatalogs.View shopView(ExecutionContext context, ShopRequest request) {
+        FixedStock stock = this.fixedStock(context);
+        return this.catalogs.access().read(context, player -> this.catalogs.view(player, request, stock.current()));
+    }
+
     public CompletionStage<List<CommercePreviewOutput>> preview(ExecutionContext context, CommercePreviewInput input) {
+        if (input.count() < 1 || input.count() > 100) throw new AgentException(AgentFailure.INVALID_INPUT);
         // Read the journal on the calling worker; the game thread only evaluates payment conditions.
-        Map<Identifier, ShopPurchaseLimitOutput> limits = this.shopLimits(context, this.catalogs.available(context.player()).offers().stream()
-                .filter(offer -> input.offers().contains(HolderHelper.id(offer))).toList());
+        CommerceCatalog snapshot = this.catalogs.available(context.player());
+        ShopRequest request = ShopRequest.resolve(Set.copyOf(input.offers()));
+        FixedStock blocking = input.offers().isEmpty() ? FixedStock.EMPTY : this.fixedStock(context);
+        Map<Identifier, ShopPurchaseLimitOutput> limits = this.shopLimits(context, snapshot.offers().stream()
+                .filter(offer -> input.offers().contains(offer.id())).toList());
         if (!input.lotteries().isEmpty() && !context.store().read(context.player(), data -> ModuleData.get(data, this.storage(PurchaseType.LOTTERY)).lotteryCountsReady()))
             context.store().update(context.player(), data -> {
                 this.restoreLotteryCounts(context.store(), context.player(), ModuleData.get(data, this.storage(PurchaseType.LOTTERY)));
@@ -245,25 +303,27 @@ public final class CommerceTransactions {
             });
         Map<Identifier, LotteryStatusOutput> lotteries = context.store().read(context.player(), data -> {
             Map<Identifier, LotteryStatusOutput> result = new HashMap<>();
-            this.catalogs.available(context.player()).lotteries().stream().filter(pool -> input.lotteries().contains(HolderHelper.id(pool)))
+            snapshot.lotteries().stream().filter(pool -> input.lotteries().contains(HolderHelper.id(pool)))
                     .forEach(pool -> result.put(HolderHelper.id(pool), this.lotteryStatus(data, pool, input.count(), System.currentTimeMillis())));
             return result;
         });
         return this.game.onPlayer(context, player -> {
-            CommerceCatalogs.View view = this.catalogs.view(player);
+            CommerceCatalogs.View view = this.catalogs.view(player, request, blocking.current());
             CommerceCatalog catalog = view.catalog();
-            if (!catalog.revision().equals(input.revision())) throw new AgentException(AgentFailure.STALE_QUOTE);
+            if (!(input.offers().isEmpty() ? catalog.revision() : catalog.shopRevision()).equals(input.revision()))
+                throw new AgentException(AgentFailure.STALE_QUOTE);
             List<CommercePreviewOutput> previews = new ArrayList<>();
             for (Identifier id : input.offers()) {
-                Holder<ShopOfferEntry> offer = catalog.offers().stream().filter(value -> HolderHelper.id(value).equals(id)).findFirst()
+                ShopOffer offer = catalog.offers().stream().filter(value -> value.id().equals(id)).findFirst()
                         .orElseThrow(() -> new AgentException(AgentFailure.STALE_QUOTE));
-                CommerceCosts.Prepared payment = CommerceCosts.prepare(offer.value().costs(), player, PurchaseType.SHOP, id);
+                CommerceCosts.Prepared payment = CommerceCosts.prepare(offer, player, input.count());
                 Optional<ShopPurchaseLimitOutput> limit = Optional.ofNullable(limits.get(id));
                 boolean conditionMet = !view.lockedOffers().contains(id);
-                boolean available = conditionMet && payment.isSuccess() && limit.map(ShopPurchaseLimitOutput::available).orElse(true);
+                boolean available = conditionMet && payment.isSuccess() && limit.map(value -> value.remaining() >= input.count()).orElse(true)
+                        && (offer.value().trade() != ShopTrade.BUYBACK || payment.payable());
                 Optional<String> reference = input.quote() && available
-                        ? Optional.of(this.quotes.create(context.player(), catalog, offer, payment).id()) : Optional.empty();
-                previews.add(new CommercePreviewOutput(id, payment.getData(), available, reference, limit, conditionMet, Optional.empty()));
+                        ? Optional.of(this.quotes.create(context.player(), catalog, offer, payment, input.count()).id()) : Optional.empty();
+                previews.add(new CommercePreviewOutput(id, payment.getData(), available, reference, limit, conditionMet, Optional.empty(), Optional.of(offer.revision())));
             }
             for (Identifier id : input.lotteries()) {
                 Holder<LotteryPool> pool = catalog.lotteries().stream().filter(value -> HolderHelper.id(value).equals(id)).findFirst()
@@ -277,7 +337,7 @@ public final class CommerceTransactions {
                 boolean available = conditionMet && payment.isSuccess() && status.available(input.count());
                 Optional<String> reference = input.quote() && available
                         ? Optional.of(this.quotes.createPool(context.player(), catalog, pool, payment, input.count()).id()) : Optional.empty();
-                previews.add(new CommercePreviewOutput(id, payment.getData(), available, reference, Optional.empty(), conditionMet, Optional.of(status)));
+                previews.add(new CommercePreviewOutput(id, payment.getData(), available, reference, Optional.empty(), conditionMet, Optional.of(status), Optional.empty()));
             }
             return List.copyOf(previews);
         });
@@ -352,7 +412,10 @@ public final class CommerceTransactions {
                 return CompletableFuture.completedFuture(receipt(purchase));
             throw new AgentException(purchase.state.equals("FAILED") ? AgentFailure.fromCode(purchase.error) : AgentFailure.EFFECT_UNKNOWN);
         }
-        CommerceQuotes.Quote quote = this.quotes.require(context.player(), id, this.catalogs.available(context.player()), type);
+        CommerceQuotes.Quote issued = this.quotes.lookup(context.player(), id, this.catalogs.all().revision(), type);
+        ShopRequest request = type == PurchaseType.SHOP ? ShopRequest.resolve(Set.of(issued.source())) : ShopRequest.EMPTY;
+        CommerceCatalog checked = type == PurchaseType.SHOP ? this.shopView(context, request).catalog() : this.catalogs.available(context.player());
+        CommerceQuotes.Quote quote = this.quotes.require(context.player(), id, checked, type);
         String key = context.player() + ":" + id;
         if (!this.active.add(key)) throw new AgentException(AgentFailure.BUSY);
         List<LotteryPool.Entry> candidates;
@@ -401,27 +464,33 @@ public final class CommerceTransactions {
 
         // Once payment may have changed external state, failures become UNKNOWN and must not auto-retry.
         AtomicBoolean touched = new AtomicBoolean();
-        CompletionStage<Boolean> payment = this.game.onPlayer(context, player -> {
-            this.quotes.require(context.player(), id, this.catalogs.available(context.player()), type);
-            CommerceCatalog current = this.catalogs.available(context.player());
-            switch (type) {
-                case SHOP ->
-                        CatalogAccess.require(player, current.offers().stream().filter(holder -> HolderHelper.id(holder).equals(quote.source()))
-                                .findFirst().orElseThrow(() -> new AgentException(AgentFailure.STALE_QUOTE)).value());
-                case LOTTERY ->
-                        CatalogAccess.require(player, current.lotteries().stream().filter(holder -> HolderHelper.id(holder).equals(quote.source()))
-                                .findFirst().orElseThrow(() -> new AgentException(AgentFailure.STALE_QUOTE)).value());
-            }
-            // Stage every possible reward before payment without executing effects or requiring backpack room.
-            // Rejecting only the selected prize would bias the pool's odds.
-            for (LotteryPool.Entry entry : candidates) {
-                SpaceTransfer transfer = new SpaceTransfer(player);
-                entry.reward().value().stacks().forEach(stack -> SpaceContentType.of(stack.content()).prepare(stack.content(), stack.amount(), transfer));
-            }
-            context.check();
-            quote.payment().pay(player, touched);
-            return true;
-        });
+        CompletionStage<Boolean> payment;
+        try {
+            FixedStock blocking = type == PurchaseType.SHOP ? this.fixedStock(context) : FixedStock.EMPTY;
+            payment = this.game.onPlayer(context, player -> {
+                CommerceCatalog current = this.catalogs.view(player, request, blocking.current()).catalog();
+                this.quotes.require(context.player(), id, current, type);
+                switch (type) {
+                    case SHOP ->
+                            CatalogAccess.require(player, current.offers().stream().filter(holder -> holder.id().equals(quote.source()))
+                                    .findFirst().orElseThrow(() -> new AgentException(AgentFailure.STALE_QUOTE)).value());
+                    case LOTTERY ->
+                            CatalogAccess.require(player, current.lotteries().stream().filter(holder -> HolderHelper.id(holder).equals(quote.source()))
+                                    .findFirst().orElseThrow(() -> new AgentException(AgentFailure.STALE_QUOTE)).value());
+                }
+                // Stage every possible reward before payment without executing effects or requiring backpack room.
+                // Rejecting only the selected prize would bias the pool's odds.
+                for (LotteryPool.Entry entry : candidates) {
+                    SpaceTransfer transfer = new SpaceTransfer(player);
+                    entry.reward().value().stacks().forEach(stack -> SpaceContentType.of(stack.content()).prepare(stack.content(), stack.amount(), transfer));
+                }
+                context.check();
+                quote.payment().pay(player, touched);
+                return true;
+            });
+        } catch (RuntimeException error) {
+            payment = CompletableFuture.failedFuture(error);
+        }
 
         CompletableFuture<PurchaseReceiptOutput> result = new CompletableFuture<>();
         payment.whenComplete((paid, error) -> this.engine.maintenance(() -> {
@@ -460,7 +529,7 @@ public final class CommerceTransactions {
 
     private static PurchaseReceiptOutput receipt(Purchase purchase) {
         return new PurchaseReceiptOutput(purchase.id, purchase.order.type().entitlement(purchase.id), purchase.order.reward(), purchase.state,
-                purchase.order.type() == PurchaseType.LOTTERY ? Optional.of(purchase.order.source()) : Optional.empty());
+                purchase.order.type() == PurchaseType.LOTTERY ? Optional.of(purchase.order.source()) : Optional.empty(), purchase.order.trade());
     }
 
 }

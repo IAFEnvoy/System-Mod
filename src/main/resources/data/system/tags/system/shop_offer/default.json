@@ -1,5 +1,6 @@
 {
   "values": [
-    "system:torch_bundle"
+    "system:torch_bundle",
+    "system:cobblestone_buyback"
   ]
 }

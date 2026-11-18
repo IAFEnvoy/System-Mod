@@ -10,6 +10,22 @@
     },
     {
       "type": "system:text",
+      "text": "{{counts}}",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "text": "{{period_counts}}",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.signin.fixed",
+      "when": "fixed",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
       "text": "{{field:signed_in}}: {{bool:signed_in}}"
     },
     {
@@ -19,6 +35,36 @@
     {
       "type": "system:text",
       "text": "{{field:external_model}}: {{bool:external_model}}"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.signin.offline",
+      "when": "offline_signin",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "text": "{{progression_summary}}",
+      "when": "offline_signin",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "text": "{{progression_range}}",
+      "when": "progression_range",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.signin.bootstrap",
+      "when": "progression_bootstrap",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.error.sign_in_no_reward",
+      "when": "no_offline_rewards",
+      "style": "card_context"
     },
     {
       "type": "system:container",
@@ -168,6 +214,19 @@
           "repeat": "candidates",
           "when": "candidates.*.condition_unmet",
           "text": "{{candidates.*.reward_label}} · {{tr:system.ui.condition_unmet}}",
+          "style": "card_context"
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "direction": "column",
+      "style": "card_column",
+      "source": "{{milestones}}",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{milestones.*}}",
           "style": "card_context"
         }
       ]

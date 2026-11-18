@@ -9,6 +9,7 @@ import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.module.AgentAction;
 import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.module.ModuleScope;
 import com.iafenvoy.system.agent.routing.RouteSource;
 import com.iafenvoy.system.agent.storage.AgentJournal;
 import com.iafenvoy.system.agent.storage.AgentStore;
@@ -57,8 +58,8 @@ public final class ExecutionContext {
     private final AtomicBoolean cancelled = new AtomicBoolean();
     private final Set<String> completedLocalSteps = new HashSet<>();
     private AgentModule.Descriptor module;
-    private Identifier owner;
-    private Optional<Identifier> eventOwner = Optional.empty();
+    private ModuleScope scope = ModuleScope.Global.INSTANCE;
+    private ModuleScope eventScope = ModuleScope.Global.INSTANCE;
     private ExecutionPolicy policy;
     private long expires;
     private int models, tools, steps, writes, tokens;
@@ -85,7 +86,7 @@ public final class ExecutionContext {
         this.expires = started + initial.ttlMillis();
         if (eventKey != null) store.read(player, data -> {
             EventTask task = this.engine.journal(data).getTask(eventKey);
-            this.eventOwner = task.owner;
+            this.eventScope = task.scope;
             this.models = task.modelCalls;
             this.tools = task.toolCalls;
             this.steps = task.workflowSteps;
@@ -96,10 +97,10 @@ public final class ExecutionContext {
         });
     }
 
-    void select(Identifier owner, AgentModule.Descriptor descriptor, ExecutionPolicy value) {
-        if (this.isEvent() && !this.eventOwner.equals(Optional.ofNullable(owner)))
+    void select(ModuleScope scope, AgentModule.Descriptor descriptor, ExecutionPolicy value) {
+        if (this.isEvent() && !this.eventScope.equals(scope))
             throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
-        this.owner = owner;
+        this.scope = scope;
         this.module = descriptor;
         this.policy = value;
         this.authorizedExternalTools.clear();
@@ -127,6 +128,15 @@ public final class ExecutionContext {
 
     public RouteSource routeSource() {
         return this.routeSource;
+    }
+
+    /**
+     * Destructive confirmations require the selected player action, never a nested model tool or event.
+     */
+    public void requirePlayerAction(AgentAction action) {
+        this.check();
+        if (this.isEvent() || this.routeSource != RouteSource.STRUCTURED || this.module == null || !this.module.id().equals(action.id()))
+            throw new AgentException(AgentFailure.CONFIRM_REQUIRED);
     }
 
     void routeSource(RouteSource source) {
@@ -235,7 +245,7 @@ public final class ExecutionContext {
             throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         if (++this.steps > this.policy.steps()) throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
         AgentModule.Descriptor previousModule = this.module;
-        Identifier previousOwner = this.owner;
+        ModuleScope previousScope = this.scope;
         ExecutionPolicy previousPolicy = this.policy;
         RouteSource previousSource = this.routeSource;
         long previousExpires = this.expires;
@@ -260,7 +270,7 @@ public final class ExecutionContext {
             result = this.engine.execute(this, input, limited);
         } finally {
             this.module = previousModule;
-            this.owner = previousOwner;
+            this.scope = previousScope;
             this.policy = previousPolicy;
             this.routeSource = previousSource;
             this.expires = previousExpires;
@@ -363,7 +373,7 @@ public final class ExecutionContext {
     private <I, O> void addTool(Map<String, ToolRegistry.ScopedTool<?, ?>> allowed, ToolRegistry.Type<I, O> type) {
         this.ensureMemoryCurrent();
         if (!this.toolAvailable(type)) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
-        ToolRegistry.ScopedTool<I, O> scoped = this.engine.tools().scope(type, this.owner, owner -> this.engine.moduleEnabled(this.player, owner));
+        ToolRegistry.ScopedTool<I, O> scoped = this.engine.tools().scope(type, this.scope, owner -> this.engine.moduleEnabled(this.player, owner));
         if (scoped.tool().write() && this.module.optionalTools().contains(type.id()))
             throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         allowed.put(type.id(), scoped);
@@ -371,7 +381,7 @@ public final class ExecutionContext {
 
     public void checkToolOwner(ToolRegistry.ScopedTool<?, ?> scoped) {
         this.ensureMemoryCurrent();
-        if (!this.engine.moduleEnabled(this.player, scoped.owner()) || !this.engine.toolAvailable(this.player, scoped.tool().id()))
+        if (!scoped.scope().available(owner -> this.engine.moduleEnabled(this.player, owner)) || !this.engine.toolAvailable(this.player, scoped.tool().id()))
             throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
     }
 
@@ -398,7 +408,7 @@ public final class ExecutionContext {
         if (this.cancelled.get() || this.engine.closed() || !this.engine.current(this.player, this.incarnation))
             throw new AgentException(AgentFailure.CANCELLED);
         if (this.remainingMillis() == 0) throw new AgentException(AgentFailure.EXPIRED);
-        if (this.module != null && (!this.engine.moduleEnabled(this.player, this.owner) || !this.available(this.module.id())))
+        if (this.module != null && (!this.scope.available(owner -> this.engine.moduleEnabled(this.player, owner)) || !this.available(this.module.id())))
             throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
     }
 
@@ -415,6 +425,26 @@ public final class ExecutionContext {
         return this.model(instruction, inputCodec, input, List.of(), reply -> CodecIO.parse(this.store().codec(outputCodec), reply.value()));
     }
 
+    /**
+     * Preview the same serialized request and remaining budget used by model(), without spending a call.
+     */
+    public <I> boolean fitsModelInput(String instruction, MapCodec<I> inputCodec, I input) {
+        String content = this.modelContent(inputCodec, input);
+        long bytes = modelInputBytes(instruction, content, List.of());
+        return bytes <= this.policy.inputBytes() && this.tokens + bytes + this.policy.outputTokens() <= this.policy.totalTokens();
+    }
+
+    private <I> String modelContent(MapCodec<I> inputCodec, I input) {
+        return CodecIO.write(this.store().codec(ModelInput.codec(inputCodec)), new ModelInput<>(input, new RequestContext(this.language)));
+    }
+
+    private static long modelInputBytes(String instruction, String content, List<ModelClient.Function> functions) {
+        long bytes = (long) instruction.getBytes(StandardCharsets.UTF_8).length + content.getBytes(StandardCharsets.UTF_8).length;
+        if (!functions.isEmpty())
+            bytes += CodecIO.write(ModelClient.Function.CODEC.listOf(), functions).getBytes(StandardCharsets.UTF_8).length;
+        return bytes;
+    }
+
     public <I, O> O model(String instruction, MapCodec<I> inputCodec, I input, List<ModelClient.Function> functions,
                           Function<ModelClient.Reply, O> decoder) throws Exception {
         // Enforce consent, quotas and concurrency here; the gateway owns HTTP and actual usage accounting.
@@ -422,12 +452,10 @@ public final class ExecutionContext {
         this.engine.model().checkConfigured();
         if (++this.steps > this.policy.steps() || this.models >= this.policy.modelCalls())
             throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
-        String content = CodecIO.write(this.store().codec(ModelInput.codec(inputCodec)), new ModelInput<>(input, new RequestContext(this.language)));
+        String content = this.modelContent(inputCodec, input);
         functions = List.copyOf(functions);
         // Reserve input bytes conservatively as tokens; this execution budget is separate from billed usage.
-        long inputBytes = (long) instruction.getBytes(StandardCharsets.UTF_8).length + content.getBytes(StandardCharsets.UTF_8).length;
-        if (!functions.isEmpty())
-            inputBytes += CodecIO.write(ModelClient.Function.CODEC.listOf(), functions).getBytes(StandardCharsets.UTF_8).length;
+        long inputBytes = modelInputBytes(instruction, content, functions);
         if (inputBytes > this.policy.inputBytes() || this.tokens + inputBytes + this.policy.outputTokens() > this.policy.totalTokens())
             throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
         int estimated = (int) inputBytes;
@@ -497,10 +525,34 @@ public final class ExecutionContext {
         String id = type.id();
         if (this.module == null || !this.module.tools().contains(id) && !this.module.optionalTools().contains(id))
             throw new AgentException(AgentFailure.NOT_AUTHORIZED);
-        ToolRegistry.Tool<I, O> tool = this.engine.tool(this.player, type, this.owner);
+        ToolRegistry.ScopedTool<I, O> scoped = this.engine.tools().scope(type, this.scope, owner -> this.engine.moduleEnabled(this.player, owner));
+        ToolRegistry.Tool<I, O> tool = scoped.tool();
         if (this.module.optionalTools().contains(id) && tool.write())
             throw new AgentException(AgentFailure.NOT_AUTHORIZED);
-        return this.executeTool(tool, stepId, input);
+        return this.scopedTool(scoped, stepId, input);
+    }
+
+    /**
+     * Enter a real merge member's tool scope while retaining this request's limits and step journal.
+     */
+    public <I, O> O memberTool(Identifier member, ToolRegistry.Type<I, O> type, String stepId, I input) throws Exception {
+        this.check();
+        if (!stepId.matches("[a-zA-Z0-9_./-]+")) throw new AgentException(AgentFailure.INVALID_INPUT);
+        if (!(this.scope instanceof ModuleScope.Group group) || !group.members().contains(member) || !this.toolAvailable(type))
+            throw new AgentException(AgentFailure.NOT_AUTHORIZED);
+        ToolRegistry.ScopedTool<I, O> selected = this.engine.tools().member(type, member, owner -> this.engine.moduleEnabled(this.player, owner));
+        if (selected.tool().write() && this.module.optionalTools().contains(type.id()))
+            throw new AgentException(AgentFailure.NOT_AUTHORIZED);
+        ModuleScope previous = this.scope;
+        String prefix = this.stepPrefix;
+        try {
+            this.scope = selected.scope();
+            this.stepPrefix += "member/" + member.getNamespace() + "/" + member.getPath() + "/";
+            return this.scopedTool(selected, stepId, input);
+        } finally {
+            this.scope = previous;
+            this.stepPrefix = prefix;
+        }
     }
 
     private <I, O> O executeTool(ToolRegistry.Tool<I, O> tool, String stepId, I input) throws Exception {

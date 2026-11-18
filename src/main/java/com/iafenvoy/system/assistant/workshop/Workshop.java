@@ -30,11 +30,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class Workshop implements PlayerModule {
     private final AgentEngine engine;
     private final MinecraftTools game;
+    private final Salvage salvage;
     private final Map<UUID, Quote> quotes = new HashMap<>();
 
-    public Workshop(AgentEngine engine, MinecraftTools game) {
+    public Workshop(AgentEngine engine, MinecraftTools game, Salvage salvage) {
         this.engine = engine;
         this.game = game;
+        this.salvage = salvage;
     }
 
     public CompletionStage<RepairQuoteOutput> quote(ExecutionContext context, Identifier owner, List<Cost> costs) {
@@ -45,7 +47,7 @@ public final class Workshop implements PlayerModule {
                 throw new AgentException(AgentFailure.ITEM_NOT_DAMAGED);
             int slot = player.getInventory().getSelectedSlot();
             CostContext paymentContext = CostContext.of(player, "system:repair").with("system:source", owner)
-                    .withItemTarget(new RepairInventory(player.getInventory(), slot));
+                    .withItemTarget(new WorkshopInventory(player.getInventory(), slot));
             CommerceCosts.Prepared payment = CommerceCosts.prepare(costs, player, paymentContext);
             if (payment.isFailure()) throw new AgentException(payment.failure().orElseThrow());
             ItemStackTemplate snapshot = ItemStackTemplate.fromNonEmptyStack(stack);
@@ -86,14 +88,17 @@ public final class Workshop implements PlayerModule {
 
     @Override
     public Session login(ServerPlayer player) {
+        Session salvage = this.salvage.login(player);
         return new Session() {
             @Override
             public void initialize(PlayerData data) {
+                salvage.initialize(data);
             }
 
             @Override
             public void close() {
                 Workshop.this.quotes.remove(player.getUUID());
+                salvage.close();
             }
         };
     }

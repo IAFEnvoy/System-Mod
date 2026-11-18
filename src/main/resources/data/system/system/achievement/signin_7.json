@@ -1,0 +1,19 @@
+{
+  "label": "system.achievement.signin_7",
+  "description": "system.achievement.signin_7.description",
+  "series": "system.achievement.series.signin",
+  "event": "system:signed_in",
+  "target": 7,
+  "reward": {
+    "label": "system.achievement.signin_7",
+    "contents": [
+      {
+        "content": {
+          "type": "system:currency",
+          "currency": "system:coin"
+        },
+        "amount": 10
+      }
+    ]
+  }
+}

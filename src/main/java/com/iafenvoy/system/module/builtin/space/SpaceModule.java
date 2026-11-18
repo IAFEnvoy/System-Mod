@@ -8,15 +8,11 @@ import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.SpaceInput;
-import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.data.output.SpaceOutput;
-import com.iafenvoy.system.data.result.ShopOrder;
-import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
-import com.iafenvoy.system.module.builtin.storage.CommerceDataStorage;
-import net.minecraft.core.Registry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,11 +21,11 @@ import java.util.List;
  * The space is independent of sign-in, commerce and the kinds of content stored in it.
  */
 public final class SpaceModule extends AbstractAgentModule<SpaceInput> {
-    private final Registry<SystemModule> modules;
+    private final CommerceTransactions commerce;
 
-    public SpaceModule(ToolRegistry.Tool<SpaceInput, SpaceOutput> query, Registry<SystemModule> modules) {
+    public SpaceModule(ToolRegistry.Tool<SpaceInput, SpaceOutput> query, CommerceTransactions commerce) {
         super(SpaceInput.CODEC, "View my system space and stored contents, quantities and withdrawal actions.", List.of(query), true, false, ExecutionPolicy.quick(0, 0));
-        this.modules = modules;
+        this.commerce = commerce;
     }
 
     @Override
@@ -48,9 +44,7 @@ public final class SpaceModule extends AbstractAgentModule<SpaceInput> {
         List<CardUpdate> cards = new ArrayList<>();
         cards.add(CardUpdate.show(context.tool(BuiltinTools.SPACE_QUERY, "space", input)));
         // Unsettled purchases remain visible without exposing their locked contents as withdrawable entries.
-        cards.addAll(context.store().read(context.player(), data -> ModuleData.values(data, CommerceDataStorage.class, this.modules)
-                .flatMap(CommerceDataStorage::streamPurchases).filter(purchase -> !"COMPLETED".equals(purchase.state) && !"FAILED".equals(purchase.state))
-                .limit(8).map(purchase -> CardUpdate.show(new ShopOrder(purchase.id, purchase.order.label(), purchase.state, purchase.error))).toList()));
+        cards.addAll(this.commerce.pending(context).stream().map(CardUpdate::show).toList());
         return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.inbox", "", cards);
     }
 }

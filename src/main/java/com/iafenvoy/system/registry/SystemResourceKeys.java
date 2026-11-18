@@ -8,12 +8,11 @@ import com.iafenvoy.system.config.credential.Credential;
 import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.card.CardData;
-import com.iafenvoy.system.data.catalog.CurrencyDefinition;
-import com.iafenvoy.system.data.catalog.OnlineJobEntry;
-import com.iafenvoy.system.data.catalog.ShopOfferEntry;
-import com.iafenvoy.system.data.catalog.SignInRewardEntry;
+import com.iafenvoy.system.data.catalog.*;
 import com.iafenvoy.system.data.emotion.EmotionDefinition;
 import com.iafenvoy.system.data.module.SystemModule;
+import com.iafenvoy.system.data.progress.AchievementDefinition;
+import com.iafenvoy.system.data.progress.FactRewardRule;
 import com.iafenvoy.system.data.space.SpaceContentType;
 import com.iafenvoy.system.module.ServerModule;
 import com.iafenvoy.system.screen.card.CardNode;
@@ -36,6 +35,8 @@ public final class SystemResourceKeys {
     public static final ResourceKey<Registry<StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentRequest>>> AGENT_REQUEST_TYPE = create("agent_request_type");
     public static final ResourceKey<Registry<StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>>> AGENT_RESPONSE_TYPE = create("agent_response_type");
     // Datapack
+    public static final ResourceKey<Registry<AchievementDefinition>> ACHIEVEMENT = create("achievement");
+    public static final ResourceKey<Registry<TeleportDestination>> TELEPORT_DESTINATION = create("teleport_destination");
     public static final ResourceKey<Registry<EmotionDefinition>> EMOTION = create("emotion");
     public static final ResourceKey<Registry<CurrencyDefinition>> CURRENCY = create("currency");
     public static final ResourceKey<Registry<OnlineJobEntry>> ONLINE_JOB = create("online_job");
@@ -44,6 +45,9 @@ public final class SystemResourceKeys {
     public static final ResourceKey<Registry<SignInRewardEntry>> SIGNIN_REWARD = create("signin_reward");
     public static final ResourceKey<Registry<ShopOfferEntry>> SHOP_OFFER = create("shop_offer");
     public static final ResourceKey<Registry<LotteryPool>> LOTTERY_POOL = create("lottery_pool");
+    public static final ResourceKey<Registry<FactRewardRule>> FACT_REWARD = create("fact_reward");
+    public static final ResourceKey<Registry<CollectionDefinition>> COLLECTION = create("collection");
+    public static final ResourceKey<Registry<SalvageRule>> SALVAGE_RULE = create("salvage_rule");
 
     private static <T> ResourceKey<Registry<T>> create(String id) {
         return ResourceKey.createRegistryKey(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, id));

@@ -30,7 +30,7 @@ public CardBuilder buildCard() {
 
 ## 本地模块操作卡片
 
-模块工具栏也可以通过 `WorkspaceContext.card(CardBuilder)` 使用 JSON 卡片。在线作业和维修共用 `assets/system/cards/module_controls.json`：`title`、`description`、`action_label` 分别提供标题、说明和操作文案，`submit` 是由模块绑定的本地 callback。模板左侧显示说明，右侧显示按钮，窄窗口自动换行；布局与样式可由资源包覆盖。
+模块工具栏也可以通过 `WorkspaceContext.card(CardBuilder)` 使用 JSON 卡片。在线作业使用 `assets/system/cards/module_controls.json`：`title`、`description`、`action_label` 分别提供标题、说明和操作文案，`submit` 是由模块绑定的本地 callback。模板左侧显示说明，右侧显示按钮，窄窗口自动换行；工坊改用 `workshop_controls.json`，提供 `repair`、`salvage`、`history` 本地 callback。分解方案、结算与记录分别使用 `salvage_quote`、`salvage_receipt`、`salvage_history` 模板。布局与样式可由资源包覆盖。
 
 这类卡片由 `CardPresentation.local` 渲染，仅属于当前界面的工具栏，不写入聊天历史或服务端卡片缓存，不触发通知和播报。按钮使用 `system:button` 的 `click: "local"`、`value: "submit"` 调用 Context callback，由回调发送既有业务请求；服务端继续检查权限与业务状态。卡片只在界面初始化或模板资源重载时重建，普通回复不重复构建操作区。
 
@@ -516,7 +516,7 @@ JSON 使用 `"type":"example:badge"`。注册与冻结由 NeoForge 模组加载�
 
 资源重载依次尝试高优先级资源包、低优先级资源包、上次有效模板；未知 type 或结构错误使整张模板回退，结构字段不作 lenient 吞错。删除资源会移除模板。完整/简约界面刷新已有内容；通知在实际绘制时读取当前模板，队列保存卡片数据；已显示通知不因资源重载重新入队或播报。消息按卡片 ID 去重。
 
-资源只位于客户端 assets，不进入服务端 data、存档或模型请求；无新增依赖，网络协议仍为 1。
+资源只位于客户端 assets，不进入服务端 data、存档或模型请求；无新增依赖；当前网络协议为 3（物品搜索附件、批量交易与新增玩法快照），卡片资源本身不要求额外协议。
 
 ### 任务来源参数
 

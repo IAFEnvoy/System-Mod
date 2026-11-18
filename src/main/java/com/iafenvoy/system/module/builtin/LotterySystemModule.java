@@ -68,7 +68,7 @@ public record LotterySystemModule(
     @Override
     public List<AgentModule<?>> workflows(ModuleContext context) {
         ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview = context.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(context.get(ContextTypes.COMMERCE)).tool());
-        return List.of(new LotteryModule(context.get(ContextTypes.CATALOGS)), new LotteryPreviewModule(context.get(ContextTypes.CATALOGS), preview),
+        return List.of(new LotteryModule(context.get(ContextTypes.CATALOGS), context.get(ContextTypes.ITEM_SEARCH)), new LotteryPreviewModule(context.get(ContextTypes.CATALOGS), preview),
                 new LotteryDrawModule(new LotteryDrawTool(context.get(ContextTypes.COMMERCE)).tool()), new LotteryHistoryModule(context.get(ContextTypes.COMMERCE)));
     }
 }

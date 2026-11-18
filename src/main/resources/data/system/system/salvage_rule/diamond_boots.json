@@ -1,0 +1,20 @@
+{
+  "label": "system.salvage.rule.material_return",
+  "priority": 0,
+  "input": {
+    "items": [
+      "minecraft:diamond_boots"
+    ]
+  },
+  "outputs": [
+    {
+      "content": {
+        "type": "system:item",
+        "item": {
+          "id": "minecraft:diamond"
+        }
+      },
+      "amount": "floor(2 * salvage_durability)"
+    }
+  ]
+}

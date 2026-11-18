@@ -1,0 +1,20 @@
+{
+  "label": "system.salvage.rule.material_return",
+  "priority": 0,
+  "input": {
+    "items": [
+      "minecraft:golden_shovel"
+    ]
+  },
+  "outputs": [
+    {
+      "content": {
+        "type": "system:item",
+        "item": {
+          "id": "minecraft:gold_nugget"
+        }
+      },
+      "amount": "floor(4.5 * salvage_durability)"
+    }
+  ]
+}

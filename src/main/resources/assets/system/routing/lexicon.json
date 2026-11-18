@@ -83,6 +83,10 @@
       "商铺",
       "店铺"
     ],
+    "buyback": [
+      "收购",
+      "出售"
+    ],
     "reward": [
       "奖励",
       "补给",
@@ -212,6 +216,11 @@
       "shop",
       "store",
       "market"
+    ],
+    "buyback": [
+      "buyback",
+      "sell",
+      "sale"
     ],
     "reward": [
       "rewards",

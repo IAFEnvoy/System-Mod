@@ -170,6 +170,26 @@ p {
     scrollbar-color: var(--assistant-accent-shadow) var(--assistant-surface-deep);
 }
 
+.anchor_rename #workspace {
+    left: max(3vw, calc(50vw - 260px));
+    top: max(3vh, calc(50vh - 140px));
+    width: min(520px, 94vw);
+    height: 280px;
+    max-height: 94vh;
+    padding: 20px;
+    gap: 14px;
+    overflow-y: auto;
+}
+
+.anchor_rename #workspace > * {
+    flex: 0 0 auto;
+}
+
+.anchor_rename input {
+    width: 100%;
+    min-width: 0;
+}
+
 /* Full assistant layout. */
 .full #workspace {
     display: block;
@@ -469,13 +489,10 @@ p {
     gap: 12px;
 }
 
-.workspace_controls .workspace_controls_copy {
+.workspace_controls .workspace_controls_title {
     flex: 1 1 240px;
     min-width: 0;
-}
-
-.workspace_controls .workspace_controls_title {
-    margin: 0 0 4px;
+    margin: 0;
     color: var(--assistant-ink);
     font-size: 14px;
     font-weight: 600;
@@ -483,7 +500,8 @@ p {
 }
 
 .workspace_controls .workspace_controls_note {
-    margin: 0;
+    /* Keep wrapping copy in normal block flow, outside the header's flex sizing. */
+    margin: 8px 0 0;
     color: var(--assistant-muted);
     font-size: 12px;
     line-height: 1.5;
@@ -522,7 +540,7 @@ p {
     gap: 10px;
 }
 
-#shop_query, #lottery_query, #quest_guide_query {
+.shop_controls input {
     flex: 1 1 0;
     min-width: 0;
     height: 42px;
@@ -538,7 +556,7 @@ p {
     white-space: nowrap;
 }
 
-#shop_text, #lottery_text {
+#shop_text, #buyback_text, #lottery_text {
     font-size: 12px;
     margin-top: 0;
 }
@@ -2963,7 +2981,7 @@ button.assistant_switch:disabled {
         flex-wrap: wrap;
     }
 
-    #shop_query, #lottery_query, #quest_guide_query {
+    .shop_controls input {
         flex-basis: 100%;
     }
 
@@ -3209,9 +3227,15 @@ body button.offer_cell_content:active {
 }
 .source_recipe_pages .card_grid_cell {
     align-items: stretch;
+    justify-content: flex-start;
     padding: 0;
     overflow-y: auto;
     overflow-x: hidden;
+}
+.source_recipe_pages .source_entry {
+    flex: 0 0 auto;
+    width: 100%;
+    box-sizing: border-box;
 }
 .card_button_icon {
     display: block;

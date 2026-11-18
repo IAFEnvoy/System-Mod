@@ -29,6 +29,12 @@ export function sampleContext(template = "quest_list") {
     reward_items: "钻石 × 3，铁锭 × 16",
     price: "绿宝石 × 2",
     price_text: "绿宝石 × 2",
+    catalog_title: "系统商城",
+    reward_heading: "商品",
+    cost_heading: "支付费用",
+    payment_unavailable_text: "当前无法支付此费用，请检查材料和余额后重新报价。",
+    show_price: true,
+    has_price_description: false,
     balance: 120,
     can_claim: true,
     tasks: 2,
@@ -102,6 +108,8 @@ export function sampleContext(template = "quest_list") {
   p.offers = Array.from({ length: 23 }, (_, i) => ({
     id: `offer_${i}`,
     label: `资源补给 ${i + 1}`,
+    trade: "购买",
+    buyback: false,
     items: i % 4 === 0 ? [] : [
       preview(i % 2 ? "minecraft:apple" : "minecraft:diamond", String(i + 1)),
     ],
@@ -120,6 +128,7 @@ export function sampleContext(template = "quest_list") {
     payment_unavailable: false,
     condition_unmet: false,
     has_purchase_limit: template === "shop_offer",
+    quantity: "交易数量：8 份",
     limit_reached: false,
     purchase_limit: "每日限购 3 次 · 剩余 2 次",
     priced: true,
@@ -265,6 +274,12 @@ export function sampleContext(template = "quest_list") {
     p.cooling = true;
     p.feedback = "已保存锚点：家";
     p.anchors = 4;
+    p.destinations = 1;
+    p["destinations.0.label"] = "公共广场";
+    p["destinations.0.description"] = "数据包定义的公共目的地";
+    p["destinations.0.dimension"] = "minecraft:overworld";
+    p["destinations.0.teleport_value"] = "system:anchor_teleport?anchor=public:example:plaza";
+    p["destinations.0.locked"] = false;
     p.result_actions = [];
     ["家", "矿井", "村庄", "下界入口"].forEach((name, i) => {
       const teleport = `system:anchor_teleport?anchor=example-${i}`;
@@ -275,11 +290,13 @@ export function sampleContext(template = "quest_list") {
         [`anchors.${i}.position`]: `${128 + i * 160}.5, 64.0, -32.5`,
         [`anchors.${i}.locked`]: i >= 3,
         [`anchors.${i}.teleport_value`]: teleport,
+        [`anchors.${i}.rename_binding`]: `actions.${i * 3 + 1}.click`,
         [`anchors.${i}.delete_value`]: remove,
-        [`actions.${i * 2}.disabled`]: i >= 3,
+        [`actions.${i * 3}.disabled`]: i >= 3,
       });
       p.result_actions.push(
         { id: `teleport.${i}`, label: `传送至 ${name}`, placement: "body", value: teleport },
+        { id: `rename.${i}`, label: `重命名锚点 ${name}`, placement: "body", click: "local", value: `actions.${i * 3 + 1}.click` },
         { id: `delete.${i}`, label: `删除锚点 ${name}`, placement: "body", value: remove },
       );
     });
@@ -315,6 +332,14 @@ export function sampleContext(template = "quest_list") {
     contents(`prizes.${i}.preview_`, grants);
   });
   if (template === "sign_in_status") {
+    p.counts = "累计 7 天 · 连续 3 天 · 最长连续 5 天";
+    p.period_counts = "本周 3 天 · 本月 7 天";
+    p.fixed = false;
+    p.milestones = ["累计签到：7 / 7 · 七日补给", "连续签到：3 / 7 · 连签补给"];
+    p.external_model = false;
+    p.offline_signin = true;
+    p.progression_summary = "本地评估 P90：32.00 · 12 种样本 · 中置信度";
+    p.progression_range = "优先奖励包价值范围：25.60～41.60；无匹配时仅向下选择。";
     p.candidates = 2;
     p["candidates.0.reward_label"] = "系统币补给";
     p["candidates.0.result_items"] = [];
@@ -326,8 +351,69 @@ export function sampleContext(template = "quest_list") {
     contents("candidates.0.", [currency]);
     contents("candidates.1.", [experience, levels]);
   }
+  if (template === "collection") {
+    p.detail = true;
+    p.label = "基础矿物收藏";
+    p.description = "收集矿物后登记，不消耗背包物品。";
+    p.counts = "已登记 2 / 4";
+    p.progress = 50;
+    p.rows = 4;
+    ["diamond", "gold_ingot", "iron_ingot", "emerald"].forEach((item, i) => {
+      p[`rows.${i}.label`] = ["钻石", "金锭", "铁锭", "绿宝石"][i];
+      p[`rows.${i}.item`] = preview(`minecraft:${item}`, "1");
+      p[`rows.${i}.complete`] = i < 2;
+      p[`rows.${i}.status`] = i < 2 ? "已登记" : "未登记";
+    });
+    p.milestones = ["登记 1 项 · 初次收藏 · 待领取", "登记 4 项 · 矿物专家 · 未达成"];
+    p.result_actions = [
+      { id: "register", label: "登记背包物品", value: "system:collection_register?collection=system%3Adefault", placement: "body" },
+      { id: "back", label: "返回", value: "system:collection_query", placement: "body" },
+      { id: "records", label: "进度与奖励", value: "system:record_query", placement: "body" },
+    ];
+    p.result_actions.forEach((_, i) => (p[`actions.${i}.footer`] = true));
+  }
+  if (template === "record_rewards") {
+    p.pending = "待领取 2 项";
+    p.rewards = 3;
+    p.counts = ["签到：7", "登记收藏：4", "完成任务：12"];
+    p.result_actions = ["初次收藏", "累计七日签到", "任务积分"].map((label, i) => {
+      p[`rewards.${i}.reward_label`] = label;
+      p[`rewards.${i}.preview`] = i === 0 ? [preview("minecraft:bread", "2")] : [];
+      p[`rewards.${i}.reward_text`] = i === 0 ? "面包 × 2" : i === 1 ? "系统币 × 5" : "任务积分 × 1";
+      p[`rewards.${i}.status`] = i === 2 ? "已存入系统空间" : "待领取";
+      p[`actions.${i}.disabled`] = i === 2;
+      return { id: `claim.${i}`, label: "领取到系统空间", value: `system:record_claim?entitlement=sample_${i}`, placement: "body" };
+    });
+    p["actions.3.footer"] = true;
+    p.result_actions.push({ id: "refresh", label: "刷新", value: "system:record_query", placement: "body" });
+  }
+  if (template === "achievements") {
+    p.overview = "已完成 1 / 3 项成就";
+    p.series = 2;
+    p["series.0.text"] = "签到之路 · 1 / 2";
+    p["series.1.text"] = "收藏之路 · 0 / 1";
+    p.entries = 3;
+    p.result_actions = ["首次签到", "签到七次", "收藏五件"].map((label, i) => {
+      Object.assign(p, {
+        [`entries.${i}.label`]: label,
+        [`entries.${i}.description`]: "积累可信行为，达成目标后领取奖励。",
+        [`entries.${i}.series`]: i === 2 ? "收藏之路" : "签到之路",
+        [`entries.${i}.progress_text`]: i === 0 ? "1 / 1" : "1 / 5",
+        [`entries.${i}.progress`]: i === 0 ? 100 : 20,
+        [`entries.${i}.status`]: i === 0 ? "待领取" : "未达成",
+        [`entries.${i}.reward`]: "奖励：系统币 × 2",
+        [`actions.${i}.disabled`]: i !== 0,
+      });
+      return { id: `claim.${i}`, label: "领取到系统空间", value: `system:record_claim?entitlement=achievement:sample_${i}`, placement: "body" };
+    });
+    p["actions.3.footer"] = true;
+    p.result_actions.push({ id: "refresh", label: "刷新", value: "system:achievement_query" });
+  }
   if (template === "online_jobs") {
     p.active = true;
+    p.quote = true;
+    p.quote_label = "木炭生产";
+    p.quote_cost = "原木 × 2";
     p.current_label = "训练";
     p.current_status = "进行中";
     p.current_time = "30 / 60 秒";
@@ -338,6 +424,7 @@ export function sampleContext(template = "quest_list") {
     [currency, experience].forEach((grant, i) => {
       p[`jobs.${i}.label`] = i ? "训练" : "赚取系统币";
       p[`jobs.${i}.duration`] = "60 秒";
+      p[`jobs.${i}.cost`] = i ? "原木 × 2" : "无需费用";
       p[`jobs.${i}.items`] = [];
       p[`jobs.${i}.reward_text`] = grant.label;
       p[`jobs.${i}.condition_unmet`] = i === 1;
@@ -380,12 +467,42 @@ export function sampleContext(template = "quest_list") {
     p.result_actions = [{ id: "back", label: "返回记录列表", placement: "body" }];
     p["actions.0.pager"] = true;
   }
+  if (template === "workshop_controls") {
+    p.title = "工坊";
+    p.description = "主手拿一件装备，先报价，再确认维修或分解。";
+    p.result_actions = [];
+  }
+  if (template.startsWith("salvage_")) {
+    p.item = preview("minecraft:iron_sword");
+    p.item_name = "铁剑";
+    p.rule = "基础材料回收";
+    p.rule_id = "system:iron_sword";
+    p.order_id = "00000000-0000-0000-0000-000000000001";
+    p.state = "已完成";
+    p.price = "免费";
+    contents("", [{ name: "铁粒", icon: { id: "minecraft:iron_nugget" }, amount: "9", label: "铁粒 × 9" }]);
+    p.result_actions = template === "salvage_quote"
+      ? [{ id: "confirm", label: "确认分解", value: "system:salvage_confirm?quote=example" }, { id: "cancel", label: "取消", value: "system:salvage_cancel?quote=example" }]
+      : [{ id: "space", label: "查看系统空间", value: "system:inbox" }, { id: "history", label: "分解记录", value: "system:salvage_history" }];
+    p.result_actions.forEach((_, i) => (p[`actions.${i}.footer`] = true));
+    if (template === "salvage_history") {
+      p.orders = 1;
+      p["orders.0.id"] = p.order_id;
+      p["orders.0.item"] = p.item;
+      p["orders.0.name"] = "铁剑";
+      p["orders.0.state"] = "已完成";
+      p["orders.0.outputs"] = "铁粒 × 9";
+      p.page = "第 1 / 1 页";
+      p.result_actions = [{ id: "previous", label: "上一页", value: "system:salvage_history?offset=0" }, { id: "next", label: "下一页", value: "system:salvage_history?offset=10" }];
+      p.result_actions.forEach((_, i) => { p[`actions.${i}.footer`] = false; p[`actions.${i}.disabled`] = true; });
+    }
+  }
   p.actions = p.result_actions.length;
   p.result_actions.forEach((entry, i) =>
     Object.assign(p, {
       [`actions.${i}.label`]: entry.label,
       [`actions.${i}.value`]: entry.value ?? "system:quest_detail?quest=" + i,
-      [`actions.${i}.click_type`]: "return-val",
+      [`actions.${i}.click_type`]: entry.click ?? "return-val",
       [`actions.${i}.behavior`]: "push",
       [`actions.${i}.pin`]: `actions.${i}.pin`,
       [`actions.${i}.action_icon`]: {
@@ -401,6 +518,6 @@ export function sampleContext(template = "quest_list") {
       show_card_title: 1,
       ...(template === "quest_pin" ? { hud: 1 } : {}),
     },
-    callbacks: template === "module_controls" ? ["submit"] : ["example"],
+    callbacks: template === "workshop_controls" ? ["repair", "salvage", "history"] : template === "module_controls" ? ["submit"] : ["example"],
   };
 }

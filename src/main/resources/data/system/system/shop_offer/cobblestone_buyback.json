@@ -1,0 +1,11 @@
+{
+  "label": "system.shop.offer.cobblestone_buyback",
+  "trade": "buyback",
+  "costs": [
+    { "type": "saturn:item", "items": "minecraft:cobblestone", "amount": 16 }
+  ],
+  "contents": [
+    { "content": { "type": "system:currency", "currency": "system:coin" }, "amount": 1 }
+  ],
+  "purchase_limit": { "count": 64, "period": "daily" }
+}

@@ -5,10 +5,14 @@ import com.iafenvoy.saturn.util.formula.FormulaContext;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.module.ModuleScope;
 import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.event.ModuleContextEvent;
+import com.iafenvoy.system.module.merge.MergeContext;
+import com.iafenvoy.system.module.merge.MergeRuntime;
+import com.iafenvoy.system.module.merge.MergeType;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
@@ -29,7 +33,8 @@ public final class ModuleManager implements AutoCloseable {
     private final MinecraftServer server;
     private final AgentEngine engine;
     private final ModuleAccess access;
-    private final Map<Identifier, Installed> installed = new LinkedHashMap<>();
+    private final Map<Identifier, SystemModule> installed = new LinkedHashMap<>();
+    private final Map<ModuleScope, Lifecycle> lifecycles = new LinkedHashMap<>();
     private final List<PlayerModule> runtimes = new ArrayList<>();
     private final Map<UUID, PlayerSession> players = new HashMap<>();
     private final Map<UUID, Set<Identifier>> active = new ConcurrentHashMap<>();
@@ -51,6 +56,21 @@ public final class ModuleManager implements AutoCloseable {
             });
             Map<Identifier, ModuleContext> contexts = new LinkedHashMap<>();
             modules.keySet().forEach(id -> contexts.put(id, context.forModule(id)));
+            Map<Identifier, GroupBuilder<?>> groups = new LinkedHashMap<>();
+            modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
+                if (module instanceof MergeableModule<?> mergeable)
+                    this.contribute(context, contexts.get(id), mergeable, groups);
+            }));
+            List<InstalledGroup> merged = new ArrayList<>();
+            // All contributions exist before any group factory or shared workflow runs.
+            groups.values().forEach(group -> {
+                InstalledGroup value = group.create(context.forGroup());
+                context.sharedRuntimes().forEach(this::remember);
+                this.remember(value.runtime);
+                this.lifecycles.put(value.scope, new Lifecycle(value.scope, value.runtime,
+                        List.copyOf(value.runtime.storages()), null));
+                merged.add(value);
+            });
             // Tool modules export operations before workflows resolve their typed dependencies.
             modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
                 if (!(module instanceof ToolModule tools)) return;
@@ -58,6 +78,7 @@ public final class ModuleManager implements AutoCloseable {
                     throw new IllegalArgumentException("Tool modules cannot expose workflows");
                 this.engine.tools().registerAll(id, tools.tools(contexts.get(id)));
             }));
+            merged.forEach(group -> this.engine.tools().registerExported(group.scope, group.runtime.tools()));
             // Workflows may resolve shared services before their lifecycle hooks are installed.
             modules.forEach((id, definition) -> definition.server().ifPresent(module -> {
                 if (module instanceof CatalogModule<?>)
@@ -66,14 +87,23 @@ public final class ModuleManager implements AutoCloseable {
                     for (AgentModule<?> workflow : workflows.workflows(contexts.get(id)))
                         this.engine.registerModule(id, workflow);
             }));
+            merged.forEach(group -> {
+                for (AgentModule<?> workflow : group.runtime.workflows())
+                    this.engine.registerGroup(group.scope, workflow);
+            });
             Set<ServerModule> initialized = Collections.newSetFromMap(new IdentityHashMap<>());
             modules.forEach((id, definition) -> {
                 definition.server().filter(initialized::add).ifPresent(module -> module.installed(contexts.get(id)));
                 PlayerModule runtime = definition.server().map(module -> module.runtime(contexts.get(id))).orElseGet(() -> new PlayerModule() {
                 });
+                context.sharedRuntimes().forEach(this::remember);
                 this.remember(runtime);
                 List<ModuleStorage<?>> storages = definition.server().map(ServerModule::storages).orElse(List.of());
-                this.installed.put(id, new Installed(id, definition, runtime, storages));
+                ModuleScope.Group group = merged.stream().map(InstalledGroup::scope)
+                        .filter(scope -> scope.members().contains(id)).findFirst().orElse(null);
+                Lifecycle lifecycle = new Lifecycle(new ModuleScope.Definition(id), runtime, List.copyOf(storages), group);
+                this.installed.put(id, definition);
+                this.lifecycles.put(lifecycle.scope, lifecycle);
             });
             context.sharedRuntimes().forEach(this::remember);
             this.access = new ModuleAccess(server, this.engine, List.copyOf(this.installed.keySet()));
@@ -89,8 +119,19 @@ public final class ModuleManager implements AutoCloseable {
         }
     }
 
+    private <C> void contribute(ModuleContext root, ModuleContext member, MergeableModule<C> module,
+                                Map<Identifier, GroupBuilder<?>> groups) {
+        MergeType<C> type = Objects.requireNonNull(module.mergeType());
+        GroupBuilder<?> existing = groups.computeIfAbsent(type.id(), _ -> new GroupBuilder<>(type));
+        if (existing.type != type) throw new IllegalArgumentException("Conflicting merge type " + type.id());
+        // The canonical type key owns both C and the contribution class; equal IDs alone never authorize a cast.
+        @SuppressWarnings("unchecked") GroupBuilder<C> group = (GroupBuilder<C>) existing;
+        C contribution = type.contributionType().cast(Objects.requireNonNull(module.contribution(member)));
+        group.members.add(new MergeContext.Member<>(root.modules().get(member.id()).orElseThrow(), contribution));
+    }
+
     private void remember(PlayerModule runtime) {
-        if (this.runtimes.stream().noneMatch(runtime::equals)) this.runtimes.add(runtime);
+        if (this.runtimes.stream().noneMatch(existing -> existing == runtime)) this.runtimes.add(runtime);
     }
 
     public <T extends PlayerModule> Optional<T> runtime(Class<T> type) {
@@ -124,7 +165,7 @@ public final class ModuleManager implements AutoCloseable {
 
     public boolean hasType(UUID player, MapCodec<? extends ServerModule> type) {
         return this.enabled(player).stream().map(this.installed::get).filter(Objects::nonNull)
-                .anyMatch(module -> module.definition.server().filter(server -> server.codec() == type).isPresent());
+                .anyMatch(module -> module.server().filter(server -> server.codec() == type).isPresent());
     }
 
     public boolean add(ServerPlayer player, Identifier module) {
@@ -151,7 +192,7 @@ public final class ModuleManager implements AutoCloseable {
      */
     public Consumer<PlayerData> binding(ServerPlayer player) {
         this.checkThread();
-        List<Consumer<PlayerData>> initializers = this.installed.values().stream()
+        List<Consumer<PlayerData>> initializers = this.lifecycles.values().stream()
                 .map(module -> module.runtime.binding(player)).toList();
         return data -> initializers.forEach(initialize -> initialize.accept(data));
     }
@@ -190,29 +231,38 @@ public final class ModuleManager implements AutoCloseable {
 
     private void reconcile(PlayerSession player) {
         if (!this.current(player)) return;
-        Set<Identifier> desired = Set.copyOf(this.access.enabled(player.player.getUUID()));
+        Set<Identifier> definitions = Set.copyOf(this.access.enabled(player.player.getUUID()));
+        Set<ModuleScope> desired = new LinkedHashSet<>();
+        this.lifecycles.keySet().stream().filter(scope -> scope.available(definitions::contains)).forEach(desired::add);
         player.failed.retainAll(desired);
-        for (Identifier id : List.copyOf(player.modules.keySet()))
-            if (!desired.contains(id)) this.stop(player, id);
+        desired.removeAll(player.failed);
+        desired.removeIf(scope -> scope instanceof ModuleScope.Definition && this.lifecycles.get(scope).group != null
+                && !desired.contains(this.lifecycles.get(scope).group));
+        // Failed members cannot keep a group session alive on their own.
+        desired.removeIf(scope -> scope instanceof ModuleScope.Group group
+                && group.members().stream().noneMatch(id -> desired.contains(new ModuleScope.Definition(id))));
+        List<ModuleScope> reverse = new ArrayList<>(player.modules.keySet());
+        Collections.reverse(reverse);
+        reverse.stream().filter(scope -> !desired.contains(scope)).forEach(scope -> this.stop(player, scope));
         this.publish(player);
         List<Activation> additions = new ArrayList<>();
         try {
-            for (Installed module : this.installed.values()) {
-                Identifier id = module.id();
-                if (!desired.contains(id) || player.modules.containsKey(id) || player.failed.contains(id)) continue;
+            for (Lifecycle module : this.lifecycles.values()) {
+                ModuleScope scope = module.scope;
+                if (!desired.contains(scope) || player.modules.containsKey(scope)) continue;
                 PlayerModule.Session session;
                 try {
                     session = Objects.requireNonNull(module.runtime.login(player.player));
                 } catch (RuntimeException error) {
-                    player.failed.add(id);
+                    player.failed.add(scope);
                     throw error;
                 }
                 Activation activation = new Activation(module, session);
-                player.modules.put(id, activation);
+                player.modules.put(scope, activation);
                 additions.add(activation);
             }
         } catch (RuntimeException error) {
-            additions.forEach(activation -> this.stop(player, activation.module.id()));
+            additions.reversed().forEach(activation -> this.fail(player, activation));
             this.publish(player);
             player.initialized.completeExceptionally(error);
             SystemMod.LOGGER.warn("Unable to create player module sessions for {}", player.player.getUUID(), error);
@@ -225,62 +275,72 @@ public final class ModuleManager implements AutoCloseable {
         UUID uuid = player.player.getUUID();
         AgentStore store = this.engine.playerStore(uuid);
         long gameTime = player.player.level().getGameTime();
-        this.engine.maintenance(() -> store.update(uuid, data -> {
-            if (!data.bound()) throw new IllegalStateException("Player system is no longer bound");
-            for (Activation activation : additions) {
-                if (!activation.valid) continue;
-                activation.module.storages.forEach(storage -> ModuleData.initialize(data, storage, gameTime));
-                activation.session.initialize(data);
-            }
-            return null;
-        })).whenComplete((_, error) -> this.server.execute(() -> {
+        // Reconciliation can add a member while its group is still initializing. Serialize the data work,
+        // so the group's initialize transaction always precedes its later members' transactions.
+        CompletableFuture<Void> initializing = player.initializing.handle((_, _) -> (Void) null).thenCompose(_ ->
+                this.engine.maintenance(() -> store.update(uuid, data -> {
+                    if (!data.bound()) throw new IllegalStateException("Player system is no longer bound");
+                    for (Activation activation : additions) {
+                        if (!activation.valid) continue;
+                        activation.module.storages.forEach(storage -> ModuleData.initialize(data, storage, gameTime));
+                    }
+                    for (Activation activation : additions)
+                        if (activation.valid) activation.session.initialize(data);
+                    return (Void) null;
+                }))).toCompletableFuture();
+        player.initializing = initializing;
+        initializing.whenComplete((_, error) -> this.server.execute(() -> {
             if (!this.current(player)) return;
             for (Activation activation : additions) {
-                Identifier id = activation.module.id();
-                // A removed/re-added module owns a different activation; stale callbacks cannot restart it.
-                if (player.modules.get(id) != activation) continue;
-                if (error != null) {
-                    this.stop(player, id);
-                    player.failed.add(id);
-                    continue;
-                }
-                activation.ready = true;
+                if (player.modules.get(activation.module.scope) != activation) continue;
+                if (error != null) this.fail(player, activation);
+                else activation.initialized = true;
             }
-            // Publish the whole initialized batch before ready hooks dispatch workflows owned by other modules.
-            this.publish(player);
             if (error != null) {
                 player.initialized.completeExceptionally(error);
                 SystemMod.LOGGER.warn("Unable to initialize player module data for {}", uuid, error);
-                return;
             }
-            for (Activation activation : additions) {
-                Identifier id = activation.module.id();
-                if (player.modules.get(id) != activation || !activation.ready) continue;
-                try {
-                    activation.session.ready();
-                } catch (RuntimeException failure) {
-                    this.stop(player, id);
-                    player.failed.add(id);
-                    this.publish(player);
-                    player.initialized.completeExceptionally(failure);
-                    SystemMod.LOGGER.warn("Unable to start module {} for {}", id, uuid, failure);
-                }
-            }
-            this.publish(player);
+            this.startReady(player);
+            this.reconcile(player);
             this.engine.resume(uuid);
             this.finishInitialization(player);
         }));
     }
 
+    private void startReady(PlayerSession player) {
+        // Lifecycles are ordered group-before-member, including when different batches finish together.
+        for (Activation activation : player.modules.values()) {
+            ModuleScope.Group group = activation.module.group;
+            Activation dependency = group == null ? null : player.modules.get(group);
+            if (activation.initialized && (group == null || dependency != null && dependency.ready))
+                activation.ready = true;
+        }
+        this.publish(player);
+        for (Activation activation : List.copyOf(player.modules.values())) {
+            if (!activation.ready || activation.started || player.modules.get(activation.module.scope) != activation)
+                continue;
+            try {
+                activation.started = true;
+                activation.session.ready();
+            } catch (RuntimeException failure) {
+                this.fail(player, activation);
+                player.initialized.completeExceptionally(failure);
+                SystemMod.LOGGER.warn("Unable to start module {} for {}", activation.module.scope, player.player.getUUID(), failure);
+            }
+        }
+        this.publish(player);
+    }
+
     private void finishInitialization(PlayerSession player) {
-        if (player.modules.values().stream().allMatch(module -> module.ready))
-            player.initialized.complete(true);
+        if (player.modules.values().stream().allMatch(module -> module.ready)) player.initialized.complete(true);
     }
 
     private void publish(PlayerSession player) {
         Set<Identifier> next = new LinkedHashSet<>();
-        player.modules.forEach((id, activation) -> {
-            if (activation.ready) next.add(id);
+        player.modules.forEach((scope, activation) -> {
+            Activation group = activation.module.group == null ? null : player.modules.get(activation.module.group);
+            if (activation.ready && (activation.module.group == null || group != null && group.ready)
+                    && scope instanceof ModuleScope.Definition(Identifier id)) next.add(id);
         });
         Set<Identifier> previous = this.active.put(player.player.getUUID(), Set.copyOf(next));
         if (!next.equals(previous)) {
@@ -289,17 +349,28 @@ public final class ModuleManager implements AutoCloseable {
         }
     }
 
-    private void stop(PlayerSession player, Identifier id) {
-        Activation activation = player.modules.remove(id);
+    private void fail(PlayerSession player, Activation activation) {
+        if (player.modules.get(activation.module.scope) != activation) return;
+        player.failed.add(activation.module.scope);
+        this.stop(player, activation.module.scope);
+    }
+
+    private void stop(PlayerSession player, ModuleScope scope) {
+        Activation activation = player.modules.remove(scope);
         if (activation == null) return;
         activation.valid = false;
         // Revoke worker access before close hooks run or dispatch any further work.
         if (this.players.get(player.player.getUUID()) == player) this.publish(player);
+        if (scope instanceof ModuleScope.Group group)
+            group.members().forEach(id -> this.stop(player, new ModuleScope.Definition(id)));
         try {
             activation.session.close();
         } catch (RuntimeException error) {
-            SystemMod.LOGGER.warn("Unable to close module {} for {}", id, player.player.getUUID(), error);
+            SystemMod.LOGGER.warn("Unable to close module {} for {}", scope, player.player.getUUID(), error);
         }
+        ModuleScope.Group group = activation.module.group;
+        if (group != null && group.members().stream().noneMatch(id -> player.modules.containsKey(new ModuleScope.Definition(id))))
+            this.stop(player, group);
     }
 
     public void tick() {
@@ -315,9 +386,8 @@ public final class ModuleManager implements AutoCloseable {
         }
         for (PlayerSession player : List.copyOf(this.players.values())) {
             if (!this.current(player)) continue;
-            List<Identifier> ticking = player.modules.entrySet().stream()
-                    .filter(entry -> entry.getValue().ready && entry.getValue().module.storages.stream().anyMatch(ModuleStorage::ticking))
-                    .map(Map.Entry::getKey).toList();
+            List<Activation> ticking = player.modules.values().stream()
+                    .filter(activation -> activation.ready && activation.module.storages.stream().anyMatch(ModuleStorage::ticking)).toList();
             if (!ticking.isEmpty()) {
                 DataStorageContext context = new DataStorageContext(player.player, FormulaContext.of(player.player), player.player.level().getGameTime());
                 UUID uuid = player.player.getUUID();
@@ -326,7 +396,7 @@ public final class ModuleManager implements AutoCloseable {
                     store.updateLoaded(uuid, data -> {
                         boolean dirty = false;
                         Set<Identifier> owners = new LinkedHashSet<>();
-                        ticking.forEach(id -> this.installed.get(id).storages.forEach(storage -> owners.add(storage.owner())));
+                        ticking.forEach(activation -> activation.module.storages.forEach(storage -> owners.add(storage.owner())));
                         for (Identifier owner : owners) {
                             data.moduleData.tick(owner, context);
                             dirty |= data.moduleData.isDirty(owner);
@@ -334,10 +404,7 @@ public final class ModuleManager implements AutoCloseable {
                         return dirty;
                     });
                 } catch (RuntimeException error) {
-                    ticking.forEach(id -> {
-                        this.stop(player, id);
-                        player.failed.add(id);
-                    });
+                    ticking.forEach(activation -> this.fail(player, activation));
                     this.publish(player);
                     SystemMod.LOGGER.warn("Module storage tick failed for {}", player.player.getUUID(), error);
                 }
@@ -345,14 +412,13 @@ public final class ModuleManager implements AutoCloseable {
                 if (context.gameTime() % 20 == 0) this.flush(player.player.getUUID());
             }
             for (Activation activation : List.copyOf(player.modules.values())) {
-                if (!activation.ready || player.modules.get(activation.module.id()) != activation) continue;
+                if (!activation.ready || player.modules.get(activation.module.scope) != activation) continue;
                 try {
                     activation.session.tick();
                 } catch (RuntimeException error) {
-                    this.stop(player, activation.module.id());
-                    player.failed.add(activation.module.id());
+                    this.fail(player, activation);
                     this.publish(player);
-                    SystemMod.LOGGER.warn("Module tick failed for {} / {}", player.player.getUUID(), activation.module.id(), error);
+                    SystemMod.LOGGER.warn("Module tick failed for {} / {}", player.player.getUUID(), activation.module.scope, error);
                 }
             }
         }
@@ -363,11 +429,11 @@ public final class ModuleManager implements AutoCloseable {
         PlayerSession session = this.players.get(player.getUUID());
         if (session == null || !this.current(session)) return;
         for (Activation activation : List.copyOf(session.modules.values())) {
-            if (session.modules.get(activation.module.id()) != activation) continue;
+            if (!activation.ready || session.modules.get(activation.module.scope) != activation) continue;
             try {
                 activation.module.runtime.advancement(player, advancement);
             } catch (RuntimeException error) {
-                SystemMod.LOGGER.warn("Module advancement hook failed for {} / {}", player.getUUID(), activation.module.id(), error);
+                SystemMod.LOGGER.warn("Module advancement hook failed for {} / {}", player.getUUID(), activation.module.scope, error);
             }
         }
     }
@@ -378,7 +444,7 @@ public final class ModuleManager implements AutoCloseable {
         this.active.remove(player);
         if (session == null) return;
         this.engine.moduleAccessChanged(player);
-        List<Identifier> reverse = new ArrayList<>(session.modules.keySet());
+        List<ModuleScope> reverse = new ArrayList<>(session.modules.keySet());
         Collections.reverse(reverse);
         reverse.forEach(id -> this.stop(session, id));
         session.access.close();
@@ -450,17 +516,36 @@ public final class ModuleManager implements AutoCloseable {
         this.runtimes.clear();
     }
 
-    private record Installed(Identifier id, SystemModule definition, PlayerModule runtime,
-                             List<ModuleStorage<?>> storages) {
+    private record Lifecycle(ModuleScope scope, PlayerModule runtime, List<ModuleStorage<?>> storages,
+                             ModuleScope.Group group) {
+    }
+
+    private record InstalledGroup(ModuleScope.Group scope, MergeRuntime runtime) {
+    }
+
+    private static final class GroupBuilder<C> {
+        private final MergeType<C> type;
+        private final List<MergeContext.Member<C>> members = new ArrayList<>();
+
+        private GroupBuilder(MergeType<C> type) {
+            this.type = type;
+        }
+
+        private InstalledGroup create(ModuleContext services) {
+            MergeContext<C> context = new MergeContext<>(services, this.type, this.members);
+            return new InstalledGroup(context.scope(), Objects.requireNonNull(this.type.create(context)));
+        }
     }
 
     private static final class Activation {
-        private final Installed module;
+        private final Lifecycle module;
         private final PlayerModule.Session session;
+        private boolean initialized;
         private boolean ready;
+        private boolean started;
         private volatile boolean valid = true;
 
-        private Activation(Installed module, PlayerModule.Session session) {
+        private Activation(Lifecycle module, PlayerModule.Session session) {
             this.module = module;
             this.session = session;
         }
@@ -471,9 +556,10 @@ public final class ModuleManager implements AutoCloseable {
         private final UUID connection;
         private final long incarnation;
         private final PlayerModule.Session access;
-        private final Map<Identifier, Activation> modules = new LinkedHashMap<>();
-        private final Set<Identifier> failed = new HashSet<>();
+        private final Map<ModuleScope, Activation> modules = new LinkedHashMap<>();
+        private final Set<ModuleScope> failed = new HashSet<>();
         private final CompletableFuture<Boolean> initialized = new CompletableFuture<>();
+        private CompletableFuture<Void> initializing = CompletableFuture.completedFuture(null);
         private boolean loaded;
 
         private PlayerSession(ServerPlayer player, PlayerModule.Session access) {

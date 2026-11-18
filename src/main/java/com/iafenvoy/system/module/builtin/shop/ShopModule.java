@@ -1,6 +1,5 @@
 package com.iafenvoy.system.module.builtin.shop;
 
-import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.command.AgentCommand;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
@@ -8,67 +7,36 @@ import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
-import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
-import com.iafenvoy.system.data.catalog.CommerceCatalog;
-import com.iafenvoy.system.data.catalog.ShopOfferEntry;
+import com.iafenvoy.system.assistant.commerce.ShopBrowsing;
+import com.iafenvoy.system.data.catalog.ShopTrade;
 import com.iafenvoy.system.data.input.ShopQueryInput;
-import com.iafenvoy.system.data.output.ItemPreviewOutput;
-import com.iafenvoy.system.data.output.ShopCatalogOutput;
-import com.iafenvoy.system.data.output.ShopPurchaseLimitOutput;
-import com.iafenvoy.system.data.space.SpaceContentType;
-import net.minecraft.core.Holder;
-import net.minecraft.resources.Identifier;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
 
 /**
- * Keeps shop browsing and quoting separate: the shelf lists offers without pricing them, and one cell click
- * opens the server-owned quote.
+ * Browses goods the player can buy; sales belong to the separate buyback workflow.
  */
 public final class ShopModule extends AbstractAgentModule<ShopQueryInput> {
-    private final CommerceCatalogs catalogs;
-    private final CommerceTransactions transactions;
-    private static final int MAX_OFFERS = 128;
+    private final ShopBrowsing browsing;
 
-    public ShopModule(CommerceCatalogs catalogs, CommerceTransactions transactions) {
-        super(ShopQueryInput.CODEC, "Browse the system shop and prices.", List.of(), true, false, ExecutionPolicy.quick(1, 0));
-        this.catalogs = catalogs;
-        this.transactions = transactions;
+    public ShopModule(ShopBrowsing browsing) {
+        super(ShopQueryInput.CODEC, "Browse goods the player can BUY from the system shop. To SELL items, use system:buyback instead.", List.of(), true, false, ExecutionPolicy.quick(1, 0));
+        this.browsing = browsing;
     }
 
     @Override
     public ModuleRouting<ShopQueryInput> routing() {
         return ModuleRouting.<ShopQueryInput>defaults()
-                .button(a -> new ShopQueryInput(a.text("query"), a.number(0, "offset")))
+                .button(a -> new ShopQueryInput(a.text("query"), a.number(0, "offset"), a.optional("search_ref")))
                 .command(AgentCommand.argument("[query]", text -> new ShopQueryInput(text, 0), "shop", "商城"))
                 .semantic(RoutingProfile.read(text -> new ShopQueryInput("", 0),
                         List.of("打开系统商城", "看看商店卖什么", "列出所有兑换商品", "查看系统商品和价格"),
-                        List.of("Open the system shop", "Show all available offers", "What does the store sell?", "Browse the shop and prices")))
+                        List.of("Open the system shop", "Show goods I can buy", "What does the store sell?", "Browse the shop and prices")))
                 .shortcut("system.action.view_shop", new ShopQueryInput("", 0));
     }
 
     @Override
     public AgentResult execute(ExecutionContext context, ShopQueryInput input) {
-        String query = input.query().toLowerCase(Locale.ROOT);
-        CommerceCatalogs.View view = this.catalogs.view(context);
-        CommerceCatalog catalog = view.catalog();
-        List<Holder<ShopOfferEntry>> matches = catalog.offers().stream().filter(holder -> HolderHelper.id(holder).toString().contains(query)
-                || holder.value().label().getString().toLowerCase(Locale.ROOT).contains(query)
-                || holder.value().items().stream().anyMatch(item -> item.item().getRegisteredName().contains(query))
-                || holder.value().contents().stream().anyMatch(content -> content.name().getString().toLowerCase(Locale.ROOT).contains(query)
-                || SpaceContentType.of(content.content()).searchId(content.content()).toLowerCase(Locale.ROOT).contains(query))).toList();
-        // Prices are evaluated only for the offer the player actually opens.
-        List<Holder<ShopOfferEntry>> visible = matches.stream().limit(MAX_OFFERS).toList();
-        Map<Identifier, ShopPurchaseLimitOutput> limits = this.transactions.shopLimits(context, visible);
-        List<ShopCatalogOutput.Offer> offers = visible.stream()
-                .map(holder -> new ShopCatalogOutput.Offer(HolderHelper.id(holder).toString(), holder.value().label(),
-                        holder.value().items().stream().map(ItemPreviewOutput::of).toList(), holder.value().contents(), Optional.ofNullable(limits.get(HolderHelper.id(holder))),
-                        !view.lockedOffers().contains(HolderHelper.id(holder)))).toList();
-        return AgentResult.data("system.result.shop",
-                new ShopCatalogOutput(catalog.revision(), query, offers, matches.size() > MAX_OFFERS));
+        return this.browsing.browse(context, input, ShopTrade.PURCHASE);
     }
 }

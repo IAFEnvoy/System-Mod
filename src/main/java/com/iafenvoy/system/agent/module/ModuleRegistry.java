@@ -26,7 +26,7 @@ public final class ModuleRegistry {
     private final ToolRegistry tools;
     private final CommandRegistry commands = new CommandRegistry();
     private final Map<Identifier, Entry<?>> modules = new LinkedHashMap<>();
-    private final Map<Identifier, Map<Identifier, AgentModule<?>>> variants = new LinkedHashMap<>();
+    private final Map<Identifier, Map<ModuleScope, AgentModule<?>>> variants = new LinkedHashMap<>();
     private final Map<Identifier, RoutingProfile.Bound> profiles = new LinkedHashMap<>();
     private boolean frozen;
 
@@ -39,12 +39,20 @@ public final class ModuleRegistry {
     }
 
     public synchronized <I extends AgentAction> void register(Identifier owner, AgentModule<I> module) {
+        this.registerScoped(ModuleScope.of(owner), module);
+    }
+
+    public synchronized <I extends AgentAction> void registerGroup(ModuleScope.Group scope, AgentModule<I> module) {
+        this.registerScoped(scope, module);
+    }
+
+    private <I extends AgentAction> void registerScoped(ModuleScope scope, AgentModule<I> module) {
         this.checkMutable();
         AgentModule.Descriptor descriptor = module.descriptor();
         Identifier id = descriptor.id();
         if (this.modules.containsKey(id)) {
             Entry<?> previous = this.modules.get(id);
-            if (owner == null || this.variants.get(id).containsKey(owner)
+            if (!(scope instanceof ModuleScope.Definition) || this.variants.get(id).keySet().stream().anyMatch(value -> !(value instanceof ModuleScope.Definition)) || this.variants.get(id).containsKey(scope)
                     || previous.module().inputCodec() != module.inputCodec()
                     || previous.module().getClass() != module.getClass()
                     || !previous.module().descriptor().tools().equals(descriptor.tools())
@@ -55,9 +63,9 @@ public final class ModuleRegistry {
                     || !module.tools().stream().map(ToolRegistry.Tool::id).collect(Collectors.toSet()).equals(descriptor.tools())
                     || previous.readOnly() != (descriptor.interactive() && descriptor.policy().writeSteps() == 0
                     && module.tools().stream().noneMatch(ToolRegistry.Tool::write)))
-                throw new IllegalArgumentException("Conflicting workflow variant " + id + " for " + owner);
-            this.tools.registerVariant(owner, module.tools());
-            this.variants.get(id).put(owner, module);
+                throw new IllegalArgumentException("Conflicting workflow variant " + id + " for " + scope);
+            this.tools.registerScoped(scope, module.tools());
+            this.variants.get(id).put(scope, module);
             return;
         }
         if (this.profiles.containsKey(id))
@@ -81,10 +89,10 @@ public final class ModuleRegistry {
         }).orElse(null);
         RoutingProfile.Bound profile = routing.semantic().map(value -> value.bind(id, module.inputCodec(), readOnly && routing.semanticSelectable())).orElse(null);
         // Every declaration is validated before any registry is changed; shared tools keep instance identity.
-        this.tools.registerVariant(owner, operations);
+        this.tools.registerScoped(scope, operations);
         this.modules.put(id, new Entry<>(module, routing, readOnly, shortcut));
-        Map<Identifier, AgentModule<?>> alternatives = new LinkedHashMap<>();
-        alternatives.put(owner, module);
+        Map<ModuleScope, AgentModule<?>> alternatives = new LinkedHashMap<>();
+        alternatives.put(scope, module);
         this.variants.put(id, alternatives);
         this.commands.register(id, routing.commands());
         if (profile != null) this.profiles.put(id, profile);
@@ -120,14 +128,14 @@ public final class ModuleRegistry {
     }
 
     public AgentModule<?> get(Identifier id, Predicate<Identifier> available) {
-        Map.Entry<Identifier, AgentModule<?>> variant = this.variant(id, available);
+        Map.Entry<ModuleScope, AgentModule<?>> variant = this.variant(id, available);
         return variant == null ? null : variant.getValue();
     }
 
-    private Map.Entry<Identifier, AgentModule<?>> variant(Identifier id, Predicate<Identifier> available) {
-        Map<Identifier, AgentModule<?>> alternatives = this.variants.get(id);
+    private Map.Entry<ModuleScope, AgentModule<?>> variant(Identifier id, Predicate<Identifier> available) {
+        Map<ModuleScope, AgentModule<?>> alternatives = this.variants.get(id);
         if (alternatives == null) return null;
-        return alternatives.entrySet().stream().filter(entry -> entry.getKey() == null || available.test(entry.getKey()))
+        return alternatives.entrySet().stream().filter(entry -> entry.getKey().available(available))
                 .findFirst().orElse(null);
     }
 
@@ -234,7 +242,7 @@ public final class ModuleRegistry {
     }
 
     public <I extends AgentAction> Call<I> call(I input, Predicate<Identifier> available) {
-        Map.Entry<Identifier, AgentModule<?>> variant = this.variant(input.id(), available);
+        Map.Entry<ModuleScope, AgentModule<?>> variant = this.variant(input.id(), available);
         if (variant == null) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         AgentModule<?> module = variant.getValue();
         if (module.inputCodec() != input.codec()) throw new AgentException(AgentFailure.INVALID_INPUT);
@@ -264,7 +272,7 @@ public final class ModuleRegistry {
                                                 AgentResult.Action shortcut) {
     }
 
-    public record Call<I extends AgentAction>(Identifier owner, AgentModule<I> module, I input) {
+    public record Call<I extends AgentAction>(ModuleScope scope, AgentModule<I> module, I input) {
         public AgentResult execute(ExecutionContext context) throws Exception {
             return this.module.execute(context, this.input);
         }

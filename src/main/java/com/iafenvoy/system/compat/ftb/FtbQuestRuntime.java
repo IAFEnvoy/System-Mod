@@ -5,11 +5,15 @@ import com.iafenvoy.system.assistant.quest.QuestWorkflows;
 import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.module.ContextTypes;
 import com.iafenvoy.system.module.ModuleContext;
+import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.PlayerModule;
+import com.iafenvoy.system.module.builtin.CoreSystemModule;
+import com.iafenvoy.system.module.builtin.storage.FactDataStorage;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -33,12 +37,23 @@ final class FtbQuestRuntime implements PlayerModule {
     @Override
     public Session login(ServerPlayer player) {
         UUID id = player.getUUID();
+        long joined = System.currentTimeMillis();
         this.sessions.merge(id, 1, Integer::sum);
         return new Session() {
             private boolean closed;
+            private long observedSince;
+            private Set<String> seen = Set.of();
 
             @Override
             public void initialize(PlayerData data) {
+                FactDataStorage facts = ModuleData.get(data, CoreSystemModule.FACTS);
+                this.observedSince = facts.observe(FtbQuestProvider.SOURCE.id().toString(), joined);
+                this.seen = facts.seen();
+            }
+
+            @Override
+            public void ready() {
+                FtbQuestRuntime.this.access.notifications.observe(player, this.observedSince, this.seen);
             }
 
             @Override

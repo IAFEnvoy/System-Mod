@@ -11,8 +11,12 @@
     "system:inbox",
     "system:anchor",
     "system:shop",
+    "system:value_shop",
+    "system:value_buyback",
     "system:lottery",
     "system:advancement",
-    "system:ftb_quests"
+    "system:ftb_quests",
+    "system:collection",
+    "system:achievement"
   ]
 }

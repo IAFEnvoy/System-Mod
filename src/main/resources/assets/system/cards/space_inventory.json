@@ -1,0 +1,97 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "translate": "system.space.deposit_title"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.space.deposit_hint",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "text": "{{capacity}}",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "text": "{{feedback}}",
+      "when": "feedback"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.space.deposit_empty",
+      "unless": "entries",
+      "style": "card_context"
+    },
+    {
+      "type": "system:grid",
+      "source": "{{entries}}",
+      "columns": 6,
+      "max_row": 3,
+      "cell": 112,
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "replace",
+          "style": "offer_cell_content",
+          "children": [
+            {
+              "type": "system:item",
+              "item": "{{entries.*.item}}",
+              "size": 32
+            },
+            {
+              "type": "system:text",
+              "text": "{{entries.*.name}}",
+              "style": "offer_cell_label"
+            },
+            {
+              "type": "system:text",
+              "text": "× {{entries.*.amount}}",
+              "style": "card_action_cell_meta"
+            },
+            {
+              "type": "system:text",
+              "text": "{{entries.*.slot}}",
+              "style": "card_action_cell_meta"
+            }
+          ],
+          "shift_value": "{{actions.*.shift_value}}"
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.footer}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "when": "actions.*.visible",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

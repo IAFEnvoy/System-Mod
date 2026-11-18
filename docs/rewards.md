@@ -53,6 +53,7 @@
 | `system:item` | `item`：ItemStackTemplate | 放入背包，保留组件；数量以外层 `amount` 为准 | 原版堆叠上限 |
 | `system:currency` | `currency`：币种 ID | 增加对应钱包余额；要求当前经济模块和币种仍可用 | 64 |
 | `system:experience` | `levels`：boolean，默认 `false` | `false` 增加经验点，`true` 增加原版等级 | 点数 100 / 等级 1 |
+| `system:choice` | `name`、`icon`、`options`（2～36 个非空 Reward） | 在空间先预览并确认一个选项；结果进入空间，不能嵌套选择 | 每次选择 1 份 |
 | `system:action` | `name`、`icon`（IconReference）、`action`（Saturn EntityAction）均必填 | 每份执行一次可信数据包动作 | 1 |
 
 经验数量及合计不能超过 int 上限，另检查当前经验状态避免溢出。一次领取最多执行 64 个暂存 action，大包可在空间按份取出。Saturn 顺序 / 条件动作可复用，但技能、宠物和实体名册等业务系统仍需另外实现。
@@ -75,3 +76,7 @@ Saturn EntityAction 返回 `void`，原版经验与恢复事件也可能被其�
 ## 里程碑与事实权益
 
 签到、图鉴和可信任务事件可以先生成 `EarnedReward` 奖励快照。玩家在 `/records` 点击领取时，持久标记与系统空间入库在同一个玩家事务内保存；重复点击不重复入库。已获权益不因原定义被修改、删除或禁用而丢失。取出仍使用本页既有内容类型和恢复语义，见[进度奖励](progress-rewards.md)。
+
+## 多选一奖励
+
+`contents` 可配置 `system:choice`，现有奖励来源无需新增注册表或专用结算服务。完整字段、数据示例、永久选择票据、容量预留与操作见[多选一奖励](reward-choices.md)。包含未选择内容的领取按钮会打开空间，不代选或丢弃选项。

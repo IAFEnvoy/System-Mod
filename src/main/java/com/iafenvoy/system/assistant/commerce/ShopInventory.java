@@ -5,14 +5,14 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.catalog.ShopOffer;
-import com.iafenvoy.system.data.catalog.ShopOfferEntry;
 import com.iafenvoy.system.data.catalog.ShopTrade;
 import com.iafenvoy.system.data.output.ShopPurchaseLimitOutput;
+import com.iafenvoy.system.data.output.ShopRotationOutput;
 import com.iafenvoy.system.module.merge.MergeContext;
-import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -29,6 +29,7 @@ public final class ShopInventory {
 
     public List<ShopOffer> offers(UUID player, CommerceCatalog catalog) {
         Map<Identifier, ShopOffer> offers = new TreeMap<>();
+        Map<Identifier, Set<String>> revisions = new HashMap<>();
         for (MergeContext.Member<ShopContribution> member : this.context.enabled(player)) {
             try (Stream<? extends ShopOffer> source = member.contribution().offers(player, catalog)) {
                 Iterator<? extends ShopOffer> iterator = source.iterator();
@@ -40,27 +41,34 @@ public final class ShopInventory {
                     Objects.requireNonNull(offer.revision());
                     if (!offer.value().enabled()) continue;
                     if (!(offer instanceof ShopOffer.Fixed)) offer = new ShopOffer.Sourced(member.definition(), offer);
+                    if (offer instanceof ShopOffer.Fixed)
+                        revisions.computeIfAbsent(offer.id(), _ -> new TreeSet<>()).add(offer.revision());
                     ShopOffer previous = offers.putIfAbsent(offer.id(), offer);
                     // Only aliases of the same registry entry share identity and its purchase counter.
-                    if (previous != null && !(previous instanceof ShopOffer.Fixed(
-                            Holder<ShopOfferEntry> holder1,
-                            String revision1
-                    ) && offer instanceof ShopOffer.Fixed(
-                            Holder<ShopOfferEntry> holder,
-                            String revision
-                    )
-                            && holder1.equals(holder) && revision1.equals(revision)))
+                    if (previous != null && !(previous instanceof ShopOffer.Fixed first && offer instanceof ShopOffer.Fixed second
+                            && first.holder().equals(second.holder())))
                         throw new IllegalArgumentException("Conflicting shop offer " + offer.id());
                     if (offers.size() > MAX_ENTRIES) throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
                 }
             }
             this.context.require(player, HolderHelper.id(member.definition()));
         }
+        // Hash the complete sorted set once, so three or more aliases are independent of member order.
+        offers.replaceAll((id, offer) -> {
+            Set<String> versions = revisions.get(id);
+            if (!(offer instanceof ShopOffer.Fixed fixed) || versions.size() == 1) return offer;
+            String aliases = String.join("\0", versions);
+            return new ShopOffer.Fixed(fixed.holder(), UUID.nameUUIDFromBytes(aliases.getBytes(StandardCharsets.UTF_8)).toString());
+        });
         return List.copyOf(offers.values());
     }
 
     public boolean searchOnly(UUID player, ShopTrade trade) {
         return this.context.enabled(player).stream().anyMatch(member -> member.contribution().searchOnly(trade));
+    }
+
+    public List<ShopRotationOutput> rotations(UUID player, CommerceCatalog catalog, ShopTrade trade) {
+        return this.context.enabled(player).stream().flatMap(member -> member.contribution().rotations(player, catalog, trade).stream()).toList();
     }
 
     public List<ShopOffer> requested(ServerPlayer player, CommerceCatalog fixed, ShopRequest request,

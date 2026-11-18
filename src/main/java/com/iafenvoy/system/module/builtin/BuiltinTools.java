@@ -18,6 +18,9 @@ public final class BuiltinTools {
     public static final ToolRegistry.Type<AnchorTeleportInput, AnchorListOutput> ANCHOR_TELEPORT = new ToolRegistry.Type<>("anchor.teleport", AnchorTeleportInput.CODEC, AnchorListOutput.CODEC.codec());
     public static final ToolRegistry.Type<SpaceInput, SpaceOutput> SPACE_QUERY = new ToolRegistry.Type<>("space.query", SpaceInput.CODEC, SpaceOutput.CODEC.codec());
     public static final ToolRegistry.Type<SpaceTakeInput, SpaceOutput> SPACE_TAKE = new ToolRegistry.Type<>("space.take", SpaceTakeInput.CODEC, SpaceOutput.CODEC.codec());
+    public static final ToolRegistry.Type<SpaceInventoryInput, SpaceInventoryOutput> SPACE_INVENTORY = new ToolRegistry.Type<>("space.inventory", SpaceInventoryInput.CODEC, SpaceInventoryOutput.CODEC.codec());
+    public static final ToolRegistry.Type<SpaceDepositInput, SpaceInventoryOutput> SPACE_DEPOSIT = new ToolRegistry.Type<>("space.deposit", SpaceDepositInput.CODEC, SpaceInventoryOutput.CODEC.codec());
+    public static final ToolRegistry.Type<RewardChoiceInput, RewardChoiceOutput> REWARD_CHOICE = new ToolRegistry.Type<>("reward.choose", RewardChoiceInput.CODEC, RewardChoiceOutput.CODEC.codec());
     public static final ToolRegistry.Type<BalanceInput, WalletOutput> BALANCE = new ToolRegistry.Type<>("economy.balance", BalanceInput.CODEC, WalletOutput.CODEC.codec());
     public static final ToolRegistry.Type<ItemInspectInput, ItemInspectionOutput> ITEM_INSPECT = new ToolRegistry.Type<>("game.item_inspect", ItemInspectInput.CODEC, ItemInspectionOutput.CODEC.codec());
     public static final ToolRegistry.Type<RepairQuoteInput, RepairQuoteOutput> REPAIR_QUOTE = new ToolRegistry.Type<>("game.repair.quote", RepairQuoteInput.CODEC, RepairQuoteOutput.CODEC.codec());

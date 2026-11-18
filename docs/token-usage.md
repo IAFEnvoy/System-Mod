@@ -123,7 +123,7 @@ TTS / ASR 的 API Key 由各客户端自行配置，所有调用及费用由 `Lo
 
 服务端账本保存 AI 和联网调用。内部 `PlayerUsage` 为可变类，名称和调用计数直接更新；四项 AI Token 计数封装在不可变的 `data/usage/TokenUsage` record 中。全服汇总使用独立累加对象，联网请求由不可变 SearchUsage 分开保存 Search/Fetch 的尝试、成功、计费、未知次数和估算费用；存档 Codec 不读取或输出语音统计。
 
-`snapshot()` 返回不可变的 `data/usage/TokenUsageSnapshot` 对象，只包含分页信息、AI/联网汇总和玩家明细，列表复制且不暴露可变账本。`TokenUsageResponseS2C` 通过专用 `StreamCodec` 编码快照对象、错误状态及打开页面的 `open` 标志，客户端直接读取类型字段，再独立展示当前账号的本地语音统计；网络上没有 TTS / ASR 字段。当前网络协议为 **3**，客户端与服务端需一起更新；每包最多 8 位玩家，名字、错误键和请求 ID 都有限长。
+`snapshot()` 返回不可变的 `data/usage/TokenUsageSnapshot` 对象，只包含分页信息、AI/联网汇总和玩家明细，列表复制且不暴露可变账本。`TokenUsageResponseS2C` 通过专用 `StreamCodec` 编码快照对象、错误状态及打开页面的 `open` 标志，客户端直接读取类型字段，再独立展示当前账号的本地语音统计；网络上没有 TTS / ASR 字段。当前网络协议为 **5**，客户端与服务端需一起更新；每包最多 8 位玩家，名字、错误键和请求 ID 都有限长。
 
 `revoke`、`forget`、关闭记忆与重新 `grant` 均不删除累计统计。`revoke` 仍会重置玩家业务文件中的每日模型调用额度；该额度与长期用量账本是独立记录。当前没有清空统计的游戏命令。
 
@@ -132,6 +132,8 @@ TTS / ASR 的 API Key 由各客户端自行配置，所有调用及费用由 `Lo
 ## 联网次数与价格
 
 Search 和 Fetch 通过同一个 `SearchGateway` 记录，服务端网络调用的 finally 即使遇到取消、revoke 或后续模型失败也记一次。工作线程只排队不可变记录，`AssistantUsage.drain()` 在主线程更新世界账本。两种操作分别计尝试、解码成功、计费成功、结果未知及费用；成功的空结果不计费。HTTP 失败和无法确认结果分开看待，不把本地超时解释为供应商一定免费。
+
+DeepSeek 原生联网搜索由模型服务端执行，免搜索／抓取服务费，仅记录正常模型调用和实际 Token；不增加此处独立 Search/Fetch 的次数、未知次数或估算费用。已有收费搜索历史仍保留，不按新规则重算。
 
 两者默认均为 5 元/千次，即 0.005 元/次，读取服务端 `config/system/system-search-pricing.json`；首次缺失从 JAR `defaults/system-search-pricing.json` 复制。价格字段为十进制字符串 `searchPerThousand`、`fetchPerThousand`，每次请求快照单价，后续改价不重算历史；修改后服务端 `/reload` 生效。Search 与 Fetch 各自显示次数和金额，不与模型或 TTS Token 相加。推理模型仍走 ModelGateway，Token 正常计入同一玩家。
 

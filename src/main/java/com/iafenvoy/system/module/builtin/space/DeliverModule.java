@@ -49,6 +49,8 @@ public final class DeliverModule extends AbstractAgentModule<EntitlementInput> {
     @Override
     public AgentResult execute(ExecutionContext context, EntitlementInput input) throws Exception {
         StateOutput state = context.tool(BuiltinTools.DELIVER, "deliver", input);
+        if ("CHOICE_REQUIRED".equals(state.state()))
+            return AgentResult.data("system.choice.hint", this.space.query(context).toCompletableFuture().get());
         CardData receipt = this.receipt(context, input);
         if (receipt == null) return AgentResult.data("system.result.delivery", state);
         // The finished receipt replaces its own card in place: no separate state card, and the claim button turns

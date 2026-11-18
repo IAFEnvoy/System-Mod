@@ -70,6 +70,11 @@ public final class OpenAiCompatibleClient implements ModelClient {
     }
 
     @Override
+    public boolean supportsWebSearch() {
+        return this.config.isDeepSeek();
+    }
+
+    @Override
     public Reply complete(List<Message> messages, int maxOutputTokens, Duration timeout) throws Exception {
         return this.complete(messages, maxOutputTokens, timeout, ignored -> {
         });
@@ -82,14 +87,20 @@ public final class OpenAiCompatibleClient implements ModelClient {
 
     @Override
     public Reply complete(List<Message> messages, List<Function> functions, int maxOutputTokens, Duration timeout, Consumer<Usage> observer) throws Exception {
+        return this.complete(messages, functions, Options.DEFAULT, maxOutputTokens, timeout, observer);
+    }
+
+    @Override
+    public Reply complete(List<Message> messages, List<Function> functions, Options options, int maxOutputTokens,
+                          Duration timeout, Consumer<Usage> observer) throws Exception {
         this.checkConfigured();
-        ChatCompletion.Request request = ChatCompletion.Request.of(this.config, messages, functions, maxOutputTokens);
+        ChatCompletion.Request request = ChatCompletion.Request.of(this.config, messages, functions, options, maxOutputTokens);
         URI endpoint = this.config.chatCompletionsEndpoint();
         Map<String, String> headers = this.key.isBlank() ? Map.of() : Map.of("Authorization", "Bearer " + this.key);
         String body = CodecIO.write(ChatCompletion.Request.CODEC, request);
         HttpResponse<byte[]> response;
         try {
-            response = this.http.postJson(endpoint, body, headers, timeout, 65536);
+            response = this.http.postJson(endpoint, body, headers, timeout, options.webSearch() ? 4194304 : 65536);
         } catch (TimeoutException | HttpTimeoutException e) {
             throw new AgentException(AgentFailure.MODEL_TIMEOUT, e);
         } catch (IOException e) {
@@ -129,6 +140,7 @@ public final class OpenAiCompatibleClient implements ModelClient {
                 throw new IllegalStateException("Expected " + (functions.isEmpty() ? "text content" : "exactly one function call") + ": " + message);
             if (content.length() + calls.stream().mapToLong(call -> call.arguments().length()).sum() > 16384)
                 throw new IllegalStateException("Model response exceeds 16384 characters");
+            if (options.webSearch()) return message.search().reply(content, (int) usage.totalTokens());
             return new Reply(content, calls, (int) usage.totalTokens());
         } catch (RuntimeException invalidContent) {
             throw new AgentException(AgentFailure.MODEL_INVALID, invalidContent);

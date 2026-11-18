@@ -4,6 +4,7 @@ import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.catalog.ShopOffer;
 import com.iafenvoy.system.data.catalog.ShopTrade;
 import com.iafenvoy.system.data.output.ShopPurchaseLimitOutput;
+import com.iafenvoy.system.data.output.ShopRotationOutput;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -29,5 +30,9 @@ public interface ShopContribution {
 
     default boolean searchOnly(ShopTrade trade) {
         return false;
+    }
+
+    default List<ShopRotationOutput> rotations(UUID player, CommerceCatalog catalog, ShopTrade trade) {
+        return List.of();
     }
 }

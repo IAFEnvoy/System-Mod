@@ -25,7 +25,8 @@ interaction. Local commands and intent matching work without AI; connect a model
   modes let the model choose. See [daily check-ins](docs/sign-in.md). Shops and lotteries use Saturn Costs,
   with rewards delivered to System Space. Mix items, currency, XP points/levels and Saturn actions
   through [reward definitions](docs/rewards.md). Content is configured through data packs. System Space supports
-  single-item, Shift-click stack and voice withdrawals, with typed storage hooks for other content.
+  single-item, Shift-click stack and voice withdrawals, plus [inventory deposits](docs/system-space.md#玩家主动存入) with configurable capacity.
+  Rewards can include [choose-one packages](docs/reward-choices.md), with permanent player confirmation and replay-safe receipts.
 - **Entry requirements:** offers, lottery pools, check-in rewards and online jobs support separate visibility and
   execution conditions through Saturn. The server rechecks before granting new entitlements; earned rewards remain
   claimable. See [entry conditions](docs/catalog-conditions.md).
@@ -41,11 +42,12 @@ interaction. Local commands and intent matching work without AI; connect a model
   See [value-based commerce](docs/value-commerce.md).
 - **Fixed buybacks:** configure items to collect and payments through data packs, with a dedicated buyback page, sale
   confirmation and periodic limits. Settlement is shared with the shop; collect payments from System Space.
-  See [buyback configuration](docs/shop-buyback.md).
+  Fixed shops can rotate shared or personal stock daily, weekly or monthly.
+  See [buyback configuration](docs/shop-buyback.md) and [stock rotation](docs/shop-rotation.md).
 - **Inspection, repairs, salvage and online jobs:** inspect held-item durability and enchantments, confirm a priced
   repair or a data-driven salvage quote,
   or run a data-driven gathering/production job. Salvage supports durability and Evaluate formulas, durable orders and
-  outputs stored in System Space. Job progress pauses offline.
+  outputs stored in System Space. Jobs run in a configurable serial queue (default 4 slots), and progress pauses offline.
   All support Offline mode.
   See [inspection](docs/item-inspection.md), [workshop](docs/workshop.md), [salvage](docs/salvage.md)
   and [jobs](docs/online-jobs.md).
@@ -136,8 +138,9 @@ check-ins use the local progression-based selector.
 
 Free conversation in Free mode and Extended mode's fallback prefers relevant local read tools, then ordinary workflows,
 then capabilities with additional API costs.
-Purchases, lottery draws and quest submissions retain their confirmation steps. Web access still requires the search
-module and **explicit permission for the current request**. Free conversation itself also consumes model usage.
+Purchases, lottery draws and quest submissions retain their confirmation steps. With the search module enabled,
+DeepSeek automatically uses free server-side search after an empty local lookup; other models still require explicit
+permission for paid search. Local-only requests, offline mode and administrator restrictions take precedence. Model tokens still count.
 See [modes, permissions and tools](docs/free-chat.md).
 
 ## Common Actions
@@ -164,8 +167,10 @@ natural-language requests directly as text.
 | `/collection [series ID]`          | Browse collection series and registration progress                           |
 | `/collection_register <series ID>` | Register current inventory items without consuming them                      |
 | `/records`                         | View fact counters and earned milestone/quest-point rewards                  |
+| `/space_inventory` | List inventory slots for depositing items into System Space |
+| `/deposit [amount or stack]` | Deposit one, a specified count or a stack from the main hand |
 | `/record_claim <entitlement ID>`   | Transfer an earned progress reward to System Space                           |
-| `/search <question>`               | Explicitly request paid web research; requires the search module             |
+| `/search <question>`               | Database-first web research; free DeepSeek search or an authorized paid fallback; requires the search module |
 | `/usage`                           | View personal usage                                                          |
 | `/usage all`                       | Administrator view of server-wide AI/web usage; voice usage remains personal |
 | `/help`                            | Show available features and help                                             |
@@ -244,7 +249,7 @@ settings. See the [configuration directory](docs/usage.md#配置目录) for the 
 
 FTB features require their dependencies; web research also requires a configured search module. The development source
 set contains a search-module example that is excluded from the release JAR. Questions use the local database first,
-searching the web only when it has no result and the current request permits it.
+searching after an empty result automatically through DeepSeek when the search module is enabled, or with current-request permission for other models.
 See [database-first questions and web research](docs/search-api.md).
 
 ## Data, Usage and Costs

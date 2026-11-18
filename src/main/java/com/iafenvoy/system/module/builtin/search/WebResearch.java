@@ -8,6 +8,7 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.react.ReActContext;
 import com.iafenvoy.system.agent.react.ReActLoop;
 import com.iafenvoy.system.agent.react.ReActTool;
@@ -18,6 +19,8 @@ import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.search.SearchObservation;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
 import com.iafenvoy.system.search.SearchProvider;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.MapCodec;
 
 import java.util.*;
 
@@ -26,6 +29,19 @@ import java.util.*;
  */
 public final class WebResearch {
     private WebResearch() {
+    }
+
+    public static AgentResult nativeAnswer(ExecutionContext context, String question) throws Exception {
+        context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
+        MapCodec<String> input = Codec.STRING.fieldOf("question");
+        ModelClient.Reply reply = context.model(context.prompt(SystemPrompts.WEB_SEARCH_NATIVE), input, question,
+                List.of(), ModelClient.Options.WEB_SEARCH, value -> value);
+        context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
+        if (reply.value().isBlank()) throw new AgentException(AgentFailure.MODEL_INVALID);
+        List<SearchObservation.Source> sources = new ArrayList<>();
+        for (ModelClient.WebSource source : reply.sources())
+            sources.add(new SearchObservation.Source(sources.size() + 1, source.title(), source.url(), source.snippet()));
+        return AgentResult.data("system.result.web_search", new WebSearchOutput(reply.value(), sources, false));
     }
 
     public static AgentResult answer(ExecutionContext context, String question) throws Exception {

@@ -1,0 +1,103 @@
+{
+  "body": [
+    {
+      "type": "system:title",
+      "text": "{{name}}"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.choice.hint",
+      "unless": "settled",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "translate": "system.choice.settled",
+      "when": "settled"
+    },
+    {
+      "type": "system:grid",
+      "source": "{{options}}",
+      "columns": 3,
+      "compact_columns": 2,
+      "max_row": 3,
+      "cell": 150,
+      "unless": "settled",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "replace",
+          "style": "offer_cell_content",
+          "children": [
+            {
+              "type": "system:icon",
+              "icon": "{{options.*.icon}}",
+              "style": "offer_cell_items",
+              "tooltip": [
+                {
+                  "type": "system:text",
+                  "text": "{{options.*.contents}}"
+                }
+              ]
+            },
+            {
+              "type": "system:text",
+              "text": "{{options.*.label}}",
+              "style": "offer_cell_label"
+            },
+            {
+              "type": "system:text",
+              "text": "{{options.*.contents}}",
+              "style": "card_context"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "system:text",
+      "translate": "system.choice.selected",
+      "args": [
+        "{{selected}}"
+      ],
+      "when": "preview"
+    },
+    {
+      "type": "system:text",
+      "text": "{{selected_contents}}",
+      "when": "preview",
+      "style": "card_context"
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.footer}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "when": "actions.*.visible",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

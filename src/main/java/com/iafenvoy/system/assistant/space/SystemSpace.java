@@ -10,9 +10,13 @@ import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.item.ItemSearches;
 import com.iafenvoy.system.assistant.signin.SignIns;
 import com.iafenvoy.system.data.input.SpaceTakeInput;
+import com.iafenvoy.system.data.input.RewardChoiceInput;
 import com.iafenvoy.system.data.item.ItemSearchBatch;
 import com.iafenvoy.system.data.output.SpaceOutput;
 import com.iafenvoy.system.data.output.StateOutput;
+import com.iafenvoy.system.data.output.RewardChoiceOutput;
+import com.iafenvoy.system.data.space.ChoiceReceipt;
+import com.iafenvoy.system.data.space.ChoiceSpaceContent;
 import com.iafenvoy.system.data.progress.EarnedReward;
 import com.iafenvoy.system.data.space.ItemSpaceContent;
 import com.iafenvoy.system.data.space.SpaceContent;
@@ -39,7 +43,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Shared withdrawals serve individual entries and legacy whole-package receipts. All I/O stays off-thread.
  */
 public final class SystemSpace implements PlayerModule {
-    private record Group(SpaceContent content, boolean blocked) {
+    private record Group(SpaceContent content, boolean blocked, String identity) {
     }
 
     private record Plan(Map<String, Long> amounts, List<SpaceEntry> entries) {
@@ -79,7 +83,8 @@ public final class SystemSpace implements PlayerModule {
         List<SpaceEntry> entries = context.store().read(context.player(), data -> List.copyOf(ModuleData.get(data, SpaceSystemModule.STORAGE).getEntries().values()));
         return this.game.onPlayer(context, _ -> {
             Map<Group, List<SpaceEntry>> groups = new LinkedHashMap<>();
-            entries.forEach(entry -> groups.computeIfAbsent(new Group(entry.content(), entry.state() != SpaceEntry.State.AVAILABLE), _ -> new ArrayList<>()).add(entry));
+            entries.forEach(entry -> groups.computeIfAbsent(new Group(entry.content(), entry.state() != SpaceEntry.State.AVAILABLE,
+                    entry.content() instanceof ChoiceSpaceContent ? entry.id() : ""), _ -> new ArrayList<>()).add(entry));
             List<SpaceOutput.Entry> previews = new ArrayList<>();
             for (Map.Entry<Group, List<SpaceEntry>> group : groups.entrySet())
                 previews.add(preview(group.getKey(), group.getValue()));
@@ -95,7 +100,7 @@ public final class SystemSpace implements PlayerModule {
         SpaceContentType<T> type = SpaceContentType.of(content);
         return new SpaceOutput.Entry(entries.getFirst().id(), type.searchId(content), type.name(content), type.icon(content),
                 entries.stream().mapToLong(SpaceEntry::amount).reduce(0, (sum, amount) -> sum > Long.MAX_VALUE - amount ? Long.MAX_VALUE : sum + amount), blocked,
-                content instanceof ItemSpaceContent(ItemStackTemplate item) ? Optional.of(item) : Optional.empty());
+                content instanceof ItemSpaceContent(ItemStackTemplate item) ? Optional.of(item) : Optional.empty(), content instanceof ChoiceSpaceContent);
     }
 
     private static <T extends SpaceContent> int batch(T content) {
@@ -120,6 +125,7 @@ public final class SystemSpace implements PlayerModule {
                 if (entry == null) throw new AgentException(AgentFailure.STALE_REFERENCE);
                 return entry.content();
             });
+            if (content instanceof ChoiceSpaceContent) throw new AgentException(AgentFailure.CHOICE_REQUIRED);
             return this.game.onPlayer(context, _ -> input.stack() ? batch(content) : input.amount())
                     .thenCompose(amount -> this.engine.maintenance(() -> context.store().update(context.player(), data -> {
                         context.check();
@@ -164,6 +170,7 @@ public final class SystemSpace implements PlayerModule {
             if (!"PENDING".equals(delivery.state)) throw new AgentException(AgentFailure.EFFECT_UNKNOWN);
             List<SpaceEntry> entries = storage.getEntries().values().stream()
                     .filter(entry -> entry.entitlement().filter(entitlement::equals).isPresent()).toList();
+            if (entries.stream().anyMatch(entry -> entry.content() instanceof ChoiceSpaceContent)) return new Plan(Map.of(), entries);
             Map<String, Long> amounts = new LinkedHashMap<>();
             entries.forEach(entry -> amounts.put(entry.id(), entry.amount()));
             if (amounts.isEmpty()) throw new AgentException(AgentFailure.STALE_REFERENCE);
@@ -171,8 +178,30 @@ public final class SystemSpace implements PlayerModule {
             storage.setDeliveryState(entitlement, "DELIVERING");
             return new Plan(Map.copyOf(amounts), entries);
         });
-        return plan.entries().isEmpty() ? CompletableFuture.completedFuture(new StateOutput("DELIVERED"))
+        return plan.amounts().isEmpty() && !plan.entries().isEmpty() ? CompletableFuture.completedFuture(new StateOutput("CHOICE_REQUIRED"))
+                : plan.entries().isEmpty() ? CompletableFuture.completedFuture(new StateOutput("DELIVERED"))
                 : this.transfer(context, plan).thenApply(_ -> new StateOutput("DELIVERED"));
+    }
+
+    public RewardChoiceOutput choice(ExecutionContext context, RewardChoiceInput input) {
+        if (input.ticket() <= 0) throw new AgentException(AgentFailure.INVALID_INPUT);
+        if (input.confirm()) {
+            context.requirePlayerAction(input);
+            return context.store().update(context.player(), data -> {
+                context.check();
+                return new RewardChoiceOutput(ModuleData.get(data, SpaceSystemModule.STORAGE).choose(input.entry(), input.ticket(), input.option()));
+            });
+        }
+        return context.store().read(context.player(), data -> {
+            SpaceDataStorage space = ModuleData.get(data, SpaceSystemModule.STORAGE);
+            ChoiceReceipt previous = space.choices().get(ChoiceReceipt.key(input.entry(), input.ticket()));
+            if (previous != null) return new RewardChoiceOutput(previous);
+            SpaceEntry entry = space.getEntries().get(input.entry());
+            if (entry == null || entry.state() != SpaceEntry.State.AVAILABLE || entry.amount() != input.ticket()
+                    || !(entry.content() instanceof ChoiceSpaceContent choice)) throw new AgentException(AgentFailure.STALE_REFERENCE);
+            if (input.option() < -1 || input.option() >= choice.options().size()) throw new AgentException(AgentFailure.INVALID_SELECTION);
+            return new RewardChoiceOutput(entry.id(), input.ticket(), choice.name(), choice.options(), input.option(), false);
+        });
     }
 
     private static <T extends SpaceContent> void prepare(T content, long amount, SpaceTransfer transfer) {

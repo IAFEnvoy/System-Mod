@@ -2,7 +2,7 @@
 
 ## 当前版本
 
-ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充。TTS / ASR 用量由 `LocalSpeechUsage` 按客户端账号 UUID 独立保存，不向服务端上报；服务端 SavedData 只记录 AI。当前网络协议 3。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
+ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充。TTS / ASR 用量由 `LocalSpeechUsage` 按客户端账号 UUID 独立保存，不向服务端上报；服务端 SavedData 只记录 AI。当前网络协议 5（新增通用奖励选择、存入动作和空间快照字段，两端需同步更新）。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
 
 NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通过 JDK HMAC-SHA1 签名调用 CreateToken，跨 session 复用内存缓存并在有效期不足两分钟时按需刷新。设置保存和 `validate` 不联网，签发随识别工作线程取消；`AsrProvider.recognize` 的 `requestStarted` 回调在发送首次识别命令前启动计量，鉴权和握手失败不计 ASR 尝试。
 
@@ -385,14 +385,15 @@ AssistantServer 统一拥有 AgentDatabases：`<存档>/system/database/shared.d
 - `module/builtin/knowledge`：DatabaseQueryTool 聚合当前玩家 / 共享知识及授权说明书；QuestionModule 固定执行查库、命中整理、空结果授权判断，不让模型跳过查库。
 - `module/builtin/SearchSystemModule`：可选 ToolModule，仅导出两个工具；类型 ID system:web_search。相邻 SearchSystemClientModule 贡献搜索页，提交 QuestionInput.online。
 - `agent/react`、`agent/tool/ToolContext`：通用的有界循环、独立观察状态和工具权限快照；普通多步分析及搜索共用，不重置请求总预算。
-- `module/builtin/search`：WebResearch 提供搜索工具和引用策略，复用通用 ReActLoop；SearchObservation 位于 data/search，旧 SearchStep 已删除；WebSearchTool / WebFetchTool 每次检查本次联网门禁。
+- `module/builtin/search`：WebResearch.nativeAnswer 使用一次原生联网模型请求，其余提供商复用通用 ReActLoop 和独立搜索工具；SearchObservation 位于 data/search；WebSearchTool / WebFetchTool 每次检查本次联网门禁。
+- `agent/model/DeepSeekWebSearch`：隔离原生联网的公开来源元数据、去重、长度限制与 Unicode 引用位置；ModelClient.Options 将请求级联网选项传到实际模型，不修改全局配置。
 - `search`：SearchProvider、DeepSeekSearchClient 与统一玩家计量 SearchGateway；复用 HttpTransport。
 - `config/file/SearchConfig`、`SearchPricingConfig`：分别管理连接与按千次价格；凭据从 `ApiConfig` 的 SEARCH 绑定解析，默认和模型共用 DeepSeek 凭据。
 - `config/credential`、`registry/SystemCredentialTypes`、`registry/SystemServices`、`screen/gui/ApiSettings`：凭据实现自己的 Codec、环境变量和控件，正式注册表分派类型；各用途 CredentialManager 直接创建实际服务，只选择账号，不保存服务 ID。设置编辑副本、标脏并立即保存；模型与搜索按请求捕获连接和凭据，语音继续独立会话，不同步密钥，见[API 管理](api-management.md)。
 - `speech/deepseek`、`data/speech/DeepSeek*Message`：HTTP PCM 流式合成、内存 WAV multipart 识别及协议 Codec；AsrProvider 可观察返回音频时长，SpeechPricingConfig 支持 SECONDS 逐次取整计费。详见[DeepSeek 语音](deepseek-speech.md)。
 - `data/usage/SearchUsage`：不可变计数，合入现有世界 SavedData 与 StreamCodec 快照；客户端语音账本不上传。
 
-system:question 默认 6 次模型、9 次工具、20 步、90 秒，单次模型最多 20 秒，查库 / 内部 FTB 查询和网络步骤共用预算。Descriptor.optionalTools 声明可选只读依赖，未启用搜索模块不会禁用本地问答。数据库为空、当前 QuestionInput.allowWeb 明确允许且搜索工具已启用时才进入 WebResearch；有结果或查库失败均不搜索。问答语义样例仅作提示，不本地直达或缓存授权；网络已有证据时预留最终整理，不自动重试收费工具。详见[搜索配置与流程](search-api.md)。
+system:question 默认 6 次模型、9 次工具、20 步、90 秒，单次模型最多 20 秒，查库／内部 FTB 查询和网络步骤共用预算。Descriptor.optionalTools 声明可选只读依赖，未启用搜索模块不会禁用本地问答。数据库为空且模块启用时，DeepSeek 自动启用服务端搜索；其他模型仍需 QuestionInput.allowWeb 明确允许。localOnly 和 `/question` 禁止两种联网方式；有本地结果或查库失败均不搜索。原生联网不用 JSON 模式或自定义函数，也不执行 Search/Fetch；联网本身免费，Token 与模型限额正常统计，失败不降级收费。详见[搜索配置与流程](search-api.md)。
 
 管理员 AI 权限由当前存档的 `AiAccessData` SavedData 保存，按 UUID 覆盖本存档默认等级，不改写玩家的外部 AI / 自由聊天 / 历史偏好。新流程及数据、接口见 [自由聊天](free-chat.md)。
 

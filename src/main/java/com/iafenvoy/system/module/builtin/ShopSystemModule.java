@@ -2,8 +2,11 @@ package com.iafenvoy.system.module.builtin;
 
 import com.iafenvoy.saturn.util.codec.RegistryCodecs;
 import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.assistant.commerce.FixedShopContribution;
 import com.iafenvoy.system.assistant.commerce.ShopContribution;
 import com.iafenvoy.system.data.catalog.ShopOfferEntry;
+import com.iafenvoy.system.data.catalog.ShopRotation;
+import com.iafenvoy.system.module.ContextTypes;
 import com.iafenvoy.system.module.MergeableModule;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.SharedModule;
@@ -21,10 +24,12 @@ import java.util.List;
 import java.util.Optional;
 
 public record ShopSystemModule(
-        Optional<List<Either<ResourceKey<ShopOfferEntry>, TagKey<ShopOfferEntry>>>> offers) implements SharedModule, MergeableModule<ShopContribution> {
+        Optional<List<Either<ResourceKey<ShopOfferEntry>, TagKey<ShopOfferEntry>>>> offers,
+        Optional<ShopRotation> rotation) implements SharedModule, MergeableModule<ShopContribution> {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop");
     public static final MapCodec<ShopSystemModule> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            RegistryCodecs.keyOrTagList(SystemResourceKeys.SHOP_OFFER).optionalFieldOf("offers").forGetter(ShopSystemModule::offers)
+            RegistryCodecs.keyOrTagList(SystemResourceKeys.SHOP_OFFER).optionalFieldOf("offers").forGetter(ShopSystemModule::offers),
+            ShopRotation.CODEC.optionalFieldOf("rotation").forGetter(ShopSystemModule::rotation)
     ).apply(i, ShopSystemModule::new));
 
     public ShopSystemModule {
@@ -43,7 +48,6 @@ public record ShopSystemModule(
 
     @Override
     public ShopContribution contribution(ModuleContext context) {
-        return (_, catalog) -> catalog.offers().stream().filter(offer -> this.offers.map(options ->
-                RegistryCodecs.matchesKeys(options, catalog.registries().lookupOrThrow(SystemResourceKeys.SHOP_OFFER), offer.id())).orElse(true));
+        return new FixedShopContribution(context.id(), this, context.get(ContextTypes.GAME).server().overworld().getSeed());
     }
 }

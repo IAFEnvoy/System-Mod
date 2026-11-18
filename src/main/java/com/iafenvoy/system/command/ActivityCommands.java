@@ -24,6 +24,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -49,14 +50,14 @@ public final class ActivityCommands {
         AssistantServer runtime = ModuleCommands.runtime(source);
         if (runtime == null) return 0;
         runtime.engine().maintenance(() -> runtime.engine().playerStore(target.getUUID()).read(target.getUUID(), data -> {
-            Optional<OnlineJobRun> job = ModuleData.get(data, OnlineJobsSystemModule.STORAGE).getRun();
+            List<OnlineJobRun> jobs = ModuleData.get(data, OnlineJobsSystemModule.STORAGE).getRuns().stream().filter(run -> !run.claimed()).toList();
             Optional<AnchorTravel> travel = ModuleData.get(data, AnchorSystemModule.STORAGE).getTravel();
             MutableComponent text = Component.empty();
-            job.ifPresent(value -> text.append(Component.literal("job " + value.id() + " [" + value.state() + "] ")).append(value.job().value().label())
+            jobs.forEach(value -> text.append(Component.literal("job " + value.id() + " [" + value.state() + "] ")).append(value.job().value().label())
                     .append(" · ").append(PaymentQuote.describe(value.price())).append("\n"));
             travel.ifPresent(value -> text.append(Component.literal("travel " + value.id() + " [" + value.state() + "] " + value.destination().name() + " · "))
                     .append(PaymentQuote.describe(value.price())).append("\n"));
-            if (job.isEmpty() && travel.isEmpty()) text.append(Component.translatable("system.activity.empty"));
+            if (jobs.isEmpty() && travel.isEmpty()) text.append(Component.translatable("system.activity.empty"));
             return text;
         })).whenComplete((text, error) -> source.getServer().execute(() -> {
             if (error != null) source.sendFailure(AgentException.failure(error).message());
@@ -82,9 +83,10 @@ public final class ActivityCommands {
                 storage.setTravel(Optional.of(travel.state(AnchorTravel.State.COMPLETED)));
             } else {
                 OnlineJobsDataStorage storage = ModuleData.get(data, OnlineJobsSystemModule.STORAGE);
-                OnlineJobRun job = storage.getRun().filter(value -> value.id().equals(id) && value.state() == OnlineJobRun.State.UNKNOWN)
-                        .orElseThrow(() -> new AgentException(AgentFailure.STALE_REFERENCE));
-                storage.setRun(decision.equals("job_paid") ? Optional.of(job.state(OnlineJobRun.State.RUNNING)) : Optional.empty());
+                OnlineJobRun job = storage.find(id);
+                if (job.state() != OnlineJobRun.State.UNKNOWN) throw new AgentException(AgentFailure.STALE_REFERENCE);
+                if (decision.equals("job_paid")) storage.replace(job.state(OnlineJobRun.State.QUEUED));
+                else storage.remove(id);
             }
             return true;
         })).whenComplete((_, error) -> source.getServer().execute(() -> {

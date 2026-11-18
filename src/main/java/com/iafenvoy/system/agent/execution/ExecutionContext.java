@@ -139,6 +139,14 @@ public final class ExecutionContext {
             throw new AgentException(AgentFailure.CONFIRM_REQUIRED);
     }
 
+    /** Explicit player text is also sufficient for reversible inventory deposits, unlike destructive confirmations. */
+    public void requirePlayerRequest(AgentAction action) {
+        this.check();
+        if (this.isEvent() || this.routeSource != RouteSource.STRUCTURED && this.routeSource != RouteSource.COMMAND
+                || this.module == null || !this.module.id().equals(action.id()))
+            throw new AgentException(AgentFailure.CONFIRM_REQUIRED);
+    }
+
     void routeSource(RouteSource source) {
         this.routeSource = source;
     }
@@ -447,8 +455,25 @@ public final class ExecutionContext {
 
     public <I, O> O model(String instruction, MapCodec<I> inputCodec, I input, List<ModelClient.Function> functions,
                           Function<ModelClient.Reply, O> decoder) throws Exception {
+        return this.model(instruction, inputCodec, input, functions, ModelClient.Options.DEFAULT, decoder);
+    }
+
+    public boolean supportsWebSearch() {
+        return this.engine.model().supportsWebSearch();
+    }
+
+    private void checkModelOptions(ModelClient.Options options) {
+        if (!options.webSearch()) return;
+        if (this.isEvent() || this.authorizedExternalTools.isEmpty()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
+        for (String id : this.authorizedExternalTools)
+            if (!this.engine.toolAvailable(this.player, id)) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+    }
+
+    public <I, O> O model(String instruction, MapCodec<I> inputCodec, I input, List<ModelClient.Function> functions,
+                          ModelClient.Options options, Function<ModelClient.Reply, O> decoder) throws Exception {
         // Enforce consent, quotas and concurrency here; the gateway owns HTTP and actual usage accounting.
         this.requireExternalServices();
+        this.checkModelOptions(options);
         this.engine.model().checkConfigured();
         if (++this.steps > this.policy.steps() || this.models >= this.policy.modelCalls())
             throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
@@ -464,6 +489,7 @@ public final class ExecutionContext {
             throw new AgentException(AgentFailure.BUSY);
         try {
             this.check();
+            this.checkModelOptions(options);
             this.store().update(this.player, data -> {
                 AiAccess.Permissions permissions = this.permissions();
                 if (!permissions.allowAi() || permissions.maxMode() == ConversationMode.OFFLINE)
@@ -486,11 +512,12 @@ public final class ExecutionContext {
             this.persist();
             ModelClient.Reply reply = this.engine.model().complete(this.player, List.of(
                             new ModelClient.Message(SystemMod.MOD_ID, instruction), new ModelClient.Message("user", content)),
-                    functions, this.policy.outputTokens(), Duration.ofMillis(this.modelTimeoutMillis()));
+                    functions, options, this.policy.outputTokens(), Duration.ofMillis(this.modelTimeoutMillis()));
             this.tokens = (int) Math.min(Integer.MAX_VALUE, (long) this.tokens + Math.max(0L, (long) reply.totalTokens() - estimated - this.policy.outputTokens()));
             this.persist();
             this.check();
             this.requireExternalServices();
+            this.checkModelOptions(options);
             if (this.tokens > this.policy.totalTokens()) throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
             try {
                 return decoder.apply(reply);

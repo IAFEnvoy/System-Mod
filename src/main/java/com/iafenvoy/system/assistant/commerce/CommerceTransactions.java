@@ -251,10 +251,12 @@ public final class CommerceTransactions {
      * Pending/unknown payments keep fixed stock preferred until the quota is actually settled.
      */
     private FixedStock fixedStock(ExecutionContext context) {
-        List<ShopOffer> fixed = this.catalogs.available(context.player()).offers();
+        CommerceCatalog available = this.catalogs.available(context.player());
+        List<ShopOffer> fixed = available.offers();
+        String revision = available.shopRevision();
         ZoneId zone = ZoneId.of(AgentConfig.INSTANCE.get().timeZone());
         if (fixed.stream().noneMatch(offer -> offer.value().purchaseLimit().isPresent()))
-            return new FixedStock(Map.of(), System.currentTimeMillis(), zone);
+            return new FixedStock(Map.of(), fixed, revision, System.currentTimeMillis(), zone);
         return context.store().read(context.player(), data -> {
             CommerceDataStorage commerce = ModuleData.get(data, this.storage(PurchaseType.SHOP));
             Map<Identifier, ShopPurchaseLimitOutput> limits = new HashMap<>();
@@ -266,12 +268,12 @@ public final class CommerceTransactions {
             Map<Identifier, Integer> counts = commerce.settledPurchaseCounts(PurchaseType.SHOP, periods);
             for (ShopOffer offer : fixed)
                 offer.value().purchaseLimit().ifPresent(limit -> limits.put(offer.id(), new ShopPurchaseLimitOutput(limit, counts.getOrDefault(offer.id(), 0))));
-            return new FixedStock(Map.copyOf(limits), now, zone);
+            return new FixedStock(Map.copyOf(limits), fixed, revision, now, zone);
         });
     }
 
-    private record FixedStock(Map<Identifier, ShopPurchaseLimitOutput> limits, long capturedAt, ZoneId zone) {
-        private static final FixedStock EMPTY = new FixedStock(Map.of(), 0, ZoneId.of("UTC"));
+    private record FixedStock(Map<Identifier, ShopPurchaseLimitOutput> limits, List<ShopOffer> offers, String revision, long capturedAt, ZoneId zone) {
+        private static final FixedStock EMPTY = new FixedStock(Map.of(), List.of(), "", 0, ZoneId.of("UTC"));
 
         private Map<Identifier, ShopPurchaseLimitOutput> current() {
             long now = System.currentTimeMillis();
@@ -285,7 +287,7 @@ public final class CommerceTransactions {
 
     public CommerceCatalogs.View shopView(ExecutionContext context, ShopRequest request) {
         FixedStock stock = this.fixedStock(context);
-        return this.catalogs.access().read(context, player -> this.catalogs.view(player, request, stock.current()));
+        return this.catalogs.access().read(context, player -> this.catalogs.view(player, request, stock.current(), stock.revision()));
     }
 
     public CompletionStage<List<CommercePreviewOutput>> preview(ExecutionContext context, CommercePreviewInput input) {
@@ -294,7 +296,7 @@ public final class CommerceTransactions {
         CommerceCatalog snapshot = this.catalogs.available(context.player());
         ShopRequest request = ShopRequest.resolve(Set.copyOf(input.offers()));
         FixedStock blocking = input.offers().isEmpty() ? FixedStock.EMPTY : this.fixedStock(context);
-        Map<Identifier, ShopPurchaseLimitOutput> limits = this.shopLimits(context, snapshot.offers().stream()
+        Map<Identifier, ShopPurchaseLimitOutput> limits = this.shopLimits(context, blocking.offers().stream()
                 .filter(offer -> input.offers().contains(offer.id())).toList());
         if (!input.lotteries().isEmpty() && !context.store().read(context.player(), data -> ModuleData.get(data, this.storage(PurchaseType.LOTTERY)).lotteryCountsReady()))
             context.store().update(context.player(), data -> {
@@ -308,7 +310,7 @@ public final class CommerceTransactions {
             return result;
         });
         return this.game.onPlayer(context, player -> {
-            CommerceCatalogs.View view = this.catalogs.view(player, request, blocking.current());
+            CommerceCatalogs.View view = this.catalogs.view(player, request, blocking.current(), blocking.revision());
             CommerceCatalog catalog = view.catalog();
             if (!(input.offers().isEmpty() ? catalog.revision() : catalog.shopRevision()).equals(input.revision()))
                 throw new AgentException(AgentFailure.STALE_QUOTE);
@@ -468,7 +470,7 @@ public final class CommerceTransactions {
         try {
             FixedStock blocking = type == PurchaseType.SHOP ? this.fixedStock(context) : FixedStock.EMPTY;
             payment = this.game.onPlayer(context, player -> {
-                CommerceCatalog current = this.catalogs.view(player, request, blocking.current()).catalog();
+                CommerceCatalog current = this.catalogs.view(player, request, blocking.current(), blocking.revision()).catalog();
                 this.quotes.require(context.player(), id, current, type);
                 switch (type) {
                     case SHOP ->
@@ -482,7 +484,7 @@ public final class CommerceTransactions {
                 // Rejecting only the selected prize would bias the pool's odds.
                 for (LotteryPool.Entry entry : candidates) {
                     SpaceTransfer transfer = new SpaceTransfer(player);
-                    entry.reward().value().stacks().forEach(stack -> SpaceContentType.of(stack.content()).prepare(stack.content(), stack.amount(), transfer));
+                    entry.reward().value().stacks().forEach(stack -> SpaceContentType.of(stack.content()).prepareReward(stack.content(), stack.amount(), transfer));
                 }
                 context.check();
                 quote.payment().pay(player, touched);

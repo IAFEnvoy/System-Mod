@@ -27,6 +27,10 @@ public record OnlineJobRun(String id, PersistHolder<OnlineJobEntry> job, long el
         return this.state == State.RUNNING && this.elapsed >= this.job.value().ticks();
     }
 
+    public boolean cancelable() {
+        return !this.claimed && !this.ready() && (this.state == State.RUNNING || this.state == State.QUEUED);
+    }
+
     public OnlineJobRun tick() {
         return this.state != State.RUNNING || this.ready() || this.claimed ? this : new OnlineJobRun(this.id, this.job, this.elapsed + 1, false, this.state, this.price);
     }
@@ -40,7 +44,7 @@ public record OnlineJobRun(String id, PersistHolder<OnlineJobEntry> job, long el
     }
 
     public enum State implements StringRepresentable {
-        PREPARED, RUNNING, UNKNOWN;
+        PREPARED, QUEUED, RUNNING, UNKNOWN;
         public static final Codec<State> CODEC = StringRepresentable.fromEnum(State::values);
 
         @Override

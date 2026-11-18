@@ -5,6 +5,19 @@
       "text": "{{catalog_title}}"
     },
     {
+      "type": "system:flex",
+      "direction": "column",
+      "source": "{{rotations}}",
+      "style": "card_column",
+      "children": [
+        {
+          "type": "system:text",
+          "text": "{{rotations.*.description}}",
+          "style": "card_context"
+        }
+      ]
+    },
+    {
       "type": "system:text",
       "translate": "system.ui.shop_search_required",
       "when": "search_required",

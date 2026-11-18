@@ -63,7 +63,7 @@ public final class OnlineJobs {
 
     public OnlineJobsOutput query(ExecutionContext context, int offset) {
         context.ensureMemoryCurrent();
-        Optional<OnlineJobRun> run = context.store().read(context.player(), data -> ModuleData.get(data, OnlineJobsSystemModule.STORAGE).getRun());
+        List<OnlineJobRun> runs = context.store().read(context.player(), data -> ModuleData.get(data, OnlineJobsSystemModule.STORAGE).getRuns().stream().filter(run -> !run.claimed()).toList());
         return this.access.read(context, player -> {
             List<PersistHolder<OnlineJobEntry>> entries = this.available().stream().filter(job -> CatalogAccess.visible(player, job.value())).toList();
             int start = Math.min(Math.max(0, offset), entries.size());
@@ -76,15 +76,15 @@ public final class OnlineJobs {
                         return !CatalogAccess.usable(player, job.value()) || !payment.payable();
                     })
                     .map(PersistHolder::id).collect(Collectors.toUnmodifiableSet());
-            return new OnlineJobsOutput(page, run, start, end < entries.size(), locked, prices, Optional.empty(), Optional.empty());
+            return new OnlineJobsOutput(page, runs, this.module.queueSize(), start, end < entries.size(), locked, prices, Optional.empty(), Optional.empty());
         });
     }
 
     public OnlineJobsOutput start(ExecutionContext context, JobStartInput input) {
         context.ensureMemoryCurrent();
         if (input.quote().isEmpty()) {
-            boolean busy = context.store().read(context.player(), data -> ModuleData.get(data, OnlineJobsSystemModule.STORAGE).getRun().filter(run -> !run.claimed()).isPresent());
-            if (busy) throw new AgentException(AgentFailure.JOB_ACTIVE);
+            boolean full = context.store().read(context.player(), data -> ModuleData.get(data, OnlineJobsSystemModule.STORAGE).occupied() >= this.module.queueSize());
+            if (full) throw new AgentException(AgentFailure.JOB_QUEUE_FULL);
             Quote quote = this.access.read(context, player -> {
                 PersistHolder<OnlineJobEntry> job = this.available().stream().filter(value -> value.id().equals(input.job())).findFirst()
                         .orElseThrow(() -> new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE));
@@ -98,7 +98,7 @@ public final class OnlineJobs {
                 throw new AgentException(AgentFailure.BUSY);
             this.quotes.put(context.player(), quote);
             OnlineJobsOutput output = this.query(context, 0);
-            return new OnlineJobsOutput(output.jobs(), output.run(), output.offset(), output.hasMore(), output.lockedJobs(), output.prices(),
+            return new OnlineJobsOutput(output.jobs(), output.runs(), output.queueSize(), output.offset(), output.hasMore(), output.lockedJobs(), output.prices(),
                     Optional.of(new PaymentQuote(quote.id(), quote.job().value().label(), quote.payment().getData())), Optional.of(quote.job().id()));
         }
         context.requirePlayerAction(input);
@@ -109,9 +109,7 @@ public final class OnlineJobs {
         context.store().update(context.player(), data -> {
             context.check();
             OnlineJobsDataStorage storage = ModuleData.get(data, OnlineJobsSystemModule.STORAGE);
-            if (storage.getRun().filter(run -> !run.claimed()).isPresent())
-                throw new AgentException(AgentFailure.JOB_ACTIVE);
-            storage.setRun(Optional.of(new OnlineJobRun(quote.id(), quote.job(), 0, false, OnlineJobRun.State.PREPARED, quote.payment().getData())));
+            storage.add(new OnlineJobRun(quote.id(), quote.job(), 0, false, OnlineJobRun.State.PREPARED, quote.payment().getData()), this.module.queueSize());
             return null;
         });
         AtomicBoolean touched = new AtomicBoolean();
@@ -126,14 +124,15 @@ public final class OnlineJobs {
             });
             context.store().update(context.player(), data -> {
                 OnlineJobsDataStorage storage = ModuleData.get(data, OnlineJobsSystemModule.STORAGE);
-                OnlineJobRun run = storage.getRun().filter(value -> value.id().equals(quote.id())).orElseThrow(() -> new AgentException(AgentFailure.EFFECT_UNKNOWN));
-                storage.setRun(Optional.of(run.state(OnlineJobRun.State.RUNNING)));
+                OnlineJobRun run = storage.find(quote.id());
+                storage.replace(run.state(OnlineJobRun.State.QUEUED));
                 return null;
             });
         } catch (RuntimeException error) {
             context.store().update(context.player(), data -> {
                 OnlineJobsDataStorage storage = ModuleData.get(data, OnlineJobsSystemModule.STORAGE);
-                storage.getRun().filter(run -> run.id().equals(quote.id())).ifPresent(run -> storage.setRun(touched.get() ? Optional.of(run.state(OnlineJobRun.State.UNKNOWN)) : Optional.empty()));
+                if (touched.get()) storage.replace(storage.find(quote.id()).state(OnlineJobRun.State.UNKNOWN));
+                else storage.remove(quote.id());
                 return null;
             });
             throw new AgentException(touched.get() ? AgentFailure.EFFECT_UNKNOWN : AgentException.failure(error), error);
@@ -150,20 +149,22 @@ public final class OnlineJobs {
         return context.store().update(context.player(), data -> {
             context.check();
             OnlineJobsDataStorage storage = ModuleData.get(data, OnlineJobsSystemModule.STORAGE);
-            OnlineJobRun run = storage.getRun().filter(current -> current.id().equals(id))
-                    .orElseThrow(() -> new AgentException(AgentFailure.STALE_REFERENCE));
-            if (!run.ready()) throw new AgentException(AgentFailure.JOB_NOT_READY);
-            String deliveryId = "job:" + run.id();
+            String deliveryId = "job:" + id;
             SpaceDataStorage inbox = ModuleData.get(data, SpaceSystemModule.STORAGE);
-            PersistHolder<Reward> reward = new PersistHolder<>(run.job().id(), run.job().value().reward());
-            if (!run.claimed()) {
+            Delivery delivery = inbox.getDelivery(deliveryId);
+            // Space entitlements outlive the bounded queue receipts, including historical claim buttons.
+            if (delivery == null) {
+                OnlineJobRun run = storage.find(id);
+                if (!run.ready()) throw new AgentException(AgentFailure.JOB_NOT_READY);
+                if (run.claimed()) throw new AgentException(AgentFailure.STALE_REFERENCE);
+                PersistHolder<Reward> reward = new PersistHolder<>(run.job().id(), run.job().value().reward());
                 inbox.assertDeliveryCount(deliveryId);
                 inbox.putDeliveryIfAbsent(deliveryId, new Delivery(deliveryId, reward));
-                storage.setRun(Optional.of(run.claim()));
+                storage.replace(run.claim());
+                delivery = inbox.getDelivery(deliveryId);
             }
-            RewardOutput output = new RewardOutput(reward, Optional.of(deliveryId), Component.translatable("system.result.job_claimed"), "");
-            Delivery delivery = inbox.getDelivery(deliveryId);
-            return delivery != null && "DELIVERED".equals(delivery.state) ? output.asDelivered() : output;
+            RewardOutput output = new RewardOutput(delivery.reward, Optional.of(deliveryId), Component.translatable("system.result.job_claimed"), "");
+            return "DELIVERED".equals(delivery.state) ? output.asDelivered() : output;
         });
     }
 
@@ -172,12 +173,11 @@ public final class OnlineJobs {
         context.store().update(context.player(), data -> {
             context.check();
             OnlineJobsDataStorage storage = ModuleData.get(data, OnlineJobsSystemModule.STORAGE);
-            OnlineJobRun run = storage.getRun().filter(current -> current.id().equals(id))
-                    .orElseThrow(() -> new AgentException(AgentFailure.STALE_REFERENCE));
+            OnlineJobRun run = storage.find(id);
             // Completed output must be claimed, never accidentally discarded by an old cancellation button.
-            if (run.ready() || run.state() != OnlineJobRun.State.RUNNING)
+            if (!run.cancelable())
                 throw new AgentException(AgentFailure.STALE_REFERENCE);
-            storage.setRun(Optional.empty());
+            storage.remove(id);
             return null;
         });
         return this.query(context, 0);

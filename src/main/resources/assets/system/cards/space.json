@@ -55,19 +55,44 @@
               "translate": "system.ui.space_blocked",
               "when": "entries.*.blocked",
               "style": "card_action_cell_meta"
+            },
+            {
+              "type": "system:text",
+              "translate": "system.choice.awaiting",
+              "when": "entries.*.choice",
+              "style": "card_action_cell_meta"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "system:flex",
+      "source": "{{actions}}",
+      "filter": "{{actions.*.footer}}",
+      "style": "card_actions",
+      "children": [
+        {
+          "type": "system:button",
+          "click": "{{actions.*.click_type}}",
+          "value": "{{actions.*.value}}",
+          "disabled": "{{actions.*.disabled}}",
+          "behavior": "{{actions.*.behavior}}",
+          "when": "actions.*.visible",
+          "children": [
+            {
+              "type": "system:text",
+              "text": "{{actions.*.number}}. ",
+              "inline": true,
+              "when": "show_action_numbers"
+            },
+            {
+              "type": "system:text",
+              "text": "{{actions.*.label}}"
             }
           ]
         }
       ]
     }
-  ],
-  "actions": {
-    "label": [
-      {
-        "type": "system:text",
-        "translate": "system.ui.space_take_entry",
-        "args": ["{{entries.*.name}}", "{{entries.*.amount}}"]
-      }
-    ]
-  }
+  ]
 }

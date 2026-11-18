@@ -84,6 +84,8 @@
 
 默认模型和搜索共用 DeepSeek 账号，TTS / ASR 仍默认使用百炼 / NLS。选择 DeepSeek 凭据即可切换语音服务，见 [DeepSeek 语音](deepseek-speech.md)。配置凭据不会授予玩家联网模块或供应商 API 权限。
 
+DeepSeek 原生联网问答使用 `MODEL` 的凭据和连接，不依赖 `SEARCH` 绑定；玩家启用搜索模块后，在本地查库为空时自动开启，搜索服务端费用为零、模型 Token 正常统计。`SEARCH` 映射继续用于其他模型的独立收费搜索回退。见[联网路径与权限](search-api.md)。
+
 ## 扩展方式
 
 实现 `Credential`，提供自己的 `MapCodec` 和 `createWidget()`，再在公共模组入口向正式注册表登记：

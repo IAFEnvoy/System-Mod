@@ -47,6 +47,18 @@ public final class ConfiguredModelClient implements ModelClient {
     }
 
     @Override
+    public boolean supportsWebSearch() {
+        synchronized (this) {
+            if (this.closed) return false;
+        }
+        try (ModelClient client = selected()) {
+            return client.configured() && client.supportsWebSearch();
+        } catch (RuntimeException unavailable) {
+            return false;
+        }
+    }
+
+    @Override
     public Reply complete(List<Message> messages, int maxOutputTokens, Duration timeout) throws Exception {
         return this.complete(messages, maxOutputTokens, timeout, _ -> {
         });
@@ -59,13 +71,19 @@ public final class ConfiguredModelClient implements ModelClient {
 
     @Override
     public Reply complete(List<Message> messages, List<Function> functions, int maxOutputTokens, Duration timeout, Consumer<Usage> usage) throws Exception {
+        return this.complete(messages, functions, Options.DEFAULT, maxOutputTokens, timeout, usage);
+    }
+
+    @Override
+    public Reply complete(List<Message> messages, List<Function> functions, Options options, int maxOutputTokens,
+                          Duration timeout, Consumer<Usage> usage) throws Exception {
         ModelClient client = selected();
         try (client) {
             synchronized (this) {
                 if (this.closed) throw new IllegalStateException("Model client is closed");
                 this.active.add(client);
             }
-            return client.complete(messages, functions, maxOutputTokens, timeout, usage);
+            return client.complete(messages, functions, options, maxOutputTokens, timeout, usage);
         } finally {
             synchronized (this) {
                 this.active.remove(client);

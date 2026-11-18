@@ -17,6 +17,7 @@ import com.iafenvoy.system.module.builtin.jobs.OnlineJobsModule;
 import com.iafenvoy.system.module.builtin.storage.OnlineJobsDataStorage;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.mojang.datafixers.util.Either;
+import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Registry;
@@ -29,10 +30,12 @@ import java.util.List;
 import java.util.Optional;
 
 public record OnlineJobsSystemModule(
-        Optional<List<Either<ResourceKey<OnlineJobEntry>, TagKey<OnlineJobEntry>>>> jobs) implements CatalogModule<OnlineJobEntry> {
+        Optional<List<Either<ResourceKey<OnlineJobEntry>, TagKey<OnlineJobEntry>>>> jobs,
+        int queueSize) implements CatalogModule<OnlineJobEntry> {
     public static final Identifier ID = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "online_jobs");
     public static final MapCodec<OnlineJobsSystemModule> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            RegistryCodecs.keyOrTagList(SystemResourceKeys.ONLINE_JOB).optionalFieldOf("jobs").forGetter(OnlineJobsSystemModule::jobs)
+            RegistryCodecs.keyOrTagList(SystemResourceKeys.ONLINE_JOB).optionalFieldOf("jobs").forGetter(OnlineJobsSystemModule::jobs),
+            Codec.intRange(1, OnlineJobsDataStorage.MAX_QUEUE).optionalFieldOf("queue_size", 4).forGetter(OnlineJobsSystemModule::queueSize)
     ).apply(i, OnlineJobsSystemModule::new));
     public static final ModuleStorage<OnlineJobsDataStorage> STORAGE = new ModuleStorage<>(ID, ID, OnlineJobsDataStorage.class, OnlineJobsDataStorage.CODEC, OnlineJobsDataStorage::new);
 

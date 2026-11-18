@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 /**
  * Uses the game's ItemStack tooltip search tree; never waits for index construction on the UI thread.
@@ -59,25 +60,29 @@ public final class ClientItemSearchCache {
         try {
             Language language = Language.getInstance();
             long spaceRevision = ClientModuleCaches.SPACE.itemRevision();
-            if (stored) {
-                if (this.spaceConnection != connection || this.spaceLanguage != language || this.spaceRevision != spaceRevision) {
-                    List<ItemStack> items = ClientModuleCaches.SPACE.items().stream().map(ItemStackTemplate::create)
-                            .filter(item -> !item.isEmpty()).toList();
-                    connection.searchTrees().updateCreativeTooltips(connection.registryAccess(), items, SPACE_NAMES);
-                    connection.searchTrees().updateCreativeTags(items, SPACE_TAGS);
-                    this.spaceConnection = connection;
-                    this.spaceLanguage = language;
-                    this.spaceRevision = spaceRevision;
-                }
-            } else {
-                // Survival players may never have opened the creative screen, so initialize its normal search contents.
-                boolean rebuilt = CreativeModeTabs.tryRebuildTabContents(minecraft.level.enabledFeatures(), false, connection.registryAccess());
+            boolean creative = !stored || !ClientModuleCaches.SPACE.hasSnapshot();
+            boolean rebuilt = false;
+            if (creative) {
+                // Partial mutation hints still need the normal catalog until the first full space snapshot.
+                rebuilt = CreativeModeTabs.tryRebuildTabContents(minecraft.level.enabledFeatures(), false, connection.registryAccess());
                 if (rebuilt || this.connection != connection || this.language != language) {
                     List<ItemStack> items = List.copyOf(CreativeModeTabs.searchTab().getDisplayItems());
                     connection.searchTrees().updateCreativeTooltips(connection.registryAccess(), items);
                     connection.searchTrees().updateCreativeTags(items);
                     this.connection = connection;
                     this.language = language;
+                }
+            }
+            if (stored) {
+                if (rebuilt || this.spaceConnection != connection || this.spaceLanguage != language || this.spaceRevision != spaceRevision) {
+                    Stream<ItemStack> catalog = creative ? CreativeModeTabs.searchTab().getDisplayItems().stream() : Stream.empty();
+                    List<ItemStack> items = Stream.concat(catalog, ClientModuleCaches.SPACE.items().stream().map(ItemStackTemplate::create))
+                            .filter(item -> !item.isEmpty()).toList();
+                    connection.searchTrees().updateCreativeTooltips(connection.registryAccess(), items, SPACE_NAMES);
+                    connection.searchTrees().updateCreativeTags(items, SPACE_TAGS);
+                    this.spaceConnection = connection;
+                    this.spaceLanguage = language;
+                    this.spaceRevision = spaceRevision;
                 }
             }
             CompletableFuture<SearchTree<ItemStack>> ready = query.startsWith("#")

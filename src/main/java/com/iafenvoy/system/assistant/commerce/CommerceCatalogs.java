@@ -11,6 +11,7 @@ import com.iafenvoy.system.data.catalog.ShopTrade;
 import com.iafenvoy.system.data.catalog.SignInRewardEntry;
 import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.data.output.ShopPurchaseLimitOutput;
+import com.iafenvoy.system.data.output.ShopRotationOutput;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import net.minecraft.core.Holder;
@@ -74,7 +75,10 @@ public final class CommerceCatalogs {
     }
 
     public View view(ServerPlayer player) {
-        CommerceCatalog catalog = this.available(player.getUUID());
+        return this.view(player, this.available(player.getUUID()));
+    }
+
+    private View view(ServerPlayer player, CommerceCatalog catalog) {
         Set<Identifier> rewards = new HashSet<>(), offers = new HashSet<>(), pools = new HashSet<>();
         return new View(new CommerceCatalog(catalog.revision(),
                 visible(player, catalog.rewards(), rewards), catalog.offers().stream()
@@ -88,8 +92,20 @@ public final class CommerceCatalogs {
         return this.shop != null && this.shop.searchOnly(player, trade);
     }
 
+    public List<ShopRotationOutput> rotations(UUID player, ShopTrade trade) {
+        return this.shop == null ? List.of() : this.shop.rotations(player, this.catalog, trade);
+    }
+
     public View view(ServerPlayer player, ShopRequest request, Map<Identifier, ShopPurchaseLimitOutput> limits) {
-        View fixed = this.view(player);
+        return this.view(player, request, limits, "");
+    }
+
+    public View view(ServerPlayer player, ShopRequest request, Map<Identifier, ShopPurchaseLimitOutput> limits, String stockRevision) {
+        CommerceCatalog available = this.available(player.getUUID());
+        // Worker-read quotas must describe this exact fixed shelf, before per-player visibility filtering.
+        if (!stockRevision.isEmpty() && !available.shopRevision().equals(stockRevision))
+            throw new AgentException(AgentFailure.STALE_QUOTE);
+        View fixed = this.view(player, available);
         if (this.shop == null) return fixed;
         CommerceCatalog catalog = fixed.catalog();
         Set<Identifier> locked = new HashSet<>(fixed.lockedOffers());

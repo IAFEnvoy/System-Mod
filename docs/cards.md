@@ -525,3 +525,7 @@ JSON 使用 `"type":"example:badge"`。注册与冻结由 NeoForge 模组加载�
 ## 通用奖励预览
 
 `CardBuilder.reward(prefix, reward)` 同时填充原有 `result_items` 与新增 `contents`。`contents` 是条目计数，`contents.N.name` / `icon` / `amount` / `label` 分别为 Component、IconReference、数量字符串和带数量的 Component；前缀同样适用于 candidates、prizes 和 jobs。卡片使用现有 flex / icon / text 节点组合，正文与简约文本投影都保留非物品结果。JSON 卡片编辑器包含混合奖励与纯系统币／经验示例。定义与领取语义见[奖励结果](rewards.md)。
+
+## 多选一与主动存入
+
+`system:reward_choice` 使用名称、候选图标、产物摘要和共享分页网格，点击选项先预览，再用独立确认按钮提交；确认后展示永久选择回执，资源包不能通过改选项参数重选。`system:space_inventory` 展示服务端下发的主背包槽位，只发送引用和数量，支持单个 / Shift 一组。两张模板都复用既有节点和静态样式，并同步到 Card Editor 的独立模板和示例 Context。具体流程见[多选一奖励](reward-choices.md)和[系统空间](system-space.md)。

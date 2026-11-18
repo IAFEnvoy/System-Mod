@@ -29,16 +29,25 @@ public final class ModelGateway implements AutoCloseable {
         return this.client.configured();
     }
 
+    public boolean supportsWebSearch() {
+        return this.client.supportsWebSearch();
+    }
+
     public ModelClient.Reply complete(UUID player, List<ModelClient.Message> messages, int maxOutputTokens, Duration timeout) throws Exception {
         return this.complete(player, messages, List.of(), maxOutputTokens, timeout);
     }
 
     public ModelClient.Reply complete(UUID player, List<ModelClient.Message> messages, List<ModelClient.Function> functions, int maxOutputTokens, Duration timeout) throws Exception {
+        return this.complete(player, messages, functions, ModelClient.Options.DEFAULT, maxOutputTokens, timeout);
+    }
+
+    public ModelClient.Reply complete(UUID player, List<ModelClient.Message> messages, List<ModelClient.Function> functions,
+                                      ModelClient.Options options, int maxOutputTokens, Duration timeout) throws Exception {
         Objects.requireNonNull(player);
         ModelClient.Usage[] usage = {ModelClient.Usage.UNKNOWN};
         boolean successful = false;
         try {
-            ModelClient.Reply reply = this.client.complete(messages, functions, maxOutputTokens, timeout, value -> usage[0] = Objects.requireNonNull(value));
+            ModelClient.Reply reply = this.client.complete(messages, functions, options, maxOutputTokens, timeout, value -> usage[0] = Objects.requireNonNull(value));
             successful = true;
             return reply;
         } finally {

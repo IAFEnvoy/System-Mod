@@ -192,6 +192,13 @@ export function sampleContext(template = "quest_list") {
       label: entry.label,
       placement: "footer",
     }));
+  if (template === "shop_catalog") {
+    p.rotations = 1;
+    p["rotations.0.description"] = "每日轮换 · 本期最多 6 项 · 刷新：2026-11-19 00:00 CST · 共享库存";
+    p["rotations.0.source"] = "example:daily_shop";
+    p[`actions.${p.result_actions.length}.footer`] = true;
+    p.result_actions.push({ id: "refresh", label: "刷新库存", placement: "body" });
+  }
   if (["lottery_catalog", "lottery_pool"].includes(template)) {
     p.result_actions.forEach((_, i) => (p[`actions.${i}.footer`] = template === "lottery_pool"));
     p[`actions.${p.result_actions.length}.pager`] = true;
@@ -267,6 +274,55 @@ export function sampleContext(template = "quest_list") {
         value: `system:space_take?entry=example-${i}`,
       };
     });
+  }
+  if (template === "space") {
+    p[`actions.${p.result_actions.length}.footer`] = true;
+    p.result_actions.push({ id: "inventory", label: "存入物品", placement: "footer", value: "system:space_inventory" });
+  }
+  if (template === "reward_choice") {
+    p.name = "补给二选一";
+    p.options = 2;
+    p.preview = true;
+    p.settled = false;
+    p.selected = "矿物补给";
+    p.selected_contents = "铁锭 × 8";
+    p.result_actions = [
+      ["矿物补给", "iron_ingot", "铁锭 × 8"],
+      ["旅行补给", "bread", "面包 × 16 · 原版经验 × 25"],
+    ].map(([label, item, contents], i) => {
+      Object.assign(p, {
+        [`options.${i}.label`]: label,
+        [`options.${i}.icon`]: { id: `minecraft:${item}` },
+        [`options.${i}.contents`]: contents,
+      });
+      return { id: `option.${i}`, label, placement: "body",
+        value: `system:reward_choice?entry=example-choice&ticket=1&option=${i}` };
+    });
+    p.result_actions.push({ id: "confirm", label: "确认选择并存入空间", placement: "footer",
+      value: "system:reward_choice?entry=example-choice&ticket=1&option=0&confirm=true" });
+    p.result_actions.push({ id: "space", label: "系统空间", placement: "footer", value: "system:inbox" });
+  }
+  if (template === "space_inventory") {
+    p.capacity = "主动存入槽位：3 / 256";
+    p.feedback = "已存入铁锭 × 1。";
+    const items = [["iron_ingot", "铁锭", 32], ["bread", "面包", 16], ["diamond_pickaxe", "钻石镐", 1]];
+    p.entries = items.length;
+    p.result_actions = items.map(([id, name, amount], i) => {
+      Object.assign(p, {
+        [`entries.${i}.item`]: preview(`minecraft:${id}`, String(amount)),
+        [`entries.${i}.name`]: name,
+        [`entries.${i}.amount`]: amount,
+        [`entries.${i}.slot`]: `背包槽位 ${i + 1}`,
+        [`actions.${i}.shift_value`]: `system:space_deposit?reference=example-${i}&stack=true`,
+      });
+      return { id: `deposit.${i}`, label: `存入 ${name}`, placement: "body",
+        value: `system:space_deposit?reference=example-${i}` };
+    });
+    p.result_actions.push({ id: "refresh", label: "刷新", placement: "footer", value: "system:space_inventory" });
+    p.result_actions.push({ id: "space", label: "系统空间", placement: "footer", value: "system:inbox" });
+  }
+  if (["space_inventory", "reward_choice"].includes(template)) {
+    p.result_actions.forEach((action, i) => { p[`actions.${i}.footer`] = action.placement === "footer"; });
   }
   if (template === "anchor_list") {
     p.capacity = "已保存 4 个锚点 · 当前容量 3";
@@ -414,12 +470,23 @@ export function sampleContext(template = "quest_list") {
     p.quote = true;
     p.quote_label = "木炭生产";
     p.quote_cost = "原木 × 2";
-    p.current_label = "训练";
-    p.current_status = "进行中";
-    p.current_time = "30 / 60 秒";
-    p.progress = 50;
-    p.current_items = [];
-    contents("current_", [experience]);
+    p.queue_summary = "作业队列：3 / 4（含待领取）";
+    p.runs = 3;
+    [experience, currency, experience].forEach((grant, i) => {
+      p[`runs.${i}.label`] = ["训练", "林地采集", "采集作业"][i];
+      p[`runs.${i}.status`] = ["进行中", "已入队，等待前方作业完成", "已完成，待领取"][i];
+      p[`runs.${i}.time`] = i === 2 ? "60 / 60 秒" : "30 / 60 秒";
+      p[`runs.${i}.progress`] = i === 2 ? 100 : 50;
+      p[`runs.${i}.progress_visible`] = i !== 1;
+      p[`runs.${i}.can_claim`] = i === 2;
+      p[`runs.${i}.can_cancel`] = i !== 2;
+      p[`runs.${i}.items`] = [];
+      p[`runs.${i}.reward`] = grant.label;
+      p[`runs.${i}.cost`] = "无需费用";
+      p[`runs.${i}.claim_value`] = JSON.stringify({ action: "system:job_claim", run: `example_${i}` });
+      p[`runs.${i}.cancel_value`] = JSON.stringify({ action: "system:job_cancel", run: `example_${i}` });
+      contents(`runs.${i}.preview_`, [grant]);
+    });
     p.jobs = 2;
     [currency, experience].forEach((grant, i) => {
       p[`jobs.${i}.label`] = i ? "训练" : "赚取系统币";
@@ -431,6 +498,10 @@ export function sampleContext(template = "quest_list") {
       p[`actions.${i}.disabled`] = i === 1;
       contents(`jobs.${i}.preview_`, [grant]);
     });
+    p[`actions.${p.result_actions.length}.footer`] = true;
+    p.result_actions.push({ id: "confirm_start", label: "确认投入并入队", placement: "body" });
+    p[`actions.${p.result_actions.length}.footer`] = true;
+    p.result_actions.push({ id: "refresh", label: "刷新作业", placement: "body" });
   }
   if (template === "lottery_pool") {
     p.draw_count = "10 抽";

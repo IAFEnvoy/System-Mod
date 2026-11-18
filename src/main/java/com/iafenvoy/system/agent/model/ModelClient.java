@@ -29,6 +29,11 @@ public interface ModelClient extends AutoCloseable {
         return true;
     }
 
+    /** Provider-hosted search is separate from application function calls. */
+    default boolean supportsWebSearch() {
+        return false;
+    }
+
     /**
      * Validate local connection settings without network I/O, before reserving inference quota.
      */
@@ -46,6 +51,18 @@ public interface ModelClient extends AutoCloseable {
         if (!functions.isEmpty()) throw new AgentException(AgentFailure.MODEL_UNAVAILABLE,
                 new UnsupportedOperationException("Model client does not support function calling"));
         return this.complete(messages, maxOutputTokens, timeout, usage);
+    }
+
+    default Reply complete(List<Message> messages, List<Function> functions, Options options, int maxOutputTokens,
+                           Duration timeout, Consumer<Usage> usage) throws Exception {
+        if (options.webSearch()) throw new AgentException(AgentFailure.MODEL_UNAVAILABLE,
+                new UnsupportedOperationException("Model client does not support server-side web search"));
+        return this.complete(messages, functions, maxOutputTokens, timeout, usage);
+    }
+
+    record Options(boolean webSearch) {
+        public static final Options DEFAULT = new Options(false);
+        public static final Options WEB_SEARCH = new Options(true);
     }
 
     record Message(String role, String content) {
@@ -77,9 +94,17 @@ public interface ModelClient extends AutoCloseable {
     record ToolCall(String id, String name, String arguments) {
     }
 
-    record Reply(String value, List<ToolCall> toolCalls, int totalTokens) {
+    record WebSource(String title, String url, String snippet) {
+    }
+
+    record Reply(String value, List<ToolCall> toolCalls, int totalTokens, List<WebSource> sources) {
         public Reply {
             toolCalls = List.copyOf(toolCalls);
+            sources = List.copyOf(sources);
+        }
+
+        public Reply(String value, List<ToolCall> toolCalls, int totalTokens) {
+            this(value, toolCalls, totalTokens, List.of());
         }
 
         public Reply(String value, int totalTokens) {

@@ -3,8 +3,8 @@
   "icon": { "id": "minecraft:iron_pickaxe" },
   "server": {
     "type": "system:online_jobs",
-    "jobs": "#system:default"
+    "jobs": "#system:default",
+    "queue_size": 4
   },
   "client": "system:online_jobs"
 }
-

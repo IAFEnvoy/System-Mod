@@ -15,8 +15,11 @@ import com.iafenvoy.system.data.card.CardReference;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.client.ClientCards;
 import com.iafenvoy.system.data.input.SpaceTakeInput;
+import com.iafenvoy.system.data.input.SpaceDepositInput;
 import com.iafenvoy.system.data.item.ItemSearchQuery;
 import com.iafenvoy.system.data.output.SpaceOutput;
+import com.iafenvoy.system.data.output.SpaceInventoryOutput;
+import com.iafenvoy.system.data.output.RewardChoiceOutput;
 import com.iafenvoy.system.module.client.ClientItemSearch;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
@@ -106,6 +109,11 @@ public final class AssistantClient {
                 send(take, text.strip());
                 return true;
             }
+            SpaceDepositInput deposit = SpaceDepositInput.parse(text);
+            if (deposit != null) {
+                send(deposit, text.strip());
+                return true;
+            }
             if (AssistantClientCommands.execute(text)) return true;
         }
         send(new ChatRequest(text.strip()));
@@ -173,6 +181,10 @@ public final class AssistantClient {
         List<CardUpdate> updates = result.cards().stream().filter(card -> ClientCards.apply(card, false)).toList();
         updates.stream().flatMap(card -> card.data().stream()).filter(SpaceOutput.class::isInstance)
                 .map(SpaceOutput.class::cast).forEach(ClientModuleCaches.SPACE::receive);
+        updates.stream().flatMap(card -> card.data().stream()).filter(SpaceInventoryOutput.class::isInstance)
+                .map(SpaceInventoryOutput.class::cast).forEach(ClientModuleCaches.SPACE::receive);
+        updates.stream().flatMap(card -> card.data().stream()).filter(RewardChoiceOutput.class::isInstance)
+                .map(RewardChoiceOutput.class::cast).forEach(ClientModuleCaches.SPACE::receive);
         updates.forEach(EmotionHudState::receive);
         AgentResult accepted = result.withPresentation(result.messageKey(), result.text(), updates, result.silent());
         state = state.receive(requestId, accepted, notification, select);

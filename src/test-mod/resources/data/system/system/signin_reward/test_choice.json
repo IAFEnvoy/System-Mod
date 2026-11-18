@@ -1,0 +1,51 @@
+{
+  "label": {
+    "text": "自选补给"
+  },
+  "offline_value": 100,
+  "contents": [
+    {
+      "content": {
+        "type": "system:choice",
+        "name": {
+          "text": "补给二选一"
+        },
+        "icon": {
+          "id": "minecraft:chest"
+        },
+        "options": [
+          {
+            "label": {
+              "text": "矿物补给"
+            },
+            "items": [
+              {
+                "id": "minecraft:iron_ingot",
+                "count": 8
+              }
+            ]
+          },
+          {
+            "label": {
+              "text": "旅行补给"
+            },
+            "items": [
+              {
+                "id": "minecraft:bread",
+                "count": 16
+              }
+            ],
+            "contents": [
+              {
+                "content": {
+                  "type": "system:experience"
+                },
+                "amount": 25
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -29,7 +29,7 @@
 | `system:agent_response_type` | `AGENT_RESPONSE_TYPE` | `StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>` | SystemResponseTypes |
 | `system:card_node_type` | `CARD_NODE_TYPE` | `MapCodec<? extends CardNode>` | SystemCardNodeTypes |
 
-`system:space_content_type` 内置 `system:item`、`system:currency`、`system:experience`、`system:action`，分别处理物品、钱包入账、原版经验、可信 Saturn EntityAction。空间账本和 Reward.contents 使用同一套分派，详见[奖励结果](rewards.md)。
+`system:space_content_type` 内置 `system:item`、`system:currency`、`system:experience`、`system:action`、`system:choice`，分别处理物品、钱包入账、原版经验、可信 Saturn EntityAction 与通用多选一奖励。空间账本和 Reward.contents 使用同一套分派，详见[奖励结果](rewards.md)。
 
 共 8 张代码注册表。只有卡片节点的 DeferredRegister 在 SystemClientMod 绑定；专用服务端保留其空表。ClientModule 已移出 MC 注册表，SystemRegistries 与 SystemResourceKeys 不再引用该接口。
 
@@ -88,7 +88,7 @@ Optional<MyService> service = services.create(selectedCredential);
 
 卡片类型包括：`anchor_list`、`space`、`chat`、`text`、`selection`、`binding`、`shop_offer`、`shop_catalog`、`shop_quote`、`player`、`items`、`item_sources`、`item_inspection`、`repair_quote`、`salvage_quote`、`salvage_receipt`、`salvage_history`、`online_jobs`、`wallet`、`delivery_state`、`reward`、`entitlement`、`purchase`、`quest`、`quest_guide`、`claim`、`sign_in_status`、`collection`、`records`、`shop_order`、`lottery_catalog`、`lottery_pool`、`lottery_history`、`lottery_prize`、`quest_list`、`quest_unlocked`、`quest_notice`、`quest_startup`、`starter_gift`、`quest_submit`、`web_search`、`knowledge_answer`、`quest_pin`。`quest_unlocked` 使用 QuestUnlockedOutput 与现有 quest_list 模板，汇总同一批解锁任务；公共载荷不引用 FTB 类。会话状态与聊天历史使用独立响应；抽奖业务记录使用 `lottery_history` 卡片。
 
-动作类型包括：`anchor_list`、`anchor_save`、`anchor_delete`、`anchor_rename`、`anchor_teleport`、`space_take`、`sign_in_status`、`collection_query`、`collection_register`、`record_query`、`record_claim`、`achievement_query`、`free_chat`、`help`、`player_query`、`inbox`、`balance`、`sign_in`、`item_query`、`item_sources`、`item_inspect`、`repair_quote`、`repair_confirm`、`salvage_quote`、`salvage_confirm`、`salvage_cancel`、`salvage_history`、`online_jobs`、`job_start`、`job_claim`、`job_cancel`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`lottery_history`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`、`reasoning`。
+动作类型包括：`anchor_list`、`anchor_save`、`anchor_delete`、`anchor_rename`、`anchor_teleport`、`space_take`、`space_inventory`、`space_deposit`、`reward_choice`、`sign_in_status`、`collection_query`、`collection_register`、`record_query`、`record_claim`、`achievement_query`、`free_chat`、`help`、`player_query`、`inbox`、`balance`、`sign_in`、`item_query`、`item_sources`、`item_inspect`、`repair_quote`、`repair_confirm`、`salvage_quote`、`salvage_confirm`、`salvage_cancel`、`salvage_history`、`online_jobs`、`job_start`、`job_claim`、`job_cancel`、`deliver`、`shop`、`shop_quote`、`shop_purchase`、`lottery`、`lottery_preview`、`lottery_draw`、`lottery_history`、`quest_query`、`quest_guide`、`quest_detail`、`quest_claim`、`starter_gift`、`starter_gifts`、`quest_submit`、`advancement_followup`、`question`、`reasoning`。
 
 内置条目均以 `public static DeferredHolder` 暴露。卡片实现 `CardData`，动作实现 `AgentAction`，都直接创建和传递数据对象；各实现的 `codec()` 返回自己的已注册 MapCodec：
 

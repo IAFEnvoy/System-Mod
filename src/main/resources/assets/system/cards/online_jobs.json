@@ -10,6 +10,11 @@
       "style": "card_context"
     },
     {
+      "type": "system:text",
+      "text": "{{queue_summary}}",
+      "style": "card_context"
+    },
+    {
       "type": "system:container",
       "when": "quote",
       "children": [
@@ -31,70 +36,137 @@
       ]
     },
     {
-      "type": "system:flex",
-      "direction": "column",
-      "style": "card_column",
-      "when": "active",
+      "type": "system:grid",
+      "source": "{{runs}}",
+      "columns": 2,
+      "compact_columns": 1,
+      "max_row": 3,
+      "cell": 188,
       "children": [
         {
           "type": "system:text",
-          "text": "{{current_label}}",
-          "style": "card_title"
+          "text": "{{runs.*.label}}",
+          "style": "offer_cell_label"
         },
         {
           "type": "system:text",
-          "text": "{{current_status}} · {{current_time}}"
+          "text": "{{runs.*.status}}",
+          "style": "card_context"
+        },
+        {
+          "type": "system:text",
+          "text": "{{runs.*.time}}",
+          "when": "runs.*.progress_visible",
+          "style": "card_context"
         },
         {
           "type": "system:flex",
-          "source": "{{current_items}}",
+          "style": "offer_cell_items",
+          "wrap": false,
           "children": [
             {
-              "type": "system:item",
-              "item": "{{current_items.*}}",
-              "size": 32
+              "type": "system:flex",
+              "source": "{{runs.*.items}}",
+              "style": "item_group_items",
+              "children": [
+                {
+                  "type": "system:item",
+                  "item": "{{runs.*.items.*}}",
+                  "size": 28,
+                  "tooltip": [
+                    {
+                      "type": "system:text",
+                      "text": "{{runs.*.label}}"
+                    },
+                    {
+                      "type": "system:text",
+                      "text": "{{runs.*.reward}}"
+                    },
+                    {
+                      "type": "system:text",
+                      "text": "{{runs.*.cost}}"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "system:flex",
+              "source": "{{runs.*.preview_contents}}",
+              "style": "item_group_items",
+              "unless": "text_items",
+              "children": [
+                {
+                  "type": "system:icon",
+                  "icon": "{{runs.*.preview_contents.*.icon}}",
+                  "tooltip": [
+                    {
+                      "type": "system:text",
+                      "text": "{{runs.*.label}}"
+                    },
+                    {
+                      "type": "system:text",
+                      "text": "{{runs.*.reward}}"
+                    },
+                    {
+                      "type": "system:text",
+                      "text": "{{runs.*.cost}}"
+                    }
+                  ]
+                }
+              ]
             }
           ]
         },
         {
-          "type": "system:flex",
-          "source": "{{current_contents}}",
-          "children": [
-            {
-              "type": "system:flex",
-              "wrap": false,
-              "style": [
-                "item_entry",
-                "item_labeled"
-              ],
-              "children": [
-                {
-                  "type": "system:icon",
-                  "icon": "{{current_contents.*.icon}}",
-                  "unless": "text_items",
-                  "style": "item_entry",
-                  "tooltip": [
-                    {
-                      "type": "system:text",
-                      "text": "{{current_contents.*.label}}"
-                    }
-                  ]
-                },
-                {
-                  "type": "system:text",
-                  "text": "{{current_contents.*.label}}",
-                  "style": "item_name"
-                }
-              ]
-            }
-          ],
-          "style": "item_group_items"
+          "type": "system:text",
+          "text": "{{runs.*.reward}}",
+          "when": "text_items",
+          "style": "card_context"
         },
         {
           "type": "system:progress",
-          "value": "{{progress}}"
+          "value": "{{runs.*.progress}}",
+          "when": "runs.*.progress_visible"
+        },
+        {
+          "type": "system:flex",
+          "style": "card_actions",
+          "children": [
+            {
+              "type": "system:button",
+              "click": "return-val",
+              "value": "{{runs.*.claim_value}}",
+              "behavior": "replace",
+              "when": "runs.*.can_claim",
+              "children": [
+                {
+                  "type": "system:text",
+                  "translate": "system.action.job_claim"
+                }
+              ]
+            },
+            {
+              "type": "system:button",
+              "click": "return-val",
+              "value": "{{runs.*.cancel_value}}",
+              "behavior": "replace",
+              "when": "runs.*.can_cancel",
+              "children": [
+                {
+                  "type": "system:text",
+                  "translate": "system.action.job_cancel"
+                }
+              ]
+            }
+          ]
         }
       ]
+    },
+    {
+      "type": "system:text",
+      "translate": "system.jobs.available",
+      "style": "card_title_2"
     },
     {
       "type": "system:text",
@@ -109,7 +181,6 @@
       "compact_columns": 2,
       "max_row": 3,
       "cell": 180,
-      "unless": "busy",
       "children": [
         {
           "type": "system:button",

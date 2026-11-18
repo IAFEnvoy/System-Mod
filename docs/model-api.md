@@ -46,7 +46,7 @@
 
 ## 提供商差异
 
-实现参考 `E:\Go\ModList-Dashboard\agent\llm.go`：以通用 OpenAI 请求为基础，只为 DeepSeek 注入思考相关字段。通过第三方代理调用 DeepSeek 时，显式配置 `providerType=deepseek`；通过官方域名调用但代理需要完全通用字段时，可强制设为 `openai`。模型名不会用于猜测提供商。
+以通用 OpenAI 请求为基础，为 DeepSeek 注入思考相关字段，并在数据库优先问答授权后启用服务端联网工具。通过第三方代理调用 DeepSeek 时，显式配置 `providerType=deepseek`；通过官方域名调用但代理需要完全通用字段时，可强制设为 `openai`。模型名不会用于猜测提供商。
 
 本模组每次调用仍是独立的 `system` 与 `user` 消息；通用 ReActLoop 通过输入中的类型化 observations 反馈工具结果。循环请求使用通用 Chat Completions 原生 `tools` / `tool_calls`，不从正文解析 DSML 或模拟调用；不续接上轮 assistant/tool 消息，也不保存或跨玩家缓存 `reasoning_content`。轮数、权限和预算见 [ReAct 循环](agent-react.md)。
 
@@ -62,7 +62,9 @@
 
 ## 用量
 
-网页搜索是独立协议，使用 `SearchProvider` 与 `DeepSeekSearchClient`，不经过 Chat Completions。它仅作为数据库优先问答授权后的工具，不自动加入普通多步分析；工具次数与模型 Token 分别计费。搜索独立配置在 `config/system/system-search.json`，见 [网页搜索与抓取](search-api.md)。
+DeepSeek 数据库优先问答在本地为空且玩家启用 `system:web_search` 后，自动通过 Chat Completions 声明 `deepseek_web_search`／`deepseek_read_url`。请求级 `ModelClient.Options.webSearch` 沿 ExecutionContext → ModelGateway → ConfiguredModelClient 传递，不使用全局搜索开关；显式 localOnly、离线、模块和管理员限制优先。官方当前要求 `deepseek-flash`，不会自动替换既有模型。
+
+联网模型请求只返回普通文本，省略 JSON response_format、自定义函数和 required tool_choice；普通路由和 ReAct 工具请求仍沿用上文的严格规则。DeepSeek 服务端自行检索，只收模型 Token 费用。来源元数据与引用转换由 `DeepSeekWebSearch` 隔离处理，不解析 DSML，不执行本地 Search/Fetch，也不因失败改走收费路径。其他模型继续使用独立 `SearchProvider`／`DeepSeekSearchClient`，读取 `system-search.json` 并单独计次。详见[网页搜索与抓取](search-api.md)。
 
 通用用量读取 `prompt_tokens`、`completion_tokens` 与 `total_tokens`。缓存命中优先使用 OpenAI 的 `prompt_tokens_details.cached_tokens`，缺省时兼容 DeepSeek 的 `prompt_cache_hit_tokens`，只计一次。缺失或无效 usage 仍标记为用量未知；在校验模型正文前读取 usage，正文错误不会删除已知消费。
 
@@ -70,7 +72,7 @@
 
 `HttpTransport` 仅依赖 JDK，不依赖 Minecraft、Agent 配置、Gson 或模型错误码。每个实例复用一个 `HttpClient`，默认连接超时 5 秒，也可在构造时指定；所有请求禁止重定向，不自动重试，由拥有者关闭实例。`postJson(endpoint, json, headers, timeout, maxResponseBytes)` 发送 UTF-8 JSON；`send(HttpRequest, maxResponseBytes)` 接受任意方法、请求头和 JDK `BodyPublisher`，可用于后续音频字节、文件或 multipart 请求。返回标准 `HttpResponse<byte[]>`，保留状态码、响应头与原始字节，文本由协议调用方解码。
 
-每次必须指定正数响应字节上限和请求超时；响应在接收 chunk 时限长，等待期限覆盖完整响应体，超时或线程中断取消在途请求，中断保留线程标记。工具同步等待结果，必须在工作线程调用。状态码判断、JSON 解码、认证密钥来源和出站目标校验由具体 API 接入负责；模型接入仍使用`ModelSettings` 固定端点校验、64KiB 响应限制与 Token 统计。JDK 请求超时和完整响应等待超时均映射为 `MODEL_TIMEOUT`，其他 I/O 失败映射为 `MODEL_UNAVAILABLE`。
+每次必须指定正数响应字节上限和请求超时；响应在接收 chunk 时限长，等待期限覆盖完整响应体，超时或线程中断取消在途请求，中断保留线程标记。工具同步等待结果，必须在工作线程调用。状态码判断、JSON 解码、认证密钥来源和出站目标校验由具体 API 接入负责；模型接入使用 `ModelConfig` 固定端点校验，普通响应上限 64 KiB，DeepSeek 原生联网为 4 MiB，以容纳工具元数据；正文和函数参数仍上限 16,384 字符。JDK 请求超时和完整响应等待超时均映射为 `MODEL_TIMEOUT`，其他 I/O 失败映射为 `MODEL_UNAVAILABLE`。
 
 `stream(HttpRequest, maxResponseBytes, StreamConsumer)` 以串行回调交付响应信息和 byte[] 数据块，返回 `HttpResponse<Void>`；总字节上限和等待期限仍覆盖整个流。回调在 HTTP 工作线程执行，不能访问 MC 主线程状态或阻塞等待播放。调用方可用独立的 `ServerSentEvents` 解析 SSE，限长缓冲 UTF-8 行和事件，支持跨 chunk、多行 data 及 CR/LF。阿里云 TTS 已使用该链路边接收 PCM 边播放，原有 JSON/WAV 完整响应接口继续保留。详见 [语音合成与音色设计](tts.md)。
 

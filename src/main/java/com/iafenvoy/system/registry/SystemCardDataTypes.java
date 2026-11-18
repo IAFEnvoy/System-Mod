@@ -22,6 +22,8 @@ public final class SystemCardDataTypes {
     public static final DeferredRegister<MapCodec<? extends CardData>> REGISTRY = DeferredRegister.create(SystemResourceKeys.CARD_DATA_TYPE, SystemMod.MOD_ID);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<AnchorListOutput>> ANCHOR_LIST = REGISTRY.register("anchor_list", () -> AnchorListOutput.CODEC);
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<SpaceOutput>> SPACE = REGISTRY.register("space", () -> SpaceOutput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<SpaceInventoryOutput>> SPACE_INVENTORY = REGISTRY.register("space_inventory", () -> SpaceInventoryOutput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<RewardChoiceOutput>> REWARD_CHOICE = REGISTRY.register("reward_choice", () -> RewardChoiceOutput.CODEC);
 
     public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<QuestPinOutput>> QUEST_PIN = REGISTRY.register("quest_pin", () -> QuestPinOutput.CODEC);
 

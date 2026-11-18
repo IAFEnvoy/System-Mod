@@ -26,7 +26,7 @@ import java.util.Optional;
  */
 public record ShopCatalogOutput(String revision, String query, List<Offer> offers,
                                 boolean truncated, Optional<ShopTrade> trade, boolean searchRequired,
-                                Optional<Integer> nextOffset) implements CardData {
+                                Optional<Integer> nextOffset, List<ShopRotationOutput> rotations) implements CardData {
     public record Offer(String id, Component label, List<ItemPreviewOutput> items, List<SpaceStack> contents,
                         Optional<ShopPurchaseLimitOutput> purchaseLimit, boolean available,
                         ShopTrade trade, List<Component> details) implements ShelfEntry {
@@ -66,11 +66,13 @@ public record ShopCatalogOutput(String revision, String query, List<Offer> offer
             Codec.BOOL.optionalFieldOf("truncated", false).forGetter(ShopCatalogOutput::truncated),
             ShopTrade.CODEC.optionalFieldOf("trade").forGetter(ShopCatalogOutput::trade),
             Codec.BOOL.optionalFieldOf("searchRequired", false).forGetter(ShopCatalogOutput::searchRequired),
-            Codec.intRange(0, 1000000).optionalFieldOf("nextOffset").forGetter(ShopCatalogOutput::nextOffset)
+            Codec.intRange(0, 1000000).optionalFieldOf("nextOffset").forGetter(ShopCatalogOutput::nextOffset),
+            ShopRotationOutput.CODEC.listOf().optionalFieldOf("rotations", List.of()).forGetter(ShopCatalogOutput::rotations)
     ).apply(i, ShopCatalogOutput::new));
 
     public ShopCatalogOutput {
         offers = List.copyOf(offers);
+        rotations = List.copyOf(rotations);
     }
 
     @Override
@@ -87,6 +89,8 @@ public record ShopCatalogOutput(String revision, String query, List<Offer> offer
                 .put("revision", this.revision).put("query", this.query)
                 .put("truncated", this.truncated).put("search_required", this.searchRequired)
                 .enable("no_matches", this.offers.isEmpty() && !this.searchRequired);
+        builder.list("rotations", this.rotations, (prefix, rotation) -> builder.put(prefix + "description", rotation.description())
+                .put(prefix + "source", rotation.source().toString()));
         builder.list("offers", this.offers, (prefix, entry) -> builder.contents(prefix, entry.contents().stream().limit(Math.max(0, 2 - entry.items().size())).toList())
                 .enable(prefix + "condition_unmet", !entry.available())
                 .enable(prefix + "buyback", entry.trade() == ShopTrade.BUYBACK)
@@ -102,6 +106,10 @@ public record ShopCatalogOutput(String revision, String query, List<Offer> offer
                         Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, this.trade.orElse(ShopTrade.PURCHASE) == ShopTrade.BUYBACK ? "buyback" : "shop"),
                         Map.of("query", this.query, "offset", Integer.toString(offset)), CardButton.Placement.FOOTER, CardButton.Behavior.PUSH)
                 .actionParameter("footer", true));
+        if (!this.rotations.isEmpty())
+            builder.serverButton("refresh", "system.shop.rotation.refresh", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID,
+                            this.trade.orElse(ShopTrade.PURCHASE) == ShopTrade.BUYBACK ? "buyback" : "shop"), Map.of("query", this.query))
+                    .actionParameter("footer", true);
         return builder;
     }
 }

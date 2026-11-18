@@ -38,24 +38,33 @@ public final class ChatCompletion {
         ).apply(i, Request::new));
 
         public static Request of(ModelConfig config, List<ModelClient.Message> messages, List<ModelClient.Function> functions, int maxOutputTokens) {
+            return of(config, messages, functions, ModelClient.Options.DEFAULT, maxOutputTokens);
+        }
+
+        public static Request of(ModelConfig config, List<ModelClient.Message> messages, List<ModelClient.Function> functions,
+                                 ModelClient.Options options, int maxOutputTokens) {
             boolean deepSeek = config.isDeepSeek();
+            if (options.webSearch() && (!deepSeek || !functions.isEmpty()))
+                throw new IllegalArgumentException("DeepSeek server search must be isolated from structured function calls");
             return new Request(config.model(), List.copyOf(messages), false,
                     config.outputTokenParameter().equals("max_tokens") ? Optional.of(maxOutputTokens) : Optional.empty(),
                     config.outputTokenParameter().equals("max_completion_tokens") ? Optional.of(maxOutputTokens) : Optional.empty(),
-                    config.jsonMode() && functions.isEmpty() ? Optional.of(new Type("json_object")) : Optional.empty(),
+                    config.jsonMode() && functions.isEmpty() && !options.webSearch() ? Optional.of(new Type("json_object")) : Optional.empty(),
                     deepSeek ? Optional.of(new Type(config.thinkingEnabled() ? "enabled" : "disabled")) : Optional.empty(),
                     deepSeek && config.thinkingEnabled() && !config.reasoningEffort().isEmpty()
                             ? Optional.of(config.reasoningEffort()) : Optional.empty(),
-                    functions.stream().map(function -> new ToolDefinition("function", function)).toList(),
+                    options.webSearch() ? List.of(new ToolDefinition("deepseek_web_search", Optional.empty()),
+                            new ToolDefinition("deepseek_read_url", Optional.empty()))
+                            : functions.stream().map(function -> new ToolDefinition("function", Optional.of(function))).toList(),
                     functions.isEmpty() ? Optional.empty() : Optional.of("required"),
                     functions.isEmpty() ? Optional.empty() : Optional.of(false));
         }
     }
 
-    public record ToolDefinition(String type, ModelClient.Function function) {
+    public record ToolDefinition(String type, Optional<ModelClient.Function> function) {
         public static final Codec<ToolDefinition> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.fieldOf("type").forGetter(ToolDefinition::type),
-                ModelClient.Function.CODEC.fieldOf("function").forGetter(ToolDefinition::function)
+                ModelClient.Function.CODEC.optionalFieldOf("function").forGetter(ToolDefinition::function)
         ).apply(i, ToolDefinition::new));
     }
 
@@ -96,10 +105,11 @@ public final class ChatCompletion {
         ).apply(i, ToolCall::new));
     }
 
-    public record Content(Optional<String> content, List<ToolCall> toolCalls) {
+    public record Content(Optional<String> content, List<ToolCall> toolCalls, DeepSeekWebSearch.Metadata search) {
         public static final Codec<Content> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.STRING.optionalFieldOf("content").forGetter(Content::content),
-                ToolCall.CODEC.listOf().optionalFieldOf("tool_calls", List.of()).forGetter(Content::toolCalls)
+                ToolCall.CODEC.listOf().optionalFieldOf("tool_calls", List.of()).forGetter(Content::toolCalls),
+                DeepSeekWebSearch.Metadata.CODEC.forGetter(Content::search)
         ).apply(i, Content::new));
     }
 

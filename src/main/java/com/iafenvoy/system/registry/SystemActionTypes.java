@@ -19,6 +19,9 @@ public final class SystemActionTypes {
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<AnchorRenameInput>> ANCHOR_RENAME_ACTION = REGISTRY.register("anchor_rename", () -> AnchorRenameInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<AnchorTeleportInput>> ANCHOR_TELEPORT_ACTION = REGISTRY.register("anchor_teleport", () -> AnchorTeleportInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<SpaceTakeInput>> SPACE_TAKE = REGISTRY.register("space_take", () -> SpaceTakeInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<SpaceInventoryInput>> SPACE_INVENTORY = REGISTRY.register("space_inventory", () -> SpaceInventoryInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<SpaceDepositInput>> SPACE_DEPOSIT = REGISTRY.register("space_deposit", () -> SpaceDepositInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<RewardChoiceInput>> REWARD_CHOICE = REGISTRY.register("reward_choice", () -> RewardChoiceInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<SignInStatusInput>> SIGN_IN_STATUS = REGISTRY.register("sign_in_status", () -> SignInStatusInput.CODEC);
 
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<HelpInput>> HELP_ACTION = REGISTRY.register("help", () -> HelpInput.CODEC);

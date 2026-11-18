@@ -15,7 +15,7 @@ import java.util.List;
 
 public final class JobStartModule extends AbstractAgentModule<JobStartInput> {
     public JobStartModule(ToolRegistry.Tool<JobStartInput, OnlineJobsOutput> start) {
-        super(JobStartInput.CODEC, "Preview one online job and its frozen material costs. Only the player's confirmation can start it; never confirm on their behalf.", List.of(start), true, false, ExecutionPolicy.quick(1, 1));
+        super(JobStartInput.CODEC, "Preview one online job and its frozen material costs. Only the player's confirmation can pay and enqueue it; never confirm on their behalf.", List.of(start), true, false, ExecutionPolicy.quick(1, 1));
     }
 
     @Override

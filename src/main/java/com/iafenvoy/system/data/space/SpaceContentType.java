@@ -24,5 +24,15 @@ public interface SpaceContentType<T extends SpaceContent> {
 
     int batchSize(T content);
 
+    /** Slots required after deferred choices have been resolved. Saturate values above the ledger limit. */
+    default long capacity(T content, long amount) {
+        return 1;
+    }
+
+    /** Pre-payment validation may differ from withdrawal for deferred, interactive contents. */
+    default void prepareReward(T content, long amount, SpaceTransfer transfer) {
+        this.prepare(content, amount, transfer);
+    }
+
     void prepare(T content, long amount, SpaceTransfer transfer);
 }

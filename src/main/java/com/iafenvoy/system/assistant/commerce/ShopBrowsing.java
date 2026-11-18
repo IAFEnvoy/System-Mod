@@ -63,7 +63,7 @@ public final class ShopBrowsing {
         return AgentResult.data(trade == ShopTrade.BUYBACK ? "system.result.buyback" : "system.result.shop",
                 new ShopCatalogOutput(catalog.shopRevision(), query, offers, matches.size() > MAX_OFFERS, Optional.of(trade),
                         query.isEmpty() && this.catalogs.searchOnly(context.player(), trade),
-                        candidates.filter(ItemSearchBatch::hasMore).map(ItemSearchBatch::nextOffset)));
+                        candidates.filter(ItemSearchBatch::hasMore).map(ItemSearchBatch::nextOffset), this.catalogs.rotations(context.player(), trade)));
     }
 
     private static boolean matchesItems(ShopOffer offer, Set<ItemStackTemplate> variants, List<ItemStack> stacks) {

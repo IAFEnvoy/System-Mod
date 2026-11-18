@@ -269,6 +269,8 @@ tag 使用原版 `values` / `replace`、嵌套 `#tag`、可选成员 `{ "id": ".
 }
 ```
 
+固定 `system:shop` 模块还可配置可选的 `server.rotation`（周期、数量、个人／共享和盐），从 `offers` 中定期选品；省略则保留全池，见[商城周期轮换](shop-rotation.md)。`system:online_jobs` 的 `server.queue_size` 控制共用队列容量（默认 4，上限 32），见[在线作业与队列](online-jobs.md)。
+
 内置 `system:signin` / `system:shop` / `system:lottery` 模块都显式引用对应表的 `#system:default`。新增条目后，可以向默认 tag 追加它，也可以自建模块与 tag，再在系统定义中启用这个模块。仅新增条目而不修改默认 tag，不会自动加入默认系统。
 
 字段复用 Saturn `RegistryCodecs.keyOrTagList`，不在 Codec 解码阶段展开 tag；模块同步时只传资源键和 tag 名，不要求客户端加载服务端目录。服务端列表、签到候选与提交、签到状态、报价和最终扣款均检查玩家当前允许的集合；直接输入 `/buy` / `/draw` 的 ID 或点击旧报价也不能绕过限制。移除模块或 tag 成员后，在确认与扣款前重新检查来源；成就事件的固定奖励仍读取完整奖励注册表，不受签到候选范围限制。

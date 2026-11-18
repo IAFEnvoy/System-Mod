@@ -175,7 +175,7 @@ public final class Salvage implements PlayerModule {
             long amount = stack.content() instanceof ItemSpaceContent(
                     ItemStackTemplate item1
             ) ? Math.min(stack.amount(), item1.create().getMaxStackSize()) : stack.amount();
-            SpaceContentType.of(stack.content()).prepare(stack.content(), amount, transfer);
+            SpaceContentType.of(stack.content()).prepareReward(stack.content(), amount, transfer);
         }
     }
 

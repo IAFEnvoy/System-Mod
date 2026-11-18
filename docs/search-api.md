@@ -1,6 +1,6 @@
 # 网页搜索与抓取
 
-服务端功能模块 `system:web_search` 是可选的 ToolModule，只导出两个只读工具 `web.search`、`web.fetch`，不再单独提供问答工作流。核心模块的 `system:question` 统一负责数据库查询、基于资料回答及获准后的联网回退。开发数据保留搜索模块定义，但不再向默认 tag 追加搜索权限；发布 JAR 不附带该模块定义。启用模块、绑定、登录和打开搜索页均不会请求搜索服务。
+服务端功能模块 `system:web_search` 是可选的 ToolModule，导出两个只读工具 `web.search`、`web.fetch`，也作为 DeepSeek 服务端联网的玩家权限入口。核心模块的 `system:question` 统一负责数据库查询、基于资料回答及联网回退。开发数据保留搜索模块定义，但不向默认 tag 追加搜索权限；发布 JAR 不附带该模块定义。启用模块、绑定、登录和打开搜索页均不会直接请求搜索服务。
 
 ## 数据库优先
 
@@ -8,23 +8,48 @@
 
 1. 调用 `database.query`，查询当前玩家独立库、共享库的 `system:knowledge` 文档表，以及已启用 FTB 模块导出的授权说明书。
 2. 有匹配资料时，最多调用一次模型，仅根据这些片段回答，并以折叠卡片展示本地来源。未配置模型、关闭外部 AI、额度不足或可恢复的整理失败时保留资料；不转入网络搜索。
-3. 无匹配资料时，只有**搜索模块已启用、本次明确允许联网、外部服务未关闭**才进入网页 ReAct，否则返回对应提示。
+3. 无匹配资料且未要求只查本地时，**搜索模块已启用、模型使用 DeepSeek 协议、外部 AI 可用**即可自动启用 DeepSeek 服务端搜索。其他模型仍要求本次明确允许联网，才进入独立 Search/Fetch 的网页 ReAct；不满足条件则返回提示。
 
 数据库读取异常不是“无结果”，不能因此联网。命中片段即结束本地查找分支，即使资料不完整也不让模型改为联网；回答发送前再次查询并复核来源，权限或正文变化时取消旧结果。通用查询只读取指定知识表，不扫描业务账本、背景缓存或其他玩家文件。FTB 原始共享语料必须经原生可见性检查，不能直接读取整个 `system:ftb_guides` 表。
 
 ## 触发与授权
 
 - 助手输入 `/question <问题>`、`提问 <问题>`：仅查本地资料，不允许联网。
-- 助手输入 `/search <问题>`、`/websearch <问题>`：仍先查本地，允许本地无结果时付费联网。
+- 助手输入 `/search <问题>`、`/websearch <问题>`：仍先查本地；本地无结果时优先使用 DeepSeek 服务端搜索，其他模型允许独立的付费联网回退。
 - 明确说“帮我联网搜索……”或“请上网查一下……”，英文如 `search the web ...`；固定句式可直接进入允许联网回退的问答。
 - 其他查资料的自然表达由路由模型判断，例如“帮我查一下，红石比较器的两个模式分别是什么”或 `look up how a comparator works`，无需包含“联网”关键词。
 - 完整界面的“模块 → 联网搜索”中输入问题，按 Enter 或点击搜索。
 
-`system:question` 参与普通模型路由；其 `QuestionInput.allowWeb` 默认 false，只有模型非常确信当前请求明确允许外部资料查询时才设为 true。仅授权不明确时继续查本地，问题本身不明确时才澄清。普通提问、否定联网、上一轮授权、历史内容和任务事件不作为搜索授权。本地状态、任务、奖励、商品和物品名称/注册 ID 优先交给对应能力；物品机制与使用方法属于知识问答。问答语义样例仅给模型提供候选提示，不本地直达或写入意图缓存，因此不会缓存 `allowWeb=true`。自然语言的意图判断由模型完成，不是确定性关键词校验；需要明确指定时可使用 `/search`。
+`system:question` 参与普通模型路由，也供自由模式及扩展模式的聊天兜底调用。`QuestionInput.allowWeb` 默认 false，仅控制独立收费搜索的本次授权；DeepSeek 原生搜索由已启用的模块自动允许。新增可选 `localOnly`（默认 false）：明确说“不联网／只查本地”时由路由模型设为 true，`/question` 直接设置 true，它优先于 allowWeb 并禁止两种联网方式。历史、来源文本和任务事件都不能授予权限。本地状态、任务、奖励、商品和物品名称／注册 ID 继续优先交给对应能力。自然语言意图由模型判断，不是确定性关键词校验；问答不缓存联网授权。
 
-执行上下文仅在查库为空且授权条件满足后打开本次联网门禁；每次 Search/Fetch 仍检查模块访问和外部服务偏好。模块失效、撤销、取消或关闭“外部 AI”后，不再发起后续收费请求；已发送的请求可能仍有费用。
+执行上下文仅在查库为空且授权条件满足后打开本次联网门禁；原生模型请求在等待并发槽之前、取得槽后及响应返回后复核模块权限，独立 Search/Fetch 也继续检查模块访问和外部服务偏好。模块失效、撤销、取消或切到离线后不再发送后续请求；在途请求可能已产生模型用量。
 
 搜索模块可由管理员在系统定义中明确配置，也可用 `/system module add/remove <玩家> system:web_search` 管理（模块 ID 以数据包实例为准）。它不是必需模块；移除后不影响本地数据库和游戏查询。查询为空不会自动给玩家添加模块。
+
+## DeepSeek 服务端联网
+
+协议按模型配置 `providerType` 判断：`deepseek` 显式启用，`auto` 仅匹配 DeepSeek 官方域名；其他模型不发送扩展字段。官方当前要求使用 `deepseek-flash`，已有 `model` 配置不会被自动改写。模型凭据来自 `bindings.model`，不要求配置 `bindings.search` 或 `system-search.json`。
+
+本地为空后，工作流以一次普通文本模型请求发送：
+
+```json
+{
+  "tools": [
+    { "type": "deepseek_web_search" },
+    { "type": "deepseek_read_url" }
+  ]
+}
+```
+
+官方当前接口使用上述工具声明，而非 `web_search_options` 或一个额外的 true 字段。DeepSeek 自行决定检索和阅读链接，应用不接管 Search/Fetch tool call，也不发送这两个独立收费接口的请求。开启思考时沿用 `thinking`／`reasoning_effort`，由服务端执行深度搜索。
+
+联网请求不发送 `response_format: json_object`、自定义函数或 `tool_choice: required`。官方不支持该 JSON 输出模式，并将 required 按 auto 处理；与路由、签到和自由聊天主 ReAct 的结构化函数调用分开，防止联网结果破坏已有工具执行。自由聊天通过 `system:question` 获得资料后继续原有循环，不把全部玩家上下文交给联网请求。
+
+解析 `annotations` 和 `server_tool_calls` 的公开来源信息，按 Unicode 码点位置加入引用编号，最多保留 64 个 HTTP(S) 来源并去重，复用联网卡片与折叠来源区。标题／摘要分别限制 200／700 个码点；不保存供应商思考、加密页面或签名，不跨请求回传网页上下文。没有引用时可显示已完成检索的来源，但不会伪造引用。响应仍须正常 stop、正文非空且受长度限制。
+
+服务端搜索与抓取本身免费，只计入此次模型的 Token、调用次数、每日额度和并发预算；不增加独立 Search/Fetch 的按次费用或次数。最多 4 MiB 的响应上限覆盖服务端工具元数据。HTTP 超时、请求总期限和 Token 总预算继续生效；服务端内部步骤不由本地 ReAct 轮数控制，官方 max_tokens 限制每一步输出，总用量在响应后按实际值校验。失败不会自动降级到收费搜索。
+
+提示词为可覆盖的 `data/system/system/prompt/web_search_native.txt`；独立搜索仍使用 `web_search.txt`。下面的连接、ReAct 和按次计费说明只适用于独立 Search/Fetch 路径。
 
 ## 配置与共享密钥
 
@@ -37,7 +62,7 @@
 }
 ```
 
-搜索从统一 `system-api.json` 的 `bindings.search` 读取凭据，默认和文本模型引用同一份 DeepSeek 凭据及其 `SYSTEM_DEEPSEEK_API_KEY` 环境变量，无需重复填写。两种用途可以改选不同凭据；换用其他兼容文本模型后，也可保留 DeepSeek 搜索。见[统一 API 管理](api-management.md)。
+独立搜索从统一 `system-api.json` 的 `bindings.search` 读取凭据，默认和文本模型引用同一份 DeepSeek 凭据及其 `SYSTEM_DEEPSEEK_API_KEY` 环境变量，无需重复填写。两种用途可以改选不同凭据；换用其他兼容文本模型后，也可保留 DeepSeek 独立搜索。原生搜索只使用模型凭据。见[统一 API 管理](api-management.md)。
 
 `baseUrl` 是包含 `/v1` 的前缀，分别追加 `/tools/search` 和 `/tools/fetch`，不要填写完整操作地址。远端要求 HTTPS，回环地址允许 HTTP；不允许认证信息、查询参数或 fragment。每次请求在配置锁内快照连接信息，网络等待不持锁。最大响应默认 4 MiB，超出则失败，不当作完整结果使用。
 
@@ -118,6 +143,8 @@ Search、Fetch 默认均为 **5 元 / 1,000 次成功且有结果的请求**，�
 
 ## 依据与验证
 
+- [Chat Completions 联网工具及限制](https://api-docs.deepseek.com/zh-cn/guides/web_tools#chat-completions-api)
+- [Chat Completions 请求 Schema](https://api-docs.deepseek.com/zh-cn/api/create-chat-completion)
 - [官方使用指南与价格](https://api-docs.deepseek.com/zh-cn/guides/search)
 - [Search Schema](https://api-docs.deepseek.com/zh-cn/api/search)
 - [Fetch Schema](https://api-docs.deepseek.com/zh-cn/api/fetch)

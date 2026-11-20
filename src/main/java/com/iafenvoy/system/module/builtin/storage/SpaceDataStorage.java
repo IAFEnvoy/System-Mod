@@ -184,7 +184,9 @@ public final class SpaceDataStorage extends DataStorage {
         return Collections.unmodifiableMap(this.choices);
     }
 
-    /** Selection and all selected outputs are committed in the same player-file transaction. */
+    /**
+     * Selection and all selected outputs are committed in the same player-file transaction.
+     */
     public ChoiceReceipt choose(String id, long ticket, int selected) {
         String key = ChoiceReceipt.key(id, ticket);
         ChoiceReceipt previous = this.choices.get(key);
@@ -193,7 +195,8 @@ public final class SpaceDataStorage extends DataStorage {
         if (entry == null || entry.state() != SpaceEntry.State.AVAILABLE || entry.amount() != ticket
                 || !(entry.content() instanceof ChoiceSpaceContent choice))
             throw new AgentException(AgentFailure.STALE_REFERENCE);
-        if (selected < 0 || selected >= choice.options().size()) throw new AgentException(AgentFailure.INVALID_SELECTION);
+        if (selected < 0 || selected >= choice.options().size())
+            throw new AgentException(AgentFailure.INVALID_SELECTION);
         ChoiceReceipt receipt = new ChoiceReceipt(id, ticket, choice.name(), selected, choice.options().get(selected), System.currentTimeMillis());
         if (ticket == 1) this.entries.remove(id);
         else this.entries.put(id, new SpaceEntry(id, choice, ticket - 1, entry.entitlement(), entry.state()));
@@ -226,7 +229,8 @@ public final class SpaceDataStorage extends DataStorage {
 
     public void executingDeposit(String id) {
         SpaceDeposit deposit = this.deposits.get(id);
-        if (deposit == null || deposit.state() != SpaceDeposit.State.PREPARED) throw new AgentException(AgentFailure.STALE_REFERENCE);
+        if (deposit == null || deposit.state() != SpaceDeposit.State.PREPARED)
+            throw new AgentException(AgentFailure.STALE_REFERENCE);
         this.deposits.put(id, deposit.withState(SpaceDeposit.State.EXECUTING));
         this.markDirty();
     }
@@ -235,7 +239,8 @@ public final class SpaceDataStorage extends DataStorage {
         SpaceDeposit deposit = this.deposits.get(id);
         if (deposit == null) throw new AgentException(AgentFailure.STALE_REFERENCE);
         if (!deposit.reserved()) return;
-        if (succeeded && this.entries.containsKey(deposit.entry())) throw new AgentException(AgentFailure.EFFECT_UNKNOWN);
+        if (succeeded && this.entries.containsKey(deposit.entry()))
+            throw new AgentException(AgentFailure.EFFECT_UNKNOWN);
         this.deposits.put(id, deposit.withState(succeeded ? SpaceDeposit.State.COMPLETED
                 : touched ? SpaceDeposit.State.UNKNOWN : SpaceDeposit.State.FAILED));
         if (succeeded) this.addEntry(new SpaceEntry(deposit.entry(), new ItemSpaceContent(deposit.item().withCount(1)),
@@ -253,7 +258,8 @@ public final class SpaceDataStorage extends DataStorage {
 
     public SpaceDeposit reviewDeposit(String id, boolean consumed, String reviewer, String reason) {
         SpaceDeposit deposit = this.deposits.get(id);
-        if (deposit == null || deposit.state() != SpaceDeposit.State.UNKNOWN) throw new AgentException(AgentFailure.STALE_REFERENCE);
+        if (deposit == null || deposit.state() != SpaceDeposit.State.UNKNOWN)
+            throw new AgentException(AgentFailure.STALE_REFERENCE);
         this.finishDeposit(id, consumed, false);
         SpaceDeposit finished = this.deposits.get(id);
         SpaceDeposit reviewed = new SpaceDeposit(id, finished.item(), finished.slot(), finished.amount(), finished.state(),

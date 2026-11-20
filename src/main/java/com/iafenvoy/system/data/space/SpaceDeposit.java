@@ -8,7 +8,9 @@ import org.jspecify.annotations.NonNull;
 
 import java.util.Locale;
 
-/** Immutable inventory debit receipt; the inventory itself is owned by Minecraft's player file. */
+/**
+ * Immutable inventory debit receipt; the inventory itself is owned by Minecraft's player file.
+ */
 public record SpaceDeposit(String id, ItemStackTemplate item, int slot, int amount, State state, long created,
                            String reviewer, String reason) {
     public static final Codec<SpaceDeposit> CODEC = RecordCodecBuilder.create(i -> i.group(

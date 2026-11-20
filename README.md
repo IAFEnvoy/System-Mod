@@ -1,286 +1,123 @@
 # System
 
-English | [简体中文](README-zh.md)
+English | [简体中文](https://github.com/IAFEnvoy/System-Mod/blob/master/README-zh.md)
 
-A NeoForge mod that brings the “System” from web novels into Minecraft. A server-side Agent handles queries, quests and
-actions, while the client provides a full workspace, a minimal dialogue view, HUD notifications and optional voice
-interaction. Local commands and intent matching work without AI; connect a model when needed.
+Bring the “System” from web novels into Minecraft: an assistant for quests, rewards, shops, travel and everyday
+questions. Use interactive cards, type a request or speak to your system. Many features work without AI.
 
 ## Features
 
-- **Queries and answers:** view player information, search client-localized item names and tooltips with
-  component-preserving server validation ([item search](docs/item-search.md)), and browse recipes and item sources.
-  Questions use the
-  local database first; web access requires explicit permission.
-- **FTB Quests integration:** browse actionable quests by chapter, inspect requirements and rewards, submit or claim
-  manually, and pin quests to persistent cards. Includes completion/unlock notifications and local guide lookup.
-- **Teleport anchors:** save and rename personal destinations, and travel by card or voice, with formula-based capacity,
-  cooldowns,
-  optional cross-dimension travel and safe landing checks.
-- **Progress and collections:** check-ins support fixed cycles, total/streak/week/month counts and milestones. Data-pack
-  collection series register inventory items without consuming them. Trusted quest completions can earn quest points;
-  claim progress rewards into System Space. See [check-in rules](docs/sign-in.md), [collections](docs/collections.md)
-  and [progress rewards](docs/progress-rewards.md).
-- **Check-ins, shop and lottery:** Offline check-ins filter data-pack reward packages using Evaluate and player P90; AI
-  modes let the model choose. See [daily check-ins](docs/sign-in.md). Shops and lotteries use Saturn Costs,
-  with rewards delivered to System Space. Mix items, currency, XP points/levels and Saturn actions
-  through [reward definitions](docs/rewards.md). Content is configured through data packs. System Space supports
-  single-item, Shift-click stack and voice withdrawals, plus [inventory deposits](docs/system-space.md#玩家主动存入) with configurable capacity.
-  Rewards can include [choose-one packages](docs/reward-choices.md), with permanent player confirmation and replay-safe receipts.
-- **Entry requirements:** offers, lottery pools, check-in rewards and online jobs support separate visibility and
-  execution conditions through Saturn. The server rechecks before granting new entitlements; earned rewards remain
-  claimable. See [entry conditions](docs/catalog-conditions.md).
-- **Order maintenance:** browse all lottery pools and prizes in bounded batches. Settled orders are archived without
-  resetting quotas or losing receipts; administrators can review uncertain payments.
-  See [order maintenance](docs/commerce-orders.md).
-- **Lottery rules:** data-driven hard pity, multi-draw sizes, periodic draw limits, cooldowns and per-reward win limits,
-  with private paged history and per-draw guarantee markers. See [lottery rules](docs/lottery.md).
-- **Currency wallets:** define multiple currencies through data packs, keep per-player balances and pay through Saturn
-  Costs. Includes administrator commands and entity actions/conditions. See [economy](docs/economy.md).
-- **Infinite sales and buybacks:** generate search-only offers from Evaluate values, with a player P90 sale ceiling,
-  configurable conversion rates and multipliers, and fixed-stock precedence.
-  See [value-based commerce](docs/value-commerce.md).
-- **Fixed buybacks:** configure items to collect and payments through data packs, with a dedicated buyback page, sale
-  confirmation and periodic limits. Settlement is shared with the shop; collect payments from System Space.
-  Fixed shops can rotate shared or personal stock daily, weekly or monthly.
-  See [buyback configuration](docs/shop-buyback.md) and [stock rotation](docs/shop-rotation.md).
-- **Inspection, repairs, salvage and online jobs:** inspect held-item durability and enchantments, confirm a priced
-  repair or a data-driven salvage quote,
-  or run a data-driven gathering/production job. Salvage supports durability and Evaluate formulas, durable orders and
-  outputs stored in System Space. Jobs run in a configurable serial queue (default 4 slots), and progress pauses offline.
-  All support Offline mode.
-  See [inspection](docs/item-inspection.md), [workshop](docs/workshop.md), [salvage](docs/salvage.md)
-  and [jobs](docs/online-jobs.md).
-- **Conversation and tools:** choose Offline, Standard, Extended or Free mode. Free mode and Extended mode's free-chat
-  fallback can call authorized tools;
-  administrators control available modes and daily usage.
-- **Cards and HUD:** messages, interactive cards and persistent cards share JSON templates. Notifications leave gameplay
-  controls available, and Saturn’s HUD editor adjusts their position.
-- **Emotion HUD:** a movable Arwes-style panda avatar appears on demand at the top left, using data-driven emotion IDs
-  and resource-pack speech frames.
-  Inside the assistant, `/emotion` tests emotions and animation locally; `/emotion clear` clears and hides it.
-  See [emotions](docs/emotions.md).
-- **Optional speech:** push-to-talk recording, automatic sending after recognition, streaming speech output and voice
-  actions for notification buttons.
-- **Achievement series and expanded activities:** data-driven lifetime goals with progress and reward claims, material costs for jobs, batch shop purchases / buybacks (1–100 bundles), and paid travel to public data-pack destinations. See [achievements](docs/achievements.md), [jobs](docs/online-jobs.md), [batch trading](docs/shop-buyback.md) and [travel](docs/teleport-anchors.md).
+- **Player and item lookup:** check your information, search items by name or tooltip, and browse recipes and ways
+  to obtain materials.
+- **Quests and commissions:** accept delivery commissions, check requirements, hand in materials and claim rewards.
+  With FTB Quests installed, browse its quests by chapter, submit tasks and receive completion or unlock notifications.
+  Pin tasks to keep their progress on screen.
+- **System Space:** keep rewards and deposited items in your personal storage. Click to take one item, hold Shift
+  for a stack, or request a withdrawal by voice. Some rewards let you choose from several options.
+- **Shops and wallets:** buy supplies, sell items and manage multiple currencies. Shops can rotate their stock,
+  limit purchases or offer items based on your progress.
+- **Lotteries:** preview prizes, make single or multiple draws, check your draw history and work toward guaranteed
+  rewards where the pack provides them.
+- **Daily rewards and progress:** check in for supplies, earn streak and milestone rewards, complete achievements
+  and register items in collections without consuming them.
+- **Equipment workshop:** inspect held equipment, repair it or salvage it for materials after reviewing the cost
+  and result.
+- **Online jobs:** queue gathering or production jobs, supply the required materials and collect the results.
+  Progress pauses while you are offline.
+- **Teleport anchors:** save and rename destinations, then travel from a card or by voice. Your server can provide
+  public destinations and set travel costs or limits.
+- **Conversation and voice:** choose how much AI participates, ask questions, chat freely or use optional voice
+  input and spoken replies.
+- **Cards and HUD:** switch between a full workspace and a compact dialogue view, choose a theme and move HUD panels
+  with Saturn’s HUD editor. A panda avatar can show emotions and animate while speaking.
+- **Timed activities:** shops, lotteries, check-in rewards and commissions can open on selected dates or at scheduled
+  times. Cards show their availability and next opening.
 
-## Installation and Quick Start
+Available content, rewards and limits depend on your modpack or server. AI is optional for local queries, browsing
+and the built-in activities above.
 
-### Versions and Dependencies
+## Getting Started
 
-These requirements apply to the current branch. Use the corresponding branch or build for other Minecraft versions.
+1. Install the mod and its required dependencies, then enter a world.
+2. An administrator must bind a system with `/system grant system:default [player]`. In single-player, omit the
+   player name to bind yourself. Servers and modpacks may provide other systems.
+3. Run `/system` to open the assistant. Try asking for your player information, looking up an item or browsing quests.
+4. Use the sidebar and card buttons to explore the available features. Enter `/settings` inside the assistant to
+   change your preferences; settings save automatically.
 
-| Component            | Version / requirement                                                  | Install on             |
-|----------------------|------------------------------------------------------------------------|------------------------|
-| System               | `1.0-beta.3`                                                           | Client and server      |
-| Minecraft / NeoForge | `26.1.2` / `26.1.2.126+`                                               | Client and server      |
-| Java                 | `25`                                                                   | Client and server      |
-| Saturn               | `1.3.1+`, CurseForge file `9606807` for the matching Minecraft version | Client and server      |
-| Evaluate             | `1.0-beta.2+`, bundled via Jar-in-Jar                                  | Included on both sides |
-| ApricityUI           | `1.2.9+`, built for the matching Minecraft version                     | Client                 |
+Use `/system full` for the full workspace or `/system simple` for the compact view. You can assign **Open system
+interface** in Minecraft’s controls; it is unbound by default.
 
-FTB Quests and its dependencies are **optional**, needed only for quest integration. Simple Voice Chat is an **optional
-client microphone backend**; Java Sound is used when it is absent, and the server does not need SVC for this feature.
-See the [development guide](docs/development.md) for development dependency versions.
+While a notification is visible, open Minecraft chat (**T by default**) to use its buttons. Notifications stay until
+you finish or dismiss them.
 
-### First Use
+## AI Modes
 
-1. Install the mod and required dependencies, then open a single-player world or start the server.
-2. As an administrator, run `/system grant system:default [player]` to bind the bundled system; omit the player to bind
-   yourself. Each player currently has at most one system. Data packs can provide other system IDs.
-3. Run `/system` to open the interface, type a request and press Enter. Start with player information or an item search.
-4. Enter `/settings` inside the assistant for unified settings; changes save immediately. Configure a model below when
-   you want AI
-   features.
+Choose a mode beside the message box:
 
-### Enable AI (Optional)
+| Mode               | What it does                                                                               |
+|--------------------|--------------------------------------------------------------------------------------------|
+| Offline            | Uses local features without calling AI; offers clickable options when a request is unclear |
+| Standard (default) | Uses local features first, with AI helping select actions or support features that need it |
+| Extended           | Tries local features first, then starts an AI conversation if no action matches            |
+| Free               | Lets AI lead the conversation and use the features available to you                        |
 
-DeepSeek is the default provider. Set `SYSTEM_DEEPSEEK_API_KEY` in the **server process environment**. For example, set
-it in PowerShell and launch the server from that environment:
+Your server controls which modes are available. Unavailable modes appear greyed out with an explanation. When no
+usable model is configured, you can still use Offline mode. Purchases and other actions that need confirmation
+keep their confirmation steps.
 
-```powershell
-$env:SYSTEM_DEEPSEEK_API_KEY = "<your-api-key>"
-```
+### Enabling AI
 
-For single-player, the Minecraft process must inherit the variable. Restart the process after changing its environment.
-Server-side `config/system/system-model.json` stores the endpoint and model options. Credentials and per-use account
-selections
-are shared through `config/system/system-api.json`; profiles have a credential type and can contain multiple
-authentication fields.
-Create typed credentials in **API Key management**; environment variables are detected automatically, and services
-declare which credential types they accept. Only single-player / LAN hosts can edit model and search settings in the UI.
-Dedicated servers use their own configuration files and environment variables; remote clients, including operators,
-cannot edit these settings. API keys never transfer between client and server; TTS/ASR credentials stay local.
-See [API Key management](docs/api-management.md).
-Other OpenAI Chat Completions-compatible services are also supported.
+In single-player or as the LAN host, open **API Key management** in `/settings`, add your provider’s credentials,
+then select them under **Text interaction**. DeepSeek is the default provider; other compatible providers are
+supported too.
 
-Set `baseUrl` to the API prefix without `/chat/completions`. See [model configuration](docs/model-api.md) for all
-options, DeepSeek-specific parameters and local models that do not require a key.
+On a dedicated server, the server owner configures the text AI. Joining players use that server configuration
+and cannot change its credentials from their clients. Web research is available only when the server enables it;
+questions check local information first.
 
-## Execution Modes
+## Useful Commands
 
-Select a mode beside the message box. Your choice saves automatically.
+Run these **inside the assistant’s message box**, rather than Minecraft chat. You can also use natural language
+or the sidebar. Command completion shows what is available to you.
 
-| Mode               | Behavior                                                                                              |
-|--------------------|-------------------------------------------------------------------------------------------------------|
-| Offline            | Local routing and intent matching only; uncertain requests offer clickable actions without calling AI |
-| Standard (default) | Local routing first; AI assists routing and required modules, without free conversation               |
-| Extended           | Routing first, then free conversation with authorized tools when no action matches                    |
-| Free               | AI directs the conversation, selects tools and calls features                                         |
+| Command                      | Action                                                 |
+|------------------------------|--------------------------------------------------------|
+| `/help`                      | Show available features and help                       |
+| `/settings`                  | Open settings                                          |
+| `/player`                    | View your information                                  |
+| `/quests [query]`            | Browse or search quests                                |
+| `/commissions`               | Browse delivery commissions                            |
+| `/submittable [query]`       | Find tasks ready for manual submission or checking off |
+| `/claimable`                 | Find quest rewards you can claim                       |
+| `/space`                     | Open System Space                                      |
+| `/space_inventory`           | Choose inventory items to deposit                      |
+| `/deposit [amount or stack]` | Deposit items from your main hand                      |
+| `/records`                   | View progress and milestone rewards                    |
+| `/usage`                     | View your usage                                        |
 
-Administrators set the current world’s initial mode and ordinary players’ mode ceiling with `/system ai default <mode>`;
-the default is stored in world data. Single-player users and LAN hosts can select all modes by default. Explicit
-per-player `/system ai` rules still take precedence; unavailable choices are greyed out with a reason.
+## Optional Voice
 
-**If the model requires an API key and none is configured, only Offline mode is available.** Your preferred mode is
-retained. Models configured to work without a key are exempt. Local queries and browsing remain available, and daily
-check-ins use the local progression-based selector.
+Voice input and automatic speech are disabled by default. Add your own credentials in **API Key management**, then
+select them under **Voice interaction** in `/settings`. Both DeepSeek and Aliyun are supported.
 
-Free conversation in Free mode and Extended mode's fallback prefers relevant local read tools, then ordinary workflows,
-then capabilities with additional API costs.
-Purchases, lottery draws and quest submissions retain their confirmation steps. With the search module enabled,
-DeepSeek automatically uses free server-side search after an empty local lookup; other models still require explicit
-permission for paid search. Local-only requests, offline mode and administrator restrictions take precedence. Model tokens still count.
-See [modes, permissions and tools](docs/free-chat.md).
+Hold **F8** to record and release it to recognize your speech. You can choose whether the result fills the draft or
+sends immediately. Voice requests first try the current notification’s buttons, then go to the main conversation.
+Speech output can be previewed before you enable automatic playback. Notification sounds have their own switch.
 
-## Common Actions
+Voice credentials and usage stay on your client, separate from the server’s text AI. External providers may charge
+for AI or voice services; the mod’s usage estimates do not replace your provider’s bill.
 
-### Player Commands
+## For Server Owners and Pack Makers
 
-Minecraft chat exposes interface opening, management commands and a separate emotion debug entry. Business module
-commands run exclusively inside the assistant and are never registered under `/system`.
+Use `/system grant` to give players a system, `/system module` to manage their features and `/system ai` to control
+AI access and usage limits. `/system ai default <mode>` sets the world’s default mode and ordinary players’ mode
+ceiling. Players can still choose a lower mode.
 
-| Minecraft chat command            | Action                                                                                      |
-|-----------------------------------|---------------------------------------------------------------------------------------------|
-| `/system`                         | Open the last selected view                                                                 |
-| `/system full` / `/system simple` | Open the full workspace / minimal dialogue view                                             |
-| `/system emotion set <ID>`        | Test emotions locally; also supports `speaking true/false/auto`, `clear` and other controls |
-
-Use the following commands inside the assistant. Available features depend on the enabled modules; enter
-natural-language requests directly as text.
-
-| Assistant command                  | Action                                                                       |
-|------------------------------------|------------------------------------------------------------------------------|
-| `/settings`                        | Open unified settings                                                        |
-| `/player`                          | View your own information                                                    |
-| `/submittable [query]`             | List FTB quests with pending manual or checkmark targets                     |
-| `/collection [series ID]`          | Browse collection series and registration progress                           |
-| `/collection_register <series ID>` | Register current inventory items without consuming them                      |
-| `/records`                         | View fact counters and earned milestone/quest-point rewards                  |
-| `/space_inventory` | List inventory slots for depositing items into System Space |
-| `/deposit [amount or stack]` | Deposit one, a specified count or a stack from the main hand |
-| `/record_claim <entitlement ID>`   | Transfer an earned progress reward to System Space                           |
-| `/search <question>`               | Database-first web research; free DeepSeek search or an authorized paid fallback; requires the search module |
-| `/usage`                           | View personal usage                                                          |
-| `/usage all`                       | Administrator view of server-wide AI/web usage; voice usage remains personal |
-| `/help`                            | Show available features and help                                             |
-| `/emotion set <ID>`                | Change the local emotion; see the emotion guide for other controls           |
-
-Inside the assistant, use `/settings` to open settings. The input supports command completion and Enter to send. You can
-assign **Open system interface** in Minecraft’s controls; it is unbound by default.
-
-While a notification is visible, open vanilla chat (**T by default**) to interact. Consecutive notifications keep the
-panel expanded; use their buttons to confirm or continue. Finishing speech does not automatically advance the queue.
-Closing, confirming or replacing a notification ends its speech session.
-
-### Administrator Commands
-
-| Command                                      | Action                                                                                            |
-|----------------------------------------------|---------------------------------------------------------------------------------------------------|
-| `/system grant <system ID> [player]`         | Bind a system defined by a data pack                                                              |
-| `/system revoke [player]`                    | Revoke the binding and clear business records, retaining cumulative usage                         |
-| `/system reset [player]`                     | Clear System records and the binding, including unusable old-format records; bind again afterward |
-| `/system module add <player> <module ID>`    | Enable an additional module                                                                       |
-| `/system module remove <player> <module ID>` | Disable a module                                                                                  |
-| `/system module list [player]`               | List registered modules or a player’s enabled modules                                             |
-| `/system ai default [mode]`                  | View or change the current world’s default AI mode                                                |
-| `/system ai <player> …`                      | Manage AI/free-chat permissions and daily limits, inspect access or reset overrides               |
-| `/system ftb reload`                         | Reindex currently loaded FTB guide data without changing quest progress                           |
-| `/system routing`                            | Inspect local routing diagnostics                                                                 |
-
-System, player and module arguments support completion. Granting the same system again does not reset the player; revoke
-before switching systems. Manual module overrides persist. Required modules such as core, binding and usage cannot be
-removed. See the [usage guide](docs/usage.md) for commands and [access configuration](docs/free-chat.md) for AI
-subcommands.
-
-## Optional Speech
-
-Voice input and automatic speech are disabled by default. Both support Aliyun and DeepSeek and run on the **client using
-the player’s own
-credentials**, separately from the server model configuration.
-
-| Feature             | Configuration                                                                   | Usage                                                                                                           |
-|---------------------|---------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
-| Voice input (ASR)   | A DeepSeek key, or NLS project AppKey, AccessKey ID / Secret and region         | Hold F8 to record and release to recognize; results fill the draft, with an option to send immediately          |
-| Speech output (TTS) | A Model Studio profile or a DeepSeek key; DeepSeek voices are `stella` / `tide` | Defaults to `qwen3-tts-flash` / `Cherry` and the game language; preview and enable automatic speech in settings |
-
-Create credentials in **API Key management**, then select them under **Voice interaction** in `/settings`; changes save
-automatically.
-DeepSeek ASR uploads complete recordings, while TTS streams audio. See [DeepSeek speech](docs/deepseek-speech.md).
-Custom voices must match their
-creation model and region. Enter their parameters directly; JSON import is not supported. The notification sound has a
-separate switch, enabled by default, and does not call TTS.
-
-Recognized speech first tries the current notification’s buttons, then falls back to the main chat.
-See [voice recognition](docs/asr.md) and [speech synthesis](docs/tts.md) for setup details.
-
-The repository includes a Python 3.10+ standard-library utility for voice design, cloning, previews and temporary
-uploads:
-
-```powershell
-python tools/voice_design.py --lang en --help
-```
-
-## Configuration and Extensions
-
-Runtime configuration lives under each instance’s `config/system/`. Missing files are copied from bundled defaults. The
-server manages models, permissions, execution budgets and pricing; the client manages views, themes and personal speech
-settings. See the [configuration directory](docs/usage.md#配置目录) for the full file list.
-
-- **Data packs:** define translation keys for system names and descriptions, module parameters and conditions, check-in
-  rewards, offers and lottery pools. System definitions live at `data/<namespace>/system/system/<path>.json`. Module
-  references support IDs, tags and conditions; catalogue selections accept IDs, tags or mixed arrays.
-  See [data-pack configuration and examples](docs/datapacks.md).
-- **Resource packs:** override client card JSON, translations and styles. Templates control layout and placeholders
-  supply dynamic data, with items, tooltips, Markdown and interactive buttons. See [cards](docs/cards.md) and
-  the [visual editor](docs/card-editor.md).
-- **Mod extensions:** register modules, tools and card nodes, or extend contexts and prompts.
-  See [feature modules](docs/feature-modules.md) and the [registry reference](docs/registries.md).
-
-FTB features require their dependencies; web research also requires a configured search module. The development source
-set contains a search-module example that is excluded from the release JAR. Questions use the local database first,
-searching after an empty result automatically through DeepSeek when the search module is enabled, or with current-request permission for other models.
-See [database-first questions and web research](docs/search-api.md).
-
-## Data, Usage and Costs
-
-- **Business data** is managed by the server per world and player. Bindings, preferences, quest interactions and rewards
-  do not rely on client storage. Cumulative usage is independent and survives revoking, resetting or clearing memory.
-- **AI and web usage** is tracked on the server. Administrators can view server-wide totals; model API keys are never
-  synchronized to clients.
-- **TTS / ASR usage** stays on the local machine per client account. It is not uploaded to the server, and
-  administrators cannot aggregate other players’ voice records.
-- **Costs are estimates**; provider billing is authoritative, and rate changes do not recalculate history. Search and
-  Fetch are counted separately. Aliyun TTS uses reported characters or tokens; DeepSeek TTS uses a local character
-  estimate. NLS ASR uses successful calls, while DeepSeek ASR uses reported audio duration.
-
-See the [external API request list](docs/external-apis.md) and [usage accounting](docs/token-usage.md) for triggers,
-transmitted data and billing details.
+Data packs can customize systems, commissions, currencies, shops, rewards and activities. Resource packs can change
+card layouts, translations, themes and avatar textures. These choices determine the content players see.
 
 ## Documentation
 
-Detailed documentation is currently in Chinese.
-
-| Topic                                              | Guide                                                                                                        |
-|----------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
-| Installation, controls, commands and configuration | [Usage and configuration](docs/usage.md)                                                                     |
-| Modes, administrator permissions and tool calls    | [Execution modes and free chat](docs/free-chat.md)                                                           |
-| Other model providers / web research               | [Model API](docs/model-api.md) · [Search API](docs/search-api.md)                                            |
-| Voice input, speech and voice design               | [ASR](docs/asr.md) · [TTS](docs/tts.md)                                                                      |
-| Custom systems, rewards, offers and lottery pools  | [Data packs](docs/datapacks.md)                                                                              |
-| Card layout and appearance                         | [Cards](docs/cards.md) · [Editor](docs/card-editor.md)                                                       |
-| Local guides and knowledge storage                 | [Quest guides](docs/quest-guides.md) · [Databases](docs/databases.md)                                        |
-| Development, architecture and extension points     | [Development](docs/development.md) · [Architecture](docs/architecture.md) · [Registries](docs/registries.md) |
-
-See [docs/README.md](docs/README.md) for the full index and [learning.md](learning.md) for the AI coding-agent
-reference.
+Browse the [Documentation](https://docs.iafenvoy.com/docs/mod/system) for detailed setup, server commands, customization
+guides and development information.

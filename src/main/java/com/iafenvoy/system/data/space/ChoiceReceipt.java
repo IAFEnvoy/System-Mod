@@ -1,12 +1,14 @@
 package com.iafenvoy.system.data.space;
 
+import com.iafenvoy.system.data.store.Reward;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import com.iafenvoy.system.data.store.Reward;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
 
-/** The ticket is the source entry's remaining quantity before selecting one unit. Never evicted. */
+/**
+ * The ticket is the source entry's remaining quantity before selecting one unit. Never evicted.
+ */
 public record ChoiceReceipt(String entry, long ticket, Component name, int selected, Reward reward, long created) {
     public static final Codec<ChoiceReceipt> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("entry").forGetter(ChoiceReceipt::entry),

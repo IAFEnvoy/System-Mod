@@ -17,6 +17,7 @@
     "system:advancement",
     "system:ftb_quests",
     "system:collection",
-    "system:achievement"
+    "system:achievement",
+    "system:commission"
   ]
 }

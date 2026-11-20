@@ -156,6 +156,13 @@ public final class QuestService implements PlayerModule {
                 selected == null ? Optional.empty() : Optional.of(selected.revision()));
     }
 
+    public CompletionStage<QuestOutput> change(ExecutionContext context, QuestLifecycleInput input) {
+        QuestKey key = this.key(context, input.questId());
+        if (!(this.provider(context, key) instanceof QuestProvider.Lifecycle lifecycle))
+            throw new AgentException(AgentFailure.UNSUPPORTED);
+        return lifecycle.change(context, new QuestLifecycleInput(key.toString(), input.revision(), input.operation(), input.quote()));
+    }
+
     public CompletionStage<QuestClaimOutput> claim(ExecutionContext context, QuestClaimInput input) {
         QuestKey key = this.key(context, input.claimRef());
         if (!(this.provider(context, key) instanceof QuestProvider.Rewards rewards))

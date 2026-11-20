@@ -23,6 +23,7 @@ public final class SystemServerModules {
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<ItemSystemModule>> ITEMS = REGISTRY.register("items", () -> ItemSystemModule.CODEC);
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<EconomySystemModule>> ECONOMY = REGISTRY.register("economy", () -> EconomySystemModule.CODEC);
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<WorkshopSystemModule>> WORKSHOP = REGISTRY.register("workshop", () -> WorkshopSystemModule.CODEC);
+    public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<CommissionSystemModule>> COMMISSION = REGISTRY.register("commission", () -> CommissionSystemModule.CODEC);
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<OnlineJobsSystemModule>> ONLINE_JOBS = REGISTRY.register("online_jobs", () -> OnlineJobsSystemModule.CODEC);
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<SignInSystemModule>> SIGN_IN = REGISTRY.register("signin", () -> SignInSystemModule.CODEC);
     public static final DeferredHolder<MapCodec<? extends ServerModule>, MapCodec<SpaceSystemModule>> SPACE = REGISTRY.register("inbox", () -> SpaceSystemModule.CODEC);

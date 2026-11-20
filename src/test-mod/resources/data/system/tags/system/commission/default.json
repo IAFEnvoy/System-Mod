@@ -1,0 +1,7 @@
+{
+  "values": [
+    "system:test_delivery_once",
+    "system:test_delivery_daily",
+    "system:test_delivery_weekly"
+  ]
+}

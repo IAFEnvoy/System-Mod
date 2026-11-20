@@ -10,7 +10,9 @@ import org.jspecify.annotations.NonNull;
 
 import java.util.Locale;
 
-/** Immutable durable terms; order identity is the original quote identity. */
+/**
+ * Immutable durable terms; order identity is the original quote identity.
+ */
 public record SalvageOrder(String id, Terms terms, State state, long created, String error,
                            String reviewer, String reason, long reviewed) {
     public static final Codec<SalvageOrder> CODEC = RecordCodecBuilder.create(i -> i.group(

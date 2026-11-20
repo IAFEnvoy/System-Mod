@@ -19,7 +19,9 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 
-/** Administrative recovery only; all player storage actions belong to the assistant dispatcher. */
+/**
+ * Administrative recovery only; all player storage actions belong to the assistant dispatcher.
+ */
 public final class SpaceCommands {
     private SpaceCommands() {
     }
@@ -39,7 +41,8 @@ public final class SpaceCommands {
     private static SpaceDeposits service(CommandSourceStack source) {
         AssistantServer runtime = ModuleCommands.runtime(source);
         SpaceDeposits service = runtime == null ? null : runtime.moduleManager().runtime(SpaceDeposits.class).orElse(null);
-        if (runtime != null && service == null) source.sendFailure(Component.translatable("system.error.capability_unavailable"));
+        if (runtime != null && service == null)
+            source.sendFailure(Component.translatable("system.error.capability_unavailable"));
         return service;
     }
 

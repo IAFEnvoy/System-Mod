@@ -60,6 +60,7 @@ public final class SystemActionTypes {
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<QuestClaimInput>> CLAIM_ACTION = REGISTRY.register("quest_claim", () -> QuestClaimInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<StarterGiftInput>> STARTER_GIFT_ACTION = REGISTRY.register("starter_gift", () -> StarterGiftInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<StarterGiftsInput>> STARTER_GIFTS_ACTION = REGISTRY.register("starter_gifts", () -> StarterGiftsInput.CODEC);
+    public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<QuestLifecycleInput>> QUEST_LIFECYCLE_ACTION = REGISTRY.register("quest_lifecycle", () -> QuestLifecycleInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<QuestSubmitInput>> QUEST_SUBMIT_ACTION = REGISTRY.register("quest_submit", () -> QuestSubmitInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<AdvancementInput>> ADVANCEMENT_ACTION = REGISTRY.register("advancement_followup", () -> AdvancementInput.CODEC);
     public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<AchievementQueryInput>> ACHIEVEMENTS = REGISTRY.register("achievement_query", () -> AchievementQueryInput.CODEC);

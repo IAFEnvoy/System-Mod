@@ -1,5 +1,15 @@
 # 编译与验收
 
+## 2026-11-19 固定交付委托与活动窗口
+
+新增原生 `system:commission` 服务端目录、模块、DataStorage 和客户端入口，接入通用任务查询／详情／固定 HUD。接取和放弃携带状态版本；提交只生成冻结材料报价，玩家卡片确认后才交付。扣除前持久化 prepared 并预留报酬空间，交付成功后独立领奖；保存失败只重试存储，未知交付由 `/system commission list/resolve` 人工核对。接取快照与永久次数保留，支持终身／日／周／月限额；不改变 FTBQ 原生提交。
+
+`EntryConditions.activity` 共用业务时区和 CatalogAccess，支持起止日期、星期、每日时段、跨午夜及下次开放提示。商城、奖池、签到、作业和委托在新增资格前检查；已付款、已签到和已接取权益保留。协议升级为 6，两端需同步更新。配置见[委托](commissions.md)和[活动窗口](activity-windows.md)。
+
+实际执行 `gradlew compileJava testModClasses jar --console=plain` 和 Card Editor `npm run build`，均通过；仅编译和打包，未运行测试。静态解析 213 个主／开发资源 JSON，中英文键集合及格式参数一致（各 1046 项），检查卡片字段、集合嵌套、翻译引用、编辑器镜像和文档 JSON／本地链接。发布包仅包含模块定义与空默认委托 tag，委托和限时活动样例留在 `src/test-mod/`。
+
+未启动 Minecraft、创建存档或调用外部 API。接取／放弃、背包变化后交付确认、重复点击、周期边界、跨夜活动、空间满额、游戏内卡片排版、登出／重启恢复和管理员核对仍待实际验收。玩家物品与业务文件无法构成跨文件原子提交，崩溃或回档产生的不确定材料状态必须按日志与冻结快照核对。
+
 ## 2026-11-19 DeepSeek 免费服务端联网
 
 按官方 Chat Completions 与联网工具文档实现 `deepseek_web_search`／`deepseek_read_url` 声明。数据库优先问答在本地为空、玩家搜索模块启用且 DeepSeek 模型可用时自动进入该路径，自由聊天及扩展兜底通过同一问答能力复用。`/question`／localOnly、离线和管理员限制优先；取得模型并发槽前后与响应返回后复核模块权限。请求级 Options 经原有模型网关传递，不发送 JSON response_format、自定义函数或 required tool_choice，不执行独立 Search／Fetch，也不自动降级到收费接口。

@@ -1,6 +1,6 @@
 # 通用任务接口与任务来源
 
-当前 `master` 的任务入口已经从 FTB Quests 专属工具抽出。FTBQ 是第一个适配实现；其他任务模组或未来内置任务系统可以复用列表、详情、提交、领奖、说明书、卡片和固定 HUD，无需重新编写整套 Agent 工作流。
+当前 `master` 的任务入口已经从 FTB Quests 专属工具抽出。FTBQ 和 [System 固定交付委托](commissions.md) 共用该入口；其他任务模组可以复用列表、详情、提交、领奖、说明书、卡片和固定 HUD，无需重新编写整套 Agent 工作流。
 
 ## 数据和来源
 
@@ -34,6 +34,7 @@ example:quests#chapter_1/welcome
 
 | 接口 | 额外方法 | 用途 |
 | --- | --- | --- |
+| `QuestProvider.Lifecycle` | `change(context, input)` | 来源自有的接取／放弃／确认交付等状态操作；携带状态版本，具体动作由来源校验。 |
 | `QuestProvider.Submission` | `submit(context, input, revision)` | 显式提交资源或完成支持的勾选任务；不得顺便领取奖励。 |
 | `QuestProvider.Rewards` | `claim(context, input)` | 消费先前签发的领奖引用；自行检查归属、有效期、任务和奖励状态。 |
 | `QuestProvider.Guides` | `guides(context, input)` | 返回当前玩家有权读取的说明书片段和正文。 |
@@ -94,3 +95,9 @@ FTBQ 的版本组合包含队伍身份和当前原生对象身份；它只负责
 适配层可以从真实服务端完成事件发布 `PlayerFactEvent`，通用任务接口本身不把“查看完成状态”当作无条件发奖。FTBQ 已接入事件及原生完成历史核对，使用稳定的来源、任务 ID、团队与完成时间身份。
 
 数据包 `system:fact_reward` 决定事件奖励。内置规则为每名玩家首次完成的普通 FTBQ 任务提供 1 个 `system:quest_point` 积分权益，说明书和新手礼包除外。新权益在 `/records` 领取到系统空间，兑现后进入钱包；启用模块前的历史不补发。其他来源无需引用 FTB 类，可信事件 API、周期与恢复限制见[事实记录与任务积分](progress-rewards.md)。
+
+## 原生委托与可选状态操作
+
+原生委托来源为 `system:commission`，任务 ID 形如 `system:commission#example:stone`。共用查询会按来源分组，也可在系统界面输入 `/commissions` 或 `/委托` 单独查询。详情的可选 `QuestLifecycleOutput` 提供来源翻译状态、资格、接取／放弃和材料报价确认按钮；FTBQ 不提供该能力，保留原有提交逻辑。委托的提交只生成预览，真正交付必须由玩家确认卡片动作，不把支付权限交给 AI。
+
+`QuestRewardOutput.contents` 补充通用空间内容预览，可展示系统币、经验与选择包；FTBQ 原有的物品、图标、原生选择奖励字段保持原样。完成的原生委托领奖时，解锁此前预留的空间权益，状态与入库在同一玩家事务中提交；重复领取不再产生奖励。定义、次数与故障处理见[固定交付委托](commissions.md)。

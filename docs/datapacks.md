@@ -1,5 +1,7 @@
 # 扩展配置
 
+[固定交付委托](commissions.md) 使用独立服务端数据包注册表 `system:commission`，通过模块的 `commissions` ID／tag／混合数组选取。接取、材料确认、次数和报酬均由服务端维护。[通用活动窗口](activity-windows.md) 使用条目根字段 `activity`，可组合起止日期、星期和每日时段，不需要新模块。
+
 [表情与 HUD](emotions.md)使用同步数据包注册表 `system:emotion` 定义名称、语义和分类，客户端资源包独立映射相同 ID 的贴图 / 说话动画；AI 目录自动从注册表生成。文件位于 `data/<namespace>/system/emotion/<path>.json`，不使用图片编号作为表情协议。
 
 [系统币经济](economy.md)新增 `system:currency` 原生数据包注册表，并提供多币种钱包、`system:currency` 费用/条件和 `system:add_currency` 实体动作；使用格式与字段见专页。

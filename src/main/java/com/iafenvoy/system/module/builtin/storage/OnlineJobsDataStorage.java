@@ -12,7 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/** One ordered paid queue per player; completed output never blocks the next job's online ticks. */
+/**
+ * One ordered paid queue per player; completed output never blocks the next job's online ticks.
+ */
 public final class OnlineJobsDataStorage extends DataStorage {
     public static final int MAX_QUEUE = 32;
     private static final int RECEIPTS = 32;
@@ -46,7 +48,8 @@ public final class OnlineJobsDataStorage extends DataStorage {
 
     public void add(OnlineJobRun run, int capacity) {
         if (this.occupied() >= Math.min(MAX_QUEUE, capacity)) throw new AgentException(AgentFailure.JOB_QUEUE_FULL);
-        if (this.runs.stream().anyMatch(value -> value.id().equals(run.id()))) throw new AgentException(AgentFailure.STALE_REFERENCE);
+        if (this.runs.stream().anyMatch(value -> value.id().equals(run.id())))
+            throw new AgentException(AgentFailure.STALE_REFERENCE);
         // Keep bounded receipts for harmless repeated claims; the space entitlement remains authoritative.
         while (this.runs.stream().filter(OnlineJobRun::claimed).count() >= RECEIPTS)
             this.runs.remove(this.runs.stream().filter(OnlineJobRun::claimed).findFirst().orElseThrow());

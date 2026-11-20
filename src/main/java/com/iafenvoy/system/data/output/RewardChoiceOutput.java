@@ -10,9 +10,9 @@ import com.iafenvoy.system.data.store.Reward;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.resources.Identifier;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.Map;
@@ -56,8 +56,8 @@ public record RewardChoiceOutput(String entry, long ticket, Component name, List
         Identifier action = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "reward_choice");
         for (int index = 0; !this.settled && index < this.options.size(); index++)
             builder.serverButton("option." + index, "system.choice.preview", action,
-                    Map.of("entry", this.entry, "ticket", Long.toString(this.ticket), "option", Integer.toString(index)),
-                    CardButton.Placement.BODY, CardButton.Behavior.REPLACE)
+                            Map.of("entry", this.entry, "ticket", Long.toString(this.ticket), "option", Integer.toString(index)),
+                            CardButton.Placement.BODY, CardButton.Behavior.REPLACE)
                     .actionParameter("label", Component.translatable("system.choice.option", this.options.get(index).label(),
                             CardBuilder.join(this.options.get(index).stacks().stream().map(SpaceStack::label).toList(), " · ")));
         if (!this.settled && this.selected >= 0)

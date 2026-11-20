@@ -79,9 +79,9 @@ public final class ShopQuoteModule extends AbstractAgentModule<ShopQuoteInput> {
         if (!price.conditionMet()
                 || offer.value().trade() == ShopTrade.BUYBACK && !price.available())
             return AgentResult.data("system.result.shop_offer", new ShopOfferOutput(id, offer.value().label(), offer.value().items(), offer.value().contents(),
-                    price.price(), false, catalog.shopRevision(), price.purchaseLimit(), price.conditionMet(), offer.value().trade()));
+                    price.price(), false, catalog.shopRevision(), price.purchaseLimit(), price.conditionMet(), offer.value().trade(), price.activity()));
         if (!price.available()) throw new AgentException(AgentFailure.INVALID_COST);
         Reward reward = offer.value().reward().multiply(input.count());
-        return AgentResult.data(offer.value().trade().key("confirm"), new ShopQuoteOutput(price.quoteRef().orElseThrow(), offer.value().label(), reward.items(), reward.contents(), price.price(), price.purchaseLimit(), offer.value().trade(), id, catalog.shopRevision(), input.count()));
+        return AgentResult.data(offer.value().trade().key("confirm"), new ShopQuoteOutput(price.quoteRef().orElseThrow(), offer.value().label(), reward.items(), reward.contents(), price.price(), price.purchaseLimit(), offer.value().trade(), id, catalog.shopRevision(), input.count(), price.activity()));
     }
 }

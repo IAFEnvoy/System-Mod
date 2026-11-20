@@ -49,6 +49,10 @@
 
 ## 服务端装配与指令
 
+`CommissionSystemModule` / `CommissionSystemClientModule` 是原生固定交付委托入口，类型和目录均为 `system:commission`。多份配置共用 `Commissions` 玩家运行时和账本，目录取已启用配置的并集，`capacity` 取最大值。它通过 `QuestWorkflows` 复用任务卡片、提交、领奖和固定 HUD，状态保存到 `CommissionDataStorage`；只有异常核对命令进入原版指令树。见[固定交付委托](commissions.md)。
+
+`EntryConditions.activity` 是共用的[活动时间窗口](activity-windows.md)，在 `CatalogAccess` 内与原有条件组合检查；不提供独立活动模块或持续扫描运行时。
+
 商城底层同时支持固定收购：`shop_offer.trade` 为 `buyback`，物品费用是收购输入，奖励是收购报酬。客户端将购买和收购注册为两个独立页面与导航入口；服务端共用报价、确认、订单和系统空间交付，配置仍可分为不同 `system_module` 文件并单独授予。没有独立的收购注册表或复制的交易结算服务，见[固定收购](shop-buyback.md)。固定来源可通过 server.rotation 从候选池按自然日／周／月选取共享或个人库存，浏览、报价与付款共用相同选品路径，见[周期轮换](shop-rotation.md)。
 
 `ServerModule.CODEC` 通过静态类型注册表 `byNameCodec().dispatch("type", ServerModule::codec, codec -> codec)` 分派。无参数内置类型用 `MapCodec.unit(new ...())` 返回单例；签到、商城和抽奖是带 rewards / offers / pools 的不可变 record，使用 RecordCodecBuilder.mapCodec。动态注册表保存独立的 SystemModule 包装，不将同一单例重复注册为多个 MC 注册表值。

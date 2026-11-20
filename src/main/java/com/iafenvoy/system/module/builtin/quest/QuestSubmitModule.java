@@ -34,6 +34,8 @@ public final class QuestSubmitModule extends AbstractAgentModule<QuestSubmitInpu
         QuestSubmitOutput result = context.tool(BuiltinTools.QUEST_SUBMIT, "submit", input);
         if (result.completed())
             return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.quest_submit_completed", "", List.of(), true);
+        if (result.lifecycle().quote().isPresent())
+            return AgentResult.data("system.result.commission_preview", result);
         return AgentResult.data(result.changed() ? "system.result.quest_submitted" : "system.result.quest_submit_unchanged", result);
     }
 }

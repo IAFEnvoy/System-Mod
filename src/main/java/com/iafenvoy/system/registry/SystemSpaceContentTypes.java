@@ -1,11 +1,7 @@
 package com.iafenvoy.system.registry;
 
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.assistant.space.ActionSpaceType;
-import com.iafenvoy.system.assistant.space.CurrencySpaceType;
-import com.iafenvoy.system.assistant.space.ExperienceSpaceType;
-import com.iafenvoy.system.assistant.space.ItemSpaceType;
-import com.iafenvoy.system.assistant.space.ChoiceSpaceType;
+import com.iafenvoy.system.assistant.space.*;
 import com.iafenvoy.system.data.space.*;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;

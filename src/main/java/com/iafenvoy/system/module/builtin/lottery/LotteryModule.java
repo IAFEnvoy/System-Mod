@@ -64,7 +64,7 @@ public final class LotteryModule extends AbstractAgentModule<LotteryQueryInput> 
         List<LotteryPrizeOutput> prizes = pool.entries().stream().skip(offset).limit(MAX_PRIZES)
                 .map(entry -> new LotteryPrizeOutput(entry.reward(), entry.remaining(wins) == 0 ? 0 : entry.weight(), totalWeight,
                         entry.maxWins(), wins.getOrDefault(entry.reward().id(), 0))).toList();
-        return new LotteryPoolOutput(HolderHelper.id(holder), pool.label(), Optional.of(price.price()), pool.entries().size(), price.available(), prizes, price.quoteRef(), revision, price.conditionMet(), offset, price.lottery());
+        return new LotteryPoolOutput(HolderHelper.id(holder), pool.label(), Optional.of(price.price()), pool.entries().size(), price.available(), prizes, price.quoteRef(), revision, price.conditionMet(), offset, price.lottery(), price.activity());
     }
 
     /**
@@ -83,7 +83,7 @@ public final class LotteryModule extends AbstractAgentModule<LotteryQueryInput> 
             prizes.add(new LotteryCatalogOutput.Prize(entry.reward().value().label(), LotteryPrizeOutput.chance(entry.weight(), totalWeight),
                     entry.reward().value().items().stream().map(ItemPreviewOutput::of).toList(), entry.reward().value().contents(), entry.maxWins()));
         }
-        return new LotteryCatalogOutput.Pool(HolderHelper.id(holder).toString(), pool.label(), pool.entries().size(), prizes, available);
+        return new LotteryCatalogOutput.Pool(HolderHelper.id(holder).toString(), pool.label(), pool.entries().size(), prizes, available, pool.conditions().activity().description());
     }
 
     @Override

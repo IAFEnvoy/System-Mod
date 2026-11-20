@@ -17,16 +17,22 @@ import java.util.List;
 import java.util.Optional;
 
 public record QuestSubmitOutput(String questId, Component title, List<QuestTaskOutput> tasks, boolean changed,
-                                boolean completed, QuestSource source) implements CardData {
+                                boolean completed, QuestSource source,
+                                QuestLifecycleOutput lifecycle) implements CardData {
     public static final MapCodec<QuestSubmitOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("questId").forGetter(QuestSubmitOutput::questId),
             ComponentSerialization.CODEC.fieldOf("title").forGetter(QuestSubmitOutput::title),
             QuestTaskOutput.CODEC.listOf().fieldOf("tasks").forGetter(QuestSubmitOutput::tasks),
             Codec.BOOL.fieldOf("changed").forGetter(QuestSubmitOutput::changed),
             Codec.BOOL.fieldOf("completed").forGetter(QuestSubmitOutput::completed),
-            QuestSource.CODEC.optionalFieldOf("source", QuestSource.UNKNOWN).forGetter(QuestSubmitOutput::source)
+            QuestSource.CODEC.optionalFieldOf("source", QuestSource.UNKNOWN).forGetter(QuestSubmitOutput::source),
+            QuestLifecycleOutput.CODEC.optionalFieldOf("lifecycle", QuestLifecycleOutput.NONE).forGetter(QuestSubmitOutput::lifecycle)
     ).apply(i, QuestSubmitOutput::new));
     public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest_submit");
+
+    public QuestSubmitOutput(String questId, Component title, List<QuestTaskOutput> tasks, boolean changed, boolean completed, QuestSource source) {
+        this(questId, title, tasks, changed, completed, source, QuestLifecycleOutput.NONE);
+    }
 
     public QuestSubmitOutput {
         title = LegacyText.snapshot(title);
@@ -39,6 +45,11 @@ public record QuestSubmitOutput(String questId, Component title, List<QuestTaskO
         CardBuilder builder = CardBuilder.template(TEMPLATE);
         builder.put("title", this.title()).put("source", this.source.name()).put("changed", this.changed())
                 .list("tasks", this.tasks(), (prefix, task) -> task.fill(builder, prefix));
+        this.lifecycle.fill(builder, this.questId);
+        if (this.lifecycle.quote().isPresent()) {
+            Component preview = Component.translatable("system.commission.delivery_preview", this.title);
+            return builder.summary(preview).speech(preview);
+        }
         String event = this.changed ? "quest_submitted" : "quest_submit_unchanged";
         return builder.summary(Component.translatable("system.ui." + event, this.title)).speech(Component.translatable("system.tts.message." + event, this.title));
     }

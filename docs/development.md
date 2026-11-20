@@ -1,8 +1,10 @@
 # 开发与架构
 
+当前网络协议为 `6`。新增原生委托状态操作、通用奖励预览和活动状态载荷，两端需要同步更新。固定交付业务与持久化位于 `assistant.quest.Commissions` / `CommissionDataStorage`，复用通用任务来源；`ActivityWindow` 由 `EntryConditions` 统一接入，见[委托](commissions.md)和[活动窗口](activity-windows.md)。
+
 ## 当前版本
 
-ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充。TTS / ASR 用量由 `LocalSpeechUsage` 按客户端账号 UUID 独立保存，不向服务端上报；服务端 SavedData 只记录 AI。当前网络协议 5（新增通用奖励选择、存入动作和空间快照字段，两端需同步更新）。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
+ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充。TTS / ASR 用量由 `LocalSpeechUsage` 按客户端账号 UUID 独立保存，不向服务端上报；服务端 SavedData 只记录 AI。当前网络协议 6（新增委托状态操作、奖励内容预览和活动状态字段，两端需同步更新）。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
 
 NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通过 JDK HMAC-SHA1 签名调用 CreateToken，跨 session 复用内存缓存并在有效期不足两分钟时按需刷新。设置保存和 `validate` 不联网，签发随识别工作线程取消；`AsrProvider.recognize` 的 `requestStarted` 回调在发送首次识别命令前启动计量，鉴权和握手失败不计 ASR 尝试。
 

@@ -1,0 +1,120 @@
+{
+  "label": {
+    "text": "限时体验奖池"
+  },
+  "entries": [
+    {
+      "weight": 40,
+      "reward": {
+        "id": "system:test_lottery/currency",
+        "label": "系统币",
+        "contents": [
+          {
+            "content": {
+              "type": "system:currency",
+              "currency": "system:coin"
+            },
+            "amount": 100
+          }
+        ]
+      }
+    },
+    {
+      "weight": 30,
+      "reward": {
+        "id": "system:test_lottery/experience",
+        "label": "经验补给",
+        "contents": [
+          {
+            "content": {
+              "type": "system:experience"
+            },
+            "amount": 80
+          },
+          {
+            "content": {
+              "type": "system:experience",
+              "levels": true
+            },
+            "amount": 2
+          }
+        ]
+      }
+    },
+    {
+      "weight": 20,
+      "max_wins": 2,
+      "reward": {
+        "id": "system:test_lottery/heal",
+        "label": "恢复生命",
+        "contents": [
+          {
+            "content": {
+              "type": "system:action",
+              "name": "恢复生命",
+              "icon": {
+                "id": "minecraft:golden_apple"
+              },
+              "action": {
+                "type": "saturn:heal",
+                "amount": 4
+              }
+            },
+            "amount": 1
+          }
+        ]
+      }
+    },
+    {
+      "weight": 10,
+      "reward": {
+        "id": "system:test_lottery/empty",
+        "label": "未中奖"
+      }
+    }
+  ],
+  "display_condition": {
+    "type": "saturn:advancement",
+    "advancement": "minecraft:story/upgrade_tools"
+  },
+  "condition": {
+    "type": "saturn:experience_level",
+    "comparison": ">=",
+    "compare_to": 10
+  },
+  "draw_counts": [
+    1,
+    5,
+    10
+  ],
+  "pity": {
+    "count": 10,
+    "rewards": [
+      "system:test_lottery/currency"
+    ]
+  },
+  "draw_limit": {
+    "count": 30,
+    "period": "daily"
+  },
+  "cooldown": 2,
+  "activity": {
+    "start_date": "2026-01-01",
+    "end_date": "2099-12-31",
+    "weekdays": [
+      1,
+      3,
+      5
+    ],
+    "hours": [
+      {
+        "start": "18:00",
+        "end": "23:00"
+      },
+      {
+        "start": "23:30",
+        "end": "01:00"
+      }
+    ]
+  }
+}

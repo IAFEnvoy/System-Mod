@@ -21,6 +21,7 @@ import com.iafenvoy.system.data.result.SignInStatus;
 import com.iafenvoy.system.data.store.Reward;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.builtin.SignInSystemModule;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 import java.time.LocalDate;
@@ -80,12 +81,15 @@ public final class SignInStatusModule extends AbstractAgentModule<SignInStatusIn
 
     private AgentResult result(ExecutionContext context, String day, List<PersistHolder<Reward>> candidates, boolean external,
                                Set<Identifier> locked, Optional<ProgressionEstimate> estimate, boolean fixed) {
+        List<Component> activities = this.catalogs.view(context).catalog().rewards().stream()
+                .flatMap(holder -> holder.value().conditions().activity().description().stream()
+                        .map(value -> holder.value().label().copy().append(" · ").append(value))).limit(64).map(value -> (Component) value).toList();
         return context.store().read(context.player(), data -> {
             SignInProgress progress = ModuleData.get(data, SignInSystemModule.STORAGE).progress();
             ZoneId zone = BusinessCalendar.zone();
             return AgentResult.data("system.result.sign_in_status", new SignInStatus(day,
                     this.signIns.reward(context.store(), context.player(), data, day).isPresent(), candidates, data.saveHistory, external,
-                    locked, estimate, progress, fixed, zone.getId(), this.rules.preview(progress, LocalDate.parse(day), zone)));
+                    locked, estimate, progress, fixed, zone.getId(), this.rules.preview(progress, LocalDate.parse(day), zone), activities));
         });
     }
 }

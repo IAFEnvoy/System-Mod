@@ -52,10 +52,12 @@ public final class CatalogAccess {
      * Call after checking visibility when building a preview.
      */
     public static boolean usable(ServerPlayer player, ConditionalEntry entry) {
-        return entry.enabled() && test(player, entry.conditions().condition());
+        return entry.enabled() && entry.conditions().activity().open() && test(player, entry.conditions().condition());
     }
 
     public static void require(ServerPlayer player, ConditionalEntry entry) {
+        if (visible(player, entry) && !entry.conditions().activity().open())
+            throw new AgentException(AgentFailure.ACTIVITY_CLOSED);
         if (!visible(player, entry) || !usable(player, entry)) throw new AgentException(AgentFailure.CONDITION_NOT_MET);
     }
 

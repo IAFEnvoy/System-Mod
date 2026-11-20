@@ -1,0 +1,12 @@
+{
+  "order": 39,
+  "icon": {
+    "id": "minecraft:paper"
+  },
+  "server": {
+    "type": "system:commission",
+    "commissions": "#system:default",
+    "capacity": 16
+  },
+  "client": "system:commission"
+}

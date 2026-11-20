@@ -60,10 +60,8 @@ public final class Wallets implements PlayerModule {
         return context.store().read(context.player(), data -> {
             WalletDataStorage wallet = ModuleData.get(data, EconomySystemModule.STORAGE);
             return new WalletOutput(this.currencies.listElements()
-                    .sorted(Comparator.<Holder.Reference<CurrencyDefinition>>comparingInt(holder -> holder.value().order())
-                            .reversed().thenComparing(holder -> holder.key().identifier()))
-                    .map(holder -> new WalletOutput.Entry(holder.key().identifier(), holder.value().name(), holder.value().description(),
-                            holder.value().icon(), wallet.getBalance(holder.key().identifier()))).toList());
+                    .sorted(Comparator.<Holder.Reference<CurrencyDefinition>>comparingInt(holder -> holder.value().order()).reversed().thenComparing(holder -> holder.key().identifier()))
+                    .map(holder -> new WalletOutput.Entry(holder.key().identifier(), holder.value().name(), holder.value().description(), holder.value().icon(), wallet.getBalance(holder.key().identifier()))).toList());
         });
     }
 

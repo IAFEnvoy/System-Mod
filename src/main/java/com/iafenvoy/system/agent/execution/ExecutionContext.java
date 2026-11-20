@@ -139,7 +139,9 @@ public final class ExecutionContext {
             throw new AgentException(AgentFailure.CONFIRM_REQUIRED);
     }
 
-    /** Explicit player text is also sufficient for reversible inventory deposits, unlike destructive confirmations. */
+    /**
+     * Explicit player text is also sufficient for reversible inventory deposits, unlike destructive confirmations.
+     */
     public void requirePlayerRequest(AgentAction action) {
         this.check();
         if (this.isEvent() || this.routeSource != RouteSource.STRUCTURED && this.routeSource != RouteSource.COMMAND
@@ -464,9 +466,11 @@ public final class ExecutionContext {
 
     private void checkModelOptions(ModelClient.Options options) {
         if (!options.webSearch()) return;
-        if (this.isEvent() || this.authorizedExternalTools.isEmpty()) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
+        if (this.isEvent() || this.authorizedExternalTools.isEmpty())
+            throw new AgentException(AgentFailure.NOT_AUTHORIZED);
         for (String id : this.authorizedExternalTools)
-            if (!this.engine.toolAvailable(this.player, id)) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
+            if (!this.engine.toolAvailable(this.player, id))
+                throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
     }
 
     public <I, O> O model(String instruction, MapCodec<I> inputCodec, I input, List<ModelClient.Function> functions,

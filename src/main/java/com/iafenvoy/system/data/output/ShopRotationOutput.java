@@ -10,7 +10,9 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
-/** Only stock refresh metadata crosses the wire, never the selection seed. */
+/**
+ * Only stock refresh metadata crosses the wire, never the selection seed.
+ */
 public record ShopRotationOutput(Identifier source, ShopRotation.Period period, int count,
                                  long refreshAt, String zone, boolean perPlayer) {
     public static final Codec<ShopRotationOutput> CODEC = RecordCodecBuilder.create(i -> i.group(

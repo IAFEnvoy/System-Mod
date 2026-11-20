@@ -272,7 +272,8 @@ public final class CommerceTransactions {
         });
     }
 
-    private record FixedStock(Map<Identifier, ShopPurchaseLimitOutput> limits, List<ShopOffer> offers, String revision, long capturedAt, ZoneId zone) {
+    private record FixedStock(Map<Identifier, ShopPurchaseLimitOutput> limits, List<ShopOffer> offers, String revision,
+                              long capturedAt, ZoneId zone) {
         private static final FixedStock EMPTY = new FixedStock(Map.of(), List.of(), "", 0, ZoneId.of("UTC"));
 
         private Map<Identifier, ShopPurchaseLimitOutput> current() {
@@ -325,7 +326,7 @@ public final class CommerceTransactions {
                         && (offer.value().trade() != ShopTrade.BUYBACK || payment.payable());
                 Optional<String> reference = input.quote() && available
                         ? Optional.of(this.quotes.create(context.player(), catalog, offer, payment, input.count()).id()) : Optional.empty();
-                previews.add(new CommercePreviewOutput(id, payment.getData(), available, reference, limit, conditionMet, Optional.empty(), Optional.of(offer.revision())));
+                previews.add(new CommercePreviewOutput(id, payment.getData(), available, reference, limit, conditionMet, Optional.empty(), Optional.of(offer.revision()), offer.value().conditions().activity().description()));
             }
             for (Identifier id : input.lotteries()) {
                 Holder<LotteryPool> pool = catalog.lotteries().stream().filter(value -> HolderHelper.id(value).equals(id)).findFirst()
@@ -339,7 +340,7 @@ public final class CommerceTransactions {
                 boolean available = conditionMet && payment.isSuccess() && status.available(input.count());
                 Optional<String> reference = input.quote() && available
                         ? Optional.of(this.quotes.createPool(context.player(), catalog, pool, payment, input.count()).id()) : Optional.empty();
-                previews.add(new CommercePreviewOutput(id, payment.getData(), available, reference, Optional.empty(), conditionMet, Optional.of(status), Optional.empty()));
+                previews.add(new CommercePreviewOutput(id, payment.getData(), available, reference, Optional.empty(), conditionMet, Optional.of(status), Optional.empty(), pool.value().conditions().activity().description()));
             }
             return List.copyOf(previews);
         });

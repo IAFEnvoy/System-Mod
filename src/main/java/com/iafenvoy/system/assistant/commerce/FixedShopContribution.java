@@ -20,7 +20,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/** Pure fixed-stock selection on workers or the game thread, keyed by world, owner and calendar cycle. */
+/**
+ * Pure fixed-stock selection on workers or the game thread, keyed by world, owner and calendar cycle.
+ */
 public final class FixedShopContribution implements ShopContribution {
     private final Identifier owner;
     private final ShopSystemModule module;
@@ -59,7 +61,8 @@ public final class FixedShopContribution implements ShopContribution {
 
     @Override
     public List<ShopRotationOutput> rotations(UUID player, CommerceCatalog catalog, ShopTrade trade) {
-        if (this.module.rotation().isEmpty() || this.pool(catalog).noneMatch(offer -> offer.value().trade() == trade)) return List.of();
+        if (this.module.rotation().isEmpty() || this.pool(catalog).noneMatch(offer -> offer.value().trade() == trade))
+            return List.of();
         ShopRotation rotation = this.module.rotation().orElseThrow();
         ZoneId zone = BusinessCalendar.zone();
         int count = (int) Math.min(rotation.count(), this.pool(catalog).filter(offer -> offer.value().trade() == trade).count());

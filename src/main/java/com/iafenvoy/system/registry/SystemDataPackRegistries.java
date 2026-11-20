@@ -22,6 +22,7 @@ public final class SystemDataPackRegistries {
         event.dataPackRegistry(SystemResourceKeys.TELEPORT_DESTINATION, TeleportDestination.CODEC);
         event.dataPackRegistry(SystemResourceKeys.EMOTION, EmotionDefinition.CODEC, EmotionDefinition.CODEC);
         event.dataPackRegistry(SystemResourceKeys.CURRENCY, CurrencyDefinition.DIRECT_CODEC, CurrencyDefinition.DIRECT_CODEC);
+        event.dataPackRegistry(SystemResourceKeys.COMMISSION, CommissionDefinition.CODEC);
         event.dataPackRegistry(SystemResourceKeys.ONLINE_JOB, OnlineJobEntry.CODEC.codec());
         event.dataPackRegistry(SystemResourceKeys.SYSTEM, SystemDefinition.CODEC, SystemDefinition.CODEC);
         event.dataPackRegistry(SystemResourceKeys.SYSTEM_MODULE, SystemModule.CODEC, SystemModule.CODEC);

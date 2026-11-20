@@ -1,6 +1,7 @@
 {
   "values": [
     "system:test_non_item",
-    "system:test_choice"
+    "system:test_choice",
+    "system:test_event"
   ]
 }

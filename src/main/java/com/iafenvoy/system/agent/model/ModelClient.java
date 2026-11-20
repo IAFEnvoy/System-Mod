@@ -29,7 +29,9 @@ public interface ModelClient extends AutoCloseable {
         return true;
     }
 
-    /** Provider-hosted search is separate from application function calls. */
+    /**
+     * Provider-hosted search is separate from application function calls.
+     */
     default boolean supportsWebSearch() {
         return false;
     }

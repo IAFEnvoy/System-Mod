@@ -28,7 +28,8 @@ public record QuestOutput(String id, Component title, Component chapter, String 
                           boolean completed, QuestSubmission submission, boolean starterGift, boolean rewardPending,
                           List<QuestTaskOutput> tasks, List<QuestRewardOutput> rewards, SectionPageOutput rewardPage,
                           SectionPageOutput taskPage, SectionPageOutput descriptionPage,
-                          SpeechContent speech, QuestSource source) implements CardData, Quest {
+                          SpeechContent speech, QuestSource source,
+                          QuestLifecycleOutput lifecycle) implements CardData, Quest {
     public static final MapCodec<QuestOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("id").forGetter(QuestOutput::id),
             ComponentSerialization.CODEC.fieldOf("title").forGetter(QuestOutput::title),
@@ -45,8 +46,27 @@ public record QuestOutput(String id, Component title, Component chapter, String 
             SectionPageOutput.codec("task").forGetter(QuestOutput::taskPage),
             SectionPageOutput.codec("description").forGetter(QuestOutput::descriptionPage),
             SpeechContent.CODEC.fieldOf("speech").forGetter(QuestOutput::speech),
-            QuestSource.CODEC.optionalFieldOf("source", QuestSource.UNKNOWN).forGetter(QuestOutput::source)
-    ).apply(i, QuestOutput::new));
+            Presentation.CODEC.forGetter(value -> new Presentation(value.source, value.lifecycle))
+    ).apply(i, (id, title, chapter, description, progress, completed, submission, starterGift, rewardPending, tasks, rewards,
+                rewardPage, taskPage, descriptionPage, speech, presentation) -> new QuestOutput(id, title, chapter, description,
+            progress, completed, submission, starterGift, rewardPending, tasks, rewards, rewardPage, taskPage, descriptionPage,
+            speech, presentation.source, presentation.lifecycle)));
+
+    private record Presentation(QuestSource source, QuestLifecycleOutput lifecycle) {
+        private static final MapCodec<Presentation> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
+                QuestSource.CODEC.optionalFieldOf("source", QuestSource.UNKNOWN).forGetter(Presentation::source),
+                QuestLifecycleOutput.CODEC.optionalFieldOf("lifecycle", QuestLifecycleOutput.NONE).forGetter(Presentation::lifecycle)
+        ).apply(i, Presentation::new));
+    }
+
+    public QuestOutput(String id, Component title, Component chapter, String description, double progress, boolean completed,
+                       QuestSubmission submission, boolean starterGift, boolean rewardPending, List<QuestTaskOutput> tasks,
+                       List<QuestRewardOutput> rewards, SectionPageOutput rewardPage, SectionPageOutput taskPage,
+                       SectionPageOutput descriptionPage, SpeechContent speech, QuestSource source) {
+        this(id, title, chapter, description, progress, completed, submission, starterGift, rewardPending, tasks, rewards,
+                rewardPage, taskPage, descriptionPage, speech, source, QuestLifecycleOutput.NONE);
+    }
+
     public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "quest");
 
     public QuestOutput {
@@ -68,6 +88,7 @@ public record QuestOutput(String id, Component title, Component chapter, String 
                 .list("tasks", this.tasks(), (prefix, task) -> task.fill(builder, prefix))
                 .list("rewards", this.rewards(), (prefix, reward) -> reward.fill(builder, prefix));
         this.submission.addButton(builder, this.id);
+        this.lifecycle.fill(builder, this.id);
         for (QuestRewardOutput reward : this.rewards) {
             if (!reward.claimable() || reward.claimRef().isEmpty()) continue;
             if (reward.choices().isPresent()) {

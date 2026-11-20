@@ -12,7 +12,9 @@ import net.minecraft.network.chat.Component;
 
 import java.util.List;
 
-/** A durable, player-selected reward. Options cannot contain another choice. */
+/**
+ * A durable, player-selected reward. Options cannot contain another choice.
+ */
 public record ChoiceSpaceContent(Component name, IconReference icon, List<Reward> options) implements SpaceContent {
     private static final Codec<Reward> OPTION = Codec.lazyInitialized(Reward.CODEC::codec).validate(reward ->
             reward.stacks().isEmpty() || reward.contents().stream().anyMatch(stack -> stack.content() instanceof ChoiceSpaceContent)

@@ -1,9 +1,9 @@
 package com.iafenvoy.system.module.client;
 
 import com.iafenvoy.system.data.input.SpaceTakeInput;
-import com.iafenvoy.system.data.output.SpaceOutput;
 import com.iafenvoy.system.data.output.RewardChoiceOutput;
 import com.iafenvoy.system.data.output.SpaceInventoryOutput;
+import com.iafenvoy.system.data.output.SpaceOutput;
 import com.iafenvoy.system.data.space.ItemSpaceContent;
 import net.minecraft.world.item.ItemStackTemplate;
 

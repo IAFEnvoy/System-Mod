@@ -20,6 +20,7 @@
     "system:test_redstone",
     "system:test_ender_pearl",
     "system:test_golden_apple",
-    "system:test_non_item"
+    "system:test_non_item",
+    "system:test_event"
   ]
 }

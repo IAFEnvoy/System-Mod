@@ -45,7 +45,7 @@ public record LotteryCatalogOutput(String revision, String query, List<Pool> poo
     }
 
     public record Pool(String id, Component label, int prizeCount, List<Prize> prizes,
-                       boolean available) implements ShelfEntry {
+                       boolean available, Optional<Component> activity) implements ShelfEntry {
         private static final int MAX_ICONS = 2;
 
         public static final Codec<Pool> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -53,7 +53,8 @@ public record LotteryCatalogOutput(String revision, String query, List<Pool> poo
                 ComponentSerialization.CODEC.fieldOf("label").forGetter(Pool::label),
                 Codec.INT.optionalFieldOf("prizeCount", 0).forGetter(Pool::prizeCount),
                 Prize.CODEC.listOf().optionalFieldOf("prizes", List.of()).forGetter(Pool::prizes),
-                Codec.BOOL.optionalFieldOf("available", true).forGetter(Pool::available)
+                Codec.BOOL.optionalFieldOf("available", true).forGetter(Pool::available),
+                ComponentSerialization.CODEC.optionalFieldOf("activity").forGetter(Pool::activity)
         ).apply(i, Pool::new));
 
         public Pool {
@@ -89,6 +90,7 @@ public record LotteryCatalogOutput(String revision, String query, List<Pool> poo
         @Override
         public List<Component> tooltip(int index) {
             List<Component> lines = new ArrayList<>();
+            this.activity.ifPresent(lines::add);
             if (!this.available) lines.add(Component.translatable("system.ui.condition_unmet"));
             lines.add(Component.translatable("system.lottery.catalog_odds").withStyle(ChatFormatting.DARK_GRAY));
             if (this.prizeCount > this.prizes.size())

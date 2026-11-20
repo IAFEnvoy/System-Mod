@@ -27,6 +27,10 @@ public interface QuestProvider {
      */
     CompletionStage<QuestOutput> detail(ExecutionContext context, QuestDetailInput input, Optional<String> revision);
 
+    interface Lifecycle extends QuestProvider {
+        CompletionStage<QuestOutput> change(ExecutionContext context, QuestLifecycleInput input);
+    }
+
     interface Submission extends QuestProvider {
         CompletionStage<QuestSubmitOutput> submit(ExecutionContext context, QuestSubmitInput input, Optional<String> revision);
     }

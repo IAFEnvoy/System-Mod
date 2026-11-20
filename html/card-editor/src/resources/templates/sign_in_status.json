@@ -15,6 +15,12 @@
     },
     {
       "type": "system:text",
+      "text": "{{activities.*}}",
+      "repeat": "activities",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
       "text": "{{period_counts}}",
       "style": "card_context"
     },

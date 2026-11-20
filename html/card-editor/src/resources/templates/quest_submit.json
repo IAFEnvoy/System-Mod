@@ -6,6 +6,24 @@
     },
     {
       "type": "system:text",
+      "text": "{{lifecycle_state}}",
+      "when": "lifecycle_state",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "text": "{{eligibility}}",
+      "when": "eligibility",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
+      "text": "{{delivery_quote}}",
+      "when": "delivery_quote",
+      "style": "card_context"
+    },
+    {
+      "type": "system:text",
       "translate": "system.ui.quest_source",
       "args": [
         "{{source}}"

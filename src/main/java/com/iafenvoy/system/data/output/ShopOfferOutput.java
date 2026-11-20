@@ -28,7 +28,7 @@ public record ShopOfferOutput(Identifier id, Component label, List<ItemStackTemp
                               CommerceCatalog.Price price,
                               boolean paymentAvailable, String catalogRevision,
                               Optional<ShopPurchaseLimitOutput> purchaseLimit,
-                              boolean conditionMet, ShopTrade trade) implements CardData {
+                              boolean conditionMet, ShopTrade trade, Optional<Component> activity) implements CardData {
     public static final MapCodec<ShopOfferOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Identifier.CODEC.fieldOf("id").forGetter(ShopOfferOutput::id),
             ComponentSerialization.CODEC.fieldOf("label").forGetter(ShopOfferOutput::label),
@@ -39,7 +39,8 @@ public record ShopOfferOutput(Identifier id, Component label, List<ItemStackTemp
             Codec.STRING.fieldOf("catalogRevision").forGetter(ShopOfferOutput::catalogRevision),
             ShopPurchaseLimitOutput.CODEC.optionalFieldOf("purchaseLimit").forGetter(ShopOfferOutput::purchaseLimit),
             Codec.BOOL.optionalFieldOf("conditionMet", true).forGetter(ShopOfferOutput::conditionMet),
-            ShopTrade.CODEC.optionalFieldOf("trade", ShopTrade.PURCHASE).forGetter(ShopOfferOutput::trade)
+            ShopTrade.CODEC.optionalFieldOf("trade", ShopTrade.PURCHASE).forGetter(ShopOfferOutput::trade),
+            ComponentSerialization.CODEC.optionalFieldOf("activity").forGetter(ShopOfferOutput::activity)
     ).apply(i, ShopOfferOutput::new));
 
     public ShopOfferOutput {
@@ -74,6 +75,7 @@ public record ShopOfferOutput(Identifier id, Component label, List<ItemStackTemp
                 .enable("condition_unmet", !this.conditionMet)
                 .enable("payment_unavailable", this.conditionMet && !this.paymentAvailable && this.purchaseLimit.map(ShopPurchaseLimitOutput::available).orElse(true))
                 .put("purchase_limit", this.purchaseLimit.map(limit -> limit.description(this.trade)).orElse(Component.empty()));
+        this.activity.ifPresent(value -> builder.put("activity", value));
         if (this.purchaseLimit.map(ShopPurchaseLimitOutput::available).orElse(true) || !this.conditionMet)
             builder.serverButton("quote", this.trade.key("quote_action"), Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop_quote"), Map.of("offer", this.id.toString(), "revision", this.catalogRevision, "trade", this.trade.getSerializedName()))
                     .actionParameter("disabled", !this.conditionMet);

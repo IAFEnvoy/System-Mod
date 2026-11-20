@@ -3,6 +3,8 @@ package com.iafenvoy.system.data.output;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.resources.Identifier;
 
 import java.util.Optional;
@@ -13,7 +15,8 @@ import java.util.Optional;
 public record CommercePreviewOutput(Identifier source, CommerceCatalog.Price price, boolean available,
                                     Optional<String> quoteRef, Optional<ShopPurchaseLimitOutput> purchaseLimit,
                                     boolean conditionMet,
-                                    Optional<LotteryStatusOutput> lottery, Optional<String> stockRevision) {
+                                    Optional<LotteryStatusOutput> lottery, Optional<String> stockRevision,
+                                    Optional<Component> activity) {
     public static final Codec<CommercePreviewOutput> CODEC = RecordCodecBuilder.create(i -> i.group(
             Identifier.CODEC.fieldOf("source").forGetter(CommercePreviewOutput::source),
             CommerceCatalog.Price.CODEC.fieldOf("price").forGetter(CommercePreviewOutput::price),
@@ -22,6 +25,7 @@ public record CommercePreviewOutput(Identifier source, CommerceCatalog.Price pri
             ShopPurchaseLimitOutput.CODEC.optionalFieldOf("purchaseLimit").forGetter(CommercePreviewOutput::purchaseLimit),
             Codec.BOOL.optionalFieldOf("conditionMet", true).forGetter(CommercePreviewOutput::conditionMet),
             LotteryStatusOutput.CODEC.optionalFieldOf("lottery").forGetter(CommercePreviewOutput::lottery),
-            Codec.STRING.optionalFieldOf("stockRevision").forGetter(CommercePreviewOutput::stockRevision)
+            Codec.STRING.optionalFieldOf("stockRevision").forGetter(CommercePreviewOutput::stockRevision),
+            ComponentSerialization.CODEC.optionalFieldOf("activity").forGetter(CommercePreviewOutput::activity)
     ).apply(i, CommercePreviewOutput::new));
 }

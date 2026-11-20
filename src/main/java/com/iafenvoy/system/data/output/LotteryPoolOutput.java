@@ -23,7 +23,8 @@ import java.util.Optional;
 public record LotteryPoolOutput(Identifier id, Component label, Optional<CommerceCatalog.Price> price, int prizeCount,
                                 boolean paymentAvailable, List<LotteryPrizeOutput> prizes, Optional<String> quoteRef,
                                 String catalogRevision, boolean conditionMet, int offset,
-                                Optional<LotteryStatusOutput> status) implements CardData {
+                                Optional<LotteryStatusOutput> status,
+                                Optional<Component> activity) implements CardData {
     public static final MapCodec<LotteryPoolOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Identifier.CODEC.fieldOf("id").forGetter(LotteryPoolOutput::id),
             ComponentSerialization.CODEC.fieldOf("label").forGetter(LotteryPoolOutput::label),
@@ -35,7 +36,8 @@ public record LotteryPoolOutput(Identifier id, Component label, Optional<Commerc
             Codec.STRING.fieldOf("catalogRevision").forGetter(LotteryPoolOutput::catalogRevision),
             Codec.BOOL.optionalFieldOf("conditionMet", true).forGetter(LotteryPoolOutput::conditionMet),
             Codec.INT.optionalFieldOf("offset", 0).forGetter(LotteryPoolOutput::offset),
-            LotteryStatusOutput.CODEC.optionalFieldOf("status").forGetter(LotteryPoolOutput::status)
+            LotteryStatusOutput.CODEC.optionalFieldOf("status").forGetter(LotteryPoolOutput::status),
+            ComponentSerialization.CODEC.optionalFieldOf("activity").forGetter(LotteryPoolOutput::activity)
     ).apply(i, LotteryPoolOutput::new));
     public static final Identifier TEMPLATE = Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "lottery_pool");
 
@@ -46,6 +48,7 @@ public record LotteryPoolOutput(Identifier id, Component label, Optional<Commerc
     @Override
     public CardBuilder buildCard() {
         CardBuilder builder = CardBuilder.template(TEMPLATE).title("system.result.lottery_pool").summary(this.label);
+        this.activity.ifPresent(value -> builder.put("activity", value));
         builder.put("label", this.label()).put("id", this.id().toString()).put("prize_count", this.prizeCount())
                 .enable("condition_unmet", !this.conditionMet)
                 .enable("payment_unavailable", this.conditionMet && !this.paymentAvailable && this.status.map(status -> status.available(status.count())).orElse(true))

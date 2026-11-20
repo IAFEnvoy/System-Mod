@@ -7,7 +7,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.net.URI;
 import java.util.*;
 
-/** Public search metadata only; encrypted pages and provider reasoning never enter application observations. */
+/**
+ * Public search metadata only; encrypted pages and provider reasoning never enter application observations.
+ */
 public final class DeepSeekWebSearch {
     private DeepSeekWebSearch() {
     }
@@ -66,11 +68,13 @@ public final class DeepSeekWebSearch {
 
         public ModelClient.Reply reply(String content, int tokens) {
             Map<String, ModelClient.WebSource> observed = new LinkedHashMap<>();
-            for (Step step : this.steps) for (Call call : step.calls) {
-                if (!call.status.equals("completed") || !Set.of("deepseek_web_search", "deepseek_read_url").contains(call.type)) continue;
-                call.sources.forEach(page -> observe(observed, page));
-                call.page.ifPresent(page -> observe(observed, page));
-            }
+            for (Step step : this.steps)
+                for (Call call : step.calls) {
+                    if (!call.status.equals("completed") || !Set.of("deepseek_web_search", "deepseek_read_url").contains(call.type))
+                        continue;
+                    call.sources.forEach(page -> observe(observed, page));
+                    call.page.ifPresent(page -> observe(observed, page));
+                }
             Map<String, Integer> ids = new LinkedHashMap<>();
             List<ModelClient.WebSource> sources = new ArrayList<>();
             Map<Integer, Set<Integer>> markers = new TreeMap<>(Comparator.reverseOrder());

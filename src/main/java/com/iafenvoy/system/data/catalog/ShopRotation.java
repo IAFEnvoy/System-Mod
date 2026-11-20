@@ -10,7 +10,9 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Locale;
 
-/** Calendar-based fixed stock selection; no reroll occurs when browsing or searching. */
+/**
+ * Calendar-based fixed stock selection; no reroll occurs when browsing or searching.
+ */
 public record ShopRotation(Period period, int count, boolean perPlayer, long seed) {
     public static final Codec<ShopRotation> CODEC = RecordCodecBuilder.create(i -> i.group(
             Period.CODEC.optionalFieldOf("period", Period.DAILY).forGetter(ShopRotation::period),

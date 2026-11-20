@@ -4,7 +4,10 @@
       "type": "system:flex",
       "direction": "row",
       "wrap": false,
-      "style": ["item_entry", "item_labeled"],
+      "style": [
+        "item_entry",
+        "item_labeled"
+      ],
       "children": [
         {
           "type": "system:item",

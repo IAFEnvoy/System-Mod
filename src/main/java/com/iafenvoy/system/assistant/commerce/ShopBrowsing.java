@@ -96,6 +96,7 @@ public final class ShopBrowsing {
                                                Optional<ShopPurchaseLimitOutput> limit, boolean available) {
         ShopOfferEntry entry = offer.value();
         List<Component> details = new ArrayList<>();
+        entry.conditions().activity().description().ifPresent(details::add);
         if (requirement != null) {
             details.add(Component.translatable(entry.trade().key("cost")));
             requirement.items().forEach(item -> details.add(Component.translatable("system.ui.item_amount", item.item().create().getHoverName(), item.amount())));

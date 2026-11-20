@@ -9,19 +9,14 @@ import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.item.ItemSearches;
 import com.iafenvoy.system.assistant.signin.SignIns;
-import com.iafenvoy.system.data.input.SpaceTakeInput;
 import com.iafenvoy.system.data.input.RewardChoiceInput;
+import com.iafenvoy.system.data.input.SpaceTakeInput;
 import com.iafenvoy.system.data.item.ItemSearchBatch;
+import com.iafenvoy.system.data.output.RewardChoiceOutput;
 import com.iafenvoy.system.data.output.SpaceOutput;
 import com.iafenvoy.system.data.output.StateOutput;
-import com.iafenvoy.system.data.output.RewardChoiceOutput;
-import com.iafenvoy.system.data.space.ChoiceReceipt;
-import com.iafenvoy.system.data.space.ChoiceSpaceContent;
 import com.iafenvoy.system.data.progress.EarnedReward;
-import com.iafenvoy.system.data.space.ItemSpaceContent;
-import com.iafenvoy.system.data.space.SpaceContent;
-import com.iafenvoy.system.data.space.SpaceContentType;
-import com.iafenvoy.system.data.space.SpaceEntry;
+import com.iafenvoy.system.data.space.*;
 import com.iafenvoy.system.data.store.Delivery;
 import com.iafenvoy.system.data.store.Reward;
 import com.iafenvoy.system.module.ModuleData;
@@ -100,7 +95,9 @@ public final class SystemSpace implements PlayerModule {
         SpaceContentType<T> type = SpaceContentType.of(content);
         return new SpaceOutput.Entry(entries.getFirst().id(), type.searchId(content), type.name(content), type.icon(content),
                 entries.stream().mapToLong(SpaceEntry::amount).reduce(0, (sum, amount) -> sum > Long.MAX_VALUE - amount ? Long.MAX_VALUE : sum + amount), blocked,
-                content instanceof ItemSpaceContent(ItemStackTemplate item) ? Optional.of(item) : Optional.empty(), content instanceof ChoiceSpaceContent);
+                content instanceof ItemSpaceContent(
+                        ItemStackTemplate item
+                ) ? Optional.of(item) : Optional.empty(), content instanceof ChoiceSpaceContent);
     }
 
     private static <T extends SpaceContent> int batch(T content) {
@@ -170,7 +167,8 @@ public final class SystemSpace implements PlayerModule {
             if (!"PENDING".equals(delivery.state)) throw new AgentException(AgentFailure.EFFECT_UNKNOWN);
             List<SpaceEntry> entries = storage.getEntries().values().stream()
                     .filter(entry -> entry.entitlement().filter(entitlement::equals).isPresent()).toList();
-            if (entries.stream().anyMatch(entry -> entry.content() instanceof ChoiceSpaceContent)) return new Plan(Map.of(), entries);
+            if (entries.stream().anyMatch(entry -> entry.content() instanceof ChoiceSpaceContent))
+                return new Plan(Map.of(), entries);
             Map<String, Long> amounts = new LinkedHashMap<>();
             entries.forEach(entry -> amounts.put(entry.id(), entry.amount()));
             if (amounts.isEmpty()) throw new AgentException(AgentFailure.STALE_REFERENCE);
@@ -198,8 +196,10 @@ public final class SystemSpace implements PlayerModule {
             if (previous != null) return new RewardChoiceOutput(previous);
             SpaceEntry entry = space.getEntries().get(input.entry());
             if (entry == null || entry.state() != SpaceEntry.State.AVAILABLE || entry.amount() != input.ticket()
-                    || !(entry.content() instanceof ChoiceSpaceContent choice)) throw new AgentException(AgentFailure.STALE_REFERENCE);
-            if (input.option() < -1 || input.option() >= choice.options().size()) throw new AgentException(AgentFailure.INVALID_SELECTION);
+                    || !(entry.content() instanceof ChoiceSpaceContent choice))
+                throw new AgentException(AgentFailure.STALE_REFERENCE);
+            if (input.option() < -1 || input.option() >= choice.options().size())
+                throw new AgentException(AgentFailure.INVALID_SELECTION);
             return new RewardChoiceOutput(entry.id(), input.ticket(), choice.name(), choice.options(), input.option(), false);
         });
     }

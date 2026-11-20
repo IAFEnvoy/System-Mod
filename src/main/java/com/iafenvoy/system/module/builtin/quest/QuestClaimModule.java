@@ -36,7 +36,8 @@ public final class QuestClaimModule extends AbstractAgentModule<QuestClaimInput>
     @Override
     public AgentResult execute(ExecutionContext context, QuestClaimInput input) throws Exception {
         QuestClaimOutput result = context.tool(BuiltinTools.QUEST_CLAIM, "claim", input);
-        if (result.questId().isEmpty()) return AgentResult.data("system.result.claim_unavailable", result);
+        if (result.questId().isEmpty())
+            return AgentResult.data(result.deliveryVerified().orElse(false) ? "system.result.claim" : "system.result.claim_unavailable", result);
         QuestOutput updated = context.tool(BuiltinTools.QUEST_DETAIL, "refresh", QuestDetailInput.byId(result.questId().get()));
         return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.claim", "",
                 updated.rewardPending()

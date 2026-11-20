@@ -51,7 +51,9 @@ public final class QuestWorkflows {
         ToolRegistry.Tool<StarterGiftInput, StarterGiftOutput> giftClaim = context.tool(BuiltinTools.STARTER_GIFT,
                 () -> new ToolRegistry.Tool<>(BuiltinTools.STARTER_GIFT, true, false, false, quests::claimGifts));
         context.engine().tools().registerAll(context.id(), List.of(guide));
-        return List.of(new QuestQueryModule(query), new QuestDetailModule(find, detail, gifts), new QuestGuideModule(guide),
+        ToolRegistry.Tool<QuestLifecycleInput, QuestOutput> lifecycle = context.tool(BuiltinTools.QUEST_LIFECYCLE,
+                () -> new ToolRegistry.Tool<>(BuiltinTools.QUEST_LIFECYCLE, true, false, false, quests::change));
+        return List.of(new QuestLifecycleModule(lifecycle), new QuestQueryModule(query), new QuestDetailModule(find, detail, gifts), new QuestGuideModule(guide),
                 new QuestClaimModule(claim, detail), new QuestSubmitModule(submit), new StarterGiftModule(giftClaim), new StarterGiftQueryModule(gifts));
     }
 }

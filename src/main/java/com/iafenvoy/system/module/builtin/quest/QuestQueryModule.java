@@ -29,6 +29,7 @@ public final class QuestQueryModule extends AbstractAgentModule<QuestQueryInput>
         return ModuleRouting.<QuestQueryInput>defaults()
                 .button(a -> new QuestQueryInput(a.text("query"), QuestQueryInput.View.parse(a.text("view"))))
                 .command(AgentCommand.argument("[query]", text -> new QuestQueryInput(text, QuestQueryInput.View.ACTIVE), "quests", "任务"))
+                .command(AgentCommand.literal(new QuestQueryInput("system:commission#*", QuestQueryInput.View.ACTIVE), "commissions", "委托"))
                 .command(AgentCommand.literal(new QuestQueryInput("", QuestQueryInput.View.CLAIMABLE), "claimable", "可领奖励"))
                 .command(AgentCommand.argument("[query]", text -> new QuestQueryInput(text, QuestQueryInput.View.SUBMITTABLE), "submittable", "可提交任务", "可勾选任务"))
                 .semantic(RoutingProfile.read(QuestQueryModule::query,

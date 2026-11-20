@@ -27,7 +27,7 @@ public record ShopQuoteOutput(String quoteRef, Component label, List<ItemStackTe
                               List<SpaceStack> contents,
                               CommerceCatalog.Price price,
                               Optional<ShopPurchaseLimitOutput> purchaseLimit, ShopTrade trade, Identifier offer,
-                              String revision, int count) implements CardData {
+                              String revision, int count, Optional<Component> activity) implements CardData {
     public static final MapCodec<ShopQuoteOutput> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
             Codec.STRING.fieldOf("quoteRef").forGetter(ShopQuoteOutput::quoteRef),
             ComponentSerialization.CODEC.fieldOf("label").forGetter(ShopQuoteOutput::label),
@@ -38,7 +38,8 @@ public record ShopQuoteOutput(String quoteRef, Component label, List<ItemStackTe
             ShopTrade.CODEC.optionalFieldOf("trade", ShopTrade.PURCHASE).forGetter(ShopQuoteOutput::trade),
             Identifier.CODEC.optionalFieldOf("offer", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "unknown")).forGetter(ShopQuoteOutput::offer),
             Codec.STRING.optionalFieldOf("revision", "").forGetter(ShopQuoteOutput::revision),
-            Codec.intRange(1, 100).optionalFieldOf("count", 1).forGetter(ShopQuoteOutput::count)
+            Codec.intRange(1, 100).optionalFieldOf("count", 1).forGetter(ShopQuoteOutput::count),
+            ComponentSerialization.CODEC.optionalFieldOf("activity").forGetter(ShopQuoteOutput::activity)
     ).apply(i, ShopQuoteOutput::new));
 
     public ShopQuoteOutput {
@@ -66,6 +67,7 @@ public record ShopQuoteOutput(String quoteRef, Component label, List<ItemStackTe
                 .put("purchase_limit", this.purchaseLimit.map(limit -> limit.description(this.trade)).orElse(Component.empty()))
                 .enable("confirm", true)
                 .serverButton("purchase", this.trade.key("confirm_action"), Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop_purchase"), Map.of("quote", this.quoteRef));
+        this.activity.ifPresent(value -> builder.put("activity", value));
         if (!this.revision.isEmpty())
             for (int quantity : List.of(1, 8, 16, 64))
                 builder.serverButton("quantity." + quantity, "system.shop.quantity_option", Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "shop_quote"),

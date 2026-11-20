@@ -1,13 +1,16 @@
 # 条目条件与奖励效果
 
-商品、奖池、签到奖励和在线作业支持条目级条件，统一复用 Saturn `EntityCondition`。模块自己的条件决定入口是否启用；这里的条件决定入口内某个具体条目是否可见、是否可执行。
+商品、奖池、签到奖励、在线作业和固定交付委托支持条目级条件，统一复用 Saturn `EntityCondition`。模块自己的条件决定入口是否启用；这里的条件决定入口内某个具体条目是否可见、是否可执行。
 
 | 字段 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `display_condition` | EntityCondition 对象或数组 | 始终成立 | 不成立时从查询结果和候选中隐藏，也不能直接按 ID 操作 |
-| `condition` | EntityCondition 对象或数组 | 始终成立 | 不成立时仍可预览，显示“条件未满足”，不能购买、抽取、选作签到奖励或开始作业 |
+| `condition` | EntityCondition 对象或数组 | 始终成立 | 不成立时仍可预览，不能购买、抽取、选作签到奖励、开始作业或接取委托 |
+| `activity` | ActivityWindow 对象 | 始终开放 | 日期、星期和每日时段准入，使用服务端业务时区 |
 
-两个字段直接写在条目根对象中，不额外包一层 `conditions`。省略时放行；数组表示各条件全部成立，其他组合可使用 Saturn 的组合条件。格式错误或未注册的条件类型会使注册表加载失败，不作为“无条件”处理。
+此外可使用 [activity 活动窗口](activity-windows.md) 限制日期、星期和每日时段；关闭时仍可预览，真实操作返回 ACTIVITY_CLOSED。
+
+这些字段直接写在条目根对象中，不额外包一层 `conditions`。省略时放行；数组表示各条件全部成立，其他组合可使用 Saturn 的组合条件。格式错误或未注册的条件类型会使注册表加载失败，不作为“无条件”处理。
 
 ## 支持范围
 
@@ -17,6 +20,7 @@
 | `system:lottery_pool` | `data/<namespace>/system/lottery_pool/<path>.json` | 确认抽取、实际扣款前 |
 | `system:signin_reward` | `data/<namespace>/system/signin_reward/<path>.json` | AI / 本地选择候选前，以及选择结束、签到奖励入账前 |
 | `system:online_job` | `data/<namespace>/system/online_job/<path>.json` | 开始新作业前 |
+| `system:commission` | `data/<namespace>/system/commission/<path>.json` | 接取新委托前；已接取保留资格 |
 
 `enabled: false` 仍优先禁用条目；模块是否启用、模块的 ID / tag 可选项、限购和费用检查也继续生效。商品和奖池可以打开被执行条件锁定的详情，但操作按钮禁用；作业开始按钮禁用。AI 签到状态展示当前可见候选及锁定提示，模型只收到可执行候选；没有合格候选时不请求签到模型。离线签到先去除被条件锁定的包，再按 Evaluate 价值筛选，状态仅展示最终可选包；没有候选时不入账，见[每日签到](sign-in.md)。
 
@@ -76,4 +80,4 @@
 
 执行效果继续使用[奖励 `contents`](rewards.md) 中的 `system:action`，通过 Saturn `EntityAction` 分派；在系统空间领取对应份数时执行。没有新增另一套购买后 / 开工后 action，也不会在预览中执行效果。
 
-四类定义实现 `ConditionalEntry`，共用 `EntryConditions` 的平铺 MapCodec。`CatalogAccess` 负责调度到游戏线程和统一求值；商城服务 `CommerceCatalogs.View` 携带可见目录及锁定 ID 集合，作业服务采用相同求值方法。作业卡片使用展示专用 Codec，不把完整服务端条件写入客户端快照。
+这些定义实现 `ConditionalEntry`，共用 `EntryConditions` 的平铺 MapCodec。`CatalogAccess` 负责调度到游戏线程和统一求值；商城服务 `CommerceCatalogs.View` 携带可见目录及锁定 ID 集合，作业服务采用相同求值方法。作业卡片使用展示专用 Codec，不把完整服务端条件写入客户端快照。

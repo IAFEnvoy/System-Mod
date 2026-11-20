@@ -1,0 +1,46 @@
+{
+  "label": {
+    "text": "每周铁料"
+  },
+  "description": {
+    "text": "接取后准备整批材料，确认交付，再独立领取报酬。"
+  },
+  "chapter": {
+    "text": "开发委托"
+  },
+  "icon": {
+    "id": "minecraft:iron_ingot"
+  },
+  "costs": [
+    {
+      "type": "saturn:item",
+      "items": [
+        "minecraft:iron_ingot"
+      ],
+      "amount": 4
+    }
+  ],
+  "reward": {
+    "label": {
+      "text": "每周铁料报酬"
+    },
+    "items": [
+      {
+        "id": "minecraft:bread",
+        "count": 4
+      }
+    ],
+    "contents": [
+      {
+        "content": {
+          "type": "system:experience"
+        },
+        "amount": 20
+      }
+    ]
+  },
+  "limit": {
+    "period": "weekly",
+    "count": 1
+  }
+}

@@ -5,8 +5,8 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.agent.routing.RouteSource;
+import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.data.input.SpaceDepositInput;
 import com.iafenvoy.system.data.module.SystemModule;
@@ -31,7 +31,9 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Server-issued slot snapshots and durable reservations guard inventory-to-space transfers. */
+/**
+ * Server-issued slot snapshots and durable reservations guard inventory-to-space transfers.
+ */
 public final class SpaceDeposits implements PlayerModule {
     private record Quote(String id, Identifier owner, SystemModule module, ServerPlayer player, int slot,
                          ItemStack target, ItemStackTemplate snapshot, int maxStack, long incarnation, long expires) {
@@ -116,60 +118,60 @@ public final class SpaceDeposits implements PlayerModule {
         }
         if (!this.active.add(context.player())) throw new AgentException(AgentFailure.BUSY);
         return this.game.onPlayer(context, player -> {
-            Quote quote = input.reference().isEmpty() ? this.quote(context, player, owner, player.getInventory().getSelectedSlot())
-                    : this.quotes.getOrDefault(context.player(), Map.of()).get(input.reference());
-            if (quote == null || !quote.owner.equals(owner)) throw new AgentException(AgentFailure.STALE_REFERENCE);
-            this.validate(context, player, quote);
-            return quote;
-        }).thenCompose(quote -> this.engine.maintenance(() -> {
-            context.check();
-            int amount = input.stack() ? Math.min(quote.snapshot.count(), quote.maxStack) : input.amount();
-            if (amount < 1 || amount > quote.snapshot.count()) throw new AgentException(AgentFailure.INSUFFICIENT_COST);
-            SpaceDeposit order = new SpaceDeposit(quote.id, quote.snapshot, quote.slot, amount, SpaceDeposit.State.PREPARED, System.currentTimeMillis(), "", "");
-            Settlement settlement = new Settlement(context, order);
-            this.pending.put(context.player(), settlement);
-            try {
-                context.store().update(context.player(), data -> {
-                    context.check();
-                    ModuleData.get(data, SpaceSystemModule.STORAGE).beginDeposit(order, capacity);
-                    return null;
-                });
-            } catch (RuntimeException error) {
-                this.pending.remove(context.player(), settlement);
-                throw error;
-            }
-            CompletionStage<Void> execution;
-            try {
-                context.store().update(context.player(), data -> {
-                    context.check();
-                    ModuleData.get(data, SpaceSystemModule.STORAGE).executingDeposit(order.id());
-                    return null;
-                });
-                execution = this.game.onPlayer(context, player -> {
+                    Quote quote = input.reference().isEmpty() ? this.quote(context, player, owner, player.getInventory().getSelectedSlot())
+                            : this.quotes.getOrDefault(context.player(), Map.of()).get(input.reference());
+                    if (quote == null || !quote.owner.equals(owner)) throw new AgentException(AgentFailure.STALE_REFERENCE);
                     this.validate(context, player, quote);
-                    if (input.reference().isEmpty() && player.getInventory().getSelectedSlot() != quote.slot)
-                        throw new AgentException(AgentFailure.STALE_REFERENCE);
+                    return quote;
+                }).thenCompose(quote -> this.engine.maintenance(() -> {
                     context.check();
-                    Map<String, Quote> issued = this.quotes.get(context.player());
-                    if (issued != null) issued.remove(quote.id);
-                    settlement.touched.set(true);
-                    quote.target.shrink(amount);
-                    player.getInventory().setChanged();
-                    player.containerMenu.broadcastChanges();
-                    return null;
-                });
-            } catch (RuntimeException error) {
-                execution = CompletableFuture.failedFuture(error);
-            }
-            execution.whenComplete((_, error) -> {
-                settlement.error = error;
-                settlement.ready = true;
-                this.settle(settlement);
-            });
-            return settlement.result;
-        }).thenCompose(stage -> stage)).thenCompose(order -> this.engine.maintenance(() -> this.inventory(context, owner, capacity,
-                Component.translatable("system.space.deposited", order.item().create().getHoverName(), order.amount()))).thenCompose(stage -> stage)
-                .thenApply(output -> output.withDeposit(order.item())))
+                    int amount = input.stack() ? Math.min(quote.snapshot.count(), quote.maxStack) : input.amount();
+                    if (amount < 1 || amount > quote.snapshot.count()) throw new AgentException(AgentFailure.INSUFFICIENT_COST);
+                    SpaceDeposit order = new SpaceDeposit(quote.id, quote.snapshot, quote.slot, amount, SpaceDeposit.State.PREPARED, System.currentTimeMillis(), "", "");
+                    Settlement settlement = new Settlement(context, order);
+                    this.pending.put(context.player(), settlement);
+                    try {
+                        context.store().update(context.player(), data -> {
+                            context.check();
+                            ModuleData.get(data, SpaceSystemModule.STORAGE).beginDeposit(order, capacity);
+                            return null;
+                        });
+                    } catch (RuntimeException error) {
+                        this.pending.remove(context.player(), settlement);
+                        throw error;
+                    }
+                    CompletionStage<Void> execution;
+                    try {
+                        context.store().update(context.player(), data -> {
+                            context.check();
+                            ModuleData.get(data, SpaceSystemModule.STORAGE).executingDeposit(order.id());
+                            return null;
+                        });
+                        execution = this.game.onPlayer(context, player -> {
+                            this.validate(context, player, quote);
+                            if (input.reference().isEmpty() && player.getInventory().getSelectedSlot() != quote.slot)
+                                throw new AgentException(AgentFailure.STALE_REFERENCE);
+                            context.check();
+                            Map<String, Quote> issued = this.quotes.get(context.player());
+                            if (issued != null) issued.remove(quote.id);
+                            settlement.touched.set(true);
+                            quote.target.shrink(amount);
+                            player.getInventory().setChanged();
+                            player.containerMenu.broadcastChanges();
+                            return null;
+                        });
+                    } catch (RuntimeException error) {
+                        execution = CompletableFuture.failedFuture(error);
+                    }
+                    execution.whenComplete((_, error) -> {
+                        settlement.error = error;
+                        settlement.ready = true;
+                        this.settle(settlement);
+                    });
+                    return settlement.result;
+                }).thenCompose(stage -> stage)).thenCompose(order -> this.engine.maintenance(() -> this.inventory(context, owner, capacity,
+                                Component.translatable("system.space.deposited", order.item().create().getHoverName(), order.amount()))).thenCompose(stage -> stage)
+                        .thenApply(output -> output.withDeposit(order.item())))
                 .whenComplete((_, _) -> {
                     if (!this.pending.containsKey(context.player())) this.active.remove(context.player());
                 });
@@ -186,8 +188,9 @@ public final class SpaceDeposits implements PlayerModule {
                 this.pending.remove(settlement.player, settlement);
                 this.active.remove(settlement.player);
                 if (settlement.error == null) settlement.result.complete(order);
-                else settlement.result.completeExceptionally(new AgentException(settlement.touched.get() ? AgentFailure.EFFECT_UNKNOWN
-                        : AgentException.failure(settlement.error), settlement.error));
+                else
+                    settlement.result.completeExceptionally(new AgentException(settlement.touched.get() ? AgentFailure.EFFECT_UNKNOWN
+                            : AgentException.failure(settlement.error), settlement.error));
             } else if (AgentException.failure(error) == AgentFailure.CANCELLED) {
                 this.pending.remove(settlement.player, settlement);
                 this.active.remove(settlement.player);

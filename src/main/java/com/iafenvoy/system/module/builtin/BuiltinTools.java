@@ -44,6 +44,7 @@ public final class BuiltinTools {
     public static final ToolRegistry.Type<FeatureInput, FeatureOutput> FEATURE_UNLOCK = new ToolRegistry.Type<>("feature.unlock", FeatureInput.CODEC, FeatureOutput.CODEC);
     public static final ToolRegistry.Type<ShopPurchaseInput, PurchaseReceiptOutput> SHOP_PURCHASE = new ToolRegistry.Type<>("game.shop.purchase", ShopPurchaseInput.CODEC, PurchaseReceiptOutput.CODEC.codec());
     public static final ToolRegistry.Type<LotteryDrawInput, PurchaseReceiptOutput> LOTTERY_DRAW = new ToolRegistry.Type<>("game.lottery.draw", LotteryDrawInput.CODEC, PurchaseReceiptOutput.CODEC.codec());
+    public static final ToolRegistry.Type<QuestLifecycleInput, QuestOutput> QUEST_LIFECYCLE = new ToolRegistry.Type<>("quest.lifecycle", QuestLifecycleInput.CODEC, QuestOutput.CODEC.codec());
     public static final ToolRegistry.Type<QuestQueryInput, List<QuestBriefOutput>> QUEST_QUERY = new ToolRegistry.Type<>("quest.query", QuestQueryInput.CODEC, QuestBriefOutput.CODEC.listOf());
     public static final ToolRegistry.Type<QuestFindInput, List<QuestBriefOutput>> QUEST_FIND = new ToolRegistry.Type<>("quest.find", QuestFindInput.CODEC, QuestBriefOutput.CODEC.listOf());
     public static final ToolRegistry.Type<QuestGuideInput, QuestGuideOutput> QUEST_GUIDE = new ToolRegistry.Type<>("quest.guide", QuestGuideInput.CODEC, QuestGuideOutput.CODEC.codec());

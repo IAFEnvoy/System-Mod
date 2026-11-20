@@ -39,6 +39,7 @@ public final class SystemResourceKeys {
     public static final ResourceKey<Registry<TeleportDestination>> TELEPORT_DESTINATION = create("teleport_destination");
     public static final ResourceKey<Registry<EmotionDefinition>> EMOTION = create("emotion");
     public static final ResourceKey<Registry<CurrencyDefinition>> CURRENCY = create("currency");
+    public static final ResourceKey<Registry<CommissionDefinition>> COMMISSION = create("commission");
     public static final ResourceKey<Registry<OnlineJobEntry>> ONLINE_JOB = create("online_job");
     public static final ResourceKey<Registry<SystemModule>> SYSTEM_MODULE = create("system_module");
     public static final ResourceKey<Registry<SystemDefinition>> SYSTEM = create("system");

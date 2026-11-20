@@ -15,7 +15,7 @@ import net.neoforged.neoforge.network.handling.MainThreadPayloadHandler;
 public final class NetworkManager {
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
-        event.registrar("5")
+        event.registrar("6")
                 .playToServer(AssistantRequestC2SPayload.TYPE, AssistantRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleAssistantRequest))
                 .playToServer(TokenUsageRequestC2SPayload.TYPE, TokenUsageRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleTokenUsageRequest))
                 .playToServer(DisplayCardC2SPayload.TYPE, DisplayCardC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleDisplayCard))

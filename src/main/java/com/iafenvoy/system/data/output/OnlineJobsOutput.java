@@ -88,7 +88,8 @@ public record OnlineJobsOutput(List<PersistHolder<OnlineJobEntry>> jobs, List<On
                     .enable(prefix + "can_cancel", current.cancelable())
                     .put(prefix + "claim_value", CardEventValue.encode(action("job_claim"), Map.of("run", current.id())))
                     .put(prefix + "cancel_value", CardEventValue.encode(action("job_cancel"), Map.of("run", current.id())));
-            if (current.ready() && !current.claimed()) builder.serverButton("claim." + current.id(), "system.action.job_claim", action("job_claim"), Map.of("run", current.id()), CardButton.Placement.BODY, CardButton.Behavior.REPLACE);
+            if (current.ready() && !current.claimed())
+                builder.serverButton("claim." + current.id(), "system.action.job_claim", action("job_claim"), Map.of("run", current.id()), CardButton.Placement.BODY, CardButton.Behavior.REPLACE);
             if (current.cancelable())
                 builder.serverButton("cancel." + current.id(), "system.action.job_cancel", action("job_cancel"), Map.of("run", current.id()), CardButton.Placement.BODY, CardButton.Behavior.REPLACE);
         });

@@ -1,0 +1,36 @@
+{
+  "label": "system.commission.definition.weekly_iron",
+  "description": "system.commission.definition.weekly_iron.description",
+  "chapter": "system.commission.chapter.weekly",
+  "icon": {
+    "id": "minecraft:iron_ingot"
+  },
+  "costs": [
+    {
+      "type": "saturn:item",
+      "items": "minecraft:iron_ingot",
+      "amount": 16
+    }
+  ],
+  "reward": {
+    "label": "system.commission.definition.weekly_iron",
+    "contents": [
+      {
+        "content": {
+          "type": "system:currency",
+          "currency": "system:coin"
+        },
+        "amount": 16
+      }
+    ]
+  },
+  "limit": {
+    "count": 1,
+    "period": "weekly"
+  },
+  "order": 10,
+  "condition": {
+    "type": "saturn:advancement",
+    "advancement": "minecraft:story/smelt_iron"
+  }
+}

@@ -1,3 +1,8 @@
 {
-  "values": []
+  "replace": false,
+  "values": [
+    "system:starter_wood",
+    "system:daily_stone",
+    "system:weekly_iron"
+  ]
 }

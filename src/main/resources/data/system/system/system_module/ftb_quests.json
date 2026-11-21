@@ -1,6 +1,14 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ftbquests"
+    }
+  ],
   "order": 90,
-  "icon": { "id": "minecraft:book" },
+  "icon": {
+    "id": "minecraft:book"
+  },
   "server": {
     "type": "system:ftb_quests"
   },

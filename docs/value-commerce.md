@@ -2,7 +2,7 @@
 
 `system:value_shop` 让系统按 Evaluate 估值出售物品，`system:value_buyback` 让玩家把物品卖给系统。两者是独立的模块定义，与固定库存共用交易底层；购买仍在「系统商城」，出售仍在「物品收购」，不会把两个方向混在一个页面。
 
-内置模块 `system:value_shop`、`system:value_buyback` 已加入默认模块 tag。自定义系统需在 `modules` 中引用对应定义或自行配置。模块无需 AI；使用系统币时还需启用钱包功能，报酬及商品通过系统空间交付。
+内置模块 `system:value_shop`、`system:value_buyback` 保留在正式包中，但不加入发布默认模块 tag；仅开发源集自动追加。服主可用 `/system module add <玩家> <模块ID>` 主动启用，自定义系统也可在 `modules` 中引用对应定义或自行配置。启用前需按整合包检查允许物品、估值与汇率，见[发布默认数据](release-data.md)。模块无需 AI；使用系统币时还需启用钱包功能，报酬及商品通过系统空间交付。
 
 ## 搜索与交易
 

@@ -13,7 +13,7 @@
   "server": {
     "type": "system:commission",
     "commissions": "#example:deliveries",
-    "capacity": 16
+    "capacity": 4
   },
   "client": "system:commission"
 }
@@ -24,7 +24,7 @@
 | `server.commissions` | ID、`#tag` 或混合数组 | 全部条目 | 可接取的委托；已接取履约不随 tag 删除而丢失 |
 | `server.capacity` | 整数 1～128 | 16 | 同时占用的委托数，已完成未领奖和结果未知也占用 |
 
-同一类型的多份模块配置共用来源与玩家账本，可接取条目取当前启用配置的并集，容量取最高值。内置模块使用 `#system:default`，发布包的该 tag 为空；内容由数据包提供。开发样例仅放在 `src/test-mod/`。
+同一类型的多份模块配置共用来源与玩家账本，可接取条目取当前启用配置的并集，容量取最高值。内置模块使用 `#system:default`，发布包包含初次木料、每日石料、每周铁料三条有限委托；内置同时占用上限为 4，Codec 省略 capacity 时仍为 16。材料、报酬和额度见[发布默认数据](release-data.md)。额外开发样例仅放在 `src/test-mod/`。
 
 ## 委托定义
 

@@ -1,6 +1,9 @@
 {
-  "label": "Mining supplies",
+  "label": "system.signin.reward.mining",
   "items": [
-    { "id": "minecraft:torch", "count": 16 }
+    {
+      "id": "minecraft:torch",
+      "count": 8
+    }
   ]
 }

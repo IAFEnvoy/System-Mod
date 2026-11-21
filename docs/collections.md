@@ -24,7 +24,7 @@
 | --- | --- | --- | --- |
 | `server.collections` | ID、`#tag` 或混合数组 | 整张收藏注册表 | 省略允许全部，空数组不提供系列；按当前工作流所属模块的可选项核验 |
 
-系列 tag 位于 `data/example/tags/system/collection/plants.json`。模块仍需加入系统定义的模块列表或 tag。内置 `system:collection` 模块提供 `system:default` 基础矿物收藏，可通过数据包覆盖。
+系列 tag 位于 `data/example/tags/system/collection/plants.json`。模块仍需加入系统定义的模块列表或 tag。内置 `system:collection` 模块提供 `system:default` 基础矿物收藏（煤炭、钻石、金锭、铁锭、绿宝石，共 5 项），默认收藏成就和完成里程碑均可达成，可通过数据包覆盖。默认奖励见[发布默认数据](release-data.md)。
 
 ## 收藏系列
 

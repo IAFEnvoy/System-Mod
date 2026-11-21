@@ -1,5 +1,7 @@
 # 系统空间
 
+发布内置 inbox 模块配置 `deposit_slots: 54`，仅限制主动存入；自定义配置省略时仍采用 Codec 默认值。奖励权益与空间总容量不因此缩小，详见[发布默认数据](release-data.md)。
+
 系统空间按玩家保存内容，独立于对话、签到与商城。当前内置物品、系统币、原版经验、Saturn action 和多选一奖励类型，配置见[奖励与非物品结果](rewards.md)；内容通过 `SpaceContent` / `SpaceContentType<T>` 扩展，后续可以接入实体、灵兽等类型，不需要改动空间账本、列表或取出动作。
 
 ## 使用
@@ -99,7 +101,7 @@ context.store().update(context.player(), data -> {
 ```json
 {
   "type": "system:inbox",
-  "deposit_slots": 256
+  "deposit_slots": 54
 }
 ```
 

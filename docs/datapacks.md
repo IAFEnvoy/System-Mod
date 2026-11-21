@@ -1,5 +1,7 @@
 # 扩展配置
 
+发布包提供的默认商品、委托、补给及模块数值统一见[发布默认数据](release-data.md)；开发用免费生产、压力目录和活动示例只在 test-mod 源集中。
+
 [固定交付委托](commissions.md) 使用独立服务端数据包注册表 `system:commission`，通过模块的 `commissions` ID／tag／混合数组选取。接取、材料确认、次数和报酬均由服务端维护。[通用活动窗口](activity-windows.md) 使用条目根字段 `activity`，可组合起止日期、星期和每日时段，不需要新模块。
 
 [表情与 HUD](emotions.md)使用同步数据包注册表 `system:emotion` 定义名称、语义和分类，客户端资源包独立映射相同 ID 的贴图 / 说话动画；AI 目录自动从注册表生成。文件位于 `data/<namespace>/system/emotion/<path>.json`，不使用图片编号作为表情协议。
@@ -234,7 +236,7 @@ AI 签到先按模块可选项及条件筛选奖励，再按玩家与日期固�
 | `system:online_job` | `data/<namespace>/system/online_job/<path>.json` | `data/<namespace>/tags/system/online_job/<path>.json` |
 | `system:fact_reward` | `data/<namespace>/system/fact_reward/<path>.json` | 不使用 tag 筛选，按事件／来源／对象匹配 |
 
-三个目录的所有有效资源按条目 ID 汇总：不同路径会新增条目，同路径按数据包优先级覆盖。JAR 内置奖励为 `system:food`、`system:mining`、`system:building`，商品为 `system:torch_bundle`，奖池为 `system:supplies`，默认内容和自定义内容使用同一加载流程。`{"enabled":false}` 可以覆盖并禁用单个条目；需要空目录时，禁用该类所有有效条目，或通过数据包过滤移除资源。移除覆盖文件会恢复下层数据包的同路径条目；若最终没有有效资源则保持空目录，不从配置补回。奖励包、商品、奖池及奖品总数和资源文件大小不设额外硬上限；每个奖励包内的两种产出列表分别使用上述 0～36 项限制，付款材料列表不设额外项数上限。
+三个目录的所有有效资源按条目 ID 汇总：不同路径会新增条目，同路径按数据包优先级覆盖。JAR 内置签到奖励为 `system:starter`、`system:food`、`system:mining`、`system:building`，固定商品包含火把、面包、箭和铁锭补给以及圆石／小麦收购，奖池为 `system:supplies`，默认内容和自定义内容使用同一加载流程。`{"enabled":false}` 可以覆盖并禁用单个条目；需要空目录时，禁用该类所有有效条目，或通过数据包过滤移除资源。移除覆盖文件会恢复下层数据包的同路径条目；若最终没有有效资源则保持空目录，不从配置补回。奖励包、商品、奖池及奖品总数和资源文件大小不设额外硬上限；每个奖励包内的两种产出列表分别使用上述 0～36 项限制，付款材料列表不设额外项数上限。
 
 tag 使用原版 `values` / `replace`、嵌套 `#tag`、可选成员 `{ "id": "...", "required": false }`，以及 NeoForge 的 `remove`。三张表各有自己的 `#system:default`，即使 tag 名称相同，也不跨表匹配。禁用条目仍占用原生注册表 ID，但不会参与任何目录展示或发奖。若通过资源过滤移除条目，也要调整引用它的必需 tag 成员。
 
@@ -368,7 +370,7 @@ Saturn 逐项模拟后按列表顺序扣款，不合并重复或重叠的需求�
 
 ## 抽奖奖池
 
-奖池使用原生 `system:lottery_pool` 数据包注册表，奖池 ID 来自 `data/<namespace>/system/lottery_pool/<path>.json` 的路径。默认 `system:supplies` 消耗 1 系统币，奖品分别为 16 个火把（60%）、8 个面包（30%）、4 个铁锭（10%）；可覆盖同路径文件或用 `{"enabled":false}` 禁用。可复制的示例在 [supplies.json](../examples/commerce-pack/data/example/system/lottery_pool/supplies.json)。
+奖池使用原生 `system:lottery_pool` 数据包注册表，奖池 ID 来自 `data/<namespace>/system/lottery_pool/<path>.json` 的路径。默认 `system:supplies` 每抽消耗 4 系统币，每日最多 5 抽、冷却 5 秒，可选单抽／五连；奖品分别为 8 个火把（50%）、3 个面包（40%）、1 个铁锭（10%）；可覆盖同路径文件或用 `{"enabled":false}` 禁用。可复制的示例在 [supplies.json](../examples/commerce-pack/data/example/system/lottery_pool/supplies.json)。
 
 ```json
 {

@@ -1,5 +1,7 @@
 {
   "values": [
-    "system:test_experience"
+    "system:test_experience",
+    "system:gather_wood",
+    "system:gather_stone"
   ]
 }

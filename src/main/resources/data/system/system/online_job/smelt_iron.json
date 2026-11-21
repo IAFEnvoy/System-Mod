@@ -1,0 +1,28 @@
+{
+  "label": "system.jobs.smelt_iron",
+  "description": "system.jobs.smelt_iron.description",
+  "duration": 80,
+  "costs": [
+    {
+      "type": "saturn:item",
+      "items": "minecraft:raw_iron",
+      "amount": 4
+    },
+    {
+      "type": "saturn:item",
+      "items": "minecraft:coal",
+      "amount": 1
+    }
+  ],
+  "items": [
+    {
+      "id": "minecraft:iron_ingot",
+      "count": 4
+    }
+  ],
+  "order": 10,
+  "condition": {
+    "type": "saturn:advancement",
+    "advancement": "minecraft:story/smelt_iron"
+  }
+}

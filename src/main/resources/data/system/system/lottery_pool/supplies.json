@@ -1,31 +1,59 @@
 {
-  "label": "补给抽奖",
+  "label": "system.lottery.pool.supplies",
   "costs": [
-    { "type": "system:currency", "currency": "system:coin", "amount": 1 }
+    {
+      "type": "system:currency",
+      "currency": "system:coin",
+      "amount": 4
+    }
   ],
+  "draw_counts": [
+    1,
+    5
+  ],
+  "draw_limit": {
+    "count": 5,
+    "period": "daily"
+  },
+  "cooldown": 5,
   "entries": [
     {
-      "weight": 60,
+      "weight": 50,
       "reward": {
         "id": "system:lottery/torches",
-        "label": "火把补给",
-        "items": [{ "id": "minecraft:torch", "count": 16 }]
+        "label": "system.lottery.reward.torches",
+        "items": [
+          {
+            "id": "minecraft:torch",
+            "count": 8
+          }
+        ]
       }
     },
     {
-      "weight": 30,
+      "weight": 40,
       "reward": {
         "id": "system:lottery/food",
-        "label": "食物补给",
-        "items": [{ "id": "minecraft:bread", "count": 8 }]
+        "label": "system.lottery.reward.food",
+        "items": [
+          {
+            "id": "minecraft:bread",
+            "count": 3
+          }
+        ]
       }
     },
     {
       "weight": 10,
       "reward": {
         "id": "system:lottery/iron",
-        "label": "铁锭补给",
-        "items": [{ "id": "minecraft:iron_ingot", "count": 4 }]
+        "label": "system.lottery.reward.iron",
+        "items": [
+          {
+            "id": "minecraft:iron_ingot",
+            "count": 1
+          }
+        ]
       }
     }
   ]

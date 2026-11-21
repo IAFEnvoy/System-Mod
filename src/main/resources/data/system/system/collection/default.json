@@ -3,6 +3,18 @@
   "description": "system.collection.default.description",
   "entries": [
     {
+      "id": "system:coal",
+      "label": "item.minecraft.coal",
+      "predicate": {
+        "items": [
+          "minecraft:coal"
+        ]
+      },
+      "icon": {
+        "id": "minecraft:coal"
+      }
+    },
+    {
       "id": "system:diamond",
       "label": "item.minecraft.diamond",
       "predicate": {
@@ -60,14 +72,14 @@
         "items": [
           {
             "id": "minecraft:bread",
-            "count": 2
+            "count": 1
           }
         ]
       }
     },
     {
       "id": "system:complete",
-      "target": 4,
+      "target": 5,
       "reward": {
         "label": "system.collection.default.complete",
         "contents": [
@@ -76,7 +88,7 @@
               "type": "system:currency",
               "currency": "system:coin"
             },
-            "amount": 5
+            "amount": 3
           }
         ]
       }

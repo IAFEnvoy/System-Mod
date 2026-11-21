@@ -1,6 +1,9 @@
 {
-  "label": "Building supplies",
+  "label": "system.signin.reward.building",
   "items": [
-    { "id": "minecraft:oak_log", "count": 12 }
+    {
+      "id": "minecraft:oak_log",
+      "count": 4
+    }
   ]
 }

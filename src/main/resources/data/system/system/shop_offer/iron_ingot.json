@@ -1,0 +1,24 @@
+{
+  "label": "system.shop.offer.iron_ingot",
+  "items": [
+    {
+      "id": "minecraft:iron_ingot",
+      "count": 1
+    }
+  ],
+  "costs": [
+    {
+      "type": "system:currency",
+      "currency": "system:coin",
+      "amount": 8
+    }
+  ],
+  "purchase_limit": {
+    "count": 2,
+    "period": "daily"
+  },
+  "condition": {
+    "type": "saturn:advancement",
+    "advancement": "minecraft:story/smelt_iron"
+  }
+}

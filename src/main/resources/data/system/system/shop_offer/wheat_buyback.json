@@ -1,0 +1,24 @@
+{
+  "label": "system.shop.offer.wheat_buyback",
+  "trade": "buyback",
+  "costs": [
+    {
+      "type": "saturn:item",
+      "items": "minecraft:wheat",
+      "amount": 32
+    }
+  ],
+  "contents": [
+    {
+      "content": {
+        "type": "system:currency",
+        "currency": "system:coin"
+      },
+      "amount": 2
+    }
+  ],
+  "purchase_limit": {
+    "count": 2,
+    "period": "daily"
+  }
+}

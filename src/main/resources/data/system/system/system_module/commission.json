@@ -6,7 +6,7 @@
   "server": {
     "type": "system:commission",
     "commissions": "#system:default",
-    "capacity": 16
+    "capacity": 4
   },
   "client": "system:commission"
 }

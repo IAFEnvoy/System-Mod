@@ -2,18 +2,18 @@
   "label": "system.jobs.make_charcoal",
   "description": "system.jobs.make_charcoal.description",
   "duration": 120,
+  "costs": [
+    {
+      "type": "saturn:item",
+      "items": "#minecraft:logs",
+      "amount": 3
+    }
+  ],
   "items": [
     {
       "id": "minecraft:charcoal",
       "count": 2
     }
   ],
-  "order": 10,
-  "costs": [
-    {
-      "type": "saturn:item",
-      "items": "#minecraft:logs",
-      "amount": 2
-    }
-  ]
+  "order": 30
 }

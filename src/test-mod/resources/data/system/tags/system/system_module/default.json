@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "system:value_shop",
+    "system:value_buyback"
+  ]
+}

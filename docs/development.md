@@ -1,5 +1,7 @@
 # 开发与架构
 
+发布与开发数据的隔离、默认经济／加工数值及 FTBQ 条件加载见[发布默认数据](release-data.md)。免费采集和压力目录仅进入 testMod，主 jar 不带开发覆盖。
+
 当前网络协议为 `6`。新增原生委托状态操作、通用奖励预览和活动状态载荷，两端需要同步更新。固定交付业务与持久化位于 `assistant.quest.Commissions` / `CommissionDataStorage`，复用通用任务来源；`ActivityWindow` 由 `EntryConditions` 统一接入，见[委托](commissions.md)和[活动窗口](activity-windows.md)。
 
 ## 当前版本

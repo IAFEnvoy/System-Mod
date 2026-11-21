@@ -1,9 +1,8 @@
 {
   "replace": false,
   "values": [
-    "system:gather_wood",
-    "system:gather_stone",
-    "system:make_charcoal"
+    "system:make_charcoal",
+    "system:bake_bread",
+    "system:smelt_iron"
   ]
 }
-

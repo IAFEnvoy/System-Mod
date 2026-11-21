@@ -1,9 +1,20 @@
 {
-  "label": "Torch bundle",
+  "label": "system.shop.offer.torch_bundle",
   "items": [
-    { "id": "minecraft:torch", "count": 4 }
+    {
+      "id": "minecraft:torch",
+      "count": 8
+    }
   ],
   "costs": [
-    { "type": "system:currency", "currency": "system:coin", "amount": 16 }
-  ]
+    {
+      "type": "system:currency",
+      "currency": "system:coin",
+      "amount": 2
+    }
+  ],
+  "purchase_limit": {
+    "count": 4,
+    "period": "daily"
+  }
 }

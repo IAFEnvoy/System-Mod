@@ -12,7 +12,7 @@
           "type": "system:currency",
           "currency": "system:coin"
         },
-        "amount": 2
+        "amount": 1
       }
     ]
   }

@@ -1,9 +1,11 @@
 {
   "order": 70,
-  "icon": { "id": "minecraft:chest" },
+  "icon": {
+    "id": "minecraft:chest"
+  },
   "server": {
     "type": "system:inbox",
-    "deposit_slots": 256
+    "deposit_slots": 54
   },
   "client": "system:inbox"
 }

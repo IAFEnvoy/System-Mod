@@ -1,5 +1,9 @@
 {
   "system_test.ftb_quests.name": "FTB 任务测试系统",
   "system_test.ftb_quests.description": "仅用于开发，验证可选的 FTB Quests 集成。",
-  "system_test.debug.md_failed": "无法读取 Markdown 测试样例，请查看日志。"
+  "system_test.debug.md_failed": "无法读取 Markdown 测试样例，请查看日志。",
+  "system.jobs.gather_wood": "林地采集",
+  "system.jobs.gather_wood.description": "花一些在线时间采集橡木。",
+  "system.jobs.gather_stone": "石料采集",
+  "system.jobs.gather_stone.description": "花一些在线时间采集圆石。"
 }

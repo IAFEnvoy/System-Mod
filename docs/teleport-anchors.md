@@ -33,9 +33,10 @@
   "icon": { "id": "minecraft:lodestone" },
   "server": {
     "type": "system:anchor",
-    "limit": "min(12, 3 + floor(caster_level / 10))",
-    "cooldown": 10,
-    "cross_dimension": true
+    "limit": "min(6, 2 + floor(caster_level / 15))",
+    "cooldown": 60,
+    "cross_dimension": false,
+    "costs": [{ "type": "system:currency", "currency": "system:coin", "amount": 1 }]
   },
   "client": "system:anchor"
 }
@@ -50,7 +51,7 @@
 | `costs` | Saturn Cost 数组 | `[]` | 所有私人／公共传送的基础费用 |
 | `destinations` | ID、`#tag` 或混合数组 | 全表 | 公共目的地可选项，`[]` 关闭公共目的地 |
 
-`caster_level` 是原版经验等级。上例从 3 个开始，每 10 级增加 1 个，最多 12 个；也可以用 `"limit": 5` 固定为 5 个，或使用 Saturn 的属性、资源等公式变量按玩家状态解锁。公式在服务端游戏线程按当前玩家求值，不使用客户端提供的数值。
+`caster_level` 是原版经验等级。发布上例从 2 个开始，每 15 级增加 1 个，最多 6 个，成功传送冷却 60 秒、每次 1 币，仅同维度。表中的省略值仍是 Codec 的缺省值；也可以用 `"limit": 5` 固定为 5 个，或使用 Saturn 的属性、资源等公式变量按玩家状态解锁。公式在服务端游戏线程按当前玩家求值，不使用客户端提供的数值。
 
 查询、创建和传送时都会重新计算容量。结果向下取整并限制在 `0..256`，非有限数按 0 处理。动态公式建议使用稳定的成长数据；随机数公式会在不同检查时产生不同容量。
 

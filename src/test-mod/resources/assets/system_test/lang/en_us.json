@@ -1,5 +1,9 @@
 {
   "system_test.ftb_quests.name": "FTB Quests Test System",
   "system_test.ftb_quests.description": "Development-only system that exercises the optional FTB Quests integration.",
-  "system_test.debug.md_failed": "Unable to read the Markdown sample. Check the log for details."
+  "system_test.debug.md_failed": "Unable to read the Markdown sample. Check the log for details.",
+  "system.jobs.gather_wood": "Wood Gathering",
+  "system.jobs.gather_wood.description": "Spend online time gathering oak logs.",
+  "system.jobs.gather_stone": "Stone Gathering",
+  "system.jobs.gather_stone.description": "Spend online time gathering cobblestone."
 }

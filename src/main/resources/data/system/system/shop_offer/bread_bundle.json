@@ -1,0 +1,20 @@
+{
+  "label": "system.shop.offer.bread_bundle",
+  "items": [
+    {
+      "id": "minecraft:bread",
+      "count": 3
+    }
+  ],
+  "costs": [
+    {
+      "type": "system:currency",
+      "currency": "system:coin",
+      "amount": 3
+    }
+  ],
+  "purchase_limit": {
+    "count": 4,
+    "period": "daily"
+  }
+}

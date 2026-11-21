@@ -1,6 +1,9 @@
 {
-  "label": "Food supplies",
+  "label": "system.signin.reward.food",
   "items": [
-    { "id": "minecraft:bread", "count": 6 }
+    {
+      "id": "minecraft:bread",
+      "count": 2
+    }
   ]
 }

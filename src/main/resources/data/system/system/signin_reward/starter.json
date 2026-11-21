@@ -1,0 +1,9 @@
+{
+  "label": "system.signin.reward.starter",
+  "items": [
+    {
+      "id": "minecraft:stick",
+      "count": 4
+    }
+  ]
+}

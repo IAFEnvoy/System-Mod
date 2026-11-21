@@ -5,9 +5,16 @@
   },
   "server": {
     "type": "system:anchor",
-    "limit": "min(12, 3 + floor(caster_level / 10))",
-    "cooldown": 10,
-    "cross_dimension": true
+    "limit": "min(6, 2 + floor(caster_level / 15))",
+    "cooldown": 60,
+    "cross_dimension": false,
+    "costs": [
+      {
+        "type": "system:currency",
+        "currency": "system:coin",
+        "amount": 1
+      }
+    ]
   },
   "client": "system:anchor"
 }

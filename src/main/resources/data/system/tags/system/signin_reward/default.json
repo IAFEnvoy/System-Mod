@@ -1,5 +1,7 @@
 {
+  "replace": false,
   "values": [
+    "system:starter",
     "system:building",
     "system:food",
     "system:mining"

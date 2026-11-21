@@ -7,6 +7,7 @@
 
 | 文档 | 内容 |
 | --- | --- |
+| [发布默认数据与开发数据](release-data.md) | 生存默认数值、有限经济、加工投入、可选集成与 test-mod 隔离 |
 | [使用与配置](usage.md) | 打开助手、服务端密钥、功能入口、隐私及奖励状态 |
 | [统一 API 管理](api-management.md) | Credential 类型注册表、自动识别环境变量、CredentialManager 构造实际服务、多字段鉴权和两端隔离 |
 | [DeepSeek TTS / ASR](deepseek-speech.md) | 共享 DeepSeek 凭据、流式 PCM、整段 WAV 识别、字符及音频时长计费 |

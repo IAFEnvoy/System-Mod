@@ -109,7 +109,7 @@ public static void moduleContext(ModuleContextEvent event) {
 
 商店商品可在 `purchase_limit` 中配置累计 / 每日 / 每周 / 每月限购，规则属于商品而非模块实例。额度由 `CommerceDataStorage` 的持久化订单统计，预览只传只读快照，确认时与预留订单在同一玩家事务内再次校验；结果未知的付款继续占额，确定失败释放。详见[商品限购](datapacks.md#商品限购)。
 
-在线作业同样实现 CatalogModule，但目录由所选工作流配置的 jobs 筛选，不进入交易目录的并集。它使用独立的 system:online_job 数据包注册表和共用的玩家作业队列；queue_size 默认为 4，已完成未领取项目仍占容量，在线 tick 串行推进且完成后自动执行下一项。详见[在线作业](online-jobs.md)。
+在线作业同样实现 CatalogModule，但目录由所选工作流配置的 jobs 筛选，不进入交易目录的并集。它使用独立的 system:online_job 数据包注册表和共用的玩家作业队列；发布内置 queue_size 为 2，Codec 省略时默认为 4，已完成未领取项目仍占容量，在线 tick 串行推进且完成后自动执行下一项。详见[在线作业](online-jobs.md)。
 
 每个服务端实现类型的公共管理指令只装配一次。SystemCommand 创建 `/system` 根节点并收集 SharedModule.serverCommands，仅用于打开界面及绑定、模块、AI、经济和 FTB 重载等管理操作。模块业务指令由 AgentCommand 声明，运行在私有 CommandRegistry，只接受系统界面发送的请求，不复制到原版指令树，也没有 instruction / ask 转发。客户端页面、本地命令和动作统一通过 ClientModule.register 装配；emotion、settings、usage 等仅在系统输入框执行。私有工作流参数补全通过专门请求返回，权限仍由当前服务端模块状态判断。
 
@@ -220,4 +220,4 @@ system 和 system_module 都是原生数据包注册表，在世界加载时读�
 
 `AchievementSystemModule` / `AchievementSystemClientModule` 提供 `system:achievement` 的双端入口。装配层仅连接工作流，查询和系列统计放在 `assistant.progress.Achievements`，事实采集与阈值授予复用 `PlayerFacts` / `FactDataStorage`。定义、进度和领奖边界见[成就总览](achievements.md)。
 
-系统空间仍使用 `system:inbox` 类型，现在通过不可变配置字段 `deposit_slots`（默认 256，0～1024）限制主动存入容量，奖励容量和现有内容取出不受此额度影响。共享运行时 `SpaceDeposits` 负责槽位快照、持久扣除回执、结算重试和管理核对；`system:choice` 通过通用空间内容类型复用所有奖励来源，见[系统空间](system-space.md)与[多选一奖励](reward-choices.md)。
+系统空间仍使用 `system:inbox` 类型，现在通过不可变配置字段 `deposit_slots`（发布内置配置为 54，Codec 省略时默认 256，范围 0～1024）限制主动存入容量，奖励容量和现有内容取出不受此额度影响。共享运行时 `SpaceDeposits` 负责槽位快照、持久扣除回执、结算重试和管理核对；`system:choice` 通过通用空间内容类型复用所有奖励来源，见[系统空间](system-space.md)与[多选一奖励](reward-choices.md)。

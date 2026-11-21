@@ -11,11 +11,12 @@
     "system:inbox",
     "system:anchor",
     "system:shop",
-    "system:value_shop",
-    "system:value_buyback",
     "system:lottery",
     "system:advancement",
-    "system:ftb_quests",
+    {
+      "id": "system:ftb_quests",
+      "required": false
+    },
     "system:collection",
     "system:achievement",
     "system:commission"

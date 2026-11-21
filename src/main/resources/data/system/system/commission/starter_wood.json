@@ -1,0 +1,32 @@
+{
+  "label": "system.commission.definition.starter_wood",
+  "description": "system.commission.definition.starter_wood.description",
+  "chapter": "system.commission.chapter.starter",
+  "icon": {
+    "id": "minecraft:oak_log"
+  },
+  "costs": [
+    {
+      "type": "saturn:item",
+      "items": "#minecraft:logs",
+      "amount": 16
+    }
+  ],
+  "reward": {
+    "label": "system.commission.definition.starter_wood",
+    "contents": [
+      {
+        "content": {
+          "type": "system:currency",
+          "currency": "system:coin"
+        },
+        "amount": 3
+      }
+    ]
+  },
+  "limit": {
+    "count": 1,
+    "period": "lifetime"
+  },
+  "order": 30
+}

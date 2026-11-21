@@ -1,6 +1,11 @@
 {
+  "replace": false,
   "values": [
     "system:torch_bundle",
-    "system:cobblestone_buyback"
+    "system:bread_bundle",
+    "system:arrow_bundle",
+    "system:iron_ingot",
+    "system:cobblestone_buyback",
+    "system:wheat_buyback"
   ]
 }

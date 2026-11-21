@@ -1,0 +1,32 @@
+{
+  "label": "system.commission.definition.daily_stone",
+  "description": "system.commission.definition.daily_stone.description",
+  "chapter": "system.commission.chapter.daily",
+  "icon": {
+    "id": "minecraft:cobblestone"
+  },
+  "costs": [
+    {
+      "type": "saturn:item",
+      "items": "minecraft:cobblestone",
+      "amount": 64
+    }
+  ],
+  "reward": {
+    "label": "system.commission.definition.daily_stone",
+    "contents": [
+      {
+        "content": {
+          "type": "system:currency",
+          "currency": "system:coin"
+        },
+        "amount": 2
+      }
+    ]
+  },
+  "limit": {
+    "count": 1,
+    "period": "daily"
+  },
+  "order": 20
+}

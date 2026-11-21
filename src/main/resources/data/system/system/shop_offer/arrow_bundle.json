@@ -1,0 +1,20 @@
+{
+  "label": "system.shop.offer.arrow_bundle",
+  "items": [
+    {
+      "id": "minecraft:arrow",
+      "count": 16
+    }
+  ],
+  "costs": [
+    {
+      "type": "system:currency",
+      "currency": "system:coin",
+      "amount": 4
+    }
+  ],
+  "purchase_limit": {
+    "count": 2,
+    "period": "daily"
+  }
+}

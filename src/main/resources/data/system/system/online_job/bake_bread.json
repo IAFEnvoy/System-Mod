@@ -1,0 +1,19 @@
+{
+  "label": "system.jobs.bake_bread",
+  "description": "system.jobs.bake_bread.description",
+  "duration": 60,
+  "costs": [
+    {
+      "type": "saturn:item",
+      "items": "minecraft:wheat",
+      "amount": 6
+    }
+  ],
+  "items": [
+    {
+      "id": "minecraft:bread",
+      "count": 2
+    }
+  ],
+  "order": 20
+}

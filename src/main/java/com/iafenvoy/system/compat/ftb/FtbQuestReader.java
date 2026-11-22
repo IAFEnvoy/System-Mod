@@ -1,8 +1,8 @@
 package com.iafenvoy.system.compat.ftb;
 
 
-import com.iafenvoy.system.data.output.QuestSubmission;
 import com.iafenvoy.assistant.util.TypeDispatch;
+import com.iafenvoy.system.data.output.QuestSubmission;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.TeamData;

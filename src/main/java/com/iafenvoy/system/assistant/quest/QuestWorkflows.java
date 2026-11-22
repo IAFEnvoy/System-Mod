@@ -32,20 +32,20 @@ public final class QuestWorkflows {
             context.get(ContextTypes.DISPLAYS).register(context.id(), provider.source().id(),
                     (player, id) -> tracking.tracking(player, id).map(card -> card));
         ToolRegistry.Tool<QuestQueryInput, List<QuestBriefOutput>, ExecutionContext> query = context.tool(BuiltinTools.QUEST_QUERY,
-                () -> new ToolRegistry.Tool<QuestQueryInput, List<QuestBriefOutput>, ExecutionContext>(BuiltinTools.QUEST_QUERY, false, true, false, quests::query)
+                () -> new ToolRegistry.Tool<>(BuiltinTools.QUEST_QUERY, false, true, false, quests::query)
                         .forReasoning("List available quest summaries and their sources. Does not submit or claim."));
         ToolRegistry.Tool<QuestFindInput, List<QuestBriefOutput>, ExecutionContext> find = context.tool(BuiltinTools.QUEST_FIND,
-                () -> new ToolRegistry.Tool<QuestFindInput, List<QuestBriefOutput>, ExecutionContext>(BuiltinTools.QUEST_FIND, false, true, false, quests::find)
+                () -> new ToolRegistry.Tool<>(BuiltinTools.QUEST_FIND, false, true, false, quests::find)
                         .forReasoning("Find visible quests by name or source-qualified ID. Use the returned IDs exactly."));
         ToolRegistry.Tool<QuestDetailInput, QuestOutput, ExecutionContext> detail = context.tool(BuiltinTools.QUEST_DETAIL,
-                () -> new ToolRegistry.Tool<QuestDetailInput, QuestOutput, ExecutionContext>(BuiltinTools.QUEST_DETAIL, false, true, false, quests::detail)
+                () -> new ToolRegistry.Tool<>(BuiltinTools.QUEST_DETAIL, false, true, false, quests::detail)
                         .forReasoning("Read one observed quest ID or displayed list index. Never invent IDs."));
         ToolRegistry.Tool<QuestClaimInput, QuestClaimOutput, ExecutionContext> claim = context.tool(BuiltinTools.QUEST_CLAIM,
                 () -> new ToolRegistry.Tool<>(BuiltinTools.QUEST_CLAIM, true, false, false, quests::claim));
         ToolRegistry.Tool<QuestSubmitInput, QuestSubmitOutput, ExecutionContext> submit = context.tool(BuiltinTools.QUEST_SUBMIT,
                 () -> new ToolRegistry.Tool<>(BuiltinTools.QUEST_SUBMIT, true, false, false, quests::submit));
         ToolRegistry.Tool<QuestGuideInput, QuestGuideOutput, ExecutionContext> guide = context.tool(BuiltinTools.QUEST_GUIDE,
-                () -> new ToolRegistry.Tool<QuestGuideInput, QuestGuideOutput, ExecutionContext>(BuiltinTools.QUEST_GUIDE, false, true, false, quests::guides)
+                () -> new ToolRegistry.Tool<>(BuiltinTools.QUEST_GUIDE, false, true, false, quests::guides)
                         .forReasoning("Search authorized local quest manuals. Does not submit or claim."));
         ToolRegistry.Tool<EmptyInput, StarterGiftOutput, ExecutionContext> gifts = context.tool(BuiltinTools.STARTER_GIFTS,
                 () -> new ToolRegistry.Tool<EmptyInput, StarterGiftOutput, ExecutionContext>(BuiltinTools.STARTER_GIFTS, false, true, false, (execution, _) -> quests.gifts(execution))

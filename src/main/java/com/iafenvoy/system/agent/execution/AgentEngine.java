@@ -4,13 +4,7 @@ import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.assistant.action.AgentAction;
 import com.iafenvoy.assistant.chat.AiAccess;
 import com.iafenvoy.assistant.chat.ConversationMode;
-import com.iafenvoy.assistant.execution.AgentLifecycle;
-import com.iafenvoy.assistant.execution.EventExecutor;
-import com.iafenvoy.assistant.execution.ExecutionPolicy;
-import com.iafenvoy.assistant.execution.ModelExecutor;
-import com.iafenvoy.assistant.execution.TaskExecutor;
-import com.iafenvoy.assistant.execution.ToolExecutor;
-import com.iafenvoy.assistant.execution.WorkflowExecutor;
+import com.iafenvoy.assistant.execution.*;
 import com.iafenvoy.assistant.model.ModelGateway;
 import com.iafenvoy.assistant.module.AgentModule;
 import com.iafenvoy.assistant.module.ModuleRegistry;
@@ -23,6 +17,7 @@ import com.iafenvoy.assistant.storage.AgentJournal;
 import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.assistant.storage.EventTask;
 import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.SystemMod;
@@ -39,7 +34,6 @@ import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.store.PlayerData;
-import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
@@ -92,13 +86,13 @@ public final class AgentEngine implements AutoCloseable, EventExecutor.Host<Play
                     List<ConversationMemory.Entry> history = context.store().read(context.player(),
                             data -> ConversationMemory.recent(data, context.taskId(), 1600));
                     String prompt = context.prompt(SystemPrompts.ROUTING, Map.of("capabilities",
-                            CodecIO.write(ModelRoute.Capability.CATALOGUE, capabilities)));
+                            CodecIO.encode(ModelRoute.Capability.CATALOGUE, capabilities)));
                     return context.model(prompt, ModelRoute.Input.codec(ConversationMemory.Entry.CODEC),
                             new ModelRoute.Input<>(text, history, hints), codec);
                 }, error -> switch (AgentException.failure(error)) {
-                    case AgentFailure.MODEL_NOT_CONFIGURED, AgentFailure.MODEL_DISABLED, AgentFailure.AI_FORBIDDEN -> true;
-                    default -> false;
-                });
+            case AgentFailure.MODEL_NOT_CONFIGURED, AgentFailure.MODEL_DISABLED, AgentFailure.AI_FORBIDDEN -> true;
+            default -> false;
+        });
     }
 
     public SystemPrompts prompts() {
@@ -146,6 +140,7 @@ public final class AgentEngine implements AutoCloseable, EventExecutor.Host<Play
                 System.currentTimeMillis(), epoch, policy, store, incarnation);
     }
 
+    @Override
     public ModuleRegistry<ExecutionContext, CardUpdate> modules() {
         return this.modules;
     }
@@ -180,10 +175,12 @@ public final class AgentEngine implements AutoCloseable, EventExecutor.Host<Play
         this.router.clear(player);
     }
 
+    @Override
     public long incarnation(UUID player) {
         return this.incarnations.getOrDefault(player, 0L);
     }
 
+    @Override
     public boolean current(UUID player, long incarnation) {
         return !this.revoking.contains(player) && this.incarnation(player) == incarnation;
     }
@@ -333,6 +330,7 @@ public final class AgentEngine implements AutoCloseable, EventExecutor.Host<Play
         this.moduleAccess = Objects.requireNonNull(moduleAccess);
     }
 
+    @Override
     public boolean available(UUID player, Identifier workflow) {
         AgentModule<?, ExecutionContext, CardUpdate> module = this.module(player, workflow);
         // Recheck exported tool dependencies for routing, in-flight work and queued game-thread operations.
@@ -347,6 +345,7 @@ public final class AgentEngine implements AutoCloseable, EventExecutor.Host<Play
         return this.moduleEnabled(player, HolderHelper.id(owner));
     }
 
+    @Override
     public boolean moduleEnabled(UUID player, Identifier owner) {
         return owner == null || this.moduleAccess.test(player, owner);
     }
@@ -402,6 +401,7 @@ public final class AgentEngine implements AutoCloseable, EventExecutor.Host<Play
         }
     }
 
+    @Override
     public <T> CompletionStage<T> maintenance(Callable<T> work) {
         if (this.closed()) return CompletableFuture.failedFuture(new AgentException(AgentFailure.CANCELLED));
         return this.maintenance.submit(work);

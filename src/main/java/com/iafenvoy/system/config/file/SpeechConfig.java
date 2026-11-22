@@ -1,8 +1,8 @@
 package com.iafenvoy.system.config.file;
 
+import com.iafenvoy.assistant.speech.tts.TtsProvider;
 import com.iafenvoy.system.config.ConfigInstance;
 import com.iafenvoy.system.registry.SystemServices;
-import com.iafenvoy.assistant.speech.tts.TtsProvider;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import org.jspecify.annotations.NonNull;

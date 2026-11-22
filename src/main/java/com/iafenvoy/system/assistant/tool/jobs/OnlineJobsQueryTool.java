@@ -10,9 +10,10 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-public record OnlineJobsQueryTool(OnlineJobs jobs) implements ToolRegistry.Handler<OnlineJobsInput, OnlineJobsOutput, ExecutionContext> {
+public record OnlineJobsQueryTool(
+        OnlineJobs jobs) implements ToolRegistry.Handler<OnlineJobsInput, OnlineJobsOutput, ExecutionContext> {
     public ToolRegistry.Tool<OnlineJobsInput, OnlineJobsOutput, ExecutionContext> tool() {
-        return new ToolRegistry.Tool<OnlineJobsInput, OnlineJobsOutput, ExecutionContext>(BuiltinTools.ONLINE_JOBS, false, true, false, this)
+        return new ToolRegistry.Tool<>(BuiltinTools.ONLINE_JOBS, false, true, false, this)
                 .forReasoning("List available online jobs and the player's current production progress. This does not start or claim a job.");
     }
 

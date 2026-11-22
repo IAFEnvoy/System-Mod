@@ -4,11 +4,7 @@ import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.assistant.action.AgentAction;
 import com.iafenvoy.assistant.chat.AiAccess;
 import com.iafenvoy.assistant.chat.ConversationMode;
-import com.iafenvoy.assistant.execution.ExecutionBudget;
-import com.iafenvoy.assistant.execution.ExecutionPolicy;
-import com.iafenvoy.assistant.execution.ModelExecutor;
-import com.iafenvoy.assistant.execution.ToolExecutor;
-import com.iafenvoy.assistant.execution.WorkflowExecutor;
+import com.iafenvoy.assistant.execution.*;
 import com.iafenvoy.assistant.module.AgentModule;
 import com.iafenvoy.assistant.react.ReActContext;
 import com.iafenvoy.assistant.registry.ModuleScope;
@@ -16,18 +12,18 @@ import com.iafenvoy.assistant.routing.HybridRouter;
 import com.iafenvoy.assistant.routing.RouteSource;
 import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.assistant.storage.EventTask;
+import com.iafenvoy.assistant.tool.ToolContext;
 import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.model.ModelClient;
-import com.iafenvoy.assistant.tool.ToolContext;
 import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.FreeChatInput;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.store.PlayerData;
-import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.resources.Identifier;
@@ -108,14 +104,17 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
             throw new AgentException(AgentFailure.BUDGET_EXCEEDED);
     }
 
+    @Override
     public UUID player() {
         return this.player;
     }
 
+    @Override
     public String taskId() {
         return this.taskId;
     }
 
+    @Override
     public boolean isEvent() {
         return this.eventKey != null;
     }
@@ -124,6 +123,7 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
         return this.routeSource.automatic();
     }
 
+    @Override
     public RouteSource routeSource() {
         return this.routeSource;
     }
@@ -151,6 +151,7 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
         this.routeSource = source;
     }
 
+    @Override
     public String language() {
         return this.language;
     }
@@ -166,6 +167,7 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
         return this.prompts.render(id, values);
     }
 
+    @Override
     public String promptRevision() {
         return this.prompts.revision();
     }
@@ -177,10 +179,12 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
         return this.prompts.find(id.toString(), Map.of("player_language", this.language));
     }
 
+    @Override
     public long incarnation() {
         return this.incarnation;
     }
 
+    @Override
     public long memoryEpoch() {
         return this.memoryEpoch;
     }
@@ -197,6 +201,7 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
         return this.engine.modules().shortcuts(this::available);
     }
 
+    @Override
     public boolean available(Identifier workflow) {
         return this.engine.available(this.player, workflow);
     }
@@ -214,10 +219,12 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
         return new FreeChatInput(text);
     }
 
+    @Override
     public boolean externalServicesAllowed() {
         return this.mode().usesAi();
     }
 
+    @Override
     public ConversationMode mode() {
         this.ensureMemoryCurrent();
         return this.permissions().effective(this.store.read(this.player, data -> data.mode));
@@ -227,6 +234,7 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
         return this.engine.permissions(this.player);
     }
 
+    @Override
     public boolean freeChatAllowed() {
         return this.mode().chats();
     }
@@ -317,10 +325,12 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
         }
     }
 
+    @Override
     public long remainingMillis() {
         return Math.max(0, this.expires - System.currentTimeMillis());
     }
 
+    @Override
     public long modelTimeoutMillis() {
         return Math.min(this.policy.modelTimeoutMillis(), this.remainingMillis());
     }
@@ -328,23 +338,28 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
     /**
      * Billable network tools obey the same external-service opt-out as inference, before each call.
      */
+    @Override
     public void requireExternalServices() {
         this.ensureMemoryCurrent();
         this.permissions().requireExternalServices(() -> this.store.read(this.player, data -> data.mode));
     }
 
+    @Override
     public int remainingModelCalls() {
         return Math.max(0, this.policy.modelCalls() - this.budget.usage().models());
     }
 
+    @Override
     public int remainingToolCalls() {
         return Math.max(0, this.policy.toolCalls() - this.budget.usage().tools());
     }
 
+    @Override
     public int remainingSteps() {
         return Math.max(0, this.policy.steps() - this.budget.usage().steps());
     }
 
+    @Override
     public int reactIterations() {
         return this.policy.reactIterations();
     }
@@ -386,12 +401,14 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
         allowed.put(type.id(), scoped);
     }
 
+    @Override
     public void checkToolOwner(ToolRegistry.ScopedTool<?, ?, ExecutionContext> scoped) {
         this.ensureMemoryCurrent();
         if (!scoped.scope().available(owner -> this.engine.moduleEnabled(this.player, owner)) || !this.engine.toolAvailable(this.player, scoped.tool().id()))
             throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
     }
 
+    @Override
     public <I, O> O scopedTool(ToolRegistry.ScopedTool<I, O, ExecutionContext> scoped, String stepId, I input) throws Exception {
         this.checkToolOwner(scoped);
         // A scope is a subset of this workflow or an explicitly advertised read, never an alternate write route.
@@ -403,6 +420,7 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
         return result;
     }
 
+    @Override
     public void cancel() {
         this.cancelled.set(true);
     }
@@ -435,7 +453,10 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
     }
 
     public <I, O> O model(String instruction, MapCodec<I> inputCodec, I input, Codec<O> outputCodec) throws Exception {
-        return this.model(instruction, inputCodec, input, List.of(), reply -> CodecIO.parse(this.store().codec(outputCodec), reply.value()));
+        return this.model(instruction, inputCodec, input, List.of(), reply -> {
+            Codec<O> codec = this.store().codec(outputCodec);
+            return CodecIO.parse(codec, reply.value());
+        });
     }
 
     /**
@@ -448,9 +469,11 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
     }
 
     private <I> String modelContent(MapCodec<I> inputCodec, I input) {
-        return CodecIO.write(this.store().codec(ModelExecutor.Input.codec(inputCodec)), new ModelExecutor.Input<>(input, new ModelExecutor.RequestContext(this.language)));
+        Codec<ModelExecutor.Input<I>> codec = this.store().codec(ModelExecutor.Input.codec(inputCodec));
+        return CodecIO.encode(codec, new Input<I>(input, new ModelExecutor.RequestContext(this.language)));
     }
 
+    @Override
     public <I, O> O model(String instruction, MapCodec<I> inputCodec, I input, List<ModelClient.Function> functions,
                           Function<ModelClient.Reply, O> decoder) throws Exception {
         return this.model(instruction, inputCodec, input, functions, ModelClient.Options.DEFAULT, decoder);
@@ -561,12 +584,14 @@ public final class ExecutionContext implements ReActContext.Execution, WorkflowE
         });
     }
 
+    @Override
     public void ensureMemoryCurrent() {
         this.check();
         if (!this.isEvent() && this.store().read(this.player, data -> data.conversation.memoryEpoch) != this.memoryEpoch)
             throw new AgentException(AgentFailure.CANCELLED);
     }
 
+    @Override
     public int modelCalls() {
         return this.budget.usage().models();
     }

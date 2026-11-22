@@ -5,7 +5,10 @@ import com.iafenvoy.assistant.response.AgentResponse;
 import com.iafenvoy.assistant.response.ResultResponses;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.SystemResults;
-import com.iafenvoy.system.agent.response.*;
+import com.iafenvoy.system.agent.response.BindingResponse;
+import com.iafenvoy.system.agent.response.HistoryResponse;
+import com.iafenvoy.system.agent.response.OpenResponse;
+import com.iafenvoy.system.agent.response.StateResponse;
 import com.iafenvoy.system.data.card.CardUpdate;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -20,10 +23,12 @@ public final class SystemResponseTypes {
 
     public static final DeferredHolder<StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>, StreamCodec<ByteBuf, StateResponse>> STATE = REGISTRY.register("state", () -> StateResponse.STREAM_CODEC);
     public static final DeferredHolder<StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>, StreamCodec<RegistryFriendlyByteBuf, HistoryResponse>> HISTORY = REGISTRY.register("history", () -> HistoryResponse.STREAM_CODEC);
+
     static {
         REGISTRY.register("reply", RESULTS::replyCodec);
         REGISTRY.register("notice", RESULTS::noticeCodec);
     }
+
     public static final DeferredHolder<StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>, StreamCodec<ByteBuf, OpenResponse>> OPEN = REGISTRY.register("open", () -> OpenResponse.STREAM_CODEC);
     public static final DeferredHolder<StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>, StreamCodec<RegistryFriendlyByteBuf, BindingResponse>> BINDING = REGISTRY.register("binding", () -> BindingResponse.STREAM_CODEC);
 }

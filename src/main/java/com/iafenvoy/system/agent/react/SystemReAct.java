@@ -28,7 +28,7 @@ public final class SystemReAct {
     }
 
     public static <O> ReActContext<O> context(ExecutionContext execution, String instruction, String question,
-                                            Codec<O> observations, List<ReActTool<?, O>> tools, Runnable guard, long toolReserveMillis) {
+                                              Codec<O> observations, List<ReActTool<?, O>> tools, Runnable guard, long toolReserveMillis) {
         return new ReActContext<>(execution, instruction + "\n\n" + execution.prompt(SystemPrompts.TOOL_CALL),
                 question, observations, tools, guard, toolReserveMillis);
     }

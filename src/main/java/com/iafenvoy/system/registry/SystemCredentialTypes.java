@@ -1,7 +1,7 @@
 package com.iafenvoy.system.registry;
 
-import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.assistant.credential.Credential;
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.config.credential.builtin.AliyunNlsCredential;
 import com.iafenvoy.system.config.credential.builtin.DashScopeCredential;
 import com.iafenvoy.system.config.credential.builtin.DeepSeekCredential;

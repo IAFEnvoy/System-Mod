@@ -3,6 +3,7 @@ package com.iafenvoy.system.module.builtin.search;
 import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.assistant.react.ReActContext;
 import com.iafenvoy.assistant.react.ReActTool;
+import com.iafenvoy.assistant.tool.ToolContext;
 import com.iafenvoy.assistant.tool.ToolPriority;
 import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
@@ -14,7 +15,6 @@ import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.agent.react.SystemReAct;
-import com.iafenvoy.assistant.tool.ToolContext;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.output.WebSearchOutput;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
@@ -74,9 +74,9 @@ public final class WebResearch {
                 AgentFailure.SEARCH_HTTP_ERROR, AgentFailure.SEARCH_INVALID_RESPONSE));
         ReActContext<SearchObservation> loop = SystemReAct.context(context, context.prompt(SystemPrompts.WEB_SEARCH), question,
                 SearchObservation.CODEC, List.of(search, fetch), () -> {
-            tools.check();
-            context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
-        }, 15000);
+                    tools.check();
+                    context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
+                }, 15000);
         return SystemReAct.run(loop, Answer.CODEC, recoverable, answer -> {
             if (loop.observations().isEmpty() || answer.text().isBlank())
                 throw new AgentException(AgentFailure.MODEL_INVALID);

@@ -1,9 +1,9 @@
 package com.iafenvoy.system.registry;
 
-import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.assistant.action.AgentAction;
 import com.iafenvoy.assistant.credential.Credential;
 import com.iafenvoy.assistant.registry.AssistantResourceKeys;
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.data.LotteryPool;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.card.CardData;

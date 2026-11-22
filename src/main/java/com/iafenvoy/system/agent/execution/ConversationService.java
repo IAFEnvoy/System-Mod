@@ -3,6 +3,7 @@ package com.iafenvoy.system.agent.execution;
 import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.assistant.chat.ConversationMode;
 import com.iafenvoy.assistant.storage.AgentStore;
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.saturn.util.MiscUtil;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
@@ -11,7 +12,7 @@ import com.iafenvoy.system.data.History;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.store.Message;
 import com.iafenvoy.system.data.store.PlayerData;
-import com.iafenvoy.system.util.CodecIO;
+import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 
 import java.util.ArrayList;
@@ -74,9 +75,11 @@ final class ConversationService {
             for (int index = data.conversation.history.size() - 1; index >= 0 && selected.size() < MAX_ENTRIES; index--) {
                 // The page never carries request IDs; oversized results keep complete cards and clipped prose.
                 Message entry = data.conversation.history.get(index).withRequestId("");
-                if (entry instanceof Message.Assistant assistant
-                        && CodecIO.write(store.codec(SystemResults.CODEC), assistant.result()).length() > MAX_ENTRY_CHARS)
-                    entry = new Message.Assistant("", assistant.time(), clip(assistant.result(), store));
+                if (entry instanceof Message.Assistant assistant) {
+                    Codec<AgentResult<CardUpdate>> codec = store.codec(SystemResults.CODEC);
+                    if (CodecIO.encode(codec, assistant.result()).length() > MAX_ENTRY_CHARS)
+                        entry = new Message.Assistant("", assistant.time(), clip(assistant.result(), store));
+                }
                 int length = store.codec(Message.CODEC).encodeStart(JsonOps.INSTANCE, entry).getOrThrow().toString().length();
                 // The newest turn is always sent; an entry that does not fit only stops older ones.
                 if (!selected.isEmpty() && size + length > MAX_PAGE_CHARS) break;
@@ -95,9 +98,12 @@ final class ConversationService {
         List<CardUpdate> cards = new ArrayList<>();
         for (CardUpdate card : result.cards()) {
             cards.add(card);
-            if (cards.size() > 1 && CodecIO.write(store.codec(SystemResults.CODEC), presentation(result, cards)).length() > MAX_ENTRY_CHARS) {
-                cards.removeLast();
-                break;
+            if (cards.size() > 1) {
+                Codec<AgentResult<CardUpdate>> codec = store.codec(SystemResults.CODEC);
+                if (CodecIO.encode(codec, presentation(result, cards)).length() > MAX_ENTRY_CHARS) {
+                    cards.removeLast();
+                    break;
+                }
             }
         }
         return presentation(result, cards);

@@ -26,7 +26,7 @@ public record ItemSourceQueryTool(
     private static final int MAX_SOURCES = 64;
 
     public ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput, ExecutionContext> tool() {
-        return new ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput, ExecutionContext>(BuiltinTools.ITEM_SOURCES, false, true, false, this)
+        return new ToolRegistry.Tool<>(BuiltinTools.ITEM_SOURCES, false, true, false, this)
                 .forReasoning("Read recipe, loot and tag sources for a known item registry ID.");
     }
 

@@ -20,7 +20,7 @@ import java.util.concurrent.CompletionStage;
 public record WebFetchTool(
         SearchGateway gateway) implements ToolRegistry.Handler<SearchProvider.FetchRequest, SearchProvider.Page, ExecutionContext> {
     public ToolRegistry.Tool<SearchProvider.FetchRequest, SearchProvider.Page, ExecutionContext> tool() {
-        return new ToolRegistry.Tool<SearchProvider.FetchRequest, SearchProvider.Page, ExecutionContext>(BuiltinTools.WEB_FETCH, false, false, false, this).withPriority(ToolPriority.PAID);
+        return new ToolRegistry.Tool<>(BuiltinTools.WEB_FETCH, false, false, false, this).withPriority(ToolPriority.PAID);
     }
 
     @Override

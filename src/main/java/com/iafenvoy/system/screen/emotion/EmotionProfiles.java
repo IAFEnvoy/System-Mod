@@ -1,7 +1,7 @@
 package com.iafenvoy.system.screen.emotion;
 
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.util.CodecIO;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent;
 
-import com.iafenvoy.assistant.AgentResult.Status;
 import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.AgentResult.Status;
 import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardUpdate;

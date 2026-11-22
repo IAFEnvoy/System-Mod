@@ -12,18 +12,18 @@ public final class SystemMod {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public SystemMod(IEventBus bus) {
-        SystemTicketTypes.REGISTRY.register(bus);
-        SystemSpaceContentTypes.REGISTRY.register(bus);
         SystemActionTypes.REGISTRY.register(bus);
-        SystemCredentialTypes.REGISTRY.register(bus);
         SystemCardDataTypes.REGISTRY.register(bus);
-        SystemRequestTypes.REGISTRY.register(bus);
-        SystemResponseTypes.REGISTRY.register(bus);
-        SystemDataStorages.REGISTRY.register(bus);
         SystemCosts.REGISTRY.register(bus);
+        SystemCredentialTypes.REGISTRY.register(bus);
+        SystemDataStorages.REGISTRY.register(bus);
         SystemEntityActions.REGISTRY.register(bus);
         SystemEntityConditions.REGISTRY.register(bus);
+        SystemRequestTypes.REGISTRY.register(bus);
+        SystemResponseTypes.REGISTRY.register(bus);
         SystemServerModules.REGISTRY.register(bus);
         SystemSoundEvents.REGISTRY.register(bus);
+        SystemSpaceContentTypes.REGISTRY.register(bus);
+        SystemTicketTypes.REGISTRY.register(bus);
     }
 }

@@ -4,11 +4,11 @@ import com.iafenvoy.assistant.action.AgentAction;
 import com.iafenvoy.assistant.module.AgentModule;
 import com.iafenvoy.assistant.react.ReActTool;
 import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.tool.ToolContext;
+import com.iafenvoy.assistant.tool.ToolObservation;
 import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.assistant.tool.ToolContext;
-import com.iafenvoy.assistant.tool.ToolObservation;
 import com.iafenvoy.system.data.card.CardUpdate;
 
 import java.util.LinkedHashMap;
@@ -29,7 +29,8 @@ public final class ChatActions {
             tools.put(tool.id(), tool);
         }
         // A provider cannot replace an existing workflow by exporting a tool with the same ID.
-        for (ToolRegistry.Tool<?, ?, ExecutionContext> read : reads.tools()) tools.putIfAbsent(read.id(), bind(reads, read));
+        for (ToolRegistry.Tool<?, ?, ExecutionContext> read : reads.tools())
+            tools.putIfAbsent(read.id(), bind(reads, read));
         return List.copyOf(tools.values());
     }
 

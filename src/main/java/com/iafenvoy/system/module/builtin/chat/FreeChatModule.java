@@ -4,6 +4,8 @@ import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.assistant.execution.ExecutionPolicy;
 import com.iafenvoy.assistant.react.ReActContext;
 import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.tool.ToolContext;
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.SystemMod;
@@ -16,14 +18,12 @@ import com.iafenvoy.system.agent.chat.ChatSupport;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.react.SystemReAct;
-import com.iafenvoy.assistant.tool.ToolContext;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.FreeChatInput;
 import com.iafenvoy.system.data.output.ChatOutput;
 import com.iafenvoy.system.data.store.Message;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
-import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -78,8 +78,9 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
         });
         Input question = new Input(input.message(), history);
         ToolContext<ExecutionContext> tools = context.chatTools(this.chat.tools(context));
+        Codec<Input> codec = Input.CODEC.codec();
         ReActContext<ChatObservation> loop = SystemReAct.context(context, this.chat.prompt(context),
-                CodecIO.write(Input.CODEC.codec(), question), ChatObservation.codec(tools.tools()), ChatActions.bind(context, tools),
+                CodecIO.encode(codec, question), ChatObservation.codec(tools.tools()), ChatActions.bind(context, tools),
                 () -> {
                     context.requireFreeChat();
                     tools.check();

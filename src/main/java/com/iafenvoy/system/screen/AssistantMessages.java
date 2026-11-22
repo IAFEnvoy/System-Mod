@@ -7,7 +7,6 @@ import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.client.NotificationVoiceCommands;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.data.card.*;
-import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.client.CardController;
 import com.iafenvoy.system.data.card.client.ClientCards;
 import com.iafenvoy.system.event.client.AssistantRecognitionKeys;
@@ -81,7 +80,8 @@ public final class AssistantMessages {
         }
     }
 
-    private record Message(String text, String speechText, List<Button> buttons, UUID cardId, AgentResult<CardUpdate> result,
+    private record Message(String text, String speechText, List<Button> buttons, UUID cardId,
+                           AgentResult<CardUpdate> result,
                            CardUiState pages) {
         private Message {
             buttons = List.copyOf(buttons);

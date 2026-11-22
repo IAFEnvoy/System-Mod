@@ -20,7 +20,7 @@ import java.util.concurrent.CompletionStage;
 public record WebSearchTool(
         SearchGateway gateway) implements ToolRegistry.Handler<SearchProvider.Request, SearchProvider.Response, ExecutionContext> {
     public ToolRegistry.Tool<SearchProvider.Request, SearchProvider.Response, ExecutionContext> tool() {
-        return new ToolRegistry.Tool<SearchProvider.Request, SearchProvider.Response, ExecutionContext>(BuiltinTools.WEB_SEARCH, false, false, false, this).withPriority(ToolPriority.PAID);
+        return new ToolRegistry.Tool<>(BuiltinTools.WEB_SEARCH, false, false, false, this).withPriority(ToolPriority.PAID);
     }
 
     @Override

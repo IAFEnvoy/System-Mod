@@ -1,9 +1,9 @@
 package com.iafenvoy.system.command.client;
 
 import com.iafenvoy.assistant.routing.LexicalIndex;
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.screen.AssistantMessages.Button;
-import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;

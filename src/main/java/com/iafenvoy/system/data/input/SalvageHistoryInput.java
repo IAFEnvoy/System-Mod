@@ -1,8 +1,8 @@
 package com.iafenvoy.system.data.input;
 
+import com.iafenvoy.assistant.action.AgentAction;
 import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
-import com.iafenvoy.assistant.action.AgentAction;
 import com.mojang.serialization.MapCodec;
 
 public record SalvageHistoryInput(int offset) implements AgentAction {

@@ -1,13 +1,13 @@
 package com.iafenvoy.system.speech.asr;
 
+import com.iafenvoy.assistant.credential.Credential;
+import com.iafenvoy.assistant.speech.SpeechException;
 import com.iafenvoy.assistant.speech.asr.AsrProvider;
 import com.iafenvoy.assistant.speech.asr.RecognitionRecording;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.assistant.credential.Credential;
 import com.iafenvoy.system.config.file.ApiConfig;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.registry.SystemServices;
-import com.iafenvoy.assistant.speech.SpeechException;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 

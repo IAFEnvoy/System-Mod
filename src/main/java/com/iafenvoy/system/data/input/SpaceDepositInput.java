@@ -1,10 +1,10 @@
 package com.iafenvoy.system.data.input;
 
+import com.iafenvoy.assistant.action.AgentAction;
 import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.assistant.action.AgentAction;
 import com.mojang.serialization.MapCodec;
 
 public record SpaceDepositInput(String reference, int amount, boolean stack) implements AgentAction {

@@ -5,6 +5,7 @@ import com.iafenvoy.assistant.module.AgentModule;
 import com.iafenvoy.assistant.routing.RoutingDiagnostics;
 import com.iafenvoy.assistant.routing.RoutingProfile;
 import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.response.OpenResponse;
@@ -24,7 +25,6 @@ import com.iafenvoy.system.module.builtin.progress.RecordQueryModule;
 import com.iafenvoy.system.module.builtin.storage.DisplayCardsDataStorage;
 import com.iafenvoy.system.module.builtin.storage.FactDataStorage;
 import com.iafenvoy.system.module.builtin.storage.ModuleAccessDataStorage;
-import com.iafenvoy.system.util.CodecIO;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.commands.CommandSourceStack;
@@ -91,7 +91,7 @@ public final class CoreSystemModule implements CoreModule {
                         context.getSource().sendFailure(Component.translatable("system.error.capability_unavailable"));
                         return 0;
                     }
-                    context.getSource().sendSuccess(() -> Component.literal(CodecIO.write(RoutingDiagnostics.CODEC, runtime.engine().routingDiagnostics())), false);
+                    context.getSource().sendSuccess(() -> Component.literal(CodecIO.encode(RoutingDiagnostics.CODEC, runtime.engine().routingDiagnostics())), false);
                     return 1;
                 }));
     }

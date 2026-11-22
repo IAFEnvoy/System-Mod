@@ -1,5 +1,6 @@
 package com.iafenvoy.system.speech;
 
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.saturn.util.FileAccess;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.config.ConfigInstance;
@@ -7,7 +8,6 @@ import com.iafenvoy.system.data.usage.RecognitionUsage;
 import com.iafenvoy.system.data.usage.SpeechUsage;
 import com.iafenvoy.system.speech.asr.AsrProvider;
 import com.iafenvoy.system.speech.tts.TtsProvider;
-import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.client.Minecraft;
@@ -138,7 +138,7 @@ public final class LocalSpeechUsage {
             Path temporary = this.path.resolveSibling(this.path.getFileName() + ".tmp");
             try {
                 Files.createDirectories(this.path.getParent());
-                Files.writeString(temporary, CodecIO.write(Snapshot.CODEC, value));
+                Files.writeString(temporary, CodecIO.encode(Snapshot.CODEC, value));
                 try {
                     Files.move(temporary, this.path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
                 } catch (AtomicMoveNotSupportedException error) {

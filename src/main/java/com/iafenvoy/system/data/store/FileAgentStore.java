@@ -2,13 +2,13 @@ package com.iafenvoy.system.data.store;
 
 import com.iafenvoy.assistant.chat.ConversationMode;
 import com.iafenvoy.assistant.storage.AgentStore;
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.saturn.util.FileAccess;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.config.file.StorageConfig;
 import com.iafenvoy.system.util.AtomicFiles;
-import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.HolderLookup;
 

@@ -10,7 +10,8 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-public record JobCancelTool(OnlineJobs jobs) implements ToolRegistry.Handler<JobCancelInput, OnlineJobsOutput, ExecutionContext> {
+public record JobCancelTool(
+        OnlineJobs jobs) implements ToolRegistry.Handler<JobCancelInput, OnlineJobsOutput, ExecutionContext> {
     public ToolRegistry.Tool<JobCancelInput, OnlineJobsOutput, ExecutionContext> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.JOB_CANCEL, true, false, false, this);
     }

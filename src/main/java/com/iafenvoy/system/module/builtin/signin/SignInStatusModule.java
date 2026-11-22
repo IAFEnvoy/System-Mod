@@ -82,7 +82,7 @@ public final class SignInStatusModule extends AbstractAgentModule<SignInStatusIn
     }
 
     private AgentResult<CardUpdate> result(ExecutionContext context, String day, List<PersistHolder<Reward>> candidates, boolean external,
-                               Set<Identifier> locked, Optional<ProgressionEstimate> estimate, boolean fixed) {
+                                           Set<Identifier> locked, Optional<ProgressionEstimate> estimate, boolean fixed) {
         List<Component> activities = this.catalogs.view(context).catalog().rewards().stream()
                 .flatMap(holder -> holder.value().conditions().activity().description().stream()
                         .map(value -> holder.value().label().copy().append(" · ").append(value))).limit(64).map(value -> (Component) value).toList();

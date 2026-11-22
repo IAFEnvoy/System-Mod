@@ -1,12 +1,15 @@
 package com.iafenvoy.system.screen.gui;
 
 import com.google.gson.JsonObject;
+import com.iafenvoy.assistant.credential.Credential;
+import com.iafenvoy.assistant.credential.CredentialManager;
+import com.iafenvoy.assistant.speech.asr.AsrProvider;
+import com.iafenvoy.assistant.speech.tts.TtsProvider;
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.assistant.credential.Credential;
 import com.iafenvoy.system.config.credential.CredentialEntry;
-import com.iafenvoy.assistant.credential.CredentialManager;
 import com.iafenvoy.system.config.file.ApiConfig;
 import com.iafenvoy.system.config.file.ModelConfig;
 import com.iafenvoy.system.config.file.SearchConfig;
@@ -15,9 +18,6 @@ import com.iafenvoy.system.data.ClientState;
 import com.iafenvoy.system.registry.SystemRegistries;
 import com.iafenvoy.system.registry.SystemServices;
 import com.iafenvoy.system.search.SearchProvider;
-import com.iafenvoy.assistant.speech.asr.AsrProvider;
-import com.iafenvoy.assistant.speech.tts.TtsProvider;
-import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
 import com.sighs.apricityui.init.Document;
@@ -268,9 +268,10 @@ final class ApiSettings {
             try {
                 ApiConfig config = ApiConfig.INSTANCE.get();
                 config.entry(profile.id()).ifPresent(current -> {
-                    String value = CodecIO.write(Credential.CODEC, editing);
+                    String value = CodecIO.encode(Credential.CODEC, editing);
                     // Some controls emit input followed by change for the same value.
-                    if (value.equals(CodecIO.write(Credential.CODEC, current.credential()))) return;
+                    if (value.equals(CodecIO.encode(Credential.CODEC, current.credential())))
+                        return;
                     this.save(config.put(new CredentialEntry(current.id(), current.name(), CodecIO.parse(Credential.CODEC, value))));
                     this.renderStatuses();
                 });
@@ -285,7 +286,7 @@ final class ApiSettings {
     }
 
     private static Credential copy(Credential credential) {
-        return CodecIO.parse(Credential.CODEC, CodecIO.write(Credential.CODEC, credential));
+        return CodecIO.parse(Credential.CODEC, CodecIO.encode(Credential.CODEC, credential));
     }
 
     private static boolean supportsEditor(MapCodec<? extends Credential> codec) {

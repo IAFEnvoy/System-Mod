@@ -3,13 +3,17 @@ package com.iafenvoy.system.network;
 import com.iafenvoy.assistant.network.AssistantChannel;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.data.item.ItemSearchBatch;
-import com.iafenvoy.system.network.payload.*;
+import com.iafenvoy.system.network.payload.DisplayCardC2SPayload;
+import com.iafenvoy.system.network.payload.DisplayCardsS2CPayload;
+import com.iafenvoy.system.network.payload.TokenUsageRequestC2SPayload;
+import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.network.event.RegisterClientPayloadHandlersEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.MainThreadPayloadHandler;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 /**
  * Wire registration only; processing and connection state belong to the side handlers.
@@ -20,7 +24,7 @@ public final class NetworkManager {
 
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("7");
+        PayloadRegistrar registrar = event.registrar("7");
         ASSISTANT.register(registrar, ServerNetworkHandler::handleAssistantRequest, ServerNetworkHandler::assistantError);
         registrar
                 .playToServer(TokenUsageRequestC2SPayload.TYPE, TokenUsageRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleTokenUsageRequest))

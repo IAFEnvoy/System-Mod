@@ -1,12 +1,12 @@
 package com.iafenvoy.system.agent.storage;
 
 import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardFact;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.store.Message;
 import com.iafenvoy.system.data.store.PlayerData;
-import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
@@ -62,7 +62,7 @@ public final class ConversationMemory {
     }
 
     private static int size(Entry entry) {
-        return CodecIO.write(Entry.CODEC, entry).getBytes(StandardCharsets.UTF_8).length;
+        return CodecIO.encode(Entry.CODEC, entry).getBytes(StandardCharsets.UTF_8).length;
     }
 
     private static CardFact fields(CardUpdate card) {

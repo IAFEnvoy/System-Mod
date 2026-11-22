@@ -3,7 +3,6 @@ package com.iafenvoy.system.screen.card;
 import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.system.config.file.SpeechConfig;
 import com.iafenvoy.system.data.card.*;
-import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.client.CardController;
 import com.iafenvoy.system.data.card.client.CardFormatting;
 import com.iafenvoy.system.data.card.client.ClientCards;

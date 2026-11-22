@@ -1,17 +1,18 @@
 package com.iafenvoy.system.assistant.item;
 
+import com.iafenvoy.assistant.action.AgentAction;
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.evaluate.api.ItemValues;
 import com.iafenvoy.evaluate.api.ValueKey;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
-import com.iafenvoy.assistant.action.AgentAction;
 import com.iafenvoy.system.data.catalog.ShopTrade;
 import com.iafenvoy.system.data.item.ItemSearchBatch;
 import com.iafenvoy.system.data.item.ItemSearchQuery;
 import com.iafenvoy.system.data.space.ItemSpaceContent;
 import com.iafenvoy.system.data.space.SpaceStack;
-import com.iafenvoy.system.util.CodecIO;
+import com.mojang.serialization.Codec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -76,7 +77,8 @@ public final class ItemSearches implements AutoCloseable {
     }
 
     public Identifier remember(ServerPlayer player, String prefix, String namespace, ItemStackTemplate item) {
-        String encoded = CodecIO.write(CodecIO.contextual(ItemStackTemplate.CODEC, player.registryAccess()), item);
+        Codec<ItemStackTemplate> codec = CodecIO.contextual(ItemStackTemplate.CODEC, player.registryAccess());
+        String encoded = CodecIO.encode(codec, item);
         String hash = UUID.nameUUIDFromBytes(encoded.getBytes(StandardCharsets.UTF_8)).toString();
         Identifier offer = Identifier.fromNamespaceAndPath(namespace, prefix + hash);
         this.cache.remember(player.getUUID(), offer, item);

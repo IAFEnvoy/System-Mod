@@ -10,7 +10,8 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-public record JobStartTool(OnlineJobs jobs) implements ToolRegistry.Handler<JobStartInput, OnlineJobsOutput, ExecutionContext> {
+public record JobStartTool(
+        OnlineJobs jobs) implements ToolRegistry.Handler<JobStartInput, OnlineJobsOutput, ExecutionContext> {
     public ToolRegistry.Tool<JobStartInput, OnlineJobsOutput, ExecutionContext> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.JOB_START, true, false, false, this);
     }

@@ -29,7 +29,7 @@ public record DatabaseQueryTool(
     public static final DatabaseTable<List<KnowledgeIndex.Document>> KNOWLEDGE = AgentDatabase.documents(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "knowledge"));
 
     public ToolRegistry.Tool<DatabaseQueryInput, DatabaseQueryOutput, ExecutionContext> tool() {
-        return new ToolRegistry.Tool<DatabaseQueryInput, DatabaseQueryOutput, ExecutionContext>(BuiltinTools.DATABASE_QUERY, false, true, false, this)
+        return new ToolRegistry.Tool<>(BuiltinTools.DATABASE_QUERY, false, true, false, this)
                 .forReasoning("Query the current player's private knowledge, shared knowledge and authorized quest manuals.");
     }
 

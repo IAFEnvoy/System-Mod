@@ -1,9 +1,9 @@
 package com.iafenvoy.system.module.merge;
 
+import com.iafenvoy.assistant.registry.ModuleScope;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.assistant.registry.ModuleScope;
 import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.module.ModuleContext;
 import net.minecraft.core.Holder;

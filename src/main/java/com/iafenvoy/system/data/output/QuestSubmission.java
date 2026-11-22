@@ -1,9 +1,9 @@
 package com.iafenvoy.system.data.output;
 
+import com.iafenvoy.assistant.action.ActionArguments;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.input.QuestSubmitInput;
-import com.iafenvoy.assistant.action.ActionArguments;
 import com.mojang.serialization.Codec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.StringRepresentable;

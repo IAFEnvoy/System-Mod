@@ -1,8 +1,8 @@
 package com.iafenvoy.system.data.output;
 
+import com.iafenvoy.assistant.action.ActionArguments;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.input.QuestLifecycleInput;
-import com.iafenvoy.assistant.action.ActionArguments;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.chat.Component;

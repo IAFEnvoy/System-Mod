@@ -6,6 +6,8 @@ import com.iafenvoy.assistant.execution.ExecutionPolicy;
 import com.iafenvoy.assistant.react.ReActContext;
 import com.iafenvoy.assistant.react.ReActTool;
 import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.tool.ToolContext;
+import com.iafenvoy.assistant.tool.ToolObservation;
 import com.iafenvoy.assistant.tool.ToolPriority;
 import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.runtime.resulting.Failure;
@@ -18,8 +20,6 @@ import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
 import com.iafenvoy.system.agent.react.SystemReAct;
-import com.iafenvoy.assistant.tool.ToolContext;
-import com.iafenvoy.assistant.tool.ToolObservation;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.data.TextCardData;
@@ -60,7 +60,8 @@ public final class ReasoningModule extends AbstractAgentModule<ReasoningInput> {
         ToolContext<ExecutionContext> tools = context.reasoningTools();
         List<CardData> results = new ArrayList<>();
         List<ReActTool<?, ToolObservation<?, ?>>> bindings = new ArrayList<>();
-        for (ToolRegistry.Tool<?, ?, ExecutionContext> tool : tools.tools()) bindings.add(binding(tools, tool, results));
+        for (ToolRegistry.Tool<?, ?, ExecutionContext> tool : tools.tools())
+            bindings.add(binding(tools, tool, results));
         Set<Failure> recoverable = new HashSet<>(SystemReAct.MODEL_FAILURES);
         recoverable.addAll(Set.of(AgentFailure.TOOL_FAILED, AgentFailure.INVALID_INPUT, AgentFailure.QUEST_UNAVAILABLE, AgentFailure.UNKNOWN_ITEM));
         ReActContext<ToolObservation<?, ?>> loop = SystemReAct.context(context, context.prompt(SystemPrompts.REACT), input.request(),

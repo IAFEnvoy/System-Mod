@@ -1,9 +1,9 @@
 package com.iafenvoy.system.search;
 
+import com.iafenvoy.assistant.util.CodecIO;
+import com.iafenvoy.assistant.util.HttpTransport;
 import com.iafenvoy.system.config.credential.builtin.DeepSeekCredential;
 import com.iafenvoy.system.config.file.SearchConfig;
-import com.iafenvoy.system.util.CodecIO;
-import com.iafenvoy.assistant.util.HttpTransport;
 import com.mojang.serialization.Codec;
 
 import java.io.IOException;
@@ -51,7 +51,7 @@ public final class DeepSeekSearchClient implements SearchProvider {
             throws SearchException, InterruptedException {
         String body;
         try {
-            body = CodecIO.write(inputCodec, input);
+            body = CodecIO.encode(inputCodec, input);
         } catch (RuntimeException invalidRequest) {
             throw new SearchException("SEARCH_INVALID_REQUEST", invalidRequest);
         }

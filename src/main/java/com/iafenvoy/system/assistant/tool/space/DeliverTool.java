@@ -12,7 +12,8 @@ import java.util.concurrent.CompletionStage;
 /**
  * Whole-package buttons consume only the contents still held by the system space.
  */
-public record DeliverTool(SystemSpace space) implements ToolRegistry.Handler<EntitlementInput, StateOutput, ExecutionContext> {
+public record DeliverTool(
+        SystemSpace space) implements ToolRegistry.Handler<EntitlementInput, StateOutput, ExecutionContext> {
     public ToolRegistry.Tool<EntitlementInput, StateOutput, ExecutionContext> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.DELIVER, true, true, false, this);
     }

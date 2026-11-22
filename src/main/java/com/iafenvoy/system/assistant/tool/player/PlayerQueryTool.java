@@ -13,9 +13,10 @@ import java.util.concurrent.CompletionStage;
 /**
  * Reads one current player snapshot on the bounded game-thread queue.
  */
-public record PlayerQueryTool(MinecraftTools game) implements ToolRegistry.Handler<EmptyInput, PlayerSnapshotOutput, ExecutionContext> {
+public record PlayerQueryTool(
+        MinecraftTools game) implements ToolRegistry.Handler<EmptyInput, PlayerSnapshotOutput, ExecutionContext> {
     public ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput, ExecutionContext> tool() {
-        return new ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput, ExecutionContext>(BuiltinTools.PLAYER, false, true, true, this)
+        return new ToolRegistry.Tool<>(BuiltinTools.PLAYER, false, true, true, this)
                 .forReasoning("Read the current player's health, level and game information.");
     }
 

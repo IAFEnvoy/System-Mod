@@ -2,7 +2,6 @@ package com.iafenvoy.system.data.card.client;
 
 import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.system.data.card.*;
-import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.event.client.CardBuildEvent;
 import com.iafenvoy.system.screen.emotion.AssistantEmotions;
 import net.neoforged.neoforge.common.NeoForge;

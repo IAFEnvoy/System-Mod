@@ -1,8 +1,10 @@
 package com.iafenvoy.system.test.client;
 
+import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.output.ChatOutput;
 import com.iafenvoy.system.module.client.ClientModule;
 import com.iafenvoy.system.module.client.ClientModuleContext;
@@ -33,7 +35,7 @@ public final class MarkdownDebugCommand implements ClientModule {
     private static void show() {
         try (InputStream stream = Minecraft.getInstance().getResourceManager().open(SAMPLE)) {
             String markdown = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            var result = SystemResults.data("system.result.chat", new ChatOutput(markdown));
+            AgentResult<CardUpdate> result = SystemResults.data("system.result.chat", new ChatOutput(markdown));
             // Local results stay in the transcript; silent prevents automatic speech for this long preview.
             AssistantClient.local(result.withPresentation(result.messageKey(), result.text(), result.cards(), true));
         } catch (IOException error) {

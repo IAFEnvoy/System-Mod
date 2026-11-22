@@ -1,6 +1,7 @@
 package com.iafenvoy.system.assistant.workshop;
 
 import com.iafenvoy.assistant.storage.AgentStore;
+import com.iafenvoy.assistant.util.CodecIO;
 import com.iafenvoy.evaluate.api.ItemValues;
 import com.iafenvoy.saturn.data.cost.context.CostContext;
 import com.iafenvoy.saturn.util.PersistHolder;
@@ -39,7 +40,7 @@ import com.iafenvoy.system.module.builtin.WorkshopSystemModule;
 import com.iafenvoy.system.module.builtin.storage.SpaceDataStorage;
 import com.iafenvoy.system.module.builtin.storage.WorkshopDataStorage;
 import com.iafenvoy.system.registry.SystemResourceKeys;
-import com.iafenvoy.system.util.CodecIO;
+import com.mojang.serialization.Codec;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
@@ -218,7 +219,8 @@ public final class Salvage implements PlayerModule {
                 this.validate(context, player, issued);
                 return issued;
             });
-            String revision = UUID.nameUUIDFromBytes(CodecIO.write(context.store().codec(SalvageRule.CODEC), quote.rule()).getBytes(StandardCharsets.UTF_8)).toString();
+            Codec<SalvageRule> codec = context.store().codec(SalvageRule.CODEC);
+            String revision = UUID.nameUUIDFromBytes(CodecIO.encode(codec, quote.rule()).getBytes(StandardCharsets.UTF_8)).toString();
             SalvageOrder order = new SalvageOrder(quote.id(), new SalvageOrder.Terms(quote.owner(), quote.ruleId(), this.engine.incarnation(context.player()),
                     revision, quote.input(), quote.payment().getData(), quote.reward()), SalvageOrder.State.PREPARED, System.currentTimeMillis(), "", "", "", 0);
             context.store().update(context.player(), data -> {

@@ -29,7 +29,7 @@ import java.util.concurrent.CompletionStage;
 public record ItemQueryTool(MinecraftTools game,
                             ItemSearches searches) implements ToolRegistry.Handler<ItemQueryInput, ItemPageOutput, ExecutionContext> {
     public ToolRegistry.Tool<ItemQueryInput, ItemPageOutput, ExecutionContext> tool() {
-        return new ToolRegistry.Tool<ItemQueryInput, ItemPageOutput, ExecutionContext>(BuiltinTools.ITEMS, false, true, false, this)
+        return new ToolRegistry.Tool<>(BuiltinTools.ITEMS, false, true, false, this)
                 .forReasoning("Find item names and registry IDs. Use observed IDs for a later item-source lookup.");
     }
 

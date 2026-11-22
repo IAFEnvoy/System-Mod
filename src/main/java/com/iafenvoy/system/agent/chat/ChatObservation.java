@@ -1,10 +1,10 @@
 package com.iafenvoy.system.agent.chat;
 
 import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.tool.ToolObservation;
 import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.assistant.tool.ToolObservation;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;

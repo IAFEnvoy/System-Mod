@@ -1,16 +1,18 @@
 package com.iafenvoy.system.module.builtin.lottery;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
 import com.iafenvoy.saturn.util.HolderHelper;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.item.ItemSearches;
 import com.iafenvoy.system.data.LotteryPool;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.input.LotteryQueryInput;
 import com.iafenvoy.system.data.item.ItemSearchBatch;
@@ -87,7 +89,7 @@ public final class LotteryModule extends AbstractAgentModule<LotteryQueryInput> 
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, LotteryQueryInput input) {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, LotteryQueryInput input) {
         String query = input.query().strip().toLowerCase(Locale.ROOT);
         Optional<ItemSearchBatch> candidates = this.searches.candidates(context.player(), input);
         Set<ItemStackTemplate> variants = candidates.map(batch -> Set.copyOf(batch.items())).orElse(Set.of());
@@ -101,8 +103,8 @@ public final class LotteryModule extends AbstractAgentModule<LotteryQueryInput> 
         List<LotteryCatalogOutput.Pool> pools = matches.stream().skip(offset).limit(MAX_POOLS)
                 .map(holder -> entry(holder, !view.lockedLotteries().contains(HolderHelper.id(holder)))).toList();
         if (pools.isEmpty() && candidates.filter(ItemSearchBatch::hasMore).isEmpty())
-            return AgentResult.ok("system.result.lottery_empty");
-        return AgentResult.data("system.result.lottery",
+            return SystemResults.ok("system.result.lottery_empty");
+        return SystemResults.data("system.result.lottery",
                 new LotteryCatalogOutput(catalog.revision(), input.query(), pools, offset, matches.size(), input.searchRef(),
                         input.itemOffset(), candidates.filter(ItemSearchBatch::hasMore).map(ItemSearchBatch::nextOffset)));
     }

@@ -1,5 +1,6 @@
 package com.iafenvoy.system.speech.tts;
 
+import com.iafenvoy.assistant.speech.SpeechAudio;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.config.ConfigInstance;
 import org.jspecify.annotations.Nullable;

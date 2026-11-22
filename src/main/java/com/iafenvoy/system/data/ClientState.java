@@ -1,5 +1,6 @@
 package com.iafenvoy.system.data;
 
+import com.iafenvoy.assistant.chat.AiStatus;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;

@@ -1,5 +1,6 @@
 package com.iafenvoy.system.assistant;
 
+import com.iafenvoy.assistant.AssistantException;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.model.ModelClient;
@@ -84,6 +85,8 @@ public final class ConfiguredModelClient implements ModelClient {
                 this.active.add(client);
             }
             return client.complete(messages, functions, options, maxOutputTokens, timeout, usage);
+        } catch (AssistantException failure) {
+            throw new AgentException(AgentFailure.fromCode(failure.reason().name()), failure);
         } finally {
             synchronized (this) {
                 this.active.remove(client);

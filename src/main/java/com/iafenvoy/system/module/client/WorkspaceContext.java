@@ -1,7 +1,7 @@
 package com.iafenvoy.system.module.client;
 
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
@@ -13,7 +13,7 @@ public record WorkspaceContext(AssistantScreen screen, Document document,
     public void click(String id, Runnable action) {
         AssistantView.bind(this.document, id, () -> {
             if (!this.workspace.available())
-                AssistantClient.local(AgentResult.error(AgentFailure.CAPABILITY_UNAVAILABLE));
+                AssistantClient.local(SystemResults.error(AgentFailure.CAPABILITY_UNAVAILABLE));
                 // Closing a toolbar must not repeat the module's opening query or other side effects.
             else if (id.equals(this.workspace.navigation()) && !this.workspace.page().isBlank() && this.workspace.page().equals(this.screen.page()))
                 this.show("chat");

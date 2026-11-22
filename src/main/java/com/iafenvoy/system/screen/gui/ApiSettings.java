@@ -4,9 +4,9 @@ import com.google.gson.JsonObject;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.model.ModelClient;
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.config.credential.Credential;
+import com.iafenvoy.assistant.credential.Credential;
 import com.iafenvoy.system.config.credential.CredentialEntry;
-import com.iafenvoy.system.config.credential.CredentialManager;
+import com.iafenvoy.assistant.credential.CredentialManager;
 import com.iafenvoy.system.config.file.ApiConfig;
 import com.iafenvoy.system.config.file.ModelConfig;
 import com.iafenvoy.system.config.file.SearchConfig;
@@ -15,8 +15,8 @@ import com.iafenvoy.system.data.ClientState;
 import com.iafenvoy.system.registry.SystemRegistries;
 import com.iafenvoy.system.registry.SystemServices;
 import com.iafenvoy.system.search.SearchProvider;
-import com.iafenvoy.system.speech.asr.AsrProvider;
-import com.iafenvoy.system.speech.tts.TtsProvider;
+import com.iafenvoy.assistant.speech.asr.AsrProvider;
+import com.iafenvoy.assistant.speech.tts.TtsProvider;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
@@ -61,7 +61,7 @@ final class ApiSettings {
             }));
         }
         this.selectors.add(new Selector<>("tts", "speech_api", SystemServices.TTS, TtsProvider::configured, service -> {
-            SpeechConfig.INSTANCE.set(service.defaults(SpeechConfig.INSTANCE.get()));
+            SpeechConfig.INSTANCE.set(SpeechConfig.INSTANCE.get().providerDefaults(service));
             return SpeechConfig.INSTANCE.save();
         }));
         this.selectors.add(new Selector<>("asr", "asr_api", SystemServices.ASR, AsrProvider::configured, _ -> true));
@@ -74,6 +74,8 @@ final class ApiSettings {
                 MapCodec<? extends Credential> codec = SystemRegistries.CREDENTIAL_TYPE.getValue(type);
                 if (codec == null) return;
                 Credential credential = codec.codec().parse(JsonOps.INSTANCE, new JsonObject()).getOrThrow();
+                if (!(credential instanceof com.iafenvoy.system.config.credential.Credential))
+                    throw new IllegalArgumentException("Credential does not provide a System editor");
                 this.save(ApiConfig.INSTANCE.get().put(new CredentialEntry(UUID.randomUUID().toString(), typeLabel(type), credential)));
                 this.render();
             } catch (RuntimeException invalid) {
@@ -84,7 +86,10 @@ final class ApiSettings {
         });
         Element types = this.document.getElementById("api_new_type");
         types.setAttribute("aria-label", tr("system.api.new_type"));
-        for (Identifier id : SystemRegistries.CREDENTIAL_TYPE.keySet()) option(types, id.toString(), typeLabel(id));
+        for (Identifier id : SystemRegistries.CREDENTIAL_TYPE.keySet()) {
+            MapCodec<? extends Credential> codec = SystemRegistries.CREDENTIAL_TYPE.getValue(id);
+            if (supportsEditor(codec)) option(types, id.toString(), typeLabel(id));
+        }
         types.setValue("system:deepseek");
         for (Selector<?> selector : this.selectors)
             this.document.getElementById(selector.prefix() + "_credential").addEventListener("change", _ -> {
@@ -255,7 +260,8 @@ final class ApiSettings {
 
         // Each card edits its own detached snapshot; typing never rebuilds these controls.
         Credential editing = copy(profile.credential());
-        Element widget = editing.createWidget();
+        if (!(editing instanceof com.iafenvoy.system.config.credential.Credential editable)) return card;
+        Element widget = editable.createWidget();
         card.appendChild(widget);
         Runnable save = () -> {
             if (this.rendering) return;
@@ -280,6 +286,15 @@ final class ApiSettings {
 
     private static Credential copy(Credential credential) {
         return CodecIO.parse(Credential.CODEC, CodecIO.write(Credential.CODEC, credential));
+    }
+
+    private static boolean supportsEditor(MapCodec<? extends Credential> codec) {
+        try {
+            return codec != null && codec.codec().parse(JsonOps.INSTANCE, new JsonObject()).result().orElse(null)
+                    instanceof com.iafenvoy.system.config.credential.Credential;
+        } catch (RuntimeException invalid) {
+            return false;
+        }
     }
 
     private void save(ApiConfig config) {

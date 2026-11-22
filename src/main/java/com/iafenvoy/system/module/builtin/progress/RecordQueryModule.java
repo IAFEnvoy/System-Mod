@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin.progress;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.RecordQueryInput;
 import com.iafenvoy.system.data.output.RecordRewardsOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -15,7 +17,7 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 import java.util.List;
 
 public final class RecordQueryModule extends AbstractAgentModule<RecordQueryInput> {
-    public RecordQueryModule(ToolRegistry.Tool<RecordQueryInput, RecordRewardsOutput> query) {
+    public RecordQueryModule(ToolRegistry.Tool<RecordQueryInput, RecordRewardsOutput, ExecutionContext> query) {
         super(RecordQueryInput.CODEC, "Read durable progress counters and earned milestone or quest-point rewards. Never creates progress or grants new rewards.", List.of(query), true, false, ExecutionPolicy.quick(0, 0));
     }
 
@@ -27,7 +29,7 @@ public final class RecordQueryModule extends AbstractAgentModule<RecordQueryInpu
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, RecordQueryInput input) throws Exception {
-        return AgentResult.data("system.records.title", context.tool(BuiltinTools.RECORD_QUERY, "records", input));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, RecordQueryInput input) throws Exception {
+        return SystemResults.data("system.records.title", context.tool(BuiltinTools.RECORD_QUERY, "records", input));
     }
 }

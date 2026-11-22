@@ -1,11 +1,12 @@
 package com.iafenvoy.system.assistant;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.action.AgentAction;
+import com.iafenvoy.assistant.chat.ConversationMode;
+import com.iafenvoy.assistant.request.*;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.chat.ConversationMode;
-import com.iafenvoy.system.agent.module.AgentAction;
-import com.iafenvoy.system.agent.request.*;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.command.client.AssistantClientCommands;
 import com.iafenvoy.system.config.file.ClientConfig;
 import com.iafenvoy.system.data.ClientState;
@@ -22,7 +23,7 @@ import com.iafenvoy.system.data.output.SpaceInventoryOutput;
 import com.iafenvoy.system.data.output.SpaceOutput;
 import com.iafenvoy.system.module.client.ClientItemSearch;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
-import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
+import com.iafenvoy.system.network.NetworkManager;
 import com.iafenvoy.system.registry.SystemResourceKeys;
 import com.iafenvoy.system.screen.AssistantCardDisplay;
 import com.iafenvoy.system.screen.AssistantMessages;
@@ -99,7 +100,7 @@ public final class AssistantClient {
     public static boolean submitText(String text) {
         if (text == null || text.isBlank() || state.busy()) return false;
         if (text.codePointCount(0, text.length()) > 2000) {
-            local(AgentResult.error(AgentFailure.INVALID_INPUT));
+            local(SystemResults.error(AgentFailure.INVALID_INPUT));
             return true;
         }
         // Explicit UI commands remain local in free mode; ordinary text still goes directly to the agent.
@@ -125,7 +126,7 @@ public final class AssistantClient {
         send(new PreferencesRequest(state.saveHistory(), mode));
     }
 
-    public static void local(AgentResult result) {
+    public static void local(AgentResult<CardUpdate> result) {
         if (chatError(result)) return;
         result.cards().forEach(card -> ClientCards.apply(card, false));
         state = state.local(result);
@@ -138,11 +139,11 @@ public final class AssistantClient {
         if (connection != null) connection.sendCommand("system " + command);
     }
 
-    public static void receive(String requestId, AgentResult result) {
+    public static void receive(String requestId, AgentResult<CardUpdate> result) {
         receive(requestId, result, false);
     }
 
-    public static void notice(AgentResult result) {
+    public static void notice(AgentResult<CardUpdate> result) {
         receive("", result, true);
     }
 
@@ -158,7 +159,7 @@ public final class AssistantClient {
         revision++;
     }
 
-    private static void receive(String requestId, AgentResult result, boolean notification) {
+    private static void receive(String requestId, AgentResult<CardUpdate> result, boolean notification) {
         // Command replies have no client pending entry, so unbound errors must precede late-reply filtering.
         if (chatError(result)) {
             complete(requestId);
@@ -186,7 +187,7 @@ public final class AssistantClient {
         updates.stream().flatMap(card -> card.data().stream()).filter(RewardChoiceOutput.class::isInstance)
                 .map(RewardChoiceOutput.class::cast).forEach(ClientModuleCaches.SPACE::receive);
         updates.forEach(EmotionHudState::receive);
-        AgentResult accepted = result.withPresentation(result.messageKey(), result.text(), updates, result.silent());
+        AgentResult<CardUpdate> accepted = result.withPresentation(result.messageKey(), result.text(), updates, result.silent());
         state = state.receive(requestId, accepted, notification, select);
         revision++;
         // Only this request's reply can replace its source notice; unrelated pushes retain FIFO order.
@@ -201,7 +202,7 @@ public final class AssistantClient {
         else if (select && minecraft.screen instanceof AssistantInputScreen screen) screen.speech().result(accepted);
     }
 
-    private static boolean chatError(AgentResult result) {
+    private static boolean chatError(AgentResult<CardUpdate> result) {
         if (result.status() != AgentResult.Status.FAILED || state.serverState().system().isPresent()
                 && !result.messageKey().equals("system.error.not_bound")) return false;
         MutableComponent message = Component.translatable(result.messageKey());
@@ -248,16 +249,16 @@ public final class AssistantClient {
         state = state.requested(id, request, viewOwner(), notification);
         revision++;
         Optional<ItemSearchQuery> search = ClientItemSearch.query(request);
-        if (search.isEmpty()) connection.send(new AssistantRequestC2SPayload(id, request));
+        if (search.isEmpty()) connection.send(NetworkManager.ASSISTANT.request(id, request));
         else ClientItemSearch.search(search.get()).whenComplete((batch, error) ->
                 Minecraft.getInstance().execute(() -> {
                     if (Minecraft.getInstance().getConnection() != connection || !state.pending().containsKey(id))
                         return;
                     if (error != null) {
                         SystemMod.LOGGER.warn("Client item search failed for query {}", search.get().query(), error);
-                        local(AgentResult.error(AgentFailure.INVALID_INPUT));
+                        local(SystemResults.error(AgentFailure.INVALID_INPUT));
                         complete(id);
-                    } else connection.send(new AssistantRequestC2SPayload(id, request, Optional.of(batch)));
+                    } else connection.send(NetworkManager.ASSISTANT.request(id, request, Optional.of(batch)));
                 }));
     }
 

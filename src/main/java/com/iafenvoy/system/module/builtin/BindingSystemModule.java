@@ -1,8 +1,9 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantServer;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.module.CoreModule;
 import com.iafenvoy.system.module.ModuleCommands;
 import com.iafenvoy.system.registry.SystemResourceKeys;
@@ -77,6 +78,6 @@ public final class BindingSystemModule implements CoreModule {
 
     @FunctionalInterface
     private interface Handler {
-        void run(AssistantServer runtime, ServerPlayer player, Consumer<AgentResult> feedback);
+        void run(AssistantServer runtime, ServerPlayer player, Consumer<AgentResult<CardUpdate>> feedback);
     }
 }

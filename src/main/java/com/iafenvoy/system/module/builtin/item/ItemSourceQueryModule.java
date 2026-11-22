@@ -1,17 +1,19 @@
 package com.iafenvoy.system.module.builtin.item;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.command.CommandArguments;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.item.ItemNameIndex;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.ItemQueryInput;
 import com.iafenvoy.system.data.input.ItemSourceQueryInput;
 import com.iafenvoy.system.data.output.ItemInfoOutput;
@@ -30,7 +32,7 @@ import java.util.*;
 public final class ItemSourceQueryModule extends AbstractAgentModule<ItemSourceQueryInput> {
     private final ItemNameIndex names;
 
-    public ItemSourceQueryModule(ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput> sources, ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> items, ItemNameIndex names) {
+    public ItemSourceQueryModule(ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput, ExecutionContext> sources, ToolRegistry.Tool<ItemQueryInput, ItemPageOutput, ExecutionContext> items, ItemNameIndex names) {
         super(ItemSourceQueryInput.CODEC, "Find recipe, loot or item tag sources for a known item registry ID or an item search query.", List.of(sources, items), true, false, ExecutionPolicy.quick(2, 0));
         this.names = names;
     }
@@ -73,7 +75,7 @@ public final class ItemSourceQueryModule extends AbstractAgentModule<ItemSourceQ
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, ItemSourceQueryInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, ItemSourceQueryInput input) throws Exception {
         if (!ItemSourceProviders.isKnownScope(input.scope())) throw new AgentException(AgentFailure.INVALID_INPUT);
         Identifier id = Identifier.tryParse(input.itemId());
         if (input.searchRef().isPresent() || id == null || !BuiltInRegistries.ITEM.containsKey(id)) {
@@ -82,11 +84,11 @@ public final class ItemSourceQueryModule extends AbstractAgentModule<ItemSourceQ
             page.items().forEach(item -> unique.putIfAbsent(item.id(), item));
             // Sources are keyed by item type, so multiple potion/enchantment variants share one choice.
             if (unique.size() != 1 || page.hasMore())
-                return AgentResult.data("system.result.items", new ItemPageOutput(page.query(), List.copyOf(unique.values()),
+                return SystemResults.data("system.result.items", new ItemPageOutput(page.query(), List.copyOf(unique.values()),
                         page.nextOffset(), page.hasMore(), page.searchRef(), page.offset(), Optional.of(input.scope())));
             input = new ItemSourceQueryInput(unique.keySet().iterator().next(), input.scope());
         }
         ItemSourceOutput output = context.tool(BuiltinTools.ITEM_SOURCES, "sources", input);
-        return AgentResult.data("system.result.item_sources", output);
+        return SystemResults.data("system.result.item_sources", output);
     }
 }

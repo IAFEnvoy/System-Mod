@@ -5,7 +5,7 @@ import com.iafenvoy.evaluate.api.ValueKey;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
-import com.iafenvoy.system.agent.module.AgentAction;
+import com.iafenvoy.assistant.action.AgentAction;
 import com.iafenvoy.system.data.catalog.ShopTrade;
 import com.iafenvoy.system.data.item.ItemSearchBatch;
 import com.iafenvoy.system.data.item.ItemSearchQuery;

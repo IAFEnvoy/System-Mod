@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.util.codec.RegistryCodecs;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.module.AgentModule;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.signin.OfflineSignIn;
 import com.iafenvoy.system.assistant.signin.SignIns;
 import com.iafenvoy.system.assistant.tool.player.PlayerQueryTool;
 import com.iafenvoy.system.assistant.tool.signin.SignInCreditTool;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.catalog.SignInRewardEntry;
 import com.iafenvoy.system.data.input.EmptyInput;
 import com.iafenvoy.system.data.output.PlayerSnapshotOutput;
@@ -67,8 +69,8 @@ public record SignInSystemModule(
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
-        ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player = context.tool(BuiltinTools.PLAYER, () -> new PlayerQueryTool(context.get(ContextTypes.GAME)).tool());
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
+        ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput, ExecutionContext> player = context.tool(BuiltinTools.PLAYER, () -> new PlayerQueryTool(context.get(ContextTypes.GAME)).tool());
         SignIns signIns = service(context);
         OfflineSignIn offline = new OfflineSignIn(context.get(ContextTypes.CATALOGS), this.offline);
         return List.of(new SignInModule(context.get(ContextTypes.CATALOGS), signIns, offline, this.rules, player,

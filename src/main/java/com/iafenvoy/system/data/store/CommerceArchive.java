@@ -1,10 +1,10 @@
 package com.iafenvoy.system.data.store;
 
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.util.FileAccess;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.util.AtomicFiles;
 import com.mojang.serialization.Codec;
 import net.minecraft.nbt.NbtOps;
@@ -38,7 +38,7 @@ public final class CommerceArchive {
         return this.root.resolve(player.toString()).resolve(type.getSerializedName()).resolve(scope).resolve(id.substring(0, 2)).resolve(id + ".dat");
     }
 
-    public Optional<Purchase> get(AgentStore store, UUID player, String scope, PurchaseType type, String id) {
+    public Optional<Purchase> get(AgentStore<PlayerData> store, UUID player, String scope, PurchaseType type, String id) {
         Path file = this.path(player, scope, type, id);
         try {
             if (Files.notExists(file)) return Optional.empty();
@@ -52,7 +52,7 @@ public final class CommerceArchive {
         }
     }
 
-    public void put(AgentStore store, UUID player, String scope, Purchase purchase) {
+    public void put(AgentStore<PlayerData> store, UUID player, String scope, Purchase purchase) {
         Path file = this.path(player, scope, purchase.order.type(), purchase.id);
         try {
             Optional<Purchase> existing = this.get(store, player, scope, purchase.order.type(), purchase.id);
@@ -97,7 +97,7 @@ public final class CommerceArchive {
     /**
      * Count archived results once; exclude live IDs because archiving can leave the same receipt in both places.
      */
-    public Map<Identifier, Map<Identifier, Integer>> rewardCounts(AgentStore store, UUID player, String scope, Set<String> live) {
+    public Map<Identifier, Map<Identifier, Integer>> rewardCounts(AgentStore<PlayerData> store, UUID player, String scope, Set<String> live) {
         Path directory = this.history(player, scope, Optional.empty()).getParent();
         Map<Identifier, Map<Identifier, Integer>> wins = new HashMap<>();
         try {
@@ -123,7 +123,7 @@ public final class CommerceArchive {
     /**
      * Index archives written before history browsing existed once, on the storage worker.
      */
-    private void ensureHistory(AgentStore store, UUID player, String scope) throws IOException {
+    private void ensureHistory(AgentStore<PlayerData> store, UUID player, String scope) throws IOException {
         Path history = this.history(player, scope, Optional.empty());
         Path ready = history.resolve("ready.dat");
         if (Files.exists(ready)) return;
@@ -140,7 +140,7 @@ public final class CommerceArchive {
                 .orElseThrow(() -> new IOException("Unable to encode history marker " + ready)));
     }
 
-    public Page history(AgentStore store, UUID player, String scope, Optional<Identifier> pool, List<Purchase> live, int requested, int count) {
+    public Page history(AgentStore<PlayerData> store, UUID player, String scope, Optional<Identifier> pool, List<Purchase> live, int requested, int count) {
         Path directory = this.history(player, scope, pool);
         try {
             this.ensureHistory(store, player, scope);

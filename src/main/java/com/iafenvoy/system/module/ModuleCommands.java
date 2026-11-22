@@ -1,8 +1,10 @@
 package com.iafenvoy.system.module;
 
+import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.assistant.AssistantServer;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
@@ -21,7 +23,7 @@ public final class ModuleCommands {
     public static AssistantServer runtime(ServerPlayer player) {
         AssistantServer runtime = AssistantServer.get(player.level().getServer());
         if (runtime == null)
-            ServerNetworkHandler.notice(player, AgentResult.error(AgentFailure.CAPABILITY_UNAVAILABLE));
+            ServerNetworkHandler.notice(player, SystemResults.error(AgentFailure.CAPABILITY_UNAVAILABLE));
         return runtime;
     }
 
@@ -31,7 +33,7 @@ public final class ModuleCommands {
         return runtime;
     }
 
-    public static Consumer<AgentResult> feedback(CommandContext<CommandSourceStack> context, ServerPlayer target) {
+    public static Consumer<AgentResult<CardUpdate>> feedback(CommandContext<CommandSourceStack> context, ServerPlayer target) {
         return result -> {
             if (context.getSource().getEntity() == target) return;
             Component message = Component.translatable("system.command.feedback", target.getName(), Component.translatable(result.messageKey()));

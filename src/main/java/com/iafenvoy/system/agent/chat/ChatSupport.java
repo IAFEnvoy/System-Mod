@@ -1,7 +1,7 @@
 package com.iafenvoy.system.agent.chat;
 
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 
 import java.util.List;

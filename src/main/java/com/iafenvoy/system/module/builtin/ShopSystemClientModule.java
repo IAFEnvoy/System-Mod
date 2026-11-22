@@ -1,7 +1,7 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.command.AgentCommand;
 import com.iafenvoy.saturn.data.IconReference;
-import com.iafenvoy.system.agent.command.AgentCommand;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.data.input.BuybackQueryInput;
 import com.iafenvoy.system.data.input.ShopQueryInput;

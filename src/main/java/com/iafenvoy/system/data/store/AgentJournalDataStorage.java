@@ -1,12 +1,17 @@
 package com.iafenvoy.system.data.store;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.storage.AgentJournal;
+import com.iafenvoy.assistant.storage.EventTask;
+import com.iafenvoy.assistant.storage.State;
+import com.iafenvoy.assistant.storage.Step;
 import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.saturn.util.FileAccess;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.storage.AgentJournal;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.config.file.StorageConfig;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.MapCodec;
@@ -21,16 +26,17 @@ import java.util.stream.Stream;
  * Durable event tasks and idempotent tool receipts belong to the Agent execution subsystem.
  * Both tables are capped by entry count and by encoded size, so one wide result cannot fill the player file.
  */
-public final class AgentJournalDataStorage extends DataStorage implements AgentJournal {
+public final class AgentJournalDataStorage extends DataStorage implements AgentJournal<CardUpdate> {
     /**
      * Free one eighth of a full table so eviction stays amortised; terminal entries only.
      */
     private static final int EVICT_DIVISOR = 8;
+    private static final Codec<EventTask<CardUpdate>> EVENT_TASK_CODEC = EventTask.codec(SystemResults.CODEC);
     public static final MapCodec<AgentJournalDataStorage> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
-            Codec.unboundedMap(Codec.STRING, EventTask.CODEC).optionalFieldOf("tasks", Map.of()).forGetter(AgentJournalDataStorage::getTasks),
+            Codec.unboundedMap(Codec.STRING, EVENT_TASK_CODEC).optionalFieldOf("tasks", Map.of()).forGetter(AgentJournalDataStorage::getTasks),
             Codec.unboundedMap(Codec.STRING, Step.CODEC).optionalFieldOf("operations", Map.of()).forGetter(AgentJournalDataStorage::getOperations)
     ).apply(i, AgentJournalDataStorage::new));
-    private final Map<String, EventTask> tasks;
+    private final Map<String, EventTask<CardUpdate>> tasks;
     private final Map<String, Step> operations;
     // Sizes lag behind a decoded table; the first mutation measures every entry once.
     private final Map<String, Integer> taskSizes = new LinkedHashMap<>();
@@ -41,12 +47,12 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
         this(Map.of(), Map.of());
     }
 
-    private AgentJournalDataStorage(Map<String, EventTask> tasks, Map<String, Step> operations) {
+    private AgentJournalDataStorage(Map<String, EventTask<CardUpdate>> tasks, Map<String, Step> operations) {
         this.tasks = new LinkedHashMap<>(tasks);
         this.operations = new LinkedHashMap<>(operations);
     }
 
-    public Map<String, EventTask> getTasks() {
+    public Map<String, EventTask<CardUpdate>> getTasks() {
         return this.tasks;
     }
 
@@ -55,22 +61,22 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
     }
 
     @Override
-    public void putTask(String key, EventTask task) {
+    public void putTask(String key, EventTask<CardUpdate> task) {
         this.measure();
         this.tasks.put(key, task);
-        this.taskSizes.put(key, size(EventTask.CODEC, task));
+        this.taskSizes.put(key, size(EVENT_TASK_CODEC, task));
         this.evictFinishedTasks();
         this.markDirty();
     }
 
     @Override
-    public EventTask getTask(String key) {
+    public EventTask<CardUpdate> getTask(String key) {
         return this.tasks.get(key);
     }
 
     @Override
     public void setTaskState(String key, State state) {
-        EventTask task = this.tasks.get(key);
+        EventTask<CardUpdate> task = this.tasks.get(key);
         if (task.state == state) return;
         task.state = state;
         this.remeasureTask(key, task);
@@ -78,16 +84,16 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
     }
 
     @Override
-    public void completeTask(String key, AgentResult result) {
-        EventTask task = this.tasks.get(key);
-        task.complete(result);
+    public void completeTask(String key, AgentResult<CardUpdate> result) {
+        EventTask<CardUpdate> task = this.tasks.get(key);
+        task.complete(result, result.messageKey().equals("system.error.player_offline"));
         this.remeasureTask(key, task);
         this.markDirty();
     }
 
     @Override
     public void updateTaskUsage(String key, int modelCalls, int toolCalls, int workflowSteps, int writeSteps, int tokens) {
-        EventTask task = this.tasks.get(key);
+        EventTask<CardUpdate> task = this.tasks.get(key);
         if (task.modelCalls == modelCalls && task.toolCalls == toolCalls && task.workflowSteps == workflowSteps
                 && task.writeSteps == writeSteps && task.tokens == tokens) return;
         task.modelCalls = modelCalls;
@@ -100,7 +106,7 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
     }
 
     @Override
-    public Stream<EventTask> streamTasks() {
+    public Stream<EventTask<CardUpdate>> streamTasks() {
         return this.tasks.values().stream();
     }
 
@@ -111,9 +117,9 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
             throw new AgentException(AgentFailure.STORAGE_FULL);
     }
 
-    private void remeasureTask(String key, EventTask task) {
+    private void remeasureTask(String key, EventTask<CardUpdate> task) {
         this.measure();
-        this.taskSizes.put(key, size(EventTask.CODEC, task));
+        this.taskSizes.put(key, size(EVENT_TASK_CODEC, task));
         this.evictFinishedTasks();
     }
 
@@ -125,9 +131,9 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
         long bytes = this.total(this.taskSizes);
         if (this.tasks.size() < maxEntries && bytes <= maxBytes) return;
         int target = maxEntries - maxEntries / EVICT_DIVISOR;
-        Iterator<Map.Entry<String, EventTask>> iterator = this.tasks.entrySet().iterator();
+        Iterator<Map.Entry<String, EventTask<CardUpdate>>> iterator = this.tasks.entrySet().iterator();
         while (iterator.hasNext() && (this.tasks.size() > target || bytes > maxBytes)) {
-            Map.Entry<String, EventTask> entry = iterator.next();
+            Map.Entry<String, EventTask<CardUpdate>> entry = iterator.next();
             if (entry.getValue().pending()) continue;
             iterator.remove();
             bytes -= this.taskSizes.remove(entry.getKey());
@@ -196,7 +202,7 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
     private void measure() {
         if (this.measured) return;
         this.measured = true;
-        this.tasks.forEach((key, task) -> this.taskSizes.put(key, size(EventTask.CODEC, task)));
+        this.tasks.forEach((key, task) -> this.taskSizes.put(key, size(EVENT_TASK_CODEC, task)));
         this.operations.forEach((key, step) -> this.operationSizes.put(key, size(Step.CODEC, step)));
     }
 
@@ -217,7 +223,7 @@ public final class AgentJournalDataStorage extends DataStorage implements AgentJ
 
     @Override
     public AgentJournalDataStorage copy() {
-        Map<String, EventTask> taskCopy = new LinkedHashMap<>();
+        Map<String, EventTask<CardUpdate>> taskCopy = new LinkedHashMap<>();
         this.tasks.forEach((key, value) -> taskCopy.put(key, value.copy()));
         Map<String, Step> operationCopy = new LinkedHashMap<>();
         this.operations.forEach((key, value) -> operationCopy.put(key, value.copy()));

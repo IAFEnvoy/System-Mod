@@ -1,18 +1,20 @@
 package com.iafenvoy.system.module.builtin.signin;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.saturn.util.PersistHolder;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.assistant.calendar.BusinessCalendar;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.signin.OfflineSignIn;
 import com.iafenvoy.system.assistant.signin.SignIns;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.SignInStatusInput;
 import com.iafenvoy.system.data.progress.SignInProgress;
 import com.iafenvoy.system.data.progress.SignInRules;
@@ -58,7 +60,7 @@ public final class SignInStatusModule extends AbstractAgentModule<SignInStatusIn
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, SignInStatusInput input) {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, SignInStatusInput input) {
         String day = BusinessCalendar.today().toString();
         Identifier fixed = context.store().read(context.player(), data -> this.rules.fixed(ModuleData.get(data, SignInSystemModule.STORAGE).progress()));
         if (fixed != null) {
@@ -79,7 +81,7 @@ public final class SignInStatusModule extends AbstractAgentModule<SignInStatusIn
                 true, view.lockedRewards(), Optional.empty(), false);
     }
 
-    private AgentResult result(ExecutionContext context, String day, List<PersistHolder<Reward>> candidates, boolean external,
+    private AgentResult<CardUpdate> result(ExecutionContext context, String day, List<PersistHolder<Reward>> candidates, boolean external,
                                Set<Identifier> locked, Optional<ProgressionEstimate> estimate, boolean fixed) {
         List<Component> activities = this.catalogs.view(context).catalog().rewards().stream()
                 .flatMap(holder -> holder.value().conditions().activity().description().stream()
@@ -87,7 +89,7 @@ public final class SignInStatusModule extends AbstractAgentModule<SignInStatusIn
         return context.store().read(context.player(), data -> {
             SignInProgress progress = ModuleData.get(data, SignInSystemModule.STORAGE).progress();
             ZoneId zone = BusinessCalendar.zone();
-            return AgentResult.data("system.result.sign_in_status", new SignInStatus(day,
+            return SystemResults.data("system.result.sign_in_status", new SignInStatus(day,
                     this.signIns.reward(context.store(), context.player(), data, day).isPresent(), candidates, data.saveHistory, external,
                     locked, estimate, progress, fixed, zone.getId(), this.rules.preview(progress, LocalDate.parse(day), zone), activities));
         });

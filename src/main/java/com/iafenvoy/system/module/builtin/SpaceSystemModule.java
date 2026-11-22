@@ -1,12 +1,14 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.module.AgentModule;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.space.SpaceDeposits;
 import com.iafenvoy.system.assistant.space.SystemSpace;
 import com.iafenvoy.system.assistant.tool.space.DeliverTool;
 import com.iafenvoy.system.command.SpaceCommands;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.*;
 import com.iafenvoy.system.data.output.RewardChoiceOutput;
 import com.iafenvoy.system.data.output.SpaceInventoryOutput;
@@ -43,21 +45,21 @@ public record SpaceSystemModule(int depositSlots) implements SharedModule {
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
         SystemSpace space = context.sharedRuntime(SystemSpace.class, () -> new SystemSpace(context.engine(), context.get(ContextTypes.GAME), context.get(ContextTypes.COMMERCE), SignInSystemModule.service(context), context.get(ContextTypes.ITEM_SEARCH)));
         SpaceDeposits deposits = context.sharedRuntime(SpaceDeposits.class, () -> new SpaceDeposits(context.engine(), context.get(ContextTypes.GAME)));
-        ToolRegistry.Tool<SpaceInput, SpaceOutput> query = context.tool(BuiltinTools.SPACE_QUERY,
-                () -> new ToolRegistry.Tool<>(BuiltinTools.SPACE_QUERY, false, true, false, (execution, _) -> space.query(execution))
+        ToolRegistry.Tool<SpaceInput, SpaceOutput, ExecutionContext> query = context.tool(BuiltinTools.SPACE_QUERY,
+                () -> new ToolRegistry.Tool<SpaceInput, SpaceOutput, ExecutionContext>(BuiltinTools.SPACE_QUERY, false, true, false, (execution, _) -> space.query(execution))
                         .forReasoning("List my system-space contents and their observed IDs without withdrawing anything."));
-        ToolRegistry.Tool<SpaceTakeInput, SpaceOutput> take = context.tool(BuiltinTools.SPACE_TAKE,
+        ToolRegistry.Tool<SpaceTakeInput, SpaceOutput, ExecutionContext> take = context.tool(BuiltinTools.SPACE_TAKE,
                 () -> new ToolRegistry.Tool<>(BuiltinTools.SPACE_TAKE, true, false, false, space::take));
-        ToolRegistry.Tool<SpaceInventoryInput, SpaceInventoryOutput> inventory = context.tool(BuiltinTools.SPACE_INVENTORY,
+        ToolRegistry.Tool<SpaceInventoryInput, SpaceInventoryOutput, ExecutionContext> inventory = context.tool(BuiltinTools.SPACE_INVENTORY,
                 () -> new ToolRegistry.Tool<>(BuiltinTools.SPACE_INVENTORY, false, true, false,
                         (execution, _) -> deposits.inventory(execution, context.id(), this.depositSlots)));
-        ToolRegistry.Tool<SpaceDepositInput, SpaceInventoryOutput> deposit = context.tool(BuiltinTools.SPACE_DEPOSIT,
+        ToolRegistry.Tool<SpaceDepositInput, SpaceInventoryOutput, ExecutionContext> deposit = context.tool(BuiltinTools.SPACE_DEPOSIT,
                 () -> new ToolRegistry.Tool<>(BuiltinTools.SPACE_DEPOSIT, true, false, false,
                         (execution, input) -> deposits.deposit(execution, input, context.id(), this.depositSlots)));
-        ToolRegistry.Tool<RewardChoiceInput, RewardChoiceOutput> choose = context.tool(BuiltinTools.REWARD_CHOICE,
+        ToolRegistry.Tool<RewardChoiceInput, RewardChoiceOutput, ExecutionContext> choose = context.tool(BuiltinTools.REWARD_CHOICE,
                 () -> new ToolRegistry.Tool<>(BuiltinTools.REWARD_CHOICE, true, true, false,
                         (execution, input) -> CompletableFuture.completedFuture(space.choice(execution, input))));
         return List.of(new SpaceModule(query, context.get(ContextTypes.COMMERCE)), new SpaceTakeModule(take),

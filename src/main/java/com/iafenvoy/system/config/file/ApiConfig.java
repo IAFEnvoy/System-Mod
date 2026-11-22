@@ -1,9 +1,9 @@
 package com.iafenvoy.system.config.file;
 
 import com.iafenvoy.system.config.ConfigInstance;
-import com.iafenvoy.system.config.credential.Credential;
+import com.iafenvoy.assistant.credential.Credential;
 import com.iafenvoy.system.config.credential.CredentialEntry;
-import com.iafenvoy.system.config.credential.CredentialManager;
+import com.iafenvoy.assistant.credential.CredentialManager;
 import com.iafenvoy.system.config.credential.builtin.AliyunNlsCredential;
 import com.iafenvoy.system.config.credential.builtin.DashScopeCredential;
 import com.iafenvoy.system.config.credential.builtin.DeepSeekCredential;

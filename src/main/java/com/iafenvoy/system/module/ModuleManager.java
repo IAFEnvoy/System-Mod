@@ -1,12 +1,14 @@
 package com.iafenvoy.system.module;
 
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.registry.ModuleScope;
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.data.storage.DataStorageContext;
 import com.iafenvoy.saturn.util.formula.FormulaContext;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.execution.AgentEngine;
-import com.iafenvoy.system.agent.module.AgentModule;
-import com.iafenvoy.system.agent.module.ModuleScope;
-import com.iafenvoy.system.agent.storage.AgentStore;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.event.ModuleContextEvent;
@@ -84,11 +86,11 @@ public final class ModuleManager implements AutoCloseable {
                 if (module instanceof CatalogModule<?>)
                     context.get(ContextTypes.CATALOGS).register(context.modules().get(id).orElseThrow());
                 if (module instanceof WorkflowModule workflows)
-                    for (AgentModule<?> workflow : workflows.workflows(contexts.get(id)))
+                    for (AgentModule<?, ExecutionContext, CardUpdate> workflow : workflows.workflows(contexts.get(id)))
                         this.engine.registerModule(id, workflow);
             }));
             merged.forEach(group -> {
-                for (AgentModule<?> workflow : group.runtime.workflows())
+                for (AgentModule<?, ExecutionContext, CardUpdate> workflow : group.runtime.workflows())
                     this.engine.registerGroup(group.scope, workflow);
             });
             Set<ServerModule> initialized = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -202,7 +204,7 @@ public final class ModuleManager implements AutoCloseable {
         this.logout(player.getUUID());
         PlayerSession session = new PlayerSession(player, this.access.login(player));
         this.players.put(player.getUUID(), session);
-        AgentStore store = this.engine.playerStore(player.getUUID());
+        AgentStore<PlayerData> store = this.engine.playerStore(player.getUUID());
         this.engine.maintenance(() -> {
             if (!store.read(player.getUUID(), PlayerData::bound)) return false;
             return store.update(player.getUUID(), data -> {
@@ -273,7 +275,7 @@ public final class ModuleManager implements AutoCloseable {
             return;
         }
         UUID uuid = player.player.getUUID();
-        AgentStore store = this.engine.playerStore(uuid);
+        AgentStore<PlayerData> store = this.engine.playerStore(uuid);
         long gameTime = player.player.level().getGameTime();
         // Reconciliation can add a member while its group is still initializing. Serialize the data work,
         // so the group's initialize transaction always precedes its later members' transactions.
@@ -391,7 +393,7 @@ public final class ModuleManager implements AutoCloseable {
             if (!ticking.isEmpty()) {
                 DataStorageContext context = new DataStorageContext(player.player, FormulaContext.of(player.player), player.player.level().getGameTime());
                 UUID uuid = player.player.getUUID();
-                AgentStore store = this.engine.playerStore(uuid);
+                AgentStore<PlayerData> store = this.engine.playerStore(uuid);
                 try {
                     store.updateLoaded(uuid, data -> {
                         boolean dirty = false;
@@ -462,7 +464,7 @@ public final class ModuleManager implements AutoCloseable {
             return;
         }
         long incarnation = this.engine.incarnation(player);
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         this.engine.maintenance(() -> {
             store.flush(player);
             return null;

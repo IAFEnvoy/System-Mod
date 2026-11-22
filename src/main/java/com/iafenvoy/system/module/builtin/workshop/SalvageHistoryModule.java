@@ -1,12 +1,14 @@
 package com.iafenvoy.system.module.builtin.workshop;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.assistant.workshop.Salvage;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.SalvageHistoryInput;
 
 import java.util.List;
@@ -26,7 +28,7 @@ public final class SalvageHistoryModule extends AbstractAgentModule<SalvageHisto
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, SalvageHistoryInput input) {
-        return AgentResult.data("system.salvage.history", this.salvage.history(context, input.offset()));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, SalvageHistoryInput input) {
+        return SystemResults.data("system.salvage.history", this.salvage.history(context, input.offset()));
     }
 }

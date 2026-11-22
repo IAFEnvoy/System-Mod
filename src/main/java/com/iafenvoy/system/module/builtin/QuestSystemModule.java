@@ -1,10 +1,12 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.module.AgentModule;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.AssistantServer;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.module.SharedModule;
@@ -86,11 +88,11 @@ public final class QuestSystemModule implements SharedModule {
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
         try {
             Object result = Class.forName("com.iafenvoy.system.compat.ftb.FtbQuestAdapter")
                     .getMethod("modules", ModuleContext.class).invoke(null, context);
-            @SuppressWarnings("unchecked") List<AgentModule<?>> modules = (List<AgentModule<?>>) result;
+            @SuppressWarnings("unchecked") List<AgentModule<?, ExecutionContext, CardUpdate>> modules = (List<AgentModule<?, ExecutionContext, CardUpdate>>) result;
             return List.copyOf(modules);
         } catch (ReflectiveOperationException | LinkageError error) {
             throw new IllegalStateException("FTB Quests assistant adapter is unavailable", error);

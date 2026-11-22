@@ -1,6 +1,6 @@
 package com.iafenvoy.system.config;
 
-import com.iafenvoy.system.agent.module.AgentAction;
+import com.iafenvoy.assistant.action.AgentAction;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;

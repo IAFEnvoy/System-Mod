@@ -1,12 +1,13 @@
 package com.iafenvoy.system.module.builtin.quest;
 
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.QuestClaimInput;
 import com.iafenvoy.system.data.input.QuestDetailInput;
@@ -20,7 +21,7 @@ import java.util.List;
  * Claims one known quest reward reference and an optional selected choice.
  */
 public final class QuestClaimModule extends AbstractAgentModule<QuestClaimInput> {
-    public QuestClaimModule(ToolRegistry.Tool<QuestClaimInput, QuestClaimOutput> claim, ToolRegistry.Tool<QuestDetailInput, QuestOutput> detail) {
+    public QuestClaimModule(ToolRegistry.Tool<QuestClaimInput, QuestClaimOutput, ExecutionContext> claim, ToolRegistry.Tool<QuestDetailInput, QuestOutput, ExecutionContext> detail) {
         super(QuestClaimInput.CODEC, "Claim exactly one known quest reward using a previously returned claimRef. Without a ref, list claimable quests then open system:quest_detail; never invent references.", List.of(claim, detail), true, false, ExecutionPolicy.quick(1, 1));
     }
 
@@ -34,12 +35,12 @@ public final class QuestClaimModule extends AbstractAgentModule<QuestClaimInput>
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, QuestClaimInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, QuestClaimInput input) throws Exception {
         QuestClaimOutput result = context.tool(BuiltinTools.QUEST_CLAIM, "claim", input);
         if (result.questId().isEmpty())
-            return AgentResult.data(result.deliveryVerified().orElse(false) ? "system.result.claim" : "system.result.claim_unavailable", result);
+            return SystemResults.data(result.deliveryVerified().orElse(false) ? "system.result.claim" : "system.result.claim_unavailable", result);
         QuestOutput updated = context.tool(BuiltinTools.QUEST_DETAIL, "refresh", QuestDetailInput.byId(result.questId().get()));
-        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.claim", "",
+        return new AgentResult<>(AgentResult.Status.SUCCEEDED, "system.result.claim", "",
                 updated.rewardPending()
                         ? List.of(CardUpdate.show(updated)) : List.of(), true);
     }

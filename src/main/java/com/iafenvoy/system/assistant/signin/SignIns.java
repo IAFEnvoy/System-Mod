@@ -1,10 +1,10 @@
 package com.iafenvoy.system.assistant.signin;
 
+import com.iafenvoy.assistant.execution.AgentLifecycle;
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.util.PersistHolder;
-import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.data.progress.PlayerFact;
 import com.iafenvoy.system.data.progress.SignInProgress;
 import com.iafenvoy.system.data.progress.SignInRules;
@@ -44,30 +44,30 @@ public final class SignIns implements PlayerModule {
         return context.store().read(context.player(), data -> this.reward(context.store(), context.player(), data, day).orElse(null));
     }
 
-    public Optional<PersistHolder<Reward>> reward(AgentStore store, UUID player, PlayerData data, String day) {
+    public Optional<PersistHolder<Reward>> reward(AgentStore<PlayerData> store, UUID player, PlayerData data, String day) {
         SignInDataStorage signIn = ModuleData.get(data, SignInSystemModule.STORAGE);
         return Optional.ofNullable(signIn.getReward(day)).or(() -> this.archive.get(store, player, signIn.archiveScope(), day));
     }
 
-    public Optional<PersistHolder<Reward>> entitlement(AgentStore store, UUID player, PlayerData data, String entitlement) {
+    public Optional<PersistHolder<Reward>> entitlement(AgentStore<PlayerData> store, UUID player, PlayerData data, String entitlement) {
         return entitlement.startsWith("daily:") ? this.reward(store, player, data, entitlement.substring(6)) : Optional.empty();
     }
 
     /**
      * Write each archive before dropping its live snapshot; failed player saves can safely retry the same archive.
      */
-    public void compact(AgentStore store, UUID player, PlayerData data) {
+    public void compact(AgentStore<PlayerData> store, UUID player, PlayerData data) {
         this.compact(store, player, data, RECENT_RECORDS);
     }
 
     /**
      * Archive only previously committed days, keeping the new entitlement inside the player transaction.
      */
-    public void prepareCredit(AgentStore store, UUID player, PlayerData data) {
+    public void prepareCredit(AgentStore<PlayerData> store, UUID player, PlayerData data) {
         this.compact(store, player, data, RECENT_RECORDS - 1);
     }
 
-    private void compact(AgentStore store, UUID player, PlayerData data, int retained) {
+    private void compact(AgentStore<PlayerData> store, UUID player, PlayerData data, int retained) {
         SignInDataStorage signIn = ModuleData.get(data, SignInSystemModule.STORAGE);
         for (String day : signIn.getRewards().keySet().stream().sorted(Comparator.reverseOrder()).skip(retained).toList()) {
             this.archive.put(store, player, signIn.archiveScope(), day, signIn.getReward(day));
@@ -106,7 +106,7 @@ public final class SignIns implements PlayerModule {
     @Override
     public Session login(ServerPlayer player) {
         UUID uuid = player.getUUID();
-        AgentStore store = this.engine.playerStore(uuid);
+        AgentStore<PlayerData> store = this.engine.playerStore(uuid);
         return data -> this.compact(store, uuid, data);
     }
 }

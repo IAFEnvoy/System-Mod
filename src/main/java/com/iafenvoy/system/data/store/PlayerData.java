@@ -1,7 +1,8 @@
 package com.iafenvoy.system.data.store;
 
+import com.iafenvoy.assistant.chat.ConversationMode;
+import com.iafenvoy.assistant.chat.ModelQuota;
 import com.iafenvoy.saturn.data.storage.DataStorageHolder;
-import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.resources.Identifier;

@@ -6,24 +6,25 @@
 
 ## 当前版本
 
-ASR 使用无 MC 依赖的 `speech/asr/AsrProvider` 和 `AliyunAsrProvider`，客户端 `AssistantRecognition` 管理录音、取消及草稿填充。TTS / ASR 用量由 `LocalSpeechUsage` 按客户端账号 UUID 独立保存，不向服务端上报；服务端 SavedData 只记录 AI。当前网络协议 6（新增委托状态操作、奖励内容预览和活动状态字段，两端需同步更新）。可选 SVC 录音后端与 F8 按住说话共用原有 ASR 入口，详见[语音识别](asr.md)。
+Assistant Core 提供 ASR / TTS 协议及客户端录音后端。System 的 `AssistantRecognition` 管理录音会话、取消和草稿填充，`LocalSpeechUsage` 按客户端账号 UUID 保存语音用量。F8 与识别按钮均调用 Core 的 `RecognitionRecording`。 [语音识别](asr.md)
 
 NLS 凭据为客户端 AppKey 与 AccessKey ID / Secret；`AliyunNlsToken` 通过 JDK HMAC-SHA1 签名调用 CreateToken，跨 session 复用内存缓存并在有效期不足两分钟时按需刷新。设置保存和 `validate` 不联网，签发随识别工作线程取消；`AsrProvider.recognize` 的 `requestStarted` 回调在发送首次识别命令前启动计量，鉴权和握手失败不计 ASR 尝试。
 
-语音供应商接口及客户端录音和播放分别位于 `speech.asr` 与 `speech.tts`，服务构造入口为 `registry.SystemServices.TTS / ASR`，按具体 Credential 类创建供应商；协议实现位于 `speech.aliyun` 和 `speech.deepseek`，配置集中在 `config`。阿里云默认使用 `qwen3-tts-flash`，额外兼容设计音色绑定的 Qwen-Audio-TTS HTTP 协议；复用 `HttpTransport`，没有新增依赖或模型文件。详见 [语音合成与音色设计](tts.md)。
+System 的 `SystemServices.TTS` 和 `SystemServices.ASR` 指向 Assistant Core 的同名供应商工厂，并为已有的 System 凭据绑定适配实现。协议实现位于 Assistant Core 的 `speech.aliyun` 和 `speech.deepseek`。阿里云默认使用 `qwen3-tts-flash`，也支持设计音色使用的 Qwen-Audio-TTS HTTP 协议。 [语音合成与音色设计](tts.md)
 
 | 组件 | 配置 |
 | --- | --- |
 | 模组与 Agent Java toolchain / 字节码 | 25 / Java 25 |
 | Gradle / ModDev | 9.2.1 / 2.0.148 |
 | Minecraft / NeoForge | 26.1.2 / 26.1.2.126 |
+| Assistant Core | 1.0-beta.1，开发时使用 `AssistantCore-MC` Git 子模块，运行时两端安装独立模组 JAR |
 | ApricityUI | 1.2.9；客户端最低版本 1.2.9 |
 | CommonMark Java | 0.32.0；core、GFM tables、GFM strikethrough 三个 JAR 随模组 Jar-in-Jar 分发，用于客户端 Markdown |
 | Jupiter | CurseMaven 8569832 |
 | Saturn | 1.4-beta.1 / CurseMaven 9661688；客户端和服务端均必装，提供 CostTarget.display、Cost、模块 DataStorage、Codec 工具、压缩 NBT 文件、玩家信息视图及 HUD 编辑器 |
 | exp4j | 0.4.8；仅 compileOnly，运行时复用 Saturn 内嵌版本，用于分解数量公式的严格求值 |
 | Evaluate | 1.0-beta.2 / CurseMaven 9626124；通过 `implementation jarJar(...)` 内嵌，提供服务端物品相对价值 API，最低 NeoForge 26.1.2.126 |
-| Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181；可选客户端录音，compileOnly + localRuntime，不打入发布 JAR |
+| Simple Voice Chat | 2.6.26+26.1.2 / CurseMaven 9307181，可选客户端录音。Assistant Core 使用 `compileOnly`，System 通过 `localRuntime` 在开发运行中加载。 |
 | Card JSON 编辑器（独立开发工具） | Vite 8.3.6；Node.js ^20.19.0 或 >=22.12.0，位于 html/card-editor；不进入模组 JAR |
 | Gson | 2.13.2；主项目直接声明依赖，Minecraft 提供运行时类 |
 | FTB Quests / Library / Teams | 26.1.2.8 / 26.1.2.9 / 26.1.2.4，可选 compileOnly |
@@ -39,17 +40,23 @@ AUI 1.2.9 将布局状态从 `RenderElement` 拆到 `LayoutState`。卡片折叠
 
 Evaluate 发布 JAR 随 System 的 Jar-in-Jar 分发，不需额外下载；版本与 CurseForge 文件 ID 分别由 `evaluate_version`、`evaluate_file_id` 管理。它要求 Saturn 1.3.1 和 NeoForge 26.1.2.126。离线签到已接入其相对价值查询，商城与抽奖价格仍由数据包 Cost 定义；查询入口、返回值与线程约束见 [物品相对价值 API](evaluate-api.md)。
 
-Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器、上下文、Module/Tool/Store/Journal 契约、路由与模型调用。具体工作流和功能装配位于 `module/builtin`，MC 业务、绑定和交易位于 `assistant`，参数结果、持久化与资源加载位于 `data`，语音行为及任务口播位于 `speech`。业务 DataStorage 继续放在 `module/builtin/storage`，执行账本实现位于 `data/store`。通用工具、配置、游戏界面、网络与可选兼容层保留对应包；所有代码仍共用主源码集与 Java 25 工具链。详细边界见[包职责与数据流](architecture.md)及[功能模块化](feature-modules.md)。
+首次克隆使用 `git clone --recurse-submodules https://github.com/IAFEnvoy/System-Mod.git`。已有工作区执行
+`git submodule update --init --recursive`。Gradle 默认将 `AssistantCore-MC` 作为独立构建引入，GitHub Actions
+使用 System 当前提交记录的子模块版本。发布时客户端和服务端均安装独立的 Assistant Core JAR。
+
+发布 Core 的新提交后，可在两个主仓库分别更新并提交各自的子模块指针。
+
+System 在 `com.iafenvoy.system.agent` 装配工作流、权限、存储和事件，使用 `com.iafenvoy.assistant` 提供的动作与凭据注册表、作用域注册、本地语义匹配、模型网关和任务预算。语音供应商通过凭据工厂实例化，录音、界面、声音播放和用量账本由 System 管理。 [包职责与数据流](architecture.md) · [功能模块化](feature-modules.md)
 
 ```powershell
 .\gradlew.bat compileJava testModClasses jar
 ```
 
-所有 Agent 类直接进入 `build/libs/system-<mod_version>.jar`。FTB 查询、详情和领奖直接实现统一的类型化 Tool，没有独立的服务接口，也不经过 stdio、HTTP MCP 或模拟客户端包。可选传输适配器如需接入，也应复用同一 Tool 契约。
+编译 System 时会同时构建所需的 Assistant Core 类。FTB 查询、详情和领奖通过 System 的类型化 Tool 在进程内执行。
 
 模型请求统一使用 OpenAI Chat Completions 格式，默认保留 DeepSeek；专用思考参数按提供商隔离。配置与消息边界见 [模型接口与 DeepSeek 兼容](model-api.md)。
 
-管理员 AI 权限入口在 `module/builtin/chat/AiManagementCommands`，由核心模块注册 `/system ai <玩家>`。配置按 UUID 写入当前存档的 `AiAccessData` SavedData，沿用 `setDirty` 自动保存；默认等级也由该数据保存，路径为 `<存档>/data/system/ai_access.dat`。`/system ai default [模式]` 查看或修改默认等级。`AssistantServer.refreshAiAccess` 负责取消在途交互、同步状态及聊天提示，执行上下文继续在请求边界核对管理员与个人开关。客户端只接收自己的生效权限，不能写管理员配置。命令与界面说明见[自由聊天](free-chat.md)。
+管理员 AI 权限入口在 Assistant Core 的 `com.iafenvoy.assistant.command.AiManagementCommands`，由核心模块注册 `/system ai <玩家>`。配置按 UUID 写入当前存档的 `AiAccessData` SavedData，沿用 `setDirty` 自动保存；默认等级也由该数据保存，路径为 `<存档>/data/system/ai_access.dat`。`/system ai default [模式]` 查看或修改默认等级。`AssistantServer.refreshAiAccess` 负责取消在途交互、同步状态及聊天提示，执行上下文继续在请求边界核对管理员与个人开关。客户端只接收自己的生效权限，不能写管理员配置。命令与界面说明见[自由聊天](free-chat.md)。
 
 ## 目录与职责
 
@@ -88,7 +95,7 @@ Agent 机制与接口保留在 `com.iafenvoy.system.agent`：引擎、执行器�
 | `config` | Agent、模型、语义、客户端、语音与计费配置及 ConfigInstance |
 | `command、command/client` | 两端指令装配与补全桥接，具体入口由模块声明 |
 | `util、util/codec` | Codec/Schema、类型分派、HTTP/SSE 和其他通用工具 |
-| `compat/ftb、compat/voicechat` | 检测依赖后才加载的 FTB 工具/事件和 SVC 收音实现 |
+| `compat/ftb` | 检测依赖后才加载的 FTB 工具与事件。SVC 收音实现位于 Assistant Core。 |
 | `event、network、network/payload` | 扩展事件、协议 3、Handler 与有界载荷 |
 
 上表路径均相对于 `src/main/java/com/iafenvoy/system/`。Agent 与游戏接入代码处于同一主项目；详细依赖和生命周期见[包职责与数据流](architecture.md)。模块、工具和服务接口仍保留职责划分，工具使用稳定逻辑 ID，方便后续扩展业务。
@@ -133,18 +140,20 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 
 主注册类只负责载荷及处理器注册。C2S 由服务端 Handler 在主线程验证 UUID、从连接读取玩家并分派到服务端能力；S2C 由客户端 Handler 解码并分派到客户端状态或界面。客户端处理器通过 NeoForge 的客户端注册事件绑定，专用服务端不解析客户端界面类。连接代次、迟到回包防护、结果长度限制与用量权限检查保持原有规则。
 
+Assistant Core 管理 Agent 请求、响应及连接代次。System 通过自己的频道和物品检索附件 Codec 接入，NeoForge 网络协议版本为 `7`。
+
 | 载荷类 | 网络 ID |
 | --- | --- |
-| `AssistantRequestC2S` | `system:assistant_request_c2s` |
-| `AssistantResponseS2C` | `system:assistant_response_s2c` |
+| `AssistantChannel.Request` | `system:assistant_request_c2s` |
+| `AssistantChannel.Response` | `system:assistant_response_s2c` |
 | `TokenUsageRequestC2S` | `system:token_usage_request_c2s` |
 | `TokenUsageResponseS2C` | `system:token_usage_response_s2c` |
 
-当前协议版本为 **3**，客户端与服务端需一起更新。C2S 请求为请求 UUID 加 `AgentRequest`；S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航、绑定变更、状态与历史，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的流式解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
+客户端与服务端需一起更新。C2S 请求包含请求 UUID、`AgentRequest` 和可选的物品检索附件。S2C 通过 `AgentResponse` 的类型区分回复、HUD 通知、界面导航、绑定变更、状态与历史，操作不再占用请求 ID。导航可以携带关联请求 UUID，客户端先清除该请求的等待状态，再请求界面状态；用量载荷以独立 `open` 标志表示打开页面。无效或未知类型由载荷的流式解码阶段拒绝。当前项目未发布，不保留旧网络字段兼容。新增载荷时在 `network/payload` 定义带方向后缀的类型，在对应 Handler 增加处理方法，再由 `NetworkManager` 注册。
 
 ## 扩展模块
 
-实现 `AgentModule<I extends AgentAction>`，通过 `inputCodec()` 提供已注册的 `MapCodec<I>`，另声明描述信息和 `List<ToolRegistry.Tool<?, ?>> tools()`；`execute` 直接接收动作对象。动作实现的 `codec()` 返回自己的 MapCodec。内置模块继承 `AbstractAgentModule<I>`：构造时只传 `SchemaMapCodec<I>`、描述和工具列表，注册 ID 与输入 Schema 从同一个 Codec 获取，工具白名单从列表生成，避免重复声明。模块是受信 Java 代码，Codec 不替代业务授权，也不是同 JVM 沙箱。
+实现 `AgentModule<I, ExecutionContext, CardUpdate>`，通过 `inputCodec()` 提供已注册的 `MapCodec<I>`，另声明描述信息和 `List<ToolRegistry.Tool<?, ?, ExecutionContext>> tools()`；`execute` 直接接收动作对象。动作实现的 `codec()` 返回自己的 MapCodec。内置模块继承 `AbstractAgentModule<I>`：构造时只传 `SchemaMapCodec<I>`、描述和工具列表，注册 ID 与输入 Schema 从同一个 Codec 获取，工具白名单从列表生成，避免重复声明。模块是受信 Java 代码，Codec 不替代业务授权，也不是同 JVM 沙箱。
 
 模块 ID 使用原版 `Identifier`：`Descriptor.id`、`AgentAction.id()` 及模块注册表的键均为该类型。先通过 DeferredRegister 向 `SystemResourceKeys.ACTION_TYPE` 登记动作 MapCodec，内置定义由 `SystemActionTypes` 提供。模块的 `inputCodec()` 和动作的 `codec()` 必须复用同一实例；引擎拒绝注册 ID 不一致或未注册的 Codec。无参数动作使用独立类型与 Codec，不能将同一个 EmptyInput Codec 注册为多个动作。配置和网络仍编码为 `namespace:path` 字符串。
 
@@ -152,13 +161,13 @@ SystemDataPackRegistries 通过 DataPackRegistryEvent 同时登记 system:system
 
 功能类型通过 DeferredRegister<MapCodec<? extends ServerModule>> 注册到 SystemResourceKeys.SERVER_MODULE，codec() 返回登记的 MapCodec；数据包在 system_module 注册表创建可配置实例。ModuleContext 每配置独立，保留当前 id() 与配置内工具缓存；AgentEngine 和模块注册表是构造器固定字段，通过 engine() / modules() 读取。其他服务共用按 ContextType<T> 索引的 Map，AssistantServer 逐项 put，模块 get 直接取得类型化对象。新增服务无需修改 ModuleContext；键按身份匹配，使用同一个公开常量。ModuleContextEvent 在游戏总线发布，位于内置服务注入之后、任何模块装配之前，供扩展同步添加服务。客户端在独立入口调用 SystemClientModules.register(id, instance)，数据包 client 引用该 ID。不同配置提供同一动作时，ModuleRegistry 和 ToolRegistry 按玩家启用的 owner 选择实现、保留当前流程的 owner 校验；命令、模型和语义契约仍按动作类型声明一次。SharedModule 仅提供公共平台 / 管理指令，CoreModule 表示必需基础设施。只有工作流的扩展仍可通过 AssistantRegistrationEvent 添加；详细契约见[功能模块化](feature-modules.md)。
 
-`AgentAction.CODEC` 通过正式 `SystemRegistries.ACTION_TYPE` 的 `byNameCodec().dispatch(...)` 按 `moduleId` 选择实例返回的 MapCodec；参数平铺为 `{"moduleId":"system:item_query","query":"stone"}`。`ModuleRegistry.call` 根据 Codec 注册 ID 定位当前服务器已安装模块并核对实例身份。指令、语义提取和按钮解码共用 `AgentAction.validate` 校验 Java 创建的动作；模型只接受当前可用目录中的动作。未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `AgentAction`，没有额外的 type/value 包装。
+`AgentAction.CODEC` 通过正式 `AssistantRegistries.ACTION_TYPE` 的 `byNameCodec().dispatch(...)` 按 `moduleId` 选择实例返回的 MapCodec；参数平铺为 `{"moduleId":"system:item_query","query":"stone"}`。`ModuleRegistry.call` 根据 Codec 注册 ID 定位当前服务器已安装模块并核对实例身份。指令、语义提取和按钮解码共用 `AgentAction.validate` 校验 Java 创建的动作；模型只接受当前可用目录中的动作。未安装模块、事件专用模块、`structuredOnly()` 模块不会成为模型可选能力。网络、配置和事件存档在边界使用 Codec，内部直接传 `AgentAction`，没有额外的 type/value 包装。
 
 `AgentCodecs.strict` 在原版 Codec 基础上额外拒绝未知键和显式 null；精确整数 Codec 拒绝小数和溢出值，避免原版 `Codec.INT` 的截断行为影响索引。业务参数的缺省值由严格 `optionalFieldOf` 提供，类型错误不静默回退；配置字段统一使用 `lenientOptionalFieldOf` 回退默认值，两者互不影响。Codec 解析失败不接受部分结果。写工具回放要求指纹完全一致，再由对应工具的结果 Codec 恢复对象；不匹配时拒绝执行，不归一旧格式，也不重新执行已完成写操作。
 
 ### 客户端物品搜索附件
 
-`AssistantRequestC2SPayload` 在原请求之外携带可选的 `ItemSearchBatch` 二进制附件。客户端通过原版 `SearchTree<ItemStack>` 搜索名称与 tooltip，以 `ItemStackTemplate` 保留全部组件；每批最多 32 项、每堆叠 4 KiB、堆叠合计 24 KiB，最多扫描 256 个匹配项。服务端在正常限流链路内校验请求、游标、物品和组件，再签发玩家隔离的搜索引用；模型和按钮只携带引用及索引。生成商品、报价、付款继续服务端复核，不相信客户端价格或组件来源。引用与选择器由专门 Cache 保存并在退出／权限变化时清理。协议升级为 `3`，详见[客户端物品检索](item-search.md)。
+`AssistantChannel.Request` 在原请求之外携带可选的 `ItemSearchBatch` 二进制附件。客户端通过原版 `SearchTree<ItemStack>` 搜索名称与 tooltip，以 `ItemStackTemplate` 保留全部组件；每批最多 32 项、每堆叠 4 KiB、堆叠合计 24 KiB，最多扫描 256 个匹配项。服务端在正常限流链路内校验请求、游标、物品和组件，再签发玩家隔离的搜索引用；模型和按钮只携带引用及索引。生成商品、报价、付款继续服务端复核，不相信客户端价格或组件来源。引用与选择器由专门 Cache 保存并在退出／权限变化时清理。详见[客户端物品检索](item-search.md)。
 
 `ItemSearchQuery.searchOffset()` 将物品游标与目录分页区分，抽奖以 `item_offset` 收集下一批候选、以 `offset` 翻奖池；奖池翻页保留搜索引用。`SpaceOutput.Entry.item` 仅在实际内容为物品时提供，客户端用这些真实堆叠建立独立的原版搜索树；图标不作为物品身份证明。空间取出只从服务端当前账本选择目标，候选未读完时不执行。`/recipe` 的名称检索复用物品查询工具及选择卡，原范围在继续检索和选择后保留。
 

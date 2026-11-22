@@ -1,8 +1,8 @@
 package com.iafenvoy.system.assistant;
 
+import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.data.card.CardReference;
 import com.iafenvoy.system.data.card.CardUpdate;
 
@@ -33,7 +33,7 @@ public final class ServerCards {
         PLAYERS.remove(player);
     }
 
-    public static synchronized void publish(UUID player, AgentResult result) {
+    public static synchronized void publish(UUID player, AgentResult<CardUpdate> result) {
         Map<UUID, Version> cards = PLAYERS.computeIfAbsent(player, _ -> new HashMap<>());
         for (CardUpdate update : result.cards()) {
             if (update.mode() == CardUpdate.Mode.REMOVE) cards.remove(update.ref().id());
@@ -54,7 +54,7 @@ public final class ServerCards {
         return new Ticket(player, source, ++version.reserved, version);
     }
 
-    public static synchronized AgentResult finish(Ticket ticket, AgentResult result) {
+    public static synchronized AgentResult<CardUpdate> finish(Ticket ticket, AgentResult<CardUpdate> result) {
         Map<UUID, Version> cards = PLAYERS.get(ticket.player());
         Version current = cards == null ? null : cards.get(ticket.source().id());
         if (current != ticket.generation() || current.reserved != ticket.revision())

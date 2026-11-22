@@ -1,12 +1,14 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.module.AgentModule;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.item.ItemNameIndex;
 import com.iafenvoy.system.assistant.tool.item.ItemInspectTool;
 import com.iafenvoy.system.assistant.tool.item.ItemQueryTool;
 import com.iafenvoy.system.assistant.tool.item.ItemSourceQueryTool;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.ItemQueryInput;
 import com.iafenvoy.system.data.input.ItemSourceQueryInput;
 import com.iafenvoy.system.data.output.ItemPageOutput;
@@ -32,9 +34,9 @@ public final class ItemSystemModule implements SharedModule {
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
-        ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> items = context.tool(BuiltinTools.ITEMS, () -> new ItemQueryTool(context.get(ContextTypes.GAME), context.get(ContextTypes.ITEM_SEARCH)).tool());
-        ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput> sources = context.tool(BuiltinTools.ITEM_SOURCES, () -> new ItemSourceQueryTool(context.get(ContextTypes.GAME)).tool());
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
+        ToolRegistry.Tool<ItemQueryInput, ItemPageOutput, ExecutionContext> items = context.tool(BuiltinTools.ITEMS, () -> new ItemQueryTool(context.get(ContextTypes.GAME), context.get(ContextTypes.ITEM_SEARCH)).tool());
+        ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput, ExecutionContext> sources = context.tool(BuiltinTools.ITEM_SOURCES, () -> new ItemSourceQueryTool(context.get(ContextTypes.GAME)).tool());
         // Built once on the server thread: local intent parsing needs display names without touching the game thread.
         ItemNameIndex names = ItemNameIndex.build();
         return List.of(new ItemQueryModule(items), new ItemSourceQueryModule(sources, items, names),

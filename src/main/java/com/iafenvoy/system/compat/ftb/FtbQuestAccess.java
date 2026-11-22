@@ -1,8 +1,8 @@
 package com.iafenvoy.system.compat.ftb;
 
+import com.iafenvoy.assistant.execution.AgentLifecycle;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentLifecycle;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.MinecraftTools;

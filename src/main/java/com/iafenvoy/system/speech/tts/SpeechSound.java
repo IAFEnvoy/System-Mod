@@ -1,5 +1,6 @@
 package com.iafenvoy.system.speech.tts;
 
+import com.iafenvoy.assistant.speech.SpeechAudio;
 import com.iafenvoy.system.SystemMod;
 import com.mojang.blaze3d.audio.Channel;
 import net.minecraft.client.resources.sounds.AbstractSoundInstance;

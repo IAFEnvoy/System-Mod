@@ -1,8 +1,9 @@
 package com.iafenvoy.system.config.file;
 
+import com.iafenvoy.assistant.speech.aliyun.AliyunAsrProvider;
+import com.iafenvoy.assistant.speech.asr.AsrProvider;
 import com.iafenvoy.system.config.ConfigInstance;
 import com.iafenvoy.system.registry.SystemServices;
-import com.iafenvoy.system.speech.asr.AsrProvider;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import org.jspecify.annotations.NonNull;
@@ -20,7 +21,7 @@ public record RecognitionConfig(boolean enabled, String region, boolean autoSend
             Codec.BOOL.lenientOptionalFieldOf("autoSend", false).forGetter(RecognitionConfig::autoSend)
     ).apply(i, RecognitionConfig::new));
     public static final ConfigInstance<RecognitionConfig> INSTANCE = ConfigInstance.of(FILE_NAME, CODEC, new RecognitionConfig(false, "shanghai", false));
-    public static final Set<String> REGIONS = Set.of("shanghai", "beijing", "shenzhen");
+    public static final Set<String> REGIONS = AliyunAsrProvider.REGIONS;
 
     public String provider() {
         try (AsrProvider provider = ApiConfig.INSTANCE.get().create("asr", SystemServices.ASR).orElse(null)) {
@@ -28,6 +29,12 @@ public record RecognitionConfig(boolean enabled, String region, boolean autoSend
         } catch (RuntimeException unavailable) {
             return "";
         }
+    }
+
+    public AsrProvider.Request request(AsrProvider provider) {
+        if (provider instanceof com.iafenvoy.system.speech.asr.AsrProvider legacy)
+            return legacy.request(this);
+        return provider.request(this.region);
     }
 
     @Override

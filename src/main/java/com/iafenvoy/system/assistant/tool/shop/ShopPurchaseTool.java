@@ -1,7 +1,7 @@
 package com.iafenvoy.system.assistant.tool.shop;
 
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.data.input.ShopPurchaseInput;
 import com.iafenvoy.system.data.output.PurchaseReceiptOutput;
@@ -14,8 +14,8 @@ import java.util.concurrent.CompletionStage;
  * One tool confirms one shop purchase through the shared transaction journal.
  */
 public record ShopPurchaseTool(
-        CommerceTransactions transactions) implements ToolRegistry.Handler<ShopPurchaseInput, PurchaseReceiptOutput> {
-    public ToolRegistry.Tool<ShopPurchaseInput, PurchaseReceiptOutput> tool() {
+        CommerceTransactions transactions) implements ToolRegistry.Handler<ShopPurchaseInput, PurchaseReceiptOutput, ExecutionContext> {
+    public ToolRegistry.Tool<ShopPurchaseInput, PurchaseReceiptOutput, ExecutionContext> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.SHOP_PURCHASE, true, true, false, this);
     }
 

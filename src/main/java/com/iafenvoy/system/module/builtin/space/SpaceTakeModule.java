@@ -1,15 +1,17 @@
 package com.iafenvoy.system.module.builtin.space;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.SpaceTakeInput;
 import com.iafenvoy.system.data.output.SpaceOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -17,7 +19,7 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 import java.util.List;
 
 public final class SpaceTakeModule extends AbstractAgentModule<SpaceTakeInput> {
-    public SpaceTakeModule(ToolRegistry.Tool<SpaceTakeInput, SpaceOutput> take) {
+    public SpaceTakeModule(ToolRegistry.Tool<SpaceTakeInput, SpaceOutput, ExecutionContext> take) {
         super(SpaceTakeInput.CODEC, "Withdraw existing content from my system space by observed entry ID or exact name. One by default; stack=true takes one native stack. Never create items or invent entry IDs.",
                 List.of(take), true, false, ExecutionPolicy.quick(0, 1));
     }
@@ -42,8 +44,8 @@ public final class SpaceTakeModule extends AbstractAgentModule<SpaceTakeInput> {
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, SpaceTakeInput input) throws Exception {
-        AgentResult result = AgentResult.data("system.result.inbox", context.tool(BuiltinTools.SPACE_TAKE, "take", input));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, SpaceTakeInput input) throws Exception {
+        AgentResult<CardUpdate> result = SystemResults.data("system.result.inbox", context.tool(BuiltinTools.SPACE_TAKE, "take", input));
         return result.withPresentation(result.messageKey(), result.text(), result.cards(), input.inPlace());
     }
 }

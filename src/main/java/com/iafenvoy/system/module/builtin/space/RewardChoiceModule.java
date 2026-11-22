@@ -1,11 +1,13 @@
 package com.iafenvoy.system.module.builtin.space;
 
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.RewardChoiceInput;
 import com.iafenvoy.system.data.output.RewardChoiceOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -13,7 +15,7 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 import java.util.List;
 
 public final class RewardChoiceModule extends AbstractAgentModule<RewardChoiceInput> {
-    public RewardChoiceModule(ToolRegistry.Tool<RewardChoiceInput, RewardChoiceOutput> tool) {
+    public RewardChoiceModule(ToolRegistry.Tool<RewardChoiceInput, RewardChoiceOutput, ExecutionContext> tool) {
         super(RewardChoiceInput.CODEC, "Preview or confirm one observed reward choice. Selection is permanent and requires a player action.",
                 List.of(tool), true, false, ExecutionPolicy.quick(0, 1));
     }
@@ -25,8 +27,8 @@ public final class RewardChoiceModule extends AbstractAgentModule<RewardChoiceIn
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, RewardChoiceInput input) throws Exception {
-        AgentResult result = AgentResult.data("system.choice.title", context.tool(BuiltinTools.REWARD_CHOICE, "choose", input));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, RewardChoiceInput input) throws Exception {
+        AgentResult<CardUpdate> result = SystemResults.data("system.choice.title", context.tool(BuiltinTools.REWARD_CHOICE, "choose", input));
         return result.withPresentation(result.messageKey(), result.text(), result.cards(), true);
     }
 }

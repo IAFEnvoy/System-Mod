@@ -1,12 +1,12 @@
 package com.iafenvoy.system.module;
 
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.data.context.condition.EntityConditionContext;
 import com.iafenvoy.saturn.util.formula.FormulaContext;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.data.module.ModuleDefinition;
 import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.data.store.PlayerData;
@@ -165,7 +165,7 @@ final class ModuleAccess implements PlayerModule {
     }
 
     private void persist(UUID player, ModuleAccessDataStorage snapshot) {
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         CompletableFuture<Void> previous = this.pendingWrites.getOrDefault(player, CompletableFuture.completedFuture(null));
         CompletableFuture<Void> next = previous.handle((_, error) -> null).thenCompose(_ ->
                 this.engine.<Void>maintenance(() -> {

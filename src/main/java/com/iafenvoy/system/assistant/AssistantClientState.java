@@ -1,10 +1,10 @@
 package com.iafenvoy.system.assistant;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.chat.ConversationMode;
-import com.iafenvoy.system.agent.request.AgentRequest;
-import com.iafenvoy.system.agent.request.ControlRequest;
-import com.iafenvoy.system.data.AiStatus;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.chat.AiStatus;
+import com.iafenvoy.assistant.chat.ConversationMode;
+import com.iafenvoy.assistant.request.AgentRequest;
+import com.iafenvoy.assistant.request.ControlRequest;
 import com.iafenvoy.system.data.ClientState;
 import com.iafenvoy.system.data.History;
 import com.iafenvoy.system.data.card.CardReference;
@@ -23,7 +23,7 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
     public static final AssistantClientState EMPTY = new AssistantClientState(List.of(), Map.of(),
             new ClientState(Optional.empty(), true, List.of(), List.of(), 60000, AiStatus.EMPTY), null);
 
-    public record ChatEntry(boolean player, String text, AgentResult result) {
+    public record ChatEntry(boolean player, String text, AgentResult<CardUpdate> result) {
     }
 
     public record Pending(long deadline, Object owner, Optional<CardReference> notification) {
@@ -56,11 +56,11 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
 
     public String aiAccessHint() {
         if (this.serverState.system().isEmpty()) return "";
-        if (!this.serverState.ai().modelConfigured()) return "system.ai.model_missing_hint";
-        if (!this.serverState.ai().allowAi()) return "system.ai.admin_disabled_hint";
-        if (this.serverState.ai().modelCallsPerDay() == 0) return "system.ai.no_calls_hint";
-        if (!this.serverState.ai().allowFreeChat()) return "system.ai.free_chat_disabled_hint";
-        if (this.serverState.ai().maxMode() != ConversationMode.FREE) return "system.ai.mode_limited_hint";
+        if (!this.serverState.ai().modelConfigured()) return "assistant_core.ai.model_missing_hint";
+        if (!this.serverState.ai().allowAi()) return "assistant_core.ai.admin_disabled_hint";
+        if (this.serverState.ai().modelCallsPerDay() == 0) return "assistant_core.ai.no_calls_hint";
+        if (!this.serverState.ai().allowFreeChat()) return "assistant_core.ai.free_chat_disabled_hint";
+        if (this.serverState.ai().maxMode() != ConversationMode.FREE) return "assistant_core.ai.mode_limited_hint";
         if (!this.mode().usesAi()) return "system.ai.personal_disabled_hint";
         return "";
     }
@@ -77,7 +77,7 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return this.current == null || this.current.result() == null ? List.of() : ClientCards.choices(this.current.result());
     }
 
-    AssistantClientState local(AgentResult result) {
+    AssistantClientState local(AgentResult<CardUpdate> result) {
         return this.append(result, false, true);
     }
 
@@ -122,7 +122,7 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return entry == null || entry.result == null ? entry : new ChatEntry(entry.player, entry.text, ClientCards.latest(entry.result));
     }
 
-    AssistantClientState receive(String id, AgentResult result, boolean notification, boolean select) {
+    AssistantClientState receive(String id, AgentResult<CardUpdate> result, boolean notification, boolean select) {
         AssistantClientState completed = this.updated(id);
         if (result.silent() || result.cards().stream().noneMatch(card -> card.mode() == CardUpdate.Mode.SHOW))
             return completed;
@@ -131,7 +131,7 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
         return completed.append(result, notification, select);
     }
 
-    private AssistantClientState append(AgentResult result, boolean notification, boolean select) {
+    private AssistantClientState append(AgentResult<CardUpdate> result, boolean notification, boolean select) {
         List<ChatEntry> entries = new ArrayList<>(this.entries);
         ChatEntry entry = new ChatEntry(false, "", result);
         entries.add(entry);
@@ -145,10 +145,10 @@ public record AssistantClientState(List<ChatEntry> entries, Map<String, Pending>
             switch (message) {
                 case Message.User user -> entries.add(new ChatEntry(true, user.text(), null));
                 case Message.Assistant assistant -> {
-                    AgentResult result = assistant.result();
+                    AgentResult<CardUpdate> result = assistant.result();
                     result.cards().forEach(card -> ClientCards.apply(card, true));
                     // A restored entry without cards has no text either, so it would render as an empty row.
-                    AgentResult latest = ClientCards.latest(result);
+                    AgentResult<CardUpdate> latest = ClientCards.latest(result);
                     if (!result.silent() && !latest.cards().isEmpty()) entries.add(new ChatEntry(false, "", latest));
                 }
             }

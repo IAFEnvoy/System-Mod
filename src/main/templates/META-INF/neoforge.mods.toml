@@ -31,6 +31,13 @@ ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.${mod_id}]]
+modId = "assistant_core"
+type = "required"
+versionRange = "[${assistant_core_version},)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.${mod_id}]]
 modId = "saturn"
 type = "required"
 versionRange = "[${saturn_version},)"

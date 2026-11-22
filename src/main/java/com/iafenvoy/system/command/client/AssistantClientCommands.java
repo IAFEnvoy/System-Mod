@@ -1,10 +1,11 @@
 package com.iafenvoy.system.command.client;
 
+import com.iafenvoy.assistant.command.AssistantCommandInput;
+import com.iafenvoy.assistant.command.AssistantCommandSource;
+import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.command.AssistantCommandInput;
-import com.iafenvoy.system.command.AssistantCommandSource;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.ParseResults;
@@ -19,7 +20,7 @@ public final class AssistantClientCommands {
 
     public static boolean execute(String text) {
         CommandDispatcher<AssistantCommandSource> dispatcher = ClientModuleCaches.COMMAND.get().dispatcher();
-        AssistantCommandInput input = AssistantCommandInput.of(text.stripTrailing());
+        AssistantCommandInput input = AssistantCommandInput.of(text.stripTrailing(), SystemMod.MOD_ID);
         AssistantCommandSource source = new AssistantCommandSource(input.text(), AssistantClient.state()::hasModule);
         ParseResults<AssistantCommandSource> parsed = dispatcher.parse(input.reader(dispatcher.getRoot()), source);
         if (parsed.getContext().getNodes().isEmpty()) return false;
@@ -30,7 +31,7 @@ public final class AssistantClientCommands {
             dispatcher.execute(parsed);
             if (source.action() != null) AssistantClient.send(source.action(), text.strip());
         } catch (CommandSyntaxException error) {
-            AssistantClient.local(AgentResult.error(AgentFailure.INVALID_INPUT));
+            AssistantClient.local(SystemResults.error(AgentFailure.INVALID_INPUT));
         }
         return true;
     }

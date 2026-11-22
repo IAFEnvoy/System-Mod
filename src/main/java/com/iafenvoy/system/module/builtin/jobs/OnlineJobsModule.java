@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin.jobs;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.OnlineJobsInput;
 import com.iafenvoy.system.data.output.OnlineJobsOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -15,7 +17,7 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 import java.util.List;
 
 public final class OnlineJobsModule extends AbstractAgentModule<OnlineJobsInput> {
-    public OnlineJobsModule(ToolRegistry.Tool<OnlineJobsInput, OnlineJobsOutput> query) {
+    public OnlineJobsModule(ToolRegistry.Tool<OnlineJobsInput, OnlineJobsOutput, ExecutionContext> query) {
         super(OnlineJobsInput.CODEC, "Browse online gathering/production jobs and current progress.", List.of(query), true, false, ExecutionPolicy.quick(1, 0));
     }
 
@@ -29,7 +31,7 @@ public final class OnlineJobsModule extends AbstractAgentModule<OnlineJobsInput>
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, OnlineJobsInput input) throws Exception {
-        return AgentResult.data("system.result.online_jobs", context.tool(BuiltinTools.ONLINE_JOBS, "jobs", input));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, OnlineJobsInput input) throws Exception {
+        return SystemResults.data("system.result.online_jobs", context.tool(BuiltinTools.ONLINE_JOBS, "jobs", input));
     }
 }

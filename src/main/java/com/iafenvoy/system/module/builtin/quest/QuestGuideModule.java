@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin.quest;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.QuestGuideInput;
 import com.iafenvoy.system.data.output.QuestGuideOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -18,7 +20,7 @@ import java.util.List;
  * Deterministic local source retrieval; uncertain natural-language intent still uses the normal router.
  */
 public final class QuestGuideModule extends AbstractAgentModule<QuestGuideInput> {
-    public QuestGuideModule(ToolRegistry.Tool<QuestGuideInput, QuestGuideOutput> search) {
+    public QuestGuideModule(ToolRegistry.Tool<QuestGuideInput, QuestGuideOutput, ExecutionContext> search) {
         super(QuestGuideInput.CODEC, "Search authorized local instruction/manual text from enabled quest sources by topic or question. Each source decides which explanatory tasks are eligible. Returns authorized source passages and originals, not invented instructions. Does not complete quests or claim rewards. Use this for pack guidance, not active quest progress or web research.",
                 List.of(search), true, false, ExecutionPolicy.quick(2, 0));
     }
@@ -35,7 +37,7 @@ public final class QuestGuideModule extends AbstractAgentModule<QuestGuideInput>
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, QuestGuideInput input) throws Exception {
-        return AgentResult.data("system.result.quest_guide", context.tool(BuiltinTools.QUEST_GUIDE, "guide", input));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, QuestGuideInput input) throws Exception {
+        return SystemResults.data("system.result.quest_guide", context.tool(BuiltinTools.QUEST_GUIDE, "guide", input));
     }
 }

@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.response;
 
+import com.iafenvoy.assistant.response.AgentResponse;
 import com.iafenvoy.system.data.History;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;

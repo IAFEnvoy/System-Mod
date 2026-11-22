@@ -1,17 +1,19 @@
 package com.iafenvoy.system.module.builtin.knowledge;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolPriority;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolPriority;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.DatabaseQueryInput;
 import com.iafenvoy.system.data.input.QuestionInput;
 import com.iafenvoy.system.data.output.DatabaseQueryOutput;
@@ -36,7 +38,7 @@ public final class QuestionModule extends AbstractAgentModule<QuestionInput> {
     private static final Set<Failure> SUMMARIZE_FAILURES = Set.of(AgentFailure.MODEL_NOT_CONFIGURED, AgentFailure.MODEL_INVALID,
             AgentFailure.MODEL_TIMEOUT, AgentFailure.MODEL_UNAVAILABLE, AgentFailure.RATE_LIMITED, AgentFailure.BUSY, AgentFailure.BUDGET_EXCEEDED);
 
-    public QuestionModule(ToolRegistry.Tool<DatabaseQueryInput, DatabaseQueryOutput> query) {
+    public QuestionModule(ToolRegistry.Tool<DatabaseQueryInput, DatabaseQueryOutput, ExecutionContext> query) {
         super(QuestionInput.CODEC, "Answer knowledge, mechanics, recipe, how-to and modpack guidance questions. Always query authorized local databases first. "
                         + "Only an empty local result may fall back to web access. DeepSeek server search is automatic when the web-search module is enabled; "
                         + "other providers require allowWeb=true for paid search tools. "
@@ -64,23 +66,23 @@ public final class QuestionModule extends AbstractAgentModule<QuestionInput> {
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, QuestionInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, QuestionInput input) throws Exception {
         DatabaseQueryInput query = new DatabaseQueryInput(input.question());
         DatabaseQueryOutput local = context.tool(BuiltinTools.DATABASE_QUERY, "knowledge/query", query);
         if (!local.sources().isEmpty()) return this.localAnswer(context, input.question(), query, local);
 
         context.ensureMemoryCurrent();
-        if (input.localOnly()) return AgentResult.ok("system.knowledge.no_local_results");
+        if (input.localOnly()) return SystemResults.ok("system.knowledge.no_local_results");
         boolean available = context.toolAvailable(BuiltinTools.WEB_SEARCH) && context.toolAvailable(BuiltinTools.WEB_FETCH);
         boolean nativeSearch = available && context.externalServicesAllowed() && context.supportsWebSearch();
-        if (!input.allowWeb() && !nativeSearch) return AgentResult.ok("system.knowledge.no_local_results");
-        if (!available) return AgentResult.ok("system.knowledge.web_unavailable");
-        if (!context.externalServicesAllowed()) return AgentResult.ok("system.knowledge.external_disabled");
+        if (!input.allowWeb() && !nativeSearch) return SystemResults.ok("system.knowledge.no_local_results");
+        if (!available) return SystemResults.ok("system.knowledge.web_unavailable");
+        if (!context.externalServicesAllowed()) return SystemResults.ok("system.knowledge.external_disabled");
         context.authorizeExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
         return nativeSearch ? WebResearch.nativeAnswer(context, input.question()) : WebResearch.answer(context, input.question());
     }
 
-    private AgentResult localAnswer(ExecutionContext context, String question, DatabaseQueryInput query, DatabaseQueryOutput local) throws Exception {
+    private AgentResult<CardUpdate> localAnswer(ExecutionContext context, String question, DatabaseQueryInput query, DatabaseQueryOutput local) throws Exception {
         String answer = "";
         if (context.externalServicesAllowed() && context.remainingModelCalls() > 0) try {
             answer = context.model(context.prompt(SystemPrompts.KNOWLEDGE_ANSWER), Evidence.CODEC,
@@ -93,7 +95,7 @@ public final class QuestionModule extends AbstractAgentModule<QuestionInput> {
         DatabaseQueryOutput current = context.tool(BuiltinTools.DATABASE_QUERY, "knowledge/revalidate", query);
         context.ensureMemoryCurrent();
         if (!current.equals(local)) throw new AgentException(AgentFailure.CANCELLED);
-        return AgentResult.data("system.result.knowledge", new KnowledgeAnswerOutput(answer, local.sources()));
+        return SystemResults.data("system.result.knowledge", new KnowledgeAnswerOutput(answer, local.sources()));
     }
 
     private record Evidence(String question, List<DatabaseQueryOutput.Source> sources) {

@@ -1,11 +1,9 @@
 package com.iafenvoy.system.util;
 
-import com.google.gson.JsonParser;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
-import com.mojang.serialization.JsonOps;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.RegistryOps;
 
@@ -17,11 +15,11 @@ public final class CodecIO {
     }
 
     public static <A> A parse(Codec<A> codec, String text) {
-        return codec.parse(JsonOps.INSTANCE, JsonParser.parseString(text)).getOrThrow();
+        return com.iafenvoy.assistant.util.CodecIO.parse(codec, text);
     }
 
     public static <A> String write(Codec<A> codec, A value) {
-        return codec.encodeStart(JsonOps.INSTANCE, value).getOrThrow().toString();
+        return com.iafenvoy.assistant.util.CodecIO.write(codec, value);
     }
 
     /**

@@ -1,7 +1,9 @@
 package com.iafenvoy.system.data.store;
 
+import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.saturn.util.codec.CollectionCodecs;
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -19,19 +21,19 @@ public final class Conversation {
             Codec.LONG.optionalFieldOf("memoryEpoch", 0L).forGetter(v -> v.memoryEpoch),
             // Tolerant per entry: one unreadable turn never discards the whole conversation.
             CollectionCodecs.list(Message.CODEC).lenientOptionalFieldOf("history", List.of()).forGetter(v -> v.history),
-            CollectionCodecs.map(Codec.STRING, AgentResult.CODEC).lenientOptionalFieldOf("requests", Map.of()).forGetter(v -> v.requests),
+            CollectionCodecs.map(Codec.STRING, SystemResults.CODEC).lenientOptionalFieldOf("requests", Map.of()).forGetter(v -> v.requests),
             Codec.unboundedMap(Codec.STRING, Codec.STRING).optionalFieldOf("requestInputs", Map.of()).forGetter(v -> v.requestInputs)
     ).apply(i, Conversation::new));
     public long memoryEpoch;
     public final List<Message> history;
-    public final Map<String, AgentResult> requests;
+    public final Map<String, AgentResult<CardUpdate>> requests;
     public final Map<String, String> requestInputs;
 
     public Conversation() {
         this(0, List.of(), Map.of(), Map.of());
     }
 
-    private Conversation(long memoryEpoch, List<Message> history, Map<String, AgentResult> requests, Map<String, String> requestInputs) {
+    private Conversation(long memoryEpoch, List<Message> history, Map<String, AgentResult<CardUpdate>> requests, Map<String, String> requestInputs) {
         this.memoryEpoch = memoryEpoch;
         // Codec defaults may be immutable; each player owns fresh mutable collections.
         this.history = new ArrayList<>(history);

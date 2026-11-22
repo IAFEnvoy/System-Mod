@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin.quest;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.EmptyInput;
 import com.iafenvoy.system.data.input.QuestDetailInput;
 import com.iafenvoy.system.data.input.QuestFindInput;
@@ -23,9 +25,9 @@ import java.util.Optional;
  * Builds quest details, reward choices and independent section pagination actions.
  */
 public final class QuestDetailModule extends AbstractAgentModule<QuestDetailInput> {
-    public QuestDetailModule(ToolRegistry.Tool<QuestFindInput, List<QuestBriefOutput>> find,
-                             ToolRegistry.Tool<QuestDetailInput, QuestOutput> detail,
-                             ToolRegistry.Tool<EmptyInput, StarterGiftOutput> gifts) {
+    public QuestDetailModule(ToolRegistry.Tool<QuestFindInput, List<QuestBriefOutput>, ExecutionContext> find,
+                             ToolRegistry.Tool<QuestDetailInput, QuestOutput, ExecutionContext> detail,
+                             ToolRegistry.Tool<EmptyInput, StarterGiftOutput, ExecutionContext> gifts) {
         super(QuestDetailInput.CODEC, "View one quest's description, objectives, progress and rewards. Ambiguous names return a brief candidate list. Never invent IDs or indices.", List.of(find, detail, gifts), true, false, ExecutionPolicy.quick(2, 0));
     }
 
@@ -48,7 +50,7 @@ public final class QuestDetailModule extends AbstractAgentModule<QuestDetailInpu
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, QuestDetailInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, QuestDetailInput input) throws Exception {
         // Resolve names before reading details; each tool keeps one fixed result type.
         QuestDetailInput selected = input;
         if (!input.query().isBlank()) {
@@ -62,7 +64,7 @@ public final class QuestDetailModule extends AbstractAgentModule<QuestDetailInpu
             StarterGiftOutput gifts = context.tool(BuiltinTools.STARTER_GIFTS, "gifts", EmptyInput.INSTANCE);
             if (!gifts.gifts().isEmpty()) return StarterGiftModule.preview(gifts);
         }
-        return AgentResult.data("system.result.quest", quest);
+        return SystemResults.data("system.result.quest", quest);
     }
 
 }

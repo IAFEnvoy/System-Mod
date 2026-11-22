@@ -1,0 +1,3 @@
+[submodule "AssistantCore-MC"]
+	path = AssistantCore-MC
+	url = https://github.com/IAFEnvoy/AssistantCore-MC.git

@@ -1,15 +1,17 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.data.cost.Cost;
 import com.iafenvoy.saturn.util.codec.RegistryCodecs;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.module.AgentModule;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.tool.workshop.RepairConfirmTool;
 import com.iafenvoy.system.assistant.tool.workshop.RepairQuoteTool;
 import com.iafenvoy.system.assistant.workshop.Salvage;
 import com.iafenvoy.system.assistant.workshop.Workshop;
 import com.iafenvoy.system.command.WorkshopCommands;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.catalog.SalvageRule;
 import com.iafenvoy.system.data.input.SalvageConfirmInput;
 import com.iafenvoy.system.data.input.SalvageQuoteInput;
@@ -85,13 +87,13 @@ public record WorkshopSystemModule(List<Cost> costs,
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
         Workshop workshop = this.service(context);
         Salvage salvage = this.salvage(context);
-        ToolRegistry.Tool<SalvageQuoteInput, SalvageQuoteOutput> quote = context.tool(BuiltinTools.SALVAGE_QUOTE,
-                () -> new ToolRegistry.Tool<>(BuiltinTools.SALVAGE_QUOTE, false, true, false, (execution, _) -> salvage.quote(execution, context.id(), this))
+        ToolRegistry.Tool<SalvageQuoteInput, SalvageQuoteOutput, ExecutionContext> quote = context.tool(BuiltinTools.SALVAGE_QUOTE,
+                () -> new ToolRegistry.Tool<SalvageQuoteInput, SalvageQuoteOutput, ExecutionContext>(BuiltinTools.SALVAGE_QUOTE, false, true, false, (execution, _) -> salvage.quote(execution, context.id(), this))
                         .forReasoning("Quote salvaging my single main-hand item. This only shows exact outputs; the player must click confirm to destroy it."));
-        ToolRegistry.Tool<SalvageConfirmInput, SalvageReceiptOutput> confirm = context.tool(BuiltinTools.SALVAGE_CONFIRM,
+        ToolRegistry.Tool<SalvageConfirmInput, SalvageReceiptOutput, ExecutionContext> confirm = context.tool(BuiltinTools.SALVAGE_CONFIRM,
                 () -> new ToolRegistry.Tool<>(BuiltinTools.SALVAGE_CONFIRM, true, true, false, salvage::confirm));
         return List.of(new RepairQuoteModule(new RepairQuoteTool(workshop, context.id(), this.costs).tool()),
                 new RepairConfirmModule(new RepairConfirmTool(workshop).tool()), new SalvageQuoteModule(quote),

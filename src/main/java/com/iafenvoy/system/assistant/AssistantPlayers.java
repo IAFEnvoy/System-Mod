@@ -1,15 +1,18 @@
 package com.iafenvoy.system.assistant;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.response.BindingResponse;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
 import com.iafenvoy.system.data.SystemDefinition;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.data.BindingCardData;
+import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
 import com.iafenvoy.system.registry.SystemResourceKeys;
@@ -71,7 +74,7 @@ public final class AssistantPlayers {
                 && this.engine.current(uuid, this.engine.incarnation(uuid));
     }
 
-    public void notifyEvent(ServerPlayer player, AgentResult result) {
+    public void notifyEvent(ServerPlayer player, AgentResult<CardUpdate> result) {
         if (this.notificationsEnabled(player)) ServerNetworkHandler.notice(player, result);
     }
 
@@ -80,18 +83,18 @@ public final class AssistantPlayers {
         return this.notificationsEnabled(player) && this.pendingBindingIntroductions.remove(player.getUUID());
     }
 
-    CompletionStage<AgentResult> requireBound(UUID player) {
-        AgentStore store = this.engine.playerStore(player);
+    CompletionStage<AgentResult<CardUpdate>> requireBound(UUID player) {
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
             if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
-            return AgentResult.ok("system.result.ready");
+            return SystemResults.ok("system.result.ready");
         }));
     }
 
-    public void grant(ServerPlayer player, Identifier system, Consumer<AgentResult> feedback) {
+    public void grant(ServerPlayer player, Identifier system, Consumer<AgentResult<CardUpdate>> feedback) {
         SystemDefinition definition = this.server.registryAccess().lookupOrThrow(SystemResourceKeys.SYSTEM).getValue(system);
         if (definition == null) {
-            AgentResult answer = AgentResult.error(AgentFailure.SYSTEM_UNAVAILABLE);
+            AgentResult<CardUpdate> answer = SystemResults.error(AgentFailure.SYSTEM_UNAVAILABLE);
             feedback.accept(answer);
             ServerNetworkHandler.notice(player, answer);
             return;
@@ -100,13 +103,13 @@ public final class AssistantPlayers {
         UUID uuid = player.getUUID(), connection = ServerNetworkHandler.connectionId(player);
         this.bindings.grant(uuid, system, this.modules.binding(player)).whenComplete((result, error) -> this.server.execute(() -> {
             this.bindingChanges.remove(uuid);
-            AgentResult answer = error == null ? result : AgentResult.error(AgentException.failure(error));
+            AgentResult<CardUpdate> answer = error == null ? result : SystemResults.error(AgentException.failure(error));
             feedback.accept(answer);
             if (this.server.getPlayerList().getPlayer(uuid) != player || !connection.equals(ServerNetworkHandler.connectionId(player)))
                 return;
             boolean fresh = answer.messageKey().equals("system.result.bound");
             if (answer.isSuccess() && fresh) {
-                ServerNetworkHandler.binding(player, BindingResponse.Change.BOUND, AgentResult.data("system.result.bound",
+                ServerNetworkHandler.binding(player, BindingResponse.Change.BOUND, SystemResults.data("system.result.bound",
                         new BindingCardData(player.getName().getString(), definition.name(), definition.description())));
                 this.pendingBindingIntroductions.add(uuid);
                 this.login(player);
@@ -114,24 +117,24 @@ public final class AssistantPlayers {
         }));
     }
 
-    public void revoke(ServerPlayer player, Consumer<AgentResult> feedback) {
+    public void revoke(ServerPlayer player, Consumer<AgentResult<CardUpdate>> feedback) {
         this.clearPlayerData(player, feedback, false);
     }
 
-    public void reset(ServerPlayer player, Consumer<AgentResult> feedback) {
+    public void reset(ServerPlayer player, Consumer<AgentResult<CardUpdate>> feedback) {
         this.clearPlayerData(player, feedback, true);
     }
 
-    private void clearPlayerData(ServerPlayer player, Consumer<AgentResult> feedback, boolean reset) {
+    private void clearPlayerData(ServerPlayer player, Consumer<AgentResult<CardUpdate>> feedback, boolean reset) {
         if (!this.beginBindingChange(player, feedback)) return;
         UUID uuid = player.getUUID();
         long previous = this.engine.incarnation(uuid);
-        CompletionStage<AgentResult> work = this.bindings.clear(uuid, reset);
+        CompletionStage<AgentResult<CardUpdate>> work = this.bindings.clear(uuid, reset);
         if (this.engine.incarnation(uuid) != previous) ServerNetworkHandler.connected(player);
         UUID connection = ServerNetworkHandler.connectionId(player);
         work.whenComplete((result, error) -> this.server.execute(() -> {
             this.bindingChanges.remove(uuid);
-            AgentResult answer = error == null ? result : AgentResult.error(AgentException.failure(error));
+            AgentResult<CardUpdate> answer = error == null ? result : SystemResults.error(AgentException.failure(error));
             if (answer.isSuccess()) {
                 this.clearSession(uuid);
                 this.modules.clear(uuid);
@@ -150,9 +153,9 @@ public final class AssistantPlayers {
         }));
     }
 
-    private boolean beginBindingChange(ServerPlayer player, Consumer<AgentResult> feedback) {
+    private boolean beginBindingChange(ServerPlayer player, Consumer<AgentResult<CardUpdate>> feedback) {
         if (this.bindingChanges.add(player.getUUID())) return true;
-        AgentResult busy = AgentResult.error(AgentFailure.BUSY);
+        AgentResult<CardUpdate> busy = SystemResults.error(AgentFailure.BUSY);
         feedback.accept(busy);
         ServerNetworkHandler.notice(player, busy);
         return false;

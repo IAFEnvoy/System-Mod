@@ -1,6 +1,6 @@
 package com.iafenvoy.system.screen.gui;
 
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.data.card.CardContext;
@@ -21,7 +21,7 @@ import static com.iafenvoy.system.screen.gui.AssistantView.*;
 public final class AssistantSimpleScreen extends AssistantInputScreen {
     private long revision = -1;
     private long templateRevision = -1;
-    private AgentResult renderedResult;
+    private AgentResult<CardUpdate> renderedResult;
     private String renderedFallback = "";
 
     public AssistantSimpleScreen(String draft) {
@@ -56,7 +56,7 @@ public final class AssistantSimpleScreen extends AssistantInputScreen {
         String request = current == null ? "" : current.text();
         text(document.getElementById("current_request"), request);
         display(document.getElementById("current_request"), request.isBlank() ? "none" : "block");
-        AgentResult result = current == null ? null : current.result();
+        AgentResult<CardUpdate> result = current == null ? null : current.result();
         boolean busy = AssistantClient.state().busy();
         String fallback = result == null ? (busy ? "" : tr(AssistantClient.system().description()) + "\n\n")
                 + tr(busy ? "system.ui.simple_working" : "system.ui.simple_welcome") : "";

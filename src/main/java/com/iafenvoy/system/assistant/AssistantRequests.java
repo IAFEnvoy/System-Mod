@@ -1,25 +1,32 @@
 package com.iafenvoy.system.assistant;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.action.AgentAction;
+import com.iafenvoy.assistant.chat.AiStatus;
+import com.iafenvoy.assistant.request.*;
+import com.iafenvoy.assistant.response.AgentResponse;
+import com.iafenvoy.assistant.response.CommandSuggestion;
+import com.iafenvoy.assistant.response.CommandSuggestionsResponse;
+import com.iafenvoy.assistant.storage.AgentStore;
+import com.iafenvoy.assistant.util.TypeDispatch;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.AgentEngine;
-import com.iafenvoy.system.agent.module.AgentAction;
-import com.iafenvoy.system.agent.request.*;
+import com.iafenvoy.system.agent.request.CardActionRequest;
 import com.iafenvoy.system.agent.response.*;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.assistant.item.ItemSearches;
-import com.iafenvoy.system.data.AiStatus;
 import com.iafenvoy.system.data.ClientState;
-import com.iafenvoy.system.data.CommandSuggestion;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.StarterGiftsInput;
 import com.iafenvoy.system.data.item.ItemSearchBatch;
 import com.iafenvoy.system.data.output.StarterGiftOutput;
+import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.event.CardButtonEvent;
 import com.iafenvoy.system.module.ModuleManager;
 import com.iafenvoy.system.network.ServerNetworkHandler;
+import com.iafenvoy.system.registry.SystemResponseTypes;
 import com.iafenvoy.system.util.CardEventValue;
-import com.iafenvoy.system.util.TypeDispatch;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.common.NeoForge;
@@ -56,28 +63,22 @@ public final class AssistantRequests {
 
     public void open(ServerPlayer player, OpenResponse.View view) {
         UUID connection = ServerNetworkHandler.connectionId(player);
-        this.players.requireBound(player.getUUID()).whenComplete((_, error) -> this.server.execute(() -> {
-            if (this.server.getPlayerList().getPlayer(player.getUUID()) != player || !connection.equals(ServerNetworkHandler.connectionId(player)))
-                return;
+        ServerNetworkHandler.CONNECTIONS.whenCurrent(player, connection, this.players.requireBound(player.getUUID()), (_, error) -> {
             if (error == null) ServerNetworkHandler.send(player, new OpenResponse(view));
-            else ServerNetworkHandler.notice(player, AgentResult.error(AgentException.failure(error)));
-        }));
+            else ServerNetworkHandler.notice(player, SystemResults.error(AgentException.failure(error)));
+        });
     }
 
     public void request(ServerPlayer player, String requestId, AgentRequest request, Optional<ItemSearchBatch> search) {
         this.players.refreshPlayer(player);
-        UUID uuid = player.getUUID();
-        UUID connection = ServerNetworkHandler.connectionId(player);
         if (search.isPresent() && !(request instanceof InvokeRequest || request instanceof CardActionRequest))
             throw new AgentException(AgentFailure.INVALID_INPUT);
+        UUID connection = ServerNetworkHandler.connectionId(player);
         CompletionStage<AgentResponse> work = this.requestHandlers.apply(new RequestContext(player, requestId, search), request);
-        work.whenComplete((result, error) -> this.server.execute(() -> {
-            ServerPlayer online = this.server.getPlayerList().getPlayer(uuid);
-            if (online != null && connection.equals(ServerNetworkHandler.connectionId(online))) {
-                if (error == null) ServerNetworkHandler.send(online, result);
-                else ServerNetworkHandler.reply(online, requestId, AgentResult.error(AgentException.failure(error)));
-            }
-        }));
+        ServerNetworkHandler.CONNECTIONS.whenCurrent(player, connection, work, (result, error) -> {
+            if (error == null) ServerNetworkHandler.send(player, result);
+            else ServerNetworkHandler.reply(player, requestId, SystemResults.error(AgentException.failure(error)));
+        });
     }
 
     private record RequestContext(ServerPlayer player, String requestId, Optional<ItemSearchBatch> search) {
@@ -86,13 +87,13 @@ public final class AssistantRequests {
         }
     }
 
-    private static CompletionStage<AgentResponse> answer(RequestContext context, CompletionStage<AgentResult> work) {
-        return work.thenApply(result -> new ReplyResponse(context.requestId(), result));
+    private static CompletionStage<AgentResponse> answer(RequestContext context, CompletionStage<AgentResult<CardUpdate>> work) {
+        return work.thenApply(result -> SystemResponseTypes.RESULTS.reply(context.requestId(), result));
     }
 
     private CompletionStage<AgentResponse> limited(RequestContext context, Supplier<CompletionStage<AgentResponse>> work) {
         if (!this.players.admitRequest(context.uuid()))
-            return CompletableFuture.completedFuture(new ReplyResponse(context.requestId(), AgentResult.error(AgentFailure.RATE_LIMITED)));
+            return CompletableFuture.completedFuture(SystemResponseTypes.RESULTS.reply(context.requestId(), SystemResults.error(AgentFailure.RATE_LIMITED)));
         return work.get();
     }
 
@@ -131,7 +132,7 @@ public final class AssistantRequests {
         this.registerRequest(PreferencesRequest.class, (context, preferences) ->
                 this.engine.preferences(context.uuid(), preferences.history(), preferences.mode()).thenCompose(result ->
                         result.isSuccess() ? this.state(context.uuid()).thenApply(state -> new StateResponse(context.requestId(), state))
-                                : CompletableFuture.completedFuture(new ReplyResponse(context.requestId(), result))));
+                                : CompletableFuture.completedFuture(SystemResponseTypes.RESULTS.reply(context.requestId(), result))));
         this.requestHandlers.register(ControlRequest.class, (context, control) -> this.controlHandlers.get(control).apply(context));
         this.registerControl(ControlRequest.STATE, context -> this.state(context.uuid()).thenApply(state -> new StateResponse(context.requestId(), state)));
         this.registerControl(ControlRequest.HISTORY, context -> this.engine.history(context.uuid()).thenApply(history -> new HistoryResponse(context.requestId(), history)));
@@ -141,8 +142,8 @@ public final class AssistantRequests {
                 .thenApply(_ -> new OpenResponse(OpenResponse.View.CURRENT, Optional.of(context.requestId()))));
     }
 
-    private CompletionStage<AgentResult> dispatchCardEvent(RequestContext context, CardActionRequest request) {
-        CompletableFuture<AgentResult> result = new CompletableFuture<>();
+    private CompletionStage<AgentResult<CardUpdate>> dispatchCardEvent(RequestContext context, CardActionRequest request) {
+        CompletableFuture<AgentResult<CardUpdate>> result = new CompletableFuture<>();
         // Binding checks may finish on the storage executor; mod events always run on the game thread.
         this.server.execute(() -> {
             try {
@@ -150,7 +151,7 @@ public final class AssistantRequests {
                     throw new AgentException(AgentFailure.CANCELLED);
                 CardButtonEvent event = new CardButtonEvent(context.player(), request.source(), request.value());
                 NeoForge.EVENT_BUS.post(event);
-                CompletionStage<AgentResult> work = event.result();
+                CompletionStage<AgentResult<CardUpdate>> work = event.result();
                 if (work == null) {
                     CardEventValue decoded;
                     try {
@@ -174,7 +175,7 @@ public final class AssistantRequests {
     }
 
     private CompletionStage<ClientState> state(UUID player) {
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
             if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
             return new ClientState(data.systems.current(), data.saveHistory,
@@ -187,10 +188,9 @@ public final class AssistantRequests {
     public void syncState(ServerPlayer player) {
         UUID connection = ServerNetworkHandler.connectionId(player);
         long incarnation = this.engine.incarnation(player.getUUID());
-        this.state(player.getUUID()).whenComplete((result, error) -> this.server.execute(() -> {
-            if (error == null && this.server.getPlayerList().getPlayer(player.getUUID()) == player
-                    && connection.equals(ServerNetworkHandler.connectionId(player)) && this.engine.current(player.getUUID(), incarnation))
+        ServerNetworkHandler.CONNECTIONS.whenCurrent(player, connection, this.state(player.getUUID()), (result, error) -> {
+            if (error == null && this.engine.current(player.getUUID(), incarnation))
                 ServerNetworkHandler.send(player, new StateResponse("", result));
-        }));
+        });
     }
 }

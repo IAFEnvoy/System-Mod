@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.module.AgentModule;
 import com.iafenvoy.saturn.util.codec.RegistryCodecs;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.jobs.OnlineJobs;
 import com.iafenvoy.system.assistant.tool.jobs.JobCancelTool;
 import com.iafenvoy.system.assistant.tool.jobs.JobClaimTool;
 import com.iafenvoy.system.assistant.tool.jobs.JobStartTool;
 import com.iafenvoy.system.assistant.tool.jobs.OnlineJobsQueryTool;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.catalog.OnlineJobEntry;
 import com.iafenvoy.system.module.*;
 import com.iafenvoy.system.module.builtin.jobs.JobCancelModule;
@@ -74,7 +76,7 @@ public record OnlineJobsSystemModule(
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
         OnlineJobs service = new OnlineJobs(context.get(ContextTypes.GAME).server().registryAccess(), this, context.get(ContextTypes.CATALOGS).access());
         return List.of(new OnlineJobsModule(new OnlineJobsQueryTool(service).tool()), new JobStartModule(new JobStartTool(service).tool()),
                 new JobClaimModule(new JobClaimTool(service).tool()), new JobCancelModule(new JobCancelTool(service).tool()));

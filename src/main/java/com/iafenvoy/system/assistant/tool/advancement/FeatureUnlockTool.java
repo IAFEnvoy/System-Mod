@@ -1,9 +1,9 @@
 package com.iafenvoy.system.assistant.tool.advancement;
 
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.data.input.FeatureInput;
 import com.iafenvoy.system.data.output.FeatureOutput;
 import com.iafenvoy.system.module.ModuleData;
@@ -16,8 +16,8 @@ import java.util.concurrent.CompletionStage;
 /**
  * Unlocks a validated feature ID for a trusted event workflow.
  */
-public final class FeatureUnlockTool implements ToolRegistry.Handler<FeatureInput, FeatureOutput> {
-    public ToolRegistry.Tool<FeatureInput, FeatureOutput> tool() {
+public final class FeatureUnlockTool implements ToolRegistry.Handler<FeatureInput, FeatureOutput, ExecutionContext> {
+    public ToolRegistry.Tool<FeatureInput, FeatureOutput, ExecutionContext> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.FEATURE_UNLOCK, true, true, true, this);
     }
 

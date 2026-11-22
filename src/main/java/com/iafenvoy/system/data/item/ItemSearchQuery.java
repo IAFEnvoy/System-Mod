@@ -1,6 +1,6 @@
 package com.iafenvoy.system.data.item;
 
-import com.iafenvoy.system.agent.module.AgentAction;
+import com.iafenvoy.assistant.action.AgentAction;
 
 import java.util.Optional;
 

@@ -1,10 +1,10 @@
 package com.iafenvoy.system.assistant.tool.signin;
 
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.calendar.BusinessCalendar;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.progress.PlayerFacts;
@@ -35,7 +35,7 @@ import java.util.concurrent.CompletionStage;
 /**
  * Commits the chosen catalog reward once per day after revalidating the player and catalog.
  */
-public final class SignInCreditTool implements ToolRegistry.Handler<SignInCreditInput, RewardOutput> {
+public final class SignInCreditTool implements ToolRegistry.Handler<SignInCreditInput, RewardOutput, ExecutionContext> {
     private final CommerceCatalogs catalogs;
     private final SignIns signIns;
     private final OfflineSignIn offline;
@@ -50,7 +50,7 @@ public final class SignInCreditTool implements ToolRegistry.Handler<SignInCredit
         this.definition = definition;
     }
 
-    public ToolRegistry.Tool<SignInCreditInput, RewardOutput> tool() {
+    public ToolRegistry.Tool<SignInCreditInput, RewardOutput, ExecutionContext> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.SIGN_IN_CREDIT, true, true, false, this);
     }
 

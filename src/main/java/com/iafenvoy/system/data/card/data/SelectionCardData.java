@@ -1,12 +1,12 @@
 package com.iafenvoy.system.data.card.data;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.action.ActionArguments;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.data.card.CardAction;
 import com.iafenvoy.system.data.card.CardBuilder;
 import com.iafenvoy.system.data.card.CardButton;
 import com.iafenvoy.system.data.card.CardData;
-import com.iafenvoy.system.util.ActionArguments;
 import com.iafenvoy.system.util.CardEventValue;
 import com.iafenvoy.system.util.LegacyText;
 import com.mojang.serialization.Codec;

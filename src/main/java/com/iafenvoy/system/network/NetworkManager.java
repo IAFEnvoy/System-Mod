@@ -1,5 +1,8 @@
 package com.iafenvoy.system.network;
 
+import com.iafenvoy.assistant.network.AssistantChannel;
+import com.iafenvoy.system.SystemMod;
+import com.iafenvoy.system.data.item.ItemSearchBatch;
 import com.iafenvoy.system.network.payload.*;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -13,14 +16,16 @@ import net.neoforged.neoforge.network.handling.MainThreadPayloadHandler;
  */
 @EventBusSubscriber
 public final class NetworkManager {
+    public static final AssistantChannel<ItemSearchBatch> ASSISTANT = new AssistantChannel<>(SystemMod.MOD_ID, ItemSearchBatch.STREAM_CODEC);
+
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
-        event.registrar("6")
-                .playToServer(AssistantRequestC2SPayload.TYPE, AssistantRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleAssistantRequest))
+        var registrar = event.registrar("7");
+        ASSISTANT.register(registrar, ServerNetworkHandler::handleAssistantRequest, ServerNetworkHandler::assistantError);
+        registrar
                 .playToServer(TokenUsageRequestC2SPayload.TYPE, TokenUsageRequestC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleTokenUsageRequest))
                 .playToServer(DisplayCardC2SPayload.TYPE, DisplayCardC2SPayload.CODEC, new MainThreadPayloadHandler<>(ServerNetworkHandler::handleDisplayCard))
                 .playToClient(DisplayCardsS2CPayload.TYPE, DisplayCardsS2CPayload.CODEC)
-                .playToClient(AssistantResponseS2CPayload.TYPE, AssistantResponseS2CPayload.CODEC)
                 .playToClient(TokenUsageResponseS2CPayload.TYPE, TokenUsageResponseS2CPayload.CODEC);
     }
 
@@ -31,7 +36,7 @@ public final class NetworkManager {
     public static final class ClientRegistration {
         @SubscribeEvent
         public static void register(RegisterClientPayloadHandlersEvent event) {
-            event.register(AssistantResponseS2CPayload.TYPE, new MainThreadPayloadHandler<>(ClientNetworkHandler::handleAssistantResponse));
+            ASSISTANT.registerClient(event, ClientNetworkHandler::handleAssistantResponse);
             event.register(DisplayCardsS2CPayload.TYPE, new MainThreadPayloadHandler<>(ClientNetworkHandler::handleDisplayCards));
             event.register(TokenUsageResponseS2CPayload.TYPE, new MainThreadPayloadHandler<>(ClientNetworkHandler::handleTokenUsageResponse));
         }

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.config.file;
 
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
 import com.iafenvoy.saturn.util.codec.MiscCodecs;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.config.ConfigInstance;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;

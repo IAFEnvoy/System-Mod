@@ -1,10 +1,12 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.module.AgentModule;
 import com.iafenvoy.saturn.util.codec.RegistryCodecs;
-import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.quest.Commissions;
 import com.iafenvoy.system.assistant.quest.QuestWorkflows;
 import com.iafenvoy.system.command.CommissionCommands;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.catalog.CommissionDefinition;
 import com.iafenvoy.system.module.CatalogModule;
 import com.iafenvoy.system.module.ModuleContext;
@@ -66,7 +68,7 @@ public record CommissionSystemModule(
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
         Commissions service = Commissions.service(context);
         service.register(context.id(), this);
         return QuestWorkflows.install(context, service);

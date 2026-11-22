@@ -1,6 +1,6 @@
 package com.iafenvoy.system.module.builtin;
 
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.command.AgentCommand;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.data.input.LotteryQueryInput;
 import com.iafenvoy.system.module.client.ClientModule;

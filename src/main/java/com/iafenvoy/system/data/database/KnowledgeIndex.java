@@ -1,10 +1,9 @@
 package com.iafenvoy.system.data.database;
 
-import com.iafenvoy.system.agent.routing.LexicalIndex;
+import com.iafenvoy.assistant.routing.LexicalIndex;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
-import java.io.IOException;
 import java.util.*;
 
 /**
@@ -40,11 +39,7 @@ public final class KnowledgeIndex {
             if (!passages.isEmpty())
                 examples.add(new LexicalIndex.Example<>(new Passage(document, passages.getFirst()), language, document.title()));
         }
-        try {
-            this.index = new LexicalIndex<>(examples, false);
-        } catch (IOException error) {
-            throw new IllegalStateException("Unable to build knowledge index", error);
-        }
+        this.index = new LexicalIndex<>(examples);
     }
 
     List<Hit> search(Set<String> allowed, String query, String language, int limit) {

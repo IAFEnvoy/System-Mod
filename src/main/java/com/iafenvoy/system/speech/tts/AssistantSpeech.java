@@ -1,13 +1,16 @@
 package com.iafenvoy.system.speech.tts;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.credential.Credential;
+import com.iafenvoy.assistant.speech.SpeechAudio;
+import com.iafenvoy.assistant.speech.SpeechException;
+import com.iafenvoy.assistant.speech.tts.TtsProvider;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.config.credential.Credential;
 import com.iafenvoy.system.config.file.ApiConfig;
 import com.iafenvoy.system.config.file.SpeechConfig;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.registry.SystemServices;
 import com.iafenvoy.system.screen.gui.AssistantView;
-import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.util.LegacyText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.sounds.SoundEngine;
@@ -61,7 +64,7 @@ public final class AssistantSpeech {
     public static final class Session implements AutoCloseable {
         private boolean closed;
 
-        public void result(AgentResult result) {
+        public void result(AgentResult<CardUpdate> result) {
             stop(this);
             String text = SpeechText.result(result);
             if (!text.isBlank() && !this.closed) AssistantSpeech.say(this, text, false,
@@ -120,7 +123,7 @@ public final class AssistantSpeech {
         if (!SpeechConfig.LANGUAGES.contains(next.language()) || next.volume() < 0 || next.volume() > 100)
             throw new SpeechException("settings");
         try (TtsProvider provider = selected()) {
-            provider.validate(provider.request(next, "Preview", Minecraft.getInstance().options.languageCode));
+            provider.validate(next.request(provider, "Preview", Minecraft.getInstance().options.languageCode));
         }
     }
 
@@ -203,7 +206,7 @@ public final class AssistantSpeech {
             SpeechUsageTracker accounting = null;
             // Construction and protocol work run here; a cancelled queued task owns no provider resources.
             try (TtsProvider provider = SystemServices.TTS.create(credential).orElseThrow(() -> new SpeechException("provider"))) {
-                TtsProvider.Request request = provider.request(current, normalized, language);
+                TtsProvider.Request request = current.request(provider, normalized, language);
                 String providerId = provider.id();
                 SpeechUsageTracker tracker = new SpeechUsageTracker(providerId, request.model(), request.region());
                 accounting = tracker;

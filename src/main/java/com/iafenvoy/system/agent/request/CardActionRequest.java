@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.request;
 
+import com.iafenvoy.assistant.request.AgentRequest;
 import com.iafenvoy.system.data.card.CardReference;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;

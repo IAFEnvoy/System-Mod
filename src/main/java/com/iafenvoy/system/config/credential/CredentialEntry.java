@@ -1,5 +1,6 @@
 package com.iafenvoy.system.config.credential;
 
+import com.iafenvoy.assistant.credential.Credential;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 

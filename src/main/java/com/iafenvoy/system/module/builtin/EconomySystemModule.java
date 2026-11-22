@@ -1,9 +1,11 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.module.AgentModule;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.economy.Wallets;
 import com.iafenvoy.system.assistant.tool.economy.BalanceTool;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.module.*;
 import com.iafenvoy.system.module.builtin.economy.BalanceModule;
 import com.iafenvoy.system.module.builtin.economy.EconomyCommands;
@@ -40,7 +42,7 @@ public final class EconomySystemModule implements SharedModule {
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
         return List.of(new BalanceModule(new BalanceTool(this.service(context)).tool()));
     }
 

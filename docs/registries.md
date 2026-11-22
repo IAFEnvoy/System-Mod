@@ -1,6 +1,6 @@
 # 注册表速查
 
-所有正式注册表的键集中在 [`SystemResourceKeys`](../src/main/java/com/iafenvoy/system/registry/SystemResourceKeys.java)，实例集中在 [`SystemRegistries`](../src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)。代码定义通过 NeoForge `NewRegistryEvent` 加入内置根注册表，通过 `DeferredRegister` 登记条目，由模组加载流程统一冻结。协议类型与卡片节点使用正式注册表；模型、搜索、ASR / TTS 使用各自的 CredentialManager 构造实际服务，见下文。
+System 自有注册表的键与实例分别位于 `SystemResourceKeys` 和 `SystemRegistries`。Assistant Core 创建动作、凭据、Agent 请求与 Agent 响应注册表。各模组通过 `DeferredRegister` 登记自己的条目。运行时按作用域装配工作流和工具，通过 `CredentialManager` 按凭据类型创建供应商。 [SystemResourceKeys](../src/main/java/com/iafenvoy/system/registry/SystemResourceKeys.java) · [SystemRegistries](../src/main/java/com/iafenvoy/system/registry/SystemRegistries.java)
 
 注册表 ID 与公开键字段统一使用单数，数据包定义和 tag 目录沿用注册表路径，例如 `system:shop_offer` 对应 `system/shop_offer/` 与 `tags/system/shop_offer/`。
 
@@ -14,7 +14,7 @@
 
 首次读取优先使用当前连接的 registryAccess；无连接、也尚未收到标签同步时才装配本地常驻功能。标签包已提供注册表、但本地玩家尚未创建时保留该快照；连接的注册表实例变化会按需重建，避免空注册表缓存一直占用。每轮只遍历模块一次，命令树编译后释放临时节点 Builder，Workspace 和本地动作发布为不可变集合。缓存不再包装另一个 Bindings / Registry 对象；旧 ClientModuleBindings 和 ClientCommandRegistry 已删除。内置本地卡片动作在对应 ClientModule.register 中通过 localAction 声明，扩展也使用同一入口；CardController 只执行分派。玩家状态与界面 Document 不属于此缓存，资源包 JSON 继续由 CardTemplates 的资源重载监听器维护。
 
-## System 自有内置注册表
+## System 使用的内置注册表
 
 下表字段对应 SystemResourceKeys 的键与 SystemRegistries 的实例。代码类型在两端创建，由 NewRegistryEvent / DeferredRegister 登记并冻结；除请求 / 响应两张协议表外不启用数字 ID 同步，按名称 Codec 编解码。
 
@@ -23,19 +23,19 @@
 | `system:server_module` | `SERVER_MODULE` | `MapCodec<? extends ServerModule>` | SystemServerModules |
 | `system:card_data_type` | `CARD_DATA_TYPE` | `MapCodec<? extends CardData>` | SystemCardDataTypes |
 | `system:space_content_type` | `SPACE_CONTENT_TYPE` | `SpaceContentType<?>` | SystemSpaceContentTypes |
-| `system:action_type` | `ACTION_TYPE` | `MapCodec<? extends AgentAction>` | SystemActionTypes |
-| `system:credential_type` | `CREDENTIAL_TYPE` | `MapCodec<? extends Credential>` | SystemCredentialTypes |
-| `system:agent_request_type` | `AGENT_REQUEST_TYPE` | `StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentRequest>` | SystemRequestTypes |
-| `system:agent_response_type` | `AGENT_RESPONSE_TYPE` | `StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>` | SystemResponseTypes |
+| `assistant_core:action_type` | `ACTION_TYPE` | `MapCodec<? extends AgentAction>` | SystemActionTypes |
+| `assistant_core:credential_type` | `CREDENTIAL_TYPE` | `MapCodec<? extends Credential>` | SystemCredentialTypes |
+| `assistant_core:agent_request_type` | `AGENT_REQUEST_TYPE` | `StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentRequest>` | SystemRequestTypes |
+| `assistant_core:agent_response_type` | `AGENT_RESPONSE_TYPE` | `StreamCodec<? super RegistryFriendlyByteBuf, ? extends AgentResponse>` | SystemResponseTypes |
 | `system:card_node_type` | `CARD_NODE_TYPE` | `MapCodec<? extends CardNode>` | SystemCardNodeTypes |
 
 `system:space_content_type` 内置 `system:item`、`system:currency`、`system:experience`、`system:action`、`system:choice`，分别处理物品、钱包入账、原版经验、可信 Saturn EntityAction 与通用多选一奖励。空间账本和 Reward.contents 使用同一套分派，详见[奖励结果](rewards.md)。
 
-共 8 张代码注册表。只有卡片节点的 DeferredRegister 在 SystemClientMod 绑定；专用服务端保留其空表。ClientModule 已移出 MC 注册表，SystemRegistries 与 SystemResourceKeys 不再引用该接口。
+System 自有 4 张代码注册表，另使用 Assistant Core 的 4 张注册表。System 的动作与凭据条目继续采用 `system:*` ID。卡片节点的 `DeferredRegister` 在客户端绑定，专服保留其空表。
 
 ### 凭据类型与服务选择
 
-`config.credential.Credential` 由每种凭据实现自己的 `codec()` 和 `createWidget()`；`Credential.CODEC` 按 `type` 从正式的 `CREDENTIAL_TYPE` 注册表分派。`SystemCredentialTypes` 登记四个内置实现，扩展可向相同注册表登记自己的 `MapCodec<? extends Credential>`。
+Assistant Core 的 `com.iafenvoy.assistant.credential.Credential` 通过 `codec()` 提供类型，`Credential.CODEC` 按 `type` 从 `CREDENTIAL_TYPE` 分派。System 的凭据子接口通过 `createWidget()` 提供设置页编辑器。`SystemCredentialTypes` 登记四个内置实现。
 
 | 类型 ID | 实现 | 字段 |
 | --- | --- | --- |
@@ -112,8 +112,8 @@ AgentAction call = QuestDetailInput.byId(id);
 
 | 注册表 | 内置条目 ID | 对应类型 |
 | --- | --- | --- |
-| `system:agent_request_type` | `system:chat`、`system:invoke`、`system:control`、`system:preferences`、`system:card_action`、`system:command_suggestions` | `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest`、`CardActionRequest`、`CommandSuggestionsRequest` |
-| `system:agent_response_type` | `system:reply`、`system:notice`、`system:open`、`system:binding`、`system:state`、`system:history`、`system:command_suggestions` | `ReplyResponse`、`NoticeResponse`、`OpenResponse`、`BindingResponse`、`StateResponse`、`HistoryResponse`、`CommandSuggestionsResponse` |
+| `assistant_core:agent_request_type` | `assistant_core:chat`、`assistant_core:invoke`、`assistant_core:control`、`assistant_core:preferences`、`system:card_action`、`assistant_core:command_suggestions` | `ChatRequest`、`InvokeRequest`、`ControlRequest`、`PreferencesRequest`、`CardActionRequest`、`CommandSuggestionsRequest` |
+| `assistant_core:agent_response_type` | `system:reply`、`system:notice`、`system:open`、`system:binding`、`system:state`、`system:history`、`assistant_core:command_suggestions` | `ResultResponses.Reply`、`ResultResponses.Notice`、`OpenResponse`、`BindingResponse`、`StateResponse`、`HistoryResponse`、`CommandSuggestionsResponse` |
 
 这两张协议表登记的是 `StreamCodec`：根 `STREAM_CODEC` 用 `ByteBufCodecs.registry(...)` 读取同步的数字 ID，再由 `StreamCodec.dispatch` 直接调用条目自己的 `streamCodec()`，不经过 `Codec` / JSON，也没有按 `type` 字符串或 ID Map 分派。两张表因此启用数字 ID 同步（`sync(true)`），两端登记顺序一致；未知 ID 由流式解码阶段抛出。当前网络版本为 `6`，客户端与服务端必须同步更新。
 
@@ -143,8 +143,8 @@ JSON 示例：`{"type":"system:item","item":"{{result_items.0}}"}`。完整字�
 | --- | --- | --- | --- |
 | `SystemServices.MODEL` | DeepSeek / OpenAi / DashScope | `MODEL.register(CredentialClass.class, factory)` | `ApiConfig.create("model", MODEL)` |
 | `SystemServices.SEARCH` | DeepSeek | `SEARCH.register(CredentialClass.class, factory)` | `ApiConfig.create("search", SEARCH)` |
-| `SystemServices.TTS` | DeepSeek / DashScope | `TTS.register(CredentialClass.class, factory)` | `ApiConfig.create("tts", TTS)` |
-| `SystemServices.ASR` | DeepSeek / AliyunNls | `ASR.register(CredentialClass.class, factory)` | `ApiConfig.create("asr", ASR)` |
+| `AssistantServices.TTS`（`SystemServices.TTS` 同一实例） | DeepSeek / DashScope | `TTS.register(CredentialClass.class, factory)` | `ApiConfig.create("tts", TTS)` |
+| `AssistantServices.ASR`（`SystemServices.ASR` 同一实例） | DeepSeek / Aliyun NLS | `ASR.register(CredentialClass.class, factory)` | `ApiConfig.create("asr", ASR)` |
 
 各 Manager 内部维护凭据实现类 → 有类型构造函数的 Map，不参与 MC 注册、冻结或网络同步。`create` 返回新服务，由请求或语音会话关闭；构造器只做本地初始化，网络操作仍在工作线程执行。服务自己提供配置检查、请求构建与默认参数。语音服务 `id()` 保留计费键：TTS 为 `aliyun` / `deepseek`，ASR 为 `aliyun-nls` / `deepseek`；收费表将短名补为 `system:` 后匹配。凭据类型 Codec 仍使用正式的 `CREDENTIAL_TYPE` 注册表，实际账号只存在本机 ApiConfig。详见[统一 API 管理](api-management.md)。
 
@@ -197,11 +197,11 @@ public static final DeferredHolder<MapCodec<? extends CardData>, MapCodec<Exampl
 CARDS.register(bus);
 ```
 
-`ExampleOutput` 实现 `CardData`，`codec()` 返回登记的 `ExampleOutput.CODEC` 实例，`buildCard()` 返回描述模板、参数和按钮的 CardBuilder；业务代码直接创建 `ExampleOutput`。动作类型实现 `AgentAction`，向 `SystemResourceKeys.ACTION_TYPE` 直接登记实现类的 MapCodec：
+`ExampleOutput` 实现 `CardData`，`codec()` 返回登记的 `ExampleOutput.CODEC` 实例，`buildCard()` 返回描述模板、参数和按钮的 CardBuilder；业务代码直接创建 `ExampleOutput`。动作类型实现 `AgentAction`，向 `AssistantResourceKeys.ACTION_TYPE` 直接登记实现类的 MapCodec：
 
 ```java
 public static final DeferredRegister<MapCodec<? extends AgentAction>> ACTIONS =
-        DeferredRegister.create(SystemResourceKeys.ACTION_TYPE, "example");
+        DeferredRegister.create(AssistantResourceKeys.ACTION_TYPE, "example");
 public static final DeferredHolder<MapCodec<? extends AgentAction>, MapCodec<ExampleInput>> EXAMPLE_ACTION =
         ACTIONS.register("example", () -> ExampleInput.CODEC);
 

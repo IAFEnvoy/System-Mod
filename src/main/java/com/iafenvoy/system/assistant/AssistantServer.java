@@ -1,8 +1,10 @@
 package com.iafenvoy.system.assistant;
 
+import com.iafenvoy.assistant.chat.AiAccess;
+import com.iafenvoy.assistant.chat.AiAccessData;
+import com.iafenvoy.assistant.command.AiManagementCommands;
+import com.iafenvoy.assistant.execution.AgentLifecycle;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentLifecycle;
-import com.iafenvoy.system.agent.chat.AiAccess;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.catalog.CatalogAccess;
@@ -10,12 +12,12 @@ import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.item.ItemSearches;
 import com.iafenvoy.system.assistant.usage.AssistantUsage;
+import com.iafenvoy.system.config.file.AgentConfig;
 import com.iafenvoy.system.data.SystemDefinition;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.database.AgentDatabases;
 import com.iafenvoy.system.data.emotion.EmotionDefinition;
 import com.iafenvoy.system.data.prompt.PromptReloadListener;
-import com.iafenvoy.system.data.store.AiAccessData;
 import com.iafenvoy.system.data.store.CommerceArchive;
 import com.iafenvoy.system.data.store.FileAgentStore;
 import com.iafenvoy.system.event.AssistantRegistrationEvent;
@@ -34,6 +36,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.saveddata.SavedDataType;
 import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -52,7 +55,10 @@ import java.util.*;
  * One active server runtime; player sessions, requests and usage have separate owners.
  */
 @EventBusSubscriber
-public final class AssistantServer {
+public final class AssistantServer implements AiManagementCommands.Host {
+    private static final SavedDataType<AiAccessData> AI_ACCESS =
+            AiAccessData.type(Identifier.fromNamespaceAndPath(SystemMod.MOD_ID, "ai_access"));
+
     private static volatile AssistantServer INSTANCE;
     private final MinecraftServer server;
     private final UUID localOwner;
@@ -78,7 +84,7 @@ public final class AssistantServer {
         this.server = server;
         GameProfile profile = server.getSingleplayerProfile();
         this.localOwner = profile == null ? null : profile.id();
-        this.aiAccessData = server.getDataStorage().computeIfAbsent(AiAccessData.TYPE);
+        this.aiAccessData = server.getDataStorage().computeIfAbsent(AI_ACCESS);
         this.aiAccess = this.aiAccessData.get();
         try {
             Path storageRoot = server.getWorldPath(LevelResource.ROOT).resolve(SystemMod.MOD_ID);
@@ -87,7 +93,7 @@ public final class AssistantServer {
                     () -> this.aiAccessData.get().defaultMode(), server.registryAccess()));
             ConfiguredModelClient model = this.own(new ConfiguredModelClient());
             this.engine = this.own(new AgentEngine(store, model, data -> ModuleData.get(data, CoreSystemModule.JOURNAL)));
-            this.engine.permissions(player -> this.aiAccessData.get().permissions(player, player.equals(this.localOwner)));
+            this.engine.permissions(player -> this.aiAccessData.get().permissions(player, player.equals(this.localOwner), this::defaultDailyCalls));
             this.engine.chat().personality(this::personalityPrompt);
             this.modelConfigured = this.engine.model().configured();
             // Transfer ownership only after construction succeeds, so a failed initialization still releases the file lock.
@@ -171,6 +177,16 @@ public final class AssistantServer {
         return this.engine;
     }
 
+    private int defaultDailyCalls() {
+        return AgentConfig.INSTANCE.get().modelCallsPerPlayerDay();
+    }
+
+    @Override
+    public AiAccess.Permissions permissions(UUID player) {
+        return this.engine.permissions(player);
+    }
+
+    @Override
     public AiAccessData aiAccess() {
         return this.aiAccessData;
     }
@@ -210,6 +226,7 @@ public final class AssistantServer {
         })).orElse("");
     }
 
+    @Override
     public void refreshAiAccess() {
         AiAccess next = this.aiAccessData.get();
         boolean configured = this.engine.model().configured();
@@ -220,18 +237,18 @@ public final class AssistantServer {
         this.modelConfigured = configured;
         for (ServerPlayer player : this.server.getPlayerList().getPlayers()) {
             boolean owner = player.getUUID().equals(this.localOwner);
-            AiAccess.Permissions permissions = next.permissions(player.getUUID(), owner);
-            boolean policyChanged = !previous.permissions(player.getUUID(), owner).equals(permissions);
+            AiAccess.Permissions permissions = next.permissions(player.getUUID(), owner, this::defaultDailyCalls);
+            boolean policyChanged = !previous.permissions(player.getUUID(), owner, this::defaultDailyCalls).equals(permissions);
             if (policyChanged || availabilityChanged) {
                 this.engine.cancel(player.getUUID());
                 this.requests.syncState(player);
-                if (policyChanged) player.sendSystemMessage(Component.translatable("system.ai.access_changed",
-                                Component.translatable(permissions.allowAi() ? "system.ai.allowed" : "system.ai.denied"),
-                                Component.translatable(permissions.allowFreeChat() ? "system.ai.allowed" : "system.ai.denied"),
+                if (policyChanged) player.sendSystemMessage(Component.translatable("assistant_core.ai.access_changed",
+                                AiManagementCommands.permission(permissions.allowAi()),
+                                AiManagementCommands.permission(permissions.allowFreeChat()),
                                 permissions.modelCallsPerDay(), Component.translatable(permissions.maxMode().labelKey()))
                         .withStyle(permissions.allowAi() ? ChatFormatting.YELLOW : ChatFormatting.RED));
                 if (availabilityChanged) player.sendSystemMessage(Component.translatable(configured
-                                ? "system.ai.model_ready_hint" : "system.ai.model_missing_hint")
+                                ? "assistant_core.ai.model_ready_hint" : "assistant_core.ai.model_missing_hint")
                         .withStyle(configured ? ChatFormatting.YELLOW : ChatFormatting.RED));
             }
         }

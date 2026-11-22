@@ -1,19 +1,21 @@
 package com.iafenvoy.system.module.builtin.lottery;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.command.AssistantCommandSource;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
-import com.iafenvoy.system.command.AssistantCommandSource;
 import com.iafenvoy.system.data.LotteryPool;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.input.CommercePreviewInput;
 import com.iafenvoy.system.data.input.LotteryPreviewInput;
@@ -35,7 +37,7 @@ import java.util.Optional;
 public final class LotteryPreviewModule extends AbstractAgentModule<LotteryPreviewInput> {
     private final CommerceCatalogs catalogs;
 
-    public LotteryPreviewModule(CommerceCatalogs catalogs, ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
+    public LotteryPreviewModule(CommerceCatalogs catalogs, ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>, ExecutionContext> preview) {
         super(LotteryPreviewInput.CODEC, "Preview one lottery pool's prizes, base odds, pity, quota and total cost for an allowed draw count. The player must separately confirm payment.", List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
         this.catalogs = catalogs;
     }
@@ -56,7 +58,7 @@ public final class LotteryPreviewModule extends AbstractAgentModule<LotteryPrevi
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, LotteryPreviewInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, LotteryPreviewInput input) throws Exception {
         CommerceCatalog catalog = this.catalogs.view(context).catalog();
         if (!input.catalogRevision().orElse(catalog.revision()).equals(catalog.revision()))
             throw new AgentException(AgentFailure.STALE_QUOTE);
@@ -65,6 +67,6 @@ public final class LotteryPreviewModule extends AbstractAgentModule<LotteryPrevi
         CommercePreviewOutput price = context.tool(BuiltinTools.COMMERCE_PREVIEW, "quote",
                 new CommercePreviewInput(List.of(), List.of(HolderHelper.id(pool)), true, catalog.revision(), input.count())).getFirst();
         // Bounded batches replace the same detail card instead of appending per-prize messages.
-        return AgentResult.data("system.result.lottery_preview", LotteryModule.summary(pool, price, catalog.revision(), input.offset()));
+        return SystemResults.data("system.result.lottery_preview", LotteryModule.summary(pool, price, catalog.revision(), input.offset()));
     }
 }

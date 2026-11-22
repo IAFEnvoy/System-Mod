@@ -1,10 +1,12 @@
 package com.iafenvoy.system.module.builtin.shop;
 
-import com.iafenvoy.system.agent.module.AgentModule;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.commerce.*;
 import com.iafenvoy.system.assistant.tool.CommercePreviewTool;
 import com.iafenvoy.system.assistant.tool.shop.ShopPurchaseTool;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.CommercePreviewInput;
 import com.iafenvoy.system.data.output.CommercePreviewOutput;
 import com.iafenvoy.system.data.store.PurchaseType;
@@ -50,10 +52,10 @@ public final class ShopMergeRuntime implements MergeRuntime {
     }
 
     @Override
-    public List<AgentModule<?>> workflows() {
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows() {
         CommerceTransactions commerce = this.services.get(ContextTypes.COMMERCE);
         CommerceCatalogs catalogs = this.services.get(ContextTypes.CATALOGS);
-        ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview = this.services.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(commerce).tool());
+        ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>, ExecutionContext> preview = this.services.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(commerce).tool());
         ShopBrowsing browsing = new ShopBrowsing(catalogs, commerce, this.services.get(ContextTypes.ITEM_SEARCH));
         return List.of(new ShopModule(browsing), new BuybackModule(browsing), new ShopQuoteModule(commerce, preview),
                 new ShopPurchaseModule(new ShopPurchaseTool(commerce).tool()));

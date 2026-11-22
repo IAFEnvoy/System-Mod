@@ -1,10 +1,12 @@
 package com.iafenvoy.system.compat.ftb;
 
+import com.iafenvoy.assistant.module.AgentModule;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.assistant.quest.QuestWorkflows;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.module.ModuleContext;
 import com.iafenvoy.system.module.PlayerModule;
 import net.minecraft.server.MinecraftServer;
@@ -27,7 +29,7 @@ public final class FtbQuestAdapter {
         return context.sharedRuntime(FtbQuestRuntime.class, () -> new FtbQuestRuntime(context));
     }
 
-    public static List<AgentModule<?>> modules(ModuleContext context) {
+    public static List<AgentModule<?, ExecutionContext, CardUpdate>> modules(ModuleContext context) {
         return QuestWorkflows.install(context, shared(context).provider);
     }
 

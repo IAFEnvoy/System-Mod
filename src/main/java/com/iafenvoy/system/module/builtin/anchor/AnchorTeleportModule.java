@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin.anchor;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.AnchorTeleportInput;
 import com.iafenvoy.system.data.output.AnchorListOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -19,7 +21,7 @@ import java.util.regex.Pattern;
 public final class AnchorTeleportModule extends AbstractAgentModule<AnchorTeleportInput> {
     private static final Pattern EXPLICIT = Pattern.compile("^(?:(?:传送到锚点|传送锚点|前往锚点)\\s*(.+)|(?:teleport to anchor|go to anchor)\\s+(.+))$", Pattern.CASE_INSENSITIVE);
 
-    public AnchorTeleportModule(ToolRegistry.Tool<AnchorTeleportInput, AnchorListOutput> tool) {
+    public AnchorTeleportModule(ToolRegistry.Tool<AnchorTeleportInput, AnchorListOutput, ExecutionContext> tool) {
         super(AnchorTeleportInput.CODEC, "Travel to an observed personal anchor ID/exact name or a public:<namespace>:<path> destination. Paid travel only previews a fee; the player must confirm. Never invent IDs or coordinates. Subject to capacity, cooldown and destination safety checks.",
                 List.of(tool), true, false, ExecutionPolicy.quick(0, 1));
     }
@@ -42,8 +44,8 @@ public final class AnchorTeleportModule extends AbstractAgentModule<AnchorTelepo
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, AnchorTeleportInput input) throws Exception {
-        AgentResult result = AgentResult.data("system.result.anchor_list", context.tool(BuiltinTools.ANCHOR_TELEPORT, "teleport", input));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, AnchorTeleportInput input) throws Exception {
+        AgentResult<CardUpdate> result = SystemResults.data("system.result.anchor_list", context.tool(BuiltinTools.ANCHOR_TELEPORT, "teleport", input));
         return result.withPresentation(result.messageKey(), result.text(), result.cards(), input.inPlace());
     }
 }

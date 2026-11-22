@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin.economy;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.BalanceInput;
 import com.iafenvoy.system.data.output.WalletOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -15,7 +17,7 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 import java.util.List;
 
 public final class BalanceModule extends AbstractAgentModule<BalanceInput> {
-    public BalanceModule(ToolRegistry.Tool<BalanceInput, WalletOutput> balance) {
+    public BalanceModule(ToolRegistry.Tool<BalanceInput, WalletOutput, ExecutionContext> balance) {
         super(BalanceInput.CODEC, "Check the player's wallet and all defined currencies.", List.of(balance), true, false, ExecutionPolicy.quick(1, 0));
     }
 
@@ -30,7 +32,7 @@ public final class BalanceModule extends AbstractAgentModule<BalanceInput> {
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, BalanceInput input) throws Exception {
-        return AgentResult.data("system.result.balance", context.tool(BuiltinTools.BALANCE, "balance", input));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, BalanceInput input) throws Exception {
+        return SystemResults.data("system.result.balance", context.tool(BuiltinTools.BALANCE, "balance", input));
     }
 }

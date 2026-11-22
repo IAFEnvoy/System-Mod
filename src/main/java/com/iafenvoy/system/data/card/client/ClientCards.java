@@ -1,7 +1,8 @@
 package com.iafenvoy.system.data.card.client;
 
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.system.data.card.*;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.event.client.CardBuildEvent;
 import com.iafenvoy.system.screen.emotion.AssistantEmotions;
 import net.neoforged.neoforge.common.NeoForge;
@@ -81,11 +82,11 @@ public final class ClientCards {
         return builder.build();
     }
 
-    public static AgentResult latest(AgentResult result) {
+    public static AgentResult<CardUpdate> latest(AgentResult<CardUpdate> result) {
         return result.withPresentation(result.messageKey(), result.text(), result.cards().stream().map(ClientCards::latest).toList(), result.silent());
     }
 
-    public static List<Choice> choices(AgentResult result) {
+    public static List<Choice> choices(AgentResult<CardUpdate> result) {
         List<Choice> choices = new ArrayList<>();
         for (CardUpdate original : result.cards()) {
             CardUpdate update = latest(original);

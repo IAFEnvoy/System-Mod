@@ -1,10 +1,10 @@
 package com.iafenvoy.system.module.builtin.search;
 
+import com.iafenvoy.assistant.tool.ToolPriority;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.tool.ToolPriority;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
 import com.iafenvoy.system.search.SearchException;
 import com.iafenvoy.system.search.SearchGateway;
@@ -18,9 +18,9 @@ import java.util.concurrent.CompletionStage;
  * One search request; the owning workflow controls consent, query selection and repetition.
  */
 public record WebSearchTool(
-        SearchGateway gateway) implements ToolRegistry.Handler<SearchProvider.Request, SearchProvider.Response> {
-    public ToolRegistry.Tool<SearchProvider.Request, SearchProvider.Response> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.WEB_SEARCH, false, false, false, this).withPriority(ToolPriority.PAID);
+        SearchGateway gateway) implements ToolRegistry.Handler<SearchProvider.Request, SearchProvider.Response, ExecutionContext> {
+    public ToolRegistry.Tool<SearchProvider.Request, SearchProvider.Response, ExecutionContext> tool() {
+        return new ToolRegistry.Tool<SearchProvider.Request, SearchProvider.Response, ExecutionContext>(BuiltinTools.WEB_SEARCH, false, false, false, this).withPriority(ToolPriority.PAID);
     }
 
     @Override

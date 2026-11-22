@@ -1,8 +1,9 @@
 package com.iafenvoy.system.screen.card;
 
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.system.config.file.SpeechConfig;
 import com.iafenvoy.system.data.card.*;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.client.CardController;
 import com.iafenvoy.system.data.card.client.CardFormatting;
 import com.iafenvoy.system.data.card.client.ClientCards;
@@ -116,7 +117,7 @@ public record CardPresentation(CardTemplate template, CardContext context, int h
         return index < 0 ? AssistantView.tr(button.labelKey()) : presentation.template.label(presentation.context, index);
     }
 
-    public static ClientMessage message(AgentResult result) {
+    public static ClientMessage message(AgentResult<CardUpdate> result) {
         List<CardView> cards = result.cards().stream().filter(card -> card.data().isPresent()).map(ClientCards::view).toList();
         String text = String.join("\n", cards.stream().map(card -> card.summary().getString()).filter(value -> !value.isBlank()).toList());
         if (text.isBlank())

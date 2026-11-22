@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin.quest;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.QuestQueryInput;
 import com.iafenvoy.system.data.output.QuestBriefOutput;
 import com.iafenvoy.system.data.result.QuestList;
@@ -20,7 +22,7 @@ import java.util.Locale;
  * Lists active, claimable or manually submittable quests using the same numbered detail actions.
  */
 public final class QuestQueryModule extends AbstractAgentModule<QuestQueryInput> {
-    public QuestQueryModule(ToolRegistry.Tool<QuestQueryInput, List<QuestBriefOutput>> query) {
+    public QuestQueryModule(ToolRegistry.Tool<QuestQueryInput, List<QuestBriefOutput>, ExecutionContext> query) {
         super(QuestQueryInput.CODEC, "List quests from enabled sources as numbered summaries. view=active: visible, unlocked and incomplete; claimable: completed quests with unclaimed rewards; submittable: quests with pending supported manual or checkmark targets. Submission may be partial and still requires the player's resources. Listing never submits anything.", List.of(query), true, false, ExecutionPolicy.quick(2, 0));
     }
 
@@ -46,13 +48,13 @@ public final class QuestQueryModule extends AbstractAgentModule<QuestQueryInput>
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, QuestQueryInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, QuestQueryInput input) throws Exception {
         return questList(context.tool(BuiltinTools.QUEST_QUERY, "query", input),
                 input.view().messageKey());
     }
 
-    static AgentResult questList(List<QuestBriefOutput> quests, String key) {
-        if (quests.isEmpty()) return AgentResult.ok("system.result.empty");
-        return AgentResult.data(key, new QuestList(quests));
+    static AgentResult<CardUpdate> questList(List<QuestBriefOutput> quests, String key) {
+        if (quests.isEmpty()) return SystemResults.ok("system.result.empty");
+        return SystemResults.data(key, new QuestList(quests));
     }
 }

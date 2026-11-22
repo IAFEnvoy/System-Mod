@@ -1,8 +1,10 @@
 package com.iafenvoy.system.assistant;
 
+import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.AgentEngine;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.data.store.SystemBindings;
 import net.minecraft.resources.Identifier;
@@ -22,23 +24,23 @@ public final class AssistantBindings {
         this.engine = engine;
     }
 
-    public CompletionStage<AgentResult> grant(UUID player, Identifier system, Consumer<PlayerData> initialize) {
+    public CompletionStage<AgentResult<CardUpdate>> grant(UUID player, Identifier system, Consumer<PlayerData> initialize) {
         Objects.requireNonNull(system);
         return this.engine.personalMaintenance(player, () -> this.engine.store().update(player, data -> {
             // Assignment and the one-system check share the player transaction.
             if (data.bound()) return data.systems.current().filter(system::equals).isPresent()
-                    ? AgentResult.ok("system.result.already_bound") : AgentResult.error(AgentFailure.SYSTEM_ALREADY_BOUND);
+                    ? SystemResults.ok("system.result.already_bound") : SystemResults.error(AgentFailure.SYSTEM_ALREADY_BOUND);
             data.systems = SystemBindings.single(system);
             initialize.accept(data);
-            return AgentResult.ok("system.result.bound");
+            return SystemResults.ok("system.result.bound");
         }));
     }
 
-    public CompletionStage<AgentResult> clear(UUID player, boolean reset) {
+    public CompletionStage<AgentResult<CardUpdate>> clear(UUID player, boolean reset) {
         return this.engine.invalidatePlayer(player, () -> {
             // Deletion deliberately does not decode malformed data; usage has a separate lifetime.
             this.engine.store().delete(player);
-            return AgentResult.ok(reset ? "system.result.reset" : "system.result.revoked");
+            return SystemResults.ok(reset ? "system.result.reset" : "system.result.revoked");
         });
     }
 }

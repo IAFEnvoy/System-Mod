@@ -1,6 +1,6 @@
 package com.iafenvoy.system.agent.storage;
 
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardFact;
 import com.iafenvoy.system.data.card.CardUpdate;
@@ -51,7 +51,7 @@ public final class ConversationMemory {
         return List.copyOf(selected);
     }
 
-    private static Entry assistant(AgentResult result, int byteBudget) {
+    private static Entry assistant(AgentResult<CardUpdate> result, int byteBudget) {
         List<CardFact> facts = new ArrayList<>(result.cards().stream().limit(2).map(ConversationMemory::fields).filter(Objects::nonNull).toList());
         Entry entry = new Entry("HISTORICAL_RESULT_REQUIRES_REVALIDATION", "", result.messageKey(), List.copyOf(facts));
         while (!facts.isEmpty() && size(entry) > byteBudget * 3 / 4) {

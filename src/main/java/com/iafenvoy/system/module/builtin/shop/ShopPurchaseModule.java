@@ -1,12 +1,14 @@
 package com.iafenvoy.system.module.builtin.shop;
 
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.catalog.ShopTrade;
 import com.iafenvoy.system.data.input.ShopPurchaseInput;
 import com.iafenvoy.system.data.output.PurchaseReceiptOutput;
@@ -18,7 +20,7 @@ import java.util.List;
  * Executes only an explicitly confirmed shop purchase.
  */
 public final class ShopPurchaseModule extends AbstractAgentModule<ShopPurchaseInput> {
-    public ShopPurchaseModule(ToolRegistry.Tool<ShopPurchaseInput, PurchaseReceiptOutput> purchase) {
+    public ShopPurchaseModule(ToolRegistry.Tool<ShopPurchaseInput, PurchaseReceiptOutput, ExecutionContext> purchase) {
         super(ShopPurchaseInput.CODEC, "Explicit action confirmation only; never select from natural language. Use system:shop_quote to preview.", List.of(purchase), true, false, ExecutionPolicy.quick(1, 1));
     }
 
@@ -33,8 +35,8 @@ public final class ShopPurchaseModule extends AbstractAgentModule<ShopPurchaseIn
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, ShopPurchaseInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, ShopPurchaseInput input) throws Exception {
         PurchaseReceiptOutput receipt = context.tool(BuiltinTools.SHOP_PURCHASE, "purchase", input);
-        return AgentResult.data(receipt.trade() == ShopTrade.BUYBACK ? "system.result.shop_sold" : "system.result.shop_purchased", receipt);
+        return SystemResults.data(receipt.trade() == ShopTrade.BUYBACK ? "system.result.shop_sold" : "system.result.shop_purchased", receipt);
     }
 }

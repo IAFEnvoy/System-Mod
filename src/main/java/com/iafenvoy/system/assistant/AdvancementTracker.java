@@ -1,8 +1,8 @@
 package com.iafenvoy.system.assistant;
 
+import com.iafenvoy.assistant.action.AgentAction;
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.system.agent.execution.AgentEngine;
-import com.iafenvoy.system.agent.module.AgentAction;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.config.AdvancementRule;
 import com.iafenvoy.system.config.file.AdvancementConfig;
 import com.iafenvoy.system.data.input.AdvancementInput;
@@ -80,7 +80,7 @@ public final class AdvancementTracker implements PlayerModule {
     private void dispatch(UUID player, AdvancementRule rule) {
         if (!this.engine.available(player, rule.call().id())) return;
         long incarnation = this.engine.incarnation(player);
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         this.engine.maintenance(() -> store.read(player, data -> ModuleData.get(data, AdvancementSystemModule.STORAGE).getBaseline(rule.id() + "|" + rule.advancementId()).contains(rule.advancementId().toString()))).thenAccept(baseline -> {
             if (baseline || !this.engine.current(player, incarnation)) return;
             AgentAction input = rule.call();

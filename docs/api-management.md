@@ -45,7 +45,7 @@
 | `id` | 唯一账号 ID，修改名称不影响引用 |
 | `name` | 设置页显示名称；为空时显示 ID |
 | `credential` | 实现 `Credential` 的类型化对象 |
-| `credential.type` | `system:credential_type` 注册表中的类型 ID |
+| `credential.type` | `assistant_core:credential_type` 注册表中的条目 ID，例如 `system:deepseek` |
 | `credential` 内其他字段 | 由该类型自己的 MapCodec 定义 |
 | `bindings` | 用途 ID → 凭据账号 ID；内置 `model`、`search`、`tts`、`asr` |
 
@@ -88,11 +88,11 @@ DeepSeek 原生联网问答使用 `MODEL` 的凭据和连接，不依赖 `SEARCH
 
 ## 扩展方式
 
-实现 `Credential`，提供自己的 `MapCodec` 和 `createWidget()`，再在公共模组入口向正式注册表登记：
+实现 System 的凭据子接口来提供 `MapCodec` 和设置页的 `createWidget()`。注册表声明使用 Assistant Core 的 `Credential` 类型。
 
 ```java
 public static final DeferredRegister<MapCodec<? extends Credential>> CREDENTIALS =
-        DeferredRegister.create(SystemResourceKeys.CREDENTIAL_TYPE, "example");
+        DeferredRegister.create(AssistantResourceKeys.CREDENTIAL_TYPE, "example");
 public static final DeferredHolder<MapCodec<? extends Credential>, MapCodec<ExampleCredential>> ACCOUNT =
         CREDENTIALS.register("account", () -> ExampleCredential.CODEC);
 

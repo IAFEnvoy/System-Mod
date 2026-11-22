@@ -1,5 +1,6 @@
 package com.iafenvoy.system.assistant.workshop;
 
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.evaluate.api.ItemValues;
 import com.iafenvoy.saturn.data.cost.context.CostContext;
 import com.iafenvoy.saturn.util.PersistHolder;
@@ -9,7 +10,6 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.assistant.catalog.CatalogAccess;
 import com.iafenvoy.system.assistant.commerce.CommerceCosts;
@@ -281,7 +281,7 @@ public final class Salvage implements PlayerModule {
 
     private static final class Settlement {
         final UUID player;
-        final AgentStore store;
+        final AgentStore<PlayerData> store;
         final SalvageOrder order;
         final AtomicBoolean touched = new AtomicBoolean(), saving = new AtomicBoolean();
         final CompletableFuture<SalvageReceiptOutput> result = new CompletableFuture<>();
@@ -291,7 +291,7 @@ public final class Salvage implements PlayerModule {
         PlayerFact fact;
         List<PlayerFacts.Award> awards = List.of();
 
-        Settlement(UUID player, AgentStore store, SalvageOrder order) {
+        Settlement(UUID player, AgentStore<PlayerData> store, SalvageOrder order) {
             this.player = player;
             this.store = store;
             this.order = order;
@@ -377,7 +377,7 @@ public final class Salvage implements PlayerModule {
     }
 
     public CompletionStage<SalvageHistoryOutput> orders(UUID player, int offset) {
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.update(player, data -> {
             this.recover(player, data);
             return page(data, offset);
@@ -385,7 +385,7 @@ public final class Salvage implements PlayerModule {
     }
 
     public CompletionStage<SalvageOrder> order(UUID player, String id) {
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.update(player, data -> {
             this.recover(player, data);
             return Optional.ofNullable(ModuleData.get(data, WorkshopSystemModule.STORAGE).order(id))
@@ -398,7 +398,7 @@ public final class Salvage implements PlayerModule {
             return CompletableFuture.failedFuture(new AgentException(AgentFailure.INVALID_INPUT));
         String key = key(player, id);
         if (!this.active.add(key)) return CompletableFuture.failedFuture(new AgentException(AgentFailure.BUSY));
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.update(player, data -> {
             WorkshopDataStorage storage = ModuleData.get(data, WorkshopSystemModule.STORAGE);
             SalvageOrder order = storage.order(id);

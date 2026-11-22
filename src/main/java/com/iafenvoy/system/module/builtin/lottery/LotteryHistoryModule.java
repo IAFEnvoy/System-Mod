@@ -1,14 +1,16 @@
 package com.iafenvoy.system.module.builtin.lottery;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.command.AssistantCommandSource;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
-import com.iafenvoy.system.command.AssistantCommandSource;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.LotteryHistoryInput;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
@@ -40,7 +42,7 @@ public final class LotteryHistoryModule extends AbstractAgentModule<LotteryHisto
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, LotteryHistoryInput input) {
-        return AgentResult.data("system.lottery.history", this.commerce.history(context, input));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, LotteryHistoryInput input) {
+        return SystemResults.data("system.lottery.history", this.commerce.history(context, input));
     }
 }

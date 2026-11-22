@@ -1,8 +1,8 @@
 package com.iafenvoy.system.assistant.tool.advancement;
 
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.data.input.RewardCreditInput;
 import com.iafenvoy.system.data.output.CreditReceiptOutput;
@@ -19,14 +19,14 @@ import java.util.concurrent.CompletionStage;
 /**
  * Credits a trusted event entitlement without overwriting an existing delivery.
  */
-public final class RewardCreditTool implements ToolRegistry.Handler<RewardCreditInput, CreditReceiptOutput> {
+public final class RewardCreditTool implements ToolRegistry.Handler<RewardCreditInput, CreditReceiptOutput, ExecutionContext> {
     private final CommerceCatalogs catalogs;
 
     public RewardCreditTool(CommerceCatalogs catalogs) {
         this.catalogs = catalogs;
     }
 
-    public ToolRegistry.Tool<RewardCreditInput, CreditReceiptOutput> tool() {
+    public ToolRegistry.Tool<RewardCreditInput, CreditReceiptOutput, ExecutionContext> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.REWARD_CREDIT, true, true, true, this);
     }
 

@@ -1,6 +1,7 @@
 package com.iafenvoy.system.compat.ftb;
 
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.assistant.progress.PlayerFacts;
 import com.iafenvoy.system.data.card.CardUpdate;
@@ -292,17 +293,17 @@ public final class FtbQuestNotifications {
             // Keep the introduction brief; viewing all always runs a fresh normal query.
             QuestStartupOutput overview = new QuestStartupOutput(active.size(), active.stream().limit(3)
                     .map(quest -> FtbQuestAccess.brief(player, team, quest, 0)).toList());
-            runtime.players().notifyEvent(player, new AgentResult(AgentResult.Status.SUCCEEDED, key, "", List.of(CardUpdate.show(overview))));
+            runtime.players().notifyEvent(player, SystemResults.presented(AgentResult.Status.SUCCEEDED, key, "", List.of(CardUpdate.show(overview))));
         }
     }
 
-    private AgentResult completionNotification(Quest quest, ServerPlayer player, TeamData team) {
+    private AgentResult<CardUpdate> completionNotification(Quest quest, ServerPlayer player, TeamData team) {
         String key = "system.result.quest_completed";
         String id = FtbQuestAccess.key(quest.getId());
         List<Reward> claimable = quest.getRewards().stream().filter(reward -> FtbQuestReader.canClaim(player, team, reward)).toList();
         Optional<String> claimRef = claimable.size() == 1 && !(claimable.getFirst() instanceof ChoiceReward)
                 ? FtbQuestAccess.reference(player, team, quest, claimable.getFirst(), this.access.references) : Optional.empty();
-        return AgentResult.data(key, new QuestNotice(id, FtbQuestText.title(player, quest), FtbQuestText.title(player, quest.getChapter()),
+        return SystemResults.data(key, new QuestNotice(id, FtbQuestText.title(player, quest), FtbQuestText.title(player, quest.getChapter()),
                 quest.getRewards().stream().filter(reward -> !team.isRewardBlocked(reward) && reward.getAutoClaimType() != RewardAutoClaim.INVISIBLE)
                         .flatMap(reward -> FtbQuestAccess.previewItems(reward).stream()).toList(),
                 "", List.of(),
@@ -313,13 +314,13 @@ public final class FtbQuestNotifications {
                 FtbQuestSpeech.content(player, team, quest, "completed"), FtbQuestProvider.SOURCE));
     }
 
-    private AgentResult unlockNotification(List<Quest> quests, ServerPlayer player, TeamData team) {
+    private AgentResult<CardUpdate> unlockNotification(List<Quest> quests, ServerPlayer player, TeamData team) {
         if (quests.size() == 1) {
             Quest quest = quests.getFirst();
-            return AgentResult.data("system.result.quest_unlocked", FtbQuestAccess.detail(player, team, quest,
+            return SystemResults.data("system.result.quest_unlocked", FtbQuestAccess.detail(player, team, quest,
                     QuestDetailInput.byId(FtbQuestAccess.hex(quest.getId())), this.access.references, "unlocked"));
         }
-        return AgentResult.data("system.result.quest_unlocked", new QuestUnlockedOutput(
+        return SystemResults.data("system.result.quest_unlocked", new QuestUnlockedOutput(
                 quests.stream().map(quest -> FtbQuestAccess.brief(player, team, quest, 0)).toList()));
     }
 

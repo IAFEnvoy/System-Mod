@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.data.cost.Cost;
 import com.iafenvoy.saturn.util.codec.RegistryCodecs;
 import com.iafenvoy.saturn.util.formula.NumberProvider;
 import com.iafenvoy.saturn.util.formula.number.Constant;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.module.AgentModule;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.anchor.TeleportAnchors;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.catalog.TeleportDestination;
 import com.iafenvoy.system.data.input.*;
 import com.iafenvoy.system.data.output.AnchorListOutput;
@@ -71,18 +73,18 @@ public record AnchorSystemModule(NumberProvider limit, int cooldown, boolean cro
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
         TeleportAnchors anchors = new TeleportAnchors(context.engine(), context.get(ContextTypes.GAME), this);
-        ToolRegistry.Tool<AnchorListInput, AnchorListOutput> query = context.tool(BuiltinTools.ANCHOR_LIST,
-                () -> new ToolRegistry.Tool<>(BuiltinTools.ANCHOR_LIST, false, true, false, (execution, _) -> anchors.query(execution))
+        ToolRegistry.Tool<AnchorListInput, AnchorListOutput, ExecutionContext> query = context.tool(BuiltinTools.ANCHOR_LIST,
+                () -> new ToolRegistry.Tool<AnchorListInput, AnchorListOutput, ExecutionContext>(BuiltinTools.ANCHOR_LIST, false, true, false, (execution, _) -> anchors.query(execution))
                         .forReasoning("List my personal anchors and public destination selectors, unlocked capacity and cooldown without teleporting."));
-        ToolRegistry.Tool<AnchorSaveInput, AnchorListOutput> save = context.tool(BuiltinTools.ANCHOR_SAVE,
+        ToolRegistry.Tool<AnchorSaveInput, AnchorListOutput, ExecutionContext> save = context.tool(BuiltinTools.ANCHOR_SAVE,
                 () -> new ToolRegistry.Tool<>(BuiltinTools.ANCHOR_SAVE, true, false, false, anchors::save));
-        ToolRegistry.Tool<AnchorDeleteInput, AnchorListOutput> delete = context.tool(BuiltinTools.ANCHOR_DELETE,
+        ToolRegistry.Tool<AnchorDeleteInput, AnchorListOutput, ExecutionContext> delete = context.tool(BuiltinTools.ANCHOR_DELETE,
                 () -> new ToolRegistry.Tool<>(BuiltinTools.ANCHOR_DELETE, true, false, false, anchors::delete));
-        ToolRegistry.Tool<AnchorRenameInput, AnchorListOutput> rename = context.tool(BuiltinTools.ANCHOR_RENAME,
+        ToolRegistry.Tool<AnchorRenameInput, AnchorListOutput, ExecutionContext> rename = context.tool(BuiltinTools.ANCHOR_RENAME,
                 () -> new ToolRegistry.Tool<>(BuiltinTools.ANCHOR_RENAME, true, false, false, anchors::rename));
-        ToolRegistry.Tool<AnchorTeleportInput, AnchorListOutput> teleport = context.tool(BuiltinTools.ANCHOR_TELEPORT,
+        ToolRegistry.Tool<AnchorTeleportInput, AnchorListOutput, ExecutionContext> teleport = context.tool(BuiltinTools.ANCHOR_TELEPORT,
                 () -> new ToolRegistry.Tool<>(BuiltinTools.ANCHOR_TELEPORT, true, false, false, anchors::teleport));
         return List.of(new AnchorListModule(query), new AnchorSaveModule(save), new AnchorDeleteModule(delete), new AnchorRenameModule(rename), new AnchorTeleportModule(teleport));
     }

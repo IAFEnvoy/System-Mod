@@ -1,14 +1,15 @@
 package com.iafenvoy.system.data.cost;
 
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.data.cost.*;
 import com.iafenvoy.saturn.data.cost.context.CostContext;
 import com.iafenvoy.saturn.runtime.resulting.Result;
 import com.iafenvoy.saturn.runtime.resulting.failures.CostFailure;
 import com.iafenvoy.saturn.util.formula.NumberProvider;
 import com.iafenvoy.system.agent.AgentException;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.assistant.economy.Wallets;
 import com.iafenvoy.system.data.catalog.CurrencyDefinition;
+import com.iafenvoy.system.data.store.PlayerData;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Holder;
@@ -62,10 +63,10 @@ public record CurrencyCost(Holder<CurrencyDefinition> currency, NumberProvider a
     private static final class Transaction extends CostTransaction {
         private final Wallets wallets;
         private final ServerPlayer player;
-        private final AgentStore store;
+        private final AgentStore<PlayerData> store;
         private final Holder<CurrencyDefinition> currency;
 
-        private Transaction(Wallets wallets, ServerPlayer player, AgentStore store, Holder<CurrencyDefinition> currency, double amount) {
+        private Transaction(Wallets wallets, ServerPlayer player, AgentStore<PlayerData> store, Holder<CurrencyDefinition> currency, double amount) {
             super(new Target(player.getUUID(), currency), amount);
             this.wallets = wallets;
             this.player = player;

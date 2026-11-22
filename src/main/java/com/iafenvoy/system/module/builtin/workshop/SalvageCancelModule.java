@@ -1,11 +1,13 @@
 package com.iafenvoy.system.module.builtin.workshop;
 
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
 import com.iafenvoy.system.assistant.workshop.Salvage;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.SalvageCancelInput;
 
 import java.util.List;
@@ -28,8 +30,8 @@ public final class SalvageCancelModule extends AbstractAgentModule<SalvageCancel
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, SalvageCancelInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, SalvageCancelInput input) throws Exception {
         this.salvage.cancel(context, input.quote()).toCompletableFuture().get(context.remainingMillis(), TimeUnit.MILLISECONDS);
-        return AgentResult.ok("system.result.salvage_cancelled");
+        return SystemResults.ok("system.result.salvage_cancelled");
     }
 }

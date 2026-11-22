@@ -1,19 +1,21 @@
 package com.iafenvoy.system.module.builtin.search;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.react.ReActContext;
+import com.iafenvoy.assistant.react.ReActTool;
+import com.iafenvoy.assistant.tool.ToolPriority;
 import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.model.ModelClient;
-import com.iafenvoy.system.agent.react.ReActContext;
-import com.iafenvoy.system.agent.react.ReActLoop;
-import com.iafenvoy.system.agent.react.ReActTool;
-import com.iafenvoy.system.agent.tool.ToolContext;
-import com.iafenvoy.system.agent.tool.ToolPriority;
+import com.iafenvoy.system.agent.react.SystemReAct;
+import com.iafenvoy.assistant.tool.ToolContext;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.output.WebSearchOutput;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.search.SearchObservation;
@@ -31,7 +33,7 @@ public final class WebResearch {
     private WebResearch() {
     }
 
-    public static AgentResult nativeAnswer(ExecutionContext context, String question) throws Exception {
+    public static AgentResult<CardUpdate> nativeAnswer(ExecutionContext context, String question) throws Exception {
         context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
         MapCodec<String> input = Codec.STRING.fieldOf("question");
         ModelClient.Reply reply = context.model(context.prompt(SystemPrompts.WEB_SEARCH_NATIVE), input, question,
@@ -41,14 +43,14 @@ public final class WebResearch {
         List<SearchObservation.Source> sources = new ArrayList<>();
         for (ModelClient.WebSource source : reply.sources())
             sources.add(new SearchObservation.Source(sources.size() + 1, source.title(), source.url(), source.snippet()));
-        return AgentResult.data("system.result.web_search", new WebSearchOutput(reply.value(), sources, false));
+        return SystemResults.data("system.result.web_search", new WebSearchOutput(reply.value(), sources, false));
     }
 
-    public static AgentResult answer(ExecutionContext context, String question) throws Exception {
+    public static AgentResult<CardUpdate> answer(ExecutionContext context, String question) throws Exception {
         context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
-        ToolContext tools = context.tools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
+        ToolContext<ExecutionContext> tools = context.tools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
         Map<String, SearchObservation.Source> sources = new LinkedHashMap<>();
-        ReActTool<Search, SearchObservation> search = new ReActTool<>("web.search", "Search the web; use first, prefer snippets.", Search.CODEC,
+        ReActTool<Search, SearchObservation> search = new ReActTool<>("web.search", "Search the web; use first, prefer snippets.", Search.CODEC, Search.CODEC.schema(),
                 input -> input.query().strip().toLowerCase(Locale.ROOT), input -> {
             SearchProvider.Response response = tools.call(BuiltinTools.WEB_SEARCH, new SearchProvider.Request(input.query(), 5, false));
             List<SearchObservation.Source> page = new ArrayList<>();
@@ -59,7 +61,7 @@ public final class WebResearch {
             }
             return new SearchObservation("search", input.query(), List.copyOf(page), "", true);
         }).withPriority(ToolPriority.PAID);
-        ReActTool<Fetch, SearchObservation> fetch = new ReActTool<>("web.fetch", "Fetch missing evidence from an exact URL already observed.", Fetch.CODEC,
+        ReActTool<Fetch, SearchObservation> fetch = new ReActTool<>("web.fetch", "Fetch missing evidence from an exact URL already observed.", Fetch.CODEC, Fetch.CODEC.schema(),
                 Fetch::url, input -> {
             SearchObservation.Source source = sources.get(input.url());
             if (source == null) throw new AgentException(AgentFailure.NOT_AUTHORIZED);
@@ -67,27 +69,27 @@ public final class WebResearch {
             String content = clip(page.content(), 5000);
             return new SearchObservation("fetch", input.url(), List.of(source), content, content.length() < page.content().length());
         }).withPriority(ToolPriority.PAID);
-        Set<Failure> recoverable = new HashSet<>(ReActLoop.MODEL_FAILURES);
+        Set<Failure> recoverable = new HashSet<>(SystemReAct.MODEL_FAILURES);
         recoverable.addAll(Set.of(AgentFailure.SEARCH_INVALID_REQUEST, AgentFailure.SEARCH_TIMEOUT, AgentFailure.SEARCH_UNAVAILABLE,
                 AgentFailure.SEARCH_HTTP_ERROR, AgentFailure.SEARCH_INVALID_RESPONSE));
-        ReActContext<SearchObservation> loop = new ReActContext<>(context, context.prompt(SystemPrompts.WEB_SEARCH), question,
+        ReActContext<SearchObservation> loop = SystemReAct.context(context, context.prompt(SystemPrompts.WEB_SEARCH), question,
                 SearchObservation.CODEC, List.of(search, fetch), () -> {
             tools.check();
             context.requireExternalTools(BuiltinTools.WEB_SEARCH, BuiltinTools.WEB_FETCH);
-        }, recoverable, 15000);
-        return ReActLoop.run(loop, Answer.CODEC, answer -> {
+        }, 15000);
+        return SystemReAct.run(loop, Answer.CODEC, recoverable, answer -> {
             if (loop.observations().isEmpty() || answer.text().isBlank())
                 throw new AgentException(AgentFailure.MODEL_INVALID);
             List<SearchObservation.Source> cited = new ArrayList<>();
             for (int id : new LinkedHashSet<>(answer.sources()))
                 cited.add(sources.values().stream().filter(value -> value.id() == id).findFirst()
                         .orElseThrow(() -> new AgentException(AgentFailure.MODEL_INVALID)));
-            return AgentResult.data("system.result.web_search", new WebSearchOutput(answer.text(), cited, false));
+            return SystemResults.data("system.result.web_search", new WebSearchOutput(answer.text(), cited, false));
         }, reason -> {
             // Return evidence already paid for, without an extra call outside the configured round limit.
             SystemMod.LOGGER.warn("Web search synthesis incomplete: reason={}, iterations={}, modelCalls={}, sources={}, remainingMillis={}",
                     reason, loop.iterations(), context.modelCalls(), sources.size(), context.remainingMillis());
-            return AgentResult.data("system.result.web_search", new WebSearchOutput("", List.copyOf(sources.values()), true));
+            return SystemResults.data("system.result.web_search", new WebSearchOutput("", List.copyOf(sources.values()), true));
         });
     }
 

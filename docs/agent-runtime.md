@@ -36,7 +36,7 @@ Agent 根包保留 `AgentResult`、`AgentException`、`AgentFailure`、`AgentLif
 
 纯服务端 `ToolModule` 由 ModuleManager 先安装到引擎 ToolRegistry，保留所属功能 ID；不注册工作流或玩家入口。消费方用 `ModuleContext.tool(type)` 取得共享工具实例并加入工作流白名单；`ExecutionContext.tool` 在原有预算、事件和写入检查之外，检查导出工具所属功能是否对当前玩家启用。具体模型规划由工作流负责，纯工具不会成为意图路由目标。
 
-动作输入实现 `AgentAction`，`codec()` 返回本类 MapCodec；先通过 DeferredRegister 在 `SystemResourceKeys.ACTION_TYPE` 注册这个 Codec，内置声明由 `SystemActionTypes` 公开。Module 的 `inputCodec()` 返回同一实例；按钮、指令和模型路由都直接生成输入对象。类型与 Codec 必须在两端可用，定义不得引用未安装的可选模组类，详见[注册表速查](registries.md)。
+动作输入实现 `AgentAction`，`codec()` 返回本类 MapCodec；先通过 DeferredRegister 在 `AssistantResourceKeys.ACTION_TYPE` 注册这个 Codec，内置声明由 `SystemActionTypes` 公开。Module 的 `inputCodec()` 返回同一实例；按钮、指令和模型路由都直接生成输入对象。类型与 Codec 必须在两端可用，定义不得引用未安装的可选模组类，详见[注册表速查](registries.md)。
 
 ## 职责边界
 

@@ -1,12 +1,12 @@
 package com.iafenvoy.system.assistant.space;
 
+import com.iafenvoy.assistant.routing.RouteSource;
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.routing.RouteSource;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.data.input.SpaceDepositInput;
 import com.iafenvoy.system.data.module.SystemModule;
@@ -40,7 +40,7 @@ public final class SpaceDeposits implements PlayerModule {
     }
 
     private static final class Settlement {
-        final AgentStore store;
+        final AgentStore<PlayerData> store;
         final UUID player;
         final SpaceDeposit deposit;
         final AtomicBoolean touched = new AtomicBoolean(), saving = new AtomicBoolean();
@@ -210,7 +210,7 @@ public final class SpaceDeposits implements PlayerModule {
     }
 
     public CompletionStage<List<SpaceDeposit>> orders(UUID player) {
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.update(player, data -> {
             this.recover(player, data);
             return ModuleData.get(data, SpaceSystemModule.STORAGE).deposits().values().stream()
@@ -221,7 +221,7 @@ public final class SpaceDeposits implements PlayerModule {
     public CompletionStage<SpaceDeposit> resolve(UUID player, String id, boolean consumed, String reviewer, String reason) {
         if (reason.isBlank() || reason.length() > 512) throw new AgentException(AgentFailure.INVALID_INPUT);
         if (!this.active.add(player)) throw new AgentException(AgentFailure.BUSY);
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.update(player, data -> {
             this.recover(player, data);
             return ModuleData.get(data, SpaceSystemModule.STORAGE).reviewDeposit(id, consumed, reviewer, reason);

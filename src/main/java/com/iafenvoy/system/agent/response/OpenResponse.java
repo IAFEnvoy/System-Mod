@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent.response;
 
+import com.iafenvoy.assistant.response.AgentResponse;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;

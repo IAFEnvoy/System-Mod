@@ -1,13 +1,14 @@
 package com.iafenvoy.system.module.builtin.space;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.util.PersistHolder;
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.space.SystemSpace;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardUpdate;
@@ -31,7 +32,7 @@ import java.util.Optional;
 public final class DeliverModule extends AbstractAgentModule<EntitlementInput> {
     private final SystemSpace space;
 
-    public DeliverModule(ToolRegistry.Tool<EntitlementInput, StateOutput> deliver, SystemSpace space) {
+    public DeliverModule(ToolRegistry.Tool<EntitlementInput, StateOutput, ExecutionContext> deliver, SystemSpace space) {
         super(EntitlementInput.CODEC, "Deliver an existing reward entitlement obtained from the inbox; never invent entitlement IDs.", List.of(deliver), true, false, ExecutionPolicy.quick(1, 1));
         this.space = space;
     }
@@ -47,15 +48,15 @@ public final class DeliverModule extends AbstractAgentModule<EntitlementInput> {
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, EntitlementInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, EntitlementInput input) throws Exception {
         StateOutput state = context.tool(BuiltinTools.DELIVER, "deliver", input);
         if ("CHOICE_REQUIRED".equals(state.state()))
-            return AgentResult.data("system.choice.hint", this.space.query(context).toCompletableFuture().get());
+            return SystemResults.data("system.choice.hint", this.space.query(context).toCompletableFuture().get());
         CardData receipt = this.receipt(context, input);
-        if (receipt == null) return AgentResult.data("system.result.delivery", state);
+        if (receipt == null) return SystemResults.data("system.result.delivery", state);
         // The finished receipt replaces its own card in place: no separate state card, and the claim button turns
         // into a delivered marker.
-        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.delivery", "",
+        return new AgentResult<>(AgentResult.Status.SUCCEEDED, "system.result.delivery", "",
                 List.of(CardUpdate.show(receipt)), true);
     }
 

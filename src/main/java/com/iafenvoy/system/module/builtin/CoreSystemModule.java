@@ -1,18 +1,20 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.command.AiManagementCommands;
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.routing.RoutingDiagnostics;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.module.AgentModule;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.agent.response.OpenResponse;
-import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.assistant.progress.PlayerFacts;
 import com.iafenvoy.system.command.ActivityCommands;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.HelpInput;
 import com.iafenvoy.system.data.store.AgentJournalDataStorage;
 import com.iafenvoy.system.module.*;
-import com.iafenvoy.system.module.builtin.chat.AiManagementCommands;
 import com.iafenvoy.system.module.builtin.chat.FreeChatModule;
 import com.iafenvoy.system.module.builtin.knowledge.DatabaseQueryTool;
 import com.iafenvoy.system.module.builtin.knowledge.QuestionModule;
@@ -59,7 +61,7 @@ public final class CoreSystemModule implements CoreModule {
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
         return List.of(new HelpModule(), new QuestionModule(new DatabaseQueryTool(context.get(ContextTypes.DATABASES)).tool()), new ReasoningModule(), new FreeChatModule(context.engine().chat()),
                 new RecordQueryModule(new ToolRegistry.Tool<>(BuiltinTools.RECORD_QUERY, false, true, false,
                         (execution, input) -> CompletableFuture.completedFuture(PlayerFacts.query(execution, input.offset())))),
@@ -78,7 +80,7 @@ public final class CoreSystemModule implements CoreModule {
     @Override
     public void serverCommands(LiteralArgumentBuilder<CommandSourceStack> root) {
         ModuleManagementCommands.register(root);
-        AiManagementCommands.register(root);
+        AiManagementCommands.register(root, ModuleCommands::runtime);
         ActivityCommands.register(root);
         root.executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.CURRENT))
                 .then(Commands.literal("simple").executes(context -> open(context.getSource().getPlayerOrException(), OpenResponse.View.SIMPLE)))

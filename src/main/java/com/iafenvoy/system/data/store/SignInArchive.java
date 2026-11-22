@@ -1,11 +1,11 @@
 package com.iafenvoy.system.data.store;
 
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.util.FileAccess;
 import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.util.AtomicFiles;
 import com.mojang.serialization.Codec;
 import net.minecraft.nbt.NbtOps;
@@ -41,7 +41,7 @@ public final class SignInArchive {
         return this.root.resolve(player.toString()).resolve(scope).resolve(day.substring(0, 4)).resolve(day + ".dat");
     }
 
-    public Optional<PersistHolder<Reward>> get(AgentStore store, UUID player, String scope, String day) {
+    public Optional<PersistHolder<Reward>> get(AgentStore<PlayerData> store, UUID player, String scope, String day) {
         Path file = this.path(player, scope, day);
         try {
             if (Files.notExists(file)) return Optional.empty();
@@ -52,7 +52,7 @@ public final class SignInArchive {
         }
     }
 
-    public void put(AgentStore store, UUID player, String scope, String day, PersistHolder<Reward> reward) {
+    public void put(AgentStore<PlayerData> store, UUID player, String scope, String day, PersistHolder<Reward> reward) {
         Path file = this.path(player, scope, day);
         try {
             Codec<PersistHolder<Reward>> codec = store.codec(PersistHolder.codec(Reward.CODEC));

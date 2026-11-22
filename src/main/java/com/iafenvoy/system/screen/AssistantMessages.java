@@ -1,11 +1,13 @@
 package com.iafenvoy.system.screen;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.speech.SpeechException;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.command.client.NotificationVoiceCommands;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.data.card.*;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.client.CardController;
 import com.iafenvoy.system.data.card.client.ClientCards;
 import com.iafenvoy.system.event.client.AssistantRecognitionKeys;
@@ -15,7 +17,6 @@ import com.iafenvoy.system.screen.card.CardPresentation;
 import com.iafenvoy.system.screen.card.CardUiState;
 import com.iafenvoy.system.screen.gui.AssistantItems;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
-import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.sighs.apricityui.client.gui.ApricityGuiLayers;
@@ -80,7 +81,7 @@ public final class AssistantMessages {
         }
     }
 
-    private record Message(String text, String speechText, List<Button> buttons, UUID cardId, AgentResult result,
+    private record Message(String text, String speechText, List<Button> buttons, UUID cardId, AgentResult<CardUpdate> result,
                            CardUiState pages) {
         private Message {
             buttons = List.copyOf(buttons);
@@ -96,7 +97,7 @@ public final class AssistantMessages {
         QUEUE.addLast(new Pending(message, speak));
     }
 
-    public static void result(AgentResult result) {
+    public static void result(AgentResult<CardUpdate> result) {
         if (result.silent()) return;
         for (CardUpdate card : result.cards()) {
             if (card.mode() != CardUpdate.Mode.SHOW || card.data().isEmpty()) continue;
@@ -108,7 +109,7 @@ public final class AssistantMessages {
     /**
      * Direct action replies replace the active slot; a dismissed source cannot reopen or displace another notice.
      */
-    public static void reply(AgentResult result, CardReference source) {
+    public static void reply(AgentResult<CardUpdate> result, CardReference source) {
         // A local back action may already be fading this source out in favor of its retained parent.
         boolean active = current != null && replacement == null && source.id().equals(current.cardId());
         Message parent = active && source.equals(navigationSource) ? current : null;
@@ -134,11 +135,11 @@ public final class AssistantMessages {
         } else animate(Phase.FADING_OUT, Minecraft.getInstance().screen instanceof ChatScreen);
     }
 
-    private static Message message(AgentResult result) {
+    private static Message message(AgentResult<CardUpdate> result) {
         return message(result, new CardUiState());
     }
 
-    private static Message message(AgentResult result, CardUiState pages) {
+    private static Message message(AgentResult<CardUpdate> result, CardUiState pages) {
         ClientMessage content = CardPresentation.message(result);
         List<Button> buttons = new ArrayList<>();
         CardUpdate card = result.cards().getFirst();
@@ -155,7 +156,7 @@ public final class AssistantMessages {
                 () -> CardController.activate(choice.source(), button, true));
     }
 
-    public static void refresh(AgentResult result) {
+    public static void refresh(AgentResult<CardUpdate> result) {
         for (CardUpdate update : result.cards()) {
             if (update.mode() == CardUpdate.Mode.SHOW) continue;
             if (replacement != null && update.ref().id().equals(replacement.message().cardId()))
@@ -208,7 +209,7 @@ public final class AssistantMessages {
         return true;
     }
 
-    public static String summary(AgentResult result) {
+    public static String summary(AgentResult<CardUpdate> result) {
         return CardPresentation.message(result).text();
     }
 

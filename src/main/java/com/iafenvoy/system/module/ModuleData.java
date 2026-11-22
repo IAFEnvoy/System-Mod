@@ -1,5 +1,6 @@
 package com.iafenvoy.system.module;
 
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.data.storage.DataStorage;
 import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.data.store.PlayerData;
@@ -9,7 +10,7 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
- * Storage access belongs inside an AgentStore transaction, never in PlayerData business helpers.
+ * Storage access belongs inside an AgentStore<PlayerData> transaction, never in PlayerData business helpers.
  */
 public final class ModuleData {
     private ModuleData() {

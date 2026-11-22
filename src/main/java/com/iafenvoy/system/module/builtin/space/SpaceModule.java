@@ -1,13 +1,14 @@
 package com.iafenvoy.system.module.builtin.space;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.SpaceInput;
@@ -23,7 +24,7 @@ import java.util.List;
 public final class SpaceModule extends AbstractAgentModule<SpaceInput> {
     private final CommerceTransactions commerce;
 
-    public SpaceModule(ToolRegistry.Tool<SpaceInput, SpaceOutput> query, CommerceTransactions commerce) {
+    public SpaceModule(ToolRegistry.Tool<SpaceInput, SpaceOutput, ExecutionContext> query, CommerceTransactions commerce) {
         super(SpaceInput.CODEC, "View my system space and stored contents, quantities and withdrawal actions.", List.of(query), true, false, ExecutionPolicy.quick(0, 0));
         this.commerce = commerce;
     }
@@ -40,11 +41,11 @@ public final class SpaceModule extends AbstractAgentModule<SpaceInput> {
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, SpaceInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, SpaceInput input) throws Exception {
         List<CardUpdate> cards = new ArrayList<>();
         cards.add(CardUpdate.show(context.tool(BuiltinTools.SPACE_QUERY, "space", input)));
         // Unsettled purchases remain visible without exposing their locked contents as withdrawable entries.
         cards.addAll(this.commerce.pending(context).stream().map(CardUpdate::show).toList());
-        return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.inbox", "", cards);
+        return SystemResults.presented(AgentResult.Status.SUCCEEDED, "system.result.inbox", "", cards);
     }
 }

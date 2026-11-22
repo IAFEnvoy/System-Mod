@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin.anchor;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.AnchorListInput;
 import com.iafenvoy.system.data.output.AnchorListOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -15,7 +17,7 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 import java.util.List;
 
 public final class AnchorListModule extends AbstractAgentModule<AnchorListInput> {
-    public AnchorListModule(ToolRegistry.Tool<AnchorListInput, AnchorListOutput> query) {
+    public AnchorListModule(ToolRegistry.Tool<AnchorListInput, AnchorListOutput, ExecutionContext> query) {
         super(AnchorListInput.CODEC, "List my personal saved teleport anchors, exact IDs, unlocked capacity and cooldown without teleporting.",
                 List.of(query), true, false, ExecutionPolicy.quick(0, 0));
     }
@@ -31,7 +33,7 @@ public final class AnchorListModule extends AbstractAgentModule<AnchorListInput>
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, AnchorListInput input) throws Exception {
-        return AgentResult.data("system.result.anchor_list", context.tool(BuiltinTools.ANCHOR_LIST, "anchors", input));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, AnchorListInput input) throws Exception {
+        return SystemResults.data("system.result.anchor_list", context.tool(BuiltinTools.ANCHOR_LIST, "anchors", input));
     }
 }

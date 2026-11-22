@@ -1,8 +1,12 @@
 package com.iafenvoy.system.agent.module;
 
+import com.iafenvoy.assistant.action.AgentAction;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.registry.SystemRegistries;
 
 import java.util.List;
@@ -13,16 +17,16 @@ import java.util.stream.Collectors;
 /**
  * Required tool instances belong to the workflow; optional read tools remain owned by their exporters.
  */
-public abstract class AbstractAgentModule<I extends AgentAction> implements AgentModule<I> {
+public abstract class AbstractAgentModule<I extends AgentAction> implements AgentModule<I, ExecutionContext, CardUpdate> {
     private final Descriptor descriptor;
     private final SchemaMapCodec<I> inputCodec;
-    private final List<ToolRegistry.Tool<?, ?>> tools;
+    private final List<ToolRegistry.Tool<?, ?, ExecutionContext>> tools;
 
-    protected AbstractAgentModule(SchemaMapCodec<I> inputCodec, String description, List<ToolRegistry.Tool<?, ?>> tools, boolean interactive, boolean event, ExecutionPolicy policy) {
+    protected AbstractAgentModule(SchemaMapCodec<I> inputCodec, String description, List<ToolRegistry.Tool<?, ?, ExecutionContext>> tools, boolean interactive, boolean event, ExecutionPolicy policy) {
         this(inputCodec, description, tools, Set.of(), interactive, event, policy);
     }
 
-    protected AbstractAgentModule(SchemaMapCodec<I> inputCodec, String description, List<ToolRegistry.Tool<?, ?>> tools,
+    protected AbstractAgentModule(SchemaMapCodec<I> inputCodec, String description, List<ToolRegistry.Tool<?, ?, ExecutionContext>> tools,
                                   Set<String> optionalTools, boolean interactive, boolean event, ExecutionPolicy policy) {
         this.inputCodec = inputCodec;
         this.tools = List.copyOf(tools);
@@ -40,7 +44,7 @@ public abstract class AbstractAgentModule<I extends AgentAction> implements Agen
     }
 
     @Override
-    public final List<ToolRegistry.Tool<?, ?>> tools() {
+    public final List<ToolRegistry.Tool<?, ?, ExecutionContext>> tools() {
         return this.tools;
     }
 }

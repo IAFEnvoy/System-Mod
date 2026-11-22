@@ -8,3 +8,15 @@ plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
 }
 
+def assistantCoreDir = file('AssistantCore-MC')
+if (!new File(assistantCoreDir, 'build.gradle').isFile()) {
+    throw new GradleException("AssistantCore-MC checkout missing at " + assistantCoreDir
+            + ". Run git submodule update --init --recursive.")
+}
+
+includeBuild(assistantCoreDir) {
+    name = 'assistant-core'
+    dependencySubstitution {
+        substitute(module('com.iafenvoy.assistant:assistant-core')).using(project(':'))
+    }
+}

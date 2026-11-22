@@ -1,9 +1,9 @@
 package com.iafenvoy.system.screen.gui;
 
-import com.iafenvoy.system.agent.chat.ConversationMode;
+import com.iafenvoy.assistant.chat.AiStatus;
+import com.iafenvoy.assistant.chat.ConversationMode;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
-import com.iafenvoy.system.data.AiStatus;
 import com.iafenvoy.system.screen.AssistantCardDisplay;
 import com.sighs.apricityui.event.KeyEvent;
 import com.sighs.apricityui.init.Document;
@@ -84,11 +84,11 @@ final class ConversationModeSelector {
             if (!checked.equals(option.getAttribute("aria-checked"))) option.setAttribute("aria-checked", checked);
             if (option.isDisabled() == allowed) option.setDisabled(!allowed);
             AiStatus permissions = state.serverState().ai();
-            String reason = allowed ? "" : !permissions.modelConfigured() ? tr("system.chat_mode.model_missing")
-                    : !permissions.allowAi() ? tr("system.chat_mode.ai_denied")
-                    : permissions.modelCallsPerDay() == 0 ? tr("system.chat_mode.no_calls")
-                    : mode.chats() && !permissions.allowFreeChat() ? tr("system.chat_mode.chat_denied")
-                    : Component.translatable("system.chat_mode.mode_limited", Component.translatable(permissions.maxMode().labelKey())).getString();
+            String reason = allowed ? "" : !permissions.modelConfigured() ? tr("assistant_core.chat_mode.model_missing")
+                    : !permissions.allowAi() ? tr("assistant_core.chat_mode.ai_denied")
+                    : permissions.modelCallsPerDay() == 0 ? tr("assistant_core.chat_mode.no_calls")
+                    : mode.chats() && !permissions.allowFreeChat() ? tr("assistant_core.chat_mode.chat_denied")
+                    : Component.translatable("assistant_core.chat_mode.mode_limited", Component.translatable(permissions.maxMode().labelKey())).getString();
             text(this.reasons.get(mode), reason);
             display(this.reasons.get(mode), allowed ? "none" : "block");
         }

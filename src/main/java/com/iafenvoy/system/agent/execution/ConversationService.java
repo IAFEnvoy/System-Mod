@@ -1,15 +1,16 @@
 package com.iafenvoy.system.agent.execution;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.chat.ConversationMode;
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.util.MiscUtil;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.chat.AiAccess;
-import com.iafenvoy.system.agent.chat.ConversationMode;
-import com.iafenvoy.system.agent.storage.AgentStore;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.data.History;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.store.Message;
+import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.JsonOps;
 
@@ -36,38 +37,36 @@ final class ConversationService {
         this.engine = engine;
     }
 
-    public CompletionStage<AgentResult> forget(UUID player) {
+    public CompletionStage<AgentResult<CardUpdate>> forget(UUID player) {
         // Advance the memory epoch so in-flight chat cannot restore history or act on cleared context.
         this.engine.cancel(player);
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.personalMaintenance(player, () -> store.update(player, data -> {
             if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
             data.conversation.clear();
             this.engine.router().clear(player);
-            return AgentResult.ok("system.result.forgotten");
+            return SystemResults.ok("system.result.forgotten");
         }));
     }
 
-    public CompletionStage<AgentResult> preferences(UUID player, boolean history, ConversationMode mode) {
+    public CompletionStage<AgentResult<CardUpdate>> preferences(UUID player, boolean history, ConversationMode mode) {
         this.engine.cancel(player);
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.personalMaintenance(player, () -> store.update(player, data -> {
             if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
             // Revocation preserves a saved preference, but a client cannot select a newly forbidden mode.
-            AiAccess.Permissions permissions = this.engine.permissions(player);
-            if (mode != data.mode && !permissions.allows(mode))
-                throw new AgentException(permissions.modelConfigured() ? AgentFailure.MODE_NOT_ALLOWED : AgentFailure.MODEL_NOT_CONFIGURED);
+            this.engine.permissions(player).checkPreference(data.mode, mode);
             data.saveHistory = history;
             data.mode = mode;
             this.engine.router().clear(player);
             if (!history) data.conversation.clear();
             else data.conversation.memoryEpoch++;
-            return AgentResult.ok("system.result.preferences");
+            return SystemResults.ok("system.result.preferences");
         }));
     }
 
     public CompletionStage<History> history(UUID player) {
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
             if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
             List<Message> selected = new ArrayList<>();
@@ -76,7 +75,7 @@ final class ConversationService {
                 // The page never carries request IDs; oversized results keep complete cards and clipped prose.
                 Message entry = data.conversation.history.get(index).withRequestId("");
                 if (entry instanceof Message.Assistant assistant
-                        && CodecIO.write(store.codec(AgentResult.CODEC), assistant.result()).length() > MAX_ENTRY_CHARS)
+                        && CodecIO.write(store.codec(SystemResults.CODEC), assistant.result()).length() > MAX_ENTRY_CHARS)
                     entry = new Message.Assistant("", assistant.time(), clip(assistant.result(), store));
                 int length = store.codec(Message.CODEC).encodeStart(JsonOps.INSTANCE, entry).getOrThrow().toString().length();
                 // The newest turn is always sent; an entry that does not fit only stops older ones.
@@ -92,11 +91,11 @@ final class ConversationService {
      * Keeps a complete JSON result under the per-entry cap; never truncates the middle of a card or action.
      * The first card always survives: an entry without cards renders as an empty row on the client.
      */
-    private static AgentResult clip(AgentResult result, AgentStore store) {
+    private static AgentResult<CardUpdate> clip(AgentResult<CardUpdate> result, AgentStore<PlayerData> store) {
         List<CardUpdate> cards = new ArrayList<>();
         for (CardUpdate card : result.cards()) {
             cards.add(card);
-            if (cards.size() > 1 && CodecIO.write(store.codec(AgentResult.CODEC), presentation(result, cards)).length() > MAX_ENTRY_CHARS) {
+            if (cards.size() > 1 && CodecIO.write(store.codec(SystemResults.CODEC), presentation(result, cards)).length() > MAX_ENTRY_CHARS) {
                 cards.removeLast();
                 break;
             }
@@ -104,7 +103,7 @@ final class ConversationService {
         return presentation(result, cards);
     }
 
-    private static AgentResult presentation(AgentResult result, List<CardUpdate> cards) {
+    private static AgentResult<CardUpdate> presentation(AgentResult<CardUpdate> result, List<CardUpdate> cards) {
         return result.withPresentation(result.messageKey(), MiscUtil.clip(result.text(), MAX_PROSE_CHARS), cards, result.silent());
     }
 

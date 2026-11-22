@@ -1,14 +1,16 @@
 package com.iafenvoy.system.module.builtin.anchor;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.command.AssistantCommandSource;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
-import com.iafenvoy.system.command.AssistantCommandSource;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.AnchorRenameInput;
 import com.iafenvoy.system.data.output.AnchorListOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -26,7 +28,7 @@ import java.util.regex.Pattern;
 public final class AnchorRenameModule extends AbstractAgentModule<AnchorRenameInput> {
     private static final Pattern EXPLICIT = Pattern.compile("^(?:重命名锚点\\s*(.+?)\\s+(?:为|成|->|→)\\s*(.+)|rename anchor\\s+(.+?)\\s+to\\s+(.+))$", Pattern.CASE_INSENSITIVE);
 
-    public AnchorRenameModule(ToolRegistry.Tool<AnchorRenameInput, AnchorListOutput> tool) {
+    public AnchorRenameModule(ToolRegistry.Tool<AnchorRenameInput, AnchorListOutput, ExecutionContext> tool) {
         super(AnchorRenameInput.CODEC, "Rename an existing personal teleport anchor by observed ID or exact current name, only when explicitly requested. Preserve its destination and slot; never delete or recreate it.",
                 List.of(tool), true, false, ExecutionPolicy.quick(0, 1));
     }
@@ -81,8 +83,8 @@ public final class AnchorRenameModule extends AbstractAgentModule<AnchorRenameIn
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, AnchorRenameInput input) throws Exception {
-        AgentResult result = AgentResult.data("system.result.anchor_list", context.tool(BuiltinTools.ANCHOR_RENAME, "rename", input));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, AnchorRenameInput input) throws Exception {
+        AgentResult<CardUpdate> result = SystemResults.data("system.result.anchor_list", context.tool(BuiltinTools.ANCHOR_RENAME, "rename", input));
         return result.withPresentation(result.messageKey(), result.text(), result.cards(), input.inPlace());
     }
 }

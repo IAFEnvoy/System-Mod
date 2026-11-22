@@ -1,5 +1,6 @@
 package com.iafenvoy.system.assistant.economy;
 
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.runtime.resulting.Result;
 import com.iafenvoy.saturn.util.math.Comparison;
 import com.iafenvoy.system.SystemMod;
@@ -7,10 +8,10 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.data.catalog.CurrencyDefinition;
 import com.iafenvoy.system.data.output.WalletOutput;
+import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.PlayerModule;
 import com.iafenvoy.system.module.builtin.EconomySystemModule;
@@ -51,7 +52,7 @@ public final class Wallets implements PlayerModule {
         return this.server.getPlayerList().getPlayer(player.getUUID()) == player && this.engine.available(player.getUUID(), QUERY);
     }
 
-    public AgentStore store(ServerPlayer player) {
+    public AgentStore<PlayerData> store(ServerPlayer player) {
         return this.engine.playerStore(player.getUUID());
     }
 
@@ -68,7 +69,7 @@ public final class Wallets implements PlayerModule {
     public CompletionStage<Long> edit(ServerPlayer player, Identifier currency, long amount, boolean set) {
         if (!this.available(player)) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         if (this.currencies.getOptional(currency).isEmpty()) throw new AgentException(AgentFailure.UNKNOWN_CURRENCY);
-        AgentStore store = this.store(player);
+        AgentStore<PlayerData> store = this.store(player);
         return this.engine.maintenance(() -> store.update(player.getUUID(), data -> {
             if (!data.bound() || !this.engine.available(player.getUUID(), QUERY))
                 throw new AgentException(AgentFailure.NOT_BOUND);
@@ -80,7 +81,7 @@ public final class Wallets implements PlayerModule {
     public CompletionStage<Long> balance(ServerPlayer player, Identifier currency) {
         if (!this.available(player)) throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
         if (this.currencies.getOptional(currency).isEmpty()) throw new AgentException(AgentFailure.UNKNOWN_CURRENCY);
-        AgentStore store = this.store(player);
+        AgentStore<PlayerData> store = this.store(player);
         return this.engine.maintenance(() -> store.read(player.getUUID(), data -> {
             if (!data.bound() || !this.engine.available(player.getUUID(), QUERY))
                 throw new AgentException(AgentFailure.NOT_BOUND);
@@ -88,7 +89,7 @@ public final class Wallets implements PlayerModule {
         }));
     }
 
-    public Result<Long> change(ServerPlayer player, AgentStore store, Identifier currency, long delta, boolean simulate) {
+    public Result<Long> change(ServerPlayer player, AgentStore<PlayerData> store, Identifier currency, long delta, boolean simulate) {
         if (!this.server.isSameThread() || !this.available(player))
             return Result.failure(AgentFailure.CAPABILITY_UNAVAILABLE);
         if (this.currencies.getOptional(currency).isEmpty()) return Result.failure(AgentFailure.UNKNOWN_CURRENCY);

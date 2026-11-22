@@ -1,5 +1,6 @@
 package com.iafenvoy.system.assistant.quest;
 
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.data.cost.context.CostContext;
 import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.SystemMod;
@@ -7,7 +8,6 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.assistant.calendar.BusinessCalendar;
 import com.iafenvoy.system.assistant.catalog.CatalogAccess;
@@ -67,7 +67,7 @@ public final class Commissions implements QuestProvider.Lifecycle, QuestProvider
 
     private static final class Settlement {
         final UUID player;
-        final AgentStore store;
+        final AgentStore<PlayerData> store;
         final Identifier definition;
         final String run;
         volatile long completedAt;
@@ -445,7 +445,7 @@ public final class Commissions implements QuestProvider.Lifecycle, QuestProvider
     }
 
     public CompletionStage<List<CommissionRun>> orders(UUID player) {
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> ModuleData.get(data, CommissionSystemModule.STORAGE).entries().values().stream()
                 .flatMap(entry -> entry.run().stream()).filter(run -> run.state() == CommissionRun.State.UNKNOWN || run.state() == CommissionRun.State.PREPARED).toList()));
     }
@@ -453,7 +453,7 @@ public final class Commissions implements QuestProvider.Lifecycle, QuestProvider
     public CompletionStage<Void> resolve(UUID player, String runId, boolean consumed, String reviewer, String reason) {
         if (reason.isBlank() || reason.length() > 512) throw new AgentException(AgentFailure.INVALID_INPUT);
         if (!this.active.add(player)) throw new AgentException(AgentFailure.BUSY);
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         ZoneId zone = BusinessCalendar.zone();
         return this.engine.maintenance(() -> store.update(player, data -> {
             CommissionDataStorage storage = ModuleData.get(data, CommissionSystemModule.STORAGE);

@@ -9,7 +9,7 @@ import com.iafenvoy.system.data.card.SpeechContent;
 import com.iafenvoy.system.module.builtin.QuestSystemModule;
 import com.iafenvoy.system.speech.quest.QuestNarration;
 import com.iafenvoy.system.util.LegacyText;
-import com.iafenvoy.system.util.TypeDispatch;
+import com.iafenvoy.assistant.util.TypeDispatch;
 import dev.ftb.mods.ftbquests.integration.item_filtering.ItemMatchingSystem;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;

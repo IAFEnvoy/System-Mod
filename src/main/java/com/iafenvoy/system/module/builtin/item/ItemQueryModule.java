@@ -1,14 +1,16 @@
 package com.iafenvoy.system.module.builtin.item;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.command.CommandArguments;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.ItemQueryInput;
 import com.iafenvoy.system.data.output.ItemPageOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -19,7 +21,7 @@ import java.util.List;
  * Searches items and carries the query forward in pagination actions.
  */
 public final class ItemQueryModule extends AbstractAgentModule<ItemQueryInput> {
-    public ItemQueryModule(ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> items) {
+    public ItemQueryModule(ToolRegistry.Tool<ItemQueryInput, ItemPageOutput, ExecutionContext> items) {
         super(ItemQueryInput.CODEC, "Search item name or registry ID.", List.of(items), true, false, ExecutionPolicy.quick(2, 0));
     }
 
@@ -39,8 +41,8 @@ public final class ItemQueryModule extends AbstractAgentModule<ItemQueryInput> {
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, ItemQueryInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, ItemQueryInput input) throws Exception {
         ItemPageOutput result = context.tool(BuiltinTools.ITEMS, "items", input);
-        return AgentResult.data("system.result.items", result);
+        return SystemResults.data("system.result.items", result);
     }
 }

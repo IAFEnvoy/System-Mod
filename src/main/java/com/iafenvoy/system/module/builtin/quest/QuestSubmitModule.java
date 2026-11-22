@@ -1,12 +1,14 @@
 package com.iafenvoy.system.module.builtin.quest;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.QuestSubmitInput;
 import com.iafenvoy.system.data.output.QuestSubmitOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -18,7 +20,7 @@ import java.util.Optional;
  * Native manual submission requires an explicit command or button; automatic routing cannot invoke it.
  */
 public final class QuestSubmitModule extends AbstractAgentModule<QuestSubmitInput> {
-    public QuestSubmitModule(ToolRegistry.Tool<QuestSubmitInput, QuestSubmitOutput> submit) {
+    public QuestSubmitModule(ToolRegistry.Tool<QuestSubmitInput, QuestSubmitOutput, ExecutionContext> submit) {
         super(QuestSubmitInput.CODEC, "Submit supported manual tasks for exactly one quest explicitly selected by the player.", List.of(submit), true, false, ExecutionPolicy.quick(0, 1));
     }
 
@@ -30,12 +32,12 @@ public final class QuestSubmitModule extends AbstractAgentModule<QuestSubmitInpu
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, QuestSubmitInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, QuestSubmitInput input) throws Exception {
         QuestSubmitOutput result = context.tool(BuiltinTools.QUEST_SUBMIT, "submit", input);
         if (result.completed())
-            return new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.quest_submit_completed", "", List.of(), true);
+            return new AgentResult<>(AgentResult.Status.SUCCEEDED, "system.result.quest_submit_completed", "", List.of(), true);
         if (result.lifecycle().quote().isPresent())
-            return AgentResult.data("system.result.commission_preview", result);
-        return AgentResult.data(result.changed() ? "system.result.quest_submitted" : "system.result.quest_submit_unchanged", result);
+            return SystemResults.data("system.result.commission_preview", result);
+        return SystemResults.data(result.changed() ? "system.result.quest_submitted" : "system.result.quest_submit_unchanged", result);
     }
 }

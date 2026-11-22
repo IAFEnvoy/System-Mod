@@ -1,5 +1,6 @@
 package com.iafenvoy.system.config.file;
 
+import com.iafenvoy.assistant.model.ModelSettings;
 import com.iafenvoy.saturn.util.codec.MiscCodecs;
 import com.iafenvoy.system.config.ConfigInstance;
 import com.mojang.serialization.Codec;
@@ -33,6 +34,11 @@ public record ModelConfig(String model, String baseUrl, String providerType,
 
     public URI chatCompletionsEndpoint() {
         return endpoint(this.baseUrl);
+    }
+
+    public ModelSettings settings() {
+        return new ModelSettings(this.model, this.chatCompletionsEndpoint(), this.isDeepSeek(), this.thinkingEnabled,
+                this.reasoningEffort, this.apiKeyRequired, this.jsonMode, this.outputTokenParameter);
     }
 
     private static URI endpoint(String baseUrl) {

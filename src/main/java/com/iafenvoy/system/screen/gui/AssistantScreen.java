@@ -1,6 +1,6 @@
 package com.iafenvoy.system.screen.gui;
 
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
 import com.iafenvoy.system.data.card.CardUpdate;
@@ -144,7 +144,7 @@ public final class AssistantScreen extends AssistantInputScreen {
                     Deque<Element> candidates = reusable.get(entry);
                     Element row = candidates == null || candidates.isEmpty() ? this.renderEntry(document, entry, index >= firstNew) : candidates.removeFirst();
                     rows.add(row);
-                    AgentResult result = entry.result();
+                    AgentResult<CardUpdate> result = entry.result();
                     if (result != null) for (CardUpdate card : result.cards()) visibleCards.add(card.ref().id());
                 }
                 reconcile(list, rows);
@@ -169,7 +169,7 @@ public final class AssistantScreen extends AssistantInputScreen {
         Element row = Element.init(element(document, "div", css + (animate ? " message_new" : ""), ""));
         row.appendChild(element(document, "div", "message_label", tr(entry.player() ? "system.ui.you" : AssistantClient.system().name())));
         if (!entry.text().isBlank()) row.appendChild(element(document, "div", "message_text", entry.text()));
-        AgentResult result = entry.result();
+        AgentResult<CardUpdate> result = entry.result();
         if (result != null) for (CardUpdate card : result.cards())
             row.appendChild(renderCard(document, card, result.messageKey(), this.cardPages.computeIfAbsent(card.ref().id(), _ -> new CardUiState())));
         return row;

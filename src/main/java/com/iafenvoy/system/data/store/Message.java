@@ -1,6 +1,8 @@
 package com.iafenvoy.system.data.store;
 
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
@@ -75,18 +77,18 @@ public sealed interface Message permits Message.User, Message.Assistant {
         }
     }
 
-    record Assistant(String requestId, long time, AgentResult result) implements Message {
+    record Assistant(String requestId, long time, AgentResult<CardUpdate> result) implements Message {
         static final String ROLE = "assistant";
         static final byte ROLE_ID = 1;
         static final MapCodec<Assistant> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
                 Codec.STRING.fieldOf("requestId").forGetter(Assistant::requestId),
                 Codec.LONG.fieldOf("time").forGetter(Assistant::time),
-                AgentResult.CODEC.fieldOf("result").forGetter(Assistant::result)
+                SystemResults.CODEC.fieldOf("result").forGetter(Assistant::result)
         ).apply(i, Assistant::new));
         static final StreamCodec<RegistryFriendlyByteBuf, Assistant> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.stringUtf8(36), Assistant::requestId,
                 ByteBufCodecs.VAR_LONG, Assistant::time,
-                ByteBufCodecs.fromCodecWithRegistriesTrusted(AgentResult.CODEC), Assistant::result, Assistant::new);
+                ByteBufCodecs.fromCodecWithRegistriesTrusted(SystemResults.CODEC), Assistant::result, Assistant::new);
 
         @Override
         public String role() {

@@ -1,16 +1,11 @@
 package com.iafenvoy.system.config.credential;
 
-import com.iafenvoy.system.registry.SystemRegistries;
-import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.sighs.apricityui.init.Element;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Function;
-
-public interface Credential {
-    Codec<Credential> CODEC = SystemRegistries.CREDENTIAL_TYPE.byNameCodec().dispatch("type", Credential::codec, Function.identity());
-
+public interface Credential extends com.iafenvoy.assistant.credential.Credential {
+    @Override
     @NotNull
     MapCodec<? extends Credential> codec();
 
@@ -24,11 +19,6 @@ public interface Credential {
      * Resolve at use time without storing environment secrets in the serialized fields.
      */
     static String resolveEnvironment(String value, String... names) {
-        if (!value.isBlank()) return value.strip();
-        for (String name : names) {
-            String environment = System.getenv(name);
-            if (environment != null && !environment.isBlank()) return environment.strip();
-        }
-        return "";
+        return com.iafenvoy.assistant.credential.Credential.resolveEnvironment(value, names);
     }
 }

@@ -1,12 +1,14 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.util.codec.RegistryCodecs;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.module.AgentModule;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.tool.CommercePreviewTool;
 import com.iafenvoy.system.assistant.tool.lottery.LotteryDrawTool;
 import com.iafenvoy.system.data.LotteryPool;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.CommercePreviewInput;
 import com.iafenvoy.system.data.output.CommercePreviewOutput;
 import com.iafenvoy.system.data.store.PurchaseType;
@@ -66,8 +68,8 @@ public record LotterySystemModule(
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
-        ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview = context.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(context.get(ContextTypes.COMMERCE)).tool());
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
+        ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>, ExecutionContext> preview = context.tool(BuiltinTools.COMMERCE_PREVIEW, () -> new CommercePreviewTool(context.get(ContextTypes.COMMERCE)).tool());
         return List.of(new LotteryModule(context.get(ContextTypes.CATALOGS), context.get(ContextTypes.ITEM_SEARCH)), new LotteryPreviewModule(context.get(ContextTypes.CATALOGS), preview),
                 new LotteryDrawModule(new LotteryDrawTool(context.get(ContextTypes.COMMERCE)).tool()), new LotteryHistoryModule(context.get(ContextTypes.COMMERCE)));
     }

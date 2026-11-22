@@ -1,5 +1,6 @@
 package com.iafenvoy.system.speech.tts;
 
+import com.iafenvoy.assistant.speech.SpeechAudio;
 import com.mojang.blaze3d.systems.RenderSystem;
 import org.lwjgl.openal.AL10;
 import org.lwjgl.openal.ALC10;

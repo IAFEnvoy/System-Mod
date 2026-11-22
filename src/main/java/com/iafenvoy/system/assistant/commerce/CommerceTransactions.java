@@ -1,5 +1,6 @@
 package com.iafenvoy.system.assistant.commerce;
 
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.runtime.resulting.Failure;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.system.SystemMod;
@@ -7,7 +8,6 @@ import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.assistant.catalog.CatalogAccess;
 import com.iafenvoy.system.assistant.space.SpaceTransfer;
@@ -24,6 +24,7 @@ import com.iafenvoy.system.data.result.ShopOrder;
 import com.iafenvoy.system.data.space.SpaceContentType;
 import com.iafenvoy.system.data.space.SpaceStack;
 import com.iafenvoy.system.data.store.*;
+import com.iafenvoy.system.data.store.PlayerData;
 import com.iafenvoy.system.module.ModuleData;
 import com.iafenvoy.system.module.ModuleStorage;
 import com.iafenvoy.system.module.PlayerModule;
@@ -86,7 +87,7 @@ public final class CommerceTransactions {
             @Override
             public Session login(ServerPlayer player) {
                 UUID uuid = player.getUUID();
-                AgentStore store = CommerceTransactions.this.engine.playerStore(uuid);
+                AgentStore<PlayerData> store = CommerceTransactions.this.engine.playerStore(uuid);
                 return data -> {
                     CommerceDataStorage commerce = ModuleData.get(data, storage);
                     commerce.streamPurchases()
@@ -122,7 +123,7 @@ public final class CommerceTransactions {
     /**
      * Archive only settled and fully withdrawn orders. Write the archive before removing either live record.
      */
-    private int compact(AgentStore store, UUID player, PlayerData data, PurchaseType type, boolean all) {
+    private int compact(AgentStore<PlayerData> store, UUID player, PlayerData data, PurchaseType type, boolean all) {
         CommerceDataStorage commerce = ModuleData.get(data, this.storage(type));
         if (type == PurchaseType.LOTTERY) this.restoreLotteryCounts(store, player, commerce);
         if (!all && commerce.getPurchases().size() < 128) return 0;
@@ -146,12 +147,12 @@ public final class CommerceTransactions {
         return count;
     }
 
-    private void restoreLotteryCounts(AgentStore store, UUID player, CommerceDataStorage commerce) {
+    private void restoreLotteryCounts(AgentStore<PlayerData> store, UUID player, CommerceDataStorage commerce) {
         if (!commerce.lotteryCountsReady())
             commerce.initializeLotteryCounts(this.archive.rewardCounts(store, player, commerce.archiveScope(), commerce.getPurchases().keySet()));
     }
 
-    public Optional<Purchase> archivedEntitlement(AgentStore store, UUID player, PlayerData data, String entitlement) {
+    public Optional<Purchase> archivedEntitlement(AgentStore<PlayerData> store, UUID player, PlayerData data, String entitlement) {
         for (PurchaseType type : PurchaseType.values()) {
             String prefix = type.getSerializedName() + ":";
             if (entitlement.startsWith(prefix) && this.storages.containsKey(type))
@@ -167,7 +168,7 @@ public final class CommerceTransactions {
      * Management calls capture a guarded store before entering workers, so revoke invalidates pending edits.
      */
     public CompletionStage<OrderPage> orders(UUID player, PurchaseType type, int requested) {
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> {
             List<Purchase> orders = ModuleData.get(data, this.storage(type)).streamPurchases()
                     .sorted(Comparator.<Purchase, Boolean>comparing(purchase -> !Set.of("PREPARED", "PAYMENT_UNKNOWN").contains(purchase.state))
@@ -178,19 +179,19 @@ public final class CommerceTransactions {
     }
 
     public CompletionStage<Purchase> order(UUID player, PurchaseType type, String id) {
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.read(player, data -> Optional.ofNullable(ModuleData.get(data, this.storage(type)).getPurchase(id))
                 .or(() -> this.archive.get(store, player, ModuleData.get(data, this.storage(type)).archiveScope(), type, id))
                 .orElseThrow(() -> new AgentException(AgentFailure.STALE_REFERENCE))));
     }
 
     public CompletionStage<Integer> archive(UUID player, PurchaseType type) {
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         return this.engine.maintenance(() -> store.update(player, data -> this.compact(store, player, data, type, true)));
     }
 
     public CompletionStage<Purchase> resolve(UUID player, PurchaseType type, String id, boolean paid, String reviewer) {
-        AgentStore store = this.engine.playerStore(player);
+        AgentStore<PlayerData> store = this.engine.playerStore(player);
         String key = player + ":" + id;
         if (!this.active.add(key)) return CompletableFuture.failedFuture(new AgentException(AgentFailure.BUSY));
         return this.engine.maintenance(() -> store.update(player, data -> {

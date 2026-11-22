@@ -1,10 +1,10 @@
 package com.iafenvoy.system.assistant.progress;
 
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.execution.AgentEngine;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.assistant.AssistantServer;
 import com.iafenvoy.system.assistant.calendar.BusinessCalendar;
 import com.iafenvoy.system.assistant.catalog.CatalogAccess;
@@ -152,7 +152,7 @@ public final class PlayerFacts implements PlayerModule {
             if (submitted++ >= 4) break;
             this.running.add(uuid);
             List<Pending> batch = queue.values().stream().limit(64).toList();
-            AgentStore store = this.engine.playerStore(uuid);
+            AgentStore<PlayerData> store = this.engine.playerStore(uuid);
             this.engine.maintenance(() -> store.update(uuid, data -> {
                 if (this.closed) return null;
                 for (Pending captured : batch) {

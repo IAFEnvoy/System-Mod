@@ -2,7 +2,7 @@ package com.iafenvoy.system.config.file;
 
 import com.iafenvoy.system.config.ConfigInstance;
 import com.iafenvoy.system.registry.SystemServices;
-import com.iafenvoy.system.speech.tts.TtsProvider;
+import com.iafenvoy.assistant.speech.tts.TtsProvider;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import org.jspecify.annotations.NonNull;
@@ -58,6 +58,18 @@ public record SpeechConfig(boolean enabled, String region, String model, String 
     public SpeechConfig withVoice(String model, String voice) {
         return new SpeechConfig(this.enabled, this.region, model, voice, this.language, this.volume, this.cacheEnabled,
                 this.questRequirements, this.questRewards, this.questDescription, this.notificationSoundEnabled);
+    }
+
+    public SpeechConfig providerDefaults(TtsProvider provider) {
+        if (provider instanceof com.iafenvoy.system.speech.tts.TtsProvider legacy)
+            return legacy.defaults(this);
+        return provider.defaultVoice().map(voice -> this.withVoice(voice.model(), voice.name())).orElse(this);
+    }
+
+    public TtsProvider.Request request(TtsProvider provider, String text, String clientLanguage) {
+        if (provider instanceof com.iafenvoy.system.speech.tts.TtsProvider legacy)
+            return legacy.request(this, text, clientLanguage);
+        return provider.request(text, this.region, this.model, this.voice, this.synthesisLanguage(clientLanguage));
     }
 
     public String synthesisLanguage(String clientLanguage) {

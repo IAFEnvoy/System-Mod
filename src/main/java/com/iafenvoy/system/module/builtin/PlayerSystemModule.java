@@ -1,9 +1,11 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.module.AgentModule;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.tool.player.PlayerQueryTool;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.EmptyInput;
 import com.iafenvoy.system.data.output.PlayerSnapshotOutput;
 import com.iafenvoy.system.module.ContextTypes;
@@ -25,8 +27,8 @@ public final class PlayerSystemModule implements SharedModule {
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
-        ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player = context.tool(BuiltinTools.PLAYER, () -> new PlayerQueryTool(context.get(ContextTypes.GAME)).tool());
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
+        ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput, ExecutionContext> player = context.tool(BuiltinTools.PLAYER, () -> new PlayerQueryTool(context.get(ContextTypes.GAME)).tool());
         return List.of(new PlayerQueryModule(player));
     }
 }

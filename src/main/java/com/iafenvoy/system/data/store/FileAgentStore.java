@@ -1,11 +1,11 @@
 package com.iafenvoy.system.data.store;
 
+import com.iafenvoy.assistant.chat.ConversationMode;
+import com.iafenvoy.assistant.storage.AgentStore;
 import com.iafenvoy.saturn.util.FileAccess;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.chat.ConversationMode;
-import com.iafenvoy.system.agent.storage.AgentStore;
 import com.iafenvoy.system.config.file.StorageConfig;
 import com.iafenvoy.system.util.AtomicFiles;
 import com.iafenvoy.system.util.CodecIO;
@@ -34,7 +34,7 @@ import java.util.stream.Stream;
  * Business state and the conversation replay cache live in separate files with separate budgets, so neither can
  * permanently block writes to the other. Codec work goes through {@link FileAccess}; this class owns placement.
  */
-public final class FileAgentStore implements AgentStore {
+public final class FileAgentStore implements AgentStore<PlayerData> {
     private static final String SUFFIX = ".dat";
     private final Codec<Conversation> chatCodec;
     private final HolderLookup.Provider registries;

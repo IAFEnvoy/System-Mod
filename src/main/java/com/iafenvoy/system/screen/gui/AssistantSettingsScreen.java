@@ -1,16 +1,16 @@
 package com.iafenvoy.system.screen.gui;
 
-import com.iafenvoy.system.agent.request.ControlRequest;
-import com.iafenvoy.system.agent.request.PreferencesRequest;
+import com.iafenvoy.assistant.chat.AiStatus;
+import com.iafenvoy.assistant.request.ControlRequest;
+import com.iafenvoy.assistant.request.PreferencesRequest;
+import com.iafenvoy.assistant.speech.SpeechException;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.config.file.ClientConfig;
 import com.iafenvoy.system.config.file.RecognitionConfig;
 import com.iafenvoy.system.config.file.SpeechConfig;
-import com.iafenvoy.system.data.AiStatus;
 import com.iafenvoy.system.screen.AssistantThemes;
-import com.iafenvoy.system.speech.SpeechException;
 import com.iafenvoy.system.speech.asr.AssistantRecognition;
-import com.iafenvoy.system.speech.asr.RecognitionCapture;
+import com.iafenvoy.assistant.speech.asr.RecognitionCapture;
 import com.iafenvoy.system.speech.tts.AssistantSpeech;
 import com.iafenvoy.system.speech.tts.SpeechState;
 import com.iafenvoy.system.util.LegacyText;

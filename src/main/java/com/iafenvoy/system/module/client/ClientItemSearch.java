@@ -1,9 +1,9 @@
 package com.iafenvoy.system.module.client;
 
-import com.iafenvoy.system.agent.module.AgentAction;
-import com.iafenvoy.system.agent.request.AgentRequest;
+import com.iafenvoy.assistant.action.AgentAction;
+import com.iafenvoy.assistant.request.AgentRequest;
+import com.iafenvoy.assistant.request.InvokeRequest;
 import com.iafenvoy.system.agent.request.CardActionRequest;
-import com.iafenvoy.system.agent.request.InvokeRequest;
 import com.iafenvoy.system.data.input.*;
 import com.iafenvoy.system.data.item.ItemSearchBatch;
 import com.iafenvoy.system.data.item.ItemSearchQuery;

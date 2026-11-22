@@ -1,19 +1,22 @@
 package com.iafenvoy.system.network;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.request.ControlRequest;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.request.ControlRequest;
+import com.iafenvoy.assistant.response.AgentResponse;
+import com.iafenvoy.assistant.response.CommandSuggestionsResponse;
+import com.iafenvoy.assistant.util.TypeDispatch;
 import com.iafenvoy.system.agent.response.*;
 import com.iafenvoy.system.assistant.AssistantClient;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
-import com.iafenvoy.system.network.payload.AssistantResponseS2CPayload;
 import com.iafenvoy.system.network.payload.DisplayCardsS2CPayload;
 import com.iafenvoy.system.network.payload.TokenUsageResponseS2CPayload;
+import com.iafenvoy.system.registry.SystemResponseTypes;
 import com.iafenvoy.system.screen.AssistantMessages;
 import com.iafenvoy.system.screen.gui.AssistantScreen;
 import com.iafenvoy.system.screen.gui.AssistantSettingsScreen;
 import com.iafenvoy.system.screen.gui.AssistantSimpleScreen;
 import com.iafenvoy.system.screen.gui.TokenUsageScreen;
-import com.iafenvoy.system.util.TypeDispatch;
 import net.minecraft.client.Minecraft;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -29,7 +32,7 @@ public final class ClientNetworkHandler {
             OpenResponse.View.CURRENT, AssistantClient::simpleMode,
             OpenResponse.View.SIMPLE, () -> true,
             OpenResponse.View.FULL, () -> false);
-    private static final Map<BindingResponse.Change, Consumer<AgentResult>> BINDING = Map.of(
+    private static final Map<BindingResponse.Change, Consumer<AgentResult<CardUpdate>>> BINDING = Map.of(
             BindingResponse.Change.BOUND, ClientNetworkHandler::bound,
             BindingResponse.Change.REVOKED, ClientNetworkHandler::revoked,
             BindingResponse.Change.INVALIDATED, result -> {
@@ -38,9 +41,6 @@ public final class ClientNetworkHandler {
             });
     private static final TypeDispatch<Minecraft, Void> RESPONSES = new TypeDispatch<Minecraft, Void>((_, _) -> {
         throw new IllegalArgumentException("Unregistered assistant response handler");
-    }).register(ReplyResponse.class, (_, reply) -> {
-        AssistantClient.receive(reply.requestId(), reply.result());
-        return null;
     }).register(StateResponse.class, (_, response) -> {
         AssistantClient.synchronizedState(response.requestId(), response.state());
         return null;
@@ -49,9 +49,6 @@ public final class ClientNetworkHandler {
         return null;
     }).register(HistoryResponse.class, (_, response) -> {
         AssistantClient.history(response.requestId(), response.history());
-        return null;
-    }).register(NoticeResponse.class, (_, notice) -> {
-        AssistantClient.notice(notice.result());
         return null;
     }).register(OpenResponse.class, (_, open) -> {
         open.requestId().ifPresent(AssistantClient::complete);
@@ -70,16 +67,17 @@ public final class ClientNetworkHandler {
         ClientModuleCaches.DISPLAY_CARDS.receive(payload);
     }
 
-    public static void handleAssistantResponse(AssistantResponseS2CPayload response, IPayloadContext context) {
-        RESPONSES.apply(Minecraft.getInstance(), response.response());
+    public static void handleAssistantResponse(AgentResponse response) {
+        if (!SystemResponseTypes.RESULTS.dispatch(response, AssistantClient::receive, AssistantClient::notice))
+            RESPONSES.apply(Minecraft.getInstance(), response);
     }
 
-    private static void bound(AgentResult result) {
+    private static void bound(AgentResult<CardUpdate> result) {
         AssistantClient.notice(result);
         AssistantClient.send(ControlRequest.STATE);
     }
 
-    private static void revoked(AgentResult result) {
+    private static void revoked(AgentResult<CardUpdate> result) {
         Minecraft minecraft = Minecraft.getInstance();
         AssistantClient.clear();
         if (minecraft.screen instanceof AssistantScreen || minecraft.screen instanceof AssistantSimpleScreen || minecraft.screen instanceof TokenUsageScreen

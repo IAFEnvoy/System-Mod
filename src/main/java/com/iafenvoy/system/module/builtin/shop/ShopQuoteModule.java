@@ -1,17 +1,19 @@
 package com.iafenvoy.system.module.builtin.shop;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.commerce.CommerceTransactions;
 import com.iafenvoy.system.assistant.commerce.ShopRequest;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.catalog.ShopOffer;
 import com.iafenvoy.system.data.catalog.ShopTrade;
@@ -34,7 +36,7 @@ import java.util.Set;
 public final class ShopQuoteModule extends AbstractAgentModule<ShopQuoteInput> {
     private final CommerceTransactions transactions;
 
-    public ShopQuoteModule(CommerceTransactions transactions, ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>> preview) {
+    public ShopQuoteModule(CommerceTransactions transactions, ToolRegistry.Tool<CommercePreviewInput, List<CommercePreviewOutput>, ExecutionContext> preview) {
         super(ShopQuoteInput.CODEC, "Preview 1 to 100 batches of a shop purchase or item buyback by its advertised offer ID; the player must explicitly confirm before any payment or item collection.", List.of(preview), true, false, ExecutionPolicy.quick(1, 0));
         this.transactions = transactions;
     }
@@ -60,7 +62,7 @@ public final class ShopQuoteModule extends AbstractAgentModule<ShopQuoteInput> {
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, ShopQuoteInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, ShopQuoteInput input) throws Exception {
         if (input.count() < 1 || input.count() > 100) throw new AgentException(AgentFailure.INVALID_INPUT);
         CommerceCatalog catalog = this.transactions.shopView(context, ShopRequest.resolve(Set.of(input.offerId()))).catalog();
         if (!input.catalogRevision().orElse(catalog.shopRevision()).equals(catalog.shopRevision()))
@@ -78,10 +80,10 @@ public final class ShopQuoteModule extends AbstractAgentModule<ShopQuoteInput> {
             throw new AgentException(AgentFailure.PURCHASE_LIMIT_REACHED);
         if (!price.conditionMet()
                 || offer.value().trade() == ShopTrade.BUYBACK && !price.available())
-            return AgentResult.data("system.result.shop_offer", new ShopOfferOutput(id, offer.value().label(), offer.value().items(), offer.value().contents(),
+            return SystemResults.data("system.result.shop_offer", new ShopOfferOutput(id, offer.value().label(), offer.value().items(), offer.value().contents(),
                     price.price(), false, catalog.shopRevision(), price.purchaseLimit(), price.conditionMet(), offer.value().trade(), price.activity()));
         if (!price.available()) throw new AgentException(AgentFailure.INVALID_COST);
         Reward reward = offer.value().reward().multiply(input.count());
-        return AgentResult.data(offer.value().trade().key("confirm"), new ShopQuoteOutput(price.quoteRef().orElseThrow(), offer.value().label(), reward.items(), reward.contents(), price.price(), price.purchaseLimit(), offer.value().trade(), id, catalog.shopRevision(), input.count(), price.activity()));
+        return SystemResults.data(offer.value().trade().key("confirm"), new ShopQuoteOutput(price.quoteRef().orElseThrow(), offer.value().label(), reward.items(), reward.contents(), price.price(), price.purchaseLimit(), offer.value().trade(), id, catalog.shopRevision(), input.count(), price.activity()));
     }
 }

@@ -1,7 +1,8 @@
 package com.iafenvoy.system.module;
 
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.agent.execution.AgentEngine;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.data.module.SystemModule;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
@@ -19,7 +20,7 @@ public final class ModuleContext {
     private final Map<ContextType<?>, Object> services;
     private final Identifier id;
     private final Map<Class<? extends PlayerModule>, PlayerModule> sharedRuntimes;
-    private final Map<ToolRegistry.Type<?, ?>, ToolRegistry.Tool<?, ?>> tools = new HashMap<>();
+    private final Map<ToolRegistry.Type<?, ?>, ToolRegistry.Tool<?, ?, ExecutionContext>> tools = new HashMap<>();
 
     public ModuleContext(AgentEngine engine, Registry<SystemModule> modules) {
         this(engine, modules, new HashMap<>(), null, new LinkedHashMap<>());
@@ -83,21 +84,21 @@ public final class ModuleContext {
     /**
      * Resolve an exported tool after ToolModule installation, without constructing another handler.
      */
-    public <I, O> ToolRegistry.Tool<I, O> tool(ToolRegistry.Type<I, O> type) {
+    public <I, O> ToolRegistry.Tool<I, O, ExecutionContext> tool(ToolRegistry.Type<I, O> type) {
         return this.engine.tools().require(type);
     }
 
-    public <I, O> ToolRegistry.Tool<I, O> tool(ToolRegistry.Type<I, O> type, Supplier<ToolRegistry.Tool<I, O>> factory) {
-        ToolRegistry.Tool<?, ?> value = this.tools.get(type);
+    public <I, O> ToolRegistry.Tool<I, O, ExecutionContext> tool(ToolRegistry.Type<I, O> type, Supplier<ToolRegistry.Tool<I, O, ExecutionContext>> factory) {
+        ToolRegistry.Tool<?, ?, ExecutionContext> value = this.tools.get(type);
         if (value == null) {
-            ToolRegistry.Tool<I, O> tool = factory.get();
+            ToolRegistry.Tool<I, O, ExecutionContext> tool = factory.get();
             if (tool.type() != type) throw new IllegalArgumentException("Incorrect tool factory " + type.id());
             // Tool factories can resolve other typed dependencies during module installation as well.
             this.tools.put(type, tool);
             value = tool;
         }
         // The factory is checked once; shared workflows receive the same tool instance.
-        @SuppressWarnings("unchecked") ToolRegistry.Tool<I, O> typed = (ToolRegistry.Tool<I, O>) value;
+        @SuppressWarnings("unchecked") ToolRegistry.Tool<I, O, ExecutionContext> typed = (ToolRegistry.Tool<I, O, ExecutionContext>) value;
         return typed;
     }
 }

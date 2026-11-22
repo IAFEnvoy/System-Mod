@@ -1,10 +1,10 @@
 package com.iafenvoy.system.command.client;
 
+import com.iafenvoy.assistant.command.AssistantCommandInput;
+import com.iafenvoy.assistant.command.AssistantCommandSource;
 import com.iafenvoy.saturn.util.MiscUtil;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.command.AssistantCommandInput;
-import com.iafenvoy.system.command.AssistantCommandSource;
 import com.iafenvoy.system.module.client.ClientModuleCaches;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.LiteralMessage;
@@ -45,7 +45,7 @@ public final class AssistantCommandSuggestions {
             find(draft + " ", receive);
             return;
         }
-        AssistantCommandInput input = AssistantCommandInput.of(draft);
+        AssistantCommandInput input = AssistantCommandInput.of(draft, SystemMod.MOD_ID);
         AssistantCommandSource source = new AssistantCommandSource(draft, AssistantClient.state()::hasModule);
         CommandDispatcher<AssistantCommandSource> dispatcher = ClientModuleCaches.COMMAND.get().suggestions(source);
         CompletableFuture<List<Suggestion>> local = dispatcher.getCompletionSuggestions(dispatcher.parse(input.reader(dispatcher.getRoot()), source))
@@ -87,7 +87,7 @@ public final class AssistantCommandSuggestions {
 
     private static boolean supported(String value, CommandDispatcher<AssistantCommandSource> dispatcher,
                                      AssistantCommandSource source) {
-        AssistantCommandInput input = AssistantCommandInput.of(value);
+        AssistantCommandInput input = AssistantCommandInput.of(value, SystemMod.MOD_ID);
         // Do not advertise platform commands which the assistant has no execution path for.
         ParseResults<AssistantCommandSource> parsed = dispatcher.parse(input.reader(dispatcher.getRoot()), source);
         return !parsed.getContext().getNodes().isEmpty() && !parsed.getReader().canRead();

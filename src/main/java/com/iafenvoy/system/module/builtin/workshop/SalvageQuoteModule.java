@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin.workshop;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.SalvageQuoteInput;
 import com.iafenvoy.system.data.output.SalvageQuoteOutput;
 import com.iafenvoy.system.module.builtin.BuiltinTools;
@@ -15,7 +17,7 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 import java.util.List;
 
 public final class SalvageQuoteModule extends AbstractAgentModule<SalvageQuoteInput> {
-    public SalvageQuoteModule(ToolRegistry.Tool<SalvageQuoteInput, SalvageQuoteOutput> quote) {
+    public SalvageQuoteModule(ToolRegistry.Tool<SalvageQuoteInput, SalvageQuoteOutput, ExecutionContext> quote) {
         super(SalvageQuoteInput.CODEC, "Quote salvaging one main-hand item. Never destroys equipment without the player's confirmation button.", List.of(quote), true, false, ExecutionPolicy.quick(0, 0));
     }
 
@@ -30,7 +32,7 @@ public final class SalvageQuoteModule extends AbstractAgentModule<SalvageQuoteIn
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, SalvageQuoteInput input) throws Exception {
-        return AgentResult.data("system.result.salvage_quote", context.tool(BuiltinTools.SALVAGE_QUOTE, "quote", input));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, SalvageQuoteInput input) throws Exception {
+        return SystemResults.data("system.result.salvage_quote", context.tool(BuiltinTools.SALVAGE_QUOTE, "quote", input));
     }
 }

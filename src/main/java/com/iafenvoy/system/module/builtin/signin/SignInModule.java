@@ -1,22 +1,24 @@
 package com.iafenvoy.system.module.builtin.signin;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.util.HolderHelper;
 import com.iafenvoy.saturn.util.MiscUtil;
 import com.iafenvoy.saturn.util.PersistHolder;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.calendar.BusinessCalendar;
 import com.iafenvoy.system.assistant.commerce.CommerceCatalogs;
 import com.iafenvoy.system.assistant.signin.OfflineSignIn;
 import com.iafenvoy.system.assistant.signin.SignIns;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.catalog.SignInRewardEntry;
 import com.iafenvoy.system.data.input.EmptyInput;
@@ -52,7 +54,7 @@ public final class SignInModule extends AbstractAgentModule<SignInInput> {
     private final OfflineSignIn offline;
     private final SignInRules rules;
 
-    public SignInModule(CommerceCatalogs catalogs, SignIns signIns, OfflineSignIn offline, SignInRules rules, ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player, ToolRegistry.Tool<SignInCreditInput, RewardOutput> credit) {
+    public SignInModule(CommerceCatalogs catalogs, SignIns signIns, OfflineSignIn offline, SignInRules rules, ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput, ExecutionContext> player, ToolRegistry.Tool<SignInCreditInput, RewardOutput, ExecutionContext> credit) {
         super(SignInInput.CODEC, "Perform today's sign-in ONLY when explicitly requested. Offline mode uses local progression-based rewards; AI modes use the model. For sign-in status use system:sign_in_status; for stored contents use system:inbox.", List.of(player, credit), true, false, ExecutionPolicy.quick(2, 1));
         this.catalogs = catalogs;
         this.signIns = signIns;
@@ -73,7 +75,7 @@ public final class SignInModule extends AbstractAgentModule<SignInInput> {
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, SignInInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, SignInInput input) throws Exception {
         // Both selectors use existing packages and share the same server-owned daily entitlement.
         ZoneId zone = BusinessCalendar.zone();
         String day = LocalDate.now(zone).toString();
@@ -138,11 +140,11 @@ public final class SignInModule extends AbstractAgentModule<SignInInput> {
                 Component.translatable("system.result.sign_in"), reason), true);
     }
 
-    private AgentResult result(ExecutionContext context, String key, String day, RewardOutput reward, boolean external) {
+    private AgentResult<CardUpdate> result(ExecutionContext context, String key, String day, RewardOutput reward, boolean external) {
         return context.store().read(context.player(), data -> {
             SignInProgress progress = ModuleData.get(data, SignInSystemModule.STORAGE).progress();
             ZoneId zone = BusinessCalendar.zone();
-            return AgentResult.of(key, reward, new SignInStatus(day, true, List.of(), data.saveHistory, external, Set.of(), Optional.empty(),
+            return SystemResults.of(key, reward, new SignInStatus(day, true, List.of(), data.saveHistory, external, Set.of(), Optional.empty(),
                     progress, !this.rules.dailyCycle().isEmpty(), zone.getId(), this.rules.preview(progress, LocalDate.parse(day), zone)));
         });
     }

@@ -1,7 +1,7 @@
 package com.iafenvoy.system.command.client;
 
+import com.iafenvoy.assistant.routing.LexicalIndex;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.routing.LexicalIndex;
 import com.iafenvoy.system.screen.AssistantMessages.Button;
 import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
@@ -102,7 +102,7 @@ public final class NotificationVoiceCommands {
         }
         try {
             // Keep verbs literal: the server's broad "write" concept must not equate buying with claiming.
-            index = new LexicalIndex<>(documents, false);
+            index = new LexicalIndex<>(documents);
         } catch (Exception error) {
             index = null;
             SystemMod.LOGGER.warn("Notification voice index unavailable; retaining exact labels and chat fallback", error);

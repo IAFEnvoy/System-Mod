@@ -1,5 +1,6 @@
 package com.iafenvoy.system.agent;
 
+import com.iafenvoy.assistant.AssistantException;
 import com.iafenvoy.saturn.runtime.resulting.Failure;
 
 import java.util.Objects;
@@ -25,8 +26,10 @@ public final class AgentException extends RuntimeException {
     }
 
     public static Failure failure(Throwable error) {
-        for (Throwable current = error; current != null; current = current.getCause())
+        for (Throwable current = error; current != null; current = current.getCause()) {
             if (current instanceof AgentException known) return known.failure();
+            if (current instanceof AssistantException known) return AgentFailure.fromCode(known.reason().name());
+        }
         return AgentFailure.MODULE_FAILED;
     }
 }

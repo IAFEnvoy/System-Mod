@@ -1,21 +1,22 @@
 package com.iafenvoy.system.module.builtin.chat;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.react.ReActContext;
+import com.iafenvoy.assistant.routing.ModuleRouting;
 import com.iafenvoy.saturn.util.codec.schema.SchemaCodecs;
 import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.chat.ChatActions;
 import com.iafenvoy.system.agent.chat.ChatObservation;
 import com.iafenvoy.system.agent.chat.ChatSupport;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.react.ReActContext;
-import com.iafenvoy.system.agent.react.ReActLoop;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.tool.ToolContext;
+import com.iafenvoy.system.agent.react.SystemReAct;
+import com.iafenvoy.assistant.tool.ToolContext;
 import com.iafenvoy.system.data.card.CardData;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.FreeChatInput;
@@ -51,7 +52,7 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, FreeChatInput input) throws Exception {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, FreeChatInput input) throws Exception {
         context.requireFreeChat();
         if (input.message().isBlank()) throw new AgentException(AgentFailure.INVALID_INPUT);
         List<Turn> history = context.store().read(context.player(), data -> {
@@ -76,30 +77,30 @@ public final class FreeChatModule extends AbstractAgentModule<FreeChatInput> {
             return List.copyOf(selected.reversed());
         });
         Input question = new Input(input.message(), history);
-        ToolContext tools = context.chatTools(this.chat.tools(context));
-        ReActContext<ChatObservation> loop = new ReActContext<>(context, this.chat.prompt(context),
+        ToolContext<ExecutionContext> tools = context.chatTools(this.chat.tools(context));
+        ReActContext<ChatObservation> loop = SystemReAct.context(context, this.chat.prompt(context),
                 CodecIO.write(Input.CODEC.codec(), question), ChatObservation.codec(tools.tools()), ChatActions.bind(context, tools),
                 () -> {
                     context.requireFreeChat();
                     tools.check();
-                }, ReActLoop.MODEL_FAILURES, 1000);
-        return ReActLoop.run(loop, Answer.CODEC, answer -> finish(answer, loop.observations()), failure -> {
+                }, 1000);
+        return SystemReAct.run(loop, Answer.CODEC, SystemReAct.MODEL_FAILURES, answer -> finish(answer, loop.observations()), failure -> {
             SystemMod.LOGGER.warn("Free chat incomplete: task={}, failure={}, iterations={}, observations={}, modelCalls={}, remainingMillis={}",
                     context.taskId(), failure.name(), loop.iterations(), loop.observations().size(), context.modelCalls(), context.remainingMillis());
             List<CardUpdate> cards = cards(loop.observations());
-            cards.addAll(AgentResult.error(failure).cards());
-            return new AgentResult(loop.observations().isEmpty() ? AgentResult.Status.FAILED : AgentResult.Status.PARTIALLY_SUCCEEDED,
+            cards.addAll(SystemResults.error(failure).cards());
+            return SystemResults.presented(loop.observations().isEmpty() ? AgentResult.Status.FAILED : AgentResult.Status.PARTIALLY_SUCCEEDED,
                     failure.key(), "", cards);
         });
     }
 
-    private static AgentResult finish(Answer answer, List<ChatObservation> observations) {
+    private static AgentResult<CardUpdate> finish(Answer answer, List<ChatObservation> observations) {
         if (answer.text().isBlank()) throw new AgentException(AgentFailure.MODEL_INVALID);
         List<CardUpdate> cards = cards(observations);
-        cards.addAll(AgentResult.data("system.result.chat", new ChatOutput(answer.text(), answer.emotion())).cards());
-        AgentResult result = new AgentResult(AgentResult.Status.SUCCEEDED, "system.result.chat", "", cards);
+        cards.addAll(SystemResults.data("system.result.chat", new ChatOutput(answer.text(), answer.emotion())).cards());
+        AgentResult<CardUpdate> result = SystemResults.presented(AgentResult.Status.SUCCEEDED, "system.result.chat", "", cards);
         return observations.stream().anyMatch(value -> value instanceof ChatObservation.Workflow(
-                AgentResult result1
+                AgentResult<CardUpdate> result1
         ) && result1.isFailure())
                 ? result.partial() : result;
     }

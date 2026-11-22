@@ -1,10 +1,12 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.util.codec.RegistryCodecs;
 import com.iafenvoy.system.SystemMod;
-import com.iafenvoy.system.agent.module.AgentModule;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.collection.Collections;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.catalog.CollectionDefinition;
 import com.iafenvoy.system.data.input.CollectionQueryInput;
 import com.iafenvoy.system.data.input.CollectionRegisterInput;
@@ -61,10 +63,10 @@ public record CollectionSystemModule(
     }
 
     @Override
-    public List<AgentModule<?>> workflows(ModuleContext context) {
+    public List<AgentModule<?, ExecutionContext, CardUpdate>> workflows(ModuleContext context) {
         Collections service = new Collections(context.engine(), context.get(ContextTypes.GAME), this);
-        ToolRegistry.Tool<CollectionQueryInput, CollectionOutput> query = new ToolRegistry.Tool<>(BuiltinTools.COLLECTION_QUERY, false, true, false, service::query);
-        ToolRegistry.Tool<CollectionRegisterInput, CollectionOutput> register = new ToolRegistry.Tool<>(BuiltinTools.COLLECTION_REGISTER, true, true, false, service::register);
+        ToolRegistry.Tool<CollectionQueryInput, CollectionOutput, ExecutionContext> query = new ToolRegistry.Tool<>(BuiltinTools.COLLECTION_QUERY, false, true, false, service::query);
+        ToolRegistry.Tool<CollectionRegisterInput, CollectionOutput, ExecutionContext> register = new ToolRegistry.Tool<>(BuiltinTools.COLLECTION_REGISTER, true, true, false, service::register);
         return List.of(new CollectionQueryModule(query), new CollectionRegisterModule(register));
     }
 }

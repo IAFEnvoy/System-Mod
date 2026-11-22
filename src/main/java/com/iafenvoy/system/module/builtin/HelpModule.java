@@ -1,12 +1,14 @@
 package com.iafenvoy.system.module.builtin;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.data.SelectionCardData;
 import com.iafenvoy.system.data.input.HelpInput;
 import net.minecraft.network.chat.Component;
@@ -33,9 +35,9 @@ public final class HelpModule extends AbstractAgentModule<HelpInput> {
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, HelpInput input) {
+    public AgentResult<CardUpdate> execute(ExecutionContext context, HelpInput input) {
         SelectionCardData shortcuts = SelectionCardData.shortcuts("system.result.help", "system.tts.message.help", context.shortcuts());
-        return AgentResult.data("system.result.help", new SelectionCardData(
+        return SystemResults.data("system.result.help", new SelectionCardData(
                 Component.translatable("system.result.help").append("\n").append(String.join("\n", context.commandUsages())),
                 shortcuts.speech(), shortcuts.choices()));
     }

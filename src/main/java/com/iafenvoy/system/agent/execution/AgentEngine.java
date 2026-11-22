@@ -1,31 +1,45 @@
 package com.iafenvoy.system.agent.execution;
 
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.action.AgentAction;
+import com.iafenvoy.assistant.chat.AiAccess;
+import com.iafenvoy.assistant.chat.ConversationMode;
+import com.iafenvoy.assistant.execution.AgentLifecycle;
+import com.iafenvoy.assistant.execution.EventExecutor;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.execution.ModelExecutor;
+import com.iafenvoy.assistant.execution.TaskExecutor;
+import com.iafenvoy.assistant.execution.ToolExecutor;
+import com.iafenvoy.assistant.execution.WorkflowExecutor;
+import com.iafenvoy.assistant.model.ModelGateway;
+import com.iafenvoy.assistant.module.AgentModule;
+import com.iafenvoy.assistant.module.ModuleRegistry;
+import com.iafenvoy.assistant.registry.ModuleScope;
+import com.iafenvoy.assistant.routing.HybridRouter;
+import com.iafenvoy.assistant.routing.ModelRoute;
+import com.iafenvoy.assistant.routing.RoutingDiagnostics;
+import com.iafenvoy.assistant.routing.SemanticRouter;
+import com.iafenvoy.assistant.storage.AgentJournal;
+import com.iafenvoy.assistant.storage.AgentStore;
+import com.iafenvoy.assistant.storage.EventTask;
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.saturn.util.HolderHelper;
+import com.iafenvoy.saturn.util.codec.schema.SchemaMapCodec;
 import com.iafenvoy.system.SystemMod;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
-import com.iafenvoy.system.agent.AgentLifecycle;
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.chat.AiAccess;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.chat.ChatSupport;
-import com.iafenvoy.system.agent.chat.ConversationMode;
 import com.iafenvoy.system.agent.model.ModelClient;
-import com.iafenvoy.system.agent.model.ModelGateway;
-import com.iafenvoy.system.agent.module.AgentAction;
-import com.iafenvoy.system.agent.module.AgentModule;
-import com.iafenvoy.system.agent.module.ModuleRegistry;
-import com.iafenvoy.system.agent.module.ModuleScope;
-import com.iafenvoy.system.agent.routing.HybridRouter;
-import com.iafenvoy.system.agent.routing.RouteSource;
-import com.iafenvoy.system.agent.routing.RoutingDiagnostics;
-import com.iafenvoy.system.agent.storage.AgentJournal;
-import com.iafenvoy.system.agent.storage.AgentStore;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.agent.storage.ConversationMemory;
 import com.iafenvoy.system.config.file.AgentConfig;
+import com.iafenvoy.system.config.file.SemanticConfig;
 import com.iafenvoy.system.data.History;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.module.SystemModule;
 import com.iafenvoy.system.data.prompt.SystemPrompts;
 import com.iafenvoy.system.data.store.PlayerData;
+import com.iafenvoy.system.util.CodecIO;
 import com.mojang.serialization.Codec;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.Identifier;
@@ -41,17 +55,19 @@ import java.util.function.Predicate;
 /**
  * Agent execution engine; persistence, inference and workflow waits run off the game thread.
  */
-public final class AgentEngine implements AutoCloseable {
-    private final AgentStore store;
-    private final Function<PlayerData, AgentJournal> journal;
+public final class AgentEngine implements AutoCloseable, EventExecutor.Host<PlayerData, ExecutionContext, CardUpdate> {
+    private final AgentStore<PlayerData> store;
+    private final Function<PlayerData, AgentJournal<CardUpdate>> journal;
     private final ModelGateway model;
-    private final ToolRegistry tools = new ToolRegistry();
-    private final ModuleRegistry modules = new ModuleRegistry(this.tools);
+    private final ToolExecutor<PlayerData, ExecutionContext, CardUpdate> toolExecutor = new ToolExecutor<>(this::journal);
+    private final ToolRegistry<ExecutionContext> tools = new ToolRegistry<>(codec -> codec instanceof SchemaMapCodec<?>);
+    private final ModuleRegistry<ExecutionContext, CardUpdate> modules = new ModuleRegistry<>(this.tools, SystemMod.MOD_ID);
+    private final WorkflowExecutor<ExecutionContext, CardUpdate> workflows = new WorkflowExecutor<>(this.modules, this::policy);
     private final InteractiveExecutor interactive = new InteractiveExecutor(this);
-    private final EventExecutor events = new EventExecutor(this);
+    private final EventExecutor<PlayerData, ExecutionContext, CardUpdate> events = new EventExecutor<>(this, "agent-event", 2, 64);
     private final TaskExecutor maintenance = new TaskExecutor("agent-store", 2, 32);
-    private final Semaphore modelSlots;
-    private final HybridRouter router;
+    private final ModelExecutor modelExecutor;
+    private final HybridRouter<ExecutionContext, CardUpdate> router;
     private volatile SystemPrompts prompts = SystemPrompts.empty();
     private final Map<UUID, String> playerLanguages = new ConcurrentHashMap<>();
     private final AtomicBoolean closed = new AtomicBoolean();
@@ -62,15 +78,27 @@ public final class AgentEngine implements AutoCloseable {
     private final List<AgentLifecycle> lifecycle = new CopyOnWriteArrayList<>();
     private final ConversationService conversations = new ConversationService(this);
     private final ChatSupport chat = new ChatSupport();
-    private volatile Function<UUID, AiAccess.Permissions> permissions = player -> AiAccess.DEFAULT.permissions(player, false);
+    private volatile Function<UUID, AiAccess.Permissions> permissions = player -> AiAccess.DEFAULT.permissions(player, false, () -> AgentConfig.INSTANCE.get().modelCallsPerPlayerDay());
     private BiPredicate<UUID, Identifier> moduleAccess = (_, _) -> true;
 
-    public AgentEngine(AgentStore store, ModelClient model, Function<PlayerData, AgentJournal> journal) {
+    public AgentEngine(AgentStore<PlayerData> store, ModelClient model, Function<PlayerData, AgentJournal<CardUpdate>> journal) {
         this.store = Objects.requireNonNull(store);
         this.journal = Objects.requireNonNull(journal);
         this.model = new ModelGateway(model);
-        this.modelSlots = new Semaphore(AgentConfig.INSTANCE.get().concurrentModels(), true);
-        this.router = new HybridRouter(this);
+        this.modelExecutor = new ModelExecutor(this.model, AgentConfig.INSTANCE.get().concurrentModels(), SystemMod.MOD_ID);
+        this.router = new HybridRouter<>(this.modules, new SemanticRouter(SemanticConfig.INSTANCE::get,
+                () -> AgentEngine.class.getResourceAsStream("/assets/system/routing/lexicon.json")),
+                (context, text, hints, capabilities, codec) -> {
+                    List<ConversationMemory.Entry> history = context.store().read(context.player(),
+                            data -> ConversationMemory.recent(data, context.taskId(), 1600));
+                    String prompt = context.prompt(SystemPrompts.ROUTING, Map.of("capabilities",
+                            CodecIO.write(ModelRoute.Capability.CATALOGUE, capabilities)));
+                    return context.model(prompt, ModelRoute.Input.codec(ConversationMemory.Entry.CODEC),
+                            new ModelRoute.Input<>(text, history, hints), codec);
+                }, error -> switch (AgentException.failure(error)) {
+                    case AgentFailure.MODEL_NOT_CONFIGURED, AgentFailure.MODEL_DISABLED, AgentFailure.AI_FORBIDDEN -> true;
+                    default -> false;
+                });
     }
 
     public SystemPrompts prompts() {
@@ -96,11 +124,12 @@ public final class AgentEngine implements AutoCloseable {
         this.prompts = Objects.requireNonNull(value);
     }
 
-    public AgentStore store() {
+    public AgentStore<PlayerData> store() {
         return this.store;
     }
 
-    AgentJournal journal(PlayerData data) {
+    @Override
+    public AgentJournal<CardUpdate> journal(PlayerData data) {
         return this.journal.apply(data);
     }
 
@@ -108,7 +137,7 @@ public final class AgentEngine implements AutoCloseable {
      * Creates a model-only background task with the same player epoch, quotas and cancellation checks as chat.
      */
     public ExecutionContext background(UUID player, long incarnation, ExecutionPolicy policy) {
-        AgentStore store = this.playerStore(player, incarnation);
+        AgentStore<PlayerData> store = this.playerStore(player, incarnation);
         long epoch = store.read(player, data -> {
             if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
             return data.conversation.memoryEpoch;
@@ -117,11 +146,11 @@ public final class AgentEngine implements AutoCloseable {
                 System.currentTimeMillis(), epoch, policy, store, incarnation);
     }
 
-    public ModuleRegistry modules() {
+    public ModuleRegistry<ExecutionContext, CardUpdate> modules() {
         return this.modules;
     }
 
-    HybridRouter router() {
+    HybridRouter<ExecutionContext, CardUpdate> router() {
         return this.router;
     }
 
@@ -166,12 +195,13 @@ public final class AgentEngine implements AutoCloseable {
     /**
      * Check the lifecycle inside the underlying transaction lock, including late tool callbacks.
      */
-    public AgentStore playerStore(UUID player) {
+    public AgentStore<PlayerData> playerStore(UUID player) {
         return this.playerStore(player, this.incarnation(player));
     }
 
-    AgentStore playerStore(UUID player, long incarnation) {
-        return new AgentStore() {
+    @Override
+    public AgentStore<PlayerData> playerStore(UUID player, long incarnation) {
+        return new AgentStore<>() {
             @Override
             public <T> Codec<T> codec(Codec<T> codec) {
                 return AgentEngine.this.store.codec(codec);
@@ -270,27 +300,32 @@ public final class AgentEngine implements AutoCloseable {
         return Math.max(60000, timeout + 10000);
     }
 
-    public ToolRegistry tools() {
+    public ToolRegistry<ExecutionContext> tools() {
         return this.tools;
     }
 
-    Semaphore modelSlots() {
-        return this.modelSlots;
+    ToolExecutor<PlayerData, ExecutionContext, CardUpdate> toolExecutor() {
+        return this.toolExecutor;
     }
 
-    boolean closed() {
+    ModelExecutor modelExecutor() {
+        return this.modelExecutor;
+    }
+
+    @Override
+    public boolean closed() {
         return this.closed.get();
     }
 
-    public void registerModule(AgentModule<?> module) {
+    public void registerModule(AgentModule<?, ExecutionContext, CardUpdate> module) {
         this.modules.register(module);
     }
 
-    public void registerModule(Identifier owner, AgentModule<?> module) {
+    public void registerModule(Identifier owner, AgentModule<?, ExecutionContext, CardUpdate> module) {
         this.modules.register(owner, module);
     }
 
-    public void registerGroup(ModuleScope.Group scope, AgentModule<?> module) {
+    public void registerGroup(ModuleScope.Group scope, AgentModule<?, ExecutionContext, CardUpdate> module) {
         this.modules.registerGroup(scope, module);
     }
 
@@ -299,12 +334,12 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     public boolean available(UUID player, Identifier workflow) {
-        AgentModule<?> module = this.module(player, workflow);
+        AgentModule<?, ExecutionContext, CardUpdate> module = this.module(player, workflow);
         // Recheck exported tool dependencies for routing, in-flight work and queued game-thread operations.
         return module != null && module.descriptor().tools().stream().allMatch(tool -> this.toolAvailable(player, tool));
     }
 
-    public AgentModule<?> module(UUID player, Identifier workflow) {
+    public AgentModule<?, ExecutionContext, CardUpdate> module(UUID player, Identifier workflow) {
         return this.modules.get(workflow, owner -> this.moduleAccess.test(player, owner));
     }
 
@@ -329,19 +364,20 @@ public final class AgentEngine implements AutoCloseable {
         return this.modules.descriptors();
     }
 
-    ExecutionPolicy policy(AgentModule<?> module) {
+    @Override
+    public ExecutionPolicy policy(AgentModule<?, ExecutionContext, CardUpdate> module) {
         return AgentConfig.INSTANCE.get().policies().getOrDefault(module.descriptor().id().toString(), module.descriptor().policy());
     }
 
-    public CompletionStage<AgentResult> submit(UUID player, String requestId, AgentAction input, String text) {
+    public CompletionStage<AgentResult<CardUpdate>> submit(UUID player, String requestId, AgentAction input, String text) {
         return this.interactive.submit(player, requestId, input, text);
     }
 
-    public CompletionStage<AgentResult> forget(UUID player) {
+    public CompletionStage<AgentResult<CardUpdate>> forget(UUID player) {
         return this.conversations.forget(player);
     }
 
-    public CompletionStage<AgentResult> preferences(UUID player, boolean history, ConversationMode mode) {
+    public CompletionStage<AgentResult<CardUpdate>> preferences(UUID player, boolean history, ConversationMode mode) {
         return this.conversations.preferences(player, history, mode);
     }
 
@@ -350,30 +386,18 @@ public final class AgentEngine implements AutoCloseable {
     }
 
     // All entry points share module selection, authority checks and partial-write reporting.
-    AgentResult execute(ExecutionContext context, AgentAction input) {
+    AgentResult<CardUpdate> execute(ExecutionContext context, AgentAction input) {
         return this.execute(context, input, null);
     }
 
-    AgentResult execute(ExecutionContext context, AgentAction input, ExecutionPolicy policy) {
+    @Override
+    public AgentResult<CardUpdate> execute(ExecutionContext context, AgentAction input, ExecutionPolicy policy) {
         try {
-            ModuleRegistry.Call<?> call = this.modules.call(input, owner -> this.moduleAccess.test(context.player(), owner));
-            AgentModule.Descriptor descriptor = call.module().descriptor();
-            if (!this.available(context.player(), descriptor.id()))
-                throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
-            if (context.isEvent() ? !descriptor.event() : !descriptor.interactive())
-                throw new AgentException(AgentFailure.CAPABILITY_UNAVAILABLE);
-            if (!context.isEvent() && context.routeSource().automatic() && !this.modules.modelSelectable(descriptor.id()))
-                throw new AgentException(AgentFailure.CONFIRM_REQUIRED);
-            if ((context.routeSource() == RouteSource.SEMANTIC || context.routeSource() == RouteSource.ROUTE_CACHE)
-                    && !this.modules.semanticSelectable(descriptor.id()))
-                throw new AgentException(AgentFailure.NOT_AUTHORIZED);
-            context.select(call.scope(), descriptor, policy == null ? this.policy(call.module()) : policy);
-            context.ensureMemoryCurrent();
-            return call.execute(context);
+            return this.workflows.execute(context, input, owner -> this.moduleAccess.test(context.player(), owner), policy);
         } catch (Exception error) {
             SystemMod.LOGGER.warn("Agent workflow failed: task={}, workflow={}, source={}, failure={}",
                     context.taskId(), input.id(), context.routeSource(), AgentException.failure(error).name(), error);
-            AgentResult failure = AgentResult.error(AgentException.failure(error));
+            AgentResult<CardUpdate> failure = SystemResults.error(AgentException.failure(error));
             return context.hasCompletedSteps() ? failure.partial() : failure;
         }
     }
@@ -393,7 +417,27 @@ public final class AgentEngine implements AutoCloseable {
         this.interactive.cancel(player);
     }
 
-    public CompletionStage<AgentResult> trigger(UUID player, String key, String ruleId, AgentAction input) {
+    @Override
+    public void checkBinding(PlayerData data) {
+        if (!data.bound()) throw new AgentException(AgentFailure.NOT_BOUND);
+    }
+
+    @Override
+    public ExecutionContext eventContext(UUID player, String key, EventTask<CardUpdate> task, AgentStore<PlayerData> store, long incarnation) {
+        return new ExecutionContext(this, player, task.id, key, task.created, 0, task.policy, store, incarnation);
+    }
+
+    @Override
+    public AgentResult<CardUpdate> duplicateEvent() {
+        return SystemResults.ok("system.result.already");
+    }
+
+    @Override
+    public AgentResult<CardUpdate> eventFailure(Throwable error) {
+        return SystemResults.error(AgentException.failure(error));
+    }
+
+    public CompletionStage<AgentResult<CardUpdate>> trigger(UUID player, String key, String ruleId, AgentAction input) {
         return this.events.trigger(player, key, ruleId, input);
     }
 

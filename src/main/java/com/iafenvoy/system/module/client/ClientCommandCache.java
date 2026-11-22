@@ -1,12 +1,12 @@
 package com.iafenvoy.system.module.client;
 
-import com.iafenvoy.system.agent.request.CommandSuggestionsRequest;
-import com.iafenvoy.system.agent.response.CommandSuggestionsResponse;
+import com.iafenvoy.assistant.command.AssistantCommandSource;
+import com.iafenvoy.assistant.command.CommandTrees;
+import com.iafenvoy.assistant.request.CommandSuggestionsRequest;
+import com.iafenvoy.assistant.response.CommandSuggestion;
+import com.iafenvoy.assistant.response.CommandSuggestionsResponse;
 import com.iafenvoy.system.assistant.AssistantClient;
-import com.iafenvoy.system.command.AssistantCommandSource;
-import com.iafenvoy.system.data.CommandSuggestion;
-import com.iafenvoy.system.network.payload.AssistantRequestC2SPayload;
-import com.iafenvoy.system.util.CommandTrees;
+import com.iafenvoy.system.network.NetworkManager;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -116,7 +116,7 @@ public final class ClientCommandCache {
             return CompletableFuture.completedFuture(List.of());
         CompletableFuture<List<CommandSuggestion>> result = new CompletableFuture<>();
         this.pending = new Pending(UUID.randomUUID().toString(), input, result);
-        connection.send(new AssistantRequestC2SPayload(this.pending.id(), new CommandSuggestionsRequest(input)));
+        connection.send(NetworkManager.ASSISTANT.request(this.pending.id(), new CommandSuggestionsRequest(input)));
         return result.completeOnTimeout(List.of(), 3, TimeUnit.SECONDS);
     }
 

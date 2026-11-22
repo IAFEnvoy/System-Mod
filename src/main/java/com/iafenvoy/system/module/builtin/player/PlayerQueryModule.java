@@ -1,13 +1,15 @@
 package com.iafenvoy.system.module.builtin.player;
 
-import com.iafenvoy.system.agent.AgentResult;
-import com.iafenvoy.system.agent.command.AgentCommand;
+import com.iafenvoy.assistant.AgentResult;
+import com.iafenvoy.assistant.command.AgentCommand;
+import com.iafenvoy.assistant.execution.ExecutionPolicy;
+import com.iafenvoy.assistant.routing.ModuleRouting;
+import com.iafenvoy.assistant.routing.RoutingProfile;
+import com.iafenvoy.assistant.tool.ToolRegistry;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.execution.ExecutionPolicy;
 import com.iafenvoy.system.agent.module.AbstractAgentModule;
-import com.iafenvoy.system.agent.routing.ModuleRouting;
-import com.iafenvoy.system.agent.routing.RoutingProfile;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.input.EmptyInput;
 import com.iafenvoy.system.data.input.PlayerQueryInput;
 import com.iafenvoy.system.data.output.PlayerSnapshotOutput;
@@ -19,7 +21,7 @@ import java.util.List;
  * Reads the current player snapshot through the registered game adapter.
  */
 public final class PlayerQueryModule extends AbstractAgentModule<PlayerQueryInput> {
-    public PlayerQueryModule(ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput> player) {
+    public PlayerQueryModule(ToolRegistry.Tool<EmptyInput, PlayerSnapshotOutput, ExecutionContext> player) {
         super(PlayerQueryInput.CODEC, "Read my own current health, experience, dimension and standard player information.", List.of(player), true, false, ExecutionPolicy.quick(2, 0));
     }
 
@@ -35,7 +37,7 @@ public final class PlayerQueryModule extends AbstractAgentModule<PlayerQueryInpu
     }
 
     @Override
-    public AgentResult execute(ExecutionContext context, PlayerQueryInput input) throws Exception {
-        return AgentResult.data("system.result.player", context.tool(BuiltinTools.PLAYER, "player", EmptyInput.INSTANCE));
+    public AgentResult<CardUpdate> execute(ExecutionContext context, PlayerQueryInput input) throws Exception {
+        return SystemResults.data("system.result.player", context.tool(BuiltinTools.PLAYER, "player", EmptyInput.INSTANCE));
     }
 }

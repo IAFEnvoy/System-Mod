@@ -1,8 +1,8 @@
 package com.iafenvoy.system.module.builtin;
 
+import com.iafenvoy.assistant.command.AssistantCommandSource;
 import com.iafenvoy.system.assistant.AssistantClient;
 import com.iafenvoy.system.assistant.AssistantClientState;
-import com.iafenvoy.system.command.AssistantCommandSource;
 import com.iafenvoy.system.command.client.AssistantCommandSuggestions;
 import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.card.client.ClientCards;

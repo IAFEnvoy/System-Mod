@@ -1,9 +1,9 @@
 package com.iafenvoy.system.assistant.tool.item;
 
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.data.input.ItemSourceQueryInput;
 import com.iafenvoy.system.data.output.ItemSourceOutput;
@@ -22,11 +22,11 @@ import java.util.concurrent.CompletionStage;
  * Reads the requested sources of one item on the bounded game-thread queue.
  */
 public record ItemSourceQueryTool(
-        MinecraftTools game) implements ToolRegistry.Handler<ItemSourceQueryInput, ItemSourceOutput> {
+        MinecraftTools game) implements ToolRegistry.Handler<ItemSourceQueryInput, ItemSourceOutput, ExecutionContext> {
     private static final int MAX_SOURCES = 64;
 
-    public ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.ITEM_SOURCES, false, true, false, this)
+    public ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput, ExecutionContext> tool() {
+        return new ToolRegistry.Tool<ItemSourceQueryInput, ItemSourceOutput, ExecutionContext>(BuiltinTools.ITEM_SOURCES, false, true, false, this)
                 .forReasoning("Read recipe, loot and tag sources for a known item registry ID.");
     }
 

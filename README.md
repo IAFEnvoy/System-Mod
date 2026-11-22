@@ -38,7 +38,7 @@ and the built-in activities above.
 
 ## Getting Started
 
-1. Install the mod and its required dependencies, then enter a world.
+1. Install the mod and its required dependencies, including Assistant Core, then enter a world.
 2. An administrator must bind a system with `/system grant system:default [player]`. In single-player, omit the
    player name to bind yourself. Servers and modpacks may provide other systems.
 3. Run `/system` to open the assistant. Try asking for your player information, looking up an item or browsing quests.

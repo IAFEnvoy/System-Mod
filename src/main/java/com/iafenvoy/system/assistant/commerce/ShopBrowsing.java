@@ -1,12 +1,14 @@
 package com.iafenvoy.system.assistant.commerce;
 
+import com.iafenvoy.assistant.AgentResult;
 import com.iafenvoy.saturn.data.cost.CostDisplay;
 import com.iafenvoy.saturn.data.cost.CostTarget;
 import com.iafenvoy.saturn.data.cost.builtin.ItemCost;
 import com.iafenvoy.saturn.util.matcher.ItemMatcher;
-import com.iafenvoy.system.agent.AgentResult;
+import com.iafenvoy.system.agent.SystemResults;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
 import com.iafenvoy.system.assistant.item.ItemSearches;
+import com.iafenvoy.system.data.card.CardUpdate;
 import com.iafenvoy.system.data.catalog.CommerceCatalog;
 import com.iafenvoy.system.data.catalog.ShopOffer;
 import com.iafenvoy.system.data.catalog.ShopOfferEntry;
@@ -41,7 +43,7 @@ public final class ShopBrowsing {
         this.searches = searches;
     }
 
-    public AgentResult browse(ExecutionContext context, ItemSearchQuery input, ShopTrade trade) {
+    public AgentResult<CardUpdate> browse(ExecutionContext context, ItemSearchQuery input, ShopTrade trade) {
         String query = input.query().strip().toLowerCase(Locale.ROOT);
         Optional<ItemSearchBatch> candidates = this.searches.candidates(context.player(), input);
         CommerceCatalogs.View view = this.transactions.shopView(context, ShopRequest.search(query, trade, candidates));
@@ -60,7 +62,7 @@ public final class ShopBrowsing {
         List<ShopCatalogOutput.Offer> offers = visible.stream()
                 .map(offer -> row(offer, requirements.get(offer.id()), Optional.ofNullable(limits.get(offer.id())),
                         !view.lockedOffers().contains(offer.id()))).toList();
-        return AgentResult.data(trade == ShopTrade.BUYBACK ? "system.result.buyback" : "system.result.shop",
+        return SystemResults.data(trade == ShopTrade.BUYBACK ? "system.result.buyback" : "system.result.shop",
                 new ShopCatalogOutput(catalog.shopRevision(), query, offers, matches.size() > MAX_OFFERS, Optional.of(trade),
                         query.isEmpty() && this.catalogs.searchOnly(context.player(), trade),
                         candidates.filter(ItemSearchBatch::hasMore).map(ItemSearchBatch::nextOffset), this.catalogs.rotations(context.player(), trade)));

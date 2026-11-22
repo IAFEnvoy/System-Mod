@@ -1,9 +1,9 @@
 package com.iafenvoy.system.assistant.tool.item;
 
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.agent.AgentException;
 import com.iafenvoy.system.agent.AgentFailure;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.MinecraftTools;
 import com.iafenvoy.system.assistant.item.ItemSearches;
 import com.iafenvoy.system.data.input.ItemQueryInput;
@@ -27,9 +27,9 @@ import java.util.concurrent.CompletionStage;
  * Validates client stack search results, with a registry fallback for server-only tool calls.
  */
 public record ItemQueryTool(MinecraftTools game,
-                            ItemSearches searches) implements ToolRegistry.Handler<ItemQueryInput, ItemPageOutput> {
-    public ToolRegistry.Tool<ItemQueryInput, ItemPageOutput> tool() {
-        return new ToolRegistry.Tool<>(BuiltinTools.ITEMS, false, true, false, this)
+                            ItemSearches searches) implements ToolRegistry.Handler<ItemQueryInput, ItemPageOutput, ExecutionContext> {
+    public ToolRegistry.Tool<ItemQueryInput, ItemPageOutput, ExecutionContext> tool() {
+        return new ToolRegistry.Tool<ItemQueryInput, ItemPageOutput, ExecutionContext>(BuiltinTools.ITEMS, false, true, false, this)
                 .forReasoning("Find item names and registry IDs. Use observed IDs for a later item-source lookup.");
     }
 

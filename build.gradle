@@ -12,6 +12,13 @@ tasks.named('wrapper', Wrapper).configure {
 version = mod_version
 group = mod_group_id
 
+def assistantCore = gradle.includedBuild('assistant-core')
+def assistantCoreMetadata = new Properties()
+def assistantCoreProperties = layout.projectDirectory.file(
+        assistantCore.projectDir.toPath().resolve('gradle.properties').toString())
+assistantCoreMetadata.load(new StringReader(providers.fileContents(assistantCoreProperties).asText.get()))
+def assistantCoreVersion = assistantCoreMetadata.getProperty('mod_version')
+
 sourceSets.main.resources {
     srcDir('src/generated/resources')
 
@@ -109,6 +116,7 @@ configurations {
 }
 
 dependencies {
+    implementation jarJar("com.iafenvoy.assistant:assistant-core:" + assistantCoreVersion)
     implementation "curse.maven:jupiter-1072905:8569832"
     implementation "curse.maven:saturn-lib-1767455:${saturn_file_id}"
     // Runtime provided by Saturn's bundled exp4j; strict salvage evaluation must not swallow formula failures.
@@ -120,7 +128,6 @@ dependencies {
     implementation jarJar("org.commonmark:commonmark-ext-gfm-strikethrough:${commonmark_version}")
 
     // SVC for optional voice input support
-    compileOnly "curse.maven:simple-voice-chat-416089:${voicechat_file_id}"
     localRuntime "curse.maven:simple-voice-chat-416089:${voicechat_file_id}"
 
     implementation "curse.maven:jade-324717:8651070"
@@ -146,6 +153,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_name               : mod_name,
             mod_license            : mod_license,
             mod_version            : mod_version,
+            assistant_core_version : assistantCoreVersion,
             ftb_quests_version     : ftb_quests_version,
             saturn_version         : saturn_version,
     ]

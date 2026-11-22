@@ -1,7 +1,7 @@
 package com.iafenvoy.system.assistant.tool.jobs;
 
+import com.iafenvoy.assistant.tool.ToolRegistry;
 import com.iafenvoy.system.agent.execution.ExecutionContext;
-import com.iafenvoy.system.agent.tool.ToolRegistry;
 import com.iafenvoy.system.assistant.jobs.OnlineJobs;
 import com.iafenvoy.system.data.input.JobCancelInput;
 import com.iafenvoy.system.data.output.OnlineJobsOutput;
@@ -10,8 +10,8 @@ import com.iafenvoy.system.module.builtin.BuiltinTools;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-public record JobCancelTool(OnlineJobs jobs) implements ToolRegistry.Handler<JobCancelInput, OnlineJobsOutput> {
-    public ToolRegistry.Tool<JobCancelInput, OnlineJobsOutput> tool() {
+public record JobCancelTool(OnlineJobs jobs) implements ToolRegistry.Handler<JobCancelInput, OnlineJobsOutput, ExecutionContext> {
+    public ToolRegistry.Tool<JobCancelInput, OnlineJobsOutput, ExecutionContext> tool() {
         return new ToolRegistry.Tool<>(BuiltinTools.JOB_CANCEL, true, false, false, this);
     }
 
